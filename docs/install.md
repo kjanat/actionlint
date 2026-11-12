@@ -237,7 +237,7 @@ For the usage of actionlint on GitHub Actions, see [the usage document](usage.md
 The fork publishes CLI images as `ghcr.io/kjanat/actionlint` and `docker.io/kjanat/actionlint`. See
 [Docker usage](usage.md#docker) for running the linter with a mounted repository.
 
-For a preview, use `:pr-343` or `:branch-go-identity-model` from either registry.
+For a preview of `master`, use `:branch-master` from either registry.
 These Linux amd64 and arm64 images are built for pull requests from this repository
 and branch pushes. Branch names use Docker-safe tags; for example, `feature/cache`
 becomes `branch-feature-cache`. OCI labels identify the source commit and build.

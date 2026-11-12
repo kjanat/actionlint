@@ -9,6 +9,8 @@
 [![Docker nightly][docker-nightly-badge]][docker-nightly]
 [![Sponsor this project][sponsor-badge]][sponsor]
 
+[![UPCOMING — actionlint v2. Try the master preview.](docs/assets/brand/upcoming-v2.svg)](#get-actionlint)
+
 **Catch the broken workflow before the runner does.**
 
 actionlint checks GitHub Actions workflows, action manifests, and the scripts inside them. Find the misspelled matrix property, the missing action input, the unsafe interpolation, and the shell bug before the next push.
@@ -286,10 +288,10 @@ Use [the Action guide](docs/action.md) for setup and available release versions.
 
 The [installation guide](docs/install.md) covers Windows, macOS, Linux, npm, PyPI, Docker, and other package managers.
 
-Try the current preview:
+Try the latest preview from `master`:
 
 ```sh
-npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@343
+npx https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@master
 ```
 
 Or build from source with Go 1.27 or newer:
