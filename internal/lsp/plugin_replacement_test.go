@@ -3,6 +3,7 @@ package lsp
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -137,6 +138,9 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 }
 
 func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
+	if _, err := exec.LookPath("shellcheck"); err != nil {
+		t.Skip("ShellCheck required")
+	}
 	plugin, err := filepath.Abs("../plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
