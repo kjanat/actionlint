@@ -23,6 +23,10 @@ test('portable WinGet manifest validates the CLI without accepting lint failures
 
 	assert.equal(installer.InstallerType, 'zip');
 	assert.equal(installer.NestedInstallerType, 'portable');
+	assert.equal(Object.hasOwn(installer, 'Scope'), false, 'Portable manifests must omit Scope');
+	for (const entry of installer.Installers) {
+		assert.equal(Object.hasOwn(entry, 'Scope'), false, `${entry.Architecture} must omit Scope`);
+	}
 	assert.deepEqual(installer.NestedInstallerFiles, [{
 		RelativeFilePath: 'actionlint.exe',
 		PortableCommandAlias: 'actionlint',
@@ -38,5 +42,6 @@ test('portable WinGet manifest validates the CLI without accepting lint failures
 	const installerYaml = renderManifests(manifests)[manifestFileNames.installer];
 	assert.ok(installerYaml);
 	assert.doesNotMatch(installerYaml, /^InstallerSuccessCodes:/m);
+	assert.doesNotMatch(installerYaml, /^\s*Scope:/m);
 	assert.deepEqual(installerManifest.parse(parse(installerYaml)), installer);
 });
