@@ -1,11 +1,19 @@
 {
   description = "GitHub Actions workflow linter";
 
-  # Pin the nixpkgs merge that adds Go 1.27.4 until it reaches nixpkgs-unstable.
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/6f0c298a612204a69074aee91d87dc397d767d3e";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  # Use the Go 1.27.4 recipe with the cached dependencies from nixpkgs-unstable.
+  inputs.nixpkgs-go = {
+    url = "github:NixOS/nixpkgs/6f0c298a612204a69074aee91d87dc397d767d3e";
+    flake = false;
+  };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      nixpkgs-go,
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -25,14 +33,11 @@
       goFor =
         pkgs:
         let
-          go = pkgs.${"go_${goMajor}_${goMinor}"};
+          go = pkgs.callPackage (nixpkgs-go + "/pkgs/development/compilers/go/${goMajor}.${goMinor}.nix") { };
         in
         assert go.version == goVersion;
         go;
-      goBuilderFor =
-        pkgs:
-        assert (goFor pkgs).version == goVersion;
-        pkgs.${"buildGo${goMajor}${goMinor}Module"};
+      goBuilderFor = pkgs: pkgs.buildGoModule.override { go = goFor pkgs; };
       version = nixpkgs.lib.trim (builtins.readFile ./VERSION);
     in
     {
