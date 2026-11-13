@@ -14,6 +14,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -31,8 +32,8 @@ type Options struct {
 	SourceSnapshots *parsing.SourceSnapshots
 	Captures        *capture.Store
 	RemoteActions   *remote.Service
-	// PrepareSource acquires dependencies before any checks observe this source.
-	PrepareSource func(parsing.SourceSnapshot) error
+	// PrepareSource acquires only the supplied references before checks observe the source.
+	PrepareSource func(parsing.SourceSnapshot, []string) error
 	Runners       *runnerlang.Knowledge
 	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
 	ScriptInputs []checkinputs.ScriptInput
@@ -159,6 +160,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 			captures:              options.Captures,
 			remoteActions:         options.RemoteActions,
 			remoteDocuments:       map[string]remoteDocument{},
+			remoteLookups:         map[actions.Reference]struct{}{},
 			prepareSource:         options.PrepareSource,
 		},
 	}

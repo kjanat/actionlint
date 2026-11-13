@@ -363,16 +363,12 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		SourceSnapshots: s.snapshots,
 		Captures:        s.captures,
 		RemoteActions:   remoteActions,
-		PrepareSource: func(snapshot parsing.SourceSnapshot) error {
-			_, dependencies := snapshot.Declarations()
+		PrepareSource: func(_ parsing.SourceSnapshot, references []string) error {
 			var lookups errgroup.Group
 			lookups.SetLimit(concurrentMetadataLookups)
-			for _, dependency := range dependencies {
-				if dependency.Kind != "action" {
-					continue
-				}
+			for _, reference := range references {
 				lookups.Go(func() error {
-					_, err := remoteActions.Inspect(s.ctx, dependency.Uses)
+					_, err := remoteActions.Inspect(s.ctx, reference)
 					return err
 				})
 			}

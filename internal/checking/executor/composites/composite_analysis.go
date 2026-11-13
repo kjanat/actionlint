@@ -17,6 +17,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -61,7 +62,8 @@ type compositionSession struct {
 	captures               *capture.Store
 	remoteActions          *remote.Service
 	remoteDocuments        map[string]remoteDocument
-	prepareSource          func(parsing.SourceSnapshot) error
+	remoteLookups          map[actions.Reference]struct{}
+	prepareSource          func(parsing.SourceSnapshot, []string) error
 	invocations            *invocation.Builder
 	budget                 invocation.Budget
 	interrupted            bool
