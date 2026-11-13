@@ -25,6 +25,7 @@ func (b rangeReviewBackend) Check(context.Context, checkinputs.ScriptRequest) ([
 // A reversed end is dropped and its finding kept at the mapped start, as an
 // unmapped end is; neither fails the check.
 func TestBackendDropsReversedEnds(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo first\n          echo second\n")
 	document := parsing.Workflow(content)
 	parsed, failures := document.Workflow, document.SyntaxErrors

@@ -10,6 +10,7 @@ import (
 )
 
 func TestEffectiveConfigFieldCoverage(t *testing.T) {
+	t.Parallel()
 	resolved, err := checking.ConfigurationRules().EffectiveValues(&repoconfig.Config{})
 	if err != nil {
 		t.Fatal(err)

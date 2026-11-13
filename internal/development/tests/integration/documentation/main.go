@@ -28,7 +28,6 @@ import (
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	render "actionlint.kjanat.dev/v2/internal/output"
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -85,7 +84,6 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	color.NoColor = true
 	renderer, err := render.New(render.FormatText, "", false, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err

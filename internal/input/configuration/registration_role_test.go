@@ -10,6 +10,7 @@ import (
 )
 
 func TestInspectionUsesToolReplacementRegistration(t *testing.T) {
+	t.Parallel()
 	rules := registrationRuleSet(t)
 	path := filepath.Join(t.TempDir(), "actionlint.yaml")
 	if err := os.WriteFile(path, []byte("lint: {rules: {security: {shellcheck: on}}}\n"), 0o600); err != nil {
@@ -44,6 +45,7 @@ func registrationRuleSet(t *testing.T) RuleSet {
 }
 
 func TestSelectedToolRegistrationReplacesBundledDescriptor(t *testing.T) {
+	t.Parallel()
 	rules := registrationRuleSet(t)
 	descriptor := rule.Descriptor{Name: "shellcheck", Category: "security", Provider: "shellcheck-rs", Maturity: "stable", Recommended: true}
 	cfg, err := rules.Parse([]byte("lint: {rules: {plugins: {shellcheck: on}}}"))
@@ -72,6 +74,7 @@ func TestSelectedToolRegistrationReplacesBundledDescriptor(t *testing.T) {
 }
 
 func TestExperimentalToolRegistrationUsesExperimentalSelection(t *testing.T) {
+	t.Parallel()
 	rules := registrationRuleSet(t)
 	descriptor := rule.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs", Maturity: rule.NurseryMaturity, Recommended: true}
 	for _, tc := range []struct {
@@ -85,6 +88,7 @@ func TestExperimentalToolRegistrationUsesExperimentalSelection(t *testing.T) {
 		{"disabled experimental", Presets{Experimental: new(false)}, "off"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := rules.ResolveRegisteredRules(tc.presets, nil, RuleRegistration{Descriptor: descriptor, ReplacesTool: "shellcheck"})
 			if err != nil {
 				t.Fatal(err)

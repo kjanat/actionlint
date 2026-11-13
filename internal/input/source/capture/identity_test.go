@@ -13,6 +13,7 @@ import (
 )
 
 func TestCanonicalIdentityDoesNotDeclareSourcesOrPromoteAfterSeal(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "root")
 	var resolutions atomic.Int32
 	store, err := newStoreWithResolver(t.Context(), nil, func(context.Context, string) ([]byte, error) {
@@ -47,6 +48,7 @@ func TestCanonicalIdentityDoesNotDeclareSourcesOrPromoteAfterSeal(t *testing.T) 
 }
 
 func TestCanonicalIdentityAliasRequiresExplicitDocumentPromotion(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path, alias := filepath.Join(root, "source.yml"), filepath.Join(root, "alias.yml")
 	store, err := newStoreWithResolver(t.Context(), []Overlay{{Path: path, Content: []byte("captured"), Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
@@ -72,6 +74,7 @@ func TestCanonicalIdentityAliasRequiresExplicitDocumentPromotion(t *testing.T) {
 }
 
 func TestCanonicalIdentityAndDocumentShareOneFlight(t *testing.T) {
+	t.Parallel()
 	for range 32 {
 		path := filepath.Join(t.TempDir(), "source.yml")
 		started, release := make(chan struct{}), make(chan struct{})
@@ -107,6 +110,7 @@ func TestCanonicalIdentityAndDocumentShareOneFlight(t *testing.T) {
 }
 
 func TestCanonicalIdentityCancellationStillRequiresJoinedWork(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "root")
 	started, release := make(chan struct{}), make(chan struct{})
 	store, err := newStoreWithResolver(t.Context(), nil, func(context.Context, string) ([]byte, error) { return nil, nil }, func(path string) string { close(started); <-release; return path })

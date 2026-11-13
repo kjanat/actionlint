@@ -13,13 +13,6 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-var (
-	bold   = new(color.Color).Add(color.Bold)
-	green  = new(color.Color).Add(color.FgGreen)
-	yellow = new(color.Color).Add(color.FgYellow)
-	gray   = new(color.Color).Add(color.FgHiBlack)
-)
-
 // Finding is one diagnostic together with the source its snippet is rendered from.
 // EndColumn is the inclusive column where the indicator ends; zero infers the
 // token end. RawScript selects LF line splitting for external checker sources.
@@ -105,6 +98,14 @@ func (f Finding) TemplateFields() *TemplateFields {
 // PrettyPrint writes the location, message, rule and an indicated source line.
 // Without source bytes, the diagnostic's captured snippet is used when available.
 func (f Finding) PrettyPrint(w io.Writer) {
+	f.prettyPrint(w, false)
+}
+
+func (f Finding) prettyPrint(w io.Writer, colored bool) {
+	bold := colorStyle(colored, color.Bold)
+	green := colorStyle(colored, color.FgGreen)
+	yellow := colorStyle(colored, color.FgYellow)
+	gray := colorStyle(colored, color.FgHiBlack)
 	d := f.Diagnostic
 	_, _ = yellow.Fprint(w, d.Path)
 	_, _ = gray.Fprint(w, ":")

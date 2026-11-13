@@ -13,6 +13,7 @@ import (
 )
 
 func TestCredentialsKnownMappingExpressions(t *testing.T) {
+	t.Parallel()
 	for _, scope := range []struct {
 		name, field, where  string
 		line, column        int
@@ -51,6 +52,7 @@ func TestCredentialsKnownMappingExpressions(t *testing.T) {
 			{"unknown credentials", "", ""},
 		} {
 			t.Run(scope.name+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				value := tc.credentials
 				if scope.container {
 					value = `{"image":"node:22","Credentials":` + value + `}`
@@ -94,6 +96,7 @@ jobs:
 }
 
 func TestCredentialsKnownPasswordExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, value, kind string }{
 		{"literal password", "plain", "credentials"},
 		{"literal string expression", "${{ 'plain' }}", "credentials"},
@@ -109,6 +112,7 @@ func TestCredentialsKnownPasswordExpressions(t *testing.T) {
 		{"malformed expression", "${{ fromJSON( }}", "expression-syntax"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   check:
@@ -134,8 +138,10 @@ jobs:
 }
 
 func TestCredentialsKnownUsernameExpressions(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{"${{ null }}", "${{ '' }}"} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   check:
@@ -157,6 +163,7 @@ jobs:
 }
 
 func TestContainerExpressionImageContract(t *testing.T) {
+	t.Parallel()
 	// The converter returns no job container for an explicit empty image.
 	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/Conversion/WorkflowTemplateConverter.cs#L1203-L1218
 	for _, tc := range []struct {
@@ -171,6 +178,7 @@ func TestContainerExpressionImageContract(t *testing.T) {
 		{"missing image property", `${{ fromJSON('{}') }}`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   check:

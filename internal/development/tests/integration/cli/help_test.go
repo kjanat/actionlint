@@ -184,6 +184,7 @@ plain:
 }
 
 func TestHelpJSONIsNotColored(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"--color", "--help", "--json"},
 		{"check", "--color=always", "--help", "--json"},
@@ -198,6 +199,7 @@ func TestHelpJSONIsNotColored(t *testing.T) {
 }
 
 func TestHelpForcedColorInFile(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "help.txt")
 	file, err := os.Create(path)
 	if err != nil {
@@ -218,6 +220,7 @@ func TestHelpForcedColorInFile(t *testing.T) {
 }
 
 func TestCommandJSONHelpAndVersion(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"--help", "--", "--json"}, {"--help", "--stdin-filename", "--json"}} {
 		got := testRunCommand("", args...)
 		if got.Status != 0 || got.Stdout != "" || !strings.Contains(got.Stderr, "Usage:") {
@@ -253,6 +256,7 @@ func TestCommandJSONHelpAndVersion(t *testing.T) {
 }
 
 func TestManualNativeJSONContract(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("man/actionlint.1.md")
 	if err != nil {
 		t.Fatal(err)

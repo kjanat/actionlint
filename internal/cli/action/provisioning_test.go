@@ -11,6 +11,7 @@ import (
 )
 
 func TestActionNativeBackendRequirements(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		files      map[string]string
@@ -65,6 +66,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			files := map[string]string{".git": "", ".github/workflows/clean.yml": cleanWorkflow}
 			maps.Copy(files, tc.files)
 			env := map[string]string{"GITHUB_WORKSPACE": workspaceWith(t, files)}
@@ -90,6 +92,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 }
 
 func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		config string
@@ -100,6 +103,7 @@ func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
 		{name: "file", config: "tools: {shellcheck: {enabled: wrong}}", code: 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			env := map[string]string{"GITHUB_WORKSPACE": workspaceWith(t, map[string]string{
 				".git": "", ".github/actionlint.yaml": tc.config,
 				".github/workflows/clean.yml": cleanWorkflow,

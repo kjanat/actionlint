@@ -11,6 +11,7 @@ import (
 )
 
 func TestYAMLAliasProjectionIsRepeatableAndOwnsItsNodes(t *testing.T) {
+	t.Parallel()
 	root, err := codec.Parse([]byte("base: &base {nested: {value: original}}\none: *base\ntwo: *base\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +41,7 @@ func TestYAMLAliasProjectionIsRepeatableAndOwnsItsNodes(t *testing.T) {
 }
 
 func TestYAMLAliasProjectionKeepsSharedExpansionBounded(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("a0: &a0 [value]\n")
 	const depth = 8
@@ -63,6 +65,7 @@ func TestYAMLAliasProjectionKeepsSharedExpansionBounded(t *testing.T) {
 }
 
 func TestWorkflowParserProjectsAfterPhysicalSourceIndexing(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\nenv:\n  CONDITION: &condition github.ref == 'refs/heads/main'\njobs:\n  check:\n    if: *condition\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {
@@ -86,6 +89,7 @@ func TestWorkflowParserProjectsAfterPhysicalSourceIndexing(t *testing.T) {
 }
 
 func TestWorkflowEmptyParseDoesNotChangePhysicalSource(t *testing.T) {
+	t.Parallel()
 	root, err := codec.Parse(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -97,6 +101,7 @@ func TestWorkflowEmptyParseDoesNotChangePhysicalSource(t *testing.T) {
 }
 
 func TestWorkflowParseEmptyInputs(t *testing.T) {
+	t.Parallel()
 	for _, data := range [][]byte{nil, {}, []byte(" \n \n"), []byte("# comment\n")} {
 		workflow, findings := Parse(data)
 		if workflow == nil || len(findings) != 1 || findings[0].Kind != "syntax-check" || findings[0].Message != "workflow is empty" || findings[0].Line != 1 || findings[0].Column != 1 {
@@ -106,6 +111,7 @@ func TestWorkflowParseEmptyInputs(t *testing.T) {
 }
 
 func TestWorkflowDocumentDriverHasIndependentParserState(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\nenv: &bad+name {A: value}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    env: *bad+name\n    steps: [{run: echo ok}]\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {
@@ -121,6 +127,7 @@ func TestWorkflowDocumentDriverHasIndependentParserState(t *testing.T) {
 }
 
 func TestYAMLAliasGraphPreconditionRejectsNilProgrammerInput(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		root *syntax.Node
@@ -130,6 +137,7 @@ func TestYAMLAliasGraphPreconditionRejectsNilProgrammerInput(t *testing.T) {
 	} {
 		for _, project := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/project=%t", tc.name, project), func(t *testing.T) {
+				t.Parallel()
 				defer func() {
 					if recover() == nil {
 						t.Fatal("malformed internal source graph did not fail loudly")
@@ -147,6 +155,7 @@ func TestYAMLAliasGraphPreconditionRejectsNilProgrammerInput(t *testing.T) {
 }
 
 func TestWorkflowParsePreservesAliasTypeErrorProvenance(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\nenv:\n  FLAG: &flag {}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    continue-on-error: *flag\n    steps: [{run: echo ok}]\n"
 	workflow, findings := Parse([]byte(source))
 	if workflow == nil {
@@ -167,6 +176,7 @@ func TestWorkflowParsePreservesAliasTypeErrorProvenance(t *testing.T) {
 }
 
 func TestWorkflowParseRejectsRecursiveMatrixAlias(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        value: &cycle [*cycle]\n    steps: [{run: echo ok}]\n"
 	workflow, findings := Parse([]byte(source))
 	if workflow == nil {
@@ -187,6 +197,7 @@ func TestWorkflowParseRejectsRecursiveMatrixAlias(t *testing.T) {
 }
 
 func TestWorkflowParseReportsAnchoredFlowNullOnce(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\nenv: &env {MISSING:}\njobs:\n  first:\n    runs-on: ubuntu-latest\n    env: *env\n    steps: [{run: echo ok}]\n  second:\n    runs-on: ubuntu-latest\n    env: *env\n    steps: [{run: echo ok}]\n"
 	workflow, findings := Parse([]byte(source))
 	if workflow == nil || len(workflow.Jobs) != 2 {

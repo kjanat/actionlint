@@ -29,6 +29,7 @@ func shapeFindings(t *testing.T, src string) []reporting.Finding {
 }
 
 func TestShapeChecks(t *testing.T) {
+	t.Parallel()
 	const steps = "    steps:\n      - run: echo ok\n"
 	for _, tc := range []struct {
 		name, src string
@@ -51,6 +52,7 @@ func TestShapeChecks(t *testing.T) {
 		{"expression", "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    strategy:\n      max-parallel: ${{ 0 }}\n" + steps, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var got []string
 			for _, finding := range shapeFindings(t, tc.src) {
 				if finding.Severity != "warning" {

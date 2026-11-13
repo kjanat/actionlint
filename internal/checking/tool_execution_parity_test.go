@@ -65,6 +65,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 }
 
 func TestExternalOverridePlanMatchesExecution(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -80,6 +81,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 		{"enabled with unrelated override", "overrides: [{includes: [other.yml], lint: {rules: {suspicious: on}}}]", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
 				t.Fatal(err)

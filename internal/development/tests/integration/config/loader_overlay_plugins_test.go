@@ -8,6 +8,7 @@ import (
 )
 
 func TestOverlayBeforePluginsDefersOnlyRuleNames(t *testing.T) {
+	t.Parallel()
 	overlay, err := checking.ConfigurationRules().ParseOverlayBeforePlugins("config", []byte("lint: {rules: {plugins: {example: warn}}}"))
 	if err != nil {
 		t.Fatal(err)

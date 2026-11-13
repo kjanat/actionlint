@@ -7,6 +7,7 @@ import (
 )
 
 func TestEventCompletions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, trigger, value, want, absent string }{
 		{"PR fields", "pull_request", "${{ github.event.pull_request.ti| }}", "title", "commits"},
 		{"push fields", "push", "${{ github.event.co| }}", "commits", "pull_request"},
@@ -20,6 +21,7 @@ func TestEventCompletions(t *testing.T) {
 		{"inside string", "pull_request", "${{ 'github.event.pull_request.ti|' }}", "", "title"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			input := "on: " + tc.trigger + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '" + tc.value + "'\n"
 			offset := strings.Index(input, "|")
 			input = strings.Replace(input, "|", "", 1)
@@ -42,6 +44,7 @@ func TestEventCompletions(t *testing.T) {
 }
 
 func TestCompletionReplacesWholeToken(t *testing.T) {
+	t.Parallel()
 	content := "on: pull_request\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ github.event.pull_request.titel }}'\n"
 	offset := strings.Index(content, "titel") + 2
 	items := Complete(content, offset)
@@ -57,6 +60,7 @@ func TestCompletionReplacesWholeToken(t *testing.T) {
 }
 
 func TestCompletionAvailability(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{
 		"on: push\njobs:\n  test:\n    if: ${{ sec| }}\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n",
 		"on: push\n# ${{ github.ev| }}\n",

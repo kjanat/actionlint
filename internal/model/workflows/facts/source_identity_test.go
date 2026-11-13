@@ -12,6 +12,7 @@ import (
 )
 
 func TestAnonymousStepIdentitySurvivesReordering(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, first, second string }{
 		{"env", "run: echo hello\n  env: {FIRST: value}", "run: echo hello\n  env: {SECOND: value}"},
 		{"inputs", "uses: owner/action@main\n  with: {key: first}", "uses: owner/action@main\n  with: {key: second}"},
@@ -26,6 +27,7 @@ func TestAnonymousStepIdentitySurvivesReordering(t *testing.T) {
 		{"cancel", "cancel: first", "cancel: second"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			before := stepReferencesForTest(t, tc.first, tc.second)
 			after := stepReferencesForTest(t, tc.second, tc.first)
 			if before[0].Node == before[1].Node || before[0].Node != after[1].Node || before[1].Node != after[0].Node {
@@ -42,6 +44,7 @@ func TestAnonymousStepIdentitySurvivesReordering(t *testing.T) {
 }
 
 func TestStepIdentityIgnoresPresentation(t *testing.T) {
+	t.Parallel()
 	before := stepReferencesForTest(t, "run: echo hello\n  env: {FIRST: one, SECOND: two}")
 	after := stepReferencesForTest(t, "# comment\n  run: 'echo hello'\n  env: {SECOND: two, FIRST: one}")
 	if before[0].Node != after[0].Node {
@@ -50,6 +53,7 @@ func TestStepIdentityIgnoresPresentation(t *testing.T) {
 }
 
 func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
+	t.Parallel()
 	const first = "on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        uses: $/outer\n"
 	for _, test := range []struct {
 		name, suffix, secondJob, secondAddress string
@@ -59,6 +63,7 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 		{name: "different jobs", suffix: "  Other:\n    runs-on: ubuntu-latest\n    steps:\n      - *shared\n", secondJob: "other", secondAddress: `jobs["other"].steps[0]`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			content := []byte(first + test.suffix)
 			workflow, findings := workflowparser.Parse(content)
 			if len(findings) != 0 {

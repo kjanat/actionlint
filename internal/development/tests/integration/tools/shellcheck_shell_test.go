@@ -1,7 +1,6 @@
 package tools_test
 
 import (
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -13,11 +12,8 @@ import (
 )
 
 func TestShellcheckResolvedDiagnostics(t *testing.T) {
-	command, err := exec.LookPath("shellcheck")
-	if err != nil {
-		t.Skip("ShellCheck required")
-	}
-	t.Setenv("SHELLCHECK_OPTS", "")
+	t.Parallel()
+	command := testutil.RequireTool(t, "shellcheck")
 	for _, tc := range []struct {
 		name, container, shell string
 		finding                bool
@@ -37,6 +33,7 @@ func TestShellcheckResolvedDiagnostics(t *testing.T) {
 		{"custom sh", "", "sh {0}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:

@@ -5,6 +5,7 @@ import (
 )
 
 func TestValidPatternPortablePaths(t *testing.T) {
+	t.Parallel()
 	for _, pattern := range []string{"/tmp/*", "!/tmp/*", "//server/share/*", `C:/tmp/*`, `C:\tmp\*`, `\tmp\*`, "../*", "a/../b", "", "!", "["} {
 		if ValidPattern(pattern) {
 			t.Errorf("accepted non-relative or invalid glob %q", pattern)
@@ -18,6 +19,7 @@ func TestValidPatternPortablePaths(t *testing.T) {
 }
 
 func TestMatchNormalizesPatterns(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name               string
 		includes, excludes []string
@@ -30,6 +32,7 @@ func TestMatchNormalizesPatterns(t *testing.T) {
 		{"repeated dot prefix", []string{"././local/*"}, nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			selection, err := NewSelection(tc.includes, tc.excludes)
 			if err != nil {
 				t.Fatal(err)
@@ -51,6 +54,7 @@ func TestMatchNormalizesPatterns(t *testing.T) {
 }
 
 func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
+	t.Parallel()
 	if _, err := NewSelection([]string{"../*"}, nil); err == nil {
 		t.Fatal("accepted escaping include")
 	}
@@ -72,6 +76,7 @@ func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
 }
 
 func TestSelectionYAMLRoundTrip(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"includes: []\n", "excludes:\n    - local/skip.yml\nincludes:\n    - local/*\n"} {
 		var selection Selection
 		if err := decodeSelectionConfig([]byte(source), &selection); err != nil {

@@ -9,6 +9,7 @@ import (
 )
 
 func TestExprSerializedWorkflowRunContainers(t *testing.T) {
+	t.Parallel()
 	for _, container := range []string{"head_repository", "actor", "triggering_actor", "referenced_workflows", "head_commit"} {
 		path := "github.event.workflow_run." + container
 		for _, expression := range []string{
@@ -19,7 +20,10 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			"toJSON(" + path + " || 'fallback')",
 			"toJSON(case(github.event_name == 'workflow_run', " + path + ", 'fallback'))",
 		} {
-			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
+			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
+				checkReferencedWorkflowExpression(t, expression, true)
+			})
 		}
 		for _, expression := range []string{
 			"toJSON(" + path + " == null)",
@@ -31,7 +35,10 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			"toJSON(" + path + ") && 'safe'",
 			"case(toJSON(" + path + ") != '', 'safe', 'fallback')",
 		} {
-			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
+			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
+				checkReferencedWorkflowExpression(t, expression, false)
+			})
 		}
 		// Without a non-string scalar proof, JSON may introduce quote delimiters
 		// even without attacker control; pass it through the environment.
@@ -40,7 +47,10 @@ func TestExprSerializedWorkflowRunContainers(t *testing.T) {
 			"toJSON('safe' || " + path + ")",
 			"toJSON(case(false, " + path + ", 'safe'))",
 		} {
-			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false, true) })
+			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
+				checkReferencedWorkflowExpression(t, expression, false, true)
+			})
 		}
 		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
@@ -60,11 +70,13 @@ jobs:
 }
 
 func TestExprSerializedContainerSelections(t *testing.T) {
+	t.Parallel()
 	for _, path := range []string{
 		"head_repository.owner", "head_commit.author", "head_commit.committer",
 		"referenced_workflows[0]", "referenced_workflows.*", "pull_requests.*.head",
 	} {
 		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 			checkReferencedWorkflowExpression(t, "toJSON(github.event.workflow_run."+path+")", true)
 		})
 	}
@@ -74,6 +86,7 @@ func TestExprSerializedContainerSelections(t *testing.T) {
 		"head_commit.id", "referenced_workflows.*.sha", "referenced_workflows[0].sha",
 	} {
 		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 			syntax := path != "head_repository.id" && path != "head_repository.owner.id" && path != "actor.id" && path != "actor.site_admin"
 			checkReferencedWorkflowExpression(t, "toJSON(github.event.workflow_run."+path+")", false, syntax)
 		})
@@ -81,16 +94,21 @@ func TestExprSerializedContainerSelections(t *testing.T) {
 }
 
 func TestExprSerializedContainerPreservesLeafChecks(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow_run.actor.name == 'safe'",
 		"!github.event.workflow_run.actor.name",
 		"toJSON(github.event.workflow_run.actor.name) == 'safe'",
 	} {
-		t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
+		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
+			checkReferencedWorkflowExpression(t, expression, true)
+		})
 	}
 }
 
 func TestExprSerializedContainerScriptSinks(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []string{"\n", "\r\n"} {
 		for _, script := range []string{
 			`      - run: |

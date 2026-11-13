@@ -237,6 +237,7 @@ func TestRegistryManagementArgumentErrors(t *testing.T) {
 }
 
 func TestRequestedPlugin(t *testing.T) {
+	t.Parallel()
 	existing := []pluginref.Reference{testReference(t, fixtureregistry.FixturePluginName, "v1", fixtureregistry.FixtureRegistryURL)}
 	for _, tc := range []struct {
 		name    string

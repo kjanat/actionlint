@@ -10,6 +10,7 @@ import (
 )
 
 func TestCursorWrapLocatesEachErrorWithoutChangingCauses(t *testing.T) {
+	t.Parallel()
 	node := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "value", Line: 4, Column: 3}
 	session, _, err := codec.Open(node)
 	if err != nil {
@@ -55,6 +56,7 @@ func TestCursorWrapLocatesEachErrorWithoutChangingCauses(t *testing.T) {
 }
 
 func TestCursorWrapWithoutNodeReportsUnknownLocation(t *testing.T) {
+	t.Parallel()
 	var session codec.Session
 	cause := errors.New("missing node")
 	err := session.Wrap(nil, cause)

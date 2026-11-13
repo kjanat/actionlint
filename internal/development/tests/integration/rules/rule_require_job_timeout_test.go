@@ -15,6 +15,7 @@ import (
 )
 
 func TestRuleRequireJobTimeout(t *testing.T) {
+	t.Parallel()
 	jobPos := &workflowlang.Pos{Line: 4, Col: 3}
 	valuePos := &workflowlang.Pos{Line: 6, Col: 22}
 	missing := ":4:3: \"timeout-minutes\" is not set in job \"test\". Set an explicit timeout for this job [job-timeout]"
@@ -138,6 +139,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			r := declarationchecks.NewRuleRequireJobTimeout(checking.ConfigurationRules(), tc.policy)
 			if err := r.VisitJobPre(fixturedecl.Job(tc.job)); err != nil {
 				t.Fatal(err)
@@ -156,6 +158,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 }
 
 func TestRuleRequireJobTimeoutRange(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, kind      string
 		min, max, value float64
@@ -174,6 +177,7 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 		{name: "reusable workflow", min: 5, value: 4, call: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			policy, err := repoconfig.RequireJobTimeoutRange(tc.min, tc.max)
 			if err != nil {
 				t.Fatal(err)

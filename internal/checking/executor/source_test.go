@@ -8,6 +8,7 @@ import (
 )
 
 func TestSourceInputKindAndParseStatus(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, content, kind, status string
 	}{
@@ -20,6 +21,7 @@ func TestSourceInputKindAndParseStatus(t *testing.T) {
 		{"empty action", "", "action", "failed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := []byte(tc.content)
 			document := parsing.Workflow(content)
 			if tc.kind == "action" {

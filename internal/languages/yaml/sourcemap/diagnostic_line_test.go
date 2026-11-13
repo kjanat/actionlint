@@ -10,6 +10,7 @@ import (
 )
 
 func TestDiagnosticLongSourceLine(t *testing.T) {
+	t.Parallel()
 	line := strings.Repeat("x", 70*1024)
 	for _, raw := range []bool{false, true} {
 		finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 2, Column: 1}, RawScriptSource: raw}

@@ -9,6 +9,7 @@ import (
 )
 
 func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps: [{run: echo ok}]\n"
 	parsed, errs := workflowparser.Parse([]byte(source))
 	if len(errs) != 0 {
@@ -20,6 +21,7 @@ func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
 	}
 	for _, bound := range []string{"minimum", "maximum"} {
 		t.Run(bound, func(t *testing.T) {
+			t.Parallel()
 			limit := 20.0
 			policy := conventions.TimeoutPolicy{Enabled: true, Min: &limit}
 			if bound == "maximum" {

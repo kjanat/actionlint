@@ -16,6 +16,7 @@ import (
 )
 
 func TestConstantPredicateNumericCoercion(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		want       bool
@@ -35,6 +36,7 @@ func TestConstantPredicateNumericCoercion(t *testing.T) {
 		{"contains(fromJSON('[1,2,3]'), 2)", true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid expression fixture")

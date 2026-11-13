@@ -14,6 +14,7 @@ import (
 )
 
 func TestActionMetadataContextSuggestion(t *testing.T) {
+	t.Parallel()
 	const source = `name: test
 description: test
 runs:
@@ -40,6 +41,7 @@ runs:
 }
 
 func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, want string }{
 		{"${{ github_repository }}", `did you mean "inputs.github_repository"?`},
 		{"${{ GITHUB_REPOSITORY }}", `did you mean "inputs.github_repository"?`},
@@ -47,6 +49,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 		{"${{ runner_os }}", `did you mean "runner.os"?`},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\ninputs:\n  github_repository:\n    description: repository\nruns:\n  using: composite\n  steps:\n    - run: echo '"+tc.expression+"'\n      shell: bash\n")
 			result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
@@ -67,6 +70,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 }
 
 func TestCompositeInjectionSurvivesExpressionError(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "inner/action.yml", `name: inner
 description: test

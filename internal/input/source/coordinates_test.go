@@ -3,6 +3,7 @@ package source
 import "testing"
 
 func TestCoordinates(t *testing.T) {
+	t.Parallel()
 	for _, model := range []Coordinates{YAML, RawLF} {
 		if !model.Valid() {
 			t.Errorf("invalid supported model %q", model)

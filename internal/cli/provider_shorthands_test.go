@@ -56,9 +56,11 @@ func TestInstalledProviderShorthands(t *testing.T) {
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
 	config := filepath.Join(root, "actionlint.toml")
-	if err := os.WriteFile(filepath.Join(root, "base.toml"), []byte("[tools.file-tool]\nlimit = 9\n"), 0o600); err != nil {
+	base := []byte("[tools.file-tool]\nlimit = 9\n")
+	if err := os.WriteFile(filepath.Join(root, "base.toml"), base, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	manifest := data
 	for _, tc := range []struct {
 		name, source, want string
 		code               int
@@ -75,8 +77,14 @@ func TestInstalledProviderShorthands(t *testing.T) {
 		{"path and shorthand", "[tools.file-tool]\nlimit = 5\nconfig = 'tool.toml'\n", "cannot be combined", 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := os.WriteFile(config, []byte(tc.source), 0o600); err != nil {
-				t.Fatal(err)
+			t.Parallel()
+			directory := t.TempDir()
+			path := filepath.Join(directory, "provider.manifest.json")
+			config := filepath.Join(directory, "actionlint.toml")
+			for file, content := range map[string][]byte{path: manifest, filepath.Join(directory, "base.toml"): base, config: []byte(tc.source)} {
+				if err := os.WriteFile(file, content, 0o600); err != nil {
+					t.Fatal(err)
+				}
 			}
 			args := []string{"config", "show", "--json", "--plugin", path, "--config", config}
 			output := pluginCommandTest(t, tc.code, args...)

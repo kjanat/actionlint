@@ -12,10 +12,12 @@ import (
 )
 
 func TestAnalysisSharesNetworkSession(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"
 	for _, entry := range []string{"Check", "Analyze"} {
 		for _, supplied := range []bool{false, true} {
 			t.Run(entry+map[bool]string{false: "/created", true: "/supplied"}[supplied], func(t *testing.T) {
+				t.Parallel()
 				ctx := t.Context()
 				var expected *accounting.RequestTracker
 				if supplied {

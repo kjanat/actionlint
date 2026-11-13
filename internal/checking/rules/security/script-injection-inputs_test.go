@@ -46,6 +46,7 @@ var testAllUntrustedInputs = []string{
 }
 
 func TestExprInsecureBuiltinUntrustedInputs(t *testing.T) {
+	t.Parallel()
 	for _, input := range testAllUntrustedInputs {
 		cur := BuiltinUntrustedInputs
 		for name := range strings.SplitSeq(input, ".") {
@@ -103,6 +104,7 @@ func testRunTrustedInputsCheckerForNode(t *testing.T, c *UntrustedInputChecker, 
 }
 
 func TestExprInsecureDetectUntrustedValue(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		input string
 		want  []string
@@ -249,6 +251,7 @@ func TestExprInsecureDetectUntrustedValue(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			testRunTrustedInputsCheckerForNode(t, c, tc.input)
 			errs := c.Errs()
@@ -269,6 +272,7 @@ func TestExprInsecureDetectUntrustedValue(t *testing.T) {
 }
 
 func TestExprInsecureAllUntrustedValuesAtOnce(t *testing.T) {
+	t.Parallel()
 	args := make([]string, 0, len(testAllUntrustedInputs))
 	for _, i := range testAllUntrustedInputs {
 		args = append(args, i)
@@ -304,6 +308,7 @@ func TestExprInsecureAllUntrustedValuesAtOnce(t *testing.T) {
 }
 
 func TestExprInsecureInitState(t *testing.T) {
+	t.Parallel()
 	c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 	testRunTrustedInputsCheckerForNode(t, c, "github.event.issue.title")
 	if len(c.Errs()) == 0 {
@@ -322,6 +327,7 @@ func TestExprInsecureInitState(t *testing.T) {
 }
 
 func TestExprInsecureNoUntrustedValue(t *testing.T) {
+	t.Parallel()
 	inputs := []string{
 		"0",
 		"true",
@@ -360,6 +366,7 @@ func TestExprInsecureNoUntrustedValue(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			testRunTrustedInputsCheckerForNode(t, c, input)
 			if errs := c.Errs(); len(errs) > 0 {
@@ -370,6 +377,7 @@ func TestExprInsecureNoUntrustedValue(t *testing.T) {
 }
 
 func TestExprInsecureCustomizedUntrustedInputMapping(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		mapping *UntrustedInputMap
 		input   string
@@ -489,6 +497,7 @@ func TestExprInsecureCustomizedUntrustedInputMapping(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			roots := UntrustedInputSearchRoots{}
 			roots.AddRoot(tc.mapping)
 			c := NewUntrustedInputChecker(roots)
@@ -506,6 +515,7 @@ func TestExprInsecureCustomizedUntrustedInputMapping(t *testing.T) {
 }
 
 func TestExprInsecureAnyPropertyWildcardNoMatch(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		mapping *UntrustedInputMap
 		inputs  []string
@@ -537,6 +547,7 @@ func TestExprInsecureAnyPropertyWildcardNoMatch(t *testing.T) {
 	for _, tc := range testCases {
 		for _, input := range tc.inputs {
 			t.Run(input, func(t *testing.T) {
+				t.Parallel()
 				roots := UntrustedInputSearchRoots{}
 				roots.AddRoot(tc.mapping)
 				c := NewUntrustedInputChecker(roots)
@@ -550,6 +561,7 @@ func TestExprInsecureAnyPropertyWildcardNoMatch(t *testing.T) {
 }
 
 func TestExprInsecureDetectUntrustedObjectFiltering(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		detected []string
@@ -666,6 +678,7 @@ func TestExprInsecureDetectUntrustedObjectFiltering(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			testRunTrustedInputsCheckerForNode(t, c, tc.input)
 			errs := c.Errs()
@@ -700,6 +713,7 @@ func TestExprInsecureDetectUntrustedObjectFiltering(t *testing.T) {
 }
 
 func TestExprInsecureNoUntrustedObjectFiltering(t *testing.T) {
+	t.Parallel()
 	inputs := []string{
 		"github.*.foo",
 		"github.*['foo']",
@@ -714,6 +728,7 @@ func TestExprInsecureNoUntrustedObjectFiltering(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			testRunTrustedInputsCheckerForNode(t, c, input)
 			errs := c.Errs()

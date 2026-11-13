@@ -10,6 +10,7 @@ import (
 )
 
 func TestRunDirectoryContexts(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, tc := range []struct {
 		name, value, action, checkout, want string
@@ -27,6 +28,7 @@ func TestRunDirectoryContexts(t *testing.T) {
 		{"config-only context", "${{ configdir }}", "local", "", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			paths := execution.Paths{Workspace: root, Checkout: tc.checkout}
 			if tc.action != "" {
 				paths.ActionPath = filepath.Join(root, tc.action)

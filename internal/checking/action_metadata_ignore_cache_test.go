@@ -8,6 +8,7 @@ import (
 )
 
 func TestMetadataCacheWithReusableIgnores(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, ignores string
 		want          int
@@ -21,6 +22,7 @@ func TestMetadataCacheWithReusableIgnores(t *testing.T) {
 		{"action-second-job", "[{rule: action, job: second}]", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nignores: "+tc.ignores+"\n")
 			writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")

@@ -17,6 +17,7 @@ import (
 )
 
 func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	realPath := filepath.Join(root, "buffer.yml")
 	entryAlias := filepath.Join(root, "entry.yml")
@@ -58,6 +59,7 @@ func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
 }
 
 func TestPreparedExplicitBytesStillConflictWithBuffer(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo explicit}]}}\n")

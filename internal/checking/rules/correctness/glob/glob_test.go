@@ -7,6 +7,7 @@ import (
 )
 
 func TestInvalidGlobPatternErrorMessage(t *testing.T) {
+	t.Parallel()
 	want := "42: this is message"
 	err := &InvalidGlobPatternError{"this is message", 42}
 	have := err.Error()
@@ -16,6 +17,7 @@ func TestInvalidGlobPatternErrorMessage(t *testing.T) {
 }
 
 func TestValidateGlobOK(t *testing.T) {
+	t.Parallel()
 	testCases := []string{
 		"a",
 		"abc/def",
@@ -60,6 +62,7 @@ func TestValidateGlobOK(t *testing.T) {
 
 	for _, input := range testCases {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			if errs := ValidateRefGlob(input); len(errs) > 0 {
 				t.Errorf("ref glob %q caused %d errors: %v", input, len(errs), errs)
 			}
@@ -71,6 +74,7 @@ func TestValidateGlobOK(t *testing.T) {
 }
 
 func TestValidateGlobPathOnlyOK(t *testing.T) {
+	t.Parallel()
 	testCases := []string{
 		"/foo",
 		"/foo/",
@@ -97,6 +101,7 @@ func TestValidateGlobPathOnlyOK(t *testing.T) {
 
 	for _, input := range testCases {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			if errs := ValidatePathGlob(input); len(errs) > 0 {
 				t.Fatalf("path glob %q caused errors: %v", input, errs)
 			}
@@ -105,6 +110,7 @@ func TestValidateGlobPathOnlyOK(t *testing.T) {
 }
 
 func TestValidateGlobSyntaxError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what        string
 		input       string
@@ -234,6 +240,7 @@ func TestValidateGlobSyntaxError(t *testing.T) {
 	for _, kind := range []string{"ref", "path"} {
 		for _, tc := range testCases {
 			t.Run(kind+"/"+tc.what, func(t *testing.T) {
+				t.Parallel()
 				var errs []InvalidGlobPatternError
 				if kind == "ref" {
 					errs = ValidateRefGlob(tc.input)
@@ -265,6 +272,7 @@ func TestValidateGlobSyntaxError(t *testing.T) {
 }
 
 func TestValidateGlobGitRefNameInvalidCharacter(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what        string
 		input       string
@@ -329,6 +337,7 @@ func TestValidateGlobGitRefNameInvalidCharacter(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			errs := ValidateRefGlob(tc.input)
 
 			expected := tc.expectedAll
@@ -354,6 +363,7 @@ func TestValidateGlobGitRefNameInvalidCharacter(t *testing.T) {
 }
 
 func TestValidateGlobErrorColumn(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input string
 		col   int
@@ -379,6 +389,7 @@ func TestValidateGlobErrorColumn(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			errs := ValidateRefGlob(tc.input)
 
 			if len(errs) != 1 {
@@ -394,6 +405,7 @@ func TestValidateGlobErrorColumn(t *testing.T) {
 }
 
 func TestValidateGlobQuoteCharacterInErrorMessage(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		expected string
@@ -405,6 +417,7 @@ func TestValidateGlobQuoteCharacterInErrorMessage(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("%q shows %s", tc.input, tc.expected), func(t *testing.T) {
+			t.Parallel()
 			errs := ValidateRefGlob(tc.input)
 			if len(errs) == 0 {
 				t.Fatalf("no error found in %q", tc.input)
@@ -418,6 +431,7 @@ func TestValidateGlobQuoteCharacterInErrorMessage(t *testing.T) {
 }
 
 func TestValidateInvalidPathGlobError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what     string
 		input    string
@@ -467,6 +481,7 @@ func TestValidateInvalidPathGlobError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			errs := ValidatePathGlob(tc.input)
 			if len(errs) != 1 {
 				t.Fatalf("wanted 1 error %q but got %d errors: %v", tc.expected, len(errs), errs)

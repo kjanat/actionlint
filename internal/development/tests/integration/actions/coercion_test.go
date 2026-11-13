@@ -13,6 +13,7 @@ import (
 )
 
 func TestActionCoercionSelection(t *testing.T) {
+	t.Parallel()
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - if: ${{ startsWith(true, 'TR') }}%s\n      run: echo ok\n      shell: bash\n"
 	for _, called := range []bool{false, true} {
 		for _, tc := range []struct {
@@ -32,6 +33,7 @@ func TestActionCoercionSelection(t *testing.T) {
 			{"override", "lint: {rules: {suspicious: {coercion: on}}}\noverrides: [{includes: ['**/action.yml', 'action.yml'], lint: {rules: {suspicious: {coercion: off}}}}]", "", "", false},
 		} {
 			t.Run(tc.name+"/called="+map[bool]string{false: "false", true: "true"}[called], func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				if called {
 					root, _ = testutil.ExecutableFixture(t, "shellcheck", "ruff")

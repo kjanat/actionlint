@@ -24,6 +24,7 @@ type inputReplacementBackend struct {
 }
 
 func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name         string
 		registration tools.Registration
@@ -32,6 +33,7 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 		{"shellcheck", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			files := map[string]string{
 				".git/HEAD":               "ref: refs/heads/master\n",
@@ -78,6 +80,7 @@ func (b *inputReplacementBackend) Check(_ context.Context, request checkinputs.S
 func (*inputReplacementBackend) TemplateContract() string { return checkinputs.TemplateEffectsContract }
 
 func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, shell, source, filename string
 		registration                  tools.Registration
@@ -86,6 +89,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			backend := &inputReplacementBackend{}
 			site := checkinputs.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
 			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{

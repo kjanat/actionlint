@@ -14,12 +14,14 @@ import (
 )
 
 func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
+	t.Parallel()
 	revision, err := source.NewRevision("/repo/ci.yml", strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, mixed := range []string{"valid", "revision only", "coordinates only", "invalid coordinates"} {
 		t.Run(mixed, func(t *testing.T) {
+			t.Parallel()
 			input := checkinputs.Input{Path: "ci.yml", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: revision.Document(), Revision: revision.Digest()}}
 			switch mixed {
 			case "revision only":

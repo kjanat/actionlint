@@ -351,6 +351,7 @@ func normalizeParity(snapshot parityDiagnostics) parityDiagnostics {
 }
 
 func TestParityRevisionPathsPortable(t *testing.T) {
+	t.Parallel()
 	fixture := func(path string) parityDiagnostics {
 		return parityDiagnostics{Findings: []results.Diagnostic{{
 			Rule: "shellcheck", Path: "workflows/check.yml", Message: "message",
@@ -368,20 +369,19 @@ func TestParityRevisionPathsPortable(t *testing.T) {
 // TestProviderParityFixtures runs every workflow fixture through the
 // manifest route.
 func TestProviderParityFixtures(t *testing.T) {
+	t.Parallel()
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "fixtures")
-	t.Chdir(filepath.Join("internal", "development", "tests", "integration", "tools", "testdata", "provider-parity", "fixtures"))
-	repository, err := os.Getwd()
+	repository, err := filepath.Abs(filepath.Join("internal", "development", "tests", "integration", "tools", "testdata", "provider-parity", "fixtures"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, subdir := range []string{"examples", "err", "ok"} {
 		dir := filepath.Join("testdata", subdir)
-		entries, err := os.ReadDir(dir)
+		entries, err := os.ReadDir(filepath.Join(repository, dir))
 		if err != nil {
 			t.Fatal(err)
 		}
-		project := workspace.Identity(dir)
 		for _, entry := range entries {
 			name := entry.Name()
 			if entry.IsDir() || !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
@@ -389,9 +389,14 @@ func TestProviderParityFixtures(t *testing.T) {
 			}
 			path := filepath.Join(dir, name)
 			t.Run(subdir+"/"+name, func(t *testing.T) {
+				t.Parallel()
 				snapshots.assertParity(t, subdir+"/"+name, func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
-					sources := testutil.FixtureSources(t, []string{path}, project, &repoconfig.Config{})
-					result, err := checking.Analyze(t.Context(), checking.Options{Tools: recorder.wrap(registrations)}, sources)
+					content, err := os.ReadFile(filepath.Join(repository, path))
+					if err != nil {
+						t.Fatal(err)
+					}
+					sources := []workspace.Source{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &repoconfig.Config{}}}
+					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: repository, Tools: recorder.wrap(registrations)}, sources)
 					return toolFindings(t, result, err, recorder, map[string]string{repository: "<repository>"})
 				}, shellcheck, ruff)
 			})
@@ -404,6 +409,7 @@ func TestProviderParityFixtures(t *testing.T) {
 // manifest route. Every case runs again with only Ruff selected and is
 // compared with the snapshot of the Ruff adapter run alone.
 func TestProviderParityCases(t *testing.T) {
+	t.Parallel()
 	shellcheck, ruff := testutil.RequireTool(t, "shellcheck"), testutil.RequireTool(t, "ruff")
 	snapshots := loadParitySnapshots(t, "cases")
 	for _, tc := range []struct {
@@ -489,6 +495,7 @@ func TestProviderParityCases(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			run := func(registrations []tools.Registration, recorder *parityRecorder) parityDiagnostics {
 				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
@@ -522,6 +529,7 @@ func TestProviderParityCases(t *testing.T) {
 }
 
 func TestProviderEmbeddedRunnerArguments(t *testing.T) {
+	t.Parallel()
 	var args []string
 	registrations := registry.Registrations(registry.Selections{"shellcheck": scripts.Selection{Runner: func(received []string, _ string) ([]byte, error) {
 		args = received

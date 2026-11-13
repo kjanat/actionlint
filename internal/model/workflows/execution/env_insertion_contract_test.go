@@ -14,6 +14,7 @@ import (
 )
 
 func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, value           string
 		checkout, shell, path bool
@@ -37,6 +38,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 		{"loader", "{LD_PRELOAD: custom.so}", true, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errs := workflowparser.Parse([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)

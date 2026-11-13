@@ -9,6 +9,7 @@ import (
 )
 
 func TestIncompleteChecksPreserveRevisionRuleAndReason(t *testing.T) {
+	t.Parallel()
 	var usage checkCompletion
 	usage.markUnavailable(sourcepos.Reference{Document: "z-action", Revision: "revision-one"}, "shellcheck", "tool unavailable")
 	usage.markUnavailable(sourcepos.Reference{Document: "a-workflow", Revision: "revision-two"}, "workflow-run-names", "producer names unavailable")
@@ -27,6 +28,7 @@ func TestIncompleteChecksPreserveRevisionRuleAndReason(t *testing.T) {
 }
 
 func TestIncompleteChecksSeparateCallsEntriesAndRevisions(t *testing.T) {
+	t.Parallel()
 	ref := sourcepos.Reference{Document: "shared-action", Revision: "action-revision"}
 	entry := sourcepos.Reference{Document: "workflow", Revision: "workflow-revision", Node: "root"}
 	var completion checkCompletion
@@ -65,6 +67,7 @@ func TestIncompleteChecksSeparateCallsEntriesAndRevisions(t *testing.T) {
 }
 
 func TestCheckInvocationIndexDoesNotBorrowAnotherSourceRevision(t *testing.T) {
+	t.Parallel()
 	ref := sourcepos.Reference{Document: "workflow", Revision: "revision-one", Node: "root"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, ref, invocation.DefaultBudget())
 	if err != nil {

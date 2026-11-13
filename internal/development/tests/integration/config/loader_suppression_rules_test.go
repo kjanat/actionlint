@@ -12,6 +12,7 @@ import (
 )
 
 func TestRegisteredRuleSelectors(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"ignores: [{rule: no-sudo, job: check}]",
 		"lint: {rules: {disable: [no-sudo]}}",
@@ -36,6 +37,7 @@ func TestRegisteredRuleSelectors(t *testing.T) {
 }
 
 func TestRegisteredRulesInheritanceAndOverlay(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for name, content := range map[string]string{
 		"base.yaml":   "lint: {rules: {disable: [no-sudo]}}\n",

@@ -13,6 +13,7 @@ import (
 )
 
 func TestPropertyDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, want string }{
 		{"github.repositoryUsrl", `property "repositoryUsrl" is not defined in github; did you mean "repositoryUrl"?`},
 		{"GITHUB['RepositoryUsrl']", `property "RepositoryUsrl" is not defined in GITHUB; did you mean "repositoryUrl"?`},
@@ -26,6 +27,7 @@ func TestPropertyDiagnostics(t *testing.T) {
 		{"github.event[0].author[env.KEY]", ""},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			// displayNme is equally close to two declared names: never guess.
 			author := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType(), "displayNme2": exprtypes.StringType()})
@@ -50,6 +52,7 @@ func TestPropertyDiagnostics(t *testing.T) {
 }
 
 func TestCanonicalPropertyNamesSurviveCopies(t *testing.T) {
+	t.Parallel()
 	original := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType()})
 	merged, _ := original.Type().Merge(exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"otherField": exprtypes.BoolType()}).Type()).Object()
 	for _, object := range []exprtypes.ObjectType{

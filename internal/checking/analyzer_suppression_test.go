@@ -33,6 +33,7 @@ func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 }
 
 func TestRegisteredAnalyzerSuppressions(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
 	for _, tc := range []struct {
 		name, directive, before, config string
@@ -50,6 +51,7 @@ func TestRegisteredAnalyzerSuppressions(t *testing.T) {
 		{name: "misspelled inline", directive: " # actionlint:ignore no-sudoo -- reviewed", want: []string{"inline-suppression", "no-sudo"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeSuppressionFixture(t, root, ".git/HEAD", "ref: refs/heads/master\n")
 			writeSuppressionFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n"+tc.config)
@@ -75,6 +77,7 @@ func TestRegisteredAnalyzerSuppressions(t *testing.T) {
 }
 
 func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"no-sudo", "no-curl"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -103,6 +106,7 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 // Configuring a document analyzer under tools.<name> produces an error.
 // Only tool providers can be configured in that section.
 func TestAnalyzerNameIsNotATool(t *testing.T) {
+	t.Parallel()
 	for _, config := range []string{
 		"tools: {shellcheck: false, ruff: false, no-sudo: false}\n",
 		"tools: {shellcheck: false, ruff: false}\noverrides: [{includes: ['**'], tools: {no-sudo: {config: {level: 2}}}}]\n",
@@ -122,6 +126,7 @@ func TestAnalyzerNameIsNotATool(t *testing.T) {
 }
 
 func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
+	t.Parallel()
 	const path = "actions/check/action.yml"
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
 	finding := &findingmodel.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}

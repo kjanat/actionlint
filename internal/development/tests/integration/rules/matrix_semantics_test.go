@@ -10,6 +10,7 @@ import (
 )
 
 func TestSuspiciousMatrixFilterSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		matrix string
 		warn   bool
@@ -39,6 +40,7 @@ func TestSuspiciousMatrixFilterSelection(t *testing.T) {
 	} {
 		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"} {
 			t.Run(tc.matrix+"/"+config, func(t *testing.T) {
+				t.Parallel()
 				_, snapshot := matrixTestWorkflow(t, `on: push
 jobs:
   test:

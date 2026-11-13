@@ -16,6 +16,7 @@ import (
 )
 
 func TestLocalActionSourceConfig(t *testing.T) {
+	t.Parallel()
 	config, err := checking.ConfigurationRules().Parse([]byte("local-actions: {'$/generated/': './source'}\noverrides:\n  - includes: ['special.yml']\n    local-actions: {'./generated': './other'}\n  - includes: ['reset.yml']\n    local-actions: null\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -49,6 +50,7 @@ func TestLocalActionSourceConfig(t *testing.T) {
 }
 
 func TestLocalActionSourceValidation(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './source'}\n")
 	fixturefiles.Write(t, root, "source/action.yml", `name: source
@@ -81,8 +83,10 @@ runs:
 }
 
 func TestLocalActionSourceFailureReportedOncePerReference(t *testing.T) {
+	t.Parallel()
 	for _, failure := range []string{"missing", "directory-symlink", "manifest-symlink"} {
 		t.Run(failure, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './source'}\n")
 			if failure != "missing" {
@@ -117,6 +121,7 @@ func TestLocalActionSourceFailureReportedOncePerReference(t *testing.T) {
 }
 
 func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, checkout string
 		missing        bool
@@ -127,6 +132,7 @@ func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
 		{"known", "- uses: actions/checkout@v6", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			result := testutil.Composite(t, root, tc.checkout+"\n- uses: ./private-action", checking.Options{})
 			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "missing-local-action" })
@@ -138,6 +144,7 @@ func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
 }
 
 func TestMissingLocalActionSourceSuppression(t *testing.T) {
+	t.Parallel()
 	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
 		for _, ignored := range []bool{false, true} {
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
@@ -169,7 +176,7 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 }
 
 func TestInsertedCheckoutLocation(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
+	t.Parallel()
 	for _, tc := range []struct {
 		name, with string
 		known      bool
@@ -188,6 +195,8 @@ func TestInsertedCheckoutLocation(t *testing.T) {
 		{"foreign", "{'${{ insert }}': {path: vendor, repository: other/repo}}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n  with: "+tc.with+"\n- uses: ./vendor/missing\n- run: ./vendor/bad.sh", checking.Options{})
 			for _, rule := range []string{"missing-local-action", "executable-bit"} {
 				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule })
@@ -205,7 +214,7 @@ func TestInsertedCheckoutLocation(t *testing.T) {
 }
 
 func TestConstantEnvironmentInsertionCheckout(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
+	t.Parallel()
 	for _, tc := range []struct {
 		name, env string
 		known     bool
@@ -216,6 +225,8 @@ func TestConstantEnvironmentInsertionCheckout(t *testing.T) {
 		{"loader", `${{ fromJSON('{"LD_PRELOAD":"custom.so"}') }}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			checkout := "- uses: actions/checkout@v6\n  env:\n    ${{ insert }}: " + tc.env + "\n"
 			for _, tcRule := range []struct{ rule, step string }{
 				{"missing-local-action", "- uses: ./missing"},

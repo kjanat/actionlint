@@ -13,6 +13,7 @@ import (
 )
 
 func TestUnusedInlineSuppressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		findings     []*findingmodel.Finding
@@ -29,6 +30,7 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*findingmodel.Finding{{Rule: "shellcheck", Start: sourcepos.Position{Line: 100}, Source: []byte("external"), SuppressionOrigin: &findingmodel.SuppressionOrigin{First: 2, Last: 2}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte(tc.source), AdditionalRules: []string{"plugin-rule"}}, tc.findings, map[string][]byte{}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -50,6 +52,7 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 }
 
 func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ legacy, canonical string }{
 		{"require-commit-hash", "unpinned-reference"},
 		{"require-job-timeout", "job-timeout"},
@@ -57,6 +60,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 	} {
 		for _, selector := range []string{tc.legacy, tc.canonical} {
 			t.Run(selector, func(t *testing.T) {
+				t.Parallel()
 				source := []byte("run: echo ok # ignore[" + selector + "]\n")
 				descriptor, found := checking.ConfigurationRules().FindRule(tc.canonical)
 				if !found {
@@ -83,8 +87,10 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 }
 
 func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
+	t.Parallel()
 	for _, selector := range []string{"require-permissions", "explicit-permissions", "missing-workflow-permissions"} {
 		t.Run(selector, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("run: echo ok # ignore[" + selector + "]\n")
 			findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(
 				policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source},
@@ -107,10 +113,12 @@ func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
 }
 
 func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "ci.yml")
 	for _, selector := range []string{"require-job-timeout", "job-timeout"} {
 		t.Run(selector, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]"))
 			if err != nil {
 				t.Fatal(err)
@@ -125,6 +133,7 @@ func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
 }
 
 func TestUnusedSuppressionLevels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		config string
 		strict bool

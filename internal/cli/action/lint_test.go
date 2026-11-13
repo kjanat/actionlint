@@ -87,6 +87,7 @@ func workspaceWith(t *testing.T, files map[string]string) string {
 }
 
 func TestBuildRequestFilePaths(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{
 		"workflow.yaml":     cleanWorkflow,
 		"sub/workflow.yaml": cleanWorkflow,
@@ -109,6 +110,7 @@ func TestBuildRequestFilePaths(t *testing.T) {
 		{"absolute workspace prefix", "sub", workspace + "-other" + string(filepath.Separator) + "workflow.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			req := buildRequest(&inputs{files: []string{tc.file}}, workspace, tc.workingRel)
 			if len(req.files) != 1 || req.files[0] != tc.file {
 				t.Errorf("wanted the original file path %q, got %#v", tc.file, req.files)
@@ -118,9 +120,11 @@ func TestBuildRequestFilePaths(t *testing.T) {
 }
 
 func TestRunLinterWorkflowSymlinks(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"discovery", "explicit", "subdirectory"} {
 		for _, contained := range []bool{true, false} {
 			t.Run(fmt.Sprintf("%s/contained=%t", mode, contained), func(t *testing.T) {
+				t.Parallel()
 				workspace := workspaceWith(t, map[string]string{
 					".git":                         "",
 					"fixtures/clean.yaml":          cleanWorkflow,
@@ -175,6 +179,7 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 }
 
 func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
+	t.Parallel()
 	dir := workspaceWith(t, map[string]string{
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
@@ -190,6 +195,7 @@ func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 }
 
 func TestRunLinterCountsIncludedFiles(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		excluded string
@@ -201,6 +207,7 @@ func TestRunLinterCountsIncludedFiles(t *testing.T) {
 		{"literal files override exclusions", ".github/workflows/*.yaml", []string{".github/workflows/skip.yaml", ".github/workflows/keep.yaml"}, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			dir := workspaceWith(t, map[string]string{
 				".github/workflows/skip.yaml": brokenWorkflow,
 				".github/workflows/keep.yaml": cleanWorkflow,
@@ -375,6 +382,7 @@ func TestRunLinterReadsConfigFile(t *testing.T) {
 }
 
 func TestActionLintsWorkflowEndToEnd(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{"workflows/broken.yaml": brokenWorkflow})
 	outputPath := filepath.Join(t.TempDir(), "output")
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": "repository: {runners: []}"}
@@ -416,6 +424,7 @@ func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 }
 
 func TestActionGitHubAnnotationPaths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, file, workingDir, want string
 	}{
@@ -425,6 +434,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 		{"workspace root", "sub/broken.yaml", ".", "sub/broken.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", ".github/workflows/broken.yaml": brokenWorkflow, "sub/broken.yaml": brokenWorkflow,
 			})
@@ -467,6 +477,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 }
 
 func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		inputYAML  string
@@ -485,6 +496,7 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 		{"automatic yml config", "ignore: ''\n", "actionlint.yml", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var in struct {
 				Ignore string `yaml:"ignore"`
 			}
@@ -528,6 +540,7 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 }
 
 func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
+	t.Parallel()
 	dir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -569,6 +582,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 }
 
 func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -612,6 +626,7 @@ func TestActionRunLintTimesOutNoncooperativeLinter(t *testing.T) {
 }
 
 func TestActionRunLintReportsUnusableWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	a := &action{timeout: time.Minute, lint: func(*lintRequest) *lintResult {
 		t.Error("actionlint must not run when the working directory is unusable")
 		return nil

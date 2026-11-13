@@ -22,6 +22,7 @@ func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 }
 
 func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
+	t.Parallel()
 	engine, err := corewasm.Load(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
 	if err != nil {
 		t.Fatal(err)

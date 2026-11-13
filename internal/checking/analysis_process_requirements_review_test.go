@@ -8,6 +8,7 @@ import (
 )
 
 func TestRequiredToolsIncludesProcessBackendOverrides(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, overrides string
 		want            bool
@@ -19,6 +20,7 @@ func TestRequiredToolsIncludesProcessBackendOverrides(t *testing.T) {
 		{name: "disabled process", overrides: "[{includes: ['python-action/**'], tools: {ruff: {enabled: false, backend: {process: {executable: ruff}}}}}]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeFixture(t, root, ".git", "")
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{uses: $/python-action}]\n")

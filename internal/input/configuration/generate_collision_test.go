@@ -11,8 +11,10 @@ import (
 )
 
 func TestGeneratePreservesExistingConfig(t *testing.T) {
+	t.Parallel()
 	for _, name := range repoconfig.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path := writeOverrideFixture(t, root, filepath.Join(".github", name), "# existing configuration\n")
 			_, err := checking.ConfigurationRules().Generate(t.Context(), root, true, "test")

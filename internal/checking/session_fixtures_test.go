@@ -1,6 +1,8 @@
 package checking
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,7 +51,6 @@ func shellcheckForTest(t *testing.T) string {
 	if err != nil {
 		t.Skip("ShellCheck required")
 	}
-	t.Setenv("SHELLCHECK_OPTS", "")
 	return command
 }
 
@@ -63,4 +64,10 @@ func writeShellcheckFixture(t *testing.T, root, name, content string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func workflowFixturePath(t *testing.T, name string) string {
+	t.Helper()
+	sum := sha256.Sum256([]byte(t.Name()))
+	return ".github/workflows/" + name + "-" + hex.EncodeToString(sum[:4]) + ".yml"
 }

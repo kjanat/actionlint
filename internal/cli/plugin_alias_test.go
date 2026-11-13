@@ -27,6 +27,7 @@ func testReference(t *testing.T, name, version, registry string) pluginref.Refer
 }
 
 func TestRegistryAliasCommandScope(t *testing.T) {
+	t.Parallel()
 	refs := []pluginref.Reference{
 		testReference(t, "check", "latest", pluginref.DefaultRegistry),
 		testReference(t, "check", "v1.0.0", fixtureregistry.FixtureRegistryURL),

@@ -21,9 +21,11 @@ import (
 )
 
 func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
+	t.Parallel()
 	for _, spec := range []string{"./inner", "$/inner"} {
 		for _, failure := range []error{context.Canceled, context.DeadlineExceeded} {
 			t.Run(spec+"/"+failure.Error(), func(t *testing.T) {
+				t.Parallel()
 				reader := files.New(t.Context(), func(string) ([]byte, error) {
 					return nil, failure
 				}, nil)
@@ -39,6 +41,7 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 }
 
 func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	first, second, alias := filepath.Join(root, "first", "action.yml"), filepath.Join(root, "second", "action.yml"), filepath.Join(root, "alias.yml")
 	content := []byte("name: source\ndescription: source\nruns: {using: node24, main: index.js}\n")
@@ -84,6 +87,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 }
 
 func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "index.js"), nil, 0o600); err != nil {
 		t.Fatal(err)
@@ -119,6 +123,7 @@ func TestStandaloneMetadataRequiresMatchingCapturedSource(t *testing.T) {
 }
 
 func TestMetadataValidationDebugLog(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns: {using: node24, main: index.js}\n")
 	writeFixture(t, root, "inner/index.js", "")
@@ -139,6 +144,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 }
 
 func TestMetadataValidationTemplatesDetached(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	// The missing description is positioned at each caller; the composite step
 	// without a shell is positioned in the metadata and carries an ignore origin.

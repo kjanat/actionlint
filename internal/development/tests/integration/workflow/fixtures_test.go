@@ -22,6 +22,7 @@ import (
 )
 
 func TestLinterMissingLocalAction(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	proj := workspace.Identity(root)
 	for _, tc := range []struct {
@@ -54,6 +55,7 @@ func TestLinterMissingLocalAction(t *testing.T) {
 }
 
 func TestMissingLocalActionRuleSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		rules string
 		want  string
@@ -62,6 +64,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 		{"missing-local-action: off", "action"},
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {" + tc.rules + "}}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -80,6 +83,7 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 }
 
 func TestWorkflowFixturesOK(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join("internal", "development", "tests", "integration", "workflow", "testdata", "ok")
 
 	es, err := os.ReadDir(dir)
@@ -103,6 +107,7 @@ func TestWorkflowFixturesOK(t *testing.T) {
 
 	for _, f := range fs {
 		t.Run(filepath.Base(f), func(t *testing.T) {
+			t.Parallel()
 			if strings.Contains(f, "shellcheck") && shellcheck == "" {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
@@ -195,6 +200,7 @@ func checkErrors(t *testing.T, outfile string, errs []diagmodel.Diagnostic) {
 }
 
 func TestWorkflowFixtureDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, subdir := range []string{"examples", "err"} {
 		dir, infiles, err := testFindAllWorkflowsInDir(subdir)
 		if err != nil {
@@ -212,6 +218,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 			base := strings.TrimSuffix(infile, filepath.Ext(infile))
 			testName := filepath.Base(base)
 			t.Run(subdir+"/"+testName, func(t *testing.T) {
+				t.Parallel()
 				t.Log("Linting workflow file", infile)
 				b, err := os.ReadFile(infile)
 				if err != nil {
@@ -239,6 +246,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 }
 
 func TestWorkflowFixturesBatch(t *testing.T) {
+	t.Parallel()
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
 		t.Skipf("shellcheck is not found: %s", err)
@@ -280,6 +288,7 @@ CheckFiles:
 }
 
 func TestProjectWorkflowFixtures(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join("internal", "development", "tests", "integration", "workflow", "testdata", "projects")
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -293,6 +302,7 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 
 		name := info.Name()
 		t.Run("project/"+name, func(t *testing.T) {
+			t.Parallel()
 			repo := filepath.Join(root, name)
 			t.Log("Linting project at", repo)
 

@@ -13,6 +13,7 @@ import (
 )
 
 func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
+	t.Parallel()
 	const repeated = "${{ forbidden.value }} ${{ forbidden.value }}"
 	const composite = "runs:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n"
 	for _, tc := range []struct{ name, body, token string }{
@@ -25,6 +26,7 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 		{"escaped", strings.Replace(composite, "echo ok", `"${{ \u0066orbidden.value }} ${{ forbidden.value }}"`, 1), "forbidden"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\n" + tc.body
@@ -63,8 +65,10 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 }
 
 func TestMetadataExpressionSyntaxRanges(t *testing.T) {
+	t.Parallel()
 	for _, token := range []string{"+", "unexpected"} {
 		t.Run(token, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ${{ github.ref "+token+" }}\n")

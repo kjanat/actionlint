@@ -45,6 +45,7 @@ func testSkipIfNoCommand(t *testing.T, p *ProcessPool, cmd string) *Command {
 }
 
 func TestProcessRunConcurrently(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("this test is flaky on Windows")
 	}
@@ -74,6 +75,7 @@ func TestProcessRunConcurrently(t *testing.T) {
 }
 
 func TestProcessCancelStopsRunningCommand(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("this test is flaky on Windows")
 	}
@@ -106,6 +108,7 @@ func TestProcessCancelStopsRunningCommand(t *testing.T) {
 }
 
 func TestProcessRunWithArgs(t *testing.T) {
+	t.Parallel()
 	if _, err := execabs.LookPath("echo"); err != nil {
 		t.Skipf("echo command is necessary to run this test: %s", err)
 	}
@@ -135,6 +138,7 @@ func TestProcessRunWithArgs(t *testing.T) {
 }
 
 func TestProcessRunMultipleCommandsConcurrently(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 3)
 
 	done := make([]bool, 5)
@@ -167,6 +171,7 @@ func TestProcessRunMultipleCommandsConcurrently(t *testing.T) {
 }
 
 func TestProcessWaitMultipleCommandsFinish(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 2)
 
 	done := make([]bool, 3)
@@ -193,6 +198,7 @@ func TestProcessWaitMultipleCommandsFinish(t *testing.T) {
 }
 
 func TestProcessInputStdin(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 1)
 	cat := testSkipIfNoCommand(t, p, "cat")
 	out := ""
@@ -217,6 +223,7 @@ func TestProcessInputStdin(t *testing.T) {
 }
 
 func TestProcessStdinHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_TEST_STDIN_HELPER") != "1" {
 		return
 	}
@@ -240,6 +247,7 @@ func TestProcessStdinHelper(t *testing.T) {
 }
 
 func TestProcessEnvironmentHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_TEST_ENVIRONMENT_HELPER") != "1" {
 		return
 	}
@@ -268,6 +276,7 @@ func TestProcessWorkingDirectoryEnvironment(t *testing.T) {
 		{name: "explicit PWD override", language: "C", pwd: "explicit", env: []string{"LANG=C", "PWD=explicit"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			directory := t.TempDir()
 			pwd := tc.pwd
 			if pwd == "" {
@@ -306,6 +315,7 @@ func TestProcessScrubbedEnvironment(t *testing.T) {
 }
 
 func TestProcessExitCodes(t *testing.T) {
+	t.Parallel()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -322,6 +332,7 @@ func TestProcessExitCodes(t *testing.T) {
 		{"listed success", []int{0}, "0", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			execution := Execution{Cmd: exe, Args: []string{"-test.run=^TestProcessExitStatusHelper$"}, Env: []string{"ACTIONLINT_TEST_EXIT_STATUS=" + tc.status}, ExitCodes: tc.accepted}
 			output, code, err := execution.RunStatus(t.Context())
 			if tc.ok != (err == nil) || tc.ok && (string(output) != "reported" || strconv.Itoa(code) != tc.status) {
@@ -332,6 +343,7 @@ func TestProcessExitCodes(t *testing.T) {
 }
 
 func TestProcessExitStatusHelper(t *testing.T) {
+	t.Parallel()
 	status := os.Getenv("ACTIONLINT_TEST_EXIT_STATUS")
 	if status == "" {
 		return
@@ -345,6 +357,7 @@ func TestProcessExitStatusHelper(t *testing.T) {
 }
 
 func TestProcessRelativeExecutableWithWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -352,6 +365,7 @@ func TestProcessRelativeExecutableWithWorkingDirectory(t *testing.T) {
 	relative := "." + string(filepath.Separator) + filepath.Base(exe)
 	for _, override := range []bool{false, true} {
 		t.Run(fmt.Sprintf("override=%t", override), func(t *testing.T) {
+			t.Parallel()
 			directory := filepath.Dir(exe)
 			if override {
 				directory = t.TempDir()
@@ -404,6 +418,7 @@ func TestProcessConcurrentStdinDoesNotDeadlock(t *testing.T) {
 	for _, workers := range []int{1, 5} {
 		for _, combined := range []bool{false, true} {
 			t.Run(fmt.Sprintf("workers=%d/combined=%t", workers, combined), func(t *testing.T) {
+				t.Parallel()
 				ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 				defer cancel()
 				p := NewProcessPool(ctx, workers)
@@ -444,6 +459,7 @@ func TestProcessConcurrentStdinDoesNotDeadlock(t *testing.T) {
 }
 
 func TestProcessErrorCommandNotFound(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 1)
 	c := &Command{
 		proc: p,
@@ -474,6 +490,7 @@ func TestProcessErrorCommandNotFound(t *testing.T) {
 }
 
 func TestProcessErrorInCallback(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 1)
 	echo := testSkipIfNoCommand(t, p, "echo")
 
@@ -501,6 +518,7 @@ func TestProcessErrorInCallback(t *testing.T) {
 }
 
 func TestProcessErrorLinterFailed(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 1)
 	ls := testSkipIfNoCommand(t, p, "ls")
 
@@ -534,6 +552,7 @@ func TestProcessErrorLinterFailed(t *testing.T) {
 }
 
 func TestProcessRunConcurrentlyAndWait(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 2)
 	echo := testSkipIfNoCommand(t, p, "echo")
 
@@ -557,6 +576,7 @@ func TestProcessRunConcurrentlyAndWait(t *testing.T) {
 }
 
 func TestProcessCombineStdoutAndStderr(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 1)
 	bash := testSkipIfNoCommand(t, p, "bash")
 	bash.CombineOutput = true
@@ -587,6 +607,7 @@ func TestProcessCombineStdoutAndStderr(t *testing.T) {
 }
 
 func TestProcessCommandExitStatusNonZero(t *testing.T) {
+	t.Parallel()
 	p := NewProcessPool(t.Context(), 1)
 	bash := testSkipIfNoCommand(t, p, "false")
 	done := make(chan error)
@@ -611,6 +632,7 @@ func TestProcessCommandExitStatusNonZero(t *testing.T) {
 }
 
 func TestProcessCommandlineParseError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		cmd  string
@@ -632,6 +654,7 @@ func TestProcessCommandlineParseError(t *testing.T) {
 	p := NewProcessPool(t.Context(), 1)
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			_, err := p.NewCommandRunner(tc.cmd, true)
 			if err == nil {
 				t.Fatalf("Command %q caused no error", tc)
@@ -643,6 +666,7 @@ func TestProcessCommandlineParseError(t *testing.T) {
 // Backend shutdown must wait for callbacks even when a document scope aborts
 // before its normal join, including embedded runners with no native process.
 func TestProcessPoolWaitIncludesForkCallbacks(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		pool := NewProcessPool(t.Context(), 1)
 		child := pool.Fork()

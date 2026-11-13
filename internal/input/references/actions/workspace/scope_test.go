@@ -31,6 +31,7 @@ func compositeContext(t *testing.T, facts invocation.Facts) invocation.Context {
 }
 
 func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                                             string
 		condition                                        invocation.Condition
@@ -48,6 +49,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 		{name: "runtime unchanged", condition: invocation.ConditionRuntimeDependent, unchanged: true, wantKind: execution.DirectoryKnown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			parent := NewResolver(nil, nil)
 			parent.platform, parent.caseInsensitive = runnerlang.Windows, true
 			parent.checkoutShell = execution.Shell{Name: "bash", Implicit: true}
@@ -105,6 +107,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 }
 
 func TestCompositeForkLifecycleRejectsForeignOverlappingAndStaleJoins(t *testing.T) {
+	t.Parallel()
 	context := compositeContext(t, invocation.Facts{Condition: invocation.ConditionEnabled})
 	parent := NewResolver(nil, nil)
 	if child, err := parent.ForkComposite(invocation.Context{}); child != nil || !errors.Is(err, ErrInvalidCompositeContext) {
@@ -170,6 +173,7 @@ func TestCompositeForkLifecycleRejectsForeignOverlappingAndStaleJoins(t *testing
 }
 
 func TestCompositeCheckoutHandlesDetachInputsDetailsAndLocalReplacements(t *testing.T) {
+	t.Parallel()
 	parent := NewResolver(nil, nil)
 	want := execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "parent"}, CaseInsensitive: true}
 	input := want
@@ -210,6 +214,7 @@ func TestCompositeCheckoutHandlesDetachInputsDetailsAndLocalReplacements(t *test
 }
 
 func TestCompositeForkAdmitsOnlyOneConcurrentChild(t *testing.T) {
+	t.Parallel()
 	parent := NewResolver(nil, nil)
 	context := compositeContext(t, invocation.Facts{Condition: invocation.ConditionEnabled})
 	type outcome struct {
@@ -247,6 +252,7 @@ func TestCompositeForkAdmitsOnlyOneConcurrentChild(t *testing.T) {
 }
 
 func TestCompositeEffectsJoinOnTraversalErrorWithoutReplacingCause(t *testing.T) {
+	t.Parallel()
 	for _, stale := range []bool{false, true} {
 		parent := NewResolver(nil, nil)
 		cause := errors.New("composite traversal failed")
@@ -277,6 +283,7 @@ func TestCompositeEffectsJoinOnTraversalErrorWithoutReplacingCause(t *testing.T)
 }
 
 func TestCompositeForksShareCapturedSourcesEvenWhenEffectsAreSkipped(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	parentPath := writeFixture(t, root, "parent/action.yml", "name: parent\ndescription: parent\nruns: {using: composite, steps: []}\n")
 	childPath := writeFixture(t, root, "child/action.yml", "name: child\ndescription: child\nruns: {using: composite, steps: []}\n")

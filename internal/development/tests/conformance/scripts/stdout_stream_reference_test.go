@@ -50,9 +50,11 @@ func stdoutStreamReferences(t *testing.T) []stdoutStreamReference {
 }
 
 func TestStdoutStreamReferenceRecorded(t *testing.T) {
+	t.Parallel()
 	registry := interpreters.Builtin()
 	for _, tc := range stdoutStreamReferences(t) {
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			paths := scripts.LiteralStdoutPaths(tc.Script, registry.Analyze(tc.Shell, false), registry)
 			if len(paths) != 1 {
 				t.Fatalf("got %d modeled paths, want one reference path", len(paths))
@@ -83,12 +85,14 @@ func TestStdoutStreamReferenceRecorded(t *testing.T) {
 
 // Live comparison is opt-in so normal tests do not require Bash or a WSL setup.
 func TestStdoutStreamReferenceLive(t *testing.T) {
+	t.Parallel()
 	bash := os.Getenv("ACTIONLINT_BASH_REFERENCE")
 	if bash == "" {
 		t.Skip("set ACTIONLINT_BASH_REFERENCE to a Bash executable for live replay")
 	}
 	for _, tc := range stdoutStreamReferences(t) {
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			args := []string{"--noprofile", "--norc", "-e", "-o", "pipefail", "-c", tc.Script}
 			if tc.Shell == "bash +e {0}" {
 				args = []string{"--noprofile", "--norc", "+e", "-c", tc.Script}

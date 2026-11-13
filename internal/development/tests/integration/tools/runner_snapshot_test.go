@@ -23,6 +23,7 @@ func (b *snapshotScriptBackend) Check(context.Context, checkinputs.ScriptRequest
 }
 
 func TestRunnerSnapshotScriptRouting(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, workflowDefaults, jobSettings, stepShell, selection string
 		freshness                                                 runner.Freshness
@@ -42,6 +43,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 		{name: "unknown runner explicit shell", selection: "absent", stepShell: "        shell: bash\n", shellcheck: 1, runnerFindings: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			engine := &snapshotScriptBackend{}
 			registration, err := scripts.Register(rule.Descriptor{Name: "powershell-test", Provider: "test", Category: "correctness", Maturity: "stable"}, []string{"pwsh", "powershell"}, engine)
 			if err != nil {

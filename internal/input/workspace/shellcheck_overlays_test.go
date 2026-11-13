@@ -14,6 +14,7 @@ import (
 )
 
 func TestShellcheckShorthandOverlay(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, base, overlay string
 		enabled             bool
@@ -36,6 +37,7 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 `, "shellcheck: true", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			path := writeToolFixture(t, t.TempDir(), "actionlint.yml", tc.base)
 			overlay, err := checking.ConfigurationRules().ParseOverlay("tools", []byte(tc.overlay))
 			if err != nil {
@@ -66,6 +68,7 @@ func TestShellcheckShorthandOverlay(t *testing.T) {
 }
 
 func TestShellcheckConfigOverlayOrigins(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "actionlint.yaml")
 	if err := os.WriteFile(path, []byte(`tools:
   shellcheck:

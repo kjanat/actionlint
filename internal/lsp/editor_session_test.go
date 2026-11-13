@@ -47,6 +47,7 @@ func (b *editorTestBackend) Close(context.Context) error {
 }
 
 func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for path, content := range map[string]string{
 		".git/HEAD":               "ref: refs/heads/main\n",
@@ -161,6 +162,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 }
 
 func TestEditorSessionRetainsExplicitPluginSnapshot(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		path, rule, shell, script string
 	}{
@@ -168,6 +170,7 @@ func TestEditorSessionRetainsExplicitPluginSnapshot(t *testing.T) {
 		{"../plugins/execution/component/testdata/plugins/no-sudo.wasm", "no-sudo", "bash", "sudo first"},
 	} {
 		t.Run(test.rule, func(t *testing.T) {
+			t.Parallel()
 			testEditorPluginSnapshot(t, test.path, test.rule, test.shell, test.script)
 		})
 	}
@@ -207,6 +210,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 }
 
 func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../plugins/execution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -246,6 +250,7 @@ func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 }
 
 func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
+	t.Parallel()
 	backend := &editorTestBackend{}
 	loads := 0
 	session, err := newEditorSession(t.Context(), checking.Options{
@@ -283,6 +288,7 @@ func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
 }
 
 func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
+	t.Parallel()
 	started, release := make(chan struct{}), make(chan struct{})
 	unblock := sync.OnceFunc(func() { close(release) })
 	defer unblock()
@@ -343,6 +349,7 @@ func editorInputDescriptor() checkinputs.ScriptEngineDescriptor {
 }
 
 func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                  string
 		backend               checkinputs.ScriptBackend
@@ -354,6 +361,7 @@ func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 		{"both", &describedValidatingEditorBackend{}, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			borrowed := borrowEditorEngine(tc.backend)
 			_, described := borrowed.(checkinputs.DescribedScriptBackend)
 			_, validating := borrowed.(checkinputs.ScriptConfigValidator)
@@ -366,6 +374,7 @@ func TestBorrowEditorEnginePreservesOptionalCapabilities(t *testing.T) {
 }
 
 func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for name, source := range map[string]string{".git/HEAD": "ref: refs/heads/master\n", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n"} {
 		path := filepath.Join(root, filepath.FromSlash(name))

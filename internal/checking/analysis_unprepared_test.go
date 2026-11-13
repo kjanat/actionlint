@@ -27,12 +27,14 @@ func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.Inpu
 }
 
 func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
+	t.Parallel()
 	for name, content := range map[string]string{
 		"workflow":         "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n",
 		"partial workflow": "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok, timeout-minutes: invalid}]}}\n",
 		"action":           "name: example\ndescription: example\nruns: {using: node24, main: index.js}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			parsed := parsing.Workflow([]byte(content))
 			if name == "action" {
 				parsed = parsing.Action("action.yml", []byte(content))

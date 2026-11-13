@@ -12,6 +12,7 @@ import (
 )
 
 func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	base := filepath.Join(directory, "base.yaml")
 	path := filepath.Join(directory, "actionlint.yaml")

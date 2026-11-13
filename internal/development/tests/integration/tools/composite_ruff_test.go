@@ -14,6 +14,7 @@ import (
 )
 
 func TestRuffCompositeAliasConfiguration(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "python-action/action.yml", `name: Python
@@ -45,6 +46,7 @@ runs:
 		{"python-alias", "python-action"},
 	} {
 		t.Run(paths.first, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" +
 				"      - uses: $/" + paths.first + "\n      - uses: $/" + paths.second + "\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}})
@@ -66,6 +68,7 @@ runs:
 }
 
 func TestRuffCompositeFileConfiguration(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	for _, tc := range []struct {
 		name, base, override, script, code string
@@ -90,6 +93,7 @@ func TestRuffCompositeFileConfiguration(t *testing.T) {
 		{"composite warning", "", "lint: {rules: {external: {ruff: warn}}}", "print(missing)", "F821"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path := filepath.Join(root, ".github/workflows/ci.yml")
 			fixturefiles.Write(t, root, ".github/workflows/ci.yml", testutil.GoodWorkflow)

@@ -8,6 +8,7 @@ import (
 var lfLineResult string
 
 func TestLFLine(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		source []byte
@@ -45,6 +46,7 @@ func TestLFLine(t *testing.T) {
 		{name: "huge line", source: []byte("first"), line: int(^uint(0) >> 1)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, ok := LFLine(tc.source, tc.line)
 			if got != tc.want || ok != tc.ok {
 				t.Fatalf("LFLine(%q, %d) = (%q, %t), want (%q, %t)", tc.source, tc.line, got, ok, tc.want, tc.ok)

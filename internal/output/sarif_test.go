@@ -13,11 +13,13 @@ import (
 )
 
 func TestNativeSARIFUNCPaths(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("UNC filesystem paths require Windows")
 	}
 	for _, path := range []string{`\\server\share\my workflow.yml`, `//server/share/my workflow.yml`} {
 		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 			finding := results.Diagnostic{
 				Rule: "shellcheck", Message: "Quote", Path: path,
 				Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2},
@@ -59,6 +61,7 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 }
 
 func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
+	t.Parallel()
 	absolute := filepath.Join(t.TempDir(), "workflow.yml")
 	{
 		renderer, err := New(FormatSARIF, "", false, testVersion, nil)
@@ -90,10 +93,12 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 }
 
 func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ severity, level string }{
 		{"error", "error"}, {"warning", "warning"}, {"info", "note"}, {"", "error"},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
+			t.Parallel()
 			finding := results.Diagnostic{
 				Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
 				Start: sourcepos.Position{Line: 7, Column: 12}, End: sourcepos.Position{Line: 7, Column: 16},
@@ -154,6 +159,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 func testVersion() string { return "test" }
 
 func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		declared, want string
 		enabled        bool
@@ -161,6 +167,7 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 		{"info", "note", true}, {"warn", "warning", false}, {"error", "error", true}, {"", "error", false},
 	} {
 		t.Run(tc.declared, func(t *testing.T) {
+			t.Parallel()
 			var output bytes.Buffer
 			rule := Rule{Name: "example", DefaultLevel: tc.declared, DefaultEnabled: &tc.enabled}
 			if err := WriteSARIF(&output, "test", []*Rule{&rule}, []results.Diagnostic{{Rule: "example", Severity: "warning"}}); err != nil {
@@ -182,6 +189,7 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 }
 
 func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
+	t.Parallel()
 	metadata := Rule{Name: "custom-rule", Description: "summary", Explanation: "explanation", Help: "repair instructions", DocumentationURL: "https://example.com/custom-rule", Examples: []rule.Example{{Description: "original example"}}}
 	renderer, err := New(FormatSARIF, "", false, testVersion, []Rule{metadata})
 	if err != nil {

@@ -8,8 +8,10 @@ import (
 )
 
 func TestPublishNewReport(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"new", "existing"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			existing := name == "existing"
 			root := filepath.Join(t.TempDir(), "reports with spaces é")
 			if err := os.Mkdir(root, 0700); err != nil {

@@ -9,6 +9,7 @@ import (
 )
 
 func TestProjectionRejectsUnknownEnumMappings(t *testing.T) {
+	t.Parallel()
 	_, entry := projectEntryKind("unknown")
 	_, script := projectScriptKind("unknown")
 	_, opaque := projectOpaqueReason("unknown")
@@ -23,6 +24,7 @@ func TestProjectionRejectsUnknownEnumMappings(t *testing.T) {
 }
 
 func TestProjectionEntryOperationalInterruption(t *testing.T) {
+	t.Parallel()
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, ref("workflow", "document"), invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)

@@ -7,6 +7,7 @@ import (
 )
 
 func TestShellcheckConfigValidation(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		`true`, `false`, `{config: './.shellcheckrc'}`,
 		`{enabled: false}`, `{enabled: true, config: {}}`,

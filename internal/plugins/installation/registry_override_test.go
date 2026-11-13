@@ -16,6 +16,7 @@ import (
 type declaration struct{ name, version, registry string }
 
 func TestLockResolvedRegistryOverride(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
 	original, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
@@ -42,6 +43,7 @@ func TestLockResolvedRegistryOverride(t *testing.T) {
 		{"immutable interface", func(pin *plugininstall.Pin, _ *declaration) { pin.Contract = "other" }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			file := plugininstall.LockFile{Lock: plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{original}}}
 			pin := original
 			pin.Registry = "https://mirror.example/"
@@ -66,6 +68,7 @@ func TestLockResolvedRegistryOverride(t *testing.T) {
 }
 
 func TestRegistryURLRequiresHostname(t *testing.T) {
+	t.Parallel()
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
 		if _, err := plugininstall.New(registry); err == nil {
 			t.Errorf("accepted hostname-less endpoint %q", registry)

@@ -8,7 +8,7 @@ import (
 )
 
 func TestExecutableBitNumericFormatCheckout(t *testing.T) {
-	root, _ := executableFixture(t)
+	t.Parallel()
 	for _, tc := range []struct {
 		argument string
 		want     int
@@ -21,6 +21,8 @@ func TestExecutableBitNumericFormatCheckout(t *testing.T) {
 		{"0.12345678901234567", 0},
 	} {
 		t.Run(tc.argument, func(t *testing.T) {
+			t.Parallel()
+			root, _ := executableFixture(t)
 			workflow := `on: push
 jobs:
   test:
@@ -30,7 +32,7 @@ jobs:
         if: ${{ format('{0}', ` + tc.argument + `) }}
       - run: ./bad.sh
 `
-			file := writeFixture(t, root, ".github/workflows/format.yml", workflow)
+			file := writeFixture(t, root, workflowFixturePath(t, "format"), workflow)
 			session := checking.Options{WorkingDir: root}
 			var err error
 

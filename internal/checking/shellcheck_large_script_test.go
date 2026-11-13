@@ -16,6 +16,7 @@ import (
 )
 
 func TestRuleShellcheckLargeRunBlock(t *testing.T) {
+	t.Parallel()
 	shellcheck, err := execabs.LookPath("shellcheck")
 	if err != nil {
 		t.Skipf("shellcheck is necessary to run this test: %s", err)
@@ -25,6 +26,7 @@ func TestRuleShellcheckLargeRunBlock(t *testing.T) {
 	comment := "#" + strings.Repeat("x", 128*1024-2) + "\n"
 	for _, findings := range []bool{false, true} {
 		t.Run(fmt.Sprintf("findings=%t", findings), func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			dir := t.TempDir()

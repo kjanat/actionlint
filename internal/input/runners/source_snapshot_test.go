@@ -12,6 +12,7 @@ import (
 )
 
 func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
+	t.Parallel()
 	const identity = "ci.yml"
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	document := parsing.Workflow(content)

@@ -65,9 +65,16 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 		"ignores: [{rule: no-sudo, file: '**'}]",
 	} {
 		t.Run(setting, func(t *testing.T) {
-			if err := os.WriteFile(path, []byte(string(manifest)+"\n"+setting+"\n"), 0o600); err != nil {
+			project := t.TempDir()
+			for _, directory := range []string{".git", ".github"} {
+				if err := os.Mkdir(filepath.Join(project, directory), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(project, path), []byte(string(manifest)+"\n"+setting+"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
+			t.Chdir(project)
 			pluginCommandTest(t, 0, "config", "validate", "--json")
 			pluginCommandTest(t, 0, "config", "show", "--origin", "--json")
 			pluginCommandTest(t, 0, "config", "validate", "--config", path)

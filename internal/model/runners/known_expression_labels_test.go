@@ -10,6 +10,7 @@ import (
 )
 
 func TestKnownExpressionRunnerLabels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, runsOn, want string
 	}{
@@ -31,6 +32,7 @@ func TestKnownExpressionRunnerLabels(t *testing.T) {
 		{"labels expression", `{labels: "${{ fromJSON('[\"ubuntu-lates\"]') }}"}`, `label "ubuntu-lates" is unknown`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runsOn + "\n    steps:\n      - run: echo ok\n"
 			_, parseErrors := workflowparser.Parse([]byte(source))
 			if len(parseErrors) != 0 {

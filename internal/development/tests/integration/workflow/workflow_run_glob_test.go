@@ -13,6 +13,7 @@ import (
 )
 
 func TestWorkflowRunGlobDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		pattern, producer, rule string
 	}{
@@ -31,6 +32,7 @@ func TestWorkflowRunGlobDiagnostics(t *testing.T) {
 		{`\[Build\]`, "[Build]", ""},
 	} {
 		t.Run(tc.pattern, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			producer := fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: '"+tc.producer+"'\n"+testutil.GoodWorkflow)
 			workflow := `on:
@@ -62,6 +64,7 @@ permissions: {}
 }
 
 func TestWorkflowRunGlobWithoutProject(t *testing.T) {
+	t.Parallel()
 	for _, config := range []string{"", "lint: {rules: {correctness: {glob: off}}}"} {
 		cfg, err := checking.ConfigurationRules().Parse([]byte(config))
 		if err != nil {

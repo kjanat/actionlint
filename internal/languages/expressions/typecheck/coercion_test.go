@@ -20,6 +20,7 @@ import (
 
 // Predicate and join behavior follows actions/runner at 1ba885c2065fd9be317808ab3fd406f392635cf7.
 func TestFunctionCallFacts(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		kind  exprtypes.Kind
@@ -48,6 +49,7 @@ func TestFunctionCallFacts(t *testing.T) {
 		{"startsWith(github.event.unknown, 'x')", exprtypes.KindBool, true, exprvalues.EvaluationUnknown, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -66,6 +68,7 @@ func TestFunctionCallFacts(t *testing.T) {
 }
 
 func TestFunctionContractFacts(t *testing.T) {
+	t.Parallel()
 	check := func(input string) ExpressionCheckResult {
 		t.Helper()
 		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
@@ -102,6 +105,7 @@ func TestFunctionContractFacts(t *testing.T) {
 }
 
 func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
+	t.Parallel()
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith(true).foo}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -114,6 +118,7 @@ func TestCallReturnsSurviveInvalidArguments(t *testing.T) {
 }
 
 func TestOverloadDeclaredAlternatives(t *testing.T) {
+	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"test": {
 		{Name: "test", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
@@ -130,6 +135,7 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 }
 
 func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
+	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))
@@ -143,6 +149,7 @@ func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
 }
 
 func TestValidationStateIndependentOfFindings(t *testing.T) {
+	t.Parallel()
 	parse := func(input string) exprsyntax.Node {
 		t.Helper()
 		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
@@ -174,6 +181,7 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 }
 
 func TestReturnDomainUsesNamedPropertyBeforeFallback(t *testing.T) {
+	t.Parallel()
 	var shape exprtypes.ObjectBuilder
 	shape.SetProperty("label", exprtypes.StringType())
 	shape.SetMapped(exprtypes.NumberType())
@@ -190,6 +198,7 @@ func TestReturnDomainUsesNamedPropertyBeforeFallback(t *testing.T) {
 }
 
 func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
+	t.Parallel()
 	match := exprfunctions.MatchParameter(exprtypes.StringType(), exprfunctions.CallArgument{Source: exprtypes.AnyType(), State: exprfunctions.ArgumentKnown, Value: true}, false)
 	if match.Argument.Source.Kind() != exprtypes.KindAny || match.Converted.Kind() != exprtypes.KindString || match.Conversion != exprfunctions.ConversionString || match.Value != "true" {
 		t.Fatalf("match: %+v", match)
@@ -197,6 +206,7 @@ func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
 }
 
 func TestKnownResultRefinesDeclaredAny(t *testing.T) {
+	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*exprfunctions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("startsWith('x', 'x')}}"))

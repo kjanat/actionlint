@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -115,6 +116,30 @@ func sameCommandFile(a, b string) bool {
 	aInfo, aErr := os.Stat(a)
 	bInfo, bErr := os.Stat(b)
 	return aErr == nil && bErr == nil && os.SameFile(aInfo, bInfo)
+}
+
+type commandFiles struct {
+	paths map[string]bool
+	files []os.FileInfo
+}
+
+func newCommandFiles(paths []string) commandFiles {
+	set := commandFiles{paths: make(map[string]bool, len(paths))}
+	for _, path := range paths {
+		set.paths[absPath(path)] = true
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			set.files = append(set.files, info)
+		}
+	}
+	return set
+}
+
+func (s commandFiles) contains(path string) bool {
+	if s.paths[absPath(path)] {
+		return true
+	}
+	info, err := os.Stat(path)
+	return err == nil && slices.ContainsFunc(s.files, func(file os.FileInfo) bool { return os.SameFile(file, info) })
 }
 
 func absPath(path string) string {

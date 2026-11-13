@@ -12,6 +12,7 @@ import (
 )
 
 func TestRuleMatrixScalarValues(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		matrix string
@@ -52,6 +53,7 @@ func TestRuleMatrixScalarValues(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			src := `on: push
 jobs:
   test:
@@ -78,6 +80,7 @@ jobs:
 }
 
 func TestMatrixDiagnosticValueDisplay(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, expression, want string }{
 		{"null", `null`, "null"},
 		{"empty array", `fromJSON('[]')`, "[]"},
@@ -86,6 +89,7 @@ func TestMatrixDiagnosticValueDisplay(t *testing.T) {
 		{"returned syntax stays data", `fromJSON('["${{ vars.TEXT }}"]')`, `["${{ vars.TEXT }}"]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			semantic := value.Template("${{ "+tc.expression+" }}", value.Origin{})
 			if got := display(semantic); got != tc.want {
 				t.Fatalf("display=%s, want %s", got, tc.want)
@@ -105,6 +109,7 @@ func TestMatrixDiagnosticValueDisplay(t *testing.T) {
 }
 
 func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
+	t.Parallel()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        arch: [arm]\n        exclude:\n          - missing:\n              nested: [null, {z: value}]\n    steps: [{run: echo ok}]\n"
 	workflow, errors := workflowparser.Parse([]byte(source))
 	if len(errors) != 0 {
@@ -133,6 +138,7 @@ func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
 }
 
 func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{
 		`exclude: "${{ fromJSON('[{\"missing\":{\"nested\":null}}]') }}"`,
 		`exclude: ["${{ fromJSON('{\"missing\":{\"nested\":null}}') }}"]`,
@@ -157,6 +163,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 }
 
 func TestNestedMatrixMismatchDiagnosticKeepsValues(t *testing.T) {
+	t.Parallel()
 	workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        item: [{z: [null, {b: old, a: true}], a: 1}]\n        exclude: [{item: {z: [null, {b: new, a: true}]}}]\n    steps: [{run: echo ok}]\n"))
 	if len(errors) != 0 {
 		t.Fatal(errors)

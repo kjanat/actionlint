@@ -13,6 +13,7 @@ import (
 )
 
 func TestCLIIgnoreSelectors(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config := filepath.Join(root, "actionlint.yaml")
 	if err := os.WriteFile(config, []byte("tools: {shellcheck: false, ruff: false}\nlint:\n  rules:\n    preset: none\n    correctness:\n      expression-reference: error\n    security:\n      missing-permissions: error\n"), 0o600); err != nil {
@@ -36,6 +37,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 		{"root", []string{"--ignore", "missing-permissions", "--ignore", "unknown-property"}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var out, log bytes.Buffer
 			args := append([]string{"actionlint"}, tc.args...)
 			args = append(args, "--action-metadata=off", "--config", config, "--json", "-")
@@ -72,6 +74,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 	}
 	for _, format := range []string{"text", "pretty", "oneline", "gcc", "json", "jsonl", "sarif", "github"} {
 		t.Run("format/"+format, func(t *testing.T) {
+			t.Parallel()
 			var out, log bytes.Buffer
 			args := []string{"actionlint", "check", "--config", config, "--action-metadata=off", "--ignore", "missing-permissions", "--ignore", "unknown-property", "--output-format", format, "-"}
 			status := (&Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}).MainContext(t.Context(), args)
@@ -101,6 +104,7 @@ func TestCLIIgnoreWithEnvironmentRegex(t *testing.T) {
 }
 
 func TestCLIIgnoreInvalidSelector(t *testing.T) {
+	t.Parallel()
 	var out, log bytes.Buffer
 	status := (&Command{Stdout: &out, Stderr: &log}).MainContext(t.Context(), []string{"actionlint", "check", "--ignore", "", "-"})
 	if status != 2 || !strings.Contains(log.String(), "invalid --ignore selector") {
@@ -109,6 +113,7 @@ func TestCLIIgnoreInvalidSelector(t *testing.T) {
 }
 
 func TestCLIIgnoreExcludesFixes(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	config := filepath.Join(root, "actionlint.yaml")

@@ -17,6 +17,7 @@ import (
 )
 
 func TestCloseExpressionNames(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input, key, suggestion string
 	}{
@@ -36,6 +37,7 @@ func TestCloseExpressionNames(t *testing.T) {
 		{"alway()", "jobs.<job_id>.steps.run", ""},
 	} {
 		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -59,6 +61,7 @@ func TestCloseExpressionNames(t *testing.T) {
 }
 
 func TestAmbiguousExpressionNames(t *testing.T) {
+	t.Parallel()
 	for _, function := range []bool{false, true} {
 		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 		input := "githab.ref"

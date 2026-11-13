@@ -32,6 +32,7 @@ const minimal = `{
 }`
 
 func TestParseMinimalManifest(t *testing.T) {
+	t.Parallel()
 	m, err := manifests.Parse([]byte(minimal))
 	if err != nil {
 		t.Fatal(err)
@@ -42,6 +43,7 @@ func TestParseMinimalManifest(t *testing.T) {
 }
 
 func TestLegacyFixAvailabilityIsIgnored(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"none", "safe", "suggested"} {
 		data := strings.Replace(minimal, `"rule": {`, `"rule": {"fix_availability": "`+label+`",`, 1)
 		manifest, err := manifests.Parse([]byte(data))
@@ -59,6 +61,7 @@ func TestLegacyFixAvailabilityIsIgnored(t *testing.T) {
 }
 
 func TestVersionProbeLiteralArguments(t *testing.T) {
+	t.Parallel()
 	document := strings.Replace(minimal, `"config": {"render": "none"}`,
 		`"config": {"render": "none"}, "version": {"args": ["-Command", "(Get-Module PSScriptAnalyzer).Version.ToString()"], "pattern": "^([0-9.]+)$"}`, 1)
 	manifest, err := manifests.Parse([]byte(document))
@@ -71,6 +74,7 @@ func TestVersionProbeLiteralArguments(t *testing.T) {
 }
 
 func TestParseRejects(t *testing.T) {
+	t.Parallel()
 	replace := func(from, to string) string {
 		if !strings.Contains(minimal, from) {
 			t.Fatalf("fixture does not contain %q", from)
@@ -126,6 +130,7 @@ func TestParseRejects(t *testing.T) {
 			`"deprecated_flags": [{"name": "old", "value": "command", "arguments": ["-x"]}], "capabilities"`),
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := manifests.Parse([]byte(document))
 			if err == nil {
 				t.Fatal("accepted invalid manifest")
@@ -136,6 +141,7 @@ func TestParseRejects(t *testing.T) {
 }
 
 func TestParseTemplateEffects(t *testing.T) {
+	t.Parallel()
 	document := strings.Replace(minimal, `"config": {"render": "none"}`,
 		`"config": {"render": "none"}, "version": {"args": ["--version"], "pattern": "^lint (\\S+)", "template_effects": "1.0.0"}, "template_effects": {"E501": "line-length"}`, 1)
 	if _, err := manifests.Parse([]byte(document)); err == nil {
@@ -151,12 +157,14 @@ func TestParseTemplateEffects(t *testing.T) {
 }
 
 func TestParseRejectsOversizedManifest(t *testing.T) {
+	t.Parallel()
 	if _, err := manifests.Parse([]byte(strings.Repeat(" ", 1<<20+1))); err == nil {
 		t.Error("accepted manifest over the size limit")
 	}
 }
 
 func TestParseConfigShorthands(t *testing.T) {
+	t.Parallel()
 	document := strings.Replace(minimal, `"capabilities"`,
 		`"config_schema": {"type": "object", "properties": {"lint": {"type": "object", "properties": {"level": {"type": "integer"}}}}},
 		"config_shorthands": {"level": {"path": ["lint", "level"], "precedence": "shorthand"}}, "capabilities"`, 1)
@@ -181,6 +189,7 @@ func TestParseConfigShorthands(t *testing.T) {
 }
 
 func TestReadsConfigFiles(t *testing.T) {
+	t.Parallel()
 	m, err := manifests.Parse([]byte(minimal))
 	if err != nil {
 		t.Fatal(err)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
+	t.Parallel()
 	value := &actionmeta.ExprString{Value: "example", Line: 2, Column: 3}
 	checkSourceLess := func(meta *actionmeta.Metadata) {
 		t.Helper()
@@ -60,6 +61,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 }
 
 func TestMappedMetadataRetainsLookupState(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "source/action.yml", "name: source\ndescription: source\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
 	base := newCapturedActionCache(t, root, nil)

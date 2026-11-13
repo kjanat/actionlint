@@ -12,8 +12,10 @@ import (
 )
 
 func TestActionDiscoverySymlinkRoot(t *testing.T) {
+	t.Parallel()
 	for _, mixed := range []bool{false, true} {
 		t.Run(strconv.FormatBool(mixed), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeGitRepository(t, root)
 			writeFixture(t, root, "action.yml", compositeAction)
@@ -38,6 +40,7 @@ func TestActionDiscoverySymlinkRoot(t *testing.T) {
 }
 
 func TestActionDiscoveryDoesNotHideWorkflowTypo(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeGitRepository(t, root)
 	writeFixture(t, root, "action.yml", compositeAction)

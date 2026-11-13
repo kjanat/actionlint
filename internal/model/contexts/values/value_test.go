@@ -10,6 +10,7 @@ import (
 )
 
 func TestMissingAndExplicitScalarStates(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		value Value
@@ -25,6 +26,7 @@ func TestMissingAndExplicitScalarStates(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tc.value.State(); got != tc.state {
 				t.Fatalf("state=%v want %v", got, tc.state)
 			}
@@ -39,6 +41,7 @@ func TestMissingAndExplicitScalarStates(t *testing.T) {
 }
 
 func TestTemplateClassifiesLiteralEvaluatedDynamicAndInvalid(t *testing.T) {
+	t.Parallel()
 	origin := Origin{Span: Span{Start: sourcepos.Position{Line: 3, Column: 5}, End: sourcepos.Position{Line: 3, Column: 28}}}
 	for _, tc := range []struct {
 		name  string
@@ -56,6 +59,7 @@ func TestTemplateClassifiesLiteralEvaluatedDynamicAndInvalid(t *testing.T) {
 		{name: "unterminated", input: "${{ true", state: Invalid, kind: KindUnknown, known: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			value := Template(tc.input, origin)
 			if value.State() != tc.state || value.Kind() != tc.kind || value.Known() != tc.known {
 				t.Fatalf("got state=%v kind=%v known=%v", value.State(), value.Kind(), value.Known())
@@ -82,6 +86,7 @@ func TestTemplateClassifiesLiteralEvaluatedDynamicAndInvalid(t *testing.T) {
 }
 
 func TestEvaluatedExpressionTextRemainsData(t *testing.T) {
+	t.Parallel()
 	value := Template(`${{ fromJSON('"${{ runtime }}"') }}`, Origin{})
 	text, ok := value.Text()
 	if !ok || text != "${{ runtime }}" || value.State() != Evaluated {
@@ -90,6 +95,7 @@ func TestEvaluatedExpressionTextRemainsData(t *testing.T) {
 }
 
 func TestConditionPreservesInvalidAndDynamicStates(t *testing.T) {
+	t.Parallel()
 	origin := Origin{Span: Span{Start: sourcepos.Position{Line: 4, Column: 3}}}
 	if got := Condition("true", origin); got.State() != Evaluated || got.Kind() != Bool || !got.Origin().FromExpression || got.Origin().Span != origin.Span {
 		t.Fatalf("constant condition: state=%v kind=%v", got.State(), got.Kind())
@@ -103,6 +109,7 @@ func TestConditionPreservesInvalidAndDynamicStates(t *testing.T) {
 }
 
 func TestEvaluatedChildrenKeepExpressionOriginAndAreDeepOwned(t *testing.T) {
+	t.Parallel()
 	span := Span{Start: sourcepos.Position{Line: 5, Column: 7}, End: sourcepos.Position{Line: 5, Column: 39}}
 	input := map[string]any{"outer": []any{map[string]any{"value": "before"}}}
 	value := FromJSON(input, Origin{Span: span, FromExpression: true})
@@ -124,6 +131,7 @@ func TestEvaluatedChildrenKeepExpressionOriginAndAreDeepOwned(t *testing.T) {
 }
 
 func TestSemanticEqualityIgnoresOriginAndKnownState(t *testing.T) {
+	t.Parallel()
 	literal := YAMLScalar("3.10", "!!float", Origin{Span: Span{Start: sourcepos.Position{Line: 1, Column: 1}}})
 	evaluated := FromJSON(3.1, Origin{Span: Span{Start: sourcepos.Position{Line: 2, Column: 4}}, FromExpression: true})
 	if !literal.Equal(evaluated) {
@@ -147,6 +155,7 @@ func TestSemanticEqualityIgnoresOriginAndKnownState(t *testing.T) {
 }
 
 func TestYAMLCoreScalarCoercionAndScalarFormatting(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		text string
 		kind Kind
@@ -161,6 +170,7 @@ func TestYAMLCoreScalarCoercionAndScalarFormatting(t *testing.T) {
 		{text: "yes", kind: String, want: "yes"},
 	} {
 		t.Run(tc.text, func(t *testing.T) {
+			t.Parallel()
 			tag := "!!int"
 			switch tc.text {
 			case "TRUE", "yes":
@@ -180,6 +190,7 @@ func TestYAMLCoreScalarCoercionAndScalarFormatting(t *testing.T) {
 }
 
 func TestObjectPropertiesPreferExactCaseThenIgnoreCase(t *testing.T) {
+	t.Parallel()
 	value := Map(Origin{},
 		Prop{Name: "Name", Value: FromJSON("first", Origin{})},
 		Prop{Name: "name", Value: FromJSON("exact", Origin{})},
@@ -203,6 +214,7 @@ func TestObjectPropertiesPreferExactCaseThenIgnoreCase(t *testing.T) {
 }
 
 func TestFromJSONRejectsUnsupportedHostValues(t *testing.T) {
+	t.Parallel()
 	value := FromJSON(make(chan int), Origin{})
 	if value.State() != Invalid || value.Err() == nil {
 		t.Fatalf("unsupported host type did not become an explicit invalid value: %+v", value)
@@ -210,6 +222,7 @@ func TestFromJSONRejectsUnsupportedHostValues(t *testing.T) {
 }
 
 func TestInvalidErrorCannotBeMutatedThroughAccessor(t *testing.T) {
+	t.Parallel()
 	value := Template("${{ true + }}", Origin{})
 	err := value.Err()
 	if err == nil {
@@ -225,6 +238,7 @@ func TestInvalidErrorCannotBeMutatedThroughAccessor(t *testing.T) {
 }
 
 func TestSourceContainersAreLiteralAndEvaluatedContainersAreEvaluated(t *testing.T) {
+	t.Parallel()
 	unknown := DynamicValue("", KindUnknown, Origin{})
 	sourceArray := Seq(Origin{}, YAMLScalar("source", "!!str", Origin{}), unknown)
 	sourceObject := Map(Origin{}, Prop{Name: "item", Value: unknown})
@@ -244,6 +258,7 @@ func TestSourceContainersAreLiteralAndEvaluatedContainersAreEvaluated(t *testing
 }
 
 func TestContainerConstructorsCopyTheirInputs(t *testing.T) {
+	t.Parallel()
 	items := []Value{FromJSON("first", Origin{})}
 	array := Seq(Origin{}, items...)
 	items[0] = FromJSON("changed", Origin{})

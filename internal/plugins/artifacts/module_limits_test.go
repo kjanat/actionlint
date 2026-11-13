@@ -16,6 +16,7 @@ import (
 )
 
 func TestRawModuleReadStopsAtBound(t *testing.T) {
+	t.Parallel()
 	const limit = 4096
 	path := filepath.Join(t.TempDir(), "large.wasm")
 	file, err := os.Create(path)
@@ -40,6 +41,7 @@ func TestRawModuleReadStopsAtBound(t *testing.T) {
 }
 
 func TestRawModuleReadBoundsUnendingDevice(t *testing.T) {
+	t.Parallel()
 	if _, err := os.Stat("/dev/zero"); err != nil {
 		t.Skip("requires /dev/zero")
 	}
@@ -49,6 +51,7 @@ func TestRawModuleReadBoundsUnendingDevice(t *testing.T) {
 }
 
 func TestRawModuleReadCancellationInterruptsBlockedStream(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "linux" {
 		t.Skip("requires /proc/self/fd")
 	}
@@ -76,6 +79,7 @@ func TestRawModuleReadCancellationInterruptsBlockedStream(t *testing.T) {
 }
 
 func TestModuleSizeLimitIncludesDecompressedBytes(t *testing.T) {
+	t.Parallel()
 	const limit = 1024
 	for _, size := range []int{limit - 1, limit, limit + 1} {
 		for _, packed := range []bool{false, true} {
@@ -102,6 +106,7 @@ func TestModuleSizeLimitIncludesDecompressedBytes(t *testing.T) {
 }
 
 func TestModuleExpansionBombStopsAtBound(t *testing.T) {
+	t.Parallel()
 	reader, err := gzip.NewReader(bytes.NewReader(compressed(t, bytes.Repeat([]byte{0}, 1024*1024))))
 	if err != nil {
 		t.Fatal(err)

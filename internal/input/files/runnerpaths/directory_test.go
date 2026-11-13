@@ -11,6 +11,7 @@ import (
 )
 
 func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
+	t.Parallel()
 	root, outside, analyzer := t.TempDir(), t.TempDir(), t.TempDir()
 	inside := filepath.Join(root, "scripts")
 	if err := os.Mkdir(inside, 0o700); err != nil {
@@ -33,6 +34,7 @@ func TestShellcheckWorkingDirectorySymlinks(t *testing.T) {
 	for _, workspace := range []string{root, alias} {
 		for _, directory := range []string{"internal", "external", "chain", "broken"} {
 			t.Run(filepath.Base(workspace)+"/"+directory, func(t *testing.T) {
+				t.Parallel()
 				paths := execution.Paths{}
 				paths.Workspace, paths.Analysis = workspace, analyzer
 				got := runnerpaths.ResolveDirectory(paths, execution.Directory{Kind: execution.DirectoryKnown, Path: directory}, files.New(t.Context(), nil, nil))

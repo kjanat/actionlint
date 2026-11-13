@@ -35,6 +35,7 @@ func twoRunFactBatch(t *testing.T) Batch {
 }
 
 func TestFactAnalyzerJoinsUnitErrorsAndKeepsPartialFindings(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	failures := []error{errors.New("first failed"), errors.New("second failed")}
 	calls := 0
@@ -67,6 +68,7 @@ func TestFactAnalyzerJoinsUnitErrorsAndKeepsPartialFindings(t *testing.T) {
 }
 
 func TestFactAnalyzerCancellationKeepsPriorErrorAndFinding(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -87,6 +89,7 @@ func TestFactAnalyzerCancellationKeepsPriorErrorAndFinding(t *testing.T) {
 }
 
 func TestFactAnalyzerEnforcesRegistrationRequirements(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	for _, tc := range []struct {
 		name       string
@@ -98,6 +101,7 @@ func TestFactAnalyzerEnforcesRegistrationRequirements(t *testing.T) {
 		{"missing name", checkinputs.Descriptor{}, "analyzer name must not be empty"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			calls := 0
 			adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: tc.descriptor, run: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
 				calls++
@@ -110,6 +114,7 @@ func TestFactAnalyzerEnforcesRegistrationRequirements(t *testing.T) {
 		})
 	}
 	t.Run("nil analyzer", func(t *testing.T) {
+		t.Parallel()
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				t.Fatalf("nil analyzer panicked instead of returning validation error: %v", recovered)
@@ -138,6 +143,7 @@ func (a *factDescriptorCounter) CheckDocument(context.Context, checkinputs.Input
 }
 
 func TestFactAnalyzerPreparesRegistrationOnceIncludingNoEligibleUnits(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, steps string
 		wantCalls   int
@@ -147,6 +153,7 @@ func TestFactAnalyzerPreparesRegistrationOnceIncludingNoEligibleUnits(t *testing
 		{name: "only action input", steps: "      - uses: actions/github-script@v7\n        with: {script: console.log(1)}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps
 			if tc.name == "no scripts" {
 				content = "on: push\njobs:\n  test:\n    uses: owner/repository/.github/workflows/test.yml@main\n"
@@ -184,6 +191,7 @@ func TestFactAnalyzerPreparesRegistrationOnceIncludingNoEligibleUnits(t *testing
 }
 
 func TestFactAnalyzerCancellationBoundaryAndDeduplication(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                string
 		cancelBefore        bool
@@ -196,6 +204,7 @@ func TestFactAnalyzerCancellationBoundaryAndDeduplication(t *testing.T) {
 		{name: "during first with cancellation error", cancelAt: 1, wantCalls: 1, ownError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			if tc.cancelBefore {
@@ -221,6 +230,7 @@ func TestFactAnalyzerCancellationBoundaryAndDeduplication(t *testing.T) {
 }
 
 func TestFactAnalyzerValidatesRegisteredOptions(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	for _, tc := range []struct{ name, schema, options string }{
 		{"invalid JSON", "", "{"},
@@ -228,6 +238,7 @@ func TestFactAnalyzerValidatesRegisteredOptions(t *testing.T) {
 		{"missing required options", `{"type":"object","required":["mode"]}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			calls := 0
 			adapter := FactAnalyzer{Options: json.RawMessage(tc.options), Analyzer: factAdapterAnalyzer{
 				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "options", OptionsSchema: json.RawMessage(tc.schema)}},
@@ -244,8 +255,10 @@ func TestFactAnalyzerValidatesRegisteredOptions(t *testing.T) {
 }
 
 func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
+	t.Parallel()
 	for _, nested := range []bool{false, true} {
 		t.Run(map[bool]string{false: "entry", true: "invoked"}[nested], func(t *testing.T) {
+			t.Parallel()
 			graph, collection, snapshot, _ := actionBatchFixture(t, false)
 			if nested {
 				graph, collection = nestedActionBatch(t, collection, snapshot)
@@ -291,6 +304,7 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 }
 
 func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	calls := 0
 	adapter := FactAnalyzer{IncludeExecution: true, Analyzer: factAdapterAnalyzer{
@@ -310,6 +324,7 @@ func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
 }
 
 func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	want := batch.CallGraph().Export()
 	options := json.RawMessage(`{"mode":"safe"}`)
@@ -346,6 +361,7 @@ func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 }
 
 func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
+	t.Parallel()
 	_, collection, snapshot, _ := actionBatchFixture(t, false)
 	graph, collection := nestedActionBatch(t, collection, snapshot)
 	batch, err := NewBatch(graph, collection)
@@ -381,6 +397,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 }
 
 func TestFactAnalyzerRejectsUnavailablePreparedFact(t *testing.T) {
+	t.Parallel()
 	batch := twoRunFactBatch(t)
 	corrupted := *batch.data
 	corrupted.scripts = slices.Clone(batch.data.scripts)
@@ -396,6 +413,7 @@ func TestFactAnalyzerRejectsUnavailablePreparedFact(t *testing.T) {
 }
 
 func TestFactAnalyzerPreservesForeignDiagnosticPath(t *testing.T) {
+	t.Parallel()
 	graph, collection, _, _ := actionBatchFixture(t, false)
 	batch, err := NewBatch(graph, collection)
 	if err != nil {

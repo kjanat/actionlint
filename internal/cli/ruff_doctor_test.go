@@ -17,6 +17,7 @@ import (
 )
 
 func TestDoctorRuffProbeContext(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

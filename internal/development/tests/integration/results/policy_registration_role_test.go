@@ -11,6 +11,7 @@ import (
 )
 
 func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
+	t.Parallel()
 	descriptor := rule.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs"}
 	for _, tc := range []struct {
 		name, replaces string
@@ -20,6 +21,7 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 		{name: "ordinary analyzer", wantError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().ResolveRegisteredRules(repoconfig.Presets{}, nil, repoconfig.RuleRegistration{Descriptor: descriptor, ReplacesTool: tc.replaces})
 			if tc.wantError {
 				if err == nil || !strings.Contains(err.Error(), "conflicts") {

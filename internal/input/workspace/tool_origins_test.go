@@ -9,11 +9,13 @@ import (
 )
 
 func TestFileOverrideToolConfigOrigins(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{
 		"tools: {shellcheck: {config: .shellcheckrc}}\noverrides: [{includes: [ci.yml], tools: {shellcheck: false}}]",
 		"overrides: [{includes: [ci.yml], tools: {shellcheck: {config: .shellcheckrc}}}]",
 	} {
 		t.Run(content, func(t *testing.T) {
+			t.Parallel()
 			overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte(content))
 			if err != nil {
 				t.Fatal(err)

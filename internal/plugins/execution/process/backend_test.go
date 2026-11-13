@@ -23,6 +23,7 @@ import (
 // TestProcessHelper is the tool process of these tests: the test binary run
 // with ACTIONLINT_PROCESS_HELPER naming its behavior.
 func TestProcessHelper(t *testing.T) {
+	t.Parallel()
 	mode := os.Getenv("ACTIONLINT_PROCESS_HELPER")
 	if mode == "" {
 		return
@@ -178,6 +179,7 @@ func sameDirectory(t *testing.T, a, b string) bool {
 }
 
 func TestBackendDecoders(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		mode   string
 		spec   manifests.ProcessSpec
@@ -200,6 +202,7 @@ func TestBackendDecoders(t *testing.T) {
 		},
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
+			t.Parallel()
 			backend, err := NewBackend(helperManifest(tc.spec), helperCommand(t, tc.mode), Options{})
 			if err != nil {
 				t.Fatal(err)
@@ -216,6 +219,7 @@ func TestBackendDecoders(t *testing.T) {
 }
 
 func TestBackendRejectsUnlistedExitStatus(t *testing.T) {
+	t.Parallel()
 	manifest := helperManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Args: []string{"--"}, ExitCodes: []int{0}, Output: echoOutput})
 	backend, err := NewBackend(manifest, helperCommand(t, "echo"), Options{})
 	if err != nil {
@@ -282,6 +286,7 @@ func ruffOutput(t *testing.T, directory, filename string) string {
 // --ignore=VALUE argument. Ported from the Ruff adapter's native options
 // tests.
 func TestRuffConfigCannotBecomeCommandOptions(t *testing.T) {
+	t.Parallel()
 	for _, config := range []string{`{"target-version": "--fix"}`, `{"lint": {"select": ["--fix"]}}`, `{"lint": {"ignore": ["--fix"]}}`} {
 		directory := t.TempDir()
 		runner := &embedded{version: "ruff 0.17.0\n", output: "[]"}
@@ -297,6 +302,7 @@ func TestRuffConfigCannotBecomeCommandOptions(t *testing.T) {
 }
 
 func TestRuffConfigRejectsSideEffectsBeforeExecution(t *testing.T) {
+	t.Parallel()
 	for _, key := range bundledManifest(t, "ruff").Process.Config.Forbidden {
 		runner := &embedded{version: "ruff 0.17.0\n", output: "[]"}
 		backend := ruffBackend(t, runner, Options{Required: true})
@@ -312,6 +318,7 @@ func TestRuffConfigRejectsSideEffectsBeforeExecution(t *testing.T) {
 }
 
 func TestInvalidLauncherFailsBeforeExecution(t *testing.T) {
+	t.Parallel()
 	for _, launcher := range []struct {
 		exe  string
 		args []string
@@ -333,6 +340,7 @@ func TestInvalidLauncherFailsBeforeExecution(t *testing.T) {
 }
 
 func TestRuffLauncherPrecedesManifestArguments(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	runner := &embedded{version: "ruff 0.17.0\n", output: ruffOutput(t, directory, "actionlint.py")}
 	backend, err := NewBackend(bundledManifest(t, "ruff"), runner.command(t, "python3", "-I", "-m", "ruff", "--preview"), Options{Programs: bundled.Program})
@@ -352,6 +360,7 @@ func TestRuffLauncherPrecedesManifestArguments(t *testing.T) {
 }
 
 func TestRuffOutputIdentityAndEffects(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	runner := &embedded{version: "ruff 0.17.0\n", output: ruffOutput(t, directory, "actionlint.py")}
 	backend := ruffBackend(t, runner, Options{Required: true})
@@ -370,6 +379,7 @@ func TestRuffOutputIdentityAndEffects(t *testing.T) {
 }
 
 func TestVersionGate(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		version   string
 		required  bool
@@ -385,6 +395,7 @@ func TestVersionGate(t *testing.T) {
 		{"ruff 0.16.0\n", true, false, false, true},
 	} {
 		t.Run(fmt.Sprintf("%s required=%t", strings.TrimSpace(tc.version), tc.required), func(t *testing.T) {
+			t.Parallel()
 			var warnings []error
 			runner := &embedded{version: tc.version, output: "[]"}
 			backend := ruffBackend(t, runner, Options{Required: tc.required, Warn: func(err error) { warnings = append(warnings, err) }})
@@ -408,6 +419,7 @@ func TestVersionGate(t *testing.T) {
 }
 
 func TestBackendRequiresDeclaredReportedSources(t *testing.T) {
+	t.Parallel()
 	runner := &embedded{output: `{"comments":[{"file":"lib.sh","line":1,"endLine":1,"column":1,"endColumn":2,"level":"info","code":2086,"message":"m"}]}`}
 	manifest := bundledManifest(t, "shellcheck")
 	manifest.Capabilities.ReportedSources = false
@@ -421,6 +433,7 @@ func TestBackendRequiresDeclaredReportedSources(t *testing.T) {
 }
 
 func TestShellCheckUserShellDropsDialect(t *testing.T) {
+	t.Parallel()
 	runner := &embedded{output: `{"comments":[]}`}
 	backend, err := NewBackend(bundledManifest(t, "shellcheck"), runner.command(t, "shellcheck", "--shell=sh"), Options{Programs: bundled.Program})
 	if err != nil {
@@ -437,6 +450,7 @@ func TestShellCheckUserShellDropsDialect(t *testing.T) {
 
 // The bundled manifests run the real tools when they are installed.
 func TestBundledToolsEndToEnd(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		tool, filename, source, config string
 		vars                           map[string]string
@@ -446,6 +460,7 @@ func TestBundledToolsEndToEnd(t *testing.T) {
 		{"shellcheck", "actionlint.sh", "echo $foo\n", "", map[string]string{"dialect": "bash", "exclude": "SC2154"}, []string{"SC2086"}},
 	} {
 		t.Run(tc.tool, func(t *testing.T) {
+			t.Parallel()
 			if _, err := exec.LookPath(tc.tool); err != nil {
 				t.Skipf("%s is not installed", tc.tool)
 			}

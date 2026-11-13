@@ -31,6 +31,7 @@ func (p literalMetadataFixture) Lookup(_ context.Context, ref actions.Reference)
 }
 
 func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	const commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	ref, err := actions.ParseReference("github.com", "actions/checkout@v6")
@@ -91,6 +92,7 @@ runs:
 		{"known outputs", "actions/checkout@v6", "\n      - run: echo ${{ steps.action.outputs.missing }}", `property "missing"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var plain []diagmodel.Diagnostic
 			for _, uses := range []string{tc.uses, "${{ '" + tc.uses + "' }}"} {
 				source := `on: push
@@ -128,6 +130,7 @@ jobs:
 }
 
 func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
+	t.Parallel()
 	for _, uses := range []string{"oooops", "${{ 'oooops' }}"} {
 		request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 		var requestSources []workspace.Source

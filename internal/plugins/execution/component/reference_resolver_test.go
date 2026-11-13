@@ -77,34 +77,35 @@ func newResolverRepositoryTest(tb testing.TB) (*repositoryObjects, *resolverRepo
 }
 
 func TestReferenceResolverRepositoryScope(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
-		call func(*repositoryObjects) error
+		call func(context.Context, *repositoryObjects) error
 	}{
-		{"outside resolve", func(objects *repositoryObjects) error {
+		{"outside resolve", func(ctx context.Context, objects *repositoryObjects) error {
 			objects.active = false
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
 			return err
 		}},
-		{"different repository", func(objects *repositoryObjects) error {
-			_, err := objects.open(t.Context(), "other/repo", repositorybind.SomeU64(7))
+		{"different repository", func(ctx context.Context, objects *repositoryObjects) error {
+			_, err := objects.open(ctx, "other/repo", repositorybind.SomeU64(7))
 			return err
 		}},
-		{"different identity", func(objects *repositoryObjects) error {
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(8))
+		{"different identity", func(ctx context.Context, objects *repositoryObjects) error {
+			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(8))
 			return err
 		}},
-		{"missing identity", func(objects *repositoryObjects) error {
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.NoneU64())
+		{"missing identity", func(ctx context.Context, objects *repositoryObjects) error {
+			_, err := objects.open(ctx, "owner/repo", repositorybind.NoneU64())
 			return err
 		}},
-		{"unexpected identity", func(objects *repositoryObjects) error {
+		{"unexpected identity", func(ctx context.Context, objects *repositoryObjects) error {
 			objects.request.ExpectedRepositoryID = repositoryid.ID{}
-			_, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
 			return err
 		}},
-		{"reference before open", func(objects *repositoryObjects) error {
-			value, err := objects.GetRef(t.Context(), "refs/tags/v1")
+		{"reference before open", func(ctx context.Context, objects *repositoryObjects) error {
+			value, err := objects.GetRef(ctx, "refs/tags/v1")
 			if err != nil {
 				return err
 			}
@@ -113,8 +114,8 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			}
 			return nil
 		}},
-		{"object before open", func(objects *repositoryObjects) error {
-			value, err := objects.GetObject(t.Context(), strings.Repeat("a", 40))
+		{"object before open", func(ctx context.Context, objects *repositoryObjects) error {
+			value, err := objects.GetObject(ctx, strings.Repeat("a", 40))
 			if err != nil {
 				return err
 			}
@@ -123,11 +124,12 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			}
 			return nil
 		}},
-		{"finish before open", func(objects *repositoryObjects) error { return objects.finish(t.Context()) }},
+		{"finish before open", func(ctx context.Context, objects *repositoryObjects) error { return objects.finish(ctx) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			objects, access, session := newResolverRepositoryTest(t)
-			if err := tc.call(objects); err == nil {
+			if err := tc.call(t.Context(), objects); err == nil {
 				t.Fatal("misuse succeeded")
 			}
 			if len(access.requests) != 0 || session.lookups != 0 || session.finishes != 0 {
@@ -140,6 +142,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 	}
 	for _, operation := range []string{"second open", "reference after finish", "object after finish", "second finish"} {
 		t.Run(operation, func(t *testing.T) {
+			t.Parallel()
 			objects, access, session := newResolverRepositoryTest(t)
 			if _, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7)); err != nil {
 				t.Fatal(err)
@@ -165,6 +168,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 }
 
 func TestReferenceResolverValidatesObservedContent(t *testing.T) {
+	t.Parallel()
 	selected := strings.Repeat("a", 40)
 	peeled := strings.Repeat("b", 40)
 	for _, tc := range []struct {
@@ -179,6 +183,7 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 		{"peeled tree", repository.PeeledTreeTag{Tree: peeled}, "", peeled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			objects, _, session := newResolverRepositoryTest(t)
 			session.objects[selected] = tc.object
 			if tc.commit == peeled {
@@ -233,6 +238,7 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 }
 
 func TestReferenceResolverRejectsFailedFinish(t *testing.T) {
+	t.Parallel()
 	objects, _, session := newResolverRepositoryTest(t)
 	session.finishErr = errors.New("repository identity changed")
 	if _, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7)); err != nil {
@@ -247,6 +253,7 @@ func TestReferenceResolverRejectsFailedFinish(t *testing.T) {
 }
 
 func TestReferenceResolverRoleAndImports(t *testing.T) {
+	t.Parallel()
 	roles, err := extensionRoles([]wacogo.ExportDesc{{Name: ReferenceResolverInterface, Kind: wacogo.SortInstance}})
 	if err != nil || !roles.referenceResolver {
 		t.Fatalf("roles=%+v error=%v", roles, err)
@@ -273,6 +280,7 @@ func (f referenceResolverFunc) Resolve(ctx context.Context, request references.R
 }
 
 func TestReferenceResolverSessionCachesExactRequests(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int64
 	session := &referenceResolverSession{resolver: referenceResolverFunc(func(context.Context, references.Request) (references.Result, error) {
 		calls.Add(1)
@@ -302,6 +310,7 @@ func TestReferenceResolverSessionCachesExactRequests(t *testing.T) {
 }
 
 func TestReferenceResolverSessionCoalescesAndCancelsWaiter(t *testing.T) {
+	t.Parallel()
 	started, release := make(chan struct{}), make(chan struct{})
 	var calls atomic.Int64
 	session := &referenceResolverSession{resolver: referenceResolverFunc(func(context.Context, references.Request) (references.Result, error) {
@@ -332,6 +341,7 @@ func TestReferenceResolverSessionCoalescesAndCancelsWaiter(t *testing.T) {
 }
 
 func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		var calls atomic.Int64
 		session := &referenceResolverSession{resolver: referenceResolverFunc(func(ctx context.Context, _ references.Request) (references.Result, error) {
@@ -368,16 +378,17 @@ func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) 
 }
 
 func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
-		if err != nil {
-			t.Fatal(err)
+	t.Parallel()
+	plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := plugin.Close(context.Background()); err != nil {
+			t.Error(err)
 		}
-		defer func() {
-			if err := plugin.Close(context.Background()); err != nil {
-				t.Error(err)
-			}
-		}()
+	})
+	synctest.Test(t, func(t *testing.T) {
 		if err := plugin.gate.Acquire(t.Context(), 1); err != nil {
 			t.Fatal(err)
 		}
@@ -400,6 +411,7 @@ func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 }
 
 func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
+	t.Parallel()
 	plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -429,6 +441,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		{"action annotated commit tag", "v1", "action", map[string]string{"refs/tags/v1": selected}, map[string]repository.Object{selected: repository.PeeledTag{Commit: other}, other: repository.Commit{}}, "refs/tags/v1", other, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, access, session := newResolverRepositoryTest(t)
 			session.refs, session.objects = tc.refs, tc.objects
 			request := references.Request{Version: 1, Repository: "owner/repo", Ref: tc.reference, Kind: tc.kind, ExpectedRepositoryID: knownRepositoryID(t, 7)}
@@ -448,6 +461,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		})
 	}
 	t.Run("repository ID above float64 integer precision", func(t *testing.T) {
+		t.Parallel()
 		repositoryID := knownRepositoryID(t, 9007199254740999)
 		_, access, session := newResolverRepositoryTest(t)
 		session.identity.ID = repositoryID
@@ -474,6 +488,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		{"absent host repository ID with an expected ID", knownRepositoryID(t, 7)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, access, session := newResolverRepositoryTest(t)
 			session.identity.ID = repositoryid.ID{}
 			request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: tc.expected}
@@ -493,6 +508,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 		})
 	}
 	t.Run("conflicting host repository ID", func(t *testing.T) {
+		t.Parallel()
 		_, access, session := newResolverRepositoryTest(t)
 		session.identity.ID = knownRepositoryID(t, 8)
 		request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: knownRepositoryID(t, 7)}
@@ -506,6 +522,7 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 }
 
 func TestLiftReferenceResolutionRepositoryID(t *testing.T) {
+	t.Parallel()
 	resolution := func(id wacogo.Val) wacogo.Val {
 		return wacogo.ValResultOk(wacogo.NewValRecord(
 			field("repository-id", id),
@@ -536,6 +553,7 @@ func TestLiftReferenceResolutionRepositoryID(t *testing.T) {
 }
 
 func TestLowerReferenceRequestRepositoryID(t *testing.T) {
+	t.Parallel()
 	for _, expected := range []repositoryid.ID{{}, knownRepositoryID(t, 42)} {
 		value, err := lowerReferenceRequest(references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: expected})
 		if err != nil {

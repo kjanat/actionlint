@@ -14,6 +14,7 @@ import (
 )
 
 func TestCheckInputModesPreserveConfigurationAndOrder(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeGitRepository(t, root)
 	writeFixture(t, root, ".github/actionlint.yaml", "config-variables: []\n")
@@ -33,6 +34,7 @@ func TestCheckInputModesPreserveConfigurationAndOrder(t *testing.T) {
 		{"stdin", inputmodel.Request{Kind: inputmodel.Stdin, Name: first, Reader: strings.NewReader(content)}, []string{first}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			calls := 0
 			var selected []string
 			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, OnFilesSelected: func(paths []string) {
@@ -59,6 +61,7 @@ func TestCheckInputModesPreserveConfigurationAndOrder(t *testing.T) {
 		})
 	}
 	t.Run("directory snapshots", func(t *testing.T) {
+		t.Parallel()
 		session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, Rules: checking.ConfigurationRules()})
 		if err != nil {
 			t.Fatal(err)
@@ -80,6 +83,7 @@ func TestCheckInputModesPreserveConfigurationAndOrder(t *testing.T) {
 }
 
 func TestCheckCancelledEmptySelection(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	calls := 0
@@ -90,6 +94,7 @@ func TestCheckCancelledEmptySelection(t *testing.T) {
 }
 
 func TestCheckVerboseStdinLogOrder(t *testing.T) {
+	t.Parallel()
 	var log strings.Builder
 	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), Verbose: true, LogSelection: true, LogWriter: &log}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(goodWorkflow)})
 	if err != nil {

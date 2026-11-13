@@ -10,6 +10,7 @@ import (
 )
 
 func TestWorkflowExpressionScalarPositions(t *testing.T) {
+	t.Parallel()
 	for _, scalar := range []string{
 		`"é\t${{ missing }}"`,
 		`'é ''quote'' ${{ missing }}'`,
@@ -22,6 +23,7 @@ func TestWorkflowExpressionScalarPositions(t *testing.T) {
 	} {
 		for _, field := range []string{"env", "run"} {
 			t.Run(field+"/"+scalar, func(t *testing.T) {
+				t.Parallel()
 				src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 				if field == "run" {
 					src = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + strings.ReplaceAll(scalar, "\n", "\n    ") + "\n" + "\npermissions: {}\n"
@@ -53,6 +55,7 @@ func TestWorkflowExpressionScalarPositions(t *testing.T) {
 }
 
 func TestWorkflowConditionScalarPositions(t *testing.T) {
+	t.Parallel()
 	for _, scalar := range []string{
 		`"github.actor == 'é' && missing"`,
 		"github.actor &&\n      missing",
@@ -61,6 +64,7 @@ func TestWorkflowConditionScalarPositions(t *testing.T) {
 		`"github.actor == 'é' &&\n missing"`,
 	} {
 		t.Run(scalar, func(t *testing.T) {
+			t.Parallel()
 			src := "on: push\njobs:\n  test:\n    if: " + scalar + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
@@ -81,6 +85,7 @@ func TestWorkflowConditionScalarPositions(t *testing.T) {
 }
 
 func TestWorkflowExpressionEOFPosition(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{
 		"    if: |\n      github.actor &&\n",
 		"    if: >\n      github.actor &&\n",
@@ -106,6 +111,7 @@ func TestWorkflowExpressionEOFPosition(t *testing.T) {
 }
 
 func TestWorkflowExpressionSourceScopeAndAliases(t *testing.T) {
+	t.Parallel()
 	src := `on: push
 env:
   CONDITION: &condition >-
@@ -149,6 +155,7 @@ permissions: {}
 }
 
 func TestWorkflowExpressionDottedReferenceRanges(t *testing.T) {
+	t.Parallel()
 	for _, scalar := range []string{
 		`${{ github.missing }}`,
 		`"${{ github.\u006dissing }}"`,
@@ -158,6 +165,7 @@ func TestWorkflowExpressionDottedReferenceRanges(t *testing.T) {
 		`${{ github . missing }}`,
 	} {
 		t.Run(scalar, func(t *testing.T) {
+			t.Parallel()
 			src := "on: push\nenv:\n  VALUE: " + scalar + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {

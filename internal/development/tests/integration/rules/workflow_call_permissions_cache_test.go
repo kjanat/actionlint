@@ -46,6 +46,7 @@ jobs:
 }
 
 func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
 
 	run := func(t *testing.T, cache *workflowinputs.Cache) []string {
@@ -122,6 +123,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 }
 
 func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
+	t.Parallel()
 	scopes := make([]string, 0, len(permission.Scopes()))
 	writeAll := calls.PermissionScopeLevels{}
 	for s, vs := range permission.Scopes() {
@@ -311,6 +313,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			cwd := filepath.Join("path", "to", "project")
 			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})

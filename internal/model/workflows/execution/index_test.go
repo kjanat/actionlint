@@ -9,6 +9,7 @@ import (
 )
 
 func TestExecutableBitCaseFoldedPaths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, runnerPath, checkout, want string
 		modes                            map[string]string
@@ -36,6 +37,7 @@ func TestExecutableBitCaseFoldedPaths(t *testing.T) {
 		{"new output", "SCRIPTS/OUTPUT", "", "scripts/OUTPUT", map[string]string{"scripts/file": "100644"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			snapshot := execution.NewIndexSnapshot("", tc.modes, nil)
 			got, known := snapshot.CaseFoldedPath(tc.runnerPath, tc.checkout)
 			if known != (tc.want != "") || got != tc.want {
@@ -46,6 +48,7 @@ func TestExecutableBitCaseFoldedPaths(t *testing.T) {
 }
 
 func TestExecutableBitCaseFoldedCheckoutReuse(t *testing.T) {
+	t.Parallel()
 	snapshot := execution.NewIndexSnapshot("", map[string]string{"scripts/bad.sh": "100644"}, nil)
 	for _, tc := range []struct{ runnerPath, checkout, want string }{
 		{"SCRIPTS/BAD.SH", "", "scripts/bad.sh"},
@@ -95,6 +98,7 @@ func BenchmarkExecutableBitPathIndexConstruction(b *testing.B) {
 }
 
 func TestExecutableBitIndexTraversal(t *testing.T) {
+	t.Parallel()
 	snapshot := execution.NewIndexSnapshot("", map[string]string{"link": "120000", "submodule": "160000", "bad.sh": "100644", "scripts/bad.sh": "100644"}, nil)
 	for _, tc := range []struct {
 		path, checkout string

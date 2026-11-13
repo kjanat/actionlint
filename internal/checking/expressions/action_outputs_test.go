@@ -9,6 +9,7 @@ import (
 )
 
 func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
+	t.Parallel()
 	definition := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n"))
 	for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
 		checker := New(Dependencies{Action: func(got string) (actionmeta.Definition, error) {
@@ -28,6 +29,7 @@ func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
 }
 
 func TestUnavailableActionOutputsAreUnknown(t *testing.T) {
+	t.Parallel()
 	checker := New(Dependencies{}, Options{})
 	outputs := checker.getActionOutputsType(ownedStringFixture(&workflowlang.String{Value: "./missing"}))
 	if mapped, known := outputs.Mapped(); !known || mapped.Kind() != exprtypes.KindString {
@@ -36,6 +38,7 @@ func TestUnavailableActionOutputsAreUnknown(t *testing.T) {
 }
 
 func TestActionOutputDeclarationCompleteness(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		strict       bool
@@ -46,6 +49,7 @@ func TestActionOutputDeclarationCompleteness(t *testing.T) {
 		{"invalid runtime", "outputs: {}\nruns: {using: unknown}\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			definition := actionmeta.ParseDefinition([]byte("name: fixture\ndescription: fixture\n" + tc.source))
 			for _, reference := range []string{"./action", "$/action", "example/action@v1"} {
 				checker := New(Dependencies{Action: func(string) (actionmeta.Definition, error) { return definition, nil }}, Options{})

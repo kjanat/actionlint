@@ -54,6 +54,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 }
 
 func TestCachePolicyTriggers(t *testing.T) {
+	t.Parallel()
 	for _, group := range []struct {
 		events string
 		warn   bool
@@ -64,6 +65,7 @@ func TestCachePolicyTriggers(t *testing.T) {
 	} {
 		for event := range strings.FieldsSeq(group.events) {
 			t.Run(event, func(t *testing.T) {
+				t.Parallel()
 				// Exercise each event independently of event-specific required fields.
 				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}}
 				w.Jobs = map[string]*workflowlang.Job{"test": {}}
@@ -79,6 +81,7 @@ func TestCachePolicyTriggers(t *testing.T) {
 }
 
 func TestCachePolicyEventClassification(t *testing.T) {
+	t.Parallel()
 	for event := range triggers.AllWebhookTypes {
 		class, exists := cacheEventClasses[event]
 		if !exists || class == cacheEventUnknown {
@@ -99,6 +102,7 @@ func TestCachePolicyEventClassification(t *testing.T) {
 }
 
 func TestCachePolicyEffectiveWrite(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, workflow, job string
 		line                int
@@ -113,6 +117,7 @@ func TestCachePolicyEffectiveWrite(t *testing.T) {
 		{"job disables inherited writes", "cache-mode: write\n", "    cache-mode: none\n", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			src := "on: [pull_request_target, push]\n" + tc.workflow + `jobs:
   test:
 ` + tc.job + cachePolicySteps
@@ -127,6 +132,7 @@ func TestCachePolicyEffectiveWrite(t *testing.T) {
 		})
 	}
 	t.Run("inherited declaration reported once", func(t *testing.T) {
+		t.Parallel()
 		src := `on: pull_request_target
 cache-mode: write
 jobs:
@@ -137,6 +143,7 @@ jobs:
 		}
 	})
 	t.Run("invalid mode has no policy cascade", func(t *testing.T) {
+		t.Parallel()
 		if errs := checkPolicy(t, `on: pull_request_target
 cache-mode: invalid
 jobs:
@@ -148,6 +155,7 @@ jobs:
 }
 
 func TestCachePolicyWorkflowGrantUsage(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, jobs string
 		lines      []int
@@ -192,6 +200,7 @@ func TestCachePolicyWorkflowGrantUsage(t *testing.T) {
 `, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: pull_request_target
 cache-mode: write
 jobs:
@@ -213,6 +222,7 @@ jobs:
 		})
 	}
 	t.Run("zero jobs has no effective grant", func(t *testing.T) {
+		t.Parallel()
 		errs := checkPolicy(t, `on: pull_request_target
 cache-mode: write
 jobs: {}
@@ -224,10 +234,12 @@ jobs: {}
 }
 
 func TestCachePolicyReusableCalls(t *testing.T) {
+	t.Parallel()
 	for _, target := range []string{"./.github/workflows/build.yaml", "example/repo/.github/workflows/build.yaml@main"} {
 		for _, mode := range []string{"", "read", "none", "write", "write-only", "invalid"} {
 			for _, level := range []string{"workflow", "job"} {
 				t.Run(target+"/"+mode+"/"+level, func(t *testing.T) {
+					t.Parallel()
 					workflow, job := "", ""
 					if mode != "" {
 						if level == "workflow" {
@@ -273,6 +285,7 @@ jobs:
 }
 
 func TestCachePolicyOperations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		mode string
 		bad  []string
@@ -286,6 +299,7 @@ func TestCachePolicyOperations(t *testing.T) {
 		for _, op := range []string{"save", "restore", "both"} {
 			for _, override := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/override=%v", tc.mode, op, override), func(t *testing.T) {
+					t.Parallel()
 					mode, job := "", ""
 					if tc.mode != "" {
 						if override {
@@ -324,6 +338,7 @@ func TestCachePolicyOperations(t *testing.T) {
 }
 
 func TestCachePolicyOperationReferences(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		uses string
 		warn bool
@@ -346,6 +361,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 		{"actions/cache@${{ 'v5' }}", false},
 	} {
 		t.Run(tc.uses, func(t *testing.T) {
+			t.Parallel()
 			findings := checkStandaloneStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{Line: 7, Col: 15}}}}, &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone})
 			if tc.warn {
 				if errs := findings; len(errs) != 1 || errs[0].Rule != "cache-operation" || errs[0].Start.Line != 7 || errs[0].Start.Column != 15 {

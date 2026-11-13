@@ -12,6 +12,7 @@ import (
 )
 
 func TestInsertedActionInputMetadata(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"supplies required", "{token: value}", ""},
 		{"constant input name", `{ "${{ 'token' }}": value }`, ""},
@@ -27,6 +28,7 @@ func TestInsertedActionInputMetadata(t *testing.T) {
 		{"known expression name", `${{ fromJSON('{"token":"value","typo":"value"}') }}`, `input "typo" is not defined`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errs := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with:\n          ${{ insert }}: " + tc.value + "\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)

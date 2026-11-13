@@ -10,6 +10,7 @@ import (
 )
 
 func TestFileProjectionConsumesOverridesBeforeRuleBinding(t *testing.T) {
+	t.Parallel()
 	invalid, err := repoconfig.NewSetting("bogus", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +32,7 @@ func TestFileProjectionConsumesOverridesBeforeRuleBinding(t *testing.T) {
 }
 
 func TestFileOverrideRuleSettings(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint:
   rules:
     correctness: off
@@ -85,6 +87,7 @@ overrides:
 }
 
 func TestFileOverrides(t *testing.T) {
+	t.Parallel()
 	const source = `lint:
   rules:
     disable: [expression-reference]
@@ -144,6 +147,7 @@ overrides:
 }
 
 func TestInvalidFileOverrides(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		"{}", "{includes: []}", "{includes: ['!**']}", "{includes: ['/tmp/*']}",
 		"{includes: ['../*']}", "{includes: ['a/../b']}", "{includes: ['[']}",
@@ -156,6 +160,7 @@ func TestInvalidFileOverrides(t *testing.T) {
 }
 
 func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, yaml string
 		lint       *repoconfig.LintConfig
@@ -169,6 +174,7 @@ func TestProgrammaticLintOverridePreservesUnsetFields(t *testing.T) {
 		{"null-lint", "null", nil, "on"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, programmatic := range []bool{false, true} {
 				if programmatic && tc.lint == nil {
 					continue

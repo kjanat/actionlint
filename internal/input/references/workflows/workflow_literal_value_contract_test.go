@@ -11,6 +11,7 @@ import (
 )
 
 func TestWorkflowLiteralCallMetadata(t *testing.T) {
+	t.Parallel()
 	source := []byte(`on: workflow_call
 jobs:
   call:

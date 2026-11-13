@@ -22,6 +22,7 @@ import (
 )
 
 func TestSealedRelatedAdmissionPreservesPrimaryAndCountsExactly(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store, fixture := capturefixture.NewCapturedSources(t, root)
 	path := filepath.Join(root, "ci.yml")
@@ -133,8 +134,13 @@ func (relatedAdmissionProbe) CheckDocument(_ context.Context, input checkinputs.
 }
 
 func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
-	t.Run("directory", func(t *testing.T) { testRelatedBridgeAndSeal(t, t.TempDir()) })
+	t.Parallel()
+	t.Run("directory", func(t *testing.T) {
+		t.Parallel()
+		testRelatedBridgeAndSeal(t, t.TempDir())
+	})
 	t.Run("symlinked directory", func(t *testing.T) {
+		t.Parallel()
 		root := filepath.Join(t.TempDir(), "root-alias")
 		if err := os.Symlink(t.TempDir(), root); err != nil {
 			if errors.Is(err, os.ErrPermission) || errors.Is(err, errors.ErrUnsupported) || runtime.GOOS == "windows" && errors.Is(err, syscall.Errno(1314)) {

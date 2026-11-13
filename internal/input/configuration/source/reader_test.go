@@ -5,9 +5,10 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -18,6 +19,7 @@ func (f transportFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 }
 
 func TestHTTPSReaderPreservesCustomSource(t *testing.T) {
+	t.Parallel()
 	want := "https://127.0.0.1/base.yaml?version=1"
 	reader := New(t.Context(), func(name string) ([]byte, error) {
 		if name != want {
@@ -36,29 +38,25 @@ func TestHTTPSReaderPreservesCustomSource(t *testing.T) {
 }
 
 func TestHTTPSReaderRejectsPrivateDestinationBeforeDial(t *testing.T) {
-	previous := http.DefaultTransport
-	dialed := false
-	transport := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
-		dialed = true
-		return nil, errors.New("unexpected dial")
-	}}
-	http.DefaultTransport = transport
-	t.Cleanup(func() {
-		http.DefaultTransport = previous
-		transport.CloseIdleConnections()
+	t.Parallel()
+	var dialed atomic.Bool
+	ctx := httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
+		GetConn:      func(string) { dialed.Store(true) },
+		ConnectStart: func(string, string) { dialed.Store(true) },
 	})
 
-	reader := New(t.Context(), nil)
+	reader := New(ctx, nil)
 	_, err := reader.ReadFile("https://127.0.0.1/base.yaml")
 	if err == nil || !strings.Contains(err.Error(), "public destination addresses") {
 		t.Fatalf("private destination error = %v", err)
 	}
-	if dialed {
+	if dialed.Load() {
 		t.Fatal("private destination reached the transport dialer")
 	}
 }
 
 func TestHTTPSReaderLimitsAndRedirects(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, body string
 		status     int
@@ -72,6 +70,7 @@ func TestHTTPSReaderLimitsAndRedirects(t *testing.T) {
 		{name: "downgrade", status: http.StatusFound, location: "http://example.test/final.yaml", want: "redirect"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			reader := New(t.Context(), nil)
 			calls := 0
 			reader.client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
@@ -94,6 +93,7 @@ func TestHTTPSReaderLimitsAndRedirects(t *testing.T) {
 }
 
 func TestHTTPSReaderCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	reader := New(ctx, nil)
 	reader.client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
@@ -107,6 +107,7 @@ func TestHTTPSReaderCancellation(t *testing.T) {
 }
 
 func TestReaderDetachesSourceErrors(t *testing.T) {
+	t.Parallel()
 	retained := &fs.PathError{Op: "read", Path: "original.yaml", Err: fs.ErrNotExist}
 	reader := New(t.Context(), func(string) ([]byte, error) { return nil, retained })
 	_, err := reader.ReadFile("original.yaml")

@@ -52,24 +52,26 @@ func TestSummaryDefaultsAndOverrides(t *testing.T) {
 }
 
 func TestActionCodesAndSummaryThroughCLI(t *testing.T) {
-	t.Chdir(t.TempDir())
-	for directory, source := range map[string]string{
-		"one": "name: example\ndescription: example\nruns: {using: node20, main: missing.js}\n",
-		"two": "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok}]}\n",
+	t.Parallel()
+	dir := t.TempDir()
+	one, two := filepath.Join(dir, "one", "action.yml"), filepath.Join(dir, "two", "action.yml")
+	for path, source := range map[string]string{
+		one: "name: example\ndescription: example\nruns: {using: node20, main: missing.js}\n",
+		two: "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok}]}\n",
 	} {
-		if err := os.Mkdir(directory, 0o700); err != nil {
+		if err := os.Mkdir(filepath.Dir(path), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(directory, "action.yml"), []byte(source), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	got := testRunCommand("", "--no-config", "--summary", "one/action.yml", "two/action.yml")
+	got := testRunCommand("", "--no-config", "--summary", one, two)
 	if got.Status != 1 || !strings.Contains(got.Stdout, "error[action] missing-file") ||
 		!strings.Contains(got.Stdout, "error[action] runtime-deprecated") || !strings.Contains(got.Stdout, "error[action] missing-shell") {
 		t.Fatalf("specific action diagnostics: %+v", got)
 	}
-	want := "! Checked 2 files, 3 findings.\n\nFiles:\n  2  " + filepath.Join("one", "action.yml") + "\n  1  " + filepath.Join("two", "action.yml") +
+	want := "! Checked 2 files, 3 findings.\n\nFiles:\n  2  " + physicalWorkingDirectoryPath(t, one) + "\n  1  " + physicalWorkingDirectoryPath(t, two) +
 		"\n\nDiagnostics:\n  1  action/missing-file\n  1  action/missing-shell\n  1  action/runtime-deprecated\n"
 	if got.Stderr != want {
 		t.Fatalf("summary = %q, want %q", got.Stderr, want)
@@ -77,6 +79,7 @@ func TestActionCodesAndSummaryThroughCLI(t *testing.T) {
 }
 
 func TestHelpOutputDefaults(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"--help"}, {"check", "--help"}} {
 		got := testRunCommand("", args...)
 		if got.Status != 0 || !strings.Contains(got.Stderr, "default pretty") {

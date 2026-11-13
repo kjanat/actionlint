@@ -12,6 +12,7 @@ import (
 )
 
 func TestCompositeNameAndScalarDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, script, rule, suggestion string
 	}{
@@ -25,6 +26,7 @@ func TestCompositeNameAndScalarDiagnostics(t *testing.T) {
 		{"unknown output", "echo '${{ steps.build.outputs.text }}'", "script-interpolation", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: |\n        "+tc.script+"\n")
@@ -46,9 +48,11 @@ func TestCompositeNameAndScalarDiagnostics(t *testing.T) {
 }
 
 func TestCompositeInterpolationIndependentOfActionValidation(t *testing.T) {
+	t.Parallel()
 	for _, standalone := range []bool{false, true} {
 		for _, level := range []string{"error", "off"} {
 			t.Run(fmt.Sprintf("standalone=%t/%s", standalone, level), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config := "tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {action: off, expression: off, script-interpolation: " + level + "}}}\n"
 				body := "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ${{ true }}\n"
@@ -78,6 +82,7 @@ func TestCompositeInterpolationIndependentOfActionValidation(t *testing.T) {
 }
 
 func TestCompositeInvalidNamePreservesIndependentScriptFinding(t *testing.T) {
+	t.Parallel()
 	for _, script := range []string{
 		"echo '${{ github.ref_name }}' '${{ githbu.ref }}'",
 		"echo '${{ githbu.ref }}' '${{ github.ref_name }}'",

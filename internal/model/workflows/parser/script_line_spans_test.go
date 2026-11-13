@@ -12,6 +12,7 @@ import (
 )
 
 func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
+	t.Parallel()
 	for name, run := range map[string]string{
 		"literal": "|\n          echo ::set-output name=x::1\n          echo done\n",
 		"keep":    "|+\n          echo ::set-output name=x::1\n\n",
@@ -21,6 +22,7 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 		"unicode": "|\n          echo 日本語 ::set-output name=x::1\n",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + run + "\n"
 			workflow, errs := Parse([]byte(source))
 			if len(errs) != 0 {

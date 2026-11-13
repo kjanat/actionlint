@@ -20,6 +20,7 @@ func (e inventoryEntry) Type() fs.FileMode          { return e.info.Mode().Type(
 func (e inventoryEntry) Info() (os.FileInfo, error) { return e.info, nil }
 
 func TestWorkflowPathsFilesystemIdentity(t *testing.T) {
+	t.Parallel()
 	seed := t.TempDir()
 	info := func(name string) os.FileInfo {
 		t.Helper()
@@ -53,6 +54,7 @@ func TestWorkflowPathsFilesystemIdentity(t *testing.T) {
 	} {
 		for _, windows := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: "/unix-policy", true: "/windows-policy"}[windows], func(t *testing.T) {
+				t.Parallel()
 				files := map[string]os.FileInfo{dir: directory, lower: first}
 				entries := []os.DirEntry{inventoryEntry{"build.yml", first}}
 				if tc.upperInfo != nil {

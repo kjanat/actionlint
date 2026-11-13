@@ -6,6 +6,7 @@ import (
 )
 
 func TestSanitize(t *testing.T) {
+	t.Parallel()
 	source := "print(${{\n 'é'\n}}, missing)"
 	got, valid, err := Sanitize(source, func(string) (int, bool) { return len("\n 'é'\n}}"), true })
 	if err != nil || !valid || len([]rune(got)) != len([]rune(source)) || strings.Contains(got, "${{") {
@@ -24,6 +25,7 @@ func TestSanitize(t *testing.T) {
 }
 
 func TestSanitizeTemplateContexts(t *testing.T) {
+	t.Parallel()
 	end := func(source string) (int, bool) {
 		index := strings.Index(source, "}}")
 		return index + 2, index >= 0
@@ -38,6 +40,7 @@ func TestSanitizeTemplateContexts(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(source, "\n", ending)
 			t.Run(source, func(t *testing.T) {
+				t.Parallel()
 				got, valid, err := Sanitize(source, end)
 				if err != nil || !valid || len([]rune(got)) != len([]rune(source)) {
 					t.Fatalf("got %q, valid %v, error %v", got, valid, err)
@@ -56,6 +59,7 @@ func TestSanitizeTemplateContexts(t *testing.T) {
 }
 
 func TestSanitizeAdjacentPythonDelimiters(t *testing.T) {
+	t.Parallel()
 	end := func(source string) (int, bool) { return strings.Index(source, "}}") + 2, true }
 	for _, source := range []string{
 		"value=${{ number }}+1",
@@ -68,6 +72,7 @@ func TestSanitizeAdjacentPythonDelimiters(t *testing.T) {
 		"# item_${{ name }}.0\nvalue=1",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			got, valid, err := Sanitize(source, end)
 			if err != nil || !valid || len([]rune(got)) != len([]rune(source)) {
 				t.Fatalf("got %q, valid %v, error %v", got, valid, err)
@@ -82,6 +87,7 @@ func TestSanitizeAdjacentPythonDelimiters(t *testing.T) {
 }
 
 func TestFStringConversionTemplates(t *testing.T) {
+	t.Parallel()
 	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
 	for _, source := range []string{
 		`print(f"{1:'>5} {2!${{ 'r' }}}")`,
@@ -125,6 +131,7 @@ func TestFStringConversionTemplates(t *testing.T) {
 }
 
 func TestSanitizeOperatorTemplates(t *testing.T) {
+	t.Parallel()
 	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
 	for _, source := range []string{
 		"if lhs ${{ inputs.operator }} rhs: pass",
@@ -138,6 +145,7 @@ func TestSanitizeOperatorTemplates(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(source, "\n", ending)
 			t.Run(source, func(t *testing.T) {
+				t.Parallel()
 				if got, valid, err := Sanitize(source, end); err != nil || valid || got != "" {
 					t.Fatalf("operator template accepted: %q, %v, %v", got, valid, err)
 				}
@@ -155,6 +163,7 @@ func TestSanitizeOperatorTemplates(t *testing.T) {
 		"value = 'lhs ${{ inputs.operator }} rhs'", "# lhs ${{ inputs.operator }} rhs",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			if _, valid, err := Sanitize(source, end); err != nil || !valid {
 				t.Fatalf("value template skipped: %v, %v", valid, err)
 			}
@@ -163,6 +172,7 @@ func TestSanitizeOperatorTemplates(t *testing.T) {
 }
 
 func TestImportFromTemplatesRemainUnsupported(t *testing.T) {
+	t.Parallel()
 	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
 	for _, source := range []string{
 		"from ${{ inputs.module }} import name",
@@ -176,6 +186,7 @@ func TestImportFromTemplatesRemainUnsupported(t *testing.T) {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(source, "\n", ending)
 			t.Run(source, func(t *testing.T) {
+				t.Parallel()
 				if got, valid, err := Sanitize(source, end); err != nil || valid || got != "" {
 					t.Fatalf("import template accepted: %q, %v, %v", got, valid, err)
 				}
@@ -185,6 +196,7 @@ func TestImportFromTemplatesRemainUnsupported(t *testing.T) {
 }
 
 func TestPercentMaskIsValidConversion(t *testing.T) {
+	t.Parallel()
 	source, valid, err := Sanitize(`print("%03${{ inputs.kind }}" % 1)`, reviewExpressionEnd)
 	if err != nil || !valid || !strings.Contains(source, "%03s") {
 		t.Fatalf("mask manufactured an unsupported conversion: %q valid=%v err=%v", source, valid, err)
@@ -197,6 +209,7 @@ func reviewExpressionEnd(source string) (int, bool) {
 }
 
 func TestScriptSkipsUnmaskableTemplates(t *testing.T) {
+	t.Parallel()
 	prepared, err := Script("import ${{ inputs.module }}")
 	if err != nil || prepared.Skip == "" {
 		t.Fatalf("name template reached the tool: %+v %v", prepared, err)

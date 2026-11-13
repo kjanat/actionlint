@@ -11,6 +11,7 @@ import (
 )
 
 func TestReusableIgnoresMetadataPerJob(t *testing.T) {
+	t.Parallel()
 	for _, metadata := range []string{
 		`name: inner
 description: test

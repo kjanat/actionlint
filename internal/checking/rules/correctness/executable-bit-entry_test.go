@@ -9,6 +9,7 @@ import (
 )
 
 func TestActionEntryInitializesPathsAndPreservesCheckerFlags(t *testing.T) {
+	t.Parallel()
 	parent := NewExecutableChecker(ExecutableContext{})
 	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {

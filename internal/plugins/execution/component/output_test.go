@@ -7,6 +7,7 @@ import (
 )
 
 func TestHostLogSharesOutputBudget(t *testing.T) {
+	t.Parallel()
 	var lines []string
 	w := &lineWriter{log: func(line string) { lines = append(lines, line) }}
 	h := hostImplementation{output: w}
@@ -30,6 +31,7 @@ func TestHostLogSharesOutputBudget(t *testing.T) {
 }
 
 func TestOutputBounds(t *testing.T) {
+	t.Parallel()
 	var lines []string
 	w := &lineWriter{log: func(line string) { lines = append(lines, line) }}
 	chunk := strings.Repeat("x", maxPluginLine)

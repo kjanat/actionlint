@@ -26,6 +26,7 @@ func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.Input
 }
 
 func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("incomplete")
 	input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}, Mappings: []workflowfacts.Mapping{{Entries: []workflowfacts.Entry{{Name: "original"}}}}}
 	changed := make(chan struct{})
@@ -59,6 +60,7 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 }
 
 func TestRunRequirementsAndCancellation(t *testing.T) {
+	t.Parallel()
 	for _, requirement := range []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution, "future"} {
 		a := testAnalyzer{checkinputs.Descriptor{Name: "requires", RequiredInputs: []rulemeta.InputKind{requirement}}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
 			t.Error("ran without required facts")
@@ -78,6 +80,7 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 }
 
 func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("second lookup failed")
 	input := checkinputs.Input{
 		Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies},
@@ -105,6 +108,7 @@ func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
 }
 
 func TestRunCancellationDuringPreparationDoesNotStartChecker(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	checker := testAnalyzer{checkinputs.Descriptor{Name: "cancelled"}, func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
@@ -121,6 +125,7 @@ func TestRunCancellationDuringPreparationDoesNotStartChecker(t *testing.T) {
 }
 
 func TestRunIsolatesActionInputFacts(t *testing.T) {
+	t.Parallel()
 	root, callID, scriptID := checkinputs.OccurrenceID(strings.Repeat("1", 64)), checkinputs.OccurrenceID(strings.Repeat("2", 64)), checkinputs.OccurrenceID(strings.Repeat("3", 64))
 	declaration := source.Reference{Document: "action.yml", Revision: "r", Node: "script"}
 	outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: source.Reference{Document: "action.yml", Revision: "r", Node: "document"}})

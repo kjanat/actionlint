@@ -15,7 +15,7 @@ import (
 // provider with its shorthands beside the host keys. Any other name may be a
 // plugin's provider, so it gets the host keys only.
 func TestToolsSchemaFollowsBundledManifests(t *testing.T) {
-	t.Chdir("../..")
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)

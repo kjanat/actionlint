@@ -8,6 +8,7 @@ import (
 )
 
 func TestFormatterGitHubCommandEscaping(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, input, data, property string
 	}{
@@ -19,6 +20,7 @@ func TestFormatterGitHubCommandEscaping(t *testing.T) {
 		{"command injection", "%\r\n::error file=x,y::message", "%25%0D%0A::error file=x,y::message", "%25%0D%0A%3A%3Aerror file=x%2Cy%3A%3Amessage"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, escape := range []struct{ function, want string }{{"escapeData", tc.data}, {"escapeProperty", tc.property}} {
 				for _, format := range []string{"{{range .}}{{" + escape.function + " .Message}}{{end}}", "{{range .}}{{.Message | " + escape.function + "}}{{end}}"} {
 					formatter, err := NewFormatter(format, func() string { return "" }, nil)
@@ -39,6 +41,7 @@ func TestFormatterGitHubCommandEscaping(t *testing.T) {
 }
 
 func TestFormatterGitHubAnnotationExample(t *testing.T) {
+	t.Parallel()
 	format := "{{range $err := .}}::error file={{escapeProperty $err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{escapeData $err.Message}}%0A```%0A{{escapeData $err.Snippet}}%0A```\n{{end}}"
 	formatter, err := NewFormatter(format, func() string { return "" }, nil)
 	if err != nil {
@@ -58,6 +61,7 @@ func TestFormatterGitHubAnnotationExample(t *testing.T) {
 }
 
 func TestFormatterPrintJSONEncodeError(t *testing.T) {
+	t.Parallel()
 	f, err := NewFormatter("{{json .}}", func() string { return "" }, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -74,6 +78,7 @@ func TestFormatterPrintJSONEncodeError(t *testing.T) {
 }
 
 func TestFormatterRegisterRuleInParallel(t *testing.T) {
+	t.Parallel()
 	f, err := NewFormatter("{{json .}}", func() string { return "" }, []Rule{{Name: "seed", Description: "seeded"}})
 	if err != nil {
 		t.Fatal(err)

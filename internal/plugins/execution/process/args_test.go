@@ -26,6 +26,7 @@ func bundledManifest(t *testing.T, name string) pluginmanifests.Manifest {
 }
 
 func TestRenderArgs(t *testing.T) {
+	t.Parallel()
 	templates := []string{"literal", "{var:path}", "{var:unset}", "{flag:dialect:--shell}", "{flag:unset:--opt}", "{option:dialect:--shell}", "{option:unset:--opt}", "{switch:on:-x:}", "{switch:off:-x:--no-x}", "{switch:false:--yes:--no}", "{list:exclude:,}", "{list:unset:,}", "{config:toml-pairs:--config}", "{user-args}", "{config:toml-file}", "-"}
 	got, err := renderArgs(templates, argInputs{
 		vars:       map[string]string{"path": "a b", "dialect": "bash", "on": "1", "false": "false", "exclude": "SC1\nSC2"},
@@ -56,6 +57,7 @@ func ruffLaunchers(t *testing.T) []launcher {
 // The Ruff launcher grammar is data. These cases are those of the Ruff
 // adapter's commandArguments test, run against the bundled manifest.
 func TestRuffLauncherGrammar(t *testing.T) {
+	t.Parallel()
 	launchers := ruffLaunchers(t)
 	for _, tc := range []struct {
 		exe    string
@@ -85,6 +87,7 @@ func TestRuffLauncherGrammar(t *testing.T) {
 		{"py", []string{"-V:3", "-m", "ruff"}},
 	} {
 		t.Run(tc.exe+strings.Join(tc.prefix, " "), func(t *testing.T) {
+			t.Parallel()
 			flags := []string{"--preview", "--exclude", "ruff"}
 			prefix, got, err := splitLauncher(launchers, tc.exe, slices.Concat(tc.prefix, flags))
 			if err != nil || !slices.Equal(prefix, tc.prefix) || !slices.Equal(got, flags) {
@@ -149,6 +152,7 @@ func TestRuffLauncherGrammar(t *testing.T) {
 // The Ruff user-argument rules are data. These cases are those the Ruff
 // adapter's validateCommand rejects or preserves.
 func TestRuffUserArgs(t *testing.T) {
+	t.Parallel()
 	spec := bundledManifest(t, "ruff").Process.UserArgs
 	directory := t.TempDir()
 	if err := os.WriteFile(filepath.Join(directory, "ruff.toml"), []byte("line-length = 1\n"), 0o600); err != nil {

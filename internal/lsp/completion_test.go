@@ -10,6 +10,7 @@ import (
 )
 
 func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
+	t.Parallel()
 	input, client := io.Pipe()
 	receive, output := io.Pipe()
 	defer client.Close()

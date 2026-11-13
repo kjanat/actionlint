@@ -70,6 +70,7 @@ func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry
 }
 
 func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	network := fixtureregistry.NewPluginRegistry(t)
 	network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	legacyFiles := network.Files()
@@ -141,6 +142,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 }
 
 func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for name, mutate := range map[string]func(*manifest, *record){
 		"repository":          func(m *manifest, _ *record) { m.Plugin.Repository = "attacker/plugin" },
 		"repository-ID":       func(m *manifest, _ *record) { m.Plugin.RepositoryID = "11" },
@@ -150,6 +152,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 		"discriminator":       func(_ *manifest, r *record) { r.IdentityVersion = 0 },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			network := fixtureregistry.NewPluginRegistry(t)
 			p, recordURL := publishPackageFixture(t, network, fixtureregistry.FixturePluginName+"/wasm", "v1.0.0", false)
 			var m manifest
@@ -180,6 +183,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 }
 
 func TestPackageLockRejectsRepositoryBoundaryChange(t *testing.T) {
+	t.Parallel()
 	pin := Pin{Registry: DefaultURL, Name: "gitlab.com/publisher/group/repo/package", Repository: "gitlab.com/publisher/group/repo", RepositoryID: "10", OwnerID: "5", PluginID: "gitlab.com/publisher/group/repo/package", Selector: "v1.0.0", Version: "v1.0.0", Kind: artifacts.Component, Asset: "plugin.wasm", URL: "https://gitlab.com/api/v4/projects/10/packages/generic/actionlint-plugin/v1.0.0/plugin.wasm", SHA256: strings.Repeat("a", 64), Contract: "future/1"}
 	file, err := OpenLock(t.Context(), filepath.Join(t.TempDir(), LockName))
 	if err != nil {
@@ -199,11 +203,13 @@ func TestPackageLockRejectsRepositoryBoundaryChange(t *testing.T) {
 }
 
 func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, id string }{
 		{"github.com/publisher/plugin/process", "GitHub.com/Publisher/Plugin/Process"},
 		{"github.com/Publisher/Plugin", "legacy"},
 	} {
 		t.Run(tc.id, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			metadata := fmt.Appendf(nil, `{"metadata_version":1,"transport":"process","id":%q,"name":"Example","description":"Example plugin","license":"MIT","plugin_version":"1.0.0","repository":"https://github.com/Publisher/Plugin"}`, tc.id)
 			body := fmt.Appendf(nil, `{"schema_version":1,"transport":"process","metadata":%s}`, metadata)

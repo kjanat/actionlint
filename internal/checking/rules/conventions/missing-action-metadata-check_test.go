@@ -15,6 +15,7 @@ import (
 )
 
 func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
+	t.Parallel()
 	remote := actionremote.New(metadataAvailabilityProvider{availability.Failed()})
 	if _, err := remote.Inspect(t.Context(), "actions/checkout@v4"); err != nil {
 		t.Fatal(err)
@@ -22,6 +23,7 @@ func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
 	check := MissingActionMetadataCheck(remote.Resolved())
 	for _, uses := range []string{"./local", "$/mapped", "docker://alpine", "${{ inputs.action }}", "invalid", "actions/checkout@v4"} {
 		t.Run(uses, func(t *testing.T) {
+			t.Parallel()
 			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: uses, Pos: &workflowlang.Pos{Line: 7, Col: 9}}}}
 			snapshot := workflowdecl.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("metadata-step").Workflow()
 			job, _ := snapshot.Job("test")
@@ -53,6 +55,7 @@ func (p metadataAvailabilityProvider) Lookup(context.Context, actions.Reference)
 }
 
 func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{uses: actions/checkout@v4}]\n"
 	for _, tc := range []struct {
 		reason   availability.Unavailability
@@ -75,6 +78,7 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 		{availability.InvalidResolverResult(), 1, "; the reference resolver returned an invalid or incomplete selection"},
 	} {
 		t.Run(string(tc.reason.Reason()), func(t *testing.T) {
+			t.Parallel()
 			remote := actionremote.New(metadataAvailabilityProvider{tc.reason})
 			if _, err := remote.Inspect(t.Context(), "actions/checkout@v4"); err != nil {
 				t.Fatal(err)

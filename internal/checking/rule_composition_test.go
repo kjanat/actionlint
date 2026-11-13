@@ -28,6 +28,7 @@ func (r *customRuleForTest) VisitStep(n workflowdecl.StepView) error {
 }
 
 func TestTraversalAddsCustomRule(t *testing.T) {
+	t.Parallel()
 	request := analysisRequest{
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			r := &customRuleForTest{
@@ -86,6 +87,7 @@ permissions: {}
 }
 
 func TestTraversalRemovesBuiltinRule(t *testing.T) {
+	t.Parallel()
 	request := analysisRequest{
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			for i, r := range rules {

@@ -18,6 +18,7 @@ import (
 )
 
 func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {
+	t.Parallel()
 	locations := []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}
 	for _, tc := range []struct {
 		prefix string

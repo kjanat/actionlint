@@ -7,6 +7,7 @@ import (
 )
 
 func TestRuleBehavioursMatchCatalog(t *testing.T) {
+	t.Parallel()
 	rules := ConfigurationRules()
 	registrations := ruleexec.Registrations(rules)
 	if len(registrations) != len(rules.Rules()) {

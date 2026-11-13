@@ -29,6 +29,7 @@ func loadPSScriptAnalyzer(t *testing.T) (manifests.Manifest, manifests.Programs)
 }
 
 func TestRecordedPSScriptAnalyzerOutput(t *testing.T) {
+	t.Parallel()
 	manifest, _ := loadPSScriptAnalyzer(t)
 	if manifest.Process == nil || manifest.Process.Output.Transform == nil {
 		t.Fatal("missing process output transform")
@@ -71,6 +72,7 @@ func TestRecordedPSScriptAnalyzerOutput(t *testing.T) {
 // Opt in when pwsh 7 and PSScriptAnalyzer >=1.25.0 are installed. This never
 // installs a dependency or downloads an artifact during a test.
 func TestPSScriptAnalyzerWorkflow(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_TEST_PSSCRIPTANALYZER") != "1" {
 		t.Skip("set ACTIONLINT_TEST_PSSCRIPTANALYZER=1 with pwsh and PSScriptAnalyzer installed")
 	}

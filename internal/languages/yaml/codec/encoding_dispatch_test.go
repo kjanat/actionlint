@@ -14,6 +14,7 @@ type unsafeNodeResult struct{ result any }
 func (m unsafeNodeResult) MarshalYAML() (any, error) { return m.result, nil }
 
 func TestMarshalerCannotReturnSyntaxNodes(t *testing.T) {
+	t.Parallel()
 	node := syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "hidden"}
 	for _, tc := range []struct {
 		name   string
@@ -24,6 +25,7 @@ func TestMarshalerCannotReturnSyntaxNodes(t *testing.T) {
 		{name: "node in returned slice", result: []any{node}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			value := unsafeNodeResult{result: tc.result}
 			if _, err := codec.Marshal(value); err == nil {
 				t.Fatal("Marshal accepted a syntax node returned by a Marshaler")
@@ -52,6 +54,7 @@ type safeTextMarshaler struct {
 func (safeTextMarshaler) MarshalText() ([]byte, error) { return []byte("safe text"), nil }
 
 func TestSafeMarshalersHideSyntaxNodesAndParentCycles(t *testing.T) {
+	t.Parallel()
 	node := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "internal"}
 	yamlValue := &safeYAMLMarshaler{Node: node}
 	yamlValue.Parent = yamlValue
@@ -66,6 +69,7 @@ func TestSafeMarshalersHideSyntaxNodesAndParentCycles(t *testing.T) {
 		{name: "TextMarshaler", value: textValue, want: "safe text\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := codec.Marshal(tc.value)
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
@@ -78,6 +82,7 @@ func TestSafeMarshalersHideSyntaxNodesAndParentCycles(t *testing.T) {
 }
 
 func TestNilSyntaxNodeFieldEncodesAsNull(t *testing.T) {
+	t.Parallel()
 	value := struct {
 		Node *syntax.Node `yaml:"node"`
 	}{}
@@ -114,6 +119,7 @@ func TestNilSyntaxNodeFieldEncodesAsNull(t *testing.T) {
 }
 
 func TestEncoderWritesNothingOnMarshalerFailureAndRemainsUsable(t *testing.T) {
+	t.Parallel()
 	node := syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "unsafe"}
 	var output bytes.Buffer
 	encoder := codec.NewEncoder(&output)
@@ -135,6 +141,7 @@ func TestEncoderWritesNothingOnMarshalerFailureAndRemainsUsable(t *testing.T) {
 }
 
 func TestEncodeReturnsAValueNodeWithZeroCoordinates(t *testing.T) {
+	t.Parallel()
 	value := map[string]any{"nested": []any{"value", map[string]string{"leaf": "text"}}}
 	encoded, err := codec.Encode(value)
 	if err != nil {

@@ -58,6 +58,7 @@ func newSelectionCounts() *selectionCounts {
 }
 
 func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
+	t.Parallel()
 	const source = "picked: &node {self: *node}\ncopy: *node\n"
 	root, err := Parse([]byte(source))
 	if err != nil {
@@ -114,6 +115,7 @@ func TestSelectPreservesAliasOccurrenceAndCycleContext(t *testing.T) {
 }
 
 func TestSelectAliasAndMergeCountsMatchPlainDecode(t *testing.T) {
+	t.Parallel()
 	const source = `defaults: &defaults {name: shared, enabled: true}
 items: &items
   - <<: *defaults
@@ -192,6 +194,7 @@ picked: *items
 }
 
 func TestSelectSchemaErrorsAndClosedCursor(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("first: one\nsecond: two\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -222,6 +225,7 @@ func TestSelectSchemaErrorsAndClosedCursor(t *testing.T) {
 }
 
 func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
+	t.Parallel()
 	data := []byte("payload: &payload [" + strings.TrimSuffix(strings.Repeat("value, ", 650), ", ") + "]\nitems:\n  - *payload\n  - *payload\n  - *payload\nafter: reached\n")
 	var baseline struct {
 		Items [][]string `yaml:"items"`
@@ -283,43 +287,50 @@ func TestSelectAliasBudgetMatchesUpstreamAndStopsLaterVisitor(t *testing.T) {
 }
 
 func TestSelectRejectsInvalidTargetAndVisitor(t *testing.T) {
-	root, err := Parse([]byte("value: ok\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	session, cursor, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer session.Close()
-	var target struct {
-		Value Selected `yaml:"value"`
-	}
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
-		call func() error
+		want string
+		call func(Cursor) error
 	}{
-		{"nil target", func() error { return cursor.Select(nil, func(*Selected, Cursor) error { return nil }) }},
-		{"nil visitor", func() error { return cursor.Select(&target, nil) }},
-		{"hook field", func() error {
+		{"nil target", "YAML target must be a non-nil pointer", func(cursor Cursor) error {
+			return cursor.Select(nil, func(*Selected, Cursor) error { return nil })
+		}},
+		{"nil visitor", "YAML Select requires a visitor", func(cursor Cursor) error {
+			var target struct {
+				Value Selected `yaml:"value"`
+			}
+			return cursor.Select(&target, nil)
+		}},
+		{"hook field", "YAML hooks require an explicit schema traversal", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value selectionHookField `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
-		{"node field", func() error {
+		{"node field", "YAML node fields require an explicit schema traversal", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value *syntax.Node `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
-		{"nested marker", func() error {
+		{"nested marker", "YAML selections require a Select struct field", func(cursor Cursor) error {
 			return cursor.Select(&struct {
 				Value []Selected `yaml:"value"`
 			}{}, func(*Selected, Cursor) error { return nil })
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.call(); err == nil {
-				t.Fatal("Select succeeded for invalid call")
+			t.Parallel()
+			root, err := Parse([]byte("value: ok\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, cursor, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(session.Close)
+			if err := tc.call(cursor); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Select error = %v, want %q", err, tc.want)
 			}
 		})
 	}

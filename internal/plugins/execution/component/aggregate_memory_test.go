@@ -15,6 +15,7 @@ import (
 )
 
 func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join("testdata", "wat", "aggregate-memory.wasm")
 	data, err := os.ReadFile(path)
 	if err != nil {

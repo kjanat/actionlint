@@ -5,6 +5,7 @@ import (
 )
 
 func TestCommitHashExclusions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		pattern, spec string
 		want          bool
@@ -21,6 +22,7 @@ func TestCommitHashExclusions(t *testing.T) {
 		{"docker://alpine:*", "docker://ubuntu:24.04", false},
 	} {
 		t.Run(tc.pattern+"/"+tc.spec, func(t *testing.T) {
+			t.Parallel()
 			options, err := NewCommitHashOptions(tc.pattern)
 			if err != nil {
 				t.Fatal(err)

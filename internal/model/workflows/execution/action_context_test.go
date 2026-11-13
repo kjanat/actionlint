@@ -18,6 +18,7 @@ import (
 )
 
 func TestCallPositionAdmission(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name    string
 		pos     *workflowlang.Pos
@@ -31,6 +32,7 @@ func TestCallPositionAdmission(t *testing.T) {
 		{name: "partial column", pos: &workflowlang.Pos{Col: 3}, invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			position := invocation.Position{}
 			if tc.pos != nil {
 				position = invocation.Position{Line: tc.pos.Line, Column: tc.pos.Col}
@@ -57,6 +59,7 @@ func TestCallPositionAdmission(t *testing.T) {
 }
 
 func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
+	t.Parallel()
 	for _, body := range []string{
 		"    - uses: ./child\n",
 		"    - &call {uses: ./child}\n    - *call\n",
@@ -64,6 +67,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 		"    - uses: ./child\n      run: echo invalid\n",
 	} {
 		t.Run(body, func(t *testing.T) {
+			t.Parallel()
 			parsed := parsing.Action("action.yml", []byte("name: parent\ndescription: parent\nruns:\n  using: composite\n  steps:\n"+body))
 			if len(parsed.SyntaxErrors) != 0 || parsed.Facts == nil {
 				t.Fatalf("action parse failed: %v", parsed.SyntaxErrors)
@@ -93,6 +97,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 }
 
 func TestActionContextSnapshotsCallerEffects(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition *workflowlang.String
 		want      invocation.Condition
@@ -123,6 +128,7 @@ func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 }
 
 func TestEmptyUsesAndAbsentUsesRetainDistinctOriginSemantics(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, present := range []bool{false, true} {
 		facts := invocation.Facts{Condition: invocation.ConditionEnabled, HasUses: present}
@@ -143,6 +149,7 @@ func TestEmptyUsesAndAbsentUsesRetainDistinctOriginSemantics(t *testing.T) {
 }
 
 func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
+	t.Parallel()
 	line := "jobs: {é: {runs-on: ubuntu-latest, steps: [{uses: ./child}]}}"
 	parsed := parsing.Workflow([]byte("on: push\n" + line + "\n"))
 	if len(parsed.SyntaxErrors) != 0 {
@@ -168,6 +175,7 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 }
 
 func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          null-value: null\n          null-text: 'null'\n")
 	parsed := parsing.Workflow(content)
 	if len(parsed.SyntaxErrors) != 0 {

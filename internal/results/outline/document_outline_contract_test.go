@@ -9,6 +9,7 @@ import (
 )
 
 func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		`[null]`,
 		`[{"kind":"unexpected"}]`,
@@ -25,6 +26,7 @@ func TestDocumentOutlinesRejectUnknownKinds(t *testing.T) {
 }
 
 func TestDocumentOutlinesAcceptMissingRuntime(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		input string
@@ -33,6 +35,7 @@ func TestDocumentOutlinesAcceptMissingRuntime(t *testing.T) {
 		{"absent", `[{"kind":"action","path":"action.yml"}]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var documents documentmodel.Outlines
 			if err := json.Unmarshal([]byte(tc.input), &documents); err != nil {
 				t.Fatal(err)

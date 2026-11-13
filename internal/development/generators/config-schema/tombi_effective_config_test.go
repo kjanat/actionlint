@@ -13,6 +13,7 @@ import (
 )
 
 func TestEffectiveConfigInheritance(t *testing.T) {
+	t.Parallel()
 	dir, err := filepath.Abs("testdata/tombi/effective")
 	if err != nil {
 		t.Fatal(err)
@@ -74,6 +75,7 @@ func TestEffectiveConfigInheritance(t *testing.T) {
 	}
 	for _, tc := range []struct{ path, runner, local string }{{"a.yml", "override-last", "./override-last"}, {"b.yml", "second", "./second"}} {
 		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
 			selected, err := rs.ForFile(c, tc.path, dir)
 			if err != nil {
 				t.Fatal(err)
@@ -94,6 +96,7 @@ type effectiveRuleCase struct {
 }
 
 func TestEffectiveJSONRoots(t *testing.T) {
+	t.Parallel()
 	rs, err := config.NewRuleSet(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -109,6 +112,7 @@ func TestEffectiveJSONRoots(t *testing.T) {
 	}
 	for _, name := range []string{"null", "array", "string", "number", "boolean"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			loaded, err := rs.Read(filepath.Join(dir, "repository-json-root-"+name+".json"), nil)
 			if name != "null" {
 				if err == nil {
@@ -131,6 +135,7 @@ func TestEffectiveJSONRoots(t *testing.T) {
 }
 
 func TestEffectiveRuleOverrides(t *testing.T) {
+	t.Parallel()
 	b, err := os.ReadFile("testdata/tombi/effective/rules.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -148,6 +153,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 	}
 	for _, want := range cases {
 		t.Run(want.path, func(t *testing.T) {
+			t.Parallel()
 			selected, err := rs.ForFile(cfg, want.path, "")
 			if err != nil {
 				t.Fatal(err)

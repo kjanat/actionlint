@@ -11,11 +11,13 @@ import (
 )
 
 func TestLockReplacementPreservesPermissions(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix permission bits require a Unix filesystem")
 	}
 	for _, mode := range []os.FileMode{0o640, 0o444} {
 		t.Run(mode.String(), func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), LockName)
 			if err := os.WriteFile(path, []byte(`{"schema_version":1,"plugins":[]}`), 0o600); err != nil {
 				t.Fatal(err)
@@ -54,12 +56,14 @@ func (c lockEditContext) Err() error {
 }
 
 func TestLockReplacementRechecksConcurrentEdits(t *testing.T) {
+	t.Parallel()
 	for _, remove := range []bool{false, true} {
 		name := "replace"
 		if remove {
 			name = "remove"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), LockName)
 			original := []byte(`{"schema_version":1,"plugins":[]}`)
 			edited := append(bytes.Clone(original), '\n', '\n')
@@ -115,6 +119,7 @@ func TestLockReplacementRechecksConcurrentEdits(t *testing.T) {
 }
 
 func TestLockReplacementPreservesReadOnlyWindowsFile(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows read-only replacement semantics")
 	}

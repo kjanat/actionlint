@@ -72,6 +72,7 @@ func documentBatchFixture(tb testing.TB, count int) tools.Batch {
 }
 
 func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T) {
+	t.Parallel()
 	batch := documentBatchFixture(t, 3)
 	graph := batch.CallGraph
 	entry := graph.Entry().Reference

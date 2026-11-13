@@ -10,6 +10,7 @@ import (
 )
 
 func TestSettingCanonicalLevels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ input, want string }{
 		{"false", "off"},
 		{"true", "on"},
@@ -22,6 +23,7 @@ func TestSettingCanonicalLevels(t *testing.T) {
 		{"{level: default}", "default"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			parsed, err := document.Parse("test.yaml", []byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -65,6 +67,7 @@ func (o *editingOptions) DecodeConfig(value any) error {
 }
 
 func TestLoadOptionsDecodesPrivateCopy(t *testing.T) {
+	t.Parallel()
 	setting, err := NewSetting("on", map[string]string{"name": "original"})
 	if err != nil {
 		t.Fatal(err)
@@ -78,6 +81,7 @@ func TestLoadOptionsDecodesPrivateCopy(t *testing.T) {
 }
 
 func TestNewSettingRejectsNonMappingOptions(t *testing.T) {
+	t.Parallel()
 	if _, err := NewSetting("on", []string{"a"}); err == nil {
 		t.Fatal("accepted sequence options")
 	}
@@ -88,6 +92,7 @@ func TestNewSettingRejectsNonMappingOptions(t *testing.T) {
 }
 
 func TestNewSettingParsesJSONRawMessage(t *testing.T) {
+	t.Parallel()
 	setting, err := NewSetting("on", json.RawMessage(`{"max-count": 3, "names": ["a"]}`))
 	if err != nil {
 		t.Fatal(err)
@@ -112,6 +117,7 @@ func TestNewSettingParsesJSONRawMessage(t *testing.T) {
 }
 
 func TestGroupKeepsItsRulesAndOmitsWhenEmpty(t *testing.T) {
+	t.Parallel()
 	rules := map[string]Setting{"expression": {level: "off"}}
 	group := NewGroup("", "warn", rules)
 	rules["expression"] = Setting{level: "on"}
@@ -127,6 +133,7 @@ func TestGroupKeepsItsRulesAndOmitsWhenEmpty(t *testing.T) {
 }
 
 func TestLevelErrorsUseNamedLevels(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"''", "0", "[]", "{}"} {
 		var level Level
 		err := decodeTestConfig([]byte(input), &level)

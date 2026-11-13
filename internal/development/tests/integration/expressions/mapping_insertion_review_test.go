@@ -18,8 +18,10 @@ import (
 )
 
 func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
+	t.Parallel()
 	for _, nested := range []bool{false, true} {
 		t.Run(strconv.FormatBool(nested), func(t *testing.T) {
+			t.Parallel()
 			matrix := "os: [not-a-runner, not-a-runner]\n        exclude: [{extra: 1}]\n        ${{ insert }}: ${{ fromJSON(vars.EXTRA) }}"
 			if nested {
 				matrix = "${{ insert }}:\n          " + strings.ReplaceAll(matrix, "\n        ", "\n          ")
@@ -45,6 +47,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 }
 
 func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
+	t.Parallel()
 	for _, scope := range []string{"with", "insert", "nested"} {
 		for _, tc := range []struct{ name, object, entrypoint, args, want string }{
 			{"empty entrypoint", `{"entrypoint":""}`, "", "", "string should not be empty"},
@@ -53,6 +56,7 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 			{"evaluated strings", `{"entrypoint":"${{ missing }}","args":"${{ missing }}"}`, "${{ missing }}", "${{ missing }}", ""},
 		} {
 			t.Run(scope+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				expression := "${{ fromJSON('" + tc.object + "') }}"
 				with := fmt.Sprintf("%q", expression)
 				if scope != "with" {
@@ -83,6 +87,7 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 }
 
 func TestConstantInsertedKeyCollisions(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"env", "with", "matrix"} {
 		value := "one"
 		if section == "matrix" {
@@ -101,6 +106,7 @@ func TestConstantInsertedKeyCollisions(t *testing.T) {
 			{"unknown key", `{FOO: %s, '${{ insert }}': {'${{ vars.KEY }}': %s}}`, false},
 		} {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				_, errs := workflowparser.Parse([]byte(insertionSectionWorkflow(section, fmt.Sprintf(tc.mapping, value, value))))
 				duplicates := 0
 				for _, err := range errs {
@@ -119,6 +125,7 @@ func TestConstantInsertedKeyCollisions(t *testing.T) {
 }
 
 func TestDockerConstantInputKeys(t *testing.T) {
+	t.Parallel()
 	for _, scope := range []string{"with", "insert", "nested"} {
 		for _, tc := range []struct{ name, mapping, entrypoint, args, want string }{
 			{"empty entrypoint", `{"${{ 'entrypoint' }}": ''}`, "", "", "string should not be empty"},
@@ -127,6 +134,7 @@ func TestDockerConstantInputKeys(t *testing.T) {
 			{"key expression checked", `{"${{ case(true, 'entrypoint', missing) }}": bash}`, "", "", `undefined variable "missing"`},
 		} {
 			t.Run(scope+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				mapping := tc.mapping
 				for range map[string]int{"with": 0, "insert": 1, "nested": 2}[scope] {
 					mapping = "{'${{ insert }}': " + mapping + "}"
@@ -157,9 +165,11 @@ func TestDockerConstantInputKeys(t *testing.T) {
 }
 
 func TestActionInputResolutionAcrossConsumers(t *testing.T) {
+	t.Parallel()
 	for _, key := range []string{"script", `"${{ 'script' }}"`, `"${{ 'SCRIPT' }}"`, `"${{ format('{0}', 'script') }}"`} {
 		for depth := range 3 {
 			t.Run(fmt.Sprintf("%s/depth=%d", key, depth), func(t *testing.T) {
+				t.Parallel()
 				mapping := "{" + key + ": '${{ github.event.issue.title }}'}"
 				for range depth {
 					mapping = "{'${{ insert }}': " + mapping + "}"
@@ -191,6 +201,7 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 }
 
 func TestActionInputObjectResultsStayData(t *testing.T) {
+	t.Parallel()
 	for _, mapping := range []string{
 		`"${{ fromJSON('{\"script\":\"${{ github.event.issue.title }}\"}') }}"`,
 		`{'${{ insert }}': "${{ fromJSON('{\"script\":\"${{ github.event.issue.title }}\"}') }}"}`,
@@ -208,9 +219,11 @@ func TestActionInputObjectResultsStayData(t *testing.T) {
 }
 
 func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
+	t.Parallel()
 	for depth := range 3 {
 		for _, key := range []string{"${{ 'os' }}", "${{ 'OS' }}", "${{ format('{0}', 'os') }}"} {
 			t.Run(fmt.Sprintf("depth=%d/%s", depth, key), func(t *testing.T) {
+				t.Parallel()
 				matrix := fmt.Sprintf("{%q: [ubuntu-latest]}", key)
 				for range depth {
 					matrix = "{'${{ insert }}': " + matrix + "}"
@@ -257,10 +270,12 @@ func lintMatrixWithKnownRunnerLabels(t *testing.T, source string) []diagmodel.Di
 }
 
 func TestUnknownScriptInputNames(t *testing.T) {
+	t.Parallel()
 	for _, action := range []string{"actions/github-script@v8", "example/action@v1"} {
 		for _, key := range []string{"${{ inputs.input-name }}", "${{ vars.NAME }}", "${{ 'github-token' }}"} {
 			for depth := range 3 {
 				t.Run(fmt.Sprintf("%s/%s/depth=%d", action, key, depth), func(t *testing.T) {
+					t.Parallel()
 					mapping := fmt.Sprintf("{%q: '${{ github.event.issue.title }}'}", key)
 					if key == "${{ 'github-token' }}" {
 						mapping = fmt.Sprintf("{script: return, %q: '${{ github.event.issue.title }}'}", key)
@@ -285,6 +300,7 @@ func TestUnknownScriptInputNames(t *testing.T) {
 }
 
 func TestMatrixSourceKeyExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ key, want, rule string }{
 		{"${{ missing }}", `undefined variable "missing"`, "expression-reference"},
 		{"${{ env.NAME }}", `context "env" is not allowed`, "context-availability"},
@@ -295,6 +311,7 @@ func TestMatrixSourceKeyExpressions(t *testing.T) {
 		for _, value := range []string{"[one]", `"${{ fromJSON('[\"one\"]') }}"`} {
 			for depth := range 3 {
 				t.Run(fmt.Sprintf("%s/%s/depth=%d", tc.key, value, depth), func(t *testing.T) {
+					t.Parallel()
 					matrix := fmt.Sprintf("{%q: %s}", tc.key, value)
 					for range depth {
 						matrix = "{'${{ insert }}': " + matrix + "}"
@@ -317,6 +334,7 @@ func TestMatrixSourceKeyExpressions(t *testing.T) {
 }
 
 func TestResolvedEmptyMappingKeys(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"env", "with", "matrix"} {
 		value := "one"
 		if section == "matrix" {
@@ -325,6 +343,7 @@ func TestResolvedEmptyMappingKeys(t *testing.T) {
 		for _, key := range []string{"", "${{ '' }}", "${{ format('{0}', '') }}", "${{ null }}", "${{ vars.KEY }}", "${{ 'valid' }}"} {
 			for depth := range 3 {
 				t.Run(fmt.Sprintf("%s/%s/depth=%d", section, key, depth), func(t *testing.T) {
+					t.Parallel()
 					mapping := fmt.Sprintf("{%q: %s}", key, value)
 					for range depth {
 						mapping = "{'${{ insert }}': " + mapping + "}"
@@ -346,6 +365,7 @@ func TestResolvedEmptyMappingKeys(t *testing.T) {
 }
 
 func TestMatrixReservedKeyProvenance(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"include", "exclude"} {
 		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '" + section + "', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n" + "\npermissions: {}\n"
 		findings := lintCredentialsExpressionTest(t, source)
@@ -356,6 +376,7 @@ func TestMatrixReservedKeyProvenance(t *testing.T) {
 }
 
 func TestDynamicMatrixKeyDoesNotInventClosedShape(t *testing.T) {
+	t.Parallel()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        '${{ vars.AXIS }}': [one]\n    steps:\n      - env:\n          VALUE: ${{ matrix.runtime_axis }}\n        run: printf '%s' \"$VALUE\"\npermissions: {}\n"
 	findings := lintCredentialsExpressionTest(t, source)
 	if len(findings) != 0 {

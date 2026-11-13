@@ -41,6 +41,7 @@ func analysisForRenderSource(t *testing.T, source string) *checking.Result {
 }
 
 func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name              string
 		end               sourcepos.Position
@@ -50,6 +51,7 @@ func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
 		{"multiple lines", sourcepos.Position{Line: 5, Column: 2}, "17", "^~~~~"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			analysis := analysisForRenderSource(t, `on: push
 jobs:
   test:
@@ -75,6 +77,7 @@ permissions: {}
 }
 
 func TestCommandEscape(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ in, want string }{
 		{"", ""},
 		{"plain", "plain"},
@@ -91,6 +94,7 @@ func TestCommandEscape(t *testing.T) {
 }
 
 func TestRenderAnalysisNativeCodeAndSeverity(t *testing.T) {
+	t.Parallel()
 	analysis := analysisForRender(t, "")
 	finding := &analysis.Diagnostics[0]
 	finding.Rule, finding.Code, finding.Message = "ruff", "F821", "Undefined name"
@@ -110,6 +114,7 @@ func TestRenderAnalysisNativeCodeAndSeverity(t *testing.T) {
 }
 
 func TestRenderAnalysisCompatibility(t *testing.T) {
+	t.Parallel()
 	analysis := analysisForRender(t, "")
 	for _, tc := range []struct {
 		format outputFormat
@@ -128,6 +133,7 @@ label "a<b>&c" is unknown
 `},
 	} {
 		t.Run(string(tc.format), func(t *testing.T) {
+			t.Parallel()
 			got, err := renderAnalysis(tc.format, analysis, ".", ".")
 			if err != nil {
 				t.Fatal(err)
@@ -140,6 +146,7 @@ label "a<b>&c" is unknown
 }
 
 func TestRenderAnalysisEscapesCommandsAndRebasesPaths(t *testing.T) {
+	t.Parallel()
 	analysis := analysisForRender(t, "")
 	finding := &analysis.Diagnostics[0]
 	finding.Path = "work,flow:1.yaml"
@@ -164,6 +171,7 @@ func TestRenderAnalysisEscapesCommandsAndRebasesPaths(t *testing.T) {
 }
 
 func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
+	t.Parallel()
 	analysis := analysisForRender(t, strings.Repeat("\n", 1230))
 	got, err := renderAnalysis(formatDefault, analysis, ".", ".")
 	if err != nil || !strings.Contains(got, "\n     |\n1234 |     runs-on:") {
@@ -180,6 +188,7 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 }
 
 func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
+	t.Parallel()
 	analysis := &checking.Result{}
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
@@ -193,6 +202,7 @@ func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
 }
 
 func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
+	t.Parallel()
 	analysis := analysisForRender(t, "")
 	for _, serialized := range []string{"workflow.yaml:4:14: finding\n", "{\"runs\":[{\"results\":[{}]}]}\n"} {
 		result := &lintResult{lintOutcome: &lintOutcome{serialized, "", commandstatus.ExitSuccessProblemFound}, report: commandstatus.AnalysisResult(*analysis)}
@@ -204,6 +214,7 @@ func TestRenderOutcomeUsesTypedDiagnostics(t *testing.T) {
 }
 
 func TestRenderOutcomeKeepsFailureOutput(t *testing.T) {
+	t.Parallel()
 	result := &lintResult{lintOutcome: &lintOutcome{"partial", "boom\n", commandstatus.ExitFailure}}
 	o, count, rendered := renderOutcome(result)
 	if o.code != commandstatus.ExitFailure || count != "" || rendered != "boom\npartial" {

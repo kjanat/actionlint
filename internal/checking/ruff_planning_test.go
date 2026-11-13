@@ -13,6 +13,7 @@ import (
 )
 
 func TestRuffProjectCatchAllOverrides(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -37,6 +38,7 @@ func TestRuffProjectCatchAllOverrides(t *testing.T) {
 		{"catch-all has negative include", "[{includes: ['**', '!python-action/**'], tools: {ruff: false}}]", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeFixture(t, root, ".git", "")
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", `on: push
@@ -72,6 +74,7 @@ runs:
 }
 
 func TestRuffRequiredToolsCompositeOverrides(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, base, override string
 		want                 bool
@@ -88,6 +91,7 @@ func TestRuffRequiredToolsCompositeOverrides(t *testing.T) {
 		{"both reenabled", "tools: {ruff: false}\nlint: {rules: {external: {ruff: off}}}", "tools: {ruff: true}\n    lint: {rules: {external: {ruff: on}}}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path := writeFixture(t, root, "actionlint.yml", tc.base+`
 overrides:
@@ -105,6 +109,7 @@ overrides:
 }
 
 func TestRuffRequiredToolsManyOverrides(t *testing.T) {
+	t.Parallel()
 	unrelated := strings.Repeat(`  - includes: ['**/action.yml']
     lint: {rules: {correctness: {expression: warn}}}
 `, 8)
@@ -131,6 +136,7 @@ lint: {rules: {external: {ruff: off}}}
 `, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			config := writeFixture(t, root, "actionlint.yml", tc.base+"overrides:\n"+unrelated+tc.final)
 			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})}
@@ -143,6 +149,7 @@ lint: {rules: {external: {ruff: off}}}
 }
 
 func TestRuffRequiredToolsOverlappingOverrides(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config string
 		want         bool
@@ -176,6 +183,7 @@ overrides:
 `, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			config := writeFixture(t, root, "actionlint.yml", tc.config)
 			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})}
@@ -188,6 +196,7 @@ overrides:
 }
 
 func TestRuffRequiredToolsOverrides(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := writeFixture(t, root, "actionlint.yml", `tools: {shellcheck: false}
 files: {excludes: [skip.yml, '.github/workflows/skip.yml']}
@@ -213,6 +222,7 @@ overrides:
 }
 
 func TestRuffRequiredToolsProjectCompositeBaseline(t *testing.T) {
+	t.Parallel()
 	for _, enabled := range []bool{true, false} {
 		root := t.TempDir()
 		writeFixture(t, root, ".git", "")

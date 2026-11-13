@@ -13,6 +13,7 @@ import (
 )
 
 func TestConstantFormatUncertainArguments(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"format('{0}', -0)", "format('{0}', -0.0)",
 		"format('{0}', fromJSON('-0'))", "format('{0}', 1e15)",
@@ -21,6 +22,7 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 		"format('{0}', inputs.number)",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			value, known := expreval.ConditionConstantValue(exprsyntax.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
 				t.Fatalf("unexpected constant value %v", value)
@@ -35,11 +37,13 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 // TestFormatCompositeReference checks these values against Runny at runner
 // 1ba885c2065fd9be317808ab3fd406f392635cf7 in the expression package.
 func TestConstantFormatCompositeArguments(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, want string }{
 		{"format('{0}', fromJSON('{}'))", "Object"},
 		{"format('{0}', fromJSON('[]'))", "Array"},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if got, known := expreval.ConditionConstantValue(node); !known || got != tc.want {
 				t.Fatalf("got %v/%v, want %s", got, known, tc.want)

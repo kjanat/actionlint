@@ -9,6 +9,7 @@ import (
 )
 
 func TestWorkflowLiteralStaticValues(t *testing.T) {
+	t.Parallel()
 	source := []byte(`on: push
 jobs:
   test:

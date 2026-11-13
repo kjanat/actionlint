@@ -34,6 +34,7 @@ public static readonly string Node20RemovalDate = "September 23rd, 2026";
 }
 
 func TestRuntimeLifecycle(t *testing.T) {
+	t.Parallel()
 	sources := testRuntimeSources()
 	runtimes, err := collectRuntimes(sources)
 	if err != nil {
@@ -74,6 +75,7 @@ func TestRuntimeLifecycle(t *testing.T) {
 }
 
 func TestRuntimeLifecycleAfterMigrationConstantsAreRemoved(t *testing.T) {
+	t.Parallel()
 	sources := testRuntimeSources()
 	// Runner.Common/Constants.cs no longer defines NodeMigration after the
 	// runner removes Node 20. Accepted metadata values still include node20.
@@ -93,6 +95,7 @@ func TestRuntimeLifecycleAfterMigrationConstantsAreRemoved(t *testing.T) {
 }
 
 func TestRuntimeExecutionUsesBundledReplacement(t *testing.T) {
+	t.Parallel()
 	sources := testRuntimeSources()
 	sources[runtimeSourcePaths[3]] = []byte("namespace GitHub.Runner.Common {\npublic static class Constants {}\n}")
 	sources[runtimeSourcePaths[2]] = []byte("NODE24_VERSION=\"24.0.0\"\n")
@@ -120,12 +123,14 @@ else if (data.ExecutionType == ActionExecutionType.NodeJS) {
 }
 
 func TestRuntimeExecutionRejectsUnrecognizedAssignments(t *testing.T) {
+	t.Parallel()
 	for _, assignment := range []string{
 		`nodeData.NodeVersion = SelectRuntime();`,
 		`if (enabled) { nodeData.NodeVersion = "node24"; }`,
 		`nodeData.NodeVersion = "node20"; nodeData.NodeVersion = "node24";`,
 	} {
 		t.Run(assignment, func(t *testing.T) {
+			t.Parallel()
 			sources := testRuntimeSources()
 			sources[runtimeSourcePaths[4]] = []byte("public sealed class HandlerFactory { else if (data.ExecutionType == ActionExecutionType.NodeJS) {" + assignment + "} }")
 			if _, err := collectRuntimes(sources); err == nil {
@@ -136,6 +141,7 @@ func TestRuntimeExecutionRejectsUnrecognizedAssignments(t *testing.T) {
 }
 
 func TestRuntimeExecutionUsesDeclaredVersionWithoutReplacement(t *testing.T) {
+	t.Parallel()
 	sources := testRuntimeSources()
 	sources[runtimeSourcePaths[4]] = []byte(`public sealed class HandlerFactory {
 else if (data.ExecutionType == ActionExecutionType.NodeJS) {
@@ -162,8 +168,10 @@ else if (data.ExecutionType == ActionExecutionType.NodeJS) {
 }
 
 func TestRuntimeRefreshPreservesOutputOnFailure(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []string{"success", "cdn failure", "parser disagreement", "missing packaging", "missing constants", "changed constants class", "changed migration syntax", "bad revision"} {
 		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
 			sources := testRuntimeSources()
 			switch scenario {
 			case "parser disagreement":
@@ -228,6 +236,7 @@ func TestRuntimeRefreshPreservesOutputOnFailure(t *testing.T) {
 }
 
 func TestRuntimeLifecycleFromRunnerSources(t *testing.T) {
+	t.Parallel()
 	// These unchanged source files bracket actions/runner #4836, which removed
 	// bundled Node 20 and the completed NodeMigration constants together.
 	for _, tc := range []struct {
@@ -244,6 +253,7 @@ func TestRuntimeLifecycleFromRunnerSources(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.revision, func(t *testing.T) {
+			t.Parallel()
 			sources := map[string][]byte{}
 			for _, path := range runtimeSourcePaths {
 				data, err := os.ReadFile(filepath.Join("testdata", "runtimes", tc.revision, filepath.Base(path)))
@@ -271,6 +281,7 @@ func TestRuntimeLifecycleFromRunnerSources(t *testing.T) {
 }
 
 func TestRuntimeMigrationClassCanBeAbsent(t *testing.T) {
+	t.Parallel()
 	sources := testRuntimeSources()
 	// No migration is active. Absence of a migration class supplies no
 	// deprecation evidence; it does not imply that packaged runtimes are gone.

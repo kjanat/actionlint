@@ -21,6 +21,7 @@ func (p *jobOrderPass) VisitJobPre(job declaration.JobView) error {
 }
 
 func TestVisitorJobSourceOrder(t *testing.T) {
+	t.Parallel()
 	first := &workflowlang.Job{Pos: &workflowlang.Pos{Line: 1, Col: 1}}
 	second := &workflowlang.Job{Pos: &workflowlang.Pos{Line: 2, Col: 1}}
 	missingA, missingZ := &workflowlang.Job{}, &workflowlang.Job{}

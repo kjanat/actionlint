@@ -14,6 +14,7 @@ import (
 )
 
 func TestInlineSuppressionBlockBody(t *testing.T) {
+	t.Parallel()
 	for _, header := range []string{
 		"run: | # actionlint:ignore expression-reference shellcheck -- reviewed",
 		"run: | # actionlint-ignore expression-reference, shellcheck -- reviewed",
@@ -49,6 +50,7 @@ run:
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(header+ending, func(t *testing.T) {
+				t.Parallel()
 				start := strings.Count(header, "\n") + 1
 				source := strings.ReplaceAll(header+`
     echo first
@@ -71,6 +73,7 @@ next: value
 }
 
 func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: {rules: [expression-reference], report: all}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -81,6 +84,7 @@ func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 		"ignore[expression-reference shellcheck]",
 	} {
 		t.Run(declaration, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("run: | # " + declaration + "\n  echo ok\nnext: value\n")
 			findings := []*findingmodel.Finding{
 				{Start: sourcepos.Position{Line: 2}, Rule: "expression-reference"},
@@ -96,8 +100,10 @@ func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 }
 
 func TestInlineSuppressionRegistry(t *testing.T) {
+	t.Parallel()
 	for _, name := range (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).SuppressionRules() {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
 			if err != nil {
 				t.Fatal(err)
@@ -116,6 +122,7 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 }
 
 func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
+	t.Parallel()
 	source := []byte(`run: |
   text = '''
   # actionlint:ignore-next-line expression-reference -- sample text
@@ -130,6 +137,7 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
 }
 
 func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
+	t.Parallel()
 	policy, err := checking.ConfigurationRules().DisallowSuppressions("all", "shellcheck")
 	if err != nil {
 		t.Fatal(err)
@@ -164,6 +172,7 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 }
 
 func TestInlineSuppressionSplitPrefixIsolation(t *testing.T) {
+	t.Parallel()
 	for _, header := range []string{
 		`env: {SAFE: value} # actionlint:ignore expression-reference,shellcheck -- unrelated
 run:

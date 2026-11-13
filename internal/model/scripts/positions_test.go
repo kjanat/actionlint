@@ -8,6 +8,7 @@ import (
 )
 
 func TestDeclarationPosition(t *testing.T) {
+	t.Parallel()
 	script := scriptmodel.Declaration{Text: "echo a\nx\\ny\n", Spans: []scriptmodel.Span{
 		{Line: 1, Start: 1, End: 7, Document: sourcepos.Position{Line: 3, Column: 9}},
 		{Line: 2, Start: 1, End: 2, Document: sourcepos.Position{Line: 4, Column: 9}},

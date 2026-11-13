@@ -9,16 +9,19 @@ import (
 )
 
 func TestRuleRunnerLabelDoNothingOnNoRunsOn(t *testing.T) {
+	t.Parallel()
 	if errs := LabelRejections(workflowdecl.JobView{}, KnownLabels(nil)); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 }
 
 func TestUbuntuRunnerArchitectures(t *testing.T) {
+	t.Parallel()
 	for _, version := range []string{"22.04", "24.04", "26.04"} {
 		arm := "ubuntu-" + version + "-arm"
 		for _, x64 := range []string{"ubuntu-" + version, "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores"} {
 			t.Run(x64+"/"+arm, func(t *testing.T) {
+				t.Parallel()
 				fixture := runnerWorkflow(t, "["+strconv.Quote(x64)+", "+strconv.Quote(arm)+"]")
 				errs := LabelRejections(fixture.Views["test"], KnownLabels(nil))
 				if len(errs) != 1 || !strings.Contains(errs[0].Reason, "conflicts with") {
@@ -27,6 +30,7 @@ func TestUbuntuRunnerArchitectures(t *testing.T) {
 			})
 		}
 		t.Run("linux/"+arm, func(t *testing.T) {
+			t.Parallel()
 			fixture := runnerWorkflow(t, "[linux, "+strconv.Quote(arm)+"]")
 			if errs := LabelRejections(fixture.Views["test"], KnownLabels(nil)); len(errs) != 0 {
 				t.Fatalf("Linux must remain compatible with %s: %v", arm, errs)
@@ -36,6 +40,7 @@ func TestUbuntuRunnerArchitectures(t *testing.T) {
 }
 
 func TestRuleRunnerLabelAllGitHubHostedRunnerLabels(t *testing.T) {
+	t.Parallel()
 	all := []string{}
 	all = append(all, allGitHubHostedRunnerLabels...)
 	all = append(all, selfHostedRunnerPresetOSLabels...)

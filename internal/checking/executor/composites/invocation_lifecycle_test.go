@@ -78,6 +78,7 @@ func (p *invocationLifecycleProbe) VisitOpaqueAction(step declaration.StepView) 
 }
 
 func TestOpaqueInvocationCallbackBindsSource(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("opaque callback failed")
 	for _, callbackError := range []error{nil, failure} {
 		name := "success"
@@ -85,6 +86,7 @@ func TestOpaqueInvocationCallbackBindsSource(t *testing.T) {
 			name = "failure"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 				"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: actions/opaque@v1}]}\n",
 			}, nil)
@@ -105,11 +107,13 @@ func TestOpaqueInvocationCallbackBindsSource(t *testing.T) {
 }
 
 func TestInvocationLifecycleUnwindsAndBindsFindings(t *testing.T) {
+	t.Parallel()
 	entryFailure := errors.New("entry rejected")
 	stepFailure := errors.New("step rejected")
 	leaveFailure := errors.New("exit failed")
 	for _, phase := range []string{"success", "entry", "step", "cancel", "exit", "step and exit"} {
 		t.Run(phase, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{

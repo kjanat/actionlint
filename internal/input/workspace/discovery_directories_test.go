@@ -10,6 +10,7 @@ import (
 )
 
 func TestWorkflowDiscoveryRecordsListedDirectories(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeToolRepository(t, root)
 	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)

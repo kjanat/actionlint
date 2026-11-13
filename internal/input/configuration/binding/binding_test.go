@@ -28,6 +28,7 @@ func (n *namedLocations) DecodeConfig(value any) error {
 }
 
 func TestDecodeCallsSharedHooksForScalarArrayAndNull(t *testing.T) {
+	t.Parallel()
 	type options struct {
 		Locations namedLocations `yaml:"require-at"`
 	}
@@ -57,6 +58,7 @@ func TestDecodeCallsSharedHooksForScalarArrayAndNull(t *testing.T) {
 }
 
 func TestDecodeKeepsStrictTypesAndExactMapPaths(t *testing.T) {
+	t.Parallel()
 	type entry struct {
 		Enabled bool `yaml:"enabled"`
 	}
@@ -79,6 +81,7 @@ func TestDecodeKeepsStrictTypesAndExactMapPaths(t *testing.T) {
 }
 
 func TestDecodePointerToCustomValues(t *testing.T) {
+	t.Parallel()
 	type options struct {
 		Locations *namedLocations `yaml:"locations"`
 	}
@@ -95,6 +98,7 @@ func TestDecodePointerToCustomValues(t *testing.T) {
 }
 
 func TestEncodePreservesEmptyAndNullContainers(t *testing.T) {
+	t.Parallel()
 	value, err := Encode(map[string]any{"empty": []string{}, "null": []string(nil), "false": false})
 	if err != nil {
 		t.Fatal(err)
@@ -112,6 +116,7 @@ func TestEncodePreservesEmptyAndNullContainers(t *testing.T) {
 }
 
 func TestNumbersKeepExactRuntimeValues(t *testing.T) {
+	t.Parallel()
 	var selected map[string]any
 	input := map[string]any{"count": json.Number("3"), "half": json.Number("0.5"), "huge": json.Number("123456789012345678901234567890"), "tenth": json.Number("0.1")}
 	if err := Decode(input, &selected); err != nil {
@@ -134,6 +139,7 @@ func TestNumbersKeepExactRuntimeValues(t *testing.T) {
 }
 
 func TestErrorTraversalKeepsSiblingPaths(t *testing.T) {
+	t.Parallel()
 	first := errors.New("first failure")
 	second := errors.New("second failure")
 	nested := fmt.Errorf("decoder wrapper: %w", errors.Join(

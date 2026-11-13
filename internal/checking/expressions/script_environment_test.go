@@ -10,6 +10,7 @@ import (
 )
 
 func TestScriptEnvironmentReplacements(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		script, shell, variable string
 	}{
@@ -41,6 +42,7 @@ func TestScriptEnvironmentReplacements(t *testing.T) {
 		{`# echo "${{ github.action_path }}"`, "bash", ""},
 	} {
 		t.Run(tc.shell+"/"+tc.script, func(t *testing.T) {
+			t.Parallel()
 			proofs := proveScriptArguments(tc.script, tc.shell)
 			first := strings.Index(tc.script, "${{")
 			if replacement := proofs.environment[first]; replacement.environment.Name() != tc.variable {
@@ -51,6 +53,7 @@ func TestScriptEnvironmentReplacements(t *testing.T) {
 }
 
 func TestScriptEnvironmentFixIsDetached(t *testing.T) {
+	t.Parallel()
 	rule, workflow := newTestCheckerForSource(t, "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ github.workspace }}\"\n        shell: bash\n")
 	job := testJob(t, workflow, "test")
 	for _, err := range []error{rule.VisitWorkflowPre(workflow), rule.VisitJobPre(job), rule.VisitStep(testStep(t, job, 0))} {
@@ -70,6 +73,7 @@ func TestScriptEnvironmentFixIsDetached(t *testing.T) {
 }
 
 func TestScriptEnvironmentVariable(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, variable string }{
 		{"github.action_path", "GITHUB_ACTION_PATH"},
 		{"GitHub['WORKSPACE']", "GITHUB_WORKSPACE"},

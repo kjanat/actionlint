@@ -7,6 +7,7 @@ import (
 )
 
 func TestLiteralFileSelectionScope(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		config, path string
 		explicit     bool

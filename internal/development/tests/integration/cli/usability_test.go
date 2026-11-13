@@ -26,7 +26,7 @@ func TestConfigInitAliases(t *testing.T) {
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			t.Setenv("NO_HYPERLINKS", "1")
 			got := testRunCommand("", args...)
 			want := "Created " + filepath.Join(".github", "actionlint.yaml") + "\n"
@@ -50,7 +50,7 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 	for _, mode := range []string{"always", "never"} {
 		t.Run(mode, func(t *testing.T) {
 			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			if err := os.Mkdir("nested", 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -176,7 +176,7 @@ func TestCompletionExamplesAndAutoUsePathExt(t *testing.T) {
 func TestNoninteractiveReportOverwriteRequiresConfirmation(t *testing.T) {
 	for _, modern := range []bool{false, true} {
 		t.Run(fmtTestName(modern, "report"), func(t *testing.T) {
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			if err := os.WriteFile("report.json", []byte("previous report"), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -206,7 +206,7 @@ func TestNoninteractiveReportOverwriteRequiresConfirmation(t *testing.T) {
 }
 
 func TestReportOverwriteEnvironmentAndSymlinks(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	t.Setenv("ACTIONLINT_OUTPUT_FILE", "report.json")
 	if err := os.WriteFile("report.json", []byte("keep"), 0600); err != nil {
 		t.Fatal(err)
@@ -244,16 +244,18 @@ func (r *reportCreatingInput) Read(p []byte) (int, error) {
 }
 
 func TestReportCreatedDuringAnalysisIsPreserved(t *testing.T) {
-	commandTestRepo(t)
-	input := &reportCreatingInput{Reader: strings.NewReader(commandGoodWorkflow), destination: "report.json"}
+	t.Parallel()
+	dir := commandTestRepo(t)
+	report := filepath.Join(dir, "report.json")
+	input := &reportCreatingInput{Reader: strings.NewReader(commandGoodWorkflow), destination: report}
 	var out, stderr bytes.Buffer
 	command := cli.Command{Stdin: input, Stdout: &out, Stderr: &stderr}
-	status := command.Main([]string{"actionlint", "check", "--json", "--output-file=report.json", "--no-tool=shellcheck", "--no-tool=ruff", "-"})
-	data, err := os.ReadFile("report.json")
+	status := command.Main([]string{"actionlint", "check", "--json", "--output-file=" + report, "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "-"})
+	data, err := os.ReadFile(report)
 	if status != 3 || !strings.Contains(stderr.String(), "already exists") || err != nil || string(data) != "created during analysis" {
 		t.Fatalf("destination replaced: %d, %s, %s, %v", status, &stderr, data, err)
 	}
-	files, err := filepath.Glob(".actionlint-report-*")
+	files, err := filepath.Glob(filepath.Join(dir, ".actionlint-report-*"))
 	if err != nil || len(files) != 0 {
 		t.Fatalf("temporary reports remain: %v, %v", files, err)
 	}

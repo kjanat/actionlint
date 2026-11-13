@@ -122,8 +122,10 @@ func replacement(row, column int, text string) checkinputs.ScriptReplacement {
 }
 
 func TestScriptFixLiteralMapping(t *testing.T) {
+	t.Parallel()
 	for _, newline := range []string{"\n", "\r\n"} {
 		t.Run("newline="+strings.ReplaceAll(newline, "\r", `\r`), func(t *testing.T) {
+			t.Parallel()
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			script := scriptFixture(t, input)
 			fix, ok := scriptFix(script.Source, generated(script.Source.Value()), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
@@ -165,6 +167,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 }
 
 func TestScriptFixPreservesApplicability(t *testing.T) {
+	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
 	for _, applicability := range []results.Applicability{results.FixSuggested, results.FixSafe, results.FixUnsafe} {
 		fix, ok := scriptFix(script.Source, generated(script.Source.Value()), checkinputs.ScriptFix{
@@ -178,6 +181,7 @@ func TestScriptFixPreservesApplicability(t *testing.T) {
 }
 
 func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
+	t.Parallel()
 	input := "run: |\n  echo $VALUE\n  echo $OTHER\n\n"
 	for _, tc := range []struct {
 		name         string
@@ -205,6 +209,7 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 		{"partial fix", input, []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(1, 1, "#")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			script := scriptFixture(t, tc.input)
 			prepared := generated(mask.Expressions(script.Text))
 			if fix, ok := scriptFix(script.Source, prepared, checkinputs.ScriptFix{Description: "Fix", Replacements: tc.replacements}); ok {
@@ -266,6 +271,7 @@ func buildEngineRunner(t *testing.T, descriptor checkinputs.ScriptEngineDescript
 }
 
 func TestReportedSourceFindings(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -318,6 +324,7 @@ func TestReportedSourceFindings(t *testing.T) {
 // Template effects describe the snippet, so a provider declaring both the
 // template contract and reported sources keeps its findings in read files.
 func TestReportedSourcesUnderTemplateContract(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	at := checkinputs.ScriptPosition{Row: 1, Column: 1}
 	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.Result {
@@ -347,6 +354,7 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 }
 
 func TestLineOriginsAndMessages(t *testing.T) {
+	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
 	diagnostics := []checkinputs.ScriptDiagnostic{
 		{Code: "X1", Severity: "warning", Message: "on directive", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}},
@@ -391,6 +399,7 @@ func TestLineOriginsAndMessages(t *testing.T) {
 }
 
 func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
+	t.Parallel()
 	previous := runtime.GOMAXPROCS(2)
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	started := make(chan struct{}, 2)
@@ -429,6 +438,7 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 // working directory, and its declared capabilities admit fixes and findings
 // in files it read, as a manifest's do for a process provider.
 func TestEngineCapabilitiesAdmitFixesSourcesAndDirectory(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -504,6 +514,7 @@ func directoryEngine(t *testing.T, source string, requests *[]checkinputs.Script
 // A working directory outside the workspace gets no grant: the check fails
 // before the engine runs.
 func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
+	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
 	var requests []checkinputs.ScriptRequest
 	runner := directoryEngine(t, "lib.sh", &requests)
@@ -529,6 +540,7 @@ func TestDirectoryGrantStaysInWorkspace(t *testing.T) {
 // working directory pointing out of the workspace is not read, and without
 // a grant nothing is reread by path.
 func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
+	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
 	if err := os.WriteFile(filepath.Join(outside, "secret"), []byte("secret\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -557,6 +569,7 @@ func TestReportedSourceDisplayStaysInGrant(t *testing.T) {
 }
 
 func TestSnippetEnginesGetNoDirectory(t *testing.T) {
+	t.Parallel()
 	var requests []checkinputs.ScriptRequest
 	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		requests = append(requests, request)

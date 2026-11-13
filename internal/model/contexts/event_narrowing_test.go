@@ -9,6 +9,7 @@ import (
 )
 
 func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
+	t.Parallel()
 	push := exprtypes.EventVariant{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}
 	issue := exprtypes.EventVariant{Event: "issues", Action: "opened", Payload: exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"action": exprtypes.StringType()})}
 	unknown := exprtypes.EventVariant{Payload: exprtypes.NewEmptyObjectType()}
@@ -16,6 +17,7 @@ func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
 	bindings := modelBindings{"github": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"event": event.Type()}).Type()}
 	for _, input := range []string{"github.event_name == 'push'", "github.event.action == '0'", "format('pu{0}', 'sh') == github.event_name"} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
@@ -41,6 +43,7 @@ func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
 }
 
 func TestEventTypeNarrowingDistinguishesUnknownAndUnreachable(t *testing.T) {
+	t.Parallel()
 	event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}})
 	bindings := modelBindings{"github": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"event": event.Type()}).Type()}
 	for _, tc := range []struct {

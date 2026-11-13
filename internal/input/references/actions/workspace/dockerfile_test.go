@@ -12,8 +12,10 @@ import (
 )
 
 func TestDockerfileOnlyAction(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			file := writeFixture(t, root, "action/"+name, `FROM scratch
 `)
@@ -34,6 +36,7 @@ func TestDockerfileOnlyAction(t *testing.T) {
 }
 
 func TestDockerfileFallbackPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, names := range [][]string{
 		{"action.yml", "action.yaml", "Dockerfile", "dockerfile"},
 		{"action.yaml", "Dockerfile", "dockerfile"},
@@ -42,6 +45,7 @@ func TestDockerfileFallbackPrecedence(t *testing.T) {
 		{"dockerfile"},
 	} {
 		t.Run(strings.Join(names, "+"), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			var inputs []string
 			cache := newCapturedActionCache(t, root, nil)
@@ -68,6 +72,7 @@ runs: {using: composite, steps: []}
 }
 
 func TestDockerfileReadErrors(t *testing.T) {
+	t.Parallel()
 	for _, readError := range []error{os.ErrPermission, errors.New("broken reader")} {
 		cache := newCapturedActionCache(t, t.TempDir(), nil)
 		cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(path string) ([]byte, error) {
@@ -83,6 +88,7 @@ func TestDockerfileReadErrors(t *testing.T) {
 }
 
 func TestDockerfileDirectoryIsNotAction(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "action", "Dockerfile"), 0o755); err != nil {
 		t.Fatal(err)
@@ -93,8 +99,10 @@ func TestDockerfileDirectoryIsNotAction(t *testing.T) {
 }
 
 func TestMappedDockerfileCannotEscapeRepository(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root, outside := t.TempDir(), t.TempDir()
 			file := writeFixture(t, outside, name, `FROM scratch
 `)
@@ -113,8 +121,10 @@ func TestMappedDockerfileCannotEscapeRepository(t *testing.T) {
 }
 
 func TestMappedDockerfileInsideRepository(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			file := writeFixture(t, root, "action/"+name, `FROM scratch
 `)

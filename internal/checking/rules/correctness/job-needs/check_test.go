@@ -28,6 +28,7 @@ func messages(findings []results.Diagnostic) []string {
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		jobs []Job
@@ -55,6 +56,7 @@ func TestCheck(t *testing.T) {
 		{"empty ids are skipped", []Job{job(1, ""), job(2, "build", "")}, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			if diff := cmp.Diff(test.want, Check(test.jobs)); diff != "" {
 				t.Fatal(diff)
 			}
@@ -63,6 +65,7 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckReportsOneCycleDeterministically(t *testing.T) {
+	t.Parallel()
 	jobs := []Job{job(1, "x", "y"), job(2, "y", "x"), job(3, "p", "q"), job(4, "q", "p")}
 	first := messages(Check(jobs))
 	for range 20 {

@@ -44,16 +44,22 @@ permissions: {}
 	for _, modern := range []bool{false, true} {
 		for _, failingFirst := range []bool{false, true} {
 			for _, outputFile := range []bool{false, true} {
+				reports := fmt.Sprintf("reports-%t-%t", modern, failingFirst)
 				t.Run(fmt.Sprintf("modern=%t/failing-first=%t/file=%t", modern, failingFirst, outputFile), func(t *testing.T) {
+					t.Parallel()
 					args := []string{"actionlint", "--config", "config.yml", "--no-color", "--no-tool=ruff", "--json"}
 					if modern {
 						args = append(args, "check")
 					}
+					report := filepath.Join(reports, "report.json")
 					if outputFile {
-						if err := os.WriteFile("report.json", []byte("previous report"), 0600); err != nil {
+						if err := os.Mkdir(reports, 0o700); err != nil {
 							t.Fatal(err)
 						}
-						args = append(args, "--yes", "--output-file", "report.json")
+						if err := os.WriteFile(report, []byte("previous report"), 0600); err != nil {
+							t.Fatal(err)
+						}
+						args = append(args, "--yes", "--output-file", report)
 					}
 					paths := []string{"successful.yml", "failing.yml"}
 					if failingFirst {
@@ -87,11 +93,11 @@ permissions: {}
 						t.Errorf("selected configuration lost: %v", result.Configs)
 					}
 					if outputFile {
-						data, err := os.ReadFile("report.json")
+						data, err := os.ReadFile(report)
 						if err != nil || string(data) != "previous report" {
 							t.Fatalf("failed analysis replaced report: %q (%v)", data, err)
 						}
-						artifacts, err := filepath.Glob(".actionlint-report-*")
+						artifacts, err := filepath.Glob(filepath.Join(reports, ".actionlint-report-*"))
 						if err != nil || len(artifacts) != 0 {
 							t.Fatalf("temporary reports remain: %v (%v)", artifacts, err)
 						}
@@ -116,6 +122,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
+			t.Parallel()
 			args := []string{"actionlint", "--no-config", "--no-tool=ruff", "--json"}
 			if modern {
 				args = append(args, "check")
@@ -148,20 +155,22 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 }
 
 func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
-	t.Chdir(dir)
-	if err := os.WriteFile("ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
+	workflow := filepath.Join(dir, "ci.yml")
+	if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
+			t.Parallel()
 			args := []string{"actionlint", "--no-config", "--no-tool=shellcheck", "--tool=ruff=" + filepath.Join(dir, "missing-ruff"), "--json"}
 			if modern {
 				args = append(args, "check")
 			}
 			var stdout, stderr bytes.Buffer
 			command := cli.Command{Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr}
-			status := command.Main(append(args, "ci.yml"))
+			status := command.Main(append(args, workflow))
 			var result resultreport.CheckResult
 			if err := json.Unmarshal(stderr.Bytes(), &result); err != nil {
 				t.Fatalf("invalid failure envelope: %v: %s", err, &stderr)
@@ -172,8 +181,8 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
 			}
-			workflow, ok := result.Documents[0].(documentmodel.Workflow)
-			if !ok || workflow.DocumentPath() != "ci.yml" || workflow.ParseStatus() != "complete" || len(workflow.Jobs()) != 1 {
+			document, ok := result.Documents[0].(documentmodel.Workflow)
+			if !ok || document.DocumentPath() != workingDirectoryPath(t, workflow) || document.ParseStatus() != "complete" || len(document.Jobs()) != 1 {
 				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}
 		})
@@ -181,6 +190,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 }
 
 func TestCheckPartialAnalyzerHelper(t *testing.T) {
+	t.Parallel()
 	if !slices.Contains(os.Args, "--") {
 		return
 	}

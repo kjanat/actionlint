@@ -17,6 +17,7 @@ import (
 )
 
 func TestIndependentProcessTool(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +74,7 @@ func TestIndependentProcessTool(t *testing.T) {
 }
 
 func TestProcessToolHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_TEST_SCRIPT_PROVIDER") != "1" {
 		return
 	}

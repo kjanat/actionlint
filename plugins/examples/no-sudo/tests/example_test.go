@@ -14,6 +14,7 @@ import (
 
 // These tests run the published actionlint CLI and check its JSON report.
 func TestComponentThroughCLI(t *testing.T) {
+	t.Parallel()
 	binary := os.Getenv("ACTIONLINT_TEST_BINARY")
 	if binary == "" {
 		t.Skip("set ACTIONLINT_TEST_BINARY to an actionlint v2 executable; see ../README.md")
@@ -46,6 +47,7 @@ func TestComponentThroughCLI(t *testing.T) {
 		{"next line", "echo hello\nsudo make install", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			text := "on: push\npermissions: {}\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          " + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n"
 			path := filepath.Join(root, "workflow.yml")

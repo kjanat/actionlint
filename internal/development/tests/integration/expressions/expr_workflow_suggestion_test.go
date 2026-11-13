@@ -9,8 +9,10 @@ import (
 )
 
 func TestExprDeclaredWorkflowInputSuggestion(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{"github_repository", "inputs.github_repository"} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)

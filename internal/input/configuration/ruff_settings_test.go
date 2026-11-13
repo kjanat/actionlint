@@ -8,6 +8,7 @@ import (
 )
 
 func TestRuffConfiguration(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{
 		"tools: {ruff: false}",
 		"tools: {ruff: {enabled: false, target-version: py312, select: [F, B], ignore: [F401]}}",
@@ -57,8 +58,10 @@ func TestRuffConfiguration(t *testing.T) {
 }
 
 func TestRuffTargetVersionConfiguration(t *testing.T) {
+	t.Parallel()
 	for _, version := range []string{"py37", "py38", "py39", "py310", "py311", "py312", "py313", "py314", "py315", "py27", "py30", "py36", "py316", "py399", "py0314", "3.14", "PY314"} {
 		t.Run(version, func(t *testing.T) {
+			t.Parallel()
 			setting := "ruff: {target-version: '" + version + "'}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
 				_, err := checking.ConfigurationRules().Parse([]byte(text))
@@ -74,6 +77,7 @@ func TestRuffTargetVersionConfiguration(t *testing.T) {
 }
 
 func TestRuffSelectorConfiguration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		selector string
 		valid    bool
@@ -108,6 +112,7 @@ func TestRuffSelectorConfiguration(t *testing.T) {
 		{"", false},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
+			t.Parallel()
 			for _, key := range []string{"select", "ignore"} {
 				setting := "ruff: {" + key + ": ['" + tc.selector + "']}"
 				for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {

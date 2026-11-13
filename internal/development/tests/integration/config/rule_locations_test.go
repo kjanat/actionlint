@@ -10,9 +10,11 @@ import (
 )
 
 func TestRuleLocationsMergeAcrossConfigSources(t *testing.T) {
+	t.Parallel()
 	rules := checking.ConfigurationRules()
 	for _, categories := range [][2]string{{"policy", "conventions"}, {"conventions", "policy"}} {
 		t.Run(categories[0]+"-to-"+categories[1], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "base.yml", fmt.Sprintf("lint: {rules: {%s: {job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}}}}\n", categories[0]))
 			path := fixturefiles.Write(t, root, "config.yml", fmt.Sprintf("extends: [base.yml]\nlint: {rules: {%s: {require-job-timeout: {level: warn, options: {max-minutes: 20}}}}}\n", categories[1]))

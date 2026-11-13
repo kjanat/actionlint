@@ -13,6 +13,7 @@ import (
 )
 
 func TestToolBooleanShorthand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		text, name string
 		enabled    bool
@@ -43,6 +44,7 @@ func TestToolBooleanShorthand(t *testing.T) {
 }
 
 func TestToolShorthandOverridesOnlyEnabled(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
   lint-sql: {config: {dialect: postgres}}
 overrides:
@@ -63,6 +65,7 @@ overrides:
 }
 
 func TestFlatRuffKeysFoldIntoConfig(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
   ruff:
     target-version: py312
@@ -94,6 +97,7 @@ func TestFlatRuffKeysFoldIntoConfig(t *testing.T) {
 // target-version, as the separate settings did before folding. Ruff's own
 // top-level select stays a native option.
 func TestFlatRuffKeysPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		text string
 		want map[string]any
@@ -142,6 +146,7 @@ func TestFlatRuffKeysPrecedence(t *testing.T) {
 }
 
 func TestFlatRuffKeysMergeAcrossOverrides(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
   ruff: {select: [F], target-version: py312}
 overrides:
@@ -162,6 +167,7 @@ overrides:
 }
 
 func TestToolConfigPathRequiresConfigFiles(t *testing.T) {
+	t.Parallel()
 	if _, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {config: ./ruff.toml}}")); err == nil || !strings.Contains(err.Error(), "reads no configuration files") {
 		t.Fatalf("Ruff reads no configuration files, got %v", err)
 	}
@@ -173,6 +179,7 @@ func TestToolConfigPathRequiresConfigFiles(t *testing.T) {
 }
 
 func TestUnknownToolNames(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{
 		"tools: {pyflakes: {enabled: false}}",
 		"tools: {expression: false}",
@@ -211,6 +218,7 @@ func TestUnknownToolNames(t *testing.T) {
 }
 
 func TestRegisteredToolEntriesAreStructural(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {lint-sql: {enabled: true, backend: {wasm: {path: sql.wasm}}, config: {anything: [1, 2]}}}"), "lint-sql")
 	if err != nil {
 		t.Fatal(err)
@@ -233,6 +241,7 @@ func TestRegisteredToolEntriesAreStructural(t *testing.T) {
 }
 
 func TestInheritedToolConfigPathsResolveFromDeclaringFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	base := filepath.Join(root, "base")
 	if err := os.Mkdir(base, 0o755); err != nil {
@@ -263,6 +272,7 @@ func TestInheritedToolConfigPathsResolveFromDeclaringFile(t *testing.T) {
 }
 
 func TestEffectiveValuesEnableBundledTools(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {lint-sql: {config: {dialect: postgres}}}"), "lint-sql")
 	if err != nil {
 		t.Fatal(err)

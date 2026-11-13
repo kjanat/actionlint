@@ -8,6 +8,7 @@ import (
 )
 
 func TestPermissiveJSONCalls(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		count int

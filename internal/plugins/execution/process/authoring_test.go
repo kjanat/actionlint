@@ -35,6 +35,7 @@ func authoringManifest(t *testing.T, output string) manifests.Manifest {
 }
 
 func TestValidateManifestCompilesSandboxedProgramsWithoutRunningEntry(t *testing.T) {
+	t.Parallel()
 	manifest := authoringManifest(t, `[]`)
 	if err := ValidateManifest(manifest, nil); err != nil {
 		t.Fatal(err)
@@ -48,6 +49,7 @@ func TestValidateManifestCompilesSandboxedProgramsWithoutRunningEntry(t *testing
 }
 
 func TestPathExpansionValidatesUserAndExecutionSettingsSeparately(t *testing.T) {
+	t.Parallel()
 	manifest := authoringManifest(t, `[]`)
 	manifest.ConfigurationPaths = []string{"/path"}
 	manifest.ConfigSchema = json.RawMessage(`{"type":"object","properties":{"path":{"const":"relative"}},"additionalProperties":false}`)
@@ -70,6 +72,7 @@ func TestPathExpansionValidatesUserAndExecutionSettingsSeparately(t *testing.T) 
 }
 
 func TestEvaluateFixtureUsesRuntimeTransformsAndReviewsOutput(t *testing.T) {
+	t.Parallel()
 	manifest := authoringManifest(t, `[{code:"E1", filename:$vars.filename, message:$vars.mode, severity:"warning", location:{row:1,column:1}, fixes:[{description:"fix",replacements:[{row:1,column:1,end_row:1,end_column:2,text:"z"}]}]}]`)
 	config := json.RawMessage(`{"selected":true,"mode":"config"}`)
 	request := checkinputs.ScriptRequest{Source: "abc", Filename: "snippet.py", Config: config}
@@ -94,6 +97,7 @@ func TestEvaluateFixtureUsesRuntimeTransformsAndReviewsOutput(t *testing.T) {
 }
 
 func TestEvaluateFixtureFixApplicability(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"safe", "unsafe", "suggested", "automatic"} {
 		manifest := authoringManifest(t, `[{code:"E1", filename:$vars.filename, message:"fix", location:{row:1,column:1}, fixes:[{applicability:"`+label+`",replacements:[{row:1,column:1,end_row:1,end_column:2,text:"z"}]}]}]`)
 		stdout := `{}`
@@ -115,6 +119,7 @@ func TestEvaluateFixtureFixApplicability(t *testing.T) {
 }
 
 func TestEvaluateFixtureChecksOutputAndConfigFailures(t *testing.T) {
+	t.Parallel()
 	manifest := authoringManifest(t, `[{code:"E1", filename:"other.py", message:"bad", severity:"warning", location:{row:1,column:1}}]`)
 	stdout := `{}`
 	_, err := EvaluateFixture(context.Background(), manifest, nil, checkinputs.ScriptRequest{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
@@ -129,6 +134,7 @@ func TestEvaluateFixtureChecksOutputAndConfigFailures(t *testing.T) {
 }
 
 func TestEvaluateFixtureJQHasEmptyEnvironment(t *testing.T) {
+	t.Parallel()
 	manifest := authoringManifest(t, `[]`)
 	manifest.Process.Config.Transform.Inline = `{config:{variable:$ENV, function:env},vars:{}}`
 	got, err := EvaluateFixture(context.Background(), manifest, nil, checkinputs.ScriptRequest{Filename: "a.py"}, nil, nil, nil)
@@ -141,6 +147,7 @@ func TestEvaluateFixtureJQHasEmptyEnvironment(t *testing.T) {
 }
 
 func TestAuthoringTesterHonorsCancellation(t *testing.T) {
+	t.Parallel()
 	manifest := authoringManifest(t, `[]`)
 	tester, err := NewAuthoringTester(manifest, nil)
 	if err != nil {
@@ -166,6 +173,7 @@ func TestAuthoringTesterHonorsCancellation(t *testing.T) {
 }
 
 func TestAuthoringEvaluatesShellCheckPreparation(t *testing.T) {
+	t.Parallel()
 	manifest := bundledManifest(t, "shellcheck")
 	tester, err := NewAuthoringTester(manifest, bundled.Program)
 	if err != nil {

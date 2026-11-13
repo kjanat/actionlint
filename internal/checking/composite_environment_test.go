@@ -10,15 +10,18 @@ import (
 )
 
 func TestCompositePersistentCheckoutEnvironment(t *testing.T) {
-	root, _ := executableFixture(t)
-	metadata := writeFixture(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	fixture := func(t *testing.T) (string, string) {
+		t.Helper()
+		root, _ := executableFixture(t)
+		metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
   steps:
     - run: missing shell
 `)
-	writeFixture(t, root, "prepare/action.yml", `name: prepare
+		writeFixture(t, root, "prepare/action.yml", `name: prepare
 description: test
 runs:
   using: composite
@@ -26,6 +29,8 @@ runs:
     - shell: bash
       run: echo 'GIT_WORK_TREE=/tmp/tree' >> "$GITHUB_ENV"
 `)
+		return root, metadata
+	}
 	for _, tc := range []struct {
 		name, before string
 		read         bool
@@ -55,6 +60,8 @@ runs:
 		{"unknown shell", "- shell: ${{ inputs.shell }}\n  run: echo ready", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, metadata := fixture(t)
 			result := compositeAnalysis(t, root, tc.before+`
 - uses: actions/checkout@v6
 - uses: ./local`, checking.Options{})
@@ -63,6 +70,7 @@ runs:
 			}
 		})
 	}
+	root, metadata := fixture(t)
 	workflow := writeFixture(t, root, ".github/workflows/env-jobs.yml", `on: push
 jobs:
   first:
@@ -89,14 +97,19 @@ jobs:
 }
 
 func TestCompositePersistentEnvironmentPlatforms(t *testing.T) {
-	root, _ := executableFixture(t)
-	metadata := writeFixture(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	fixture := func(t *testing.T) (string, string) {
+		t.Helper()
+		root, _ := executableFixture(t)
+		metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
   steps:
     - run: missing shell
 `)
+		return root, metadata
+	}
 	for _, tc := range []struct {
 		name, runner, run string
 		read              bool
@@ -124,7 +137,9 @@ env:
 		{"unknown default shell", "${{ inputs.runner }}", "run: echo ready", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/platform-env.yml", `on: push
+			t.Parallel()
+			root, metadata := fixture(t)
+			workflow := writeFixture(t, root, workflowFixturePath(t, "platform-env"), `on: push
 jobs:
   test:
     runs-on: `+tc.runner+`

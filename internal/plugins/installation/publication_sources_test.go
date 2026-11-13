@@ -11,8 +11,10 @@ import (
 )
 
 func TestRegistryV2PublicationSources(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, source := range []string{"release-asset", "oci"} {
 		t.Run(source, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			network := fixtureregistry.NewPluginRegistry(t)
 			network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			url := network.RecordURL("v1.0.0")
@@ -60,6 +62,7 @@ func TestRegistryV2PublicationSources(t *testing.T) {
 }
 
 func TestManifestPublicationIdentity(t *testing.T) {
+	t.Parallel()
 	metadata := []byte(`{"metadata_version":1,"id":"example","plugin_version":"1.0.0","repository":"https://github.com/publisher/plugin","transport":"process"}`)
 	pin := Pin{Registry: DefaultURL, Name: "github.com/publisher/plugin", RepositoryID: "7", OwnerID: "5", PluginID: "example", Version: "v1.0.0", Selector: "v1.0.0", Kind: artifacts.ProviderManifest, Asset: "provider.json", URL: "https://github.com/publisher/plugin/releases/download/v1.0.0/provider.json", SHA256: strings.Repeat("a", 64), Contract: "process/1"}
 	if err := pin.Validate(); err != nil {
@@ -75,6 +78,7 @@ func TestManifestPublicationIdentity(t *testing.T) {
 }
 
 func TestLegacyPublicationRejectsManifest(t *testing.T) {
+	t.Parallel()
 	data := `{"schema_version":1,"provider":"github","repository":"publisher/plugin","tag":"v1.0.0","asset":"provider.json","sha256":"` + strings.Repeat("a", 64) + `","kind":"manifest"}`
 	var published submission
 	if err := jsonv2.Unmarshal([]byte(data), &published); err == nil {

@@ -13,6 +13,7 @@ import (
 )
 
 func TestReusableWorkflowCacheModeMetadataParity(t *testing.T) {
+	t.Parallel()
 	src := []byte(`on: workflow_call
 cache-mode: &mode read
 jobs:

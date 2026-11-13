@@ -24,6 +24,7 @@ func (p *countedMetadataProvider) Lookup(ctx context.Context, reference actions.
 }
 
 func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.T) {
+	t.Parallel()
 	const commit = "11d5960a326750d5838078e36cf38b85af677262"
 	reference, err := actions.ParseReference("github.com", "example/action@"+commit)
 	if err != nil {

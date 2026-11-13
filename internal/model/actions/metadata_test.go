@@ -19,6 +19,7 @@ func testDiffActionMetadata(t *testing.T, want, have *Metadata, opts ...cmp.Opti
 }
 
 func TestActionMetadataYAMLUnmarshalOK(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what  string
 		input string
@@ -197,6 +198,7 @@ runs:
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			have, err := Parse("action.yml", []byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -207,6 +209,7 @@ runs:
 }
 
 func TestActionMetadataYAMLUnmarshalError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what  string
 		input string
@@ -235,6 +238,7 @@ outputs: "foo"`,
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			_, err := Parse("action.yml", []byte(tc.input))
 			if err == nil {
 				t.Fatal("error did not occur")
@@ -248,12 +252,14 @@ outputs: "foo"`,
 }
 
 func TestActionMetadataAcceptsUnknownInputFields(t *testing.T) {
+	t.Parallel()
 	fixture, err := os.ReadFile("testdata/metadata/lighthouse.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, using := range []string{"node16", "node20"} {
 		t.Run(using, func(t *testing.T) {
+			t.Parallel()
 			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
 			md, err := Parse("action.yml", src)
 			if err != nil {

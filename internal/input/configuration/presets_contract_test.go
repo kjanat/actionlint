@@ -10,6 +10,7 @@ import (
 )
 
 func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
+	t.Parallel()
 	for _, category := range rule.Categories() {
 		for _, tc := range []struct {
 			settings string
@@ -21,6 +22,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 			{"{" + category + ": {example: off}}", "off"},
 		} {
 			t.Run(category+"/"+tc.settings, func(t *testing.T) {
+				t.Parallel()
 				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.settings + "}"))
 				if err != nil {
 					t.Fatal(err)
@@ -39,6 +41,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 }
 
 func TestNurserySelectionIsIndependent(t *testing.T) {
+	t.Parallel()
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
 	descriptor := repoconfig.Rule{Name: "under-development", Category: "correctness", Maturity: "nursery", Group: "nursery"}
 	for _, tc := range []struct {
@@ -87,6 +90,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 }
 
 func TestStrictPreservesConfiguredPolicyOptions(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`policy:
   require-job-timeout: {min-minutes: 5, max-minutes: 30}
   require-permissions: {scope: job}

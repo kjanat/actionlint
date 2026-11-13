@@ -84,6 +84,7 @@ func ociFindings(t *testing.T, result *checking.Result) []results.Diagnostic {
 // A provider pulled from an OCI registry runs its stored executable through
 // the process transport, and keeps running offline from the store.
 func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	pkg := publishOCIProvider(t)
 	check := func() *checking.Result {
@@ -117,8 +118,10 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 // the invocation authorizes native execution. Selecting --config grants no
 // network authority either.
 func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, explicit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			fixtureenvironment.IsolateUserCache(t)
 			pkg := publishOCIProvider(t)
 			root := repositoryfixture.Directory(t)
@@ -158,6 +161,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 }
 
 func TestOCIBinaryProviderDisabledByID(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	pkg := publishOCIProvider(t)
 	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference})
@@ -182,6 +186,7 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 
 // OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")

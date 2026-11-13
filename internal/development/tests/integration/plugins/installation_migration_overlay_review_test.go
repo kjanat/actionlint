@@ -15,9 +15,11 @@ import (
 )
 
 func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, input := range []string{"plugins: []", "plugins: null", "tools: {shellcheck: false, ruff: false}"} {
 		for _, explicit := range []bool{false, true} {
 			t.Run(input+map[bool]string{false: "/discovered", true: "/explicit"}[explicit], func(t *testing.T) {
+				t.Setenv("XDG_CACHE_HOME", t.TempDir())
 				registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 				registry.SetOffline(true)
 				root := repositoryfixture.Directory(t)

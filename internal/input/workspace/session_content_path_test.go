@@ -16,11 +16,6 @@ func TestNamedContentDiscoversProjectRelativeToWorkingDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repository, "ci.yml"), []byte("on: push\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := New(t.Context(), Options{WorkingDir: "repo", SkipProjectConfig: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	for _, tc := range []struct {
 		name       string
 		path       string
@@ -37,6 +32,11 @@ func TestNamedContentDiscoversProjectRelativeToWorkingDirectory(t *testing.T) {
 		{name: "absolute missing normalized", path: filepath.Join(repository, "missing.yml"), wantPath: "missing.yml", normalize: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			session, err := New(t.Context(), Options{WorkingDir: "repo", SkipProjectConfig: true})
+			if err != nil {
+				t.Fatal(err)
+			}
 			selection, err := session.Content(tc.path, []byte("on: push\n"), nil, tc.normalize)
 			if err != nil {
 				t.Fatal(err)

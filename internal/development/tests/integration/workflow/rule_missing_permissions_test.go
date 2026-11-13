@@ -11,6 +11,7 @@ import (
 )
 
 func TestMissingPermissionsSelectionAndSuppression(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\njobs:\n  build:%s\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 	for _, tc := range []struct {
 		name, config, comment, severity string
@@ -26,6 +27,7 @@ func TestMissingPermissionsSelectionAndSuppression(t *testing.T) {
 		{"strict explicit off", "lint: {rules: {policy: off, security: {missing-permissions: off}}}", "", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf(workflow, tc.comment)
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
 			if tc.severity == "" {
@@ -42,6 +44,7 @@ func TestMissingPermissionsSelectionAndSuppression(t *testing.T) {
 }
 
 func TestMissingPermissionsLocations(t *testing.T) {
+	t.Parallel()
 	const local = "    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 	for _, tc := range []struct {
 		name, option, trigger, workflowPermissions, jobPermissions string
@@ -67,6 +70,7 @@ func TestMissingPermissionsLocations(t *testing.T) {
 		{"job array", "[every-job]", "push", "permissions: {}\n", "", []int{4}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: " + tc.trigger + "\n" + tc.workflowPermissions + "jobs:\n  build:\n" + tc.jobPermissions + local
 			config := "lint: {rules: {security: {missing-permissions: {level: error, options: {require-at: " + tc.option + "}}}}}"
 			if tc.option == "" {

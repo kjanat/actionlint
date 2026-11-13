@@ -58,6 +58,7 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 // Invalid candidate locations must fail before a restore key can refer to
 // different bytes or interpret URI credentials, paths or fragments as a digest.
 func TestCachePlanRejectsMalformedCandidateSources(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("a", 64)
 	for _, source := range []string{
 		"sha256://", "sha256://short", "sha256://" + strings.Repeat("g", 64),
@@ -66,6 +67,7 @@ func TestCachePlanRejectsMalformedCandidateSources(t *testing.T) {
 		"sha256://" + digest + "?", "sha256://" + digest + "#fragment",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			sources := Sources{Paths: []string{source}}
 			if _, err := sources.CachePlan(t.Context()); err == nil {
 				t.Fatalf("invalid candidate entered cache plan: %q", source)

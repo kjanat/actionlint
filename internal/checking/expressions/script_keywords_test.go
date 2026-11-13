@@ -9,6 +9,7 @@ import (
 )
 
 func TestReservedMatrixWordChangesShellGrammar(t *testing.T) {
+	t.Parallel()
 	for _, dialect := range []syntax.LangVariant{syntax.LangBash, syntax.LangPOSIX} {
 		for _, word := range []string{"echo", "fi"} {
 			source := "if true; then\n  " + word + "\nfi\n"
@@ -21,6 +22,7 @@ func TestReservedMatrixWordChangesShellGrammar(t *testing.T) {
 }
 
 func TestScriptKeywordNeedsDataArgument(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []string{"bash", "sh"} {
 		for _, tc := range []struct {
 			name, expression, matrix, env, script string
@@ -53,6 +55,7 @@ func TestScriptKeywordNeedsDataArgument(t *testing.T) {
 			{name: "unsafe text in argument", expression: "matrix.word", matrix: "{word: [echo, 'bad value']}", script: "echo '%s'", unsafe: true},
 		} {
 			t.Run(shell+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				expression := "${{ " + tc.expression + " }}"
 				script := "if true; then\n  " + expression + "\nfi"
 				if tc.script != "" {

@@ -10,8 +10,10 @@ import (
 )
 
 func TestLockRestore(t *testing.T) {
+	t.Parallel()
 	for _, existing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "absent", true: "existing"}[existing], func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), plugininstall.LockName)
 			original := []byte("{\"schema_version\":1,\"plugins\":[]}\n")
 			if existing {

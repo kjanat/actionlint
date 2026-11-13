@@ -25,6 +25,7 @@ func graphFixture(t *testing.T) CallGraphData {
 }
 
 func TestCallGraphRejectsMalformedTransportValues(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(*CallGraphData){
 		"entry ID":         func(g *CallGraphData) { g.Entry.ID = "unknown" },
 		"entry kind":       func(g *CallGraphData) { g.Entry.Kind = "unknown" },
@@ -60,6 +61,7 @@ func TestCallGraphRejectsMalformedTransportValues(t *testing.T) {
 		"interruption": func(g *CallGraphData) { g.EntryInterruption = Present(Interruption{}); g.Complete = false },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			graph := graphFixture(t)
 			if _, err := NewCallGraph(graph); err != nil {
 				t.Fatal(err)
@@ -82,6 +84,7 @@ func retainGraph(t *testing.T, records CallGraphData) CallGraph {
 }
 
 func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
+	t.Parallel()
 	records := graphFixture(t)
 	firstCall := records.Calls[0]
 	firstScript := records.Scripts[0]
@@ -158,6 +161,7 @@ func TestCallGraphDetachesConstructionAndAccess(t *testing.T) {
 }
 
 func TestCallGraphPageBoundaries(t *testing.T) {
+	t.Parallel()
 	graph := retainGraph(t, graphFixture(t))
 	for _, bounds := range [][2]int{{-1, 1}, {2, 1}, {0, 0}, {0, -1}, {0, MaxCallGraphPageSize + 1}, {int(^uint(0) >> 1), 1}} {
 		if _, err := graph.CallsPage(bounds[0], bounds[1]); !errors.Is(err, ErrInvalidCallGraph) {
@@ -182,6 +186,7 @@ func TestCallGraphPageBoundaries(t *testing.T) {
 }
 
 func TestEmptyCallGraphPagesAreNil(t *testing.T) {
+	t.Parallel()
 	records := graphFixture(t)
 	records.Calls = nil
 	records.Scripts = nil
@@ -197,6 +202,7 @@ func TestEmptyCallGraphPagesAreNil(t *testing.T) {
 }
 
 func TestZeroCallGraph(t *testing.T) {
+	t.Parallel()
 	graph := CallGraph{}
 	if graph.Valid() || graph.Complete() || graph.Entry() != (InvocationEntry{}) || graph.Budget() != (InvocationBudget{}) || graph.CallCount() != 0 || graph.ScriptCount() != 0 {
 		t.Fatal("zero graph has facts")

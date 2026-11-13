@@ -19,6 +19,7 @@ import (
 )
 
 func TestCallClosesFilesLeftOpenByGuest(t *testing.T) {
+	t.Parallel()
 	closeFailure := errors.New("host file close failed")
 	for _, tc := range []struct {
 		name string
@@ -30,6 +31,7 @@ func TestCallClosesFilesLeftOpenByGuest(t *testing.T) {
 		{"joined deadline", errors.Join(context.DeadlineExceeded, closeFailure)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			plugin := loadPlugin(t, "misbehave", component.Options{})
 			for call := range 2 {
 				files := &countedFiles{FS: fstest.MapFS{"source.sh": &fstest.MapFile{Data: []byte("echo hello")}}, closeErr: tc.err}
@@ -56,6 +58,7 @@ func TestCallClosesFilesLeftOpenByGuest(t *testing.T) {
 }
 
 func TestCallPreservesHostCloseFailureAfterCancellation(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -118,6 +121,7 @@ func (f *countedFile) Close() error {
 }
 
 func TestFileGrantsAreReadOnlyAndInvocationScoped(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	for _, tc := range []struct {
 		content, operation, want string
@@ -140,6 +144,7 @@ func TestFileGrantsAreReadOnlyAndInvocationScoped(t *testing.T) {
 }
 
 func TestFileGrantPreservesSymlinkParentTraversal(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "real", "sub"), 0o700); err != nil {
 		t.Fatal(err)

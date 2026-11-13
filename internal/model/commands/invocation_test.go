@@ -3,6 +3,7 @@ package commands
 import "testing"
 
 func TestArgumentParsingDoesNotUseShellQuoting(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		want  []string
@@ -25,6 +26,7 @@ func TestArgumentParsingDoesNotUseShellQuoting(t *testing.T) {
 }
 
 func TestAmbiguousAndMissingProvidersAreUnknown(t *testing.T) {
+	t.Parallel()
 	registry, err := New([]Definition{{ID: "a", Executables: []string{"custom"}}, {ID: "b", Executables: []string{"custom"}}})
 	if err != nil {
 		t.Fatal(err)

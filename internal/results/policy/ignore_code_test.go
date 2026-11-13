@@ -8,6 +8,7 @@ import (
 )
 
 func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
+	t.Parallel()
 	const message = "Double quote to prevent globbing and word splitting"
 	for _, tc := range []struct {
 		pattern string
@@ -21,6 +22,7 @@ func TestRegexIgnoresMatchSeparateDiagnosticCodes(t *testing.T) {
 	} {
 		for _, scope := range []string{"global", "path"} {
 			t.Run(scope+"/"+tc.pattern, func(t *testing.T) {
+				t.Parallel()
 				patterns, err := repoconfig.CompileIgnorePatterns([]string{tc.pattern})
 				if err != nil {
 					t.Fatal(err)

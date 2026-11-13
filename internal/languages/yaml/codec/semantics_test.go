@@ -47,8 +47,10 @@ type plainPrefilled struct {
 }
 
 func TestCursorDecodeMatchesUpstreamForPrefilledTargets(t *testing.T) {
+	t.Parallel()
 	for _, selected := range []bool{false, true} {
 		t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+			t.Parallel()
 			const source = "hook: seen\nitems: {new: 2}\nvalue: null\n"
 			oldValue, baselineValue := "old", "old"
 			got := plainPrefilled{Keep: "preserve", Items: map[string]int{"old": 1}, Value: &oldValue}
@@ -67,6 +69,7 @@ func TestCursorDecodeMatchesUpstreamForPrefilledTargets(t *testing.T) {
 }
 
 func TestCursorEnterKeepsCallerAliasTargetIdentity(t *testing.T) {
+	t.Parallel()
 	const source = "root:\n  anchor: &payload\n    value: ok\n  item: *payload\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {
@@ -127,6 +130,7 @@ func TestCursorEnterKeepsCallerAliasTargetIdentity(t *testing.T) {
 }
 
 func TestCursorCollectionErrorsKeepMarksAndPartialValues(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		target       func() any
@@ -143,6 +147,7 @@ func TestCursorCollectionErrorsKeepMarksAndPartialValues(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, want := tc.target(), tc.target()
 			gotErr := decodeCursorSource([]byte(tc.source), got)
 			wantErr := upstream.Unmarshal([]byte(tc.source), want)
@@ -176,6 +181,7 @@ func assertConstructErrorsMatchUpstream(t *testing.T, got, want error) {
 }
 
 func TestCursorRootNullKeepsPrefilledValue(t *testing.T) {
+	t.Parallel()
 	type value struct{ Value string }
 	got, want := value{"preserve"}, value{"preserve"}
 	if err := decodeCursorSource([]byte("null\n"), &got); err != nil {
@@ -190,6 +196,7 @@ func TestCursorRootNullKeepsPrefilledValue(t *testing.T) {
 }
 
 func TestCursorDecodePreservesAndClearsPrefilledPointer(t *testing.T) {
+	t.Parallel()
 	type nested struct {
 		Name  string `yaml:"name"`
 		Value string `yaml:"hook"`
@@ -206,8 +213,10 @@ func TestCursorDecodePreservesAndClearsPrefilledPointer(t *testing.T) {
 		{"explicit null clears pointer", "nested: null\nhook: outer\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, selected := range []bool{false, true} {
 				t.Run(fmt.Sprintf("Select=%t", selected), func(t *testing.T) {
+					t.Parallel()
 					original, baseline := &nested{"keep", "inner"}, &nested{"keep", "inner"}
 					got, want := target{Nested: original}, target{Nested: baseline}
 					if err := decodePrefilledSource(t, []byte(tc.source), &got, selected); err != nil {
@@ -239,6 +248,7 @@ func TestCursorDecodePreservesAndClearsPrefilledPointer(t *testing.T) {
 }
 
 func TestParseRecursiveAliasKeepsGraphAndCursorDecodeFails(t *testing.T) {
+	t.Parallel()
 	root, err := codec.Parse([]byte("&recursive [*recursive]\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -268,6 +278,7 @@ func TestParseRecursiveAliasKeepsGraphAndCursorDecodeFails(t *testing.T) {
 }
 
 func TestCursorPrefilledMapMergesNewValues(t *testing.T) {
+	t.Parallel()
 	type target struct {
 		Items map[string]string `yaml:"items"`
 	}
@@ -300,6 +311,7 @@ func upstreamMappingValue(node *upstream.Node, name string) *upstream.Node {
 }
 
 func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
+	t.Parallel()
 	const source = "value: !<tag:yaml.org,2002:str> 12\n"
 	var wantRoot upstream.Node
 	if err := upstream.Unmarshal([]byte(source), &wantRoot); err != nil {
@@ -326,6 +338,7 @@ func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
 }
 
 func TestCursorOpensAliasOccurrenceDirectly(t *testing.T) {
+	t.Parallel()
 	root, err := codec.Parse([]byte("anchor: &payload value\nitem: *payload\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -362,6 +375,7 @@ func TestCursorOpensAliasOccurrenceDirectly(t *testing.T) {
 }
 
 func TestParseCommentsMatchUpstreamThroughSelectedBoundary(t *testing.T) {
+	t.Parallel()
 	const source = "# document head\nroot:\n  # value head\n  value: text # value line\n  # value foot\n\n# root foot\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {

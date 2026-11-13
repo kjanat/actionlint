@@ -9,6 +9,7 @@ import (
 )
 
 func TestIncludesMatchOriginalAxes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, matrix, want string }{
 		{"overwrite extras", `{"os":["linux","windows"],"include":[{"image":"ubuntu"},{"os":"windows","image":"windows"}]}`, `[{"os":"linux","image":"ubuntu"},{"os":"windows","image":"windows"}]`},
 		{"partial object preserves axis", `{"config":[{"name":"build","version":24}],"include":[{"image":"ubuntu"},{"config":{"name":"build"},"image":"windows"}]}`, `[{"config":{"name":"build","version":24},"image":"windows"}]`},
@@ -18,6 +19,7 @@ func TestIncludesMatchOriginalAxes(t *testing.T) {
 		{"excluded originals stay excluded", `{"os":["linux"],"exclude":[{"os":"linux"}],"include":[{"os":"linux","image":"first"},{"os":"linux","extra":"second"}]}`, `[{"os":"linux","image":"first"},{"os":"linux","extra":"second"}]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
@@ -45,12 +47,14 @@ func TestIncludesMatchOriginalAxes(t *testing.T) {
 }
 
 func TestNestedArrayExpressionsPreserveInterpretationBoundary(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, matrix, expected string }{
 		{"nested object expression", `item: [[{name: "${{ 'known' }}"}]]`, `[{"name":"known"}]`},
 		{"nested array insertion", `item: [[["${{ fromJSON('[1,2]') }}"]]]`, `[[1,2]]`},
 		{"returned nested syntax stays data", `item: [["${{ fromJSON('[{\"name\":\"${{ vars.NAME }}\"}]') }}"]]`, `[{"name":"${{ vars.NAME }}"}]`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
@@ -65,6 +69,7 @@ func TestNestedArrayExpressionsPreserveInterpretationBoundary(t *testing.T) {
 }
 
 func TestIncludeCompletenessIndependentOfExcludes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, filters string
 		complete      bool
@@ -77,6 +82,7 @@ func TestIncludeCompletenessIndependentOfExcludes(t *testing.T) {
 		{"unknown include insertion", `, include: ["${{ fromJSON(vars.INCLUDE) }}"]`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {item: [42]" + tc.filters + "}\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
@@ -89,6 +95,7 @@ func TestIncludeCompletenessIndependentOfExcludes(t *testing.T) {
 }
 
 func TestDynamicFilterComparisonsCannotEnumerateDefiniteCombinations(t *testing.T) {
+	t.Parallel()
 	for _, filters := range []string{
 		`exclude: [{os: "${{ vars.OS }}"}]`,
 		`exclude: [{os: ubuntu, config: {arch: "${{ vars.ARCH }}"}}]`,
@@ -109,6 +116,7 @@ func TestDynamicFilterComparisonsCannotEnumerateDefiniteCombinations(t *testing.
 }
 
 func TestDuplicateInsertedFiltersFailClosed(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"include", "exclude"} {
 		workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu, windows]\n        " + name + ": [{os: ubuntu}]\n        '${{ insert }}': {" + name + ": [{os: windows}]}\n    steps: [{run: echo ok}]\n"))
 		if len(errors) != 1 {
@@ -132,6 +140,7 @@ func TestDuplicateInsertedFiltersFailClosed(t *testing.T) {
 }
 
 func TestPostExcludeFallbackRetainsUncertainCandidates(t *testing.T) {
+	t.Parallel()
 	ubuntu := value.YAMLScalar("ubuntu-latest", "!!str", value.Origin{})
 	typo := value.YAMLScalar("ubuntu-lates", "!!str", value.Origin{})
 	var largeAxis []value.Value
@@ -160,6 +169,7 @@ func TestPostExcludeFallbackRetainsUncertainCandidates(t *testing.T) {
 }
 
 func TestPostExcludeProjectionDoesNotNarrowInvalidOrDynamicMatrix(t *testing.T) {
+	t.Parallel()
 	for _, state := range []value.State{value.Invalid, value.Dynamic} {
 		os := value.YAMLScalar("ubuntu-lates", "!!str", value.Origin{})
 		resolution := Resolution{
@@ -174,6 +184,7 @@ func TestPostExcludeProjectionDoesNotNarrowInvalidOrDynamicMatrix(t *testing.T) 
 }
 
 func TestSemanticMatrixDuplicateFilterKeysFailClosed(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"include", "exclude"} {
 		upper := "Include"
 		if name == "exclude" {
@@ -200,6 +211,7 @@ func TestSemanticMatrixDuplicateFilterKeysFailClosed(t *testing.T) {
 }
 
 func TestIncludeAddedKeyOriginsSurviveImmutableCopies(t *testing.T) {
+	t.Parallel()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        include:\n          - os: ubuntu\n            extra: first\n          - extra: second\n          - os: windows\n            extra: separate\n    steps: [{run: echo ok}]\n"
 	workflow, errors := workflowparser.Parse([]byte(source))
 	if len(errors) != 0 {
@@ -230,6 +242,7 @@ func TestIncludeAddedKeyOriginsSurviveImmutableCopies(t *testing.T) {
 }
 
 func TestExclusionMatcherRequiresKnownPresentKeys(t *testing.T) {
+	t.Parallel()
 	windows := value.YAMLScalar("windows-latest", "!!str", value.Origin{})
 	actual := (Combination{}).With("os", windows)
 	for _, filter := range []Combination{
@@ -256,6 +269,7 @@ func TestExclusionMatcherRequiresKnownPresentKeys(t *testing.T) {
 }
 
 func TestIncludeApplicabilityUsesSubsetAndSurvivingOriginals(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
 		want         matchProof
@@ -269,6 +283,7 @@ func TestIncludeApplicabilityUsesSubsetAndSurvivingOriginals(t *testing.T) {
 		{"known mismatch disproves dynamic exclusion", `{os: [build-pool], arch: [x64], exclude: [{os: other, arch: "${{ vars.ARCH }}"}], include: [{os: BUILD-POOL}]}`, matchAlways},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
@@ -291,6 +306,7 @@ func TestIncludeApplicabilityUsesSubsetAndSurvivingOriginals(t *testing.T) {
 }
 
 func TestIncludeMergeProofBeyondCombinationBudget(t *testing.T) {
+	t.Parallel()
 	os := value.YAMLScalar("build-pool", "!!str", value.Origin{})
 	upper := value.YAMLScalar("BUILD-POOL", "!!str", value.Origin{})
 	inclusion := (Combination{}).With("os", upper)

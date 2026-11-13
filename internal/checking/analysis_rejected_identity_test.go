@@ -15,6 +15,7 @@ import (
 )
 
 func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
+	t.Parallel()
 	content := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n"
 	parsed := parsing.Workflow([]byte(content))
 	entry := source.Reference{Document: "ci.yml", Revision: "revision-one", Node: "document"}

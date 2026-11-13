@@ -14,6 +14,7 @@ import (
 )
 
 func TestScriptInjectionCombinesIndependentValueSources(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source         string
 		semanticErrors int
@@ -24,6 +25,7 @@ func TestScriptInjectionCombinesIndependentValueSources(t *testing.T) {
 		{"format('{0}{1}', github.events.title, secrets.TOKEN)", 1, []string{"secret-interpolation"}},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))

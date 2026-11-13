@@ -12,6 +12,7 @@ import (
 )
 
 func TestParseDecodeErrorPreservesTypeAndSingleLineText(t *testing.T) {
+	t.Parallel()
 	input := []byte("lint: {enabled: wrong}\n")
 	parsed, err := document.Parse("", input)
 	if err != nil {

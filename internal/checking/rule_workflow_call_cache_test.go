@@ -12,8 +12,10 @@ import (
 )
 
 func TestWorkflowCallCacheModeNestedMetadataErrors(t *testing.T) {
+	t.Parallel()
 	for _, malformed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("malformed=%v", malformed), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			caller := []byte(`on: push
 cache-mode: read

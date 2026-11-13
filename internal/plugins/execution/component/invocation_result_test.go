@@ -8,6 +8,7 @@ import (
 )
 
 func TestInvocationContextQueriesStayScopedToCall(t *testing.T) {
+	t.Parallel()
 	var api bind.InvocationContext = invocationContext{}
 	graph, calls, scripts := invocationContextPagedGraph(t, 1)
 	populated := invocationContextFor(graph)
@@ -22,6 +23,7 @@ func TestInvocationContextQueriesStayScopedToCall(t *testing.T) {
 		{"original call remains valid", populated, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			summary, ok := requireInvocationResult(api.Describe(tc.ctx)).(bind.ResultSummaryStringOk)
 			if !ok || summary.Value.Calls != tc.count || summary.Value.Scripts != tc.count {
 				t.Fatalf("call summary = %+v", summary)

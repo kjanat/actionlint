@@ -39,12 +39,14 @@ func scalarReferenceCases(t *testing.T) []scalarReferenceCase {
 }
 
 func TestScalarSourceReferenceRecorded(t *testing.T) {
+	t.Parallel()
 	for _, fixture := range scalarReferenceCases(t) {
 		var request struct{ ID, Input string }
 		if err := json.Unmarshal(fixture.Request, &request); err != nil {
 			t.Fatal(err)
 		}
 		t.Run(request.ID, func(t *testing.T) {
+			t.Parallel()
 			var response struct {
 				RunnerSHA string
 				Engines   []struct {
@@ -84,6 +86,7 @@ func TestScalarSourceReferenceRecorded(t *testing.T) {
 
 // Live verification is opt-in; ordinary tests use the checked-in reference results.
 func TestScalarSourceReferenceLive(t *testing.T) {
+	t.Parallel()
 	image := os.Getenv("ACTIONLINT_REFERENCE_IMAGE")
 	if image == "" {
 		t.Skip("set ACTIONLINT_REFERENCE_IMAGE to a locally available Runny Docker image")
@@ -98,6 +101,7 @@ func TestScalarSourceReferenceLive(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Run(request.ID, func(t *testing.T) {
+			t.Parallel()
 			if request.Operation != "parse-yaml" || request.Engine != "next" || !request.AllowAnchors {
 				t.Fatal("reference case requires an unsupported Docker invocation")
 			}

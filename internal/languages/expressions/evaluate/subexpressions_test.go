@@ -9,6 +9,7 @@ import (
 )
 
 func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"false && fromJSON('bad')",
 		"true || fromJSON(null)",
@@ -20,6 +21,7 @@ func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
 		"fromJSON('{\"nested\":[1,2]}').nested[0] == 1",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			root := exprsyntax.ParseAssignedExpression("${{ " + source + " }}")
 			if root == nil {
 				t.Fatal("expression did not parse")
@@ -43,6 +45,7 @@ func TestSubexpressionResultsPreserveDemandedRootOutcome(t *testing.T) {
 }
 
 func TestSubexpressionResultsSkipUnusedBranches(t *testing.T) {
+	t.Parallel()
 	root := exprsyntax.ParseAssignedExpression("${{ false && fromJSON('bad') }}")
 	if root == nil {
 		t.Fatal("expression did not parse")
@@ -60,6 +63,7 @@ func TestSubexpressionResultsSkipUnusedBranches(t *testing.T) {
 }
 
 func TestSubexpressionResultsDetachCompositeValues(t *testing.T) {
+	t.Parallel()
 	root := exprsyntax.ParseAssignedExpression("${{ fromJSON('{\"nested\":[\"original\"]}').nested }}")
 	if root == nil {
 		t.Fatal("expression did not parse")
@@ -93,6 +97,7 @@ func TestSubexpressionResultsDetachCompositeValues(t *testing.T) {
 }
 
 func TestSubexpressionResultsFollowFunctionDemand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source   string
 		recorded []bool
@@ -104,6 +109,7 @@ func TestSubexpressionResultsFollowFunctionDemand(t *testing.T) {
 		{"case(inputs.enabled, fromJSON('bad'), 'safe')", []bool{true, true, true}},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			root := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			if root == nil {
 				t.Fatal("expression did not parse")

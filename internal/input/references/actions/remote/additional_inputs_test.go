@@ -25,6 +25,7 @@ func requestActionSource(t *testing.T) string {
 }
 
 func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
+	t.Parallel()
 	content := requestActionSource(t)
 	const commit = "3d6703deef41a82916a2e5ca87096f93035cef66"
 	for _, test := range []struct {
@@ -48,6 +49,7 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 		{name: "invalid manifest", content: "name: [", invalid: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			host, repository, revision, filename, metadata, repositoryID := test.host, test.repository, test.commit, test.filename, test.content, test.repositoryID
 			if host == "" {
 				host = "github.com"

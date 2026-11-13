@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
@@ -145,21 +144,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if input.Kind == inputmodel.Stdin {
 			return 0, commandargs.UsageError{Cause: errors.New("fix requires files; stdin is read-only")}
 		}
-		allowed := map[string]bool{}
-		for _, path := range result.Inputs {
-			absolute, e := filepath.Abs(path)
-			if e != nil {
-				return 0, e
-			}
-			allowed[absolute] = true
-		}
-		disk := files.New(ctx, nil, nil)
-		reader := files.New(ctx, func(path string) ([]byte, error) {
-			if !allowed[path] {
-				return nil, fmt.Errorf("fix target %s was not an analysis input", path)
-			}
-			return disk.ReadFile(path)
-		}, nil)
+		reader := fixTargetReader(ctx, result.Inputs)
 		plan, planErr := edits.Build(ctx, result.Diagnostics, reader, c.IncludeSuggestedFixes)
 		if planErr != nil {
 			return 0, planErr
@@ -194,6 +179,17 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		}
 	}
 	return status, err
+}
+
+func fixTargetReader(ctx context.Context, inputs []string) *files.Reader {
+	allowed := newCommandFiles(inputs)
+	disk := files.New(ctx, nil, nil)
+	return files.New(ctx, func(path string) ([]byte, error) {
+		if !allowed.contains(path) {
+			return nil, fmt.Errorf("fix target %s was not an analysis input", path)
+		}
+		return disk.ReadFile(path)
+	}, nil)
 }
 
 func writeCheckBuildIdentity(log io.Writer, c checkInvocation, r renderOptions) {

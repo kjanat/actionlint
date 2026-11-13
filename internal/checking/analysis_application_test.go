@@ -35,6 +35,7 @@ func (w *analysisRecordingLog) Write(p []byte) (int, error) {
 }
 
 func TestAnalysisDiagnosticProjects(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		roots []string
@@ -44,6 +45,7 @@ func TestAnalysisDiagnosticProjects(t *testing.T) {
 		{"same project", []string{"first", "first"}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			request := analysisRequest{WorkingDir: root}
 			for _, name := range tc.roots {
@@ -67,8 +69,10 @@ func TestAnalysisDiagnosticProjects(t *testing.T) {
 }
 
 func TestAnalysisConcurrentLogRecords(t *testing.T) {
+	t.Parallel()
 	for _, level := range []LogLevel{LogLevelVerbose, LogLevelDebug} {
 		t.Run(fmt.Sprint(level), func(t *testing.T) {
+			t.Parallel()
 			var log analysisRecordingLog
 			request := analysisRequest{}
 			for i := range 32 {
@@ -108,6 +112,7 @@ type analysisFailingRule struct {
 func (r *analysisFailingRule) VisitWorkflowPre(workflowdecl.WorkflowView) error { return r.err }
 
 func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
+	t.Parallel()
 	cause := errors.New("custom analysis failed")
 	for _, paths := range [][]string{{"a.yml"}, {"a.yml", "b.yml"}} {
 		request := analysisRequest{OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
@@ -128,6 +133,7 @@ func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
 }
 
 func TestAnalysisEmptySelectionDoesNotBuildRules(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	result, err := runTestAnalysis(t.Context(), analysisRequest{OnRulesCreated: func(r []workflowvisit.Rule) []workflowvisit.Rule { calls++; return r }})
 	if err != nil || result == nil || len(result.Diagnostics) != 0 || calls != 0 {

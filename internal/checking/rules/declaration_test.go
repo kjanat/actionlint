@@ -3,6 +3,7 @@ package rule
 import "testing"
 
 func TestDescriptorCloneOwnsInputRequirements(t *testing.T) {
+	t.Parallel()
 	original := Descriptor{Name: "example", RequiredInputs: []InputKind{Scripts, Invocations}}
 	cloned := original.Clone()
 	cloned.RequiredInputs[0] = Source

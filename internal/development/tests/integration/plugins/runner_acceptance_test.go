@@ -11,6 +11,7 @@ import (
 )
 
 func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	request := runnerFixtureRequest(t)
 	request.Selectors = []runner.Selector{
@@ -42,6 +43,7 @@ func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
 }
 
 func TestRunnerProviderMissingAndEmptyCatalogue(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	request := runnerFixtureRequest(t)
 	request.Selectors = request.Selectors[:1]
@@ -64,6 +66,7 @@ func TestRunnerProviderMissingAndEmptyCatalogue(t *testing.T) {
 }
 
 func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	snapshot := runnerFixtureRequest(t).Snapshot
 	snapshot.Content = "{"
@@ -91,6 +94,7 @@ func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
 }
 
 func TestRunnerProviderShellValidation(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	for _, tc := range []struct {
 		label string

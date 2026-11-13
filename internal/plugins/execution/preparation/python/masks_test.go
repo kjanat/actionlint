@@ -7,6 +7,7 @@ import (
 )
 
 func TestTemplateEffectsIgnorePresentation(t *testing.T) {
+	t.Parallel()
 	start := checkinputs.ScriptPosition{Row: 1, Column: 3}
 	masks := Masks{quoted: map[checkinputs.ScriptPosition]string{start: "_0"}}
 	finding := checkinputs.ScriptDiagnostic{

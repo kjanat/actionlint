@@ -32,6 +32,7 @@ func TestCompletionProtocolWithFilename(t *testing.T) {
 }
 
 func TestCompletionShellBehaviour(t *testing.T) {
+	t.Parallel()
 	binDir := t.TempDir()
 	exe := filepath.Join(binDir, "actionlint")
 	if runtime.GOOS == "windows" {
@@ -132,6 +133,7 @@ run actionlint --ignore ''
 	want := [][]string{{"--color", "--config"}, {"json", "jsonl"}, {"zsh"}, {"json", "jsonl"}, {"--origin"}, {"zsh"}, {"expression", "expression-call", "expression-reference", "expression-syntax", "expression-type"}, {"completion", "config"}, nil}
 	for _, tc := range tests {
 		t.Run(tc.shell, func(t *testing.T) {
+			t.Parallel()
 			if runtime.GOOS == "windows" && tc.shell != "powershell" {
 				t.Skip("POSIX shell driver")
 			}
@@ -307,15 +309,21 @@ func testCompletionScript(t *testing.T, shell string) string {
 }
 
 func TestCompletionScriptSyntax(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []string{"bash", "fish", "powershell", "zsh"} {
-		t.Run(shell, func(t *testing.T) { testCheckShellSyntax(t, shell, testCompletionScript(t, shell)) })
+		t.Run(shell, func(t *testing.T) {
+			t.Parallel()
+			testCheckShellSyntax(t, shell, testCompletionScript(t, shell))
+		})
 	}
 }
 
 func TestCommandCompletionFlag(t *testing.T) {
+	t.Parallel()
 	for _, flag := range []string{"-completion", "--completion", "-completions", "--completions"} {
 		for _, shell := range []string{"bash", "fish", "powershell", "zsh"} {
 			t.Run(flag+"/"+shell, func(t *testing.T) {
+				t.Parallel()
 				var out, errout bytes.Buffer
 				cmd := cli.Command{Stdout: &out, Stderr: &errout}
 				if status := cmd.Main([]string{"actionlint", flag, shell, "missing.yml"}); status != 0 {
@@ -330,6 +338,7 @@ func TestCommandCompletionFlag(t *testing.T) {
 }
 
 func TestCompletionProtocol(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		args   []string
@@ -356,6 +365,7 @@ func TestCompletionProtocol(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var out, errout bytes.Buffer
 			cmd := cli.Command{Stdout: &out, Stderr: &errout}
 			args := append([]string{"actionlint", "__complete"}, tc.args...)

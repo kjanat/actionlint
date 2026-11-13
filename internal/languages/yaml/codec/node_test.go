@@ -9,6 +9,7 @@ import (
 )
 
 func TestOwnedGraphAndNestedDecode(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("base: &a {value: null}\ncopy: *a\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -65,6 +66,7 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 }
 
 func TestPartialDecodeAndErrors(t *testing.T) {
+	t.Parallel()
 	var result struct {
 		A string `yaml:"a"`
 		B bool   `yaml:"b"`

@@ -12,8 +12,10 @@ import (
 )
 
 func TestOpaqueActionExpressionsUseInvocationFrameWithoutWorkflowDuplicates(t *testing.T) {
+	t.Parallel()
 	for _, inside := range []bool{false, true} {
 		t.Run(map[bool]string{false: "workflow already checked", true: "invoked opaque input"}[inside], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path := filepath.Join(root, "action.yml")
 			content := []byte("name: opaque\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with:\n        script: ${{ github.event.issue.title }}\n")

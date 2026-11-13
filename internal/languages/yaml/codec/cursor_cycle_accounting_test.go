@@ -31,6 +31,7 @@ func (p *cycleAccountingPlugin) CheckAlias(aliases, constructions int) error {
 }
 
 func TestCursorCycleAccountingMatchesUpstream(t *testing.T) {
+	t.Parallel()
 	const source = "a: &a {c: *a}\nitems: *a\n"
 	root, err := Parse([]byte(source))
 	if err != nil {

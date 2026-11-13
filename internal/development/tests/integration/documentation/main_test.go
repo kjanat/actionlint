@@ -68,6 +68,7 @@ func testErr(t *testing.T, err error, want ...string) {
 }
 
 func TestNormalizeCheckoutPaths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		root     string
@@ -79,6 +80,7 @@ func TestNormalizeCheckoutPaths(t *testing.T) {
 		{"native and slash paths", filepath.FromSlash("C:/work/docs-link"), filepath.FromSlash("C:/work/docs")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, path := range []string{tc.root, tc.physical, filepath.ToSlash(tc.root), filepath.ToSlash(tc.physical)} {
 				got := string(normalizeCheckoutPaths([]byte("open "+path+"/action.yml"), tc.root, tc.physical))
 				if want := "open /path/to/repo/action.yml"; got != want {
@@ -90,6 +92,7 @@ func TestNormalizeCheckoutPaths(t *testing.T) {
 }
 
 func TestReadDocumentationFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	want := []byte("run: echo C:\\tools\\bin\n")
@@ -150,6 +153,7 @@ jobs:
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			out, err := Actionlint([]byte(tc.src))
 			if err != nil {
 				t.Fatal(err)
@@ -162,6 +166,7 @@ jobs:
 }
 
 func TestMainGenerateOK(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 
 	in := must(os.Open(filepath.FromSlash("testdata/ok/minimal.in")))
@@ -187,6 +192,7 @@ func TestMainGenerateOK(t *testing.T) {
 }
 
 func TestMainGenerateMissingWorkflow(t *testing.T) {
+	t.Parallel()
 	input := must(os.ReadFile("testdata/ok/replace_absolute_path.in"))
 	want := must(os.ReadFile("testdata/ok/replace_absolute_path.out"))
 	path := filepath.Join(t.TempDir(), "checks.md")
@@ -206,6 +212,7 @@ func TestMainGenerateMissingWorkflow(t *testing.T) {
 }
 
 func TestMainCheckOK(t *testing.T) {
+	t.Parallel()
 	path := filepath.FromSlash("testdata/ok/minimal.out")
 	if err := Main([]string{"exe", path}); err != nil {
 		t.Fatal(err)
@@ -213,6 +220,7 @@ func TestMainCheckOK(t *testing.T) {
 }
 
 func TestMainCheckQuietOK(t *testing.T) {
+	t.Parallel()
 	path := filepath.FromSlash("testdata/ok/minimal.out")
 	if err := Main([]string{"exe", "-quiet", path}); err != nil {
 		t.Fatal(err)
@@ -220,6 +228,7 @@ func TestMainCheckQuietOK(t *testing.T) {
 }
 
 func TestMainPrintHelp(t *testing.T) {
+	t.Parallel()
 	if err := Main([]string{"exe", "-help"}); err != nil {
 		t.Fatal(err)
 	}
@@ -239,6 +248,7 @@ permissions: {}
 }
 
 func TestUpdateSectionsWithoutExamples(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{
 		"<a id=\"one\"></a>\n\n## One\n\nExplanation.\n",
 		"<a id=\"one\"></a>\n\n## One\n\nExplanation.\n\n<a id=\"two\"></a>\n\n## Two\n\nMore explanation.\n",
@@ -251,23 +261,28 @@ func TestUpdateSectionsWithoutExamples(t *testing.T) {
 }
 
 func TestMainCheckError(t *testing.T) {
+	t.Parallel()
 	path := filepath.FromSlash("testdata/ok/minimal.in")
 	testErr(t, Main([]string{"exe", path}), "checks document is outdated")
 }
 
 func TestMainFileNotFound(t *testing.T) {
+	t.Parallel()
 	testErr(t, Main([]string{"exe", "this-file-does-not-exist.md"}), "could not read the document file")
 }
 
 func TestMainTooManyArgs(t *testing.T) {
+	t.Parallel()
 	testErr(t, Main([]string{"exe", "a", "b", "c"}), "this command should take exact one file path but got")
 }
 
 func TestMainInvalidCheckFlag(t *testing.T) {
+	t.Parallel()
 	testErr(t, Main([]string{"exe", "-c", "foo.md"}), "flag provided but not defined")
 }
 
 func TestMainUpdateError(t *testing.T) {
+	t.Parallel()
 	path := filepath.FromSlash("testdata/err/no_playground_link.md")
 	if err := Main([]string{"exe", path}); err == nil {
 		t.Fatal("no error occurred")
@@ -275,6 +290,7 @@ func TestMainUpdateError(t *testing.T) {
 }
 
 func TestUpdateOK(t *testing.T) {
+	t.Parallel()
 	dir := filepath.FromSlash("testdata/ok")
 
 	tests := []string{}
@@ -290,6 +306,7 @@ func TestUpdateOK(t *testing.T) {
 		in := filepath.Join(dir, tc+".in")
 		out := filepath.Join(dir, tc+".out")
 		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
 			have, err := Update(must(os.ReadFile(in)))
 			if err != nil {
 				t.Fatal(err)
@@ -303,6 +320,7 @@ func TestUpdateOK(t *testing.T) {
 }
 
 func TestUpdateError(t *testing.T) {
+	t.Parallel()
 	dir := filepath.FromSlash("testdata/err")
 
 	tests := []string{}
@@ -317,6 +335,7 @@ func TestUpdateError(t *testing.T) {
 	for _, tc := range tests {
 		path := filepath.Join(dir, tc+".md")
 		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
 			if _, err := Update(must(os.ReadFile(path))); err == nil {
 				t.Fatal("no error occurred")
 			}
@@ -325,6 +344,7 @@ func TestUpdateError(t *testing.T) {
 }
 
 func TestPlaygroundLinkSizeLimit(t *testing.T) {
+	t.Parallel()
 	line := append(bytes.Repeat([]byte("a"), 1023), '\n')
 	u := NewUpdater(nil)
 	u.PlaygroundLink(bytes.Repeat(line, playgroundMaxSourceBytes/len(line)))
@@ -338,6 +358,7 @@ func TestPlaygroundLinkSizeLimit(t *testing.T) {
 }
 
 func TestPlaygroundLinkURLLimit(t *testing.T) {
+	t.Parallel()
 	random := rand.New(rand.NewPCG(1, 2))
 	var src bytes.Buffer
 	for src.Len() < 2*playgroundMaxURLLength {
@@ -354,6 +375,7 @@ func TestPlaygroundLinkURLLimit(t *testing.T) {
 }
 
 func TestPlaygroundLinkTrailingData(t *testing.T) {
+	t.Parallel()
 	link := NewUpdater(nil).PlaygroundLink([]byte("on: push"))
 	if payload, ok := playgroundLinkPayload(link); !ok || string(payload) != "on: push" {
 		t.Fatalf("a generated link does not decode: %q, %v", payload, ok)
@@ -370,6 +392,7 @@ func TestPlaygroundLinkTrailingData(t *testing.T) {
 }
 
 func TestPlaygroundLinkLimits(t *testing.T) {
+	t.Parallel()
 	payload := bytes.Repeat([]byte("a"), playgroundMaxSourceBytes+1)
 	if err := playgroundLinkError(payload, "[Playground]("+playgroundURL+"eJw=)"); err == nil {
 		t.Fatal("a link with an oversized payload passed")
@@ -383,6 +406,7 @@ func TestPlaygroundLinkLimits(t *testing.T) {
 }
 
 func TestStateString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		state state
 		want  string

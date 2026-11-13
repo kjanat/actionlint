@@ -10,6 +10,7 @@ import (
 )
 
 func TestForeignSuppressionPreservesDiagnosticPath(t *testing.T) {
+	t.Parallel()
 	source := []byte("name: test # actionlint:ignore action --\n")
 	finding := &findingmodel.Finding{Path: "./local/action.yml", Start: sourcepos.Position{Line: 2}, Rule: "expression", Source: source}
 	got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterForeignInline("/repo/local/action.yml", source, []*findingmodel.Finding{finding}, nil)

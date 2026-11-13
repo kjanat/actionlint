@@ -33,6 +33,7 @@ type matrixCase struct {
 }
 
 func TestConfigurationConsumerMatrix(t *testing.T) {
+	t.Parallel()
 	fixtureDir, err := filepath.Abs("testdata/tombi")
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +76,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		if name == configschema.RootFile {
 			return generated, nil
 		}
-		return os.ReadFile(filepath.FromSlash(name))
+		return os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(name)))
 	}
 	type consumer struct {
 		validate func([]byte) error
@@ -102,6 +103,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 	tombi, tombiErr := exec.LookPath("tombi")
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			ext := tc.Extension
 			if ext == "" {
 				ext = ".toml"
@@ -138,6 +140,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 				return
 			}
 			t.Run("tombi", func(t *testing.T) {
+				t.Parallel()
 				if tombiErr != nil {
 					t.Skip("tombi is not installed")
 				}

@@ -12,6 +12,7 @@ import (
 )
 
 func TestManualDocumentsEveryFlag(t *testing.T) {
+	t.Parallel()
 	b, err := os.ReadFile(filepath.Join("man", "actionlint.1.md"))
 	if err != nil {
 		t.Fatal(err)

@@ -16,14 +16,16 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
-	environment.IsolateUserCache(t)
+	cache := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("LOCALAPPDATA", cache)
+	t.Setenv("HOME", cache)
 	// This module has an invalid code section. Static inspection succeeds, while
 	// compilation or execution would fail; inspection must never start a runtime.
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 10, 1, 255)
@@ -42,6 +44,7 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 }
 
 func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
@@ -76,6 +79,7 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 }
 
 func TestRealRemoteRuffArtifact(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	// Opt in to the separately built Ruff artifact. CI unit tests above use
 	// checked-in engines; this test verifies the actual published ABI and section.
 	path := os.Getenv("ACTIONLINT_TEST_RUFF_WASM")
@@ -106,6 +110,7 @@ func TestRealRemoteRuffArtifact(t *testing.T) {
 }
 
 func TestRealRuffEngineConfiguration(t *testing.T) {
+	t.Parallel()
 	module := os.Getenv("ACTIONLINT_TEST_RUFF_WASM")
 	if module == "" {
 		t.Skip("set ACTIONLINT_TEST_RUFF_WASM to a packaged Ruff artifact")
@@ -147,6 +152,7 @@ func TestRealRuffEngineConfiguration(t *testing.T) {
 }
 
 func TestRealShellcheckComponentConfiguration(t *testing.T) {
+	t.Parallel()
 	module := os.Getenv("ACTIONLINT_TEST_SHELLCHECK_WASM")
 	if module == "" {
 		t.Skip("set ACTIONLINT_TEST_SHELLCHECK_WASM to a packaged ShellCheck component")

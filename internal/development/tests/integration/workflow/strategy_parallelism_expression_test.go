@@ -12,6 +12,7 @@ import (
 )
 
 func TestStrategyExpressionParallelism(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, value, message string }{
 		{"fraction", "1.5", "must be an integer"},
 		{"fraction below one", "0.5", "must be an integer"},
@@ -23,6 +24,7 @@ func TestStrategyExpressionParallelism(t *testing.T) {
 	} {
 		for _, form := range []string{"strategy", "field", "JSON field"} {
 			t.Run(form+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				field := fmt.Sprintf(`strategy: ${{ fromJSON('{"Max-Parallel":%s}') }}`, tc.value)
 				switch form {
 				case "field":

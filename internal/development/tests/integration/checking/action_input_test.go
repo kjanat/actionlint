@@ -29,6 +29,7 @@ func (o *actionInputObserver) CheckDocument(_ context.Context, input checkinputs
 }
 
 func TestAliasedActionInputCommentsReachAnalyzers(t *testing.T) {
+	t.Parallel()
 	const workflow = `on: push
 env:
   SCRIPT: &script "console.log('hello')" # anchor comment
@@ -83,6 +84,7 @@ jobs:
 }
 
 func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v7\n        with:\n          script: |\n            console.log(\"${{ 'missing' }}\");\n            missing();\n      - uses: ./nested\n      - uses: example/execute@v1\n        with:\n          code: \"console.log('é'); missing();\"\n      - uses: actions/upload-artifact@v4\n        with:\n          name: missing\n      - run: echo missing\n        shell: bash\n"
 	composite := "name: nested\ndescription: fixture\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with:\n        script: >\n          console.log('é');\n          missing();\n"

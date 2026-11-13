@@ -13,7 +13,7 @@ func TestConfigInitSnapshotSchemaDirective(t *testing.T) {
 	for _, version := range []string{"2.0.0-SNAPSHOT-02d216d", "2.0.0-rc.1-SNAPSHOT-02d216d"} {
 		t.Run(version, func(t *testing.T) {
 			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			previous := buildinfo.ReleaseVersion
 			buildinfo.ReleaseVersion = version
 			t.Cleanup(func() { buildinfo.ReleaseVersion = previous })

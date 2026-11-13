@@ -46,6 +46,7 @@ func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
 }
 
 func TestDocumentDescriptorConfigurationScope(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		scope manifests.Scope
 		want  rulemeta.ConfigurationScope
@@ -67,8 +68,10 @@ func TestDocumentDescriptorConfigurationScope(t *testing.T) {
 }
 
 func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
+	t.Parallel()
 	for _, stdin := range []manifests.Stdin{manifests.StdinSource, manifests.StdinRequest} {
 		t.Run(string(stdin), func(t *testing.T) {
+			t.Parallel()
 			input := documentInput(t, "on: push\njobs:\n  one:\n    if: ${{ github.actor == 'raw' }}\n")
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
 			input.Dependencies = []workflowfacts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 2, Column: 5}}, {Reference: sourcepos.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
@@ -108,6 +111,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 }
 
 func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
+	t.Parallel()
 	input := documentInput(t, "head\r\nαbc\rdef\n")
 	pool := process.NewProcessPool(t.Context(), 1)
 	command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) {
@@ -138,9 +142,11 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 }
 
 func TestDocumentProcessSARIFAndJQ(t *testing.T) {
+	t.Parallel()
 	input := documentInput(t, "one\ntwo\n")
 	for _, format := range []manifests.OutputFormat{manifests.FormatSARIF, manifests.FormatJSON} {
 		t.Run(string(format), func(t *testing.T) {
+			t.Parallel()
 			pool := process.NewProcessPool(t.Context(), 1)
 			output := manifests.Output{Format: format}
 			stdout := fmt.Sprintf(`{"version":"2.1.0","runs":[{"results":[{"ruleId":"D1","message":{"text":"document"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":%q},"region":{"startLine":2,"startColumn":2,"endColumn":3}}}]}]}]}`, input.Path)
@@ -163,6 +169,7 @@ func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 }
 
 func TestDocumentProcessFixApplicability(t *testing.T) {
+	t.Parallel()
 	input := documentInput(t, "one\n")
 	for _, label := range []string{"safe", "unsafe", "suggested"} {
 		pool := process.NewProcessPool(t.Context(), 1)
@@ -188,6 +195,7 @@ func TestDocumentProcessFixApplicability(t *testing.T) {
 }
 
 func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
+	t.Parallel()
 	input := documentInput(t, "one\n")
 	pool := process.NewProcessPool(t.Context(), 1)
 	calls := 0
@@ -220,6 +228,7 @@ func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
 }
 
 func TestDocumentProcessRejectsChangedDiskAfterExecution(t *testing.T) {
+	t.Parallel()
 	input := documentInput(t, "one\n")
 	pool := process.NewProcessPool(t.Context(), 1)
 	calls := 0
@@ -243,6 +252,7 @@ func TestDocumentProcessRejectsChangedDiskAfterExecution(t *testing.T) {
 }
 
 func TestDocumentProcessCanceledFreshnessCheck(t *testing.T) {
+	t.Parallel()
 	input := documentInput(t, "one\n")
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -252,6 +262,7 @@ func TestDocumentProcessCanceledFreshnessCheck(t *testing.T) {
 }
 
 func TestDocumentForeignFileAuthority(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	filename := filepath.Join(directory, "current.yml")
 	request := checkinputs.ScriptRequest{Filename: filename}
@@ -266,6 +277,7 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 }
 
 func TestDocumentInvocationDefinitionsOwnTheirOptions(t *testing.T) {
+	t.Parallel()
 	manifest := documentManifest(manifests.ProcessSpec{Output: echoOutput})
 	manifest.InvocationDefinitions = []commands.Definition{{ID: "example/runtime", Executables: []string{"custom"}, Options: []commands.Option{{Short: "o", Argument: true, Choices: []string{"allowed"}}}}}
 	checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})

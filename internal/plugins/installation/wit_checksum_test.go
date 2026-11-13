@@ -9,6 +9,7 @@ import (
 )
 
 func TestComponentWITChecksumFields(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("a", 64)
 	pin := Pin{Kind: artifacts.Component, Name: "github.com/example/plugin", PluginID: "example", Version: "v1.0.0", Contract: "example:plugin/checker@1.0.0#sha256=" + digest}
 	for _, field := range []string{"wit_sha256", "contract_sha256"} {

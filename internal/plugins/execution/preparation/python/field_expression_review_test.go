@@ -6,6 +6,7 @@ import (
 )
 
 func TestFormattedFieldSyntaxTemplates(t *testing.T) {
+	t.Parallel()
 	end := func(source string) (int, bool) { index := strings.Index(source, "}}"); return index + 2, index >= 0 }
 	for _, source := range []string{
 		`print(f"{lhs ${{ inputs.operator }} rhs}")`,

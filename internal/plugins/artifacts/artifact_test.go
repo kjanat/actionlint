@@ -29,6 +29,7 @@ func custom(name string, value []byte) []byte {
 }
 
 func TestNormalizeSource(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	file := filepath.Join(root, "engine.wasm")
 	uriPath := filepath.ToSlash(file)
@@ -47,6 +48,7 @@ func TestNormalizeSource(t *testing.T) {
 		{"file", fileURI + pin, fileURI + pin, file},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			reference, local, err := NormalizeSource(tc.source, root)
 			if err != nil || reference != tc.reference || local != tc.local {
 				t.Fatalf("NormalizeSource(%q) = (%q, %q, %v), want (%q, %q, nil)", tc.source, reference, local, err, tc.reference, tc.local)
@@ -82,6 +84,7 @@ func compressed(t *testing.T, data []byte) []byte {
 }
 
 func TestSniff(t *testing.T) {
+	t.Parallel()
 	nested := append([]byte("\x00asm\x0d\x00\x01\x00"), 1)
 	child := module(`{"id":"child"}`)
 	nested = binary.AppendUvarint(nested, uint64(len(child)))
@@ -109,6 +112,7 @@ func TestSniff(t *testing.T) {
 		{"oversize metadata", module(`{"padding":"` + strings.Repeat("x", maxMetadataBytes) + `"}`)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if _, _, err := Sniff(tc.data); err == nil {
 				t.Fatal("accepted invalid metadata")
 			}
@@ -123,9 +127,11 @@ func TestSniff(t *testing.T) {
 }
 
 func TestRemoteAndCache(t *testing.T) {
+	t.Parallel()
 	raw := module(`{"id":"test"}`)
 	for _, gzip := range []bool{false, true} {
 		t.Run(strconv.FormatBool(gzip), func(t *testing.T) {
+			t.Parallel()
 			data := raw
 			if gzip {
 				data = compressed(t, raw)
@@ -182,6 +188,7 @@ func TestRemoteAndCache(t *testing.T) {
 }
 
 func TestRemoteFailures(t *testing.T) {
+	t.Parallel()
 	raw := module(`{"padding":"` + strings.Repeat("x", 2000) + `"}`)
 	packed := compressed(t, raw)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +205,7 @@ func TestRemoteFailures(t *testing.T) {
 			_, _ = w.Write(raw)
 		}
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 	for _, tc := range []struct {
 		path    string
 		options Options
@@ -212,6 +219,7 @@ func TestRemoteFailures(t *testing.T) {
 		{"/#sha256=" + strings.Repeat("0", 64), Options{}, "SHA256 mismatch"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
 			grant, err := ExplicitSource(server.URL)
 			if err != nil {
 				t.Fatal(err)
@@ -231,6 +239,7 @@ func TestRemoteFailures(t *testing.T) {
 }
 
 func TestLocalURI(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "space # plugin.wasm")
 	if err := os.WriteFile(path, module(`{}`), 0600); err != nil {
 		t.Fatal(err)

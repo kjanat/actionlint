@@ -6,8 +6,10 @@ import (
 )
 
 func TestCursorOperationsRejectForeignChildAfterSourceMutation(t *testing.T) {
+	t.Parallel()
 	for _, operation := range []string{"decode", "enter", "select"} {
 		t.Run(operation, func(t *testing.T) {
+			t.Parallel()
 			cursor := errorCursor(t, []byte("value: original\n"))
 			entered, err := cursor.Enter()
 			if err != nil {
@@ -54,6 +56,7 @@ func TestCursorOperationsRejectForeignChildAfterSourceMutation(t *testing.T) {
 }
 
 func TestCursorRejectsForeignGraphBeforeConstruction(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("value: original\n"))
 	if err != nil {
 		t.Fatal(err)

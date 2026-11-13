@@ -20,6 +20,7 @@ import (
 )
 
 func TestExprContextPropertySuggestions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input, key, suggestion string
 	}{
@@ -32,6 +33,7 @@ func TestExprContextPropertySuggestions(t *testing.T) {
 		{"github.repository", "jobs.<job_id>.steps.run", ""},
 	} {
 		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
+			t.Parallel()
 			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -56,9 +58,11 @@ func TestExprContextPropertySuggestions(t *testing.T) {
 }
 
 func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
+	t.Parallel()
 	for _, receiver := range []string{"inputs", "matrix", "steps", "needs", "jobs", "env", "custom"} {
 		for _, property := range []string{"github_token", "runner_os", "job_workflow_sha"} {
 			t.Run(receiver+"."+property, func(t *testing.T) {
+				t.Parallel()
 				checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 				checker.vars[receiver] = exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"declared": exprtypes.BoolType()}).Type()
 				checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
@@ -83,6 +87,7 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 }
 
 func TestExprDeclaredInputSuggestions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, expression, key, suggestion string
 		inputs                            exprtypes.ObjectType
@@ -97,6 +102,7 @@ func TestExprDeclaredInputSuggestions(t *testing.T) {
 		{"declared dotted input", "inputs.github_repository", "jobs.<job_id>.steps.run", "", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"github_repository": exprtypes.StringType()})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.MergeInputTypes(checker, tc.inputs)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
@@ -120,6 +126,7 @@ func TestExprDeclaredInputSuggestions(t *testing.T) {
 }
 
 func TestExprBareFunctionNames(t *testing.T) {
+	t.Parallel()
 	for _, key := range []string{"jobs.<job_id>.if", "jobs.<job_id>.steps.if"} {
 		for _, tc := range []struct {
 			input, want string
@@ -141,6 +148,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 			{"inputs.always", ""},
 		} {
 			t.Run(key+"/"+tc.input, func(t *testing.T) {
+				t.Parallel()
 				expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
 				if err != nil {
 					t.Fatal(err)
@@ -165,6 +173,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 		}
 	}
 	t.Run("variable takes precedence over function", func(t *testing.T) {
+		t.Parallel()
 		expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("always}}"))
 		if err != nil {
 			t.Fatal(err)
@@ -181,6 +190,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 }
 
 func TestExprSemanticsCheckOK(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what          string
 		input         string
@@ -1135,6 +1145,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			p := exprsyntax.NewParser()
 			e, err := p.Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
@@ -1189,6 +1200,7 @@ diff:
 }
 
 func TestExprSemanticsCheckError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what          string
 		input         string
@@ -1701,6 +1713,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			p := exprsyntax.NewParser()
 			e, err := p.Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
@@ -1755,14 +1768,16 @@ func TestExprSemanticsCheckError(t *testing.T) {
 // Actions defines comparison results for all operand types, including NaN
 // conversion and collection identity. Warnings are selected independently.
 func TestExprCompareOperandsCheck(t *testing.T) {
+	t.Parallel()
 	types := map[string]exprtypes.Type{"number": exprtypes.NumberType(), "text": exprtypes.StringType(), "boolean": exprtypes.BoolType(), "nothing": exprtypes.NullType(), "object": exprtypes.NewEmptyObjectType().Type(), "array": exprtypes.NewArrayType(exprtypes.NumberType()).Type(), "unknown": exprtypes.AnyType()}
 	for _, op := range []string{"==", "!=", "<", "<=", ">", ">="} {
 		for left := range types {
 			for right := range types {
 				input := left + " " + op + " " + right
 				t.Run(input, func(t *testing.T) {
+					t.Parallel()
 					c := NewChecker(contextspec.DefaultExpressionScope(), nil)
-					c.vars = types
+					c.vars = maps.Clone(types)
 					names := make([]string, 0, len(types))
 					for name := range types {
 						names = append(names, name)
@@ -1783,6 +1798,7 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 }
 
 func TestExprBuiltinFunctionSignatures(t *testing.T) {
+	t.Parallel()
 	for name, function := range exprfunctions.Builtins {
 		sigs := function.Signatures
 		if len(sigs) == 0 {
@@ -1812,6 +1828,7 @@ func TestExprBuiltinFunctionSignatures(t *testing.T) {
 }
 
 func TestExprSemanticsCheckerUpdateMatrix(t *testing.T) {
+	t.Parallel()
 	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	ty := exprtypes.NewEmptyObjectType()
 	prev := c.vars["matrix"]
@@ -1827,6 +1844,7 @@ func TestExprSemanticsCheckerUpdateMatrix(t *testing.T) {
 }
 
 func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
+	t.Parallel()
 	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	ty := exprtypes.NewEmptyObjectType()
 	prev := c.vars["steps"]
@@ -1842,6 +1860,7 @@ func TestExprSemanticsCheckerUpdateSteps(t *testing.T) {
 }
 
 func TestExprSematincsCheckerUpdateDispatchInputsVarType(t *testing.T) {
+	t.Parallel()
 	ty := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"foo": exprtypes.NullType()})
 	c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	contextspec.SetDispatchInputTypes(c, ty)
@@ -1883,6 +1902,7 @@ func objectPath(t *testing.T, ty exprtypes.Type, keys ...string) exprtypes.Objec
 }
 
 func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		first  exprtypes.ObjectType
 		second exprtypes.ObjectType
@@ -1927,6 +1947,7 @@ func TestExprSemanticsCheckerUpdateInputsMultipleTimes(t *testing.T) {
 	for _, tc := range tests {
 		name := fmt.Sprintf("%v then %v", tc.first, tc.second)
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			c := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.MergeInputTypes(c, tc.first)
 			contextspec.SetDispatchInputTypes(c, tc.second)
@@ -1957,6 +1978,7 @@ func testObjectPropertiesAreInLowerCase(t *testing.T, ty exprtypes.Type) {
 }
 
 func TestBuiltinGlobalVariableTypesValidation(t *testing.T) {
+	t.Parallel()
 	for ctx, ty := range contextspec.BuiltinGlobalVariableTypes {
 		for _, r := range ctx {
 			if 'A' <= r && r <= 'Z' {
@@ -1969,6 +1991,7 @@ func TestBuiltinGlobalVariableTypesValidation(t *testing.T) {
 }
 
 func TestParseFormatSpecifiers(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		in   string
@@ -2137,6 +2160,7 @@ func TestParseFormatSpecifiers(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			want := map[int]struct{}{}
 			for _, i := range tc.want {
 				want[i] = struct{}{}
@@ -2151,6 +2175,7 @@ func TestParseFormatSpecifiers(t *testing.T) {
 }
 
 func TestExprIsConstant(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input   string
 		isConst bool
@@ -2194,6 +2219,7 @@ func TestExprIsConstant(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			p := exprsyntax.NewParser()
 			e, err := p.Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
@@ -2212,6 +2238,7 @@ func TestExprIsConstant(t *testing.T) {
 // vim: nofoldenable
 
 func TestContextReplacementDispatchInputs(t *testing.T) {
+	t.Parallel()
 	githubContexts := []struct {
 		ty      exprtypes.Type
 		present bool

@@ -29,6 +29,7 @@ import (
 )
 
 func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - uses: ./REPO/child\n      - uses: actions/checkout@v4\n        with: {path: Repo}\n", nil, nil)
 	directory := filepath.Join(f.options.Paths.Workspace, "child")
 	if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -56,6 +57,7 @@ func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
 }
 
 func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo unused}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner, env: {Path: custom}}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
@@ -79,6 +81,7 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 }
 
 func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", nil, nil)
 	paths := &f.options.Paths
 	paths.ActionPath, paths.ActionRunnerPath, paths.ActionIndependent = "stale source", "stale runner", true
@@ -101,6 +104,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 }
 
 func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo root}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
@@ -128,6 +132,7 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 }
 
 func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
@@ -156,6 +161,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 }
 
 func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}, {uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
@@ -215,9 +221,11 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 }
 
 func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
+	t.Parallel()
 	for _, collect := range []bool{false, true} {
 		for _, using := range []string{"node24", "docker"} {
 			t.Run(fmt.Sprintf("%s/collect=%t", using, collect), func(t *testing.T) {
+				t.Parallel()
 				body := "main: index.js"
 				if using == "docker" {
 					body = "image: Dockerfile"
@@ -255,6 +263,7 @@ func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.StepView) error   
 func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error        { return nil }
 
 func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
+	t.Parallel()
 	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -280,6 +289,7 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 }
 
 func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n"
 	actions := map[string]string{"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n"}
 	f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
@@ -293,6 +303,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 	}
 	for _, change := range []string{"zero context", "foreign context", "derived path"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			scopes, units := first.Batch.Snapshot()
 			want := "foreign invocation context"
 			switch change {
@@ -316,6 +327,7 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 }
 
 func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
+	t.Parallel()
 	line := "{name: é, description: outer, runs: {using: composite, steps: [{uses: $/inner}]}}"
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 		"outer/action.yml": line + "\n",
@@ -352,6 +364,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 }
 
 func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs:\n  linux:\n    runs-on: ubuntu-latest\n    steps: [{uses: $/outer}]\n  windows:\n    runs-on: windows-latest\n    steps: [{uses: $/outer}]\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner, env: {Path: custom}}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",

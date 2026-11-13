@@ -11,6 +11,7 @@ import (
 )
 
 func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
+	t.Parallel()
 	for _, fixture := range []struct{ name, run, input string }{
 		{"plain", "echo é 🐚", "echo é 🐚"},
 		{"single quoted", "'echo ''é'' 🐚'", "'echo ''é'' 🐚'"},
@@ -23,6 +24,7 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 	} {
 		for _, newline := range []string{"\n", "\r\n"} {
 			t.Run(fixture.name+"/"+map[string]string{"\n": "LF", "\r\n": "CRLF"}[newline], func(t *testing.T) {
+				t.Parallel()
 				text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + fixture.run + "\n      - uses: actions/github-script@v7\n        with:\n          script: " + fixture.input + "\n"
 				graph, collection, workflow := batchSourceFixtureWithWorkflow(t, []byte(strings.ReplaceAll(text, "\n", newline)))
 				rawRun, rawInput := fixtureBodies(t, graph, collection, workflow)

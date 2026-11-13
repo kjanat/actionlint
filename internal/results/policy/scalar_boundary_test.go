@@ -12,6 +12,7 @@ import (
 )
 
 func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
+	t.Parallel()
 	const header = " # actionlint:ignore inline-suppression,expression-reference -- reviewed\n"
 	const outside = "# actionlint:ignore-next-line unknown-rule -- malformed\n"
 	for _, tc := range []struct{ name, source string }{
@@ -41,6 +42,7 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+"/"+ending, func(t *testing.T) {
+				t.Parallel()
 				var bodyLine, bodyCommentLine, outsideLine, siblingLine int
 				for i, line := range strings.Split(tc.source, "\n") {
 					switch {
@@ -83,6 +85,7 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 }
 
 func TestInlineSuppressionDedentedCommentBeforeScalarBody(t *testing.T) {
+	t.Parallel()
 	for _, indicator := range []string{"|", "|2-", ">+"} {
 		source := "- run: " + indicator + ` # actionlint:ignore expression-reference -- reviewed
   # outside scalar

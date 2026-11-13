@@ -21,6 +21,7 @@ func deferredOptionsRegistration() config.RuleRegistration {
 }
 
 func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, filename, source, path string
 		line, column                 int
@@ -30,6 +31,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 		{"file override", "base.yaml", "overrides:\n  - includes: ['*.yaml']\n    lint:\n      rules:\n        plugins:\n          custom-check:\n            level: on\n            options:\n              count: 0\n", "/overrides/0/lint/rules/plugins/custom-check/options/count", 9, 22},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			base := filepath.Join(dir, test.filename)
 			if err := os.WriteFile(base, []byte(test.source), 0o600); err != nil {
@@ -50,6 +52,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 }
 
 func TestDeferredPluginOptionsKeepByteSourceLocations(t *testing.T) {
+	t.Parallel()
 	settings, err := checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      custom-check:\n        level: on\n        options:\n          count: 0\n"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
@@ -59,8 +62,10 @@ func TestDeferredPluginOptionsKeepByteSourceLocations(t *testing.T) {
 }
 
 func TestDeferredPluginOptionsKeepOverlaySourceLocations(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"config", "lint"} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			source := "rules:\n  plugins:\n    custom-check:\n      level: on\n      options:\n        count: 0\n"
 			line, column := 6, 16
 			if input == "config" {
@@ -82,6 +87,7 @@ func TestDeferredPluginOptionsKeepOverlaySourceLocations(t *testing.T) {
 }
 
 func TestCallerPluginOptionsAreNotAttributedToConfig(t *testing.T) {
+	t.Parallel()
 	settings, err := checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      custom-check: {level: on, options: {count: 2}}\n"), "custom-check")
 	if err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestDiagnosticCodesAreQualifiedByRule(t *testing.T) {
+	t.Parallel()
 	doc := Document{Text: "value"}
 	findings := []results.Diagnostic{
 		{Rule: "expression-reference", Code: "unknown-property", Message: "reference", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 6}},
@@ -22,6 +23,7 @@ func TestDiagnosticCodesAreQualifiedByRule(t *testing.T) {
 }
 
 func TestDiagnosticSeverities(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		severity string
 		want     int
@@ -29,6 +31,7 @@ func TestDiagnosticSeverities(t *testing.T) {
 		{"error", 1}, {"warning", 2}, {"warn", 2}, {"info", 3},
 	} {
 		t.Run(tc.severity, func(t *testing.T) {
+			t.Parallel()
 			doc := Document{Text: "value"}
 			finding := results.Diagnostic{
 				Rule: "shellcheck", Severity: tc.severity, Message: "finding",

@@ -11,6 +11,7 @@ import (
 )
 
 func TestMetadataMirrorConfiguration(t *testing.T) {
+	t.Parallel()
 	rules := checking.ConfigurationRules()
 	for _, tc := range []struct {
 		name, input string
@@ -23,6 +24,7 @@ func TestMetadataMirrorConfiguration(t *testing.T) {
 		{"explicit default", `{"services":["jsdelivr"],"allow-unknown-repositories":false}`, references.PublicMirrorsOnly},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := rules.Parse([]byte(`{"network":{"metadata-mirrors":` + tc.input + `}}`))
 			if err != nil {
 				t.Fatal(err)
@@ -51,6 +53,7 @@ func TestMetadataMirrorConfiguration(t *testing.T) {
 }
 
 func TestMetadataMirrorConfigurationExtends(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	base := filepath.Join(root, "base.toml")
 	if err := os.WriteFile(base, []byte("[network.metadata-mirrors]\nservices = ['jsdelivr']\nallow-unknown-repositories = true\n"), 0600); err != nil {
@@ -65,6 +68,7 @@ func TestMetadataMirrorConfigurationExtends(t *testing.T) {
 		{"public only", "[network.metadata-mirrors]\nallow-unknown-repositories = false\n", references.PublicMirrorsOnly},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(root, tc.name+".toml")
 			if err := os.WriteFile(path, []byte("extends = ['base.toml']\n"+tc.override), 0600); err != nil {
 				t.Fatal(err)

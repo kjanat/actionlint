@@ -18,6 +18,7 @@ import (
 )
 
 func TestPayloadExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name         string
 		triggers     []Trigger
@@ -61,6 +62,7 @@ func TestPayloadExpressions(t *testing.T) {
 		{"caller remains open under guard", []Trigger{{Name: "workflow_call"}, {Name: "push"}}, "github.event_name == 'issues' && github.event.issue.title", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.SetEventPayloadType(c, FromTriggers(tc.triggers))
 			c.SetContextAvailability([]string{"github"})
@@ -81,6 +83,7 @@ func TestPayloadExpressions(t *testing.T) {
 }
 
 func TestDefaultVariants(t *testing.T) {
+	t.Parallel()
 	for _, event := range []string{"pull_request", "pull_request_target"} {
 		projected := FromTriggers([]Trigger{{Name: event}})
 		variants := projected.EventVariants()
@@ -101,6 +104,7 @@ func TestDefaultVariants(t *testing.T) {
 }
 
 func TestRepositoryDispatchTypesReachProjection(t *testing.T) {
+	t.Parallel()
 	w, errs := workflowparser.Parse([]byte(`on:
   repository_dispatch:
     types: [custom]

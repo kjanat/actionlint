@@ -12,6 +12,7 @@ import (
 )
 
 func TestKnownExpressionActionInputs(t *testing.T) {
+	t.Parallel()
 	meta := &actionmeta.Metadata{Inputs: actionmeta.Inputs{
 		"token": {Name: "token", Required: true},
 		"old":   {Name: "old", Deprecated: true},
@@ -29,6 +30,7 @@ func TestKnownExpressionActionInputs(t *testing.T) {
 		{"invalid shape handled by expression rule", `fromJSON('[]')`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, parseErrors := workflowparser.Parse([]byte(`on: push
 jobs:
   test:

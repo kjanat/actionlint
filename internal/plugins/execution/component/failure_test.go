@@ -9,10 +9,11 @@ import (
 )
 
 func TestTimeoutFailurePreservesCause(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{path: "timeout.wasm", limits: Limits{Timeout: time.Second}}
 	cause := errors.New("guest interrupted")
 	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
-	defer cancel()
+	t.Cleanup(cancel)
 	for _, test := range []struct {
 		name string
 		ctx  context.Context
@@ -22,6 +23,7 @@ func TestTimeoutFailurePreservesCause(t *testing.T) {
 		{"returned deadline", t.Context(), errors.Join(context.DeadlineExceeded, cause)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			err := p.failure(test.ctx, test.err)
 			if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, cause) {
 				t.Fatalf("timeout lost its identity or cause: %v", err)
@@ -34,6 +36,7 @@ func TestTimeoutFailurePreservesCause(t *testing.T) {
 }
 
 func TestCancellationFailurePreservesCause(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{path: "cancelled.wasm"}
 	cause := errors.New("guest interrupted")
 	ctx, cancel := context.WithCancel(t.Context())
@@ -47,6 +50,7 @@ func TestCancellationFailurePreservesCause(t *testing.T) {
 		{"returned cancellation", t.Context(), errors.Join(context.Canceled, cause)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			err := p.failure(test.ctx, test.err)
 			if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 				t.Fatalf("cancellation lost its identity or cause: %v", err)

@@ -12,21 +12,26 @@ import (
 )
 
 func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
-	root, _ := executableFixture(t)
-	metadata := writeFixture(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	fixture := func(t *testing.T) (string, string) {
+		t.Helper()
+		root, _ := executableFixture(t)
+		metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
   steps:
     - run: missing shell
 `)
-	writeFixture(t, root, "refresh/action.yml", `name: refresh
+		writeFixture(t, root, "refresh/action.yml", `name: refresh
 description: test
 runs:
   using: composite
   steps:
     - uses: actions/checkout@v6
 `)
+		return root, metadata
+	}
 	for _, scope := range []string{"workflow", "job", "step", "composite"} {
 		for _, tc := range []struct {
 			name, environment string
@@ -38,6 +43,8 @@ runs:
 			{"empty loader", "NODE_OPTIONS: ''", true},
 		} {
 			t.Run(scope+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+				root, metadata := fixture(t)
 				workflowEnv, jobEnv, stepEnv := "", "", ""
 				call := "actions/checkout@v6"
 				switch scope {
@@ -51,7 +58,7 @@ runs:
 						call = "$/refresh"
 					}
 				}
-				workflow := writeFixture(t, root, ".github/workflows/environment.yml", "on: push\n"+workflowEnv+`jobs:
+				workflow := writeFixture(t, root, workflowFixturePath(t, "environment"), "on: push\n"+workflowEnv+`jobs:
   test:
     runs-on: ubuntu-latest
 `+jobEnv+"    steps:\n      - uses: "+call+"\n"+stepEnv+"      - uses: ./local\n")
@@ -71,17 +78,19 @@ runs:
 }
 
 func TestCompositeWorkingDirectorySuffixSources(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
-	root, _ := executableFixture(t)
-	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	writeFixture(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
-	writeFixture(t, root, "local/scripts/Nested/lib.sh", "VALUE=42\n")
 	for _, runner := range []string{"windows-latest", "macos-latest"} {
 		for _, tc := range []struct{ name, spec, directory string }{
 			{"workspace", "./source/local", "source/SCRIPTS/nested"},
 			{"independent", "$/local", "${{ github.action_path }}/SCRIPTS/nested"},
 		} {
 			t.Run(runner+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+				root, _ := executableFixture(t)
+				writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+				writeFixture(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
+				writeFixture(t, root, "local/scripts/Nested/lib.sh", "VALUE=42\n")
 				metadata := writeFixture(t, root, "local/action.yml", `name: local
 description: test
 runs:

@@ -8,6 +8,7 @@ import (
 )
 
 func TestValidInputKindDiscriminant(t *testing.T) {
+	t.Parallel()
 	if !validInputKindDiscriminant(uint32(len(inputKinds) - 1)) {
 		t.Fatal("last known input kind discriminant rejected")
 	}
@@ -19,6 +20,7 @@ func TestValidInputKindDiscriminant(t *testing.T) {
 }
 
 func TestValidateSuppressionRuleNameRejectsBuiltin(t *testing.T) {
+	t.Parallel()
 	reserved, err := rulemeta.NewNames([]rulemeta.Descriptor{{
 		Name: "forbidden-suppression", Aliases: []rulemeta.Alias{{Name: "disallow-suppressions", Deprecated: true}},
 	}})

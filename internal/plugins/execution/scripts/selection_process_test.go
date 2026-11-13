@@ -10,6 +10,7 @@ import (
 )
 
 func TestProjectToolBackendPrecedence(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{}
 	command, err := toolconfig.NewCommand("mise", []string{"exec", "ruff", "--", "ruff"}, map[string]string{"CUSTOM": "literal $value"})
 	if err != nil {
@@ -30,14 +31,20 @@ func TestProjectToolBackendPrecedence(t *testing.T) {
 	}
 }
 
+func wasmToolConfig(t *testing.T, name string) *config.Config {
+	t.Helper()
+	module, err := toolconfig.NewModule("selected.wasm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &config.Config{Tools: config.ToolsConfig{name: {Backend: toolconfig.WasmBackend(module)}}}
+}
+
 func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
-			module, err := toolconfig.NewModule("selected.wasm")
-			if err != nil {
-				t.Fatal(err)
-			}
-			cfg := &config.Config{Tools: config.ToolsConfig{name: {Backend: toolconfig.WasmBackend(module)}}}
+			t.Parallel()
 			for _, tc := range []struct {
 				name    string
 				options *processconfig.Options
@@ -49,11 +56,14 @@ func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
 				{"explicit override", &processconfig.Options{AllowWasm: true, IgnoreConfig: true}, false},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+					cfg := wasmToolConfig(t, name)
 					if got := Module(name, name, tc.options, cfg); (got != nil) != tc.want {
 						t.Fatalf("selected=%+v want=%t", got, tc.want)
 					}
 				})
 			}
+			cfg := wasmToolConfig(t, name)
 			command, err := toolconfig.NewCommand("untrusted", nil, nil)
 			if err != nil {
 				t.Fatal(err)

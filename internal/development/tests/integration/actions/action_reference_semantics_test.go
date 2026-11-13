@@ -12,8 +12,10 @@ import (
 )
 
 func TestSelfRepositoryReferenceSuffix(t *testing.T) {
+	t.Parallel()
 	for _, spec := range []string{"$/foo@v1", "$/@v1", "$//@v1", "$/foo@", "$/foo@bar/baz", "$/", "$//", "$///", "$///foo", "./foo@v1"} {
 		t.Run(spec, func(t *testing.T) {
+			t.Parallel()
 			invalid := strings.HasPrefix(spec, "$/") && strings.ContainsRune(spec, '@')
 			workflow := `on: push
 jobs:

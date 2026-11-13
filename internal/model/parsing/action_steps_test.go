@@ -7,8 +7,10 @@ import (
 )
 
 func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
+	t.Parallel()
 	for _, invalid := range []string{"*runs", "[echo, bad]", "{command: bad}", "!unsupported bad"} {
 		t.Run(invalid, func(t *testing.T) {
+			t.Parallel()
 			content := []byte("name: test\ndescription: test\nruns: &runs\n  using: composite\n  steps:\n    - shell: bash\n      run: echo before\n    - shell: bash\n      run: " + invalid + "\n    - shell: bash\n      run: echo after\n")
 			document := Action("action.yml", content)
 			registry := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -34,6 +36,7 @@ func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
 }
 
 func TestCompositeScriptNodeSharing(t *testing.T) {
+	t.Parallel()
 	leaf := &syntax.Node{Kind: syntax.ScalarNode, Value: "hello", Line: 3, Column: 5}
 	shared := &syntax.Node{Kind: syntax.SequenceNode, Content: []*syntax.Node{leaf}}
 	alias := &syntax.Node{Kind: syntax.AliasNode, Alias: shared}
@@ -54,6 +57,7 @@ func TestCompositeScriptNodeSharing(t *testing.T) {
 }
 
 func TestCompositeScriptNodeCycle(t *testing.T) {
+	t.Parallel()
 	root := &syntax.Node{Kind: syntax.SequenceNode}
 	root.Content = []*syntax.Node{{Kind: syntax.AliasNode, Alias: root}}
 	done := make(map[*syntax.Node]*syntax.Node)

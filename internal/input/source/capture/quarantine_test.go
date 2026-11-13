@@ -10,6 +10,7 @@ import (
 )
 
 func TestQuarantineRejectsMisuseAndPreservesSealedTable(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "source.yml")
 	reader := func(context.Context, string) ([]byte, error) { return nil, errors.New("unexpected read") }
 	store := newStore(t, []Overlay{{Path: path, Content: []byte("original"), Coordinates: source.YAML}}, reader)

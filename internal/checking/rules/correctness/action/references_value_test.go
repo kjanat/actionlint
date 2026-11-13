@@ -9,9 +9,11 @@ import (
 )
 
 func TestOwnedReferenceValidationMatchesLegacyFindings(t *testing.T) {
+	t.Parallel()
 	position := workflowlang.Pos{Line: 7, Col: 11}
 	for _, spec := range []string{"owner/repo@v1", "owner/repo", "./child", "$/child", "$/", "docker://ghcr.io/team/image", "docker://ghcr.io/team/image:"} {
 		t.Run(spec, func(t *testing.T) {
+			t.Parallel()
 			legacyRepository := RepositoryReference(spec, &position)
 			ownedRepository := RepositoryReferenceValue(spec, position, true)
 			if !reflect.DeepEqual(legacyRepository, ownedRepository) {
@@ -41,6 +43,7 @@ func TestOwnedReferenceValidationMatchesLegacyFindings(t *testing.T) {
 }
 
 func TestOwnedReferenceValidationPreservesAbsentPosition(t *testing.T) {
+	t.Parallel()
 	if got := RepositoryReferenceValue("owner/repo@v1", workflowlang.Pos{}, false); got != nil {
 		t.Fatalf("valid reference without source position findings = %v, want nil", got)
 	}

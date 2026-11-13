@@ -13,7 +13,7 @@ import (
 )
 
 func TestCachePolicyCommandOutput(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	for _, exception := range []string{"", " # actionlint:ignore cache-write-untrusted -- reviewed code only"} {
 		source := "on: pull_request_target\ncache-mode: write" + exception + `
 jobs:
@@ -21,7 +21,7 @@ jobs:
 ` + cachePolicySteps + "\npermissions: {}\n"
 		var stdout, stderr strings.Builder
 		cmd := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-		status := cmd.Main([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color", "-format", "{{json .}}", "-"})
+		status := cmd.Main([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color", "-no-config", "-format", "{{json .}}", "-"})
 		if stderr.Len() != 0 {
 			t.Fatalf("unexpected stderr: %s", &stderr)
 		}
@@ -42,7 +42,7 @@ jobs:
 }
 
 func TestCachePolicyInvalidSuppressionSARIF(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	source := `on: pull_request_target
 cache-mode: write # actionlint:ignore cache-write-untrusted --
 jobs:
@@ -50,7 +50,7 @@ jobs:
 ` + cachePolicySteps + "\npermissions: {}\n"
 	var stdout, stderr strings.Builder
 	cmd := cli.Command{Stdin: strings.NewReader(source), Stdout: &stdout, Stderr: &stderr}
-	status := cmd.Main([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-output", "sarif", "-"})
+	status := cmd.Main([]string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-config", "-output", "sarif", "-"})
 	if status != commandstatus.ExitSuccessProblemFound || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%s", status, &stderr)
 	}
@@ -82,6 +82,7 @@ jobs:
 }
 
 func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, directive, cliIgnore, pathIgnore string
 		kinds                                  []string
@@ -96,7 +97,7 @@ func TestCachePolicySuppressionFilterPrecedence(t *testing.T) {
 		{"separate filters remove both errors", "typo -- reviewed", "poison caches", "unknown inline suppression rule", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Chdir(t.TempDir())
+			t.Parallel()
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if tc.pathIgnore != "" {
 				if err := os.WriteFile(config, []byte(`lint:
@@ -114,6 +115,8 @@ jobs:
 			args := []string{"actionlint", "--summary=false", "-no-tool=shellcheck", "-no-tool=ruff", "-no-color", "-format", "{{json .}}", "-stdin-filename", "test.yaml"}
 			if tc.pathIgnore != "" {
 				args = append(args, "-config-file", config)
+			} else {
+				args = append(args, "-no-config")
 			}
 			if tc.cliIgnore != "" {
 				args = append(args, "--ignore-regex", tc.cliIgnore)

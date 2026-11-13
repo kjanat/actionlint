@@ -110,6 +110,7 @@ func negotiationFixtureWithShells(t *testing.T, check, encoding, hang string, sh
 }
 
 func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
+	t.Parallel()
 	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
 	shells := engine.Metadata().Capabilities.ScriptShells
 	if len(shells) != 2 || shells[0] != "python" || shells[1] != "python" {
@@ -118,6 +119,7 @@ func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
 }
 
 func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
+	t.Parallel()
 	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
 	described := coreDescribedBackend{ScriptBackend: engine, descriptor: checkinputs.ScriptEngineDescriptor{
 		Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
@@ -168,6 +170,7 @@ func (r coreBatchRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tool
 }
 
 func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {
+	t.Parallel()
 	guest := loadEngine(t, negotiationFixture(t, "inspect", "unicode", ""), corewasm.Options{})
 	if findings, err := guest.Check(t.Context(), checkinputs.ScriptRequest{Source: "echo ok"}); err != nil || len(findings) != 0 {
 		t.Fatalf("findings=%v err=%v", findings, err)
@@ -178,6 +181,7 @@ func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {
 }
 
 func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
+	t.Parallel()
 	_, err := corewasm.Load(t.Context(), negotiationFixture(t, "check", "utf16", ""), corewasm.Options{})
 	if err == nil || !strings.Contains(err.Error(), "unsupported position encoding") {
 		t.Fatalf("err=%v", err)
@@ -185,6 +189,7 @@ func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
 }
 
 func TestMetadataDocumentVersions(t *testing.T) {
+	t.Parallel()
 	for _, version := range []int{-1, 0, 1, 2} {
 		engine, err := corewasm.Load(t.Context(), negotiationFixture(t, "check", "unicode", "", version), corewasm.Options{})
 		if version == 0 || version == 1 {
@@ -201,14 +206,17 @@ func TestMetadataDocumentVersions(t *testing.T) {
 }
 
 func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
+	t.Parallel()
 	if _, err := corewasm.Load(t.Context(), "not-opened.wasm", corewasm.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }
 
 func TestBootstrapGuestCallsHaveDeadline(t *testing.T) {
+	t.Parallel()
 	for _, operation := range []string{"start", "abi_version", "metadata"} {
 		t.Run(operation, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 			_, err := corewasm.Load(ctx, negotiationFixture(t, "check", "unicode", operation), corewasm.Options{Timeout: 20 * time.Millisecond})

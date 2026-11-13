@@ -15,8 +15,10 @@ import (
 )
 
 func TestPreCommitDependencyChangesRecheckWorkflows(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"action.yml", "action.yaml", "actionlint.yml", "actionlint.yaml", "workflow", "deleted-callee"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			write := func(path, content string) { writeFixture(t, root, path, content) }
 			writeGitRepository(t, root)

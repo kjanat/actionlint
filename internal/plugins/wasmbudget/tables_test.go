@@ -8,6 +8,7 @@ import (
 )
 
 func TestTablesReserveMaximumWithGrowthHeadroom(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name        string
 		tables      []wacogo.CoreTable
@@ -24,6 +25,7 @@ func TestTablesReserveMaximumWithGrowthHeadroom(t *testing.T) {
 		{"wide multiplication", []wacogo.CoreTable{{Max: wasmparser.Some(^uint32(0))}}, 1 << 32, 0, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			actual, err := Tables(test.tables, test.limit)
 			if (err == nil) != test.valid || actual != test.want {
 				t.Fatalf("Tables() = %d, %v; want %d valid=%v", actual, err, test.want, test.valid)

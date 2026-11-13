@@ -25,6 +25,7 @@ import (
 // The package is optional for Go-only contributors. This check exercises the
 // actual TypeScript authoring CLI against the host's real manifest boundary.
 func TestTypeScriptAuthoringManifest(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_TEST_PLUGIN_SDK") != "1" {
 		t.Skip("set ACTIONLINT_TEST_PLUGIN_SDK=1 with Bun, SDK dependencies and ACTIONLINT pointing at the current host")
 	}

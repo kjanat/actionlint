@@ -8,6 +8,7 @@ import (
 )
 
 func TestSchemaNestedDisabledService(t *testing.T) {
+	t.Parallel()
 	src := `on: push
 jobs:
   test:
@@ -25,6 +26,7 @@ jobs:
 }
 
 func TestSchemaNestedQuotedScalarTags(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{
 		"cancel-timeout-minutes: !!int \"300\"",
 		"timeout-minutes: !!float \"3.0\"",
@@ -32,6 +34,7 @@ func TestSchemaNestedQuotedScalarTags(t *testing.T) {
 		"name: !!int \"300\"",
 	} {
 		t.Run(field, func(t *testing.T) {
+			t.Parallel()
 			_, errs := workflowparser.Parse([]byte(`on: push
 jobs:
   test:
@@ -48,6 +51,7 @@ jobs:
 }
 
 func TestSchemaNestedScheduleRequiresCron(t *testing.T) {
+	t.Parallel()
 	src := `on:
   schedule:
     - cron: '0 0 * * *'
@@ -65,11 +69,13 @@ jobs:
 }
 
 func TestSchemaNestedWaitAllStaticValue(t *testing.T) {
+	t.Parallel()
 	for _, value := range []struct {
 		text  string
 		valid bool
 	}{{"", true}, {"true", true}, {"True", true}, {"false", false}, {"${{ true }}", false}, {"${{ fromJSON('true') }}", false}, {"${{ github.event_name == 'push' }}", false}} {
 		t.Run(value.text, func(t *testing.T) {
+			t.Parallel()
 			_, errs := workflowparser.Parse([]byte(`on: push
 jobs:
   test:
@@ -84,6 +90,7 @@ jobs:
 }
 
 func TestSchemaNestedWorkflowDescription(t *testing.T) {
+	t.Parallel()
 	w, errs := workflowparser.Parse([]byte(`description: Build reusable binaries
 on: push
 jobs:

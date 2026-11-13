@@ -30,6 +30,7 @@ func managedTestOptions(guest *integratedAnalyzer, options json.RawMessage) chec
 }
 
 func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, rules string
 		want        bool
@@ -39,6 +40,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 		{"global disable wins", "disable: [shellcheck], external: {shellcheck: off}, plugins: {shellcheck: on}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			configPath := filepath.Join(root, "actionlint.yml")
 			if err := os.WriteFile(configPath, []byte("lint: {rules: {"+tc.rules+"}}\n"), 0o600); err != nil {
@@ -71,6 +73,7 @@ func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage,
 }
 
 func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing.T) {
+	t.Parallel()
 	for _, unsupported := range []bool{false, true} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: unsupported}
 		explicit := json.RawMessage(`{"private-option": [1, 2]}`)
@@ -88,6 +91,7 @@ func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing
 }
 
 func TestPublicManagedOptionsValidateBeforeNegotiation(t *testing.T) {
+	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)}
 	_, err := checking.Analyze(t.Context(), managedTestOptions(guest, json.RawMessage(`{"unknown":true}`)), []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err == nil || guest.explicit != nil {
@@ -96,6 +100,7 @@ func TestPublicManagedOptionsValidateBeforeNegotiation(t *testing.T) {
 }
 
 func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, explicit := range []json.RawMessage{nil, json.RawMessage(`{"private-option":"caller"}`)} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		cfg, err := checking.ConfigurationRules().Parse([]byte(`lint: {rules: {plugins: {shellcheck: {level: default, options: {private-option: repository}}}}}`), "shellcheck")
@@ -122,6 +127,7 @@ func (a *integratedAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 }
 
 func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
+	t.Parallel()
 	for _, disabled := range []bool{false, true} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := managedTestOptions(guest, nil)
@@ -143,6 +149,7 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 }
 
 func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
+	t.Parallel()
 	valid := func() *integratedAnalyzer {
 		return &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 	}
@@ -176,6 +183,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 }
 
 func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
+	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	if _, err := checking.ConfigureToolIntegrations(options, "shellcheck"); err == nil {
@@ -187,6 +195,7 @@ func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 }
 
 func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T) {
+	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	configured, err := checking.ConfigureToolIntegrations(options)
@@ -208,6 +217,7 @@ func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T)
 }
 
 func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name             string
 		external, plugin string
@@ -219,6 +229,7 @@ func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 		{"explicit plugin off", "on", "off", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 			external, plugin := tc.external, tc.plugin
 			if external == "" {

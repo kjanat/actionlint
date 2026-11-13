@@ -41,6 +41,7 @@ func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input
 }
 
 func TestPublicAnalysisContract(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("partial analysis")
 	result, err := checking.Analyze(t.Context(),
 
@@ -59,6 +60,7 @@ func TestPublicAnalysisContract(t *testing.T) {
 }
 
 func TestPublicConfigSyntaxAndFiles(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte("config-variables: [KNOWN]\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -83,6 +85,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 }
 
 func TestPublicActionScriptFacts(t *testing.T) {
+	t.Parallel()
 	result, err := checking.Analyze(t.Context(),
 
 		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{}}}}, []workspace.Source{{Path: "action.yml", Content: []byte("name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n")}},

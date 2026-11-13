@@ -15,6 +15,7 @@ import (
 )
 
 func TestPluginSelectionRetainsObservedLocksAcrossRepositories(t *testing.T) {
+	t.Parallel()
 	roots := []string{repositoryfixture.Directory(t), repositoryfixture.Directory(t)}
 	var paths, locks []string
 	for _, root := range roots {
@@ -42,8 +43,10 @@ func TestPluginSelectionRetainsObservedLocksAcrossRepositories(t *testing.T) {
 }
 
 func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{"plugins: []\n", "plugins: null\n"} {
 		t.Run(strings.TrimSpace(declaration), func(t *testing.T) {
+			t.Parallel()
 			root, other := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
 			if err := os.Mkdir(filepath.Join(root, ".github"), 0o700); err != nil {
 				t.Fatal(err)
@@ -69,8 +72,10 @@ func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 }
 
 func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
+	t.Parallel()
 	for _, inherited := range []bool{false, true} {
 		t.Run(map[bool]string{false: "leaf", true: "inherited"}[inherited], func(t *testing.T) {
+			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			directory := filepath.Join(root, ".github")
 			if err := os.Mkdir(directory, 0o700); err != nil {

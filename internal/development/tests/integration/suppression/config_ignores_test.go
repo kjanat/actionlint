@@ -28,6 +28,7 @@ permissions: {}
 `
 
 func TestReusableIgnoreAnalysisIntegration(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -46,12 +47,14 @@ permissions: {}
 }
 
 func TestReusableIgnoreLiteralSelectors(t *testing.T) {
+	t.Parallel()
 	for _, field := range []struct{ key, value, selector string }{
 		{"uses", "./generated", "uses"},
 		{"id", "generated", "step"},
 		{"name", "Generated action", "step"},
 	} {
 		t.Run(field.key, func(t *testing.T) {
+			t.Parallel()
 			source := strings.Replace(reusableIgnoreSource, field.key+": "+field.value, field.key+": ${{ '"+field.value+"' }}", 1)
 			config := "ignores: [{rule: expression-reference, " + field.selector + ": '" + field.value + "'}]"
 			if findings := testutil.WorkflowDiagnostics(t, source, config); len(findings) != 0 {
@@ -62,8 +65,10 @@ func TestReusableIgnoreLiteralSelectors(t *testing.T) {
 }
 
 func TestReusableIgnoreDisabledRulePolicy(t *testing.T) {
+	t.Parallel()
 	for _, report := range []string{"suppression", "all", "violation"} {
 		t.Run(report, func(t *testing.T) {
+			t.Parallel()
 			config := "lint: {rules: {correctness: {expression-reference: off}}}\nignores: [{rule: expression-reference, job: build}]\npolicy: {disallow-suppressions: {report: " + report + "}}"
 			if findings := testutil.WorkflowDiagnostics(t, reusableIgnoreSource, config); len(findings) != 0 {
 				t.Fatalf("disabled finding triggered suppression policy: %+v", findings)
@@ -73,8 +78,10 @@ func TestReusableIgnoreDisabledRulePolicy(t *testing.T) {
 }
 
 func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
+	t.Parallel()
 	for _, level := range []string{"off", "error"} {
 		t.Run(level, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "lint: {rules: {correctness: {action: "+level+"}}}\nignores: [{rule: action, file: inner/action.yml, step: validate}]\npolicy: {disallow-suppressions: {report: suppression}}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: Inner\ndescription: Inner\nruns:\n  using: composite\n  steps:\n    - id: validate\n      shell: bash\n      run: echo '${{ invalid }}'\n")
@@ -91,6 +98,7 @@ func TestReusableIgnoreDisabledCompositeRule(t *testing.T) {
 }
 
 func TestReusableIgnoreLiteralMissingAction(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "ignores: [{rule: missing-local-action, uses: ./generated}]\n")
 	result := testutil.Composite(t, root, "- uses: ${{ './generated' }}\n  id: generated", checking.Options{})
@@ -100,6 +108,7 @@ func TestReusableIgnoreLiteralMissingAction(t *testing.T) {
 }
 
 func TestReusableIgnoreMetadataScope(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		selector string
 		want     int
@@ -109,6 +118,7 @@ func TestReusableIgnoreMetadataScope(t *testing.T) {
 		{`file: '.github/workflows/**', step: validate`, 1},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nignores: [{rule: action, "+tc.selector+"}]")
 			fixturefiles.Write(t, root, "inner/action.yml", `name: inner

@@ -13,6 +13,7 @@ import (
 )
 
 func TestGitAdvertisementDoesNotIdentifyTagTargetTypes(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	git := func(input string, args ...string) string {
 		t.Helper()
@@ -50,6 +51,7 @@ func TestGitAdvertisementDoesNotIdentifyTagTargetTypes(t *testing.T) {
 }
 
 func TestListingSessionVerifiesNonBranchObjects(t *testing.T) {
+	t.Parallel()
 	for _, target := range []struct {
 		kind   string
 		object repository.Object
@@ -62,6 +64,7 @@ func TestListingSessionVerifiesNonBranchObjects(t *testing.T) {
 	} {
 		for _, annotated := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/annotated=%t", target.kind, annotated), func(t *testing.T) {
+				t.Parallel()
 				selected := sha
 				tag := gitwire.Ref{Name: "refs/tags/example", Object: sha}
 				want := target.object

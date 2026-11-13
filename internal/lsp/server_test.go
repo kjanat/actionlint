@@ -24,6 +24,7 @@ import (
 )
 
 func TestUnsupportedRequestsReceiveMethodNotFound(t *testing.T) {
+	t.Parallel()
 	var input, output bytes.Buffer
 	for _, request := range []transport.Message{
 		{JSONRPC: "2.0", ID: json.RawMessage(`1`), Method: "initialize"},
@@ -69,6 +70,7 @@ func TestUnsupportedRequestsReceiveMethodNotFound(t *testing.T) {
 }
 
 func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
+	t.Parallel()
 	in, client := io.Pipe()
 	receive, out := io.Pipe()
 	defer client.Close()
@@ -185,6 +187,7 @@ func readRawEnvelope(r *bufio.Reader) ([]byte, error) {
 }
 
 func TestCoordinateBoundaries(t *testing.T) {
+	t.Parallel()
 	if _, err := byteOffset("😀x", position{0, 1}); err == nil {
 		t.Fatal("accepted middle of surrogate pair")
 	}
@@ -197,6 +200,7 @@ func TestCoordinateBoundaries(t *testing.T) {
 }
 
 func TestSupersededAnalysisCannotPublish(t *testing.T) {
+	t.Parallel()
 	server, client := net.Pipe()
 	defer client.Close()
 	defer server.Close()
@@ -289,6 +293,7 @@ func testFileURI(t *testing.T) string {
 }
 
 func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {
+	t.Parallel()
 	server, client := net.Pipe()
 	defer client.Close()
 	defer server.Close()

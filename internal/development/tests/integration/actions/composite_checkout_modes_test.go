@@ -13,7 +13,7 @@ import (
 )
 
 func TestCompositeCheckoutModeIsolation(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
+	t.Parallel()
 	for _, tc := range []struct {
 		name, steps string
 		finding     bool
@@ -54,6 +54,8 @@ func TestCompositeCheckoutModeIsolation(t *testing.T) {
 - run: ./source/bad.sh`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			steps := strings.ReplaceAll(tc.steps, "- run:", `- shell: bash
   working-directory: .
   run:`)
@@ -69,14 +71,7 @@ func TestCompositeCheckoutModeIsolation(t *testing.T) {
 }
 
 func TestCompositeConditionalSelfRecheckoutPlacement(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - run: missing shell
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		name, condition, extra, inputs string
 		read                           bool
@@ -90,6 +85,15 @@ runs:
 		{"after failure", "always()", "", "path: source", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - run: missing shell
+`)
 			steps := `- uses: actions/checkout@v6
   with: {path: source}
 - uses: actions/checkout@v6

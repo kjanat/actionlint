@@ -9,6 +9,7 @@ import (
 )
 
 func TestCachePolicyInlineSuppression(t *testing.T) {
+	t.Parallel()
 	const header = "on: pull_request_target\n"
 	const body = `jobs:
   test:
@@ -62,6 +63,7 @@ cache-mode: *mode
 	} {
 		for _, crlf := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: "/LF", true: "/CRLF"}[crlf], func(t *testing.T) {
+				t.Parallel()
 				source := header + tc.declaration + body
 				if crlf {
 					source = strings.ReplaceAll(source, "\n", "\r\n")
@@ -79,6 +81,7 @@ cache-mode: *mode
 }
 
 func TestCachePolicyInlineSuppressionScope(t *testing.T) {
+	t.Parallel()
 	source := `on: pull_request_target
 jobs:
   reviewed:
@@ -111,6 +114,7 @@ permissions: {}
 }
 
 func TestCachePolicySuppressionLayouts(t *testing.T) {
+	t.Parallel()
 	const header = "on: pull_request_target\n"
 	const body = `jobs:
   test:
@@ -209,6 +213,7 @@ cache-mode: *mode
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+map[string]string{"\n": "/LF", "\r\n": "/CRLF"}[ending], func(t *testing.T) {
+				t.Parallel()
 				var kinds []string
 				for _, err := range testutil.WorkflowDiagnostics(t, strings.ReplaceAll(tc.source, "\n", ending), "") {
 					kinds = append(kinds, err.Rule)
@@ -222,6 +227,7 @@ cache-mode: *mode
 }
 
 func TestCachePolicySuppressionGrammar(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, suffix string
 		invalid      bool
@@ -240,6 +246,7 @@ func TestCachePolicySuppressionGrammar(t *testing.T) {
 	} {
 		for _, preceding := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: "/trailing", true: "/preceding"}[preceding], func(t *testing.T) {
+				t.Parallel()
 				declaration := "cache-mode: write # actionlint:ignore " + tc.suffix + "\n"
 				if preceding {
 					declaration = "# actionlint:ignore-next-line " + tc.suffix + `
@@ -268,6 +275,7 @@ cache-mode: write
 }
 
 func TestCachePolicyUnsupportedSuppressionPlacements(t *testing.T) {
+	t.Parallel()
 	const header = "on: pull_request_target\n"
 	const body = `jobs:
   test:
@@ -315,6 +323,7 @@ cache-mode: write
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+map[string]string{"\n": "/LF", "\r\n": "/CRLF"}[ending], func(t *testing.T) {
+				t.Parallel()
 				errs := testutil.WorkflowDiagnostics(t, strings.ReplaceAll(tc.source, "\n", ending), "")
 				counts := map[string]int{}
 				for _, err := range errs {

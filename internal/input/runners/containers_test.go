@@ -7,6 +7,7 @@ import (
 )
 
 func TestContainerTargetsUseProviderEvidence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name      string
 		os        runnerapi.OS
@@ -22,6 +23,7 @@ func TestContainerTargetsUseProviderEvidence(t *testing.T) {
 		{"incomplete", runnerapi.Windows, runnerapi.Fresh, false, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := runnerWorkflow(t, "ubuntu-slim")
 			provider := &testProvider{resolve: func(request runnerapi.Request) ([]runnerapi.Answer, error) {
 				answers := make([]runnerapi.Answer, len(request.Selectors))

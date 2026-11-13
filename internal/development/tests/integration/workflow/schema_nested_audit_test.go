@@ -11,6 +11,7 @@ import (
 )
 
 func TestSchemaNestedJobExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, job, want string
 	}{
@@ -29,6 +30,7 @@ func TestSchemaNestedJobExpressions(t *testing.T) {
           - ${{ true }}`, "object"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
@@ -61,6 +63,7 @@ permissions: {}
 }
 
 func TestSchemaNestedStructuredExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, field string
 	}{
@@ -82,6 +85,7 @@ func TestSchemaNestedStructuredExpressions(t *testing.T) {
       volumes: ${{ fromJSON('["/src:/src"]') }}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error

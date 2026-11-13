@@ -15,6 +15,7 @@ import (
 )
 
 func TestCheckInvalidJobNames(t *testing.T) {
+	t.Parallel()
 	// Note: Empty string is already reported as error by parser
 	inputs := []string{
 		"-foo",
@@ -60,6 +61,7 @@ func TestCheckInvalidJobNames(t *testing.T) {
 
 		for _, tc := range tests {
 			t.Run(input+"/"+tc.where, func(t *testing.T) {
+				t.Parallel()
 				r := declarationchecks.New(checking.ConfigurationRules(), correctness.IdCheck())
 				if err := r.VisitJobPre(fixturedecl.Job(tc.job)); err != nil {
 					t.Fatal(err)
@@ -83,6 +85,7 @@ func TestCheckInvalidJobNames(t *testing.T) {
 }
 
 func TestCheckValidJobNames(t *testing.T) {
+	t.Parallel()
 	inputs := []string{
 		"foo-bar",
 		"foo_bar",
@@ -96,6 +99,7 @@ func TestCheckValidJobNames(t *testing.T) {
 
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			stepID := input
 			if strings.HasPrefix(stepID, "__") {
 				stepID = "step" + stepID

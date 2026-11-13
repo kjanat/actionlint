@@ -6,6 +6,7 @@ import (
 )
 
 func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
+	t.Parallel()
 	rules := RuleSet{}
 	for _, tc := range []struct{ name, base, override string }{
 		{"disabled", "{enabled: true, config: .shellcheckrc}", "{enabled: false}"},
@@ -14,6 +15,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 		{"empty", "{enabled: false, config: .shellcheckrc}", "{}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			config, err := rules.Parse([]byte("tools: {shellcheck: " + tc.base + "}\noverrides: [{includes: [ci.yml], tools: {shellcheck: " + tc.override + "}}]\n"))
 			if err != nil {
 				t.Fatal(err)

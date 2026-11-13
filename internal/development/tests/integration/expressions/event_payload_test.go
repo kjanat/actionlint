@@ -9,6 +9,7 @@ import (
 )
 
 func TestWorkflowEventPayloadChecks(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, trigger, value, want string }{
 		{"typo", "pull_request", "github.event.pull_request.titel", `did you mean "title"`},
 		{"valid", "pull_request", "github.event.pull_request.title", ""},
@@ -20,6 +21,7 @@ func TestWorkflowEventPayloadChecks(t *testing.T) {
 		{"typed number", "pull_request", "github.event.pull_request.number", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := "on: " + tc.trigger + "\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ " + tc.value + " }}\n    steps:\n      - run: echo ok\n" + "\npermissions: {}\n"
 			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(content)}})
 			if err != nil {

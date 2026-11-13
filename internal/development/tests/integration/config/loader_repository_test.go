@@ -19,6 +19,7 @@ func configuredWorkflowPermissions(cfg *repoconfig.Config) string {
 }
 
 func TestRepositoryFactsAreIndependentOfRules(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`repository:
   default-workflow-permissions: write
   runners: [gpu, custom-*]
@@ -40,6 +41,7 @@ lint: {rules: {preset: none}}
 }
 
 func TestRepositoryMigrationDoesNotCreateRuleOptions(t *testing.T) {
+	t.Parallel()
 	result, err := checking.ConfigurationRules().MigrateDocument("config.yaml", []byte("self-hosted-runner: {labels: [gpu]}\nconfig-variables: [BUILD]\nconfig-secrets: []\nassume-default-permissions: permissive\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -55,6 +57,7 @@ func TestRepositoryMigrationDoesNotCreateRuleOptions(t *testing.T) {
 }
 
 func TestRepositoryRejectsInvalidFacts(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"repository: {default-workflow-permissions: restricted}",
 		"repository: {default-workflow-permissions: true}",
@@ -67,6 +70,7 @@ func TestRepositoryRejectsInvalidFacts(t *testing.T) {
 		"repository: {variables: {BUILD: null, build: null}}",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			if _, err := checking.ConfigurationRules().Parse([]byte(source)); err == nil {
 				t.Fatal("invalid repository facts accepted")
 			}
@@ -75,6 +79,7 @@ func TestRepositoryRejectsInvalidFacts(t *testing.T) {
 }
 
 func TestRepositoryOverrideAvailability(t *testing.T) {
+	t.Parallel()
 	names, err := repository.NewNames("HOST")
 	if err != nil {
 		t.Fatal(err)
@@ -92,6 +97,7 @@ func TestRepositoryOverrideAvailability(t *testing.T) {
 		{"repository: {secrets: [CONFIG]}", true, []string{"CONFIG"}},
 	} {
 		t.Run(test.source, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte(test.source))
 			if err != nil {
 				t.Fatal(err)
@@ -105,6 +111,7 @@ func TestRepositoryOverrideAvailability(t *testing.T) {
 }
 
 func TestRepositoryResetSurvivesPartialFileOverride(t *testing.T) {
+	t.Parallel()
 	permissions, err := repository.ParsePermissions("write")
 	if err != nil {
 		t.Fatal(err)

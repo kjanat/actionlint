@@ -20,6 +20,7 @@ import (
 )
 
 func TestResolverProcessHelper(t *testing.T) {
+	t.Parallel()
 	if len(os.Args) < 3 || os.Args[len(os.Args)-2] != "--resolver-helper" {
 		return
 	}
@@ -84,6 +85,7 @@ func TestResolverProcessHelper(t *testing.T) {
 }
 
 func TestProcessNetworkReceiptIsNotRecountedFromCache(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -111,6 +113,7 @@ func TestProcessNetworkReceiptIsNotRecountedFromCache(t *testing.T) {
 }
 
 func TestCommitishResolverEmitsAnEmptyReceiptBeforeTransport(t *testing.T) {
+	t.Parallel()
 	executable := os.Getenv("ACTIONLINT_TEST_COMMITISH_RESOLVER")
 	if executable == "" {
 		t.Skip("set ACTIONLINT_TEST_COMMITISH_RESOLVER to the built commitish resolver")
@@ -128,6 +131,7 @@ func TestCommitishResolverEmitsAnEmptyReceiptBeforeTransport(t *testing.T) {
 }
 
 func TestProcessCoalescesConcurrentRequests(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -204,6 +208,7 @@ func TestProcessCoalescesConcurrentRequests(t *testing.T) {
 }
 
 func TestProcessBoundsAndIdentity(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -211,6 +216,7 @@ func TestProcessBoundsAndIdentity(t *testing.T) {
 	request := references.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
 	for _, mode := range []string{"ok", "no-repository-id", "zero-repository-id", "wrong-repository", "tree-and-commit", "oversize", "sleep"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			timeout := 10 * time.Second
 			if mode == "sleep" {
 				timeout = 30 * time.Millisecond

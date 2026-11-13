@@ -25,6 +25,7 @@ type (
 )
 
 func TestCursorErrorsNameRootType(t *testing.T) {
+	t.Parallel()
 	var got namedTargetRoot
 	err := decodeCursorSource([]byte("scalar\n"), &got)
 	if err == nil {
@@ -37,7 +38,9 @@ func TestCursorErrorsNameRootType(t *testing.T) {
 }
 
 func TestCursorErrorsNameMapAndSliceElementTypes(t *testing.T) {
+	t.Parallel()
 	t.Run("map", func(t *testing.T) {
+		t.Parallel()
 		var got namedTargetMap
 		err := decodeCursorSource([]byte("item: scalar\n"), &got)
 		if err == nil {
@@ -49,6 +52,7 @@ func TestCursorErrorsNameMapAndSliceElementTypes(t *testing.T) {
 		}
 	})
 	t.Run("slice", func(t *testing.T) {
+		t.Parallel()
 		var got namedTargetSlice
 		err := decodeCursorSource([]byte("- scalar\n"), &got)
 		if err == nil {
@@ -62,6 +66,7 @@ func TestCursorErrorsNameMapAndSliceElementTypes(t *testing.T) {
 }
 
 func TestSessionFinishJoinedDiagnosticsKeepMarksAndOrder(t *testing.T) {
+	t.Parallel()
 	var session codec.Session
 	err := session.Finish(fmt.Errorf("wrapped schema diagnostics: %w", errors.Join(
 		codec.NewLoadError("later", codec.Mark{Line: 2, Column: 1}),
@@ -92,6 +97,7 @@ func TestSessionFinishJoinedDiagnosticsKeepMarksAndOrder(t *testing.T) {
 }
 
 func TestParserErrorMatchesPinnedUpstreamGolden(t *testing.T) {
+	t.Parallel()
 	const source = "value: [\n"
 	_, codecErr := codec.Parse([]byte(source))
 	var want upstream.Node
@@ -124,6 +130,7 @@ type namedSelectedSliceRoot struct {
 }
 
 func TestSelectErrorsNameCallerTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source, want string
 		target             any
@@ -134,6 +141,7 @@ func TestSelectErrorsNameCallerTypes(t *testing.T) {
 		{"slice element", "hook: seen\nitems: [scalar]\n", "yaml: construct errors: line 2: cannot construct !!str `scalar` into codec_test.namedTargetElement", &namedSelectedSliceRoot{}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, err := codec.Parse([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
@@ -166,6 +174,7 @@ func TestSelectErrorsNameCallerTypes(t *testing.T) {
 }
 
 func TestSelectWrappedJoinedDiagnosticsKeepMarksOrderTextAndCauses(t *testing.T) {
+	t.Parallel()
 	root, err := codec.Parse([]byte("ignored: ok\nother: ok\nhook: value\n"))
 	if err != nil {
 		t.Fatal(err)

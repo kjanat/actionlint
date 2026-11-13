@@ -24,6 +24,7 @@ func (limits *admissionLimits) CheckAlias(aliases, constructions int) error {
 }
 
 func TestAdmissionCountsSharedOccurrencesAndStopsAtRejection(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("a: &a [x]\nb: *a\nc: *a\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -55,6 +56,7 @@ func TestAdmissionCountsSharedOccurrencesAndStopsAtRejection(t *testing.T) {
 }
 
 func TestAdmissionSelectionUsesParentSlots(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("a: &a [x]\nb: *a\nc: *a\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +81,7 @@ func TestAdmissionSelectionUsesParentSlots(t *testing.T) {
 }
 
 func TestAdmissionOnlyFollowsSelectedRecursiveAliases(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("a: &a [*a]\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -99,6 +102,7 @@ func TestAdmissionOnlyFollowsSelectedRecursiveAliases(t *testing.T) {
 }
 
 func TestAdmissionFailuresAlwaysCarryRejectionType(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("value: text\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -114,6 +118,7 @@ func TestAdmissionFailuresAlwaysCarryRejectionType(t *testing.T) {
 }
 
 func TestAdmissionShortcutMatchesOwnedPolicy(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("value: text\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -137,6 +142,7 @@ func TestAdmissionShortcutMatchesOwnedPolicy(t *testing.T) {
 }
 
 func TestAdmissionErrorZeroValuesAndFatalPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, rejected := range []*AdmissionError{nil, {}} {
 		if rejected.Error() != "YAML admission rejected" || rejected.Unwrap() != nil {
 			t.Fatal("zero-valued admission rejection is unsafe")

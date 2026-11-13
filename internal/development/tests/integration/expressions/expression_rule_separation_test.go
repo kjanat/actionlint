@@ -26,9 +26,11 @@ permissions: {}
 `
 
 func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
+	t.Parallel()
 	rules := []string{"expression-reference", "event-payload", "expression-type", "expression-call", "expression-syntax", "context-availability", "script-injection"}
 	for _, selected := range rules {
 		t.Run(selected, func(t *testing.T) {
+			t.Parallel()
 			descriptor, ok := checking.ConfigurationRules().FindRule(selected)
 			if !ok {
 				t.Fatal("missing descriptor")
@@ -54,6 +56,7 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 }
 
 func TestPayloadSuppressionDoesNotSuppressInjection(t *testing.T) {
+	t.Parallel()
 	content := strings.ReplaceAll(separatedExpressionWorkflow, "PAYLOAD: ${{ github.event.issue.titel }}", "PAYLOAD: ${{ github.event.issue.titel }} # actionlint:ignore event-payload -- test independent rules")
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(content)}})
 	if err != nil {
@@ -72,6 +75,7 @@ func TestPayloadSuppressionDoesNotSuppressInjection(t *testing.T) {
 }
 
 func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    env:\n      VALUE: ${{ format('{0}', 'used', 'unused') }}%s\n    steps: []\npermissions: {}\n"
 	for _, tc := range []struct{ level, comment, severity string }{
 		{"warn", "", "warning"},
@@ -80,6 +84,7 @@ func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
 		{"warn", " # ignore[expression-call]", ""},
 	} {
 		t.Run(tc.level+tc.comment, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {preset: none, correctness: {expression-call: %s}}}", tc.level))
 			if err != nil {
 				t.Fatal(err)

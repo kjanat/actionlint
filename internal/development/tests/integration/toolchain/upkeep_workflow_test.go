@@ -12,6 +12,7 @@ import (
 )
 
 func TestUpkeepGoToolchain(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("bash"); err != nil {
 		t.Skip("bash is required for the Ubuntu upkeep workflow")
 	}
@@ -65,6 +66,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 	}
 	for _, version := range []string{"go1.27.2", "go1.27.3", "go1.28.0", "go1.28rc1", "invalid"} {
 		t.Run(version, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			for name, data := range original {
 				target := filepath.Join(dir, name)

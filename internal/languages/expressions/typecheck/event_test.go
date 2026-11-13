@@ -14,6 +14,7 @@ import (
 )
 
 func TestEventProjectionIsNotMutated(t *testing.T) {
+	t.Parallel()
 	array := exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"message": exprtypes.StringType()}).Type())
 	event := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": array.Type()})
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
@@ -36,6 +37,7 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 }
 
 func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
+	t.Parallel()
 	declared := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType(), "count": exprtypes.NumberType()})
 	// The supplied context follows the dispatch representation. Runny checks
 	// expression evaluation against it, not GitHub's construction of the payload.
@@ -54,6 +56,7 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 		{"github.event.inputs.count", exprtypes.KindString, "42"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
 			contextspec.SetDispatchInputTypes(checker, declared)
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")

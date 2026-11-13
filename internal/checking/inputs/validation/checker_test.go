@@ -19,6 +19,7 @@ func (*pointerAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([]res
 }
 
 func TestIsNil(t *testing.T) {
+	t.Parallel()
 	var typed *pointerAnalyzer
 	for _, tc := range []struct {
 		name  string

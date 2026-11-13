@@ -7,8 +7,10 @@ import (
 )
 
 func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
+	t.Parallel()
 	for _, declared := range []string{"info", "warn", "error", ""} {
 		t.Run(declared, func(t *testing.T) {
+			t.Parallel()
 			rules, err := NewRuleSet([]rule.Declaration{{Name: "example", Category: "correctness", Maturity: "stable", Recommended: true, DefaultLevel: declared}})
 			if err != nil {
 				t.Fatal(err)
@@ -31,6 +33,7 @@ func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
 				{"explicit on overrides strict", "lint: {rules: {correctness: {example: on}}}", Presets{Strict: true}, wantDefault},
 			} {
 				t.Run(test.name, func(t *testing.T) {
+					t.Parallel()
 					cfg, err := rules.Parse([]byte(test.yaml))
 					if err != nil {
 						t.Fatal(err)
@@ -50,6 +53,7 @@ func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
 }
 
 func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
+	t.Parallel()
 	declarations := []rule.Declaration{
 		{Name: "information", Category: "correctness", Maturity: "stable", Recommended: true, DefaultLevel: "info"},
 		{Name: "optional", Category: "suspicious", Maturity: "stable", DefaultLevel: "warn"},
@@ -81,6 +85,7 @@ func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
 		{"information", "info", true}, {"optional", "warn", false}, {"nursery", "warn", false}, {"ordinary", "", true}, {"plugin", "warn", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			entry, ok := rules.FindRule(tc.name)
 			if !ok {
 				t.Fatal("rule missing")

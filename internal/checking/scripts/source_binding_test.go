@@ -68,8 +68,10 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 }
 
 func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
+	t.Parallel()
 	for _, mapped := range []bool{false, true} {
 		t.Run(map[bool]string{false: "plain", true: "mapped"}[mapped], func(t *testing.T) {
+			t.Parallel()
 			graph, collection, snapshot, path, originalDocument := actionBatchFixtureWithDocument(t, mapped)
 			original := snapshot.Content()
 			collection.Scripts[0], collection.Scripts[1] = collection.Scripts[1], collection.Scripts[0]
@@ -131,11 +133,13 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 }
 
 func TestDeploymentRejectsForeignSources(t *testing.T) {
+	t.Parallel()
 	_, actionCollection, action, path := actionBatchFixture(t, false)
 	graph, workflow := batchFixture(t, false)
 	root, _ := workflow.Declarations.Lookup(graph.Entry().Reference)
 	for name, snapshot := range map[string]parsing.SourceSnapshot{"workflow": root, "zero": {}} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := NewDeployment(actionCollection.Declarations, snapshot, path, path, false); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("foreign deployment accepted: %v", err)
 			}
@@ -159,8 +163,10 @@ func TestDeploymentRejectsForeignSources(t *testing.T) {
 }
 
 func TestBatchRejectsUnindexedDeclarations(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"node", "address", "kind", "input"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			graph, collection := batchFixture(t, true)
 			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, graph.Entry().Reference, invocation.DefaultBudget())
 			if err != nil {
@@ -198,6 +204,7 @@ func TestBatchRejectsUnindexedDeclarations(t *testing.T) {
 }
 
 func TestBatchRetainsPartialScriptsAfterCancellation(t *testing.T) {
+	t.Parallel()
 	graph, collection := batchFixture(t, true)
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, graph.Entry().Reference, invocation.DefaultBudget())
 	if err != nil {
@@ -226,6 +233,7 @@ func TestBatchRetainsPartialScriptsAfterCancellation(t *testing.T) {
 }
 
 func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: node\ndescription: node\nruns: {using: node24, main: index.js}\n")
 	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -262,6 +270,7 @@ func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 }
 
 func TestDeploymentPreservesWindowsDisplaySeparators(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows path separator equivalence")
 	}
@@ -278,6 +287,7 @@ func TestDeploymentPreservesWindowsDisplaySeparators(t *testing.T) {
 }
 
 func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
+	t.Parallel()
 	_, _, snapshot, path := actionBatchFixture(t, false)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)

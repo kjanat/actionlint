@@ -16,6 +16,7 @@ import (
 )
 
 func TestConstantFormatNumericArguments(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, want string }{
 		{"format('{0}', 0)", "0"},
 		{"format('{0}', 0.0)", "0"},
@@ -31,6 +32,7 @@ func TestConstantFormatNumericArguments(t *testing.T) {
 		{"format('{0}', null)", ""},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid expression fixture")

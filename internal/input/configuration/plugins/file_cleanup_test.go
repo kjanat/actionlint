@@ -14,6 +14,7 @@ import (
 )
 
 func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "actionlint.yml")
 	const original = "plugins: [old/plugin]\n"

@@ -32,6 +32,7 @@ func (guest *partialGuest) NegotiateTool(ctx context.Context, data, options json
 }
 
 func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
+	t.Parallel()
 	for _, failureAt := range []int{0, 1} {
 		for _, grant := range []bool{false, true} {
 			batch := documentBatchFixture(t, 3)

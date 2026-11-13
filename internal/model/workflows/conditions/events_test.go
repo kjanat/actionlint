@@ -6,6 +6,7 @@ import (
 )
 
 func TestEventReachabilityUsesPartialContextKnowledge(t *testing.T) {
+	t.Parallel()
 	events := []string{"push", "pull_request", "pull_request_target"}
 	for _, tc := range []struct {
 		condition string
@@ -30,6 +31,7 @@ func TestEventReachabilityUsesPartialContextKnowledge(t *testing.T) {
 		{"", events},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			got := ReachableEvents(events, tc.condition)
 			if !slices.Equal(got, tc.want) {
 				t.Fatalf("events=%v, want %v", got, tc.want)

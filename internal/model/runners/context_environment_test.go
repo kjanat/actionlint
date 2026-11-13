@@ -3,6 +3,7 @@ package runner
 import "testing"
 
 func TestContextEnvironmentAvailability(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		reference, name     string
 		workflow, composite bool

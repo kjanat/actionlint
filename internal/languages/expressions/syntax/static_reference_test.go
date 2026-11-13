@@ -6,6 +6,7 @@ import (
 )
 
 func TestReferencePath(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		want       []string
@@ -20,6 +21,7 @@ func TestReferencePath(t *testing.T) {
 		{`fromJSON('{}')`, nil},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := NewParser().Parse(NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)

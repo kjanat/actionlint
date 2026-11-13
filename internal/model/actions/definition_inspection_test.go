@@ -9,6 +9,7 @@ import (
 )
 
 func TestInspectDefinitionRejectsInvalidManifest(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		source string
@@ -20,6 +21,7 @@ func TestInspectDefinitionRejectsInvalidManifest(t *testing.T) {
 		{"malformed YAML", "name: example\ndescription: [\n", 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			inspection := InspectDefinition([]byte(tc.source))
 			if _, ok := inspection.Definition(); ok {
 				t.Fatal("invalid manifest produced a definition")
@@ -44,6 +46,7 @@ func TestInspectDefinitionRejectsInvalidManifest(t *testing.T) {
 }
 
 func TestInspectDefinitionReturnsValidatedImmutableFacts(t *testing.T) {
+	t.Parallel()
 	source := []byte("name: example\ndescription: 'literal &label *label'\nruns: {using: composite, steps: []}\n# &comment *comment\ninputs:\n  token:\n    description: token\n")
 	inspection := InspectDefinition(source)
 	definition, ok := inspection.Definition()
@@ -65,6 +68,7 @@ func TestInspectDefinitionReturnsValidatedImmutableFacts(t *testing.T) {
 }
 
 func TestInspectDefinitionRejectsEmptyManifest(t *testing.T) {
+	t.Parallel()
 	inspection := InspectDefinition(nil)
 	if _, ok := inspection.Definition(); ok {
 		t.Fatal("empty manifest produced a definition")
@@ -75,6 +79,7 @@ func TestInspectDefinitionRejectsEmptyManifest(t *testing.T) {
 }
 
 func TestInspectDefinitionOutputKnowledge(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, declaration, runs string
 		complete                bool
@@ -89,6 +94,7 @@ func TestInspectDefinitionOutputKnowledge(t *testing.T) {
 		{"docker declared", "outputs: {result: {description: result}}\n", "{using: docker, image: Dockerfile}", false, []string{"result"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			inspection := InspectDefinition([]byte("name: fixture\ndescription: fixture\n" + test.declaration + "runs: " + test.runs + "\n"))
 			definition, valid := inspection.Definition()
 			if !valid {

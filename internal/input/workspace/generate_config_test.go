@@ -10,6 +10,7 @@ import (
 )
 
 func TestGenerateConfigActionOnlyRepository(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
 		t.Fatal(err)

@@ -13,6 +13,7 @@ import (
 )
 
 func TestConfigurationTransformsReachEachOptionsOnlyProfile(t *testing.T) {
+	t.Parallel()
 	settings, err := config.ToolConfigInline("example", map[string]any{"limit": 7})
 	if err != nil {
 		t.Fatal(err)
@@ -20,6 +21,7 @@ func TestConfigurationTransformsReachEachOptionsOnlyProfile(t *testing.T) {
 	script := tools.Script{Text: "pass\n", Config: &config.Config{Tools: config.ToolsConfig{"example": {Config: settings}}}}
 	for _, profile := range []string{mask.ID, pythonprofile.ID} {
 		t.Run(profile, func(t *testing.T) {
+			t.Parallel()
 			manifest := manifests.Manifest{
 				Rule: rule.Descriptor{Name: "example"}, Preparation: profile,
 				ConfigSchema:           json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"limit":{"type":"integer"}}}`),

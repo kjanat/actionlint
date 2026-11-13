@@ -120,6 +120,7 @@ func firstEditorPublication(tb testing.TB, analyze Analyze, uri, text string, ex
 }
 
 func TestEditorCaseAliasPublishesCapturedUTF16WithOriginalURI(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows drive-case URI regression")
 	}
@@ -153,8 +154,10 @@ func TestEditorCaseAliasPublishesCapturedUTF16WithOriginalURI(t *testing.T) {
 }
 
 func TestEditorUnavailableAndRawMismatchLogWithoutPublishingRanges(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"raw LF mismatch", "unavailable matching captured row", "non YAML captured row", "invalid UTF8 captured row"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path, text := filepath.Join(root, "workflow.yml"), "first\rsecond\nbad"
 			model := sourcepos.YAML

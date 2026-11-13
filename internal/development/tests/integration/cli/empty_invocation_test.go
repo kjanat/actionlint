@@ -33,7 +33,7 @@ func TestBareInvocationUsesRepositoryContext(t *testing.T) {
 				t.Chdir(t.TempDir())
 				gitRepository(t, ".")
 			default:
-				commandTestRepo(t)
+				t.Chdir(commandTestRepo(t))
 				if err := os.WriteFile(".github/actionlint.yaml", []byte("tools: {shellcheck: false, ruff: false}\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}

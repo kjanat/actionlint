@@ -24,6 +24,7 @@ func (supplied suppliedEvaluation) Result(node exprsyntax.Node) (exprvalues.Eval
 }
 
 func TestTypeCheckingConsumesSuppliedEvaluation(t *testing.T) {
+	t.Parallel()
 	root := exprsyntax.ParseAssignedExpression("${{ contains('x', 'x') }}")
 	if root == nil {
 		t.Fatal("expression did not parse")

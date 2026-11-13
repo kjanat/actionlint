@@ -13,8 +13,10 @@ import (
 )
 
 func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
+	t.Parallel()
 	for _, collect := range []bool{false, true} {
 		t.Run(fmt.Sprintf("collect=%t", collect), func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {run: echo later}]}}\n", nil, nil)
 			f.options.CollectScripts = collect
 			failure := errors.New("selector configuration failed")
@@ -36,6 +38,7 @@ func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
 }
 
 func TestParallelScriptsRegisterWithoutCollection(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - run: echo child\n          - uses: actions/github-script@v7\n            with: {script: console.log(1)}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, nil, nil)
 	f.options.CollectScripts = false
@@ -50,9 +53,11 @@ func TestParallelScriptsRegisterWithoutCollection(t *testing.T) {
 }
 
 func TestCompositionExactlyAtScriptLimit(t *testing.T) {
+	t.Parallel()
 	for _, withInput := range []bool{false, true} {
 		for _, collect := range []bool{false, true} {
 			t.Run(fmt.Sprintf("collect=%t/input=%t", collect, withInput), func(t *testing.T) {
+				t.Parallel()
 				budget := invocation.DefaultBudget()
 				budget.MaxScripts = 3
 				lastStep := "{shell: bash, run: echo last}"
@@ -85,6 +90,7 @@ func TestCompositionExactlyAtScriptLimit(t *testing.T) {
 }
 
 func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	budget := invocation.DefaultBudget()
@@ -110,6 +116,7 @@ func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
 }
 
 func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
+	t.Parallel()
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 1
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {run: echo second}, {uses: $/later}]}}\n", nil, &budget)
@@ -141,8 +148,10 @@ func TestCallVisitPreservesExistingScriptStop(t *testing.T) {
 }
 
 func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
+	t.Parallel()
 	for _, canceled := range []bool{false, true} {
 		t.Run(fmt.Sprintf("cancelled=%t", canceled), func(t *testing.T) {
+			t.Parallel()
 			budget := invocation.DefaultBudget()
 			budget.MaxScripts = 1
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", nil, &budget)
@@ -207,9 +216,11 @@ func TestBudgetDoesNotHideJoinedFailures(t *testing.T) {
 }
 
 func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"workflow", "nested", "standalone", "action-input", "nested-input"} {
 		for _, collect := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/collect=%t", mode, collect), func(t *testing.T) {
+				t.Parallel()
 				budget := invocation.DefaultBudget()
 				budget.MaxScripts = 1
 				steps := "[{run: echo initial}, {run: echo rejected}, {uses: $/later}]"

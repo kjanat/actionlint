@@ -7,6 +7,7 @@ import (
 )
 
 func TestUnavailableFactsRemainDistinctFromKnownEmpty(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		result availability.String
 		reason availability.Reason

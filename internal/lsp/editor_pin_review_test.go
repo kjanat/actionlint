@@ -13,6 +13,7 @@ import (
 )
 
 func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	data, err := os.ReadFile("../plugins/execution/module/testdata/engines/echo.wasm")
 	if err != nil {

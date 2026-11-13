@@ -12,6 +12,7 @@ import (
 )
 
 func TestRegistryTransportMigration(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
 	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
@@ -64,6 +65,7 @@ func TestRegistryTransportMigration(t *testing.T) {
 }
 
 func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, test := range []struct{ name, before, after string }{
 		{"receipt asset", `"asset":"plugin.component.wasm"`, `"asset":"different.wasm"`},
 		{"artifact kind", `"kind":"component"`, `"kind":"core"`},
@@ -71,6 +73,7 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 		{"metadata identity", `"id":"no-sudo"`, `"id":"other"`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
 			registry.Publish(t, "v2.0.0")
@@ -84,6 +87,7 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 }
 
 func TestLockMigrationPreservesIdentityAndImmutability(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
 	old, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
@@ -112,6 +116,7 @@ func TestLockMigrationPreservesIdentityAndImmutability(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			file := plugininstall.LockFile{Lock: plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{old}}}
 			next := old
 			test.edit(&next)

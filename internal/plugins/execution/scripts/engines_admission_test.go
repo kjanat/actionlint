@@ -28,6 +28,7 @@ func (e *admissionEngine) Close(ctx context.Context) error {
 }
 
 func TestScriptEnginesBoundsConcurrentDistinctAdmissions(t *testing.T) {
+	t.Parallel()
 	var loaded []*admissionEngine
 	var loadedMu sync.Mutex
 	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
@@ -77,6 +78,7 @@ func TestScriptEnginesBoundsConcurrentDistinctAdmissions(t *testing.T) {
 }
 
 func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("invalid module")
 	loads := 0
 	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
@@ -98,6 +100,7 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 }
 
 func TestScriptEnginesRejectsNilSuccessfulLoad(t *testing.T) {
+	t.Parallel()
 	loads := 0
 	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
 		loads++
@@ -118,6 +121,7 @@ func TestScriptEnginesRejectsNilSuccessfulLoad(t *testing.T) {
 }
 
 func TestScriptEnginesCannotReopenAfterClose(t *testing.T) {
+	t.Parallel()
 	loads := 0
 	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
 		loads++
@@ -135,6 +139,7 @@ func TestScriptEnginesCannotReopenAfterClose(t *testing.T) {
 }
 
 func TestScriptEnginesSharesAdmissionBudgetAcrossSuccessAndFailure(t *testing.T) {
+	t.Parallel()
 	loads := 0
 	engines := NewScriptEngines(func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 		loads++
@@ -164,6 +169,7 @@ func TestScriptEnginesSharesAdmissionBudgetAcrossSuccessAndFailure(t *testing.T)
 }
 
 func TestScriptEnginesSymlinkAliasesCannotBypassAdmissionLimit(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	target := filepath.Join(root, "engine.wasm")
 	if err := os.WriteFile(target, nil, 0o600); err != nil {

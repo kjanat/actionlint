@@ -17,6 +17,7 @@ import (
 )
 
 func TestTombiRuleOptions(t *testing.T) {
+	t.Parallel()
 	tombi, err := exec.LookPath("tombi")
 	if err != nil {
 		t.Skip("tombi is not installed")
@@ -26,7 +27,7 @@ func TestTombiRuleOptions(t *testing.T) {
 		if name == configschema.RootFile {
 			return generated, nil
 		}
-		return os.ReadFile(filepath.FromSlash(name))
+		return os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(name)))
 	}, []manifests.Manifest{{Rule: rule.Descriptor{
 		Name: "custom-check", Category: "conventions", Description: "Check a numeric limit",
 		OptionsSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
@@ -50,6 +51,7 @@ func TestTombiRuleOptions(t *testing.T) {
 		{"invalid plugin options", "[lint.rules.conventions.custom-check]\nlevel = 'error'\noptions = { limit = 0 }\n", "the value must be ≥ 1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, tombi, "lint", "--offline", "--error-on-warnings", "--stdin-filename=actionlint.toml", "-")

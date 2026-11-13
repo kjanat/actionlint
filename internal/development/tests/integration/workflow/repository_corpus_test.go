@@ -38,22 +38,28 @@ func parseRepositoryWorkflow(t *testing.T, name string) *workflowlang.Workflow {
 }
 
 func TestRepositoryWorkflowSyntax(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{
 		"actions-rs", "actup-autofix", "shellcheck-wiki", "runny-matrix-insertion",
 		"runny-conditions", "runner-release", "svg-release", "vw-release",
 		"kp2bw-windows-bw-cmd",
 	} {
-		t.Run(name, func(t *testing.T) { parseRepositoryWorkflow(t, name) })
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			parseRepositoryWorkflow(t, name)
+		})
 	}
 }
 
 func TestRepositoryWorkflowAnalysis(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{
 		"actup-autofix", "shellcheck-wiki", "runny-matrix-insertion",
 		"runner-release", "svg-release", "vw-release",
 		"kp2bw-windows-bw-cmd",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			findings := testutil.WorkflowDiagnostics(t, string(repositoryWorkflowSource(t, name)), "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}")
 			if name == "kp2bw-windows-bw-cmd" {
 				if len(findings) != 1 || findings[0].Severity != "info" || findings[0].Rule != "expression-call" || findings[0].Code != "permissive-json" || findings[0].Message != "you naughty boy, I see you" || findings[0].Start.Line != 24 {
@@ -69,6 +75,7 @@ func TestRepositoryWorkflowAnalysis(t *testing.T) {
 }
 
 func TestKP2BWWindowsMatrix(t *testing.T) {
+	t.Parallel()
 	workflow := parseRepositoryWorkflow(t, "kp2bw-windows-bw-cmd")
 	job := workflow.Jobs["cmd-shim"]
 	if job == nil || job.RunsOn == nil || job.Defaults == nil || job.Defaults.Run == nil || job.Defaults.Run.Shell == nil || job.Defaults.Run.Shell.Value != "pwsh" {
@@ -135,6 +142,7 @@ func TestKP2BWWindowsMatrix(t *testing.T) {
 }
 
 func TestActupFlowNullWhitespace(t *testing.T) {
+	t.Parallel()
 	source := repositoryWorkflowSource(t, "actup-autofix")
 	workflow := parseRepositoryWorkflow(t, "actup-autofix")
 	events := make([]string, 0, len(workflow.On))
@@ -155,6 +163,7 @@ func TestActupFlowNullWhitespace(t *testing.T) {
 }
 
 func TestWikiDynamicMappingsAndAliasUses(t *testing.T) {
+	t.Parallel()
 	workflow := parseRepositoryWorkflow(t, "shellcheck-wiki")
 	steps := workflow.Jobs["actionlint"].Steps
 	if len(steps) != 2 {
@@ -182,6 +191,7 @@ func TestWikiDynamicMappingsAndAliasUses(t *testing.T) {
 }
 
 func TestRunnyMatrixSequenceExpansion(t *testing.T) {
+	t.Parallel()
 	workflow := parseRepositoryWorkflow(t, "runny-matrix-insertion")
 	for _, tc := range []struct {
 		job   string
@@ -190,6 +200,7 @@ func TestRunnyMatrixSequenceExpansion(t *testing.T) {
 		{"expression", 4}, {"literal", 3}, {"empty", 2}, {"includes", 4}, {"axes", 2},
 	} {
 		t.Run(tc.job, func(t *testing.T) {
+			t.Parallel()
 			combinations, known := matrix.Resolve(workflow.Jobs[tc.job].Strategy).Combinations(16)
 			if !known || len(combinations) != tc.count {
 				t.Fatalf("want %d matrix configurations, got known=%v %v", tc.count, known, combinations)
@@ -199,6 +210,7 @@ func TestRunnyMatrixSequenceExpansion(t *testing.T) {
 }
 
 func TestRunnyConditionExecution(t *testing.T) {
+	t.Parallel()
 	workflow := parseRepositoryWorkflow(t, "runny-conditions")
 	steps := workflow.Jobs["empty-conditions"].Steps
 	want := []bool{true, true, true, true, true, true, false, false, false, true, false}
@@ -217,6 +229,7 @@ func TestRunnyConditionExecution(t *testing.T) {
 }
 
 func TestActionsRsNestedExpressionDiagnostics(t *testing.T) {
+	t.Parallel()
 	source := repositoryWorkflowSource(t, "actions-rs")
 	findings := testutil.WorkflowDiagnostics(t, string(source), "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}")
 	// The two constant job conditions are truthy. The inner fromJSON uses valid
@@ -252,10 +265,12 @@ func TestActionsRsNestedExpressionDiagnostics(t *testing.T) {
 }
 
 func TestRepositoryReleaseMatrixKnowledge(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ workflow, job string }{
 		{"runner-release", "upload-assets"}, {"svg-release", "build-and-upload"},
 	} {
 		t.Run(tc.workflow, func(t *testing.T) {
+			t.Parallel()
 			workflow := parseRepositoryWorkflow(t, tc.workflow)
 			job := workflow.Jobs[tc.job]
 			if job == nil || len(job.Needs) != 2 || job.Needs[0].Value != "matrix" || job.Needs[1].Value != "create-release" {

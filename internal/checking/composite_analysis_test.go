@@ -14,12 +14,14 @@ import (
 )
 
 func TestCompositeAnalysisCancellation(t *testing.T) {
+	t.Parallel()
 	for _, actionRule := range []bool{false, true} {
 		name := "metadata steps"
 		if actionRule {
 			name = "invocation after action validation"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := tempdir.Physical(t)
 			outer := writeShellcheckFixture(t, root, "outer/action.yml", `name: outer
 description: test

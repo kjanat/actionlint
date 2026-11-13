@@ -8,6 +8,7 @@ import (
 )
 
 func TestInspectKnownCallArguments(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, function string
 		values         []any
@@ -23,6 +24,7 @@ func TestInspectKnownCallArguments(t *testing.T) {
 		{"unsupported JSON constructor has unknown type", "fromjson", []any{"new Date(0)"}, exprtypes.KindAny, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			function := Builtins[tc.function]
 			signature := function.Signatures[0]
 			arguments := make([]ParameterMatch, len(tc.values))
@@ -39,6 +41,7 @@ func TestInspectKnownCallArguments(t *testing.T) {
 }
 
 func TestEmptyJSONFailureHasZeroOffset(t *testing.T) {
+	t.Parallel()
 	read, invalid := readFunctionJSON("").(InvalidJSON)
 	if !invalid || read.Offset == nil || *read.Offset != 0 {
 		t.Fatalf("empty JSON failure = %+v, want offset 0", read)
@@ -46,6 +49,7 @@ func TestEmptyJSONFailureHasZeroOffset(t *testing.T) {
 }
 
 func TestUnsupportedJSONStillReportsMemberCollisions(t *testing.T) {
+	t.Parallel()
 	function := Builtins["fromjson"]
 	signature := function.Signatures[0]
 	argument := CallArgument{Source: exprtypes.StringType(), State: ArgumentKnown, Value: `{"A":1,"a":new Date(0)}`}
@@ -60,6 +64,7 @@ func TestUnsupportedJSONStillReportsMemberCollisions(t *testing.T) {
 }
 
 func TestCaseInspectionPreservesPredicateDemand(t *testing.T) {
+	t.Parallel()
 	boolean := CallArgument{Source: exprtypes.BoolType(), Demand: DemandRequired}
 	value := CallArgument{Source: exprtypes.StringType(), Demand: DemandSkipped}
 	for _, tc := range []struct {
@@ -78,6 +83,7 @@ func TestCaseInspectionPreservesPredicateDemand(t *testing.T) {
 		}, []CallProblemReport{{Problem: InvalidCasePredicate{Index: 2, Actual: exprtypes.StringType()}, Demand: DemandConditional}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			function := Builtins["case"]
 			signature := function.Signatures[0]
 			arguments := make([]ParameterMatch, len(tc.arguments))

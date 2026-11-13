@@ -41,7 +41,7 @@ func TestPreCommitCommand(t *testing.T) {
 }
 
 func TestPreCommitCommandChecksRepository(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	got := testRunCommand("", "pre-commit")
 	if got.Status != 1 || !strings.Contains(got.Stdout, `undefined variable "missing"`) {
 		t.Fatalf("expected the workflow finding, got %+v", got)
@@ -158,6 +158,7 @@ func TestPreCommitCommandVerbose(t *testing.T) {
 }
 
 func TestPreCommitCommandIsHidden(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"--help"}, {"check", "--help"}, {"help"}} {
 		got := testRunCommand("", args...)
 		if got.Status != 0 || strings.Contains(got.Stdout, "pre-commit") {

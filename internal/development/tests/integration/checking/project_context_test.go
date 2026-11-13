@@ -18,6 +18,7 @@ import (
 )
 
 func TestInMemorySourcesRetainLocalReferenceContext(t *testing.T) {
+	t.Parallel()
 	const caller = `on: push
 jobs:
   build:
@@ -53,6 +54,7 @@ jobs:
 `
 	for _, mode := range []string{"snapshots", "snapshot-over-reader", "reader-action"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			root := tempdir.Physical(t)
 			if err := os.MkdirAll(filepath.Join(root, ".github"), 0o755); err != nil {
 				t.Fatal(err)

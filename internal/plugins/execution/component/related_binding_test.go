@@ -43,6 +43,7 @@ func wireRelatedDiagnostic(locations []results.Related) *wacogo.ValRecord {
 }
 
 func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
+	t.Parallel()
 	revision, err := sourcepos.NewRevision("/repo/workflow.yml", strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +60,7 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 }
 
 func TestMalformedRelatedKeepsWITPrimaryAndCountsEveryLocation(t *testing.T) {
+	t.Parallel()
 	locations := []results.Related{{Path: "workflow.yml", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}, {Path: "workflow.yml", Start: sourcepos.Position{}, End: sourcepos.Position{Line: 1, Column: 1}}}
 	findings, err := liftAnalysis(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())))
 	rejected, ok := errors.AsType[*related.RejectedError](err)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestActionMetadataKnownExpressions(t *testing.T) {
+	t.Parallel()
 	const base = `name: audit
 description: audit
 runs:
@@ -66,6 +67,7 @@ runs:
 		{"evaluated quoted value is not folded", "env", `${{ fromJSON('{"VALUE":"${{ fromJSON(''[]'') }}"}') }}`, "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			prefix := base
 			switch tc.field {
 			case "run":
@@ -99,6 +101,7 @@ runs:
 }
 
 func TestActionJSONMemberCollisions(t *testing.T) {
+	t.Parallel()
 	violations := actionmeta.ValidateExpression(`${{ fromJSON('{"VALUE":"a","value":"b"}') }}`, false, "runs.steps.*.env", nil)
 	if len(violations) != 1 || !strings.Contains(violations[0].Message, "collide under case-insensitive lookup") {
 		t.Fatal(violations)

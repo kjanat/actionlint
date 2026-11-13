@@ -14,6 +14,7 @@ import (
 )
 
 func TestMetadataAvailabilityPreservesMissingAndInvalid(t *testing.T) {
+	t.Parallel()
 	disabled := remote.New(nil)
 	missing, err := disabled.Inspect(t.Context(), "example/action@v1")
 	if err != nil || missing.Availability().State() != actions.MetadataUnavailable || missing.Availability().Reason() != availability.LookupDisabledReason {
@@ -38,6 +39,7 @@ func TestMetadataAvailabilityPreservesMissingAndInvalid(t *testing.T) {
 }
 
 func TestProviderUnavailabilityReachesCoverage(t *testing.T) {
+	t.Parallel()
 	for _, missing := range []availability.Unavailability{
 		availability.NotFetched(), availability.Offline(), availability.LookupDisabled(),
 		availability.Denied(), availability.Failed(), availability.NotFound(),
@@ -46,6 +48,7 @@ func TestProviderUnavailabilityReachesCoverage(t *testing.T) {
 		availability.UnsupportedObjectFormat(), availability.InvalidResolverResult(),
 	} {
 		t.Run(string(missing.Reason()), func(t *testing.T) {
+			t.Parallel()
 			service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
 				return actions.UnavailableManifest(missing), nil
 			}))
@@ -62,6 +65,7 @@ func TestProviderUnavailabilityReachesCoverage(t *testing.T) {
 }
 
 func TestEmptyAvailableManifestIsInvalidMetadata(t *testing.T) {
+	t.Parallel()
 	service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
 		return manifest(t, "example/action", strings.Repeat("a", 40), "", reference.Ref(), ""), nil
 	}))
@@ -84,6 +88,7 @@ func (c *checkedContext) Err() error {
 }
 
 func TestWaitingMetadataLookupCanCancel(t *testing.T) {
+	t.Parallel()
 	started, release := make(chan struct{}), make(chan struct{})
 	service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
 		close(started)

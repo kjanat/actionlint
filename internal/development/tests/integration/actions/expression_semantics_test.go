@@ -10,6 +10,7 @@ import (
 )
 
 func TestInvokedCompositeExpressionSemantics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, rule, code string }{
 		{"fromJSON(steps.check.outputs).available", "expression-call", "invalid-json"},
 		{"steps.check.outputs.available", "string-conditions", "string-conditions"},
@@ -19,6 +20,7 @@ func TestInvokedCompositeExpressionSemantics(t *testing.T) {
 		{"fromJSON(42)", "", ""},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\nlint:\n  rules:\n    preset: none\n    correctness:\n      expression-call: error\n      expression-type: error\n    suspicious:\n      string-conditions: warn\n      join-literal: info\n")
 			const prefix = "name: inner\ndescription: Check expressions from an invocation.\nruns:\n  using: composite\n  steps:\n    - id: check\n      shell: bash\n      run: echo available=false >> \"$GITHUB_OUTPUT\"\n    - shell: bash\n      run: echo checked\n      if: ${{ "

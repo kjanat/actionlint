@@ -12,6 +12,7 @@ import (
 )
 
 func TestProviderPointerResolutionsMatchValues(t *testing.T) {
+	t.Parallel()
 	resolved := runnerapi.Resolved{Candidates: []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh", CaseSensitivity: runnerapi.CaseInsensitive}}}
 	noMatch := runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "absent"}}}
 	unknown := runnerapi.Unknown{Reason: "runtime"}
@@ -26,6 +27,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 		{"not-applicable", notApplicable, &notApplicable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow := runnerWorkflow(t, "queue")
 			prepare := func(resolution runnerapi.Resolution) *runnermodel.Knowledge {
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
@@ -46,6 +48,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 }
 
 func TestProviderPointerResolutionValidation(t *testing.T) {
+	t.Parallel()
 	for _, resolution := range []runnerapi.Resolution{(*runnerapi.Resolved)(nil), (*runnerapi.NoMatch)(nil), (*runnerapi.Unknown)(nil), (*runnerapi.NotApplicable)(nil), &runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "wrong source", Position: sourcepos.Position{Line: 99, Column: 1}}}}} {
 		p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 			return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
@@ -57,6 +60,7 @@ func TestProviderPointerResolutionValidation(t *testing.T) {
 }
 
 func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
+	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [windows-latest]\n        unknown: '${{ fromJSON(vars.AXIS) }}'\n    runs-on: ${{ matrix.os }}\n    steps: [{run: echo ok}]\n")
 	p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 		answers := make([]runnerapi.Answer, len(r.Selectors))
@@ -86,6 +90,7 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 }
 
 func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
+	t.Parallel()
 	var builtin *runnermodel.Knowledge
 	for _, tc := range []struct {
 		selector string
@@ -101,6 +106,7 @@ func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
 		{"[self-hosted, windows]", runnerapi.Windows, runnerapi.CaseInsensitive},
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
+			t.Parallel()
 			w := runnerWorkflow(t, tc.selector)
 			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {

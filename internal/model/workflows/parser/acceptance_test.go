@@ -8,6 +8,7 @@ import (
 // GitHub's workflow reader rejects these documents; ADR-0017 records the
 // service verdicts. Each must produce exactly its acceptance code.
 func TestParserAcceptanceCodes(t *testing.T) {
+	t.Parallel()
 	const body = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 	for _, tc := range []struct {
 		name, source string
@@ -33,6 +34,7 @@ func TestParserAcceptanceCodes(t *testing.T) {
 		{"missing runs-on", "on: push\njobs:\n  check:\n    steps:\n      - run: echo ok\n", []Code{CodeMissingKey}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, findings := Parse([]byte(tc.source))
 			var got []Code
 			for _, finding := range findings {
@@ -47,6 +49,7 @@ func TestParserAcceptanceCodes(t *testing.T) {
 
 // GitHub converts a fractional integer literal by truncating toward zero.
 func TestParseIntTruncatesFractions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		literal, truncated string
 		value              int
@@ -58,6 +61,7 @@ func TestParseIntTruncatesFractions(t *testing.T) {
 		{"0x10", "", 16},
 	} {
 		t.Run(tc.literal, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    strategy:\n      max-parallel: " + tc.literal + "\n    steps:\n      - run: echo ok\n"
 			workflow, findings := Parse([]byte(source))
 			if len(findings) != 0 {

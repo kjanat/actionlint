@@ -5,6 +5,7 @@ import (
 )
 
 func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix, script, wantType string
 		unsafe                         bool
@@ -23,6 +24,7 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 		{"unknown includes can add string rows", `item: [42], include: "${{ fromJSON(vars.INCLUDE) }}"`, `echo '${{ matrix.item }}'`, "any", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: {workflow_run: {workflows: [Build]}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: {" + tc.matrix + "}\n    steps:\n      - run: " + tc.script + "\n"
 			rule, workflow := newTestCheckerForSource(t, source)
 			job := testJob(t, workflow, "test")
@@ -51,6 +53,7 @@ func TestDynamicMatrixRowsKeepInferredElementTypes(t *testing.T) {
 // A matrix whose rows all come from an include expression has properties that
 // are only known at runtime.
 func TestIncludeExpressionMatrixAcceptsAnyProperty(t *testing.T) {
+	t.Parallel()
 	source := `on: {workflow_call: {inputs: {targets: {type: string, required: true}}}}
 jobs:
   test:

@@ -11,6 +11,7 @@ import (
 )
 
 func TestVersionShorthand(t *testing.T) {
+	t.Parallel()
 	for _, tail := range [][]string{nil, {"--json"}} {
 		want := testRunCommand("", append([]string{"--version"}, tail...)...)
 		got := testRunCommand("", append([]string{"-V"}, tail...)...)
@@ -27,6 +28,7 @@ func TestVersionShorthand(t *testing.T) {
 }
 
 func TestCommandVersionNamesTheModule(t *testing.T) {
+	t.Parallel()
 	var output bytes.Buffer
 	cmd := cli.Command{Stdin: os.Stdin, Stdout: &output, Stderr: &output}
 

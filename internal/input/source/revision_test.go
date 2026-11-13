@@ -7,6 +7,7 @@ import (
 )
 
 func TestRevision(t *testing.T) {
+	t.Parallel()
 	if (Revision{}).Valid() {
 		t.Fatal("zero revision is valid")
 	}
@@ -29,6 +30,7 @@ func TestRevision(t *testing.T) {
 }
 
 func TestRevisionJSON(t *testing.T) {
+	t.Parallel()
 	revision, err := NewRevision("<stdin>", strings.Repeat("ab", 32))
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +61,7 @@ func TestRevisionJSON(t *testing.T) {
 }
 
 func TestRevisionValueEquality(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("ab", 32)
 	makeRevision := func(document, digest string) Revision {
 		t.Helper()
@@ -81,6 +84,7 @@ func TestRevisionValueEquality(t *testing.T) {
 		{"zero and valid", Revision{}, value, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if tc.a.Equal(tc.b) != tc.want || tc.b.Equal(tc.a) != tc.want {
 				t.Fatalf("equality for %#v and %#v = %v, want %v", tc.a, tc.b, tc.a.Equal(tc.b), tc.want)
 			}

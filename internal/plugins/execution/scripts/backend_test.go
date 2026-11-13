@@ -24,6 +24,7 @@ func (b *selectorBackend) Check(context.Context, checkinputs.ScriptRequest) ([]c
 }
 
 func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
+	t.Parallel()
 	shells := make([]string, 10000)
 	for i := range shells {
 		shells[i] = fmt.Sprintf("shell-%d", i)
@@ -52,6 +53,7 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 }
 
 func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -86,6 +88,7 @@ func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
 // manifest declares selectors.shells or capabilities.resources, and not when
 // it selects action inputs only.
 func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
+	t.Parallel()
 	inputs := []checkinputs.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
 	for _, tc := range []struct {
 		name      string
@@ -126,6 +129,7 @@ func envelopeManifest(name string, shells []string) manifests.Manifest {
 }
 
 func TestShellSelectorProcessHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_SELECTOR_HELPER") != "1" {
 		return
 	}

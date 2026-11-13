@@ -10,6 +10,7 @@ import (
 )
 
 func TestLiteralShellWordQuotes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		word, want string
 		known      bool
@@ -26,6 +27,7 @@ func TestLiteralShellWordQuotes(t *testing.T) {
 		{`"./\\file"`, "", false},
 	} {
 		t.Run(tc.word, func(t *testing.T) {
+			t.Parallel()
 			file, err := syntax.NewParser().Parse(strings.NewReader(tc.word), "")
 			if err != nil {
 				t.Fatal(err)

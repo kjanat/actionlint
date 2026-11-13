@@ -30,10 +30,12 @@ func virtualActionPaths(t *testing.T) (string, string, string) {
 }
 
 func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
+	t.Parallel()
 	_, physical, alias := virtualActionPaths(t)
 	for _, concurrent := range []bool{false, true} {
 		for _, reversed := range []bool{false, true} {
 			t.Run(fmt.Sprintf("concurrent=%t/reversed=%t", concurrent, reversed), func(t *testing.T) {
+				t.Parallel()
 				paths := []string{physical, alias}
 				if reversed {
 					paths = []string{alias, physical}
@@ -67,6 +69,7 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 }
 
 func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
+	t.Parallel()
 	root, manifest, _ := virtualActionPaths(t)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
@@ -95,8 +98,10 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 }
 
 func TestSharedActionOutlinesAreCompleteAfterBatch(t *testing.T) {
+	t.Parallel()
 	for _, broken := range []bool{false, true} {
 		t.Run(fmt.Sprintf("broken=%t", broken), func(t *testing.T) {
+			t.Parallel()
 			root := tempdir.Physical(t)
 			manifest := "name: shared\ndescription: test\nruns: {using: composite, steps: []}\n"
 			if broken {

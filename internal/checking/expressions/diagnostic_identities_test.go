@@ -14,6 +14,7 @@ import (
 )
 
 func TestDiagnosticIdentities(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source, rule, code string
 		script             bool
@@ -29,6 +30,7 @@ func TestDiagnosticIdentities(t *testing.T) {
 		{"github.event.issue.title", "script-injection", "untrusted-interpolation", true},
 	} {
 		t.Run(tc.rule+"/"+tc.code, func(t *testing.T) {
+			t.Parallel()
 			node, parseError := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
 			var findings []*exprlang.Error
 			if parseError != nil {

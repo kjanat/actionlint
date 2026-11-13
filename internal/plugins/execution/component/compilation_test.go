@@ -83,10 +83,13 @@ func compilationTestGrow(t *testing.T, ctx context.Context, instance *wacogo.Com
 }
 
 func TestComponentCompilationCacheSurvivesRuntimeClose(t *testing.T) {
+	t.Parallel()
 	t.Run("default runtime", func(t *testing.T) {
+		t.Parallel()
 		testComponentCompilationRuntimeClose(t, compilationTestEngine)
 	})
 	t.Run("interpreter", func(t *testing.T) {
+		t.Parallel()
 		testComponentCompilationRuntimeClose(t, compilationTestInterpreterEngine)
 	})
 }
@@ -138,6 +141,7 @@ func testComponentCompilationRuntimeClose(t *testing.T, newEngine func(*testing.
 }
 
 func TestComponentCompilationCacheConcurrentLoads(t *testing.T) {
+	t.Parallel()
 	compilation, ctx, data := newCompilationTest(t)
 	const loaders = 4
 	engines := make([]*wacogo.Engine, loaders)
@@ -160,6 +164,7 @@ func TestComponentCompilationCacheConcurrentLoads(t *testing.T) {
 		}
 	}
 	t.Run("compiler compiles once", func(t *testing.T) {
+		t.Parallel()
 		got := ctx.compilations.Load()
 		if got == 0 {
 			t.Skip("runtime does not expose the compiler worker setting")
@@ -171,6 +176,7 @@ func TestComponentCompilationCacheConcurrentLoads(t *testing.T) {
 }
 
 func TestComponentCompilationCacheCancelledWaiter(t *testing.T) {
+	t.Parallel()
 	compilation, ctx, data := newCompilationTest(t)
 	engine := compilationTestEngine(t, compilation, ctx)
 	if err := compilation.gate.Acquire(ctx, 1); err != nil {
@@ -189,6 +195,7 @@ func TestComponentCompilationCacheCancelledWaiter(t *testing.T) {
 }
 
 func TestComponentCompilationCacheFailedLoadReleasesGate(t *testing.T) {
+	t.Parallel()
 	compilation, ctx, data := newCompilationTest(t)
 	engine := compilationTestEngine(t, compilation, ctx)
 	if _, err := compilation.load(ctx, engine, []byte("invalid component")); err == nil {

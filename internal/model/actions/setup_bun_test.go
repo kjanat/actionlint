@@ -8,6 +8,7 @@ import (
 )
 
 func TestSetupBunMetadata(t *testing.T) {
+	t.Parallel()
 	// https://github.com/oven-sh/setup-bun/blob/0c5077e51419868618aeaa5fe8019c62421857d6/action.yml
 	source, err := os.ReadFile("testdata/metadata/setup-bun.yaml")
 	if err != nil {

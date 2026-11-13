@@ -9,6 +9,7 @@ import (
 )
 
 func TestInheritedBackendExecutableOrigins(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	parentDir := filepath.Join(root, "parent")
 	if err := os.Mkdir(parentDir, 0o700); err != nil {
