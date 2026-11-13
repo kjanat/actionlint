@@ -14,6 +14,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
@@ -390,7 +391,7 @@ func TestRemoteCompositeRepositorySwitches(t *testing.T) {
 	for _, middle := range []string{"./middle", "example/second@v2"} {
 		t.Run(middle, func(t *testing.T) {
 			t.Parallel()
-			root := t.TempDir()
+			root := tempdir.Physical(t)
 			leaf := "name: leaf\ndescription: leaf\nruns: {using: composite, steps: [{shell: bash, run: echo leaf}]}\n"
 			intermediate := "name: middle\ndescription: middle\nruns: {using: composite, steps: [{uses: '$/nested'}]}\n"
 			for name, body := range map[string]string{"middle": intermediate, "nested": leaf} {
