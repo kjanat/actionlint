@@ -15,6 +15,7 @@ import (
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
@@ -60,6 +61,7 @@ func remoteCompositeProvider(t *testing.T, manifests map[string]string) (manifes
 }
 
 func TestRemoteCompositeContainerRunner(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, runner, condition string
 		want                    int
@@ -70,6 +72,7 @@ func TestRemoteCompositeContainerRunner(t *testing.T) {
 		{"skipped", "windows-latest", "false", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			inner := "name: inner\ndescription: inner\nruns:\n  using: composite\n  steps:\n    - uses: docker://alpine:3\n"
 			provider, requests := remoteCompositeProvider(t, map[string]string{
 				"example/outer": "name: outer\ndescription: outer\nruns:\n  using: composite\n  steps:\n    - uses: example/inner@v1\n",
@@ -121,6 +124,7 @@ func (c remoteGraphChecker) CheckDocument(_ context.Context, input checkinputs.I
 }
 
 func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
+	t.Parallel()
 	provider, requests := remoteCompositeProvider(t, map[string]string{
 		"example/outer": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: example/inner@v1}]}\n",
 		"example/inner": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n",
@@ -157,6 +161,7 @@ func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
 }
 
 func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, body string
 	}{
@@ -167,6 +172,7 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 		{"invalid self reference", "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: '$/nested'}]}\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			manifests := map[string]string{}
 			if tc.body != "" {
 				manifests["example/action"] = tc.body
@@ -211,6 +217,7 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 }
 
 func TestRemoteCompositeDepthLimit(t *testing.T) {
+	t.Parallel()
 	limit := invocation.DefaultBudget().MaxDepth
 	manifests := map[string]string{}
 	for i := range limit + 3 {
@@ -241,6 +248,7 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 }
 
 func TestRemoteCompositeCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	provider, _ := remoteCompositeProvider(t, map[string]string{
@@ -261,7 +269,63 @@ func TestRemoteCompositeCancellation(t *testing.T) {
 	}
 }
 
+type compositeMirrorProvider struct {
+	provider actions.Provider
+	requests *mirrorRequests
+	access   references.MirrorAccess
+}
+
+func (p compositeMirrorProvider) WithMetadataMirrors(access references.MirrorAccess, _ []string) actions.Provider {
+	p.access = access
+	return p
+}
+
+func (p compositeMirrorProvider) Lookup(ctx context.Context, ref actions.Reference) (actions.Manifest, error) {
+	p.requests.Lock()
+	p.requests.actions[p.access]++
+	p.requests.Unlock()
+	return p.provider.Lookup(ctx, ref)
+}
+
+func TestRemoteCompositeUsesCallerMirrorConfiguration(t *testing.T) {
+	t.Parallel()
+	provider, _ := remoteCompositeProvider(t, map[string]string{
+		"example/outer": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: example/inner@v1}]}\n",
+		"example/inner": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{uses: docker://alpine:3}]}\n",
+	})
+	requests := &mirrorRequests{actions: map[references.MirrorAccess]int{}}
+	request := analysisRequest{WorkingDir: t.TempDir(), RemoteActions: compositeMirrorProvider{provider: provider, requests: requests}}
+	for i, setting := range []string{`{}`, `{"allow-unknown-repositories":true}`, `{"services":[]}`} {
+		cfg, err := ConfigurationRules().Parse([]byte(`{"network":{"metadata-mirrors":` + setting + `}}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		request.Sources = append(request.Sources, sourceUnit{
+			Path: fmt.Sprintf("workflow-%d.yml", i), Config: cfg,
+			Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: windows-latest, steps: [{uses: example/outer@v1}]}}\n"),
+		})
+	}
+	result, err := runTestAnalysis(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 {
+		t.Fatalf("want one deduplicated container-runner finding, got %+v", result.Diagnostics)
+	}
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Rule != "container-runner" {
+			t.Errorf("unexpected finding: %+v", diagnostic)
+		}
+	}
+	for _, access := range []references.MirrorAccess{references.PublicMirrorsOnly, references.AllowUnknownMirrors, references.NoMirrors} {
+		if requests.actions[access] != 2 {
+			t.Errorf("mirror setting %v: got %d requests, want one for each nested action", access, requests.actions[access])
+		}
+	}
+}
+
 func TestRemoteCompositeRelativeActions(t *testing.T) {
+	t.Parallel()
 	// GitHub defines $/ relative to the action repository and ./ relative to the workspace:
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax#runsstepsuses
 	for _, tc := range []struct{ uses, expected string }{
@@ -269,6 +333,7 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 		{"./nested", "local"},
 	} {
 		t.Run(tc.expected, func(t *testing.T) {
+			t.Parallel()
 			provider, requests := remoteCompositeProvider(t, map[string]string{
 				"example/action":        "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: '" + tc.uses + "'}]}\n",
 				"example/action/nested": "name: remote\ndescription: remote\nruns: {using: composite, steps: [{shell: bash, run: echo remote}]}\n",
