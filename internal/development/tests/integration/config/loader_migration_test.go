@@ -11,6 +11,8 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 func TestMigrationCanonicalSettings(t *testing.T) {
@@ -158,7 +160,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.source), 0600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path)
+			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,7 +200,7 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 			if err := os.WriteFile(path, source, 0600); err != nil {
 				t.Fatal(err)
 			}
-			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path)
+			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -253,7 +255,7 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 	t.Run("unchanged target", func(t *testing.T) {
 		t.Parallel()
 		paths := fixture(t)
-		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), paths.selected)
+		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), paths.selected, acquisitionhttp.Connections{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -282,7 +284,7 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			paths := fixture(t)
-			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), paths.selected)
+			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), paths.selected, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -374,7 +376,7 @@ policy: {require-job-timeout: false}
 		if repoconfig.VariableNames(cfg.Facts()) == nil || len(repoconfig.VariableNames(cfg.Facts())) != 0 || repoconfig.SecretNames(cfg.Facts()) != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
 			t.Fatalf("inheritance changed: %+v", cfg)
 		}
-		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path)
+		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -396,7 +398,7 @@ func TestMigrationRejectsLostInheritedTOMLReset(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {
+	if _, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{}); err == nil || !strings.Contains(err.Error(), "cannot preserve inherited settings") {
 		t.Fatalf("lost inherited reset accepted: %v", err)
 	}
 	content, err := os.ReadFile(path)

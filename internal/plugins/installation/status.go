@@ -54,8 +54,9 @@ type StatusOptions struct {
 	// Network comes from invocation endpoint selection, never lock contents.
 	Network acquisitionhttp.Grant
 	// CacheDir defaults to the user's actionlint/registry cache.
-	CacheDir string
-	Warning  func(string)
+	CacheDir    string
+	Warning     func(string)
+	Acquisition Acquisition
 }
 
 func (o StatusOptions) warn(message string) {
@@ -104,7 +105,7 @@ func statusDirectory(registry string, options StatusOptions) (string, error) {
 	endpoint.Host = strings.ToLower(endpoint.Host)
 	base := options.CacheDir
 	if base == "" {
-		base, err = os.UserCacheDir()
+		base, err = options.Acquisition.userCacheDir()
 		if err != nil {
 			return "", err
 		}
@@ -306,11 +307,10 @@ func (l Lock) RefreshStatuses(ctx context.Context, options StatusOptions) error 
 			continue
 		}
 		seen[directory] = true
-		client, err := NewWithGrant(pin.Registry, options.Network)
+		client, err := NewWithGrant(pin.Registry, options)
 		if err != nil {
 			return err
 		}
-		client.StatusOptions = options
 		if _, err := client.RefreshStatuses(ctx); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()

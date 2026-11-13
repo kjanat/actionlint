@@ -17,13 +17,14 @@ import (
 func legacyRegistryProject(t *testing.T) (*fixtureregistry.PluginRegistry, string, string) {
 	t.Helper()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.SetAliases("community-check")
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +48,7 @@ func legacyRegistryProject(t *testing.T) (*fixtureregistry.PluginRegistry, strin
 	if err := lock.Set(pin); err != nil {
 		t.Fatal(err)
 	}
-	if err := plugininstall.Sync(t.Context(), lock.Lock); err != nil {
+	if err := plugininstall.Sync(t.Context(), lock.Lock, acquisition); err != nil {
 		t.Fatal(err)
 	}
 	if err := lock.Save(t.Context()); err != nil {
@@ -57,14 +58,15 @@ func legacyRegistryProject(t *testing.T) (*fixtureregistry.PluginRegistry, strin
 }
 
 func TestLegacyLockMigrationFreezesRecordedRelease(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry, path, lockPath := legacyRegistryProject(t)
+	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	before, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,18 +94,19 @@ func TestLegacyLockMigrationFreezesRecordedRelease(t *testing.T) {
 	if !bytes.Contains(plan.Content, []byte("v1.0.0")) {
 		t.Fatal("migration report differs from saved declarations")
 	}
-	if _, err := (plugininstall.Selection{ConfigFile: path, RuleSet: checking.ConfigurationRules()}).ResolveForRules(t.Context(), filepath.Dir(path)); err != nil {
+	if _, err := (plugininstall.Selection{ConfigFile: path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).ResolveForRules(t.Context(), filepath.Dir(path)); err != nil {
 		t.Fatal(err)
 	}
-	second, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+	second, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
 	if err != nil || second.Changed {
 		t.Fatalf("migration is not stable: %+v, %v", second, err)
 	}
 }
 
 func TestLegacyLockMigrationRejectsConflictingRegistryBinding(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	_, path, lockPath := legacyRegistryProject(t)
+	t.Parallel()
+	registry, path, lockPath := legacyRegistryProject(t)
+	acquisition := registryAcquisition(registry)
 	lock, err := plugininstall.OpenLock(t.Context(), lockPath)
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +123,7 @@ func TestLegacyLockMigrationRejectsConflictingRegistryBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}

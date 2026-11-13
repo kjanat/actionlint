@@ -14,6 +14,7 @@ import (
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func actionVersion() string {
@@ -23,13 +24,14 @@ func actionVersion() string {
 type action struct {
 	withTimeout func(context.Context, time.Duration) (context.Context, context.CancelFunc)
 
-	args    []string
-	stdout  io.Writer
-	env     func(string) string
-	lint    func(*lintRequest) *lintResult
-	newID   func() string
-	timeout time.Duration
-	result  *lintResult
+	args        []string
+	stdout      io.Writer
+	env         func(string) string
+	lint        func(*lintRequest) *lintResult
+	newID       func() string
+	timeout     time.Duration
+	result      *lintResult
+	acquisition plugininstall.Acquisition
 }
 
 var results = map[int]string{
@@ -149,6 +151,7 @@ func (a *action) prepareRequest(in *inputs, workspaceDir string) (*lintRequest, 
 		return nil, err
 	}
 	req := buildRequest(in, workspaceDir, workingDir)
+	req.acquisition = a.acquisition
 	if err := req.configureEnvironment(a.env); err != nil {
 		return nil, err
 	}

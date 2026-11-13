@@ -18,10 +18,11 @@ import (
 )
 
 func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,14 +39,14 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Lock.Set(pin); err != nil {
 		t.Fatal(err)
 	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock); err != nil {
+	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, acquisition); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Lock.Save(t.Context()); err != nil {
@@ -56,7 +57,7 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (plugininstall.Selection{Overlays: []config.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := (plugininstall.Selection{Acquisition: acquisition, Overlays: []config.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
 	migrated, err := checking.ConfigurationRules().Load(path)
@@ -75,8 +76,9 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 }
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	registry.SetOffline(true)
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
@@ -86,7 +88,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
-	err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), first, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
+	err := (plugininstall.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), first, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
@@ -104,18 +106,19 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 }
 
 func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-secrets: []\n")
 	input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
-	if err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), first, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := (plugininstall.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), first, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
-	selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Select(t.Context(), first, input)
+	selected, err := (plugininstall.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), first, input)
 	if err != nil {
 		t.Fatalf("selecting multiple plugin-free repositories: %v", err)
 	}
@@ -133,10 +136,11 @@ func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T
 }
 
 func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,14 +149,14 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	current := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), current, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, current, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Lock.Set(pin); err != nil {
 		t.Fatal(err)
 	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock); err != nil {
+	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, acquisition); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Lock.Save(t.Context()); err != nil {
@@ -171,7 +175,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 		filepath.Join(current, ".github", "workflows", "current.yml"),
 		filepath.Join(legacy, ".github", "workflows", "legacy.yml"),
 	}}
-	err = (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), current, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+	err = (plugininstall.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), current, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
@@ -181,8 +185,9 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 }
 
 func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	registry.SetOffline(true)
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	legacyPath := filepath.Join(root, ".github", "actionlint.yaml")
@@ -195,7 +200,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 		filepath.Join(root, ".github", "workflows", "repo.yml"),
 		workflow,
 	}}
-	err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
+	err := (plugininstall.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want unmanaged-input plugin error", err)
 	}
@@ -208,8 +213,9 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 }
 
 func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	alias := filepath.Join(t.TempDir(), "repo-alias")
 	if err := os.Symlink(root, alias); err != nil {
@@ -219,7 +225,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 		filepath.Join(root, ".github", "workflows", "root.yml"),
 		filepath.Join(alias, ".github", "workflows", "alias.yml"),
 	}}
-	if err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := (plugininstall.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Migrate(t.Context(), root, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "actionlint.yaml")

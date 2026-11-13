@@ -27,7 +27,8 @@ import (
 type Options struct {
 	// Network grants private access only to an invocation-selected authority.
 	// The zero value confines automatic acquisition to public destinations.
-	Network acquisitionhttp.Grant
+	Network     acquisitionhttp.Grant
+	Connections acquisitionhttp.Connections
 	// CacheDir stores verified downloads pinned by SHA256. Empty disables caching.
 	CacheDir string
 	// Timeout defaults to 30 seconds, including redirects and response reading.
@@ -315,7 +316,7 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 			return nil, err
 		}
 	}
-	transport, err := acquisitionhttp.Transport(u, options.Network)
+	transport, err := acquisitionhttp.Transport(u, options.Network, options.Connections)
 	if err != nil {
 		return nil, acquisitionError(err)
 	}

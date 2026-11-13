@@ -11,7 +11,13 @@ import (
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
+
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) plugininstall.Acquisition {
+	return plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+}
 
 type commandTranscript struct {
 	Status int    `json:"status"`
@@ -97,9 +103,17 @@ func testRunCommand(input string, args ...string) commandTranscript {
 	return testRunCommandDefaults(input, append([]string{"--summary=false"}, args...)...)
 }
 
+func testRunCommandWithAcquisition(acquisition plugininstall.Acquisition, input string, args ...string) commandTranscript {
+	return testRunCommandDefaultsWithAcquisition(acquisition, input, append([]string{"--summary=false"}, args...)...)
+}
+
 func testRunCommandDefaults(input string, args ...string) commandTranscript {
+	return testRunCommandDefaultsWithAcquisition(plugininstall.Acquisition{}, input, args...)
+}
+
+func testRunCommandDefaultsWithAcquisition(acquisition plugininstall.Acquisition, input string, args ...string) commandTranscript {
 	var out, errout bytes.Buffer
-	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout}
+	cmd := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &errout, Acquisition: acquisition}
 	status := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff", "--no-tool=ruff", "--no-color"}, args...))
 	return commandTranscript{status, out.String(), errout.String()}
 }

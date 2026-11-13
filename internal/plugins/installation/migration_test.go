@@ -12,12 +12,12 @@ import (
 )
 
 func TestRegistryTransportMigration(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
 	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
 	registry.Publish(t, "v1.0.0", "v2.0.0")
-	client := registryClient(t)
+	client := registryClient(t, registry)
 	old, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
 	if err != nil {
 		t.Fatal(err)
@@ -36,13 +36,14 @@ func TestRegistryTransportMigration(t *testing.T) {
 	if err := file.Set(old); err != nil {
 		t.Fatal(err)
 	}
-	options := artifacts.Options{CacheDir: t.TempDir()}
-	if err := file.Lock.Sync(t.Context(), options); err != nil {
+	options := artifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
+	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(registry)}
+	if err := file.Lock.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
-	if err := file.Lock.Sync(t.Context(), options); err != nil {
+	if err := file.Lock.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if file.Lock.Plugins[0] != old || len(registry.Requests()) != requests {
@@ -52,7 +53,7 @@ func TestRegistryTransportMigration(t *testing.T) {
 	if err := file.Set(next); err != nil {
 		t.Fatalf("new version transport migration rejected: %v", err)
 	}
-	if err := file.Lock.Sync(t.Context(), options); err != nil {
+	if err := file.Lock.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if err := file.Save(t.Context()); err != nil {
@@ -65,7 +66,7 @@ func TestRegistryTransportMigration(t *testing.T) {
 }
 
 func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, test := range []struct{ name, before, after string }{
 		{"receipt asset", `"asset":"plugin.component.wasm"`, `"asset":"different.wasm"`},
 		{"artifact kind", `"kind":"component"`, `"kind":"core"`},
@@ -73,13 +74,13 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 		{"metadata identity", `"id":"no-sudo"`, `"id":"other"`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", emptyComponent)
 			registry.Publish(t, "v2.0.0")
 			url := registry.RecordURL("v2.0.0")
 			registry.SetFile(url, bytes.Replace(registry.File(url), []byte(test.before), []byte(test.after), 1))
-			if _, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil {
+			if _, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest"); err == nil {
 				t.Fatal("accepted inconsistent migration evidence")
 			}
 		})
@@ -87,10 +88,10 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 }
 
 func TestLockMigrationPreservesIdentityAndImmutability(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
-	old, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	old, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
@@ -87,17 +87,17 @@ func TestInstalledProviderShorthands(t *testing.T) {
 				}
 			}
 			args := []string{"config", "show", "--json", "--plugin", path, "--config", config}
-			output := pluginCommandTest(t, tc.code, args...)
+			output := pluginCommandTest(t, plugininstall.Acquisition{}, tc.code, args...)
 			if !strings.Contains(output, tc.want) {
 				t.Fatalf("want %q in:\n%s", tc.want, output)
 			}
-			pluginCommandTest(t, tc.code, "config", "validate", "--plugin", path, "--config", config)
+			pluginCommandTest(t, plugininstall.Acquisition{}, tc.code, "config", "validate", "--plugin", path, "--config", config)
 		})
 	}
 	if err := os.WriteFile(config, []byte("[tools.file-tool]\nlimit = 5\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output := pluginCommandTest(t, 0, "config", "schema", "--plugin", path, "--config", config)
+	output := pluginCommandTest(t, plugininstall.Acquisition{}, 0, "config", "schema", "--plugin", path, "--config", config)
 	schema, err := configschema.Compile([]byte(output))
 	if err != nil {
 		t.Fatal(err)
@@ -123,28 +123,28 @@ func TestInstalledProviderShorthands(t *testing.T) {
 	if err := os.WriteFile(config, []byte("extends = ['base.toml']\n[tools]\nshellcheck = false\nruff = false\n[tools.file-tool]\nenabled = false\n[[overrides]]\nincludes = ['**']\n[overrides.tools.file-tool]\nlimit = 7\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "check", "--plugin", path, "--config", config, workflow)
-	if _, err := checking.RequiredToolsWithPluginPaths(t.Context(), checking.Options{ConfigFile: config}, []string{workflow}, []string{path}); err != nil {
+	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "check", "--plugin", path, "--config", config, workflow)
+	if _, err := checking.RequiredToolsWithPluginPaths(t.Context(), checking.Options{ConfigFile: config}, []string{workflow}, []string{path}, plugininstall.Acquisition{}); err != nil {
 		t.Fatal(err)
 	}
 	content, err := os.ReadFile(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixtureenvironment.IsolateUserCache(t)
 	network := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	const source = "https://example.com/provider.manifest.json"
 	network.SetFile(source, data)
 	declared := fmt.Sprintf("plugins = ['%s#sha256=%x']\n%s", source, sha256.Sum256(data), content)
 	if err := os.WriteFile(config, []byte(declared), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "config", "validate", "--config", config)
-	pluginCommandTest(t, 0, "check", "--allow-config-processes", "--config", config, workflow)
+	pluginCommandTest(t, acquisition, 0, "config", "validate", "--config", config)
+	pluginCommandTest(t, acquisition, 0, "check", "--allow-config-processes", "--config", config, workflow)
 	if err := os.WriteFile(config, []byte(strings.ReplaceAll(declared, "limit = 7", "unknown = 7")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if output := pluginCommandTest(t, 3, "check", "--allow-config-processes", "--config", config, workflow); !strings.Contains(output, "unknown key") {
+	if output := pluginCommandTest(t, acquisition, 3, "check", "--allow-config-processes", "--config", config, workflow); !strings.Contains(output, "unknown key") {
 		t.Fatalf("unknown shorthand was not rejected after plugin loading: %s", output)
 	}
 	provider.Rule.Name = "shellcheck"
@@ -158,6 +158,6 @@ func TestInstalledProviderShorthands(t *testing.T) {
 	if err := os.WriteFile(config, []byte("[tools]\nruff = false\n[tools.shellcheck]\nenabled = false\nlimit = 5\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "config", "validate", "--plugin", path, "--config", config)
-	pluginCommandTest(t, 0, "check", "--plugin", path, "--config", config, workflow)
+	pluginCommandTest(t, acquisition, 0, "config", "validate", "--plugin", path, "--config", config)
+	pluginCommandTest(t, acquisition, 0, "check", "--plugin", path, "--config", config, workflow)
 }

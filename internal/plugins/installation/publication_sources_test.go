@@ -11,10 +11,10 @@ import (
 )
 
 func TestRegistryV2PublicationSources(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, source := range []string{"release-asset", "oci"} {
 		t.Run(source, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			network := fixtureregistry.NewPluginRegistry(t)
 			network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			url := network.RecordURL("v1.0.0")
@@ -37,7 +37,7 @@ func TestRegistryV2PublicationSources(t *testing.T) {
 				t.Fatal(err)
 			}
 			network.SetFile(url, data)
-			client, err := New(fixtureregistry.FixtureRegistryURL)
+			client, err := New(fixtureregistry.FixtureRegistryURL, Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}

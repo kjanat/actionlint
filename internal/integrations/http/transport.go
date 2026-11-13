@@ -84,12 +84,25 @@ type transport struct {
 	lookup  resolver
 }
 
-// Transport validates the initial endpoint and captures the host's current
-// default transport. Without an exact initial-endpoint grant, every request,
+type Connections struct {
+	Transport http.RoundTripper
+	Resolver  *net.Resolver
+}
+
+// Transport validates the initial endpoint and captures the base transport and
+// resolver from connections, or the host's current defaults for nil fields.
+// Without an exact initial-endpoint grant, every request,
 // including same-authority redirects, requires public DNS answers and pinned
 // connections. Different redirect authorities always require public addresses.
-func Transport(initial *url.URL, grant Grant) (http.RoundTripper, error) {
-	return newTransport(initial, grant, http.DefaultTransport, net.DefaultResolver.LookupNetIP)
+func Transport(initial *url.URL, grant Grant, connections Connections) (http.RoundTripper, error) {
+	base, dns := connections.Transport, connections.Resolver
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	if dns == nil {
+		dns = net.DefaultResolver
+	}
+	return newTransport(initial, grant, base, dns.LookupNetIP)
 }
 
 func newTransport(initial *url.URL, grant Grant, base http.RoundTripper, lookup resolver) (*transport, error) {

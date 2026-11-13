@@ -27,9 +27,9 @@ func OpenSelectedLock(ctx context.Context, directory, explicit, config string) (
 // Sync downloads every locked plugin and, for each oci:// source the
 // lock lists, every layer this host reads, such as a provider's executable.
 // Afterwards the plugins run offline from the artifact store.
-func Sync(ctx context.Context, lock Lock) error {
-	options := DefaultArtifactOptions()
-	if err := lock.Sync(ctx, options); err != nil {
+func Sync(ctx context.Context, lock Lock, acquisition Acquisition) error {
+	options := acquisition.ArtifactOptions()
+	if err := lock.Sync(ctx, options, StatusOptions{Acquisition: acquisition}); err != nil {
 		return err
 	}
 	for _, pin := range lock.Plugins {

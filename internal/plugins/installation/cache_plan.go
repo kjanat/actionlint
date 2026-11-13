@@ -6,7 +6,6 @@ import (
 	"errors"
 	"maps"
 	"net/url"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -27,7 +26,7 @@ type CachePlan struct {
 // It never fetches executable layers or executes plugins. Configuration backends
 // are included so their pinned bytes can be restored before runtime loading.
 func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
-	base, err := os.UserCacheDir()
+	base, err := s.Acquisition.userCacheDir()
 	if err != nil {
 		return CachePlan{}, err
 	}

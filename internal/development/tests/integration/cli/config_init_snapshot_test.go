@@ -12,12 +12,13 @@ import (
 func TestConfigInitSnapshotSchemaDirective(t *testing.T) {
 	for _, version := range []string{"2.0.0-SNAPSHOT-02d216d", "2.0.0-rc.1-SNAPSHOT-02d216d"} {
 		t.Run(version, func(t *testing.T) {
-			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			acquisition := registryAcquisition(registry)
 			t.Chdir(commandTestRepo(t))
 			previous := buildinfo.ReleaseVersion
 			buildinfo.ReleaseVersion = version
 			t.Cleanup(func() { buildinfo.ReleaseVersion = previous })
-			got := testRunCommand("", "config", "init")
+			got := testRunCommandWithAcquisition(acquisition, "", "config", "init")
 			if got.Status != 0 {
 				t.Fatal(got)
 			}

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 type configCacheTransport struct{ requests *atomic.Int32 }
@@ -24,7 +26,7 @@ func TestReadConfigCachesHTTPSAcrossReaders(t *testing.T) {
 	ctx := WithReadCache(t.Context())
 	var requests atomic.Int32
 	for range 3 {
-		reader := New(ctx, nil)
+		reader := New(ctx, nil, acquisitionhttp.Connections{})
 		reader.client.Transport = configCacheTransport{requests: &requests}
 		if _, err := reader.ReadConfig("https://example.com/actionlint.yaml"); err != nil {
 			t.Fatal(err)
@@ -42,7 +44,7 @@ func TestReadCacheCapturesOneCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := WithReadCache(t.Context())
-	first, err := New(ctx, nil).ReadConfig(path)
+	first, err := New(ctx, nil, acquisitionhttp.Connections{}).ReadConfig(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,15 +52,15 @@ func TestReadCacheCapturesOneCommand(t *testing.T) {
 	if err := os.WriteFile(path, []byte("second"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	captured, err := New(ctx, nil).ReadConfig(path)
+	captured, err := New(ctx, nil, acquisitionhttp.Connections{}).ReadConfig(path)
 	if err != nil || string(captured) != "first" {
 		t.Fatalf("captured=%q err=%v", captured, err)
 	}
-	fresh, err := New(WithReadCache(t.Context()), nil).ReadConfig(path)
+	fresh, err := New(WithReadCache(t.Context()), nil, acquisitionhttp.Connections{}).ReadConfig(path)
 	if err != nil || string(fresh) != "second" {
 		t.Fatalf("fresh=%q err=%v", fresh, err)
 	}
-	current, err := New(ctx, nil).ReadFile(path)
+	current, err := New(ctx, nil, acquisitionhttp.Connections{}).ReadFile(path)
 	if err != nil || string(current) != "second" {
 		t.Fatalf("ordinary file read used the config snapshot: %q, %v", current, err)
 	}
@@ -68,7 +70,7 @@ func TestReadCacheDoesNotCacheCustomReaders(t *testing.T) {
 	t.Parallel()
 	var calls int
 	read := func(string) ([]byte, error) { calls++; return []byte("custom"), nil }
-	reader := New(WithReadCache(t.Context()), read)
+	reader := New(WithReadCache(t.Context()), read, acquisitionhttp.Connections{})
 	for range 2 {
 		if _, err := reader.ReadFile("actionlint.yaml"); err != nil {
 			t.Fatal(err)

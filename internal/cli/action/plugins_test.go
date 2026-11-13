@@ -16,16 +16,12 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
-func pluginCacheDirectory(t *testing.T) string {
-	t.Helper()
-	base, err := os.UserCacheDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return filepath.Join(base, "actionlint", "artifacts")
+func pluginCacheDirectory(userCacheDir string) string {
+	return filepath.Join(userCacheDir, "actionlint", "artifacts")
 }
 
 func TestActionExactRegistryPlugins(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name                 string
 		explicit, legacyLock bool
@@ -36,18 +32,16 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 		{name: "explicit-legacy-lock", explicit: true, legacyLock: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 			if err != nil {
 				t.Fatal(err)
 			}
 			registry := fixtureregistry.NewPluginRegistry(t)
-			cache := t.TempDir()
-			t.Setenv("HOME", cache)
-			t.Setenv("XDG_CACHE_HOME", cache)
-			t.Setenv("LocalAppData", cache)
-			directory := pluginCacheDirectory(t)
+			acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			directory := pluginCacheDirectory(registry.UserCacheDir())
 			registry.Add(t, "v1.0.0", wasm)
-			client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+			client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +78,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 			registry.ResetRequests()
 			registry.SetOffline(true)
 			var stdout, stderr bytes.Buffer
-			if code := PluginPlan(lookup, &stdout, &stderr); code != 0 {
+			if code := PluginPlan(lookup, &stdout, &stderr, acquisition); code != 0 {
 				t.Fatalf("plugin plan %d: %s", code, &stderr)
 			}
 			var plan plugininstall.CachePlan
@@ -95,7 +89,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				t.Fatalf("plan=%+v requests=%v", plan, registry.Requests())
 			}
 			registry.SetOffline(false)
-			req, err := provisioningRequest(lookup)
+			req, err := provisioningRequest(lookup, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +115,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				}
 			}
 			env["INPUT_CONFIG"] = "plugins: []"
-			req, err = provisioningRequest(lookup)
+			req, err = provisioningRequest(lookup, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -136,10 +130,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 func TestActionConfiguredWasm(t *testing.T) {
 	for _, fixture := range []string{"../../plugins/execution/module/testdata/engines/echo.wasm", "../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm"} {
 		t.Run(fixture, func(t *testing.T) {
-			cache := t.TempDir()
-			t.Setenv("HOME", cache)
-			t.Setenv("XDG_CACHE_HOME", cache)
-			t.Setenv("LocalAppData", cache)
+			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 			module, err := os.ReadFile(fixture)
 			if err != nil {
 				t.Fatal(err)
@@ -169,7 +160,7 @@ func TestActionConfiguredWasm(t *testing.T) {
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
 			lookup := func(key string) string { return env[key] }
-			req, err := provisioningRequest(lookup)
+			req, err := provisioningRequest(lookup, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -182,7 +173,7 @@ func TestActionConfiguredWasm(t *testing.T) {
 				t.Fatalf("configured Wasm result: %+v %s", result.report.Diagnostics, result.stderr)
 			}
 			env["INPUT_DISABLE-TOOLS"] = "shellcheck,ruff"
-			req, err = provisioningRequest(lookup)
+			req, err = provisioningRequest(lookup, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -207,7 +198,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			workspace := workspaceWith(t, files)
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
-			req, err := provisioningRequest(func(key string) string { return env[key] })
+			req, err := provisioningRequest(func(key string) string { return env[key] }, plugininstall.Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -224,18 +215,16 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 }
 
 func TestActionPluginPlanConfiguredDigests(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("HOME", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LocalAppData", cache)
-	directory := pluginCacheDirectory(t)
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+	directory := pluginCacheDirectory(acquisition.UserCacheDir)
 	digest := strings.Repeat("a", 64)
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: https://example.invalid/ruff.wasm#sha256=" + digest + "\n",
 	})
 	env := map[string]string{"GITHUB_WORKSPACE": workspace}
 	var stdout, stderr bytes.Buffer
-	if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 0 {
+	if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 0 {
 		t.Fatalf("plan failed: %d %s", code, &stderr)
 	}
 	var plan plugininstall.CachePlan
@@ -248,17 +237,15 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 }
 
 func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
+	t.Parallel()
 	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
-	cache := t.TempDir()
-	t.Setenv("HOME", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LocalAppData", cache)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", wasm)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +286,7 @@ func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
 	}
 	lookup := func(key string) string { return env[key] }
 	var stdout, stderr bytes.Buffer
-	if code := PluginPlan(lookup, &stdout, &stderr); code != 3 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "not declared") {
+	if code := PluginPlan(lookup, &stdout, &stderr, acquisition); code != 3 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "not declared") {
 		t.Fatalf("cache plan accepted undeclared lock: %d %s", code, &stderr)
 	}
 	if len(registry.Requests()) != 0 {
@@ -317,7 +304,7 @@ func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
 		t.Fatal("cache preview modified legacy configuration or lock")
 	}
 
-	req, err := provisioningRequest(lookup)
+	req, err := provisioningRequest(lookup, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,13 +326,14 @@ func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
 }
 
 func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
+	t.Parallel()
 	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", wasm)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,10 +357,8 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 		{name: "malformed config", config: "policy: [\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cache := t.TempDir()
-			t.Setenv("HOME", cache)
-			t.Setenv("XDG_CACHE_HOME", cache)
-			t.Setenv("LocalAppData", cache)
+			t.Parallel()
+			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
 			workspace := workspaceWith(t, map[string]string{
 				".git": "", ".github/actionlint.yaml": tc.config,
 			})
@@ -395,7 +381,7 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 			}
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "shellcheck,ruff"}
 			var stdout, stderr bytes.Buffer
-			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != 3 {
+			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 3 {
 				t.Fatalf("got status %d, want failure: %s", code, &stderr)
 			}
 			if stdout.Len() != 0 || stderr.Len() == 0 {
@@ -406,10 +392,7 @@ func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
 }
 
 func TestActionInlinePinnedPlugin(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("HOME", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LocalAppData", cache)
+	t.Parallel()
 	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -417,6 +400,7 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 	url := "https://plugins.example/no-sudo.wasm"
 	digest := fmt.Sprintf("%x", sha256.Sum256(wasm))
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetFile(url, wasm)
 	workspace := workspaceWith(t, map[string]string{
 		"ci.yml": "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",
@@ -427,13 +411,13 @@ func TestActionInlinePinnedPlugin(t *testing.T) {
 	}
 	lookup := func(key string) string { return env[key] }
 	var stdout, stderr bytes.Buffer
-	if code := PluginPlan(lookup, &stdout, &stderr); code != 0 || len(registry.Requests()) != 0 {
+	if code := PluginPlan(lookup, &stdout, &stderr, acquisition); code != 0 || len(registry.Requests()) != 0 {
 		t.Fatalf("inline plan fetched: %d %s %v", code, &stderr, registry.Requests())
 	}
 	if !strings.Contains(stdout.String(), digest) {
 		t.Fatalf("inline digest missing: %s", &stdout)
 	}
-	req, err := provisioningRequest(lookup)
+	req, err := provisioningRequest(lookup, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}

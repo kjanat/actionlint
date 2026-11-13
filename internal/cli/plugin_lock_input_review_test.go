@@ -26,10 +26,12 @@ func TestCheckPreservesInactivePluginLockInputs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 			if stale {
 				registry := fixtureregistry.NewPluginRegistry(t)
+				acquisition = plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 				registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-				client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+				client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -54,7 +56,7 @@ func TestCheckPreservesInactivePluginLockInputs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			output := pluginCommandTest(t, 3, "check", "--no-tool=ruff", "--no-tool=shellcheck", "--yes", "--output-file", lockPath, "workflow.yml")
+			output := pluginCommandTest(t, acquisition, 3, "check", "--no-tool=ruff", "--no-tool=shellcheck", "--yes", "--output-file", lockPath, "workflow.yml")
 			if !strings.Contains(output, "also an input") {
 				t.Fatalf("missing collision diagnostic: %s", output)
 			}

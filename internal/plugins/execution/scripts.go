@@ -17,21 +17,21 @@ import (
 
 // ScriptEngineLoader loads configured core modules and script-engine components
 // with the same artifact verification and lifecycle for every native entrypoint.
-func ScriptEngineLoader(reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (checkinputs.ScriptBackend, error) {
+func ScriptEngineLoader(acquisition plugininstall.Acquisition, reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (checkinputs.ScriptBackend, error) {
 	return func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
 		if err := pluginartifact.RequireRemotePin(path); err != nil {
 			return nil, err
 		}
-		artifact, err := pluginartifact.Resolve(ctx, path, plugininstall.DefaultArtifactOptions())
+		artifact, err := pluginartifact.Resolve(ctx, path, acquisition.ArtifactOptions())
 		if err != nil {
 			return nil, err
 		}
-		return LoadScriptArtifact(ctx, artifact, reserved, log, debug)
+		return LoadScriptArtifact(ctx, artifact, acquisition, reserved, log, debug)
 	}
 }
 
 // LoadScriptArtifact opens a verified core module or component that implements script checking.
-func LoadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, reserved rule.Names, log io.Writer, debug bool) (checkinputs.ScriptBackend, error) {
+func LoadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, acquisition plugininstall.Acquisition, reserved rule.Names, log io.Writer, debug bool) (checkinputs.ScriptBackend, error) {
 	if artifact.Info.Kind != pluginartifact.Core && artifact.Info.Kind != pluginartifact.Component {
 		return nil, fmt.Errorf("%s is a %s artifact, not a WebAssembly module", artifact.Info.Source, artifact.Info.Kind)
 	}
@@ -54,7 +54,7 @@ func LoadScriptArtifact(ctx context.Context, artifact *pluginartifact.Artifact, 
 		}
 		return plugin, nil
 	}
-	engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: corewasm.DefaultCacheDir()})
+	engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: acquisition.CompiledModuleCacheDir()})
 	if err != nil {
 		return nil, err
 	}

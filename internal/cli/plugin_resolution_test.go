@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
@@ -19,6 +18,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.SetAliases("community-check")
 	registry.Add(t, "v1.0.0", module)
 	t.Chdir(t.TempDir())
@@ -30,7 +30,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo test}]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "install", "community-check", "--registry", fixtureregistry.FixtureRegistryURL)
+	pluginCommandTest(t, acquisition, 0, "plugin", "install", "community-check", "--registry", fixtureregistry.FixtureRegistryURL)
 	path := filepath.Join(".github", "actionlint.yaml")
 	cfg, err := checking.ConfigurationRules().Load(path)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName || cfg.Plugins[0].Version() != "v1.0.0" {
@@ -42,13 +42,13 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	pluginCommandTest(t, 0, "plugin", "install")
-	pluginCommandTest(t, 0, "plugin", "list")
-	output := pluginCommandTest(t, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
+	pluginCommandTest(t, acquisition, 0, "plugin", "install")
+	pluginCommandTest(t, acquisition, 0, "plugin", "list")
+	output := pluginCommandTest(t, acquisition, 1, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	if !strings.Contains(output, "no-sudo") || len(registry.Requests()) != 0 {
 		t.Fatalf("offline plugin did not execute: %s, %v", output, registry.Requests())
 	}
-	pluginCommandTest(t, 0, "plugin", "sync")
+	pluginCommandTest(t, acquisition, 0, "plugin", "sync")
 	after, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("read-only commands rewrote config")
@@ -58,7 +58,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	}
 	registry.SetOffline(false)
 	registry.Add(t, "v1.1.0", module)
-	pluginCommandTest(t, 0, "plugin", "update", "community-check", "--version", "latest")
+	pluginCommandTest(t, acquisition, 0, "plugin", "update", "community-check", "--version", "latest")
 	cfg, err = checking.ConfigurationRules().Load(path)
 	if err != nil || cfg.Plugins[0].Version() != "v1.1.0" {
 		t.Fatalf("update did not persist an exact version: %+v, %v", cfg, err)
@@ -69,13 +69,13 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	}
 	registry.Add(t, "v1.2.0", module)
 	registry.DeleteFile("https://" + fixtureregistry.FixturePluginName + "/releases/download/v1.2.0/plugin.wasm")
-	pluginCommandTest(t, 3, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "latest")
+	pluginCommandTest(t, acquisition, 3, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "latest")
 	after, err = os.ReadFile(path)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("failed download changed configuration")
 	}
 	registry.Publish(t, "v1.0.0")
-	pluginCommandTest(t, 3, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "latest")
+	pluginCommandTest(t, acquisition, 3, "plugin", "update", fixtureregistry.FixturePluginName, "--version", "latest")
 	after, err = os.ReadFile(path)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("stale catalogue downgraded the configured version")
@@ -83,7 +83,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 }
 
 func TestCheckingLegacyConfigDoesNotWriteProjectFiles(t *testing.T) {
-	fixtureenvironment.IsolateUserCache(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "")
@@ -101,7 +101,7 @@ func TestCheckingLegacyConfigDoesNotWriteProjectFiles(t *testing.T) {
 	if err := os.WriteFile("workflow.yml", []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\npermissions: {}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
+	pluginCommandTest(t, acquisition, 0, "check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml")
 	after, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(original, after) {
 		t.Fatal("checking migrated configuration on disk")

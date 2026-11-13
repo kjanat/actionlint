@@ -13,6 +13,8 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 func TestCategoryMigrationPreservesSelection(t *testing.T) {
@@ -164,7 +166,7 @@ func TestCategoryFileMigrationChecksInheritedSelection(t *testing.T) {
 	if err := os.WriteFile(leaf, []byte("extends: [base.yaml]\nlint: {rules: {style: {empty-job: off}}}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := checking.ConfigurationRules().PrepareMigration(t.Context(), leaf)
+	prepared, err := checking.ConfigurationRules().PrepareMigration(t.Context(), leaf, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}

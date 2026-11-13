@@ -36,12 +36,12 @@ func TestPluginSelectionFailureExitStatus(t *testing.T) {
 				args = append(args, "--plugin", "missing.wasm", "--plugin-lock", "missing.lock")
 				want = 2
 			}
-			pluginCommandTest(t, want, args...)
+			pluginCommandTest(t, plugininstall.Acquisition{}, want, args...)
 			args[0] = "lsp"
 			args = append(args[:3], args[4:]...)
-			pluginCommandTest(t, want, args...)
+			pluginCommandTest(t, plugininstall.Acquisition{}, want, args...)
 			args = append([]string{"rules"}, args[3:]...)
-			pluginCommandTest(t, want, args...)
+			pluginCommandTest(t, plugininstall.Acquisition{}, want, args...)
 		})
 	}
 }

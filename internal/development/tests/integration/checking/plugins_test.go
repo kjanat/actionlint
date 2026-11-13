@@ -18,8 +18,8 @@ import (
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
@@ -29,7 +29,7 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"print(0)\\rmissing\"\n        shell: python\npermissions: {}\n"
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module}, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,14 +46,14 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n      - run: echo missing\n        shell: bash\npermissions: {}\n"
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module}, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "echo" || result.Diagnostics[0].Start.Line != 6 || result.Diagnostics[0].Start.Column != 20 {
 		t.Fatalf("component engine: %+v", result.Diagnostics)
 	}
-	descriptors, err := checking.RulesWithPluginPaths(t.Context(), []string{module})
+	descriptors, err := checking.RulesWithPluginPaths(t.Context(), []string{module}, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,11 +66,11 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if !found {
 		t.Fatal("component engine missing from rule catalogue")
 	}
-	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module, "../../../../plugins/execution/module/testdata/engines/echo.wasm"})
+	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module, "../../../../plugins/execution/module/testdata/engines/echo.wasm"}, plugininstall.Acquisition{})
 	if err == nil || !strings.Contains(err.Error(), "multiple plugins provide script engine") {
 		t.Fatalf("duplicate core/component engine accepted: %v", err)
 	}
-	loaded, err := pluginexec.ScriptEngineLoader(checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), module)
+	loaded, err := pluginexec.ScriptEngineLoader(plugininstall.Acquisition{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), module)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,27 +87,27 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
 		t.Fatalf("configured component backend: %#v, %v", findings, err)
 	}
-	if _, err := pluginexec.ScriptEngineLoader(checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), "../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm"); err == nil {
+	if _, err := pluginexec.ScriptEngineLoader(plugininstall.Acquisition{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), "../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm"); err == nil {
 		t.Fatal("analyzer-only component accepted as configured script engine")
 	}
 }
 
 func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	module, err := filepath.Abs("../../../../plugins/execution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n      - run: echo missing\n        shell: bash\npermissions: {}\n"
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "echo" || result.Diagnostics[0].Start.Line != 6 || result.Diagnostics[0].Start.Column != 20 {
 		t.Fatalf("metadata-selected engine: %+v", result.Diagnostics)
 	}
-	descriptors, err := checking.RulesWithPluginPaths(t.Context(), []string{module})
+	descriptors, err := checking.RulesWithPluginPaths(t.Context(), []string{module}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,14 +127,14 @@ func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(data) }))
 	defer server.Close()
 	uri := fmt.Sprintf("%s/engine.wasm#sha256=%x", server.URL, sha256.Sum256(data))
-	remote, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{uri})
+	remote, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{uri}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(remote.Diagnostics) != 1 || remote.Diagnostics[0].Rule != "echo" || remote.Diagnostics[0].Start != result.Diagnostics[0].Start {
 		t.Fatalf("remote engine: %+v", remote.Diagnostics)
 	}
-	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module, module})
+	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module, module}, acquisition)
 	if err == nil {
 		t.Fatal("accepted duplicate engine")
 	}

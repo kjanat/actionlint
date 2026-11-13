@@ -37,10 +37,10 @@ func TestSameRegistry(t *testing.T) {
 }
 
 func TestLockSetAcceptsRegistryHostCase(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
-	pin, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	pin, err := registryClient(t, registry).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,17 +2,22 @@
 // Actions input, annotation, and output protocol.
 package githubaction
 
-import "io"
+import (
+	"io"
+
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+)
 
 // Main runs the GitHub Action adapter using the action's input environment.
-func Main(env func(string) string, stdout io.Writer) int {
+func Main(env func(string) string, stdout io.Writer, acquisition plugininstall.Acquisition) int {
 	a := &action{
-		args:    environmentArgs(env),
-		stdout:  stdout,
-		env:     env,
-		lint:    runLinter,
-		newID:   newDelimiter,
-		timeout: lintTimeout,
+		args:        environmentArgs(env),
+		stdout:      stdout,
+		env:         env,
+		lint:        runLinter,
+		newID:       newDelimiter,
+		timeout:     lintTimeout,
+		acquisition: acquisition,
 	}
 	return a.run()
 }

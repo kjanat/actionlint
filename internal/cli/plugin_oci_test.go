@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/ocitest"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -18,7 +17,7 @@ import (
 // the blobs needed by this host; inspect reads the package without running it;
 // sync restores it offline from the store.
 func TestPluginInstallAndInspectOCI(t *testing.T) {
-	fixtureenvironment.IsolateUserCache(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -33,7 +32,7 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	registry.Tag("v1", index)
 	reference := registry.Reference(index)
 
-	pluginCommandTest(t, 0, "plugin", "install", "oci://"+registry.Host()+"/"+ocitest.Repository+":v1")
+	pluginCommandTest(t, acquisition, 0, "plugin", "install", "oci://"+registry.Host()+"/"+ocitest.Repository+":v1")
 	config, err := os.ReadFile(filepath.Join(".github", "actionlint.yaml"))
 	if err != nil || !strings.Contains(string(config), reference) {
 		t.Fatalf("configuration does not declare the digest %s: %q, %v", reference, config, err)
@@ -41,19 +40,19 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
 		t.Fatalf("OCI install created a project lock: %v", err)
 	}
-	output := pluginCommandTest(t, 0, "plugin", "inspect", reference)
+	output := pluginCommandTest(t, acquisition, 0, "plugin", "inspect", reference)
 	for _, want := range []string{"Kind: manifest", "SHA256: " + index.Hex(), "Platform: " + pluginartifact.HostPlatform(), "Tool provider manifest:", "example.com/oci-tool"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("inspect output lacks %q:\n%s", want, output)
 		}
 	}
-	if output := pluginCommandTest(t, 3, "plugin", "inspect", "oci://"+registry.Host()+"/"+ocitest.Repository+":v1"); !strings.Contains(output, "must pin a digest") {
+	if output := pluginCommandTest(t, acquisition, 3, "plugin", "inspect", "oci://"+registry.Host()+"/"+ocitest.Repository+":v1"); !strings.Contains(output, "must pin a digest") {
 		t.Fatalf("inspect accepted a tag:\n%s", output)
 	}
 
 	registry.Close()
-	pluginCommandTest(t, 0, "plugin", "sync")
-	if output := pluginCommandTest(t, 0, "plugin", "list"); !strings.Contains(output, reference) {
+	pluginCommandTest(t, acquisition, 0, "plugin", "sync")
+	if output := pluginCommandTest(t, acquisition, 0, "plugin", "list"); !strings.Contains(output, reference) {
 		t.Fatalf("list output lacks %s:\n%s", reference, output)
 	}
 }
@@ -80,7 +79,7 @@ func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 // config schema adds tools.<rule.name> for a provider the --plugin flag
 // installs, without downloading its executable.
 func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
-	fixtureenvironment.IsolateUserCache(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
 	t.Setenv("ACTIONLINT_NO_CONFIG", "1")
@@ -89,7 +88,7 @@ func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProviderManifest(t, executable))
 	reference := registry.Reference(registry.Manifest(t, manifest, executable))
 
-	output := pluginCommandTest(t, 0, "config", "schema", "--plugin", reference)
+	output := pluginCommandTest(t, acquisition, 0, "config", "schema", "--plugin", reference)
 	var schema struct {
 		Properties struct {
 			Tools struct {
@@ -119,7 +118,7 @@ func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 // plugin install refuses an OCI package whose provider manifest layer is not
 // a valid tool provider manifest, and declares nothing.
 func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
-	fixtureenvironment.IsolateUserCache(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -130,7 +129,7 @@ func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 	registry := ocitest.New(t)
 	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, []byte(`{"schema_version":1,"id":"example.com/oci-tool"}`))
 	reference := registry.Reference(registry.Manifest(t, manifest))
-	output := pluginCommandTest(t, 3, "plugin", "install", reference)
+	output := pluginCommandTest(t, acquisition, 3, "plugin", "install", reference)
 	if !strings.Contains(output, reference) || !strings.Contains(output, "invalid tool provider manifest") {
 		t.Fatalf("install error does not name the source:\n%s", output)
 	}
@@ -140,7 +139,7 @@ func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 }
 
 func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
-	fixtureenvironment.IsolateUserCache(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -159,11 +158,11 @@ func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
 	registry := ocitest.New(t)
 	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProcessManifest(t, "must-not-execute", "["))
 	reference := registry.Reference(registry.Manifest(t, manifest))
-	output := pluginCommandTest(t, 3, "plugin", "install", reference)
+	output := pluginCommandTest(t, acquisition, 3, "plugin", "install", reference)
 	if !strings.Contains(output, reference) || !strings.Contains(output, "parse jq transform") {
 		t.Fatalf("install did not report source-specific jq failure:\n%s", output)
 	}
-	inspectOutput := pluginCommandTest(t, 3, "plugin", "inspect", reference)
+	inspectOutput := pluginCommandTest(t, acquisition, 3, "plugin", "inspect", reference)
 	if !strings.Contains(inspectOutput, reference) || !strings.Contains(inspectOutput, "parse jq transform") {
 		t.Fatalf("inspect did not report source-specific jq failure:\n%s", inspectOutput)
 	}
@@ -177,7 +176,7 @@ func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
 }
 
 func TestPluginInstallDoesNotResolveProcessEntry(t *testing.T) {
-	fixtureenvironment.IsolateUserCache(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	root := t.TempDir()
 	t.Chdir(root)
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -189,7 +188,7 @@ func TestPluginInstallDoesNotResolveProcessEntry(t *testing.T) {
 	program := registry.Blob("application/vnd.actionlint.jq", []byte("[]"))
 	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProcessManifest(t, "actionlint-install-tool-does-not-exist", "sha256:"+program.Hex()))
 	reference := registry.Reference(registry.Manifest(t, manifest, program))
-	output := pluginCommandTest(t, 0, "plugin", "install", reference)
+	output := pluginCommandTest(t, acquisition, 0, "plugin", "install", reference)
 	if !strings.Contains(output, reference) {
 		t.Fatalf("install output lacks source %s:\n%s", reference, output)
 	}

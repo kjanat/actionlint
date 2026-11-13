@@ -22,14 +22,15 @@ import (
 // a disabled tool id is neither downloaded nor loaded, and that the id
 // counts as known.
 func TestDisabledToolIsNotResolved(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.ResetRequests()
-	selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules()}, []string{"no-sudo"}, []string{"no-sudo"})
+	selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
 	sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
@@ -83,14 +84,15 @@ func TestUnknownToolIDIsRejected(t *testing.T) {
 // ids as --no-tool, here a lock pin's name and alias, and that naming a
 // plugin keeps it running.
 func TestNamedPluginToolIsAccepted(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +114,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	for _, id := range []string{fixtureregistry.FixturePluginName, "sudo-check"} {
 		t.Run(id, func(t *testing.T) {
 			t.Parallel()
-			selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules()}, nil, []string{id})
+			selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
 			sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 			if err != nil {
 				t.Fatal(err)

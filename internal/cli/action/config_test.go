@@ -11,6 +11,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	results1 "actionlint.kjanat.dev/v2/internal/results"
 
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -44,7 +45,7 @@ func TestMainConfigurationInputs(t *testing.T) {
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 			maps.Copy(env, tc.env)
 			var out strings.Builder
-			if code := Main(func(key string) string { return env[key] }, &out); code != tc.code {
+			if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != tc.code {
 				t.Fatalf("want code %d, got %d: %s", tc.code, code, out.String())
 			}
 			if !strings.Contains(out.String(), tc.text) {
@@ -140,7 +141,7 @@ func TestAnnotationsDisabledPreserveOutput(t *testing.T) {
 	output := filepath.Join(t.TempDir(), "outputs")
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": output, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_ANNOTATIONS": "false"}
 	var out strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &out); code != 1 {
+	if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != 1 {
 		t.Fatalf("exit %d: %s", code, &out)
 	}
 	if strings.Contains(out.String(), "::error file=") {
@@ -156,7 +157,7 @@ func TestConfigWarningsVisibleInAction(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yaml": cleanWorkflow, ".github/actionlint.yaml": "config-variable: [TYPO]\n"})
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 	var out strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != 0 {
 		t.Fatalf("exit %d: %s", code, &out)
 	}
 	if !strings.Contains(out.String(), "::warning title=Check configuration::") || !strings.Contains(out.String(), "config-variable") {
@@ -178,7 +179,7 @@ config-variable: [TYPO]
 			})
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": overlay}
 			var out strings.Builder
-			if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
+			if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != 0 {
 				t.Fatalf("exit %d: %s", code, &out)
 			}
 			want := commandEscape(filepath.Join(workspace, "base.yml") + ":2:1:")
@@ -194,7 +195,7 @@ func TestDisableToolsRejectsUnknownTool(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yml": cleanWorkflow})
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff\nmissing"}
 	var out strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &out); code != 2 || !strings.Contains(out.String(), "unknown tool missing") {
+	if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != 2 || !strings.Contains(out.String(), "unknown tool missing") {
 		t.Fatalf("Action status %d: %s", code, &out)
 	}
 }

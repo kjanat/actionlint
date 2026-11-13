@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
@@ -40,10 +41,10 @@ tools: {shellcheck: false}
 			}
 			getenv := func(name string) string { return env[name] }
 			var plan, errors, output strings.Builder
-			if code := PluginPlan(getenv, &plan, &errors); code != commandstatus.ExitSuccessNoProblem {
+			if code := PluginPlan(getenv, &plan, &errors, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessNoProblem {
 				t.Fatalf("plugin plan failed: %d %s", code, errors.String())
 			}
-			if code := Main(getenv, &output); code != commandstatus.ExitSuccessNoProblem {
+			if code := Main(getenv, &output, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessNoProblem {
 				t.Fatalf("analysis failed: %d %s", code, output.String())
 			}
 			var result persistedResult
@@ -91,7 +92,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),
 			}
 			var output strings.Builder
-			if code := Main(func(name string) string { return env[name] }, &output); code != commandstatus.ExitSuccessProblemFound {
+			if code := Main(func(name string) string { return env[name] }, &output, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessProblemFound {
 				t.Fatalf("external workflow findings lost: %d %s", code, output.String())
 			}
 			var result persistedResult
@@ -195,7 +196,7 @@ tools: {shellcheck: false}
 				}
 				got := runLinter(req)
 				var stdout, stderr strings.Builder
-				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr)
+				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, plugininstall.Acquisition{})
 				if got.code != commandstatus.ExitSuccessNoProblem || code != commandstatus.ExitSuccessNoProblem {
 					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
 				}

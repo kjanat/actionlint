@@ -11,6 +11,8 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {
@@ -19,7 +21,7 @@ func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {
 	path := filepath.Join(dir, "actionlint.yml")
 	const original = "plugins: [old/plugin]\n"
 	fixturefiles.WriteText(t, path, original)
-	manifest, err := Open(t.Context(), config.RuleSet{}, path)
+	manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}

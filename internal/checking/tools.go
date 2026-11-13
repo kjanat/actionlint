@@ -45,7 +45,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	if err != nil {
 		return nil, err
 	}
-	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, RuleNames: names, Rules: rules})
+	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, ConfigConnections: options.ConfigConnections, RuleNames: names, Rules: rules})
 	if err != nil {
 		return ToolRequirements{}, err
 	}

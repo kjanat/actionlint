@@ -10,22 +10,19 @@ import (
 	"strings"
 	"testing"
 
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("HOME", cache)
 	t.Setenv("GH_TOKEN", "fixture-secret")
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
 	var requests []string
 	downloads := 0
-	original := http.DefaultTransport
-	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	transport := actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Scheme != "https" || r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/workflows/"+sha+"/.github/workflows/build.yml" {
 			t.Fatalf("unexpected HTTP request %s", r.URL)
 		}
@@ -37,14 +34,14 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		body := "on: workflow_call\npermissions: {contents: write}\njobs: {publish: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})
-	t.Cleanup(func() { http.DefaultTransport = original })
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	// GitHub rejects a reusable workflow requesting more token permissions than
 	// its caller grants. https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
 	source := "on: push\npermissions: {}\njobs:\n  allowed:\n    permissions: {contents: write}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  denied:\n    permissions: {contents: read}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  inherited:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n"
 	for _, mode := range []string{"online", "offline", "off"} {
 		before := len(requests)
 		var out, log bytes.Buffer
-		command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}
+		command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--action-metadata=" + mode, "-"})
 		var result resultreport.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
@@ -93,26 +90,21 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 }
 
 func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
+	t.Parallel()
 	const revision = "ed1f1d971d3603817c62e17f550080ba63eac4c3"
 	target, err := os.ReadFile("internal/cli/testdata/remote-workflows/actionlint-nix.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache := t.TempDir()
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("HOME", cache)
-	original := http.DefaultTransport
-	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/kjanat/actionlint/"+revision+"/.github/workflows/nix.yml" {
 			t.Fatalf("unexpected HTTP request %s", r.URL)
 		}
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(string(target))), Request: r}, nil
-	})
-	t.Cleanup(func() { http.DefaultTransport = original })
+	})}}
 	for _, permissions := range []string{"{contents: read}", "{}"} {
 		var out, log bytes.Buffer
-		command := Command{Stdin: strings.NewReader("on: push\npermissions: " + permissions + "\njobs:\n  nix:\n    uses: kjanat/actionlint/.github/workflows/nix.yml@" + revision + "\n"), Stdout: &out, Stderr: &log}
+		command := Command{Stdin: strings.NewReader("on: push\npermissions: " + permissions + "\njobs:\n  nix:\n    uses: kjanat/actionlint/.github/workflows/nix.yml@" + revision + "\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "-"})
 		var result resultreport.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
@@ -129,6 +121,7 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 }
 
 func TestRemoteWorkflowArgumentsAndOutputs(t *testing.T) {
+	t.Parallel()
 	const target = `on:
   workflow_call:
     inputs:
@@ -155,19 +148,14 @@ jobs:
 		{"unknown output", "    with: {label: hello}\n    secrets: {token: value}\n", "missing", `property "missing" is not defined`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cache := t.TempDir()
-			t.Setenv("LOCALAPPDATA", cache)
-			t.Setenv("XDG_CACHE_HOME", cache)
-			t.Setenv("HOME", cache)
+			t.Parallel()
 			sha := strings.Repeat("a", 40)
-			original := http.DefaultTransport
-			http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 				if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/workflows/"+sha+"/.github/workflows/build.yml" {
 					t.Fatalf("unexpected HTTP request %s", r.URL)
 				}
 				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(target)), Request: r}, nil
-			})
-			t.Cleanup(func() { http.DefaultTransport = original })
+			})}}
 			// No caller permissions are known. Argument and output checking must
 			// still run without inventing a token-permission mismatch.
 			source := "on: push\njobs:\n  call:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n" + tc.arguments + "  consume:\n    needs: call\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          RESULT: ${{ needs.call.outputs." + tc.output + " }}\n"
@@ -176,7 +164,7 @@ jobs:
 				t.Fatal(err)
 			}
 			var out, log bytes.Buffer
-			command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}
+			command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 			status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--output-format=json", "--summary=false", "--tool=shellcheck=", "-"})
 			var result resultreport.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {

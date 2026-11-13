@@ -13,7 +13,7 @@ import (
 )
 
 func TestConfigMigrationRejectsMixedRemoteSnapshots(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, "actionlint.yaml")
@@ -23,7 +23,7 @@ func TestConfigMigrationRejectsMixedRemoteSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.SetFileSequence(remote, []byte("plugins: []"), []byte("plugins: [github.com/example/plugin@v1.0.0]"))
-	if _, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err == nil || !strings.Contains(err.Error(), "changed during migration preparation") {
+	if _, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)}); err == nil || !strings.Contains(err.Error(), "changed during migration preparation") {
 		t.Fatalf("mixed remote snapshots accepted: %v", err)
 	}
 	if requests := registry.Requests(); len(requests) != 2 || requests[0] != remote || requests[1] != remote {

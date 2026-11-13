@@ -31,7 +31,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c, err := New("https://example.org/catalogue/")
+			c, err := New("https://example.org/catalogue/", Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -48,7 +48,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 			}
 		})
 	}
-	c, err := New(DefaultURL)
+	c, err := New(DefaultURL, Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestCatalogueRedirectHostCasing(t *testing.T) {
 			if base == "" {
 				base = "https://EXAMPLE.ORG:8443/catalogue/"
 			}
-			client, err := New(base)
+			client, err := New(base, Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}

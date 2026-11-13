@@ -43,7 +43,7 @@ func repository(ref artifacts.OCIReference, options artifacts.Options) (*remote.
 		return nil, err
 	}
 	endpoint := ref.Endpoint()
-	transport, err := acquisitionhttp.Transport(endpoint, options.Network)
+	transport, err := acquisitionhttp.Transport(endpoint, options.Network, options.Connections)
 	if err != nil {
 		return nil, err
 	}

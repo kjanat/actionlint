@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -21,7 +22,8 @@ import (
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool) (inspection config.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection config.Inspection, err error) {
+	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
@@ -34,7 +36,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	if err != nil {
 		return inspection, err
 	}
-	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return inspection, err
 	}
@@ -65,19 +67,20 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	return ConfigurationRules().InspectContextWithRegistrations(ctx, selection, origins, rules...)
+	reader := configsource.New(ctx, nil, acquisition.Connections)
+	return ConfigurationRules().InspectContextWithRegistrations(ctx, selection, origins, reader.ReadFile, rules...)
 }
 
 // InstalledProviders returns the tool provider manifests among the plugins
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection config.Selection, paths []string) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection config.Selection, paths []string, acquisition plugininstall.Acquisition) ([]pluginmanifests.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return nil, err
 	}

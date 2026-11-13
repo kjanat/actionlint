@@ -11,17 +11,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 type candidateReader func([]byte) (int, error)
 
 func (r candidateReader) Read(p []byte) (int, error) { return r(p) }
 
-type candidateTransport struct{ requests int }
+type candidateTransport struct{ requests atomic.Int64 }
 
 func (r *candidateTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	r.requests++
+	r.requests.Add(1)
 	return nil, errors.New("unexpected candidate network request")
 }
 
@@ -104,25 +107,25 @@ func TestCandidateImportRejectsInvalidRequest(t *testing.T) {
 
 // Candidate execution uses only imported bytes and rechecks their digest.
 func TestCandidateCacheResolution(t *testing.T) {
+	t.Parallel()
 	transport := &candidateTransport{}
-	previous := http.DefaultTransport
-	http.DefaultTransport = transport
-	t.Cleanup(func() { http.DefaultTransport = previous })
+	connections := acquisitionhttp.Connections{Transport: transport}
 	t.Cleanup(func() {
-		if transport.requests != 0 {
-			t.Errorf("candidate execution fetched %d times", transport.requests)
+		if requests := transport.requests.Load(); requests != 0 {
+			t.Errorf("candidate execution fetched %d times", requests)
 		}
 	})
 	raw := module(`{"id":"candidate"}`)
 	for _, packed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("gzip=%t", packed), func(t *testing.T) {
+			t.Parallel()
 			data := raw
 			if packed {
 				data = compressed(t, raw)
 			}
 			digest := fmt.Sprintf("%x", sha256.Sum256(data))
 			source := "sha256://" + digest
-			options := Options{CacheDir: t.TempDir(), MaxBytes: int64(len(data))}
+			options := Options{CacheDir: t.TempDir(), MaxBytes: int64(len(data)), Connections: connections}
 			if err := Import(t.Context(), bytes.NewReader(data), digest, options); err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +152,7 @@ func TestCandidateCacheResolution(t *testing.T) {
 			if _, err := Resolve(t.Context(), source, options); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("missing cache error: %v", err)
 			}
-			if _, err := Resolve(t.Context(), source, Options{}); err == nil {
+			if _, err := Resolve(t.Context(), source, Options{Connections: connections}); err == nil {
 				t.Fatal("cache source accepted without cache directory")
 			}
 		})
