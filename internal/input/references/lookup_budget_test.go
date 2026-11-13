@@ -183,3 +183,82 @@ func TestLookupBudgetExpiresBeforeWaitWithDelayedCallback(t *testing.T) {
 		})
 	}
 }
+
+func TestLookupBudgetResumeBeforeCancellationCleanup(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancelCause(t.Context())
+		budget := &lookupBudget{remaining: time.Minute, cancel: cancel}
+		budget.arm()
+		ctx = context.WithValue(ctx, lookupBudgetKey{}, budget)
+		cause := errors.New("parent stopped")
+		defer budget.stop(context.Canceled)
+		if err := WaitOutsideLookupBudget(ctx, func() error {
+			cancel(cause)
+			return ctx.Err()
+		}); !errors.Is(err, context.Canceled) {
+			t.Fatalf("wait returned %v, want cancellation", err)
+		}
+		// Run the parent-cancellation cleanup after the wait has returned.
+		budget.stop(context.Cause(ctx))
+		time.Sleep(2 * time.Minute)
+		if !errors.Is(context.Cause(ctx), cause) || !budget.stopped || budget.timer.Stop() {
+			t.Fatalf("cleanup changed the cause or left a timer running: cause=%v stopped=%v", context.Cause(ctx), budget.stopped)
+		}
+	})
+}
+
+func TestLookupBudgetOverlappingWaits(t *testing.T) {
+	t.Parallel()
+	for _, first := range []int{0, 1} {
+		for _, cancelLast := range []bool{false, true} {
+			synctest.Test(t, func(t *testing.T) {
+				ctx, stop := StartLookupBudget(t.Context(), 30*time.Second)
+				defer stop()
+				time.Sleep(10 * time.Second)
+				release := [2]chan struct{}{make(chan struct{}), make(chan struct{})}
+				done := [2]chan error{make(chan error), make(chan error)}
+				for i := range release {
+					go func() {
+						done[i] <- WaitOutsideLookupBudget(ctx, func() error {
+							<-release[i]
+							return nil
+						})
+					}()
+				}
+				synctest.Wait()
+				close(release[first])
+				if err := <-done[first]; err != nil {
+					t.Fatal(err)
+				}
+				time.Sleep(time.Minute)
+				if ctx.Err() != nil {
+					t.Fatalf("first wait %d resumed the timer while the other still waited: %v", first, context.Cause(ctx))
+				}
+				if cancelLast {
+					go stop()
+				}
+				close(release[1-first])
+				if err := <-done[1-first]; err != nil {
+					t.Fatal(err)
+				}
+				synctest.Wait()
+				if cancelLast {
+					budget := ctx.Value(lookupBudgetKey{}).(*lookupBudget)
+					if !errors.Is(context.Cause(ctx), context.Canceled) || budget.timer.Stop() {
+						t.Fatal("cancellation racing with the last return left an active timer")
+					}
+					return
+				}
+				time.Sleep(19 * time.Second)
+				if ctx.Err() != nil {
+					t.Fatalf("last return charged waiting time: %v", context.Cause(ctx))
+				}
+				time.Sleep(2 * time.Second)
+				if !errors.Is(context.Cause(ctx), ErrLookupBudgetExhausted) {
+					t.Fatalf("last return did not restart the remaining budget: %v", context.Cause(ctx))
+				}
+			})
+		}
+	}
+}
