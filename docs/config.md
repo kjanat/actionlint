@@ -333,9 +333,10 @@ are migrated to explicit levels, so explicit disables now survive presets and
 `--strict`. Conflicting old and current values in one document are errors.
 Cache safety checks belong to security, with cache-operation under correctness.
 
-Severity is carried through JSON, SARIF and GitHub annotations. As before, the CLI
-exits nonzero for any reported finding, including warnings and informational
-findings. This change does not silently change CI exit-code behavior.
+JSON, SARIF and GitHub annotations include each finding's severity. Findings in
+your workflows and local actions cause exit status 1, including warnings and
+informational findings. See [Findings in dependencies](#findings-in-dependencies)
+for the settings that determine which findings in downloaded actions fail a check.
 
 The compatibility shortcut `disable` accepts any rule ID listed by `actionlint rules`. It suppresses
 that rule's errors and warnings without skipping analysis needed by other checks.
