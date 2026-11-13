@@ -145,6 +145,45 @@ runs:
 		Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 3, Column: 4}, Snippet: "echo $value",
 		Fixes: []diagmodel.Fix{{Description: "Quote", Edits: []diagmodel.Edit{{Path: "ci.yml", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
 	}
+	for _, tc := range []struct {
+		name     string
+		blocking []bool
+	}{
+		{"no findings", nil},
+		{"dependency advice", []bool{false}},
+		{"blocking finding", []bool{true}},
+		{"mixed findings", []bool{false, true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			analysis := report.Analysis{}
+			for _, blocking := range tc.blocking {
+				finding := diagnostic
+				finding.NonBlocking = !blocking
+				analysis.Diagnostics = append(analysis.Diagnostics, finding)
+			}
+			result := commandstatus.AnalysisResult(analysis)
+			data, err := json.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value map[string]any
+			if err := json.Unmarshal(data, &value); err != nil {
+				t.Fatal(err)
+			}
+			if err := schema.Validate(value); err != nil {
+				t.Fatalf("native result rejected: %v\n%s", err, data)
+			}
+			if result.ExitCode == 0 {
+				value["status"], value["exit_code"] = "problems-found", 1
+			} else {
+				value["status"], value["exit_code"] = "success", 0
+			}
+			if err := schema.Validate(value); err == nil {
+				t.Fatalf("schema accepted contradictory result: %v", value)
+			}
+		})
+	}
 	for _, code := range []int{0, 1, 2, 3, 99} {
 		result := commandstatus.NewCheckResult(code)
 		analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "ci.yml", Content: []byte(`on: push

@@ -55,6 +55,7 @@ function diagnostic(value: unknown): value is Diagnostic {
 		&& typeof value.path === 'string' && position(value.start) && position(value.end) && span(value.start, value.end)
 		&& (value.snippet === undefined || typeof value.snippet === 'string')
 		&& (value.severity === undefined || typeof value.severity === 'string')
+		&& (value.non_blocking === undefined || typeof value.non_blocking === 'boolean')
 		&& (value.code === undefined || typeof value.code === 'string')
 		&& (value.fixes === undefined || (Array.isArray(value.fixes) && value.fixes.every(fix)));
 }
@@ -280,13 +281,14 @@ export function parseResult(value: unknown): ActionResult {
 	if (value.action_metadata !== undefined) data.action_metadata = value.action_metadata;
 	if (value.incomplete_checks !== undefined) data.incomplete_checks = value.incomplete_checks;
 	if (
-		value.completed === true && value.status === 'success' && value.exit_code === 0 && value.diagnostics.length === 0
+		value.completed === true && value.status === 'success' && value.exit_code === 0
+		&& value.diagnostics.every((finding) => finding.non_blocking === true)
 	) {
 		return { ...data, completed: true, status: 'success', exit_code: 0 };
 	}
 	if (
 		value.completed === true && value.status === 'problems-found' && value.exit_code === 1
-		&& value.diagnostics.length > 0
+		&& value.diagnostics.some((finding) => finding.non_blocking !== true)
 	) {
 		return { ...data, completed: true, status: 'problems-found', exit_code: 1 };
 	}

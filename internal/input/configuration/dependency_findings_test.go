@@ -36,13 +36,15 @@ func TestDependencySettingsInheritanceAndOverrides(t *testing.T) {
 		{"ci.yml", false, DependencyRules{"example/CODE"}},
 		{"release.yml", true, DependencyRules{}},
 	} {
-		cfg, err := rules.ForFile(loaded.Config, filepath.Join(root, tc.file), root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		d := cfg.Lint.Dependencies
-		if d.FailOnAll == nil || *d.FailOnAll != tc.all || len(d.FailOnCategories) != 0 || !reflect.DeepEqual(d.FailOnRules, tc.selected) {
-			t.Errorf("%s: got %+v, want all=%v rules=%v", tc.file, d, tc.all, tc.selected)
+		for name, resolve := range map[string]func(*Config, string, string) (*Config, error){"workflow": rules.ForFile, "action": rules.ForAction} {
+			cfg, err := resolve(loaded.Config, filepath.Join(root, tc.file), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			d := cfg.Lint.Dependencies
+			if d.FailOnAll == nil || *d.FailOnAll != tc.all || len(d.FailOnCategories) != 0 || !reflect.DeepEqual(d.FailOnRules, tc.selected) {
+				t.Errorf("%s %s: got %+v, want all=%v rules=%v", name, tc.file, d, tc.all, tc.selected)
+			}
 		}
 	}
 }
