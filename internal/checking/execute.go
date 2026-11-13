@@ -624,7 +624,7 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 		d.mu.Lock()
 		_, requested := d.requests[address]
 		d.mu.Unlock()
-		if !requested {
+		if !requested && (!sourcemodel.RemoteAddress(address) || !isActionInput(address)) {
 			continue
 		}
 		snapshot, state, err := captures.Lookup(address)

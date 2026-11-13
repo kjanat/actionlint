@@ -162,8 +162,8 @@ func TestPrettyHyperlinks(t *testing.T) {
 				if !tc.want {
 					return
 				}
-				if strings.Count(got.Stdout, "\x1b]8;;"+target+"\x1b\\") < 2 {
-					t.Fatalf("wrapped URL did not link each part to the full destination: %q", got.Stdout)
+				if !strings.Contains(got.Stdout, "\x1b]8;;"+target+"\x1b\\"+target+"\x1b]8;;\x1b\\") {
+					t.Fatalf("URL is not an intact link to the full destination: %q", got.Stdout)
 				}
 				if strings.Contains(osc.ReplaceAllString(got.Stdout, ""), "\x1b") {
 					t.Fatalf("unexpected escape with color disabled: %q", got.Stdout)

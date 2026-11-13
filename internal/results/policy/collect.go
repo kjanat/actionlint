@@ -26,12 +26,17 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 		project, path, rule string
 		start               sourcepos.Position
 	}
-	seen := make(map[location][]diagmodel.Diagnostic)
+	seen := make(map[location][]int)
+	var retained []*findingmodel.Finding
+	mergeBlocking := func(index int, diagnostic diagmodel.Diagnostic) {
+		diagnostics[index].NonBlocking = diagnostics[index].NonBlocking && diagnostic.NonBlocking
+		retained[index].NonBlocking = diagnostics[index].NonBlocking
+	}
 	type metadataLocation struct {
 		project, kind, severity string
 		finding                 findingmodel.MetadataKey
 	}
-	seenMetadata := make(map[metadataLocation]bool)
+	seenMetadata := make(map[metadataLocation]int)
 	type declarationLocation struct {
 		project string
 		finding findingmodel.MetadataKey
@@ -68,23 +73,37 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 				content = copies.of(finding.Source)
 			}
 			processor.CompleteDiagnostic(&diagnostic, content, identityPath, finding.UnavailableSource.Present())
-			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
-				key := metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
+			var metadataKey metadataLocation
+			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
+			if identity := finding.MetadataIdentity; isMetadata {
+				metadataKey = metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
 				if !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
 					continue
 				}
-				if seenMetadata[key] {
+				if index, exists := seenMetadata[metadataKey]; exists {
+					mergeBlocking(index, diagnostic)
 					continue
 				}
-				seenMetadata[key] = true
 			}
 			key := location{project, diagnostic.Path, diagnostic.Rule, diagnostic.Start}
-			if slices.ContainsFunc(seen[key], func(previous diagmodel.Diagnostic) bool {
-				return reflect.DeepEqual(previous, diagnostic)
-			}) {
+			duplicate := slices.IndexFunc(seen[key], func(index int) bool {
+				previous, current := diagnostics[index], diagnostic
+				previous.NonBlocking, current.NonBlocking = false, false
+				return reflect.DeepEqual(previous, current)
+			})
+			if duplicate >= 0 {
+				index := seen[key][duplicate]
+				mergeBlocking(index, diagnostic)
+				if isMetadata {
+					seenMetadata[metadataKey] = index
+				}
 				continue
 			}
-			seen[key] = append(seen[key], diagnostic)
+			if isMetadata {
+				seenMetadata[metadataKey] = len(diagnostics)
+			}
+			seen[key] = append(seen[key], len(diagnostics))
+			retained = append(retained, finding)
 			diagnostics = append(diagnostics, diagnostic)
 			var target *report.SuppressionTarget
 			if suppression := finding.SuppressionTarget; suppression != nil {

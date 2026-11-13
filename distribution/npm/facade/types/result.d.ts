@@ -17,6 +17,7 @@ export type Fix = {
 	revisions?: Record<string, string>;
 };
 export type Diagnostic = {
+	non_blocking?: boolean;
 	reference?: SourceReference;
 	explanation?: string;
 	help?: string;

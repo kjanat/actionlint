@@ -114,6 +114,10 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 			findings = processor.FilterConfigured(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
 		}
 		findings = slices.DeleteFunc(findings, func(e *findingmodel.Finding) bool {
+			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
+			executionFailure := descriptor.ExecutionFailure && (e.Severity == "" || e.Severity == "error")
+			e.NonBlocking = sourcepos.RemoteAddress(e.Path) && e.Path != p.Path &&
+				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
 			level := diagnosticLevel(e.Rule)
 			switch level {
 			case "off":

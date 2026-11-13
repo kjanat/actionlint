@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
@@ -62,6 +63,12 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 	}
 	for _, lint := range lints {
 		lint.Rules.ruleSet = ruleSet
+		for i, selector := range lint.Dependencies.FailOnRules {
+			name, code, qualified := strings.Cut(selector, "/")
+			if !ruleSet.Suppressible(name, additional...) || qualified && (code == "" || strings.ContainsAny(code, "/ \t\r\n")) {
+				return binding.At("lint", binding.At("dependencies", binding.At("fail-on-rules", binding.At(strconv.Itoa(i), fmt.Errorf("invalid rule selector %q", selector)))))
+			}
+		}
 		for _, name := range lint.Rules.Disable {
 			if !ruleSet.Suppressible(name, additional...) {
 				return fmt.Errorf("yaml: unknown diagnostic rule %q in lint.rules.disable", name)

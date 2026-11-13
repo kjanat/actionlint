@@ -20,6 +20,8 @@ type LintConfig struct {
 	Experimental *bool `yaml:"experimental,omitempty" jsonschema:"nullable"`
 	// Rules selects diagnostic groups, individual levels and options.
 	Rules LintRulesConfig `yaml:"rules" jsonschema:"nullable"`
+	// Dependencies selects additional findings in remote dependencies that fail the check.
+	Dependencies DependencyFindings `yaml:"dependencies,omitempty"`
 	// MessageIgnores maps repository-relative globs to diagnostic message regular
 	// expressions. All matching paths apply; arrays replace inherited patterns.
 	MessageIgnores map[string]IgnorePatterns `yaml:"message-ignores,omitempty" jsonschema:"nullable"`

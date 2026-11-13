@@ -903,6 +903,75 @@
         {
           "type": "object",
           "properties": {
+            "dependencies": {
+              "title": "dependencies",
+              "description": "Selects additional findings in remote dependencies that fail the check.",
+              "markdownDescription": "Selects additional findings in remote dependencies that fail the check.",
+              "type": "object",
+              "properties": {
+                "fail-on-all": {
+                  "title": "fail-on-all",
+                  "description": "Makes every enabled dependency finding count toward exit status 1.",
+                  "markdownDescription": "Makes every enabled dependency finding count toward exit status 1.",
+                  "oneOf": [
+                    {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fail-on-categories": {
+                  "title": "fail-on-categories",
+                  "description": "Selects rule categories whose dependency findings fail the check.",
+                  "markdownDescription": "Selects rule categories whose dependency findings fail the check.",
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "correctness",
+                          "suspicious",
+                          "security",
+                          "conventions"
+                        ]
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fail-on-rules": {
+                  "title": "fail-on-rules",
+                  "description": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
+                  "markdownDescription": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/$defs/rule-name"
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^[^/\\s]+/[^/\\s]+$"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
             "enabled": {
               "title": "enabled",
               "description": "Controls lint diagnostics only, leaving other features independent.",
@@ -2582,6 +2651,75 @@
                   {
                     "type": "object",
                     "properties": {
+                      "dependencies": {
+                        "title": "dependencies",
+                        "description": "Selects additional findings in remote dependencies that fail the check.",
+                        "markdownDescription": "Selects additional findings in remote dependencies that fail the check.",
+                        "type": "object",
+                        "properties": {
+                          "fail-on-all": {
+                            "title": "fail-on-all",
+                            "description": "Makes every enabled dependency finding count toward exit status 1.",
+                            "markdownDescription": "Makes every enabled dependency finding count toward exit status 1.",
+                            "oneOf": [
+                              {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fail-on-categories": {
+                            "title": "fail-on-categories",
+                            "description": "Selects rule categories whose dependency findings fail the check.",
+                            "markdownDescription": "Selects rule categories whose dependency findings fail the check.",
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "correctness",
+                                    "suspicious",
+                                    "security",
+                                    "conventions"
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fail-on-rules": {
+                            "title": "fail-on-rules",
+                            "description": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
+                            "markdownDescription": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/$defs/rule-name"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[^/\\s]+/[^/\\s]+$"
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
                       "enabled": {
                         "title": "enabled",
                         "description": "Controls lint diagnostics only, leaving other features independent.",

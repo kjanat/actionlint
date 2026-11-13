@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
@@ -33,7 +34,10 @@ func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool,
 	}
 	writeWrapped(&b, "", label, width, style, hyperlinks)
 	writeWrapped(&b, "  ", d.Message, width, nil, hyperlinks)
-	writeWrapped(&b, "  --> ", fmt.Sprintf("%s:%d:%d", d.Path, d.Start.Line, d.Start.Column), width, nil, hyperlinks)
+	if d.NonBlocking {
+		writeWrapped(&b, "  = ", "This dependency finding does not affect the exit code. Use lint.dependencies to make it count.", width, nil, hyperlinks)
+	}
+	writePrettyLocation(&b, "  --> ", d.Path, d.Start, width, hyperlinks)
 	if line, ok := f.line(); ok && d.Start.Line > 0 {
 		gutter := fmt.Sprintf("%d | ", d.Start.Line)
 		space := strings.Repeat(" ", len(gutter)-2)
@@ -55,7 +59,7 @@ func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool,
 	}
 	for _, related := range d.Related {
 		writeWrapped(&b, "  = ", "related: "+related.Message, width, nil, hyperlinks)
-		writeWrapped(&b, "    --> ", fmt.Sprintf("%s:%d:%d", related.Path, related.Start.Line, related.Start.Column), width, nil, hyperlinks)
+		writePrettyLocation(&b, "    --> ", related.Path, related.Start, width, hyperlinks)
 	}
 	for _, fix := range d.Fixes {
 		writeWrapped(&b, "  = ", "fix: "+fix.Description, width, nil, hyperlinks)
@@ -63,6 +67,16 @@ func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool,
 	b.WriteByte('\n')
 	_, err := io.WriteString(out, b.String())
 	return err
+}
+
+func writePrettyLocation(b *strings.Builder, prefix, path string, position sourcepos.Position, width int, hyperlinks bool) {
+	path = terminalText(path)
+	location := fmt.Sprintf("%s:%d:%d", path, position.Line, position.Column)
+	if links := terminalURLs(path); len(links) == 1 && links[0].start == 0 && links[0].end == len(path) {
+		location = fmt.Sprintf("%s (line %d, column %d)", path, position.Line, position.Column)
+		width = max(width, runewidth.StringWidth(prefix+location))
+	}
+	writeWrapped(b, prefix, location, width, nil, hyperlinks)
 }
 
 // terminalText prevents source and plugin strings from emitting terminal controls.
@@ -115,12 +129,9 @@ func writeWrapped(b *strings.Builder, prefix, text string, width int, style *col
 					rendered.WriteByte(' ')
 				}
 			}
-			var links []terminalURL
-			if hyperlinks {
-				links = terminalURLs(word)
-			}
+			links := terminalURLs(word)
 			for offset, r := range word {
-				if runewidth.StringWidth(line)+runewidth.RuneWidth(r) > available {
+				if len(links) == 0 && runewidth.StringWidth(line)+runewidth.RuneWidth(r) > available {
 					flush()
 				}
 				target := ""
@@ -130,7 +141,9 @@ func writeWrapped(b *strings.Builder, prefix, text string, width int, style *col
 						break
 					}
 				}
-				selectURL(target)
+				if hyperlinks {
+					selectURL(target)
+				}
 				line += string(r)
 				rendered.WriteRune(r)
 			}

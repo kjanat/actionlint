@@ -333,12 +333,12 @@ Nonempty summaries also include `summary.by_file` (`path`, `count`) and
 `summary.by_diagnostic` (`rule`, optional `code`, `count`).
 Check the exit status before interpreting empty stdout as success.
 
-| Exit status | Meaning                                                                       |
-| ----------- | ----------------------------------------------------------------------------- |
-| `0`         | Completed without findings, or completed an information/configuration command |
-| `1`         | Completed with findings                                                       |
-| `2`         | Invalid CLI arguments or incompatible options                                 |
-| `3`         | Could not initialize or complete, including invalid config, regex or template |
+| Exit status | Meaning                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------- |
+| `0`         | Completed without findings that affect the exit status, or completed an information/configuration command |
+| `1`         | Completed with findings that affect the exit status                                                       |
+| `2`         | Invalid CLI arguments or incompatible options                                                             |
+| `3`         | Could not initialize or complete, including invalid config, regex or template                             |
 
 `--help --json` describes commands, flags, choices, defaults and exit codes.
 `version --json` exposes build metadata.
@@ -854,12 +854,17 @@ Backslash escapes such as `\n` in the format string are automatically unescaped.
 
 The `actionlint` command exits with one of the following statuses.
 
-| Status | Description                                             |
-| ------ | ------------------------------------------------------- |
-| `0`    | The command ran successfully and no problem was found   |
-| `1`    | The command ran successfully and some problem was found |
-| `2`    | The command failed due to invalid command line option   |
-| `3`    | The command failed due to some fatal error              |
+| Status | Description                                                                |
+| ------ | -------------------------------------------------------------------------- |
+| `0`    | The check completed without findings that affect its exit status           |
+| `1`    | The check completed with at least one finding that affects its exit status |
+| `2`    | The command failed due to invalid command line option                      |
+| `3`    | The command failed due to some fatal error                                 |
+
+Advice from downloaded actions remains visible but does not affect the exit
+status by default. Known execution errors in those actions still count.
+Use [`lint.dependencies`](config.md#findings-in-dependencies) to include other
+dependency findings. Findings in your workflows and local actions count as usual.
 
 <a id="on-github-actions"></a>
 

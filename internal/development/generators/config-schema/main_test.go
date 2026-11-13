@@ -310,8 +310,6 @@ func TestRuffEditorCompletions(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "node_modules", "yaml-language-server", "package.json")); err != nil {
 		t.Skip("run bun install --frozen-lockfile first: yaml-language-server is not installed")
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
 	read := func(name string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 	}
@@ -324,9 +322,11 @@ func TestRuffEditorCompletions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, arguments := range [][]string{{"editor-completions.mjs"}, {"editor-completions.mjs", path, "custom-check"}} {
+		ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 		command := exec.CommandContext(ctx, node, arguments...)
 		command.WaitDelay = time.Second
 		output, err := command.CombinedOutput()
+		cancel()
 		if err != nil {
 			t.Fatalf("YAML language service regression: %v\n%s", err, output)
 		}

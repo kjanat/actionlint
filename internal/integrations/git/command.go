@@ -17,7 +17,7 @@ func Command(ctx context.Context, git, root string, args ...string) *exec.Cmd {
 	// Index inspection must not invoke repository-configured fsmonitor commands.
 	command := exec.CommandContext(ctx, git, append([]string{"-C", root, "-c", "core.fsmonitor=false"}, args...)...)
 	// A descendant can keep stdout or stderr open after Git exits or is killed.
-	command.WaitDelay = time.Second
+	command.WaitDelay = 5 * time.Second
 	// Clear repository overrides inherited from Git commands or hooks so the
 	// query uses the workflow's project.
 	for _, entry := range os.Environ() {

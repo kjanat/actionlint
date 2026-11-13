@@ -50,6 +50,10 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 				p.Skipped++
 				continue
 			}
+			if slices.ContainsFunc(candidate.Edits, func(e results.Edit) bool { return sourcepos.RemoteAddress(e.Path) }) {
+				p.Skipped++
+				continue
+			}
 			for _, e := range candidate.Edits {
 				if err := ctx.Err(); err != nil {
 					return Plan{}, err
