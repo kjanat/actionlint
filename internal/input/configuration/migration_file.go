@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 // FileMigration holds a preview and the exact input graph used to prepare it.
@@ -21,8 +22,9 @@ type FileMigration struct {
 	ruleSet RuleSet
 	Path    string
 	Migration
-	snapshots map[string]fileSnapshot
-	mode      os.FileMode
+	snapshots   map[string]fileSnapshot
+	mode        os.FileMode
+	connections acquisitionhttp.Connections
 }
 
 type fileSnapshot interface {
@@ -45,7 +47,7 @@ func (remoteConfigSnapshot) configSnapshot() {}
 // PrepareMigration reads the selected file and its inherited inputs, validates
 // the converted graph, and returns a write candidate tied to those inputs.
 // Reads stop when ctx is canceled.
-func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, registrations ...rule.Descriptor) (*FileMigration, error) {
+func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connections acquisitionhttp.Connections, registrations ...rule.Descriptor) (*FileMigration, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -69,7 +71,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, regist
 		return nil, fmt.Errorf("cannot migrate non-regular config file %q", absolute)
 	}
 	snapshots := map[string]fileSnapshot{}
-	reader := configsource.New(ctx, nil)
+	reader := configsource.New(ctx, nil, connections)
 	read := func(path string) ([]byte, error) {
 		content, err := reader.ReadFile(path)
 		if err != nil {
@@ -142,7 +144,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, regist
 	if !reflect.DeepEqual(beforeValues, afterValues) {
 		return nil, errors.New("migration cannot preserve inherited settings in this format; convert the selected config to YAML or JSON first")
 	}
-	return &FileMigration{Path: absolute, Migration: migration, snapshots: snapshots, mode: info.Mode().Perm(), ruleSet: ruleSet}, nil
+	return &FileMigration{Path: absolute, Migration: migration, snapshots: snapshots, mode: info.Mode().Perm(), ruleSet: ruleSet, connections: connections}, nil
 }
 
 // SetContent validates an enriched candidate, such as default plugin insertion,
@@ -244,7 +246,7 @@ func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 	if parent != filepath.Dir(m.Path) {
 		return errors.New("config directory changed before migration; prepare the migration again")
 	}
-	reader := configsource.New(ctx, nil)
+	reader := configsource.New(ctx, nil, m.connections)
 	for path, expected := range m.snapshots {
 		if _, remote := expected.(remoteConfigSnapshot); remote {
 			current, err := reader.ReadFile(path)

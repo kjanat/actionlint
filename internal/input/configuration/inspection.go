@@ -48,21 +48,21 @@ func (ruleSet RuleSet) Inspect(selection Selection, withOrigin bool, registeredR
 
 // InspectContext validates settings with cancellable configuration acquisition.
 func (ruleSet RuleSet) InspectContext(ctx context.Context, selection Selection, withOrigin bool, registeredRules ...string) (Inspection, error) {
-	return ruleSet.inspectContext(ctx, selection, withOrigin, nil, registeredRules...)
+	return ruleSet.inspectContext(ctx, selection, withOrigin, nil, nil, registeredRules...)
 }
 
 // InspectContextWithRegistrations validates settings using the selected rules and tool replacements.
-func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, selection Selection, withOrigin bool, registrations ...RuleRegistration) (Inspection, error) {
+func (ruleSet RuleSet) InspectContextWithRegistrations(ctx context.Context, selection Selection, withOrigin bool, readFile func(string) ([]byte, error), registrations ...RuleRegistration) (Inspection, error) {
 	metadata := make([]RuleRegistration, len(registrations))
 	copy(metadata, registrations)
 	names := make([]string, 0, len(registrations))
 	for _, registration := range registrations {
 		names = append(names, registration.Descriptor.Name)
 	}
-	return ruleSet.inspectContext(ctx, selection, withOrigin, metadata, names...)
+	return ruleSet.inspectContext(ctx, selection, withOrigin, readFile, metadata, names...)
 }
 
-func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, withOrigin bool, registrations []RuleRegistration, registeredRules ...string) (Inspection, error) {
+func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, withOrigin bool, readFile func(string) ([]byte, error), registrations []RuleRegistration, registeredRules ...string) (Inspection, error) {
 	if err := ctx.Err(); err != nil {
 		return Inspection{}, err
 	}
@@ -80,7 +80,7 @@ func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, 
 	var resolved Resolved
 	if path != "" {
 		var source *Loaded
-		source, err = parseRules.ReadContext(ctx, path, nil, registeredRules...)
+		source, err = parseRules.ReadContext(ctx, path, readFile, registeredRules...)
 		if err != nil {
 			return Inspection{Path: path}, err
 		}

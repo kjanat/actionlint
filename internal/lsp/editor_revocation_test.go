@@ -17,14 +17,15 @@ import (
 )
 
 func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	wasm, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", wasm)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{pin}}
-	sources := plugininstall.Sources{Paths: []string{pin.Source()}, Releases: &lock}
+	sources := plugininstall.Sources{Paths: []string{pin.Source()}, Releases: &lock, Acquisition: acquisition}
 	root := t.TempDir()
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}
 	session, err := newEditorSources(t.Context(), options, sources)

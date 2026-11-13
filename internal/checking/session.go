@@ -30,6 +30,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
@@ -58,6 +59,7 @@ type Options struct {
 	WorkingDir        string
 	// ConfigFile resolves relative to WorkingDir unless it is absolute or remote.
 	ConfigFile        string
+	ConfigConnections acquisitionhttp.Connections
 	ConfigOverlays    []repoconfig.Overlay
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
@@ -162,7 +164,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 				byAlias[path] = index
 			}
 		}
-		backing := configsource.New(ctx, options.ReadFile)
+		backing := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
 		selectionReader = func(path string) ([]byte, error) {
 			if address.Remote(path) {
 				return backing.ReadFile(path)
@@ -248,7 +250,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		Rules:      rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
 		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
-		ReadFile: selectionReader, RuleNames: names, Log: selectionLog, LogWriter: log,
+		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})
 	if err != nil {

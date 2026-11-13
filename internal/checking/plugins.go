@@ -25,8 +25,8 @@ import (
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string) (result *Result, err error) {
-	sources, err := plugininstall.SourcesFromArguments(paths)
+func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition plugininstall.Acquisition) (result *Result, err error) {
+	sources, err := plugininstall.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 		log = io.Discard
 	}
 	if sources.Releases != nil {
-		if err := sources.Releases.CheckStatuses(ctx, plugininstall.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }}); err != nil {
+		if err := sources.Releases.CheckStatuses(ctx, plugininstall.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }, Acquisition: sources.Acquisition}); err != nil {
 			return nil, &pluginexec.LoadError{Err: err}
 		}
 	}
@@ -61,15 +61,15 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 		return nil, err
 	}
 	if options.LoadScriptEngine == nil {
-		options.LoadScriptEngine = pluginexec.ScriptEngineLoader(BuiltinRuleNames(), log, options.Debug)
+		options.LoadScriptEngine = pluginexec.ScriptEngineLoader(sources.Acquisition, BuiltinRuleNames(), log, options.Debug)
 	}
 	return Check(ctx, options, input)
 }
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
-func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, plugins []string) (needed ToolRequirements, err error) {
-	sources, err := plugininstall.SourcesFromArguments(plugins)
+func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, plugins []string, acquisition plugininstall.Acquisition) (needed ToolRequirements, err error) {
+	sources, err := plugininstall.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
 		return needed, err
 	}
@@ -108,6 +108,12 @@ func ConfigureManagedPlugins(l *pluginexec.Loaded, options Options) (Options, er
 }
 
 func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options) (Options, error) {
+	if options.ConfigConnections.Transport == nil {
+		options.ConfigConnections.Transport = l.Acquisition.Connections.Transport
+	}
+	if options.ConfigConnections.Resolver == nil {
+		options.ConfigConnections.Resolver = l.Acquisition.Connections.Resolver
+	}
 	resolvers := l.ReferenceResolvers()
 	if len(resolvers) > 1 || len(resolvers) != 0 && options.Resolver != nil {
 		return options, &pluginexec.LoadError{Err: errors.New("select one reference resolver")}
@@ -180,7 +186,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 		}
 		if local.Files.Source != "" {
 			// Only now, after the check above, download the executable.
-			artifactOptions := plugininstall.DefaultArtifactOptions()
+			artifactOptions := l.Acquisition.ArtifactOptions()
 			artifactOptions.Network = local.Network
 			fetched, err := local.Files.Materialize(ctx, artifactOptions)
 			if err != nil {

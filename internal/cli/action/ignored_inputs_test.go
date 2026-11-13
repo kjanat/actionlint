@@ -4,6 +4,8 @@ import (
 	"maps"
 	"strings"
 	"testing"
+
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 // TestToolInputsAreIgnored checks that the action reads neither the
@@ -22,7 +24,7 @@ func TestToolInputsAreIgnored(t *testing.T) {
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 	maps.Copy(env, ignored)
 	var out strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &out); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &out)
 	}
 	if strings.Contains(out.String(), "::warning::") {

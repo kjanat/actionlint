@@ -33,14 +33,14 @@ func publishStatuses(t *testing.T, registry *fixtureregistry.PluginRegistry, sta
 }
 
 func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, state := range []plugininstall.ReleaseState{plugininstall.ReleaseWithdrawn, plugininstall.ReleaseRevoked} {
 		t.Run(string(state), func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.Add(t, "v1.0.0", emptyComponent)
 			registry.Add(t, "v2.0.0", emptyComponent)
-			client := registryClient(t)
+			client := registryClient(t, registry)
 			pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v2.0.0")
 			if err != nil {
 				t.Fatal(err)
@@ -58,10 +58,10 @@ func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
 }
 
 func TestDeprecatedSelectionWarns(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
-	client := registryClient(t)
+	client := registryClient(t, registry)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
@@ -77,33 +77,34 @@ func TestDeprecatedSelectionWarns(t *testing.T) {
 }
 
 func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
-	client := registryClient(t)
+	client := registryClient(t, registry)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
 	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{pin}}
-	artifacts := pluginartifacts.Options{CacheDir: t.TempDir()}
-	if err := lock.Sync(t.Context(), artifacts); err != nil {
+	artifacts := pluginartifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
+	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(registry)}
+	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {
 		t.Fatal(err)
 	}
 	publishStatuses(t, registry, releaseStatus(pin, plugininstall.ReleaseWithdrawn))
-	if err := lock.RefreshStatuses(t.Context(), plugininstall.StatusOptions{}); err != nil {
+	if err := lock.RefreshStatuses(t.Context(), statuses); err != nil {
 		t.Fatal(err)
 	}
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
-	if err := lock.Sync(t.Context(), artifacts); err != nil {
+	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {
 		t.Fatalf("withdrawal broke existing cached lock: %v", err)
 	}
 	if len(registry.Requests()) != requests {
 		t.Fatal("ordinary checking contacted the registry")
 	}
 	var warnings []string
-	options := plugininstall.StatusOptions{Warning: func(message string) { warnings = append(warnings, message) }}
+	options := plugininstall.StatusOptions{Warning: func(message string) { warnings = append(warnings, message) }, Acquisition: fixtureAcquisition(registry)}
 	if err := lock.RefreshStatuses(t.Context(), options); err != nil || len(warnings) != 2 ||
 		!strings.Contains(warnings[0], "could not refresh") || !strings.Contains(warnings[1], "withdrawn") {
 		t.Fatalf("offline refresh: %v %v", err, warnings)
@@ -120,7 +121,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	}
 	registry.SetOffline(true)
 	requests = len(registry.Requests())
-	if err := lock.Sync(t.Context(), artifacts); err == nil || !strings.Contains(err.Error(), "revoked") {
+	if err := lock.Sync(t.Context(), artifacts, statuses); err == nil || !strings.Contains(err.Error(), "revoked") {
 		t.Fatalf("cached revoked bytes executed: %v", err)
 	}
 	if len(registry.Requests()) != requests {
@@ -136,10 +137,10 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 }
 
 func TestStatusRequiresExactDigestAndValidSnapshot(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
-	client := registryClient(t)
+	client := registryClient(t, registry)
 	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)

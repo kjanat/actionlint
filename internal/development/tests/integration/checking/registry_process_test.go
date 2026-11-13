@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
@@ -25,9 +24,9 @@ import (
 // Registry installation must preserve the process boundary: install without
 // executing, refuse repository execution without consent, then work offline.
 func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
+	t.Parallel()
 	network := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(network)
 	network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	executable, err := os.Executable()
 	if err != nil {
@@ -62,7 +61,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, configPath, "plugins: []\n")
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", configPath)
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +75,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (plugininstall.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}

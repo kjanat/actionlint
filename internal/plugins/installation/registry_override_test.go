@@ -16,10 +16,10 @@ import (
 type declaration struct{ name, version, registry string }
 
 func TestLockResolvedRegistryOverride(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
-	original, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	original, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestLockResolvedRegistryOverride(t *testing.T) {
 func TestRegistryURLRequiresHostname(t *testing.T) {
 	t.Parallel()
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
-		if _, err := plugininstall.New(registry); err == nil {
+		if _, err := plugininstall.New(registry, plugininstall.Acquisition{}); err == nil {
 			t.Errorf("accepted hostname-less endpoint %q", registry)
 		}
 	}

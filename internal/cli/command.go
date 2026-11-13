@@ -14,13 +14,23 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"github.com/spf13/cobra"
 )
 
 // Command runs the CLI with caller-provided streams. Each invocation has its own
 // argument parser and option state, so a Command can be reused.
-type Command commandstreams.Streams
+type Command struct {
+	Stdin       io.Reader
+	Stdout      io.Writer
+	Stderr      io.Writer
+	Acquisition plugininstall.Acquisition
+}
+
+func (cmd *Command) commandStreams() commandstreams.Streams {
+	return commandstreams.Streams{Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr}
+}
 
 // Main runs the CLI and returns its exit status. Args includes the executable
 // name, as in os.Args.

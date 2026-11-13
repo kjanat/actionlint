@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 type transportFunc func(*http.Request) (*http.Response, error)
@@ -26,7 +28,7 @@ func TestHTTPSReaderPreservesCustomSource(t *testing.T) {
 			t.Fatalf("source = %q", name)
 		}
 		return []byte("custom"), nil
-	})
+	}, acquisitionhttp.Connections{})
 	reader.client.Transport = transportFunc(func(*http.Request) (*http.Response, error) {
 		t.Fatal("custom reader bypassed")
 		return nil, errors.New("unexpected request")
@@ -45,7 +47,7 @@ func TestHTTPSReaderRejectsPrivateDestinationBeforeDial(t *testing.T) {
 		ConnectStart: func(string, string) { dialed.Store(true) },
 	})
 
-	reader := New(ctx, nil)
+	reader := New(ctx, nil, acquisitionhttp.Connections{})
 	_, err := reader.ReadFile("https://127.0.0.1/base.yaml")
 	if err == nil || !strings.Contains(err.Error(), "public destination addresses") {
 		t.Fatalf("private destination error = %v", err)
@@ -71,7 +73,7 @@ func TestHTTPSReaderLimitsAndRedirects(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			reader := New(t.Context(), nil)
+			reader := New(t.Context(), nil, acquisitionhttp.Connections{})
 			calls := 0
 			reader.client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
 				calls++
@@ -95,7 +97,7 @@ func TestHTTPSReaderLimitsAndRedirects(t *testing.T) {
 func TestHTTPSReaderCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
-	reader := New(ctx, nil)
+	reader := New(ctx, nil, acquisitionhttp.Connections{})
 	reader.client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
 		cancel()
 		<-request.Context().Done()
@@ -109,7 +111,7 @@ func TestHTTPSReaderCancellation(t *testing.T) {
 func TestReaderDetachesSourceErrors(t *testing.T) {
 	t.Parallel()
 	retained := &fs.PathError{Op: "read", Path: "original.yaml", Err: fs.ErrNotExist}
-	reader := New(t.Context(), func(string) ([]byte, error) { return nil, retained })
+	reader := New(t.Context(), func(string) ([]byte, error) { return nil, retained }, acquisitionhttp.Connections{})
 	_, err := reader.ReadFile("original.yaml")
 	before := err.Error()
 	retained.Path = "mutated.yaml"

@@ -18,21 +18,18 @@ func (f downloadResponse) RoundTrip(request *http.Request) (*http.Response, erro
 }
 
 func TestDownloadAutomaticPrivateInitialIsRejected(t *testing.T) {
-	previous := http.DefaultTransport
-	http.DefaultTransport = &http.Transport{}
-	t.Cleanup(func() { http.DefaultTransport = previous })
+	t.Parallel()
 	endpoint, err := url.Parse("https://127.0.0.1:8443/plugin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := download(t.Context(), endpoint, "", Options{}.withDefaults()); !errors.Is(err, errRedirectAddress) {
+	if _, err := download(t.Context(), endpoint, "", Options{Connections: acquisitionhttp.Connections{Transport: &http.Transport{}}}.withDefaults()); !errors.Is(err, errRedirectAddress) {
 		t.Fatalf("automatic private acquisition: %v", err)
 	}
 }
 
 func TestDownloadExplicitGrantPreservesInitialAndConfinesRedirect(t *testing.T) {
-	previous := http.DefaultTransport
-	t.Cleanup(func() { http.DefaultTransport = previous })
+	t.Parallel()
 	const initial = "https://127.0.0.1:8443/plugin?signature=secret"
 	grant, err := ExplicitSource(initial)
 	if err != nil {
@@ -44,7 +41,7 @@ func TestDownloadExplicitGrantPreservesInitialAndConfinesRedirect(t *testing.T) 
 	}
 	for _, redirect := range []string{"", "https://127.0.0.1:9443/plugin", "https://other.example/plugin"} {
 		calls := 0
-		http.DefaultTransport = downloadResponse(func(request *http.Request) (*http.Response, error) {
+		transport := downloadResponse(func(request *http.Request) (*http.Response, error) {
 			calls++
 			if request.URL.String() != initial {
 				t.Fatal("opaque transport received ungranted URL")
@@ -55,7 +52,7 @@ func TestDownloadExplicitGrantPreservesInitialAndConfinesRedirect(t *testing.T) 
 			}
 			return &http.Response{StatusCode: status, Header: http.Header{"Location": []string{redirect}}, Body: io.NopCloser(strings.NewReader("plugin")), Request: request}, nil
 		})
-		data, err := download(t.Context(), endpoint, "", Options{Network: grant}.withDefaults())
+		data, err := download(t.Context(), endpoint, "", Options{Network: grant, Connections: acquisitionhttp.Connections{Transport: transport}}.withDefaults())
 		if redirect == "" {
 			if err != nil || string(data) != "plugin" || calls != 1 {
 				t.Fatalf("explicit private acquisition: %q %v calls=%d", data, err, calls)

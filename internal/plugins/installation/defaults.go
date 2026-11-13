@@ -22,7 +22,8 @@ type DefaultPluginOptions struct {
 	Overlays []config.Overlay
 	// Rules supplies already inspected plugin descriptors. Missing descriptors
 	// are read from local or cached provider manifests, never by executing guests.
-	Rules []rule.Descriptor
+	Rules       []rule.Descriptor
+	Acquisition Acquisition
 }
 
 // DefaultReferences supplies the v2 defaults only when plugins was omitted.

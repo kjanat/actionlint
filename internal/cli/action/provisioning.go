@@ -17,12 +17,12 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-func provisioningRequest(env func(string) string) (*lintRequest, error) {
+func provisioningRequest(env func(string) string, acquisition plugininstall.Acquisition) (*lintRequest, error) {
 	in, err := parseInputs(environmentArgs(env))
 	if err != nil {
 		return nil, err
 	}
-	a := &action{env: env}
+	a := &action{env: env, acquisition: acquisition}
 	workspace, err := a.workspace()
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func provisioningRequest(env func(string) string) (*lintRequest, error) {
 }
 
 func (req *lintRequest) pluginSelection() plugininstall.Selection {
-	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays}, req.disabledTools, req.disabledTools)
+	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition}, req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() inputmodel.Request {
@@ -42,9 +42,9 @@ func (req *lintRequest) pluginInput() inputmodel.Request {
 }
 
 // PluginPlan lets the launcher restore portable bytes before any plugin download.
-func PluginPlan(env func(string) string, stdout, stderr io.Writer) int {
+func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition plugininstall.Acquisition) int {
 	ctx := context.Background()
-	req, err := provisioningRequest(env)
+	req, err := provisioningRequest(env, acquisition)
 	if err == nil && req.configFile != "" {
 		if _, readErr := os.Stat(req.configFile); readErr != nil {
 			err = fmt.Errorf("could not read config file %q: %w", req.configFile, readErr)

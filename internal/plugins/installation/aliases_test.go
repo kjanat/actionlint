@@ -12,11 +12,11 @@ import (
 )
 
 func TestRegistryAssignedAliases(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("community-check", "other-name")
 	registry.Add(t, "v1.0.0", emptyComponent)
-	client := registryClient(t)
+	client := registryClient(t, registry)
 	for _, name := range []string{"community-check", "other-name", fixtureregistry.FixturePluginName} {
 		pin, err := client.Resolve(t.Context(), name, "latest")
 		if err != nil || pin.Name != fixtureregistry.FixturePluginName {
@@ -44,14 +44,14 @@ func TestRegistryAssignedAliases(t *testing.T) {
 }
 
 func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, aliases := range [][]string{{"UPPER"}, {"under_score"}, {""}, {strings.Repeat("a", 65)}, {"same", "same"}} {
 		t.Run(strings.Join(aliases, ","), func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.SetAliases(aliases...)
 			registry.Add(t, "v1.0.0", emptyComponent)
-			if _, err := registryClient(t).Search(t.Context(), "unrelated"); err == nil {
+			if _, err := registryClient(t, registry).Search(t.Context(), "unrelated"); err == nil {
 				t.Fatal("invalid aliases outside query accepted")
 			}
 		})
@@ -71,17 +71,17 @@ func TestRegistryRejectsAmbiguousAndInvalidAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", data)
-	if _, err := registryClient(t).Versions(t.Context(), fixtureregistry.FixturePluginName); err == nil {
+	if _, err := registryClient(t, registry).Versions(t.Context(), fixtureregistry.FixturePluginName); err == nil {
 		t.Fatal("ambiguous alias accepted even when selecting full repository")
 	}
 }
 
 func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetAliases("check")
 	registry.Add(t, "v1.0.0", emptyComponent)
-	pin, err := registryClient(t).Resolve(t.Context(), "check", "latest")
+	pin, err := registryClient(t, registry).Resolve(t.Context(), "check", "latest")
 	if err != nil {
 		t.Fatal(err)
 	}

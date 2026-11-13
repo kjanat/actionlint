@@ -14,9 +14,9 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 
@@ -25,15 +25,14 @@ import (
 )
 
 func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
-	previous := http.DefaultTransport
+	t.Parallel()
 	dials := 0
-	http.DefaultTransport = &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+	transport := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 		dials++
 		return nil, errors.New("private endpoint dialed")
 	}}
-	t.Cleanup(func() { http.DefaultTransport = previous })
+	t.Cleanup(transport.CloseIdleConnections)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
 	const endpoint = "https://127.0.0.1:8443/plugin.wasm"
 	source := endpoint + "#sha256=" + strings.Repeat("a", 64)
 	root := repositoryfixture.Directory(t)
@@ -42,7 +41,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
-	for _, selection := range []plugininstall.Selection{{}, {ConfigFile: path}} {
+	for _, selection := range []plugininstall.Selection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
 		sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 		if err != nil {
 			t.Fatal(err)
@@ -51,7 +50,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 			t.Fatalf("project private source acquired: %v", err)
 		}
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +62,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 	if _, err := project.SelectedPlugins(t.Context()); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("project private registry acquired: %v", err)
 	}
-	if _, err := pluginexec.ScriptEngineLoader(checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
+	if _, err := pluginexec.ScriptEngineLoader(acquisition, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("configured backend acquired private source: %v", err)
 	}
 	if dials != 0 {

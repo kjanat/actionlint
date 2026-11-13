@@ -79,7 +79,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		options.Resolver = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 		options.SuggestCommitPins = true
 	}
-	options.RemoteActions, err = c.actionMetadata()
+	options.RemoteActions, err = c.actionMetadata(streams.Acquisition)
 	if err != nil {
 		return 0, err
 	}
@@ -103,7 +103,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if len(c.Plugins) != 0 && c.PluginLock != "" {
 		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
-	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection())
+	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 	if err != nil {
 		if _, ok := errors.AsType[*pluginexec.LoadError](err); ok && len(c.Plugins) != 0 {
 			return 0, commandargs.UsageError{Cause: err}
@@ -156,7 +156,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
-		result, err = checking.CheckProjects(ctx, options, input, c.pluginSelection())
+		result, err = checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 		if err != nil {
 			return 0, err
 		}

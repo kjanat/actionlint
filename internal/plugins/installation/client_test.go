@@ -18,9 +18,13 @@ import (
 
 var emptyComponent = []byte{0, 97, 115, 109, 13, 0, 1, 0}
 
-func registryClient(t *testing.T) *plugininstall.Client {
+func fixtureAcquisition(r *fixtureregistry.PluginRegistry) plugininstall.Acquisition {
+	return plugininstall.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
+}
+
+func registryClient(t *testing.T, r *fixtureregistry.PluginRegistry) *plugininstall.Client {
 	t.Helper()
-	c, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	c, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(r))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,12 +32,12 @@ func registryClient(t *testing.T) *plugininstall.Client {
 }
 
 func TestRegistrySelection(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	for _, tag := range []string{"v1.9.0", "v1.10.0", "v2.0.0-rc.1", "nightly"} {
 		r.Add(t, tag, emptyComponent)
 	}
-	c := registryClient(t)
+	c := registryClient(t, r)
 	for _, tc := range []struct{ selector, want string }{{"latest", "v1.10.0"}, {"nightly", "nightly"}, {"v2.0.0-rc.1", "v2.0.0-rc.1"}} {
 		p, err := c.Resolve(t.Context(), fixtureregistry.FixturePluginName, tc.selector)
 		if err != nil || p.Version != tc.want || p.Selector != tc.selector {
@@ -65,7 +69,7 @@ func TestRegistrySelection(t *testing.T) {
 }
 
 func TestRegistryRejectsMalformedResponses(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, tc := range []struct {
 		name, before, after string
 		index               bool
@@ -84,7 +88,7 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 		{"unsupported schema", `"schema_version":1`, `"schema_version":2`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			r := fixtureregistry.NewPluginRegistry(t)
 			r.Add(t, "v1.0.0", emptyComponent)
 			url := r.RecordURL("v1.0.0")
@@ -92,7 +96,7 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 				url = fixtureregistry.FixtureRegistryURL + "index.json"
 			}
 			r.SetFile(url, bytes.Replace(r.File(url), []byte(tc.before), []byte(tc.after), 1))
-			if _, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err == nil {
+			if _, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err == nil {
 				t.Fatal("accepted inconsistent registry response")
 			}
 		})
@@ -100,28 +104,28 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 }
 
 func TestRegistryLegacyAndUnknownContract(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
 	url := r.RecordURL("v1.0.0")
 	data := bytes.ReplaceAll(r.File(url), []byte("kjanat:actionlint/analyzer@0.1.0"), []byte("vendor:future/analyzer@9.0.0"))
 	data = bytes.Replace(data, []byte(`"metadata_version":1`), []byte(`"metadata_version":1,"abi_version":{"vendor":"extension"}`), 1)
 	r.SetFile(url, data)
-	if _, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {
+	if _, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {
 		t.Fatalf("admission coupled to host: %v", err)
 	}
 	data = bytes.Replace(data, []byte(`"record_version":2,`), nil, 1)
 	r.SetFile(url, bytes.Replace(data, []byte(`"artifact":`), []byte(`"validation":`), 1))
-	if _, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {
+	if _, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0"); err != nil {
 		t.Fatalf("legacy: %v", err)
 	}
 }
 
 func TestPinnedSyncAndLockTransactions(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
-	p, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	p, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,8 +137,9 @@ func TestPinnedSyncAndLockTransactions(t *testing.T) {
 	if err := f.Set(p); err != nil {
 		t.Fatal(err)
 	}
-	options := artifacts.Options{CacheDir: t.TempDir()}
-	if err := f.Lock.Sync(t.Context(), options); err != nil {
+	options := artifacts.Options{CacheDir: t.TempDir(), Connections: r.Connections()}
+	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(r)}
+	if err := f.Lock.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Save(t.Context()); err != nil {
@@ -146,7 +151,7 @@ func TestPinnedSyncAndLockTransactions(t *testing.T) {
 	}
 	r.SetOffline(true)
 	requests := len(r.Requests())
-	if err := stale.Lock.Sync(t.Context(), options); err != nil {
+	if err := stale.Lock.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if len(r.Requests()) != requests {
@@ -169,7 +174,7 @@ func TestPinnedSyncAndLockTransactions(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(options.CacheDir, p.SHA256), []byte("tampered"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := stale.Lock.Sync(t.Context(), options); err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
+	if err := stale.Lock.Sync(t.Context(), options, statuses); err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
 		t.Fatalf("corrupt cache: %v", err)
 	}
 	entries, err := os.ReadDir(filepath.Dir(file))
@@ -179,10 +184,10 @@ func TestPinnedSyncAndLockTransactions(t *testing.T) {
 }
 
 func TestLockValidation(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
-	p, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	p, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +239,7 @@ func TestLockValidation(t *testing.T) {
 }
 
 func TestCompressedRegistryArtifact(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	raw := r.Add(t, "v1.0.0", emptyComponent)
 	var compressed bytes.Buffer
@@ -254,7 +259,7 @@ func TestCompressedRegistryArtifact(t *testing.T) {
 		}
 	}
 	r.SetFile("https://"+fixtureregistry.FixturePluginName+"/releases/download/v1.0.0/plugin.wasm.gz", compressed.Bytes())
-	p, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	p, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +267,7 @@ func TestCompressedRegistryArtifact(t *testing.T) {
 		t.Fatal("digest must cover distributed bytes")
 	}
 	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{p}}
-	if err := lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir()}); err != nil {
+	if err := lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir(), Connections: r.Connections()}, plugininstall.StatusOptions{Acquisition: fixtureAcquisition(r)}); err != nil {
 		t.Fatal(err)
 	}
 }

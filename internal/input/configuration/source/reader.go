@@ -29,9 +29,9 @@ type Reader struct {
 	client   *http.Client
 }
 
-func New(ctx context.Context, contents files.Contents) *Reader {
+func New(ctx context.Context, contents files.Contents, connections acquisitionhttp.Connections) *Reader {
 	return &Reader{ctx: ctx, contents: contents, client: &http.Client{
-		Transport: publicHTTPS{},
+		Transport: publicHTTPS{connections: connections},
 		Timeout:   30 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			// A byte-only reader cannot report the final origin to inheritance.
@@ -40,10 +40,10 @@ func New(ctx context.Context, contents files.Contents) *Reader {
 	}}
 }
 
-type publicHTTPS struct{}
+type publicHTTPS struct{ connections acquisitionhttp.Connections }
 
-func (publicHTTPS) RoundTrip(request *http.Request) (*http.Response, error) {
-	transport, err := acquisitionhttp.Transport(request.URL, acquisitionhttp.Grant{})
+func (p publicHTTPS) RoundTrip(request *http.Request) (*http.Response, error) {
+	transport, err := acquisitionhttp.Transport(request.URL, acquisitionhttp.Grant{}, p.connections)
 	if err != nil {
 		return nil, err
 	}

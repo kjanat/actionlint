@@ -103,7 +103,7 @@ func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path
 	}
-	client, err := plugininstall.New(u.String())
+	client, err := plugininstall.New(u.String(), plugininstall.Acquisition{UserCacheDir: cache})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,9 +144,9 @@ func (f ociCandidateFixture) resolve(t *testing.T) plugininstall.Pin {
 	return pin
 }
 
-func syncCandidate(t *testing.T, pin plugininstall.Pin, options artifacts.Options) error {
+func (f ociCandidateFixture) syncCandidate(t *testing.T, pin plugininstall.Pin, options artifacts.Options) error {
 	t.Helper()
-	return (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{pin}}).Sync(t.Context(), options)
+	return (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{pin}}).Sync(t.Context(), options, f.client.StatusOptions)
 }
 
 func (f ociCandidateFixture) cachedOptions() artifacts.Options {
@@ -166,7 +166,7 @@ func TestCandidateOCIRootDigestAndMetadataAdmission(t *testing.T) {
 			if f.registry.Fetches(f.root) != 0 || f.registry.Fetches(f.primary) != 0 {
 				t.Fatal("catalogue resolution fetched OCI content")
 			}
-			if err := syncCandidate(t, pin, f.options); err != nil {
+			if err := f.syncCandidate(t, pin, f.options); err != nil {
 				t.Fatal(err)
 			}
 			if err := f.client.RememberCandidate(t.Context(), pin, f.cachedOptions()); err != nil {
@@ -185,7 +185,7 @@ func TestCandidateOCIRootDigestAndMetadataAdmission(t *testing.T) {
 			if err != nil || remembered != pin {
 				t.Fatalf("offline remembered candidate: %+v, %v", remembered, err)
 			}
-			if err := syncCandidate(t, remembered, f.cachedOptions()); err != nil {
+			if err := f.syncCandidate(t, remembered, f.cachedOptions()); err != nil {
 				t.Fatalf("offline OCI reconstruction: %v", err)
 			}
 		})
@@ -222,7 +222,7 @@ func TestCandidateOCIRejectsForgedRootAndMetadata(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := syncCandidate(t, pin, f.options); err == nil {
+			if err := f.syncCandidate(t, pin, f.options); err == nil {
 				t.Fatal("primary layer admitted as OCI root")
 			}
 		})
@@ -239,7 +239,7 @@ func TestCandidateOCIRememberRequiresCompleteVerifiedCache(t *testing.T) {
 			if err := f.client.RememberCandidate(t.Context(), pin, f.cachedOptions()); err == nil {
 				t.Fatal("uncached OCI candidate remembered")
 			}
-			if err := syncCandidate(t, pin, f.options); err != nil {
+			if err := f.syncCandidate(t, pin, f.options); err != nil {
 				t.Fatal(err)
 			}
 			digest := map[string]string{"root": f.root.Hex(), "manifest": f.manifest.Hex(), "primary": f.primary.Hex()}[missing]
@@ -253,7 +253,7 @@ func TestCandidateOCIRememberRequiresCompleteVerifiedCache(t *testing.T) {
 			if err := f.client.RememberCandidate(t.Context(), pin, f.cachedOptions()); err == nil {
 				t.Fatal("incomplete or inconsistent OCI cache remembered")
 			}
-			if err := syncCandidate(t, pin, f.cachedOptions()); err == nil {
+			if err := f.syncCandidate(t, pin, f.cachedOptions()); err == nil {
 				t.Fatal("incomplete or inconsistent OCI cache restored offline")
 			}
 			if after := f.registry.Fetches(f.root) + f.registry.Fetches(f.manifest) + f.registry.Fetches(f.primary); after != before {
@@ -268,7 +268,7 @@ func TestCandidateOCIRejectsForgedPrimaryBytes(t *testing.T) {
 	f := newOCICandidate(t, artifacts.ProviderManifest)
 	pin := f.resolve(t)
 	f.registry.Tamper(f.primary, bytes.Repeat([]byte("x"), int(f.primary.Size)))
-	if err := syncCandidate(t, pin, f.options); err == nil {
+	if err := f.syncCandidate(t, pin, f.options); err == nil {
 		t.Fatal("OCI candidate accepted primary bytes that do not match the root's layer digest")
 	}
 	if err := f.client.RememberCandidate(t.Context(), pin, f.cachedOptions()); err == nil {
@@ -283,7 +283,7 @@ func TestCandidateOCICacheRejectsCorruptionWithoutFetching(t *testing.T) {
 			t.Parallel()
 			f := newOCICandidate(t, artifacts.ProviderManifest)
 			pin := f.resolve(t)
-			if err := syncCandidate(t, pin, f.options); err != nil {
+			if err := f.syncCandidate(t, pin, f.options); err != nil {
 				t.Fatal(err)
 			}
 			digest := map[string]string{"root": f.root.Hex(), "manifest": f.manifest.Hex(), "primary": f.primary.Hex()}[corrupted]

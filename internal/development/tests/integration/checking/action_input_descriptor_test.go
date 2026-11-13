@@ -20,6 +20,8 @@ import (
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 // providerRegistration returns the registration of the bundled provider
@@ -95,7 +97,7 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 		}
 	}
 	registration := providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +145,7 @@ func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 			if name == "shellcheck" {
 				registration = providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})
 			}
-			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil)
+			_, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, nil, plugininstall.Acquisition{})
 			if err == nil || !strings.Contains(err.Error(), `does not match tool "`+name+`"`) {
 				t.Fatalf("foreign engine accepted for %s: %v", name, err)
 			}

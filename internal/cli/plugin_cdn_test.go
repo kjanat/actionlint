@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
@@ -18,8 +18,8 @@ func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
 		"https://esm.sh/pr/owner/repo/@example/plugin@1234567/actionlint-provider.json?raw",
 	} {
 		t.Run(source, func(t *testing.T) {
-			fixtureenvironment.IsolateUserCache(t)
 			network := fixtureregistry.NewPluginRegistry(t)
+			acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 			manifest := ociProcessManifest(t, "not-installed-and-must-not-run", "[]")
 			network.SetFile(source, manifest)
 			root := t.TempDir()
@@ -29,7 +29,7 @@ func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
 			if err := os.Mkdir(".git", 0o700); err != nil {
 				t.Fatal(err)
 			}
-			pluginCommandTest(t, 0, "plugin", "install", source)
+			pluginCommandTest(t, acquisition, 0, "plugin", "install", source)
 			pinned := fmt.Sprintf("%s#sha256=%x", source, sha256.Sum256(manifest))
 			config, err := os.ReadFile(filepath.Join(".github", "actionlint.yaml"))
 			if err != nil || !strings.Contains(string(config), pinned) {
@@ -40,7 +40,7 @@ func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
 				t.Fatalf("installation fetched %d times, want one download", requests)
 			}
 			network.SetFile(source, []byte("changed upstream"))
-			pluginCommandTest(t, 0, "plugin", "install")
+			pluginCommandTest(t, acquisition, 0, "plugin", "install")
 			if len(network.Requests()) != requests {
 				t.Fatal("repeat installation fetched changed upstream bytes instead of the pinned cache")
 			}

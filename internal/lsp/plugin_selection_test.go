@@ -134,14 +134,15 @@ func TestPluginSelectionScopes(t *testing.T) {
 }
 
 func TestManagedPluginEditorSnapshot(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	wasm, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	r := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.0.0", wasm)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +161,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := f.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +172,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +181,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := selected.ValidateScope(t.Context(), checking.ConfigurationRules(), []string{foreign}); err == nil {
 		t.Fatal("active plugins escaped their repository")
 	}
-	empty, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), other, inputmodel.Request{Kind: inputmodel.Repository})
+	empty, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), other, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,10 +189,10 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 		t.Fatal("foreign active plugins were ignored")
 	}
 	mixed := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
-	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, mixed); err == nil {
+	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, mixed); err == nil {
 		t.Fatal("mixed active plugin scope accepted")
 	}
-	session, err := newEditorSession(t.Context(), checking.Options{WorkingDir: root}, selected.Paths)
+	session, err := newEditorSession(t.Context(), checking.Options{WorkingDir: root}, selected.Paths, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}

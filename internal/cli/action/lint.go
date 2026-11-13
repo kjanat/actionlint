@@ -29,6 +29,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	render "actionlint.kjanat.dev/v2/internal/output"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 const lintTimeout = 300 * time.Second
@@ -53,6 +54,7 @@ type lintRequest struct {
 	sarif        bool
 	files        []string
 	hints        []string
+	acquisition  plugininstall.Acquisition
 }
 
 type lintOutcome struct {
@@ -75,7 +77,9 @@ func (r *lintResult) selectedFileCount() int {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	metadata, err := github.New(github.EnvironmentOptions(github.Online, env))
+	options := github.EnvironmentOptions(github.Online, env, req.acquisition.UserCacheDir)
+	options.Transport = req.acquisition.Connections.Transport
+	metadata, err := github.New(options)
 	if err != nil {
 		return inputErrorf("%s", err)
 	}

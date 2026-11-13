@@ -16,9 +16,10 @@ import (
 func TestConfigInitFormats(t *testing.T) {
 	for _, format := range repoconfig.FileFormats() {
 		t.Run(string(format), func(t *testing.T) {
-			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			acquisition := registryAcquisition(registry)
 			t.Chdir(commandTestRepo(t))
-			got := testRunCommand("", "config", "init", "--"+string(format))
+			got := testRunCommandWithAcquisition(acquisition, "", "config", "init", "--"+string(format))
 			if got.Status != 0 || !strings.Contains(got.Stdout, format.Filename()) {
 				t.Fatal(got)
 			}
@@ -40,12 +41,12 @@ func TestConfigInitFormats(t *testing.T) {
 			if len(cfg.Plugins) != 2 || cfg.Lint.Rules.Preset != "recommended" {
 				t.Fatalf("wrong defaults: %+v", cfg)
 			}
-			selected := testRunCommand("", "config", "path")
+			selected := testRunCommandWithAcquisition(acquisition, "", "config", "path")
 			if selected.Status != 0 || !strings.Contains(selected.Stdout, format.Filename()) {
 				t.Fatal(selected)
 			}
 			for _, other := range repoconfig.FileFormats() {
-				got := testRunCommand("", "config", "init", "--"+string(other))
+				got := testRunCommandWithAcquisition(acquisition, "", "config", "init", "--"+string(other))
 				if got.Status != 3 || !strings.Contains(got.Stdout+got.Stderr, "already exists") {
 					t.Fatalf("overwrote %s with %s: %+v", format, other, got)
 				}
@@ -69,9 +70,10 @@ func TestConfigInitFormatSelection(t *testing.T) {
 		{"reset", []string{"--json", "--json=false", "--toml"}, "actionlint.toml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			acquisition := registryAcquisition(registry)
 			t.Chdir(commandTestRepo(t))
-			got := testRunCommand("", append([]string{"config", "init"}, tc.flags...)...)
+			got := testRunCommandWithAcquisition(acquisition, "", append([]string{"config", "init"}, tc.flags...)...)
 			if got.Status != 0 {
 				t.Fatal(got)
 			}
@@ -115,9 +117,10 @@ func TestConfigInitFormatHelp(t *testing.T) {
 }
 
 func TestConfigInitJSONReceipt(t *testing.T) {
-	fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	t.Chdir(commandTestRepo(t))
-	got := testRunCommand("", "--json", "config", "init", "--toml")
+	got := testRunCommandWithAcquisition(acquisition, "", "--json", "config", "init", "--toml")
 	if got.Status != 0 {
 		t.Fatal(got)
 	}

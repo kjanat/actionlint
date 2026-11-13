@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestActionNativeBackendRequirements(t *testing.T) {
@@ -71,7 +72,7 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			maps.Copy(files, tc.files)
 			env := map[string]string{"GITHUB_WORKSPACE": workspaceWith(t, files)}
 			maps.Copy(env, tc.inputs)
-			req, err := provisioningRequest(func(key string) string { return env[key] })
+			req, err := provisioningRequest(func(key string) string { return env[key] }, plugininstall.Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -110,7 +111,7 @@ func TestPluginPlanRejectsInvalidConfiguration(t *testing.T) {
 			})}
 			maps.Copy(env, tc.inputs)
 			var stdout, stderr strings.Builder
-			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr); code != tc.code {
+			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, plugininstall.Acquisition{}); code != tc.code {
 				t.Fatalf("got status %d; want %d: %s", code, tc.code, &stderr)
 			}
 			if stdout.Len() != 0 || stderr.Len() == 0 {

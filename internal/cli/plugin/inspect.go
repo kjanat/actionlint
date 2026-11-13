@@ -14,8 +14,8 @@ type InspectOptions struct {
 	JSON   bool
 }
 
-func Inspect(ctx context.Context, streams commandstreams.Streams, r InspectOptions) (int, error) {
-	info, err := plugininstall.Inspect(ctx, r.Source)
+func Inspect(ctx context.Context, streams commandstreams.Streams, r InspectOptions, acquisition plugininstall.Acquisition) (int, error) {
+	info, err := plugininstall.Inspect(ctx, r.Source, acquisition)
 	if err != nil {
 		return 0, err
 	}

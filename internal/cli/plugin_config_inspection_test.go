@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
@@ -32,7 +33,7 @@ func TestConfigInspectionAcceptsManagedAndScriptToolReplacements(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, command := range []string{"validate", "show"} {
-				pluginCommandTest(t, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
+				pluginCommandTest(t, plugininstall.Acquisition{}, 0, "config", command, "--json", "--config", path, "--plugin", component, "--plugin", engine)
 			}
 		})
 	}
@@ -44,6 +45,7 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", wasm)
 	t.Chdir(t.TempDir())
 	t.Setenv("ACTIONLINT_CONFIG", "")
@@ -51,7 +53,7 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
+	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	path := filepath.Join(".github", "actionlint.yaml")
 	manifest, err := os.ReadFile(path)
 	if err != nil {
@@ -75,15 +77,15 @@ func TestConfigInspectionLoadsDeclaredRules(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(project)
-			pluginCommandTest(t, 0, "config", "validate", "--json")
-			pluginCommandTest(t, 0, "config", "show", "--origin", "--json")
-			pluginCommandTest(t, 0, "config", "validate", "--config", path)
+			pluginCommandTest(t, acquisition, 0, "config", "validate", "--json")
+			pluginCommandTest(t, acquisition, 0, "config", "show", "--origin", "--json")
+			pluginCommandTest(t, acquisition, 0, "config", "validate", "--config", path)
 		})
 	}
 	if err := os.WriteFile(path, []byte(string(manifest)+"\nlint: {rules: {disable: [unregistered-plugin]}}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if output := pluginCommandTest(t, 3, "config", "validate"); !strings.Contains(output, "unknown diagnostic rule") {
+	if output := pluginCommandTest(t, acquisition, 3, "config", "validate"); !strings.Contains(output, "unknown diagnostic rule") {
 		t.Fatal(output)
 	}
 	if len(registry.Requests()) != requests {

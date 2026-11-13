@@ -15,6 +15,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	results1 "actionlint.kjanat.dev/v2/internal/results"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -96,7 +97,7 @@ permissions: {}
 					"INPUT_SARIF": "true",
 				}
 				var output strings.Builder
-				if code := Main(func(key string) string { return env[key] }, &output); code != 1 {
+				if code := Main(func(key string) string { return env[key] }, &output, plugininstall.Acquisition{}); code != 1 {
 					t.Fatalf("code %d; want findings: %s", code, output.String())
 				}
 				var result persistedResult
@@ -199,7 +200,7 @@ permissions: {}
 		"INPUT_OUTPUT-FILE": "report.sarif",
 	}
 	var output strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &output); code != 1 {
+	if code := Main(func(key string) string { return env[key] }, &output, plugininstall.Acquisition{}); code != 1 {
 		t.Fatalf("code %d; want 1: %s", code, output.String())
 	}
 	selected := parseOutputs(read(t, outputPath))["output"]
@@ -292,7 +293,7 @@ permissions: {}
 				"INPUT_CONFIG": "repository: {runners: []}",
 			}
 			var output strings.Builder
-			if got := Main(func(key string) string { return env[key] }, &output); got != tc.code {
+			if got := Main(func(key string) string { return env[key] }, &output, plugininstall.Acquisition{}); got != tc.code {
 				t.Fatalf("code %d; want %d: %s", got, tc.code, output.String())
 			}
 			data, err := os.ReadFile(path)
@@ -333,7 +334,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 		"INPUT_FILES": "missing.yml", "INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var output strings.Builder
-	if code := Main(func(key string) string { return env[key] }, &output); code != 3 {
+	if code := Main(func(key string) string { return env[key] }, &output, plugininstall.Acquisition{}); code != 3 {
 		t.Fatalf("code %d: %s", code, output.String())
 	}
 	data, err := os.ReadFile(path)
@@ -377,7 +378,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 			}
 			var stdout strings.Builder
-			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
+			if code := Main(func(key string) string { return env[key] }, &stdout, plugininstall.Acquisition{}); code != 0 {
 				t.Fatalf("code %d: %s", code, &stdout)
 			}
 			data := read(t, resultPath)

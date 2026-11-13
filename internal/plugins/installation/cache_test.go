@@ -9,27 +9,23 @@ import (
 	"strings"
 	"testing"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
+	t.Parallel()
 	root, client := localCandidate(t)
+	acquisition := client.StatusOptions.Acquisition
 	client.StatusOptions.CacheDir = t.TempDir()
 	first, err := client.Resolve(t.Context(), "github.com/publisher/plugin", "v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	options := artifacts.Options{CacheDir: filepath.Join(cache, "actionlint", "artifacts")}
-	if err := (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{first}}).Sync(t.Context(), options); err != nil {
+	options := artifacts.Options{CacheDir: filepath.Join(acquisition.UserCacheDir, "actionlint", "artifacts"), Connections: acquisition.Connections}
+	statuses := plugininstall.StatusOptions{Acquisition: acquisition}
+	if err := (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{first}}).Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.RememberCandidate(t.Context(), first, options); err != nil {
@@ -61,14 +57,14 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err != nil || second.SHA256 != secondDigest {
 		t.Fatalf("second candidate resolution = %+v, %v", second, err)
 	}
-	if err := (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{second}}).Sync(t.Context(), options); err != nil {
+	if err := (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{second}}).Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.RememberCandidate(t.Context(), second, options); err != nil {
 		t.Fatal(err)
 	}
 
-	cold, err := plugininstall.New(first.Registry)
+	cold, err := plugininstall.New(first.Registry, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,10 +87,10 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 }
 
 func TestExactRegistryLookupWorksOfflineAfterResolution(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +104,7 @@ func TestExactRegistryLookupWorksOfflineAfterResolution(t *testing.T) {
 	if err != nil || second != first || len(registry.Requests()) != 0 {
 		t.Fatalf("immutable resolution was not reused offline: %+v, %v, %v", second, err, registry.Requests())
 	}
-	foreign, err := plugininstall.New("https://another.example/")
+	foreign, err := plugininstall.New("https://another.example/", fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,9 +114,9 @@ func TestExactRegistryLookupWorksOfflineAfterResolution(t *testing.T) {
 }
 
 func TestRegistryLookupRejectsFloatingDeclarations(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,10 +131,10 @@ func TestRegistryLookupRejectsFloatingDeclarations(t *testing.T) {
 }
 
 func TestRegistryResolutionRejectsChangedImmutableVersion(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}

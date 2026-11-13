@@ -9,10 +9,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
-func (c checkInvocation) actionMetadata() (actions.Provider, error) {
-	options := github.EnvironmentOptions(github.Mode(c.ActionMetadata), os.Getenv)
+func (c checkInvocation) actionMetadata(acquisition plugininstall.Acquisition) (actions.Provider, error) {
+	options := github.EnvironmentOptions(github.Mode(c.ActionMetadata), os.Getenv, acquisition.UserCacheDir)
+	options.Transport = acquisition.Connections.Transport
 	if options.Mode == github.Online {
 		if c.ResolverCommand != "" {
 			options.Resolver = func() references.Resolver {

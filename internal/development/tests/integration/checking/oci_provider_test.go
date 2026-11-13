@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	fixtureenvironment "actionlint.kjanat.dev/v2/internal/development/tests/support/environment"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
@@ -84,12 +83,12 @@ func ociFindings(t *testing.T, result *checking.Result) []results.Diagnostic {
 // A provider pulled from an OCI registry runs its stored executable through
 // the process transport, and keeps running offline from the store.
 func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	check := func() *checking.Result {
 		t.Helper()
-		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference})
+		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,7 +103,7 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	materialized := filepath.Join(plugininstall.DefaultArtifactOptions().CacheDir, "exec", pkg.executable.Hex(), name)
+	materialized := filepath.Join(acquisition.ArtifactOptions().CacheDir, "exec", pkg.executable.Hex(), name)
 	if _, err := os.Stat(materialized); err != nil {
 		t.Fatalf("executable not materialized: %v", err)
 	}
@@ -118,11 +117,11 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 // the invocation authorizes native execution. Selecting --config grants no
 // network authority either.
 func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, explicit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
-			fixtureenvironment.IsolateUserCache(t)
+			t.Parallel()
+			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 			pkg := publishOCIProvider(t)
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -130,7 +129,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, path, "plugins: ['"+pkg.reference+"']\n")
-			selection := plugininstall.Selection{RuleSet: checking.ConfigurationRules()}
+			selection := plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
 			if explicit {
 				selection.ConfigFile = path
 			}
@@ -150,7 +149,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 			if got := pkg.registry.Fetches(pkg.executable); got != 0 {
 				t.Fatalf("executable downloaded %d times without opt-in", got)
 			}
-			if _, err := os.Stat(filepath.Join(plugininstall.DefaultArtifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(acquisition.ArtifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
 				t.Fatalf("executable materialized without opt-in: %v", err)
 			}
 			if _, err := checking.CheckWithPlugins(t.Context(), checking.Options{AllowConfigProcesses: true}, input(), sources); err == nil || !strings.Contains(err.Error(), "public destination") {
@@ -161,10 +160,10 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 }
 
 func TestOCIBinaryProviderDisabledByID(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
-	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference})
+	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +175,7 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	if findings := ociFindings(t, result); len(findings) != 0 {
 		t.Fatalf("disabled provider ran: %+v", findings)
 	}
-	if _, err := os.Stat(filepath.Join(plugininstall.DefaultArtifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(acquisition.ArtifactOptions().CacheDir, "exec")); !os.IsNotExist(err) {
 		t.Fatalf("disabled provider's executable was materialized: %v", err)
 	}
 	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
@@ -186,11 +185,11 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 
 // OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	fixtureenvironment.IsolateUserCache(t)
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")
-	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference})
+	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +211,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginref.Reference{ref}}, StatusOptions: plugininstall.StatusOptions{Network: grant}}
+	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginref.Reference{ref}}, StatusOptions: plugininstall.StatusOptions{Network: grant, Acquisition: acquisition}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

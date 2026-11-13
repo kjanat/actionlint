@@ -8,7 +8,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
@@ -62,11 +61,12 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	return parent
 }
 
-func (c checkInvocation) pluginSelection() plugininstall.Selection {
+func (c checkInvocation) pluginSelection(acquisition plugininstall.Acquisition) plugininstall.Selection {
 	// A tool disabled by --no-tool is not run by plugins either.
 	return plugininstall.WithTools(plugininstall.Selection{
 		RuleSet: checking.ConfigurationRules(),
 		Paths:   c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
+		Acquisition: acquisition,
 	}, c.DisabledTools, c.NamedTools)
 }
 
@@ -105,9 +105,9 @@ type (
 )
 
 func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Manage(ctx, commandstreams.Streams(streams), plugincmd.RegistryRequest(r))
+	return plugincmd.Manage(ctx, streams.commandStreams(), plugincmd.RegistryRequest(r), streams.Acquisition)
 }
 
 func (r pluginInspectRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Inspect(ctx, commandstreams.Streams(streams), plugincmd.InspectOptions(r))
+	return plugincmd.Inspect(ctx, streams.commandStreams(), plugincmd.InspectOptions(r), streams.Acquisition)
 }

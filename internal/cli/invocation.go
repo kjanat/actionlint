@@ -223,7 +223,7 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationVersion:
 		return versionRequest{JSON: inv.JSON, Legacy: inv.Legacy}, nil
 	case operationRules:
-		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Plugins: inv.Check.Plugins, Selection: inv.Check.pluginSelection()}, nil
+		return rulesRequest{Name: inv.Rule, JSON: inv.JSON, Check: inv.Check}, nil
 	case operationDoctor:
 		return doctorRequest{
 			ResolverCommand: inv.Check.ResolverCommand, ResolverArguments: inv.Check.ResolverArguments,

@@ -17,7 +17,7 @@ import (
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,10 +50,10 @@ func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 }
 
 func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), repositoryfixture.Directory(t), "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestPluginProjectMigratesRegistryCasingOffline(t *testing.T) {
 	if err := project.Lock.Set(pin); err != nil {
 		t.Fatal(err)
 	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock); err != nil {
+	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, fixtureAcquisition(registry)); err != nil {
 		t.Fatal(err)
 	}
 	refs, err := project.Dependencies(true)
@@ -103,7 +103,7 @@ func TestPluginProjectRollsBackLockWhenConfigIsBusy(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -128,10 +128,10 @@ func TestPluginProjectRollsBackLockWhenConfigIsBusy(t *testing.T) {
 }
 
 func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, fixtureAcquisition(registry))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), repositoryfixture.Directory(t), "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,14 +162,13 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 }
 
 func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.AddArtifact(t, "v1.0.0", "plugin.wasm", []byte{0, 97, 115, 109, 1, 0, 0, 0})
 	registry.Publish(t, "v1.0.0")
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Setenv("LocalAppData", t.TempDir())
-	t.Setenv("HOME", t.TempDir())
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +186,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	original := project.Lock.Lock.Plugins[0]
 	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	registry.Publish(t, "v1.0.0", "v2.0.0")
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +207,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if len(project.Lock.Lock.Plugins) != 1 || !project.Lock.Lock.Plugins[0].SameRelease(original) {
 		t.Fatal("failed update changed the live selection")
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

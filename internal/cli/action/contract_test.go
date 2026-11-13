@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/google/go-cmp/cmp"
 )
@@ -41,7 +42,7 @@ func TestActionMultiProjectResultParity(t *testing.T) {
 		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
 	}
 	var stdout bytes.Buffer
-	if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
+	if code := Main(func(key string) string { return env[key] }, &stdout, plugininstall.Acquisition{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &stdout)
 	}
 	rendered := parseOutputs(read(t, outputPath))["output"]
@@ -143,7 +144,7 @@ permissions: {}
 				"INPUT_FILES":       "ci.yml", "INPUT_FORMAT": "json", "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_FAIL-ON-ERROR": "false",
 			}
 			stdout.Reset()
-			if code := Main(func(key string) string { return env[key] }, &stdout); code != 0 {
+			if code := Main(func(key string) string { return env[key] }, &stdout, plugininstall.Acquisition{}); code != 0 {
 				t.Fatalf("Action status %d: %s", code, &stdout)
 			}
 			var persisted, rendered resultreport.CheckResult

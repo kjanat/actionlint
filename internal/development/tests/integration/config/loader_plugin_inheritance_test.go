@@ -9,6 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
 func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
@@ -23,7 +25,7 @@ func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	rules := checking.ConfigurationRules()
-	manifest, err := configplugins.Open(t.Context(), rules, path)
+	manifest, err := configplugins.Open(t.Context(), rules, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}

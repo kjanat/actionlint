@@ -15,14 +15,15 @@ import (
 )
 
 func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +32,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	if err := project.Lock.Save(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock); err != nil {
+	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, acquisition); err != nil {
 		t.Fatal(err)
 	}
 	base := filepath.Join(filepath.Dir(project.Manifest.Path), "base.yml")
@@ -49,7 +50,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 	fixturefiles.WriteText(t, project.Manifest.Path, "extends: [base.yml]\ntools: {shellcheck: {enabled: wrong}}\n")
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	for _, selection := range []plugininstall.Selection{{}, {ConfigFile: project.Manifest.Path}} {
+	for _, selection := range []plugininstall.Selection{{Acquisition: acquisition}, {ConfigFile: project.Manifest.Path, Acquisition: acquisition}} {
 		sources, err := selection.ResolveForRules(t.Context(), root)
 		if err != nil || len(sources.Paths) != 1 || sources.Paths[0] != pin.Source() {
 			t.Fatalf("inherited plugin lost: %+v %v", sources, err)
@@ -70,7 +71,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		}
 	}
 	fixturefiles.WriteText(t, project.Manifest.Path, "extends: [base.yml]\nplugins: []\npolicy: {bad: true}\n")
-	sources, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).ResolveForRules(t.Context(), root)
+	sources, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).ResolveForRules(t.Context(), root)
 	if err != nil || len(sources.Paths) != 0 {
 		t.Fatalf("leaf opt-out lost: %+v %v", sources, err)
 	}

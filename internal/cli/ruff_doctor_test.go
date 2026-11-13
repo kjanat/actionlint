@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestDoctorRuffProbeContext(t *testing.T) {
@@ -35,7 +36,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 		}}}, JSON: true,
 	}
 	var out bytes.Buffer
-	if err := writeDoctor(t.Context(), &out, request); err != nil {
+	if err := writeDoctor(t.Context(), &out, request, plugininstall.Acquisition{}); err != nil {
 		t.Fatal(err)
 	}
 	var report struct {
@@ -54,7 +55,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	out.Reset()
-	if err := writeDoctor(ctx, &out, request); !errors.Is(err, context.Canceled) || out.Len() != 0 {
+	if err := writeDoctor(ctx, &out, request, plugininstall.Acquisition{}); !errors.Is(err, context.Canceled) || out.Len() != 0 {
 		t.Fatalf("cancellation became a tool status: %s, %v", &out, err)
 	}
 	calls, err = os.ReadFile(filepath.Join(root, "calls"))

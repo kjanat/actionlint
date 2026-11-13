@@ -16,6 +16,7 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
@@ -47,8 +48,10 @@ type File struct {
 
 // Open reads plugin declarations and the configuration sources they inherit. Plugin rule configuration
 // cannot be validated until the plugins supplying those rules have been loaded.
-func Open(ctx context.Context, rules config.RuleSet, path string) (*File, error) {
-	return Read(ctx, rules, path, readPluginManifest, CompleteConfiguration)
+func Open(ctx context.Context, rules config.RuleSet, path string, connections acquisitionhttp.Connections) (*File, error) {
+	return Read(ctx, rules, path, func(ctx context.Context, path string) ([]byte, error) {
+		return readPluginManifest(ctx, path, connections)
+	}, CompleteConfiguration)
 }
 
 // Read loads plugin declarations with the supplied source reader and normalization mode.
@@ -178,20 +181,20 @@ func ValidateLocalPath(path string) error {
 	}
 }
 
-func readPluginManifest(ctx context.Context, path string) ([]byte, error) {
+func readPluginManifest(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
 	if address.Remote(path) {
-		return configsource.New(ctx, nil).ReadConfig(path)
+		return configsource.New(ctx, nil, connections).ReadConfig(path)
 	}
 	if err := ValidateLocalPath(path); err != nil {
 		return nil, err
 	}
-	return ReadSource(ctx, path)
+	return ReadSource(ctx, path, connections)
 }
 
 // ReadSource reads a local or remote configuration source within the file-size limit.
-func ReadSource(ctx context.Context, path string) ([]byte, error) {
+func ReadSource(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
 	if address.Remote(path) {
-		return configsource.New(ctx, nil).ReadConfig(path)
+		return configsource.New(ctx, nil, connections).ReadConfig(path)
 	}
 	reader := files.New(ctx, nil, nil)
 	file, err := reader.Open(path)
@@ -240,11 +243,13 @@ func (m *File) CheckUnchanged(ctx context.Context) error {
 func (m *File) read(ctx context.Context, path string) ([]byte, error) {
 	read := m.readSource
 	if read == nil {
-		read = readPluginManifest
+		read = func(ctx context.Context, path string) ([]byte, error) {
+			return readPluginManifest(ctx, path, acquisitionhttp.Connections{})
+		}
 	}
 	return configsource.New(ctx, func(name string) ([]byte, error) {
 		return read(ctx, name)
-	}).ReadFile(path)
+	}, acquisitionhttp.Connections{}).ReadFile(path)
 }
 
 // OriginalBytes returns a copy of the selected config's original bytes.

@@ -28,18 +28,18 @@ type ConfigurationMigration struct {
 }
 
 func PrepareConfigurationMigration(ctx context.Context, path string, options DefaultPluginOptions) (*ConfigurationMigration, error) {
-	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Rules...)
+	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
 	if errors.Is(err, config.ErrRuleMetadataRequired) {
-		descriptors, metadataErr := cachedMigrationRules(ctx, options.RuleSet, path)
+		descriptors, metadataErr := cachedMigrationRules(ctx, options.RuleSet, options.Acquisition, path)
 		if metadataErr != nil {
 			return nil, fmt.Errorf("%w; inspect or install plugin metadata before migrating: %w", err, metadataErr)
 		}
-		migration, err = options.RuleSet.PrepareMigration(ctx, path, descriptors...)
+		migration, err = options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, descriptors...)
 	}
 	if err != nil {
 		return nil, err
 	}
-	project, err := OpenProject(ctx, options.RuleSet, filepath.Dir(migration.Path), "", migration.Path)
+	project, err := OpenProject(ctx, options.RuleSet, options.Acquisition, filepath.Dir(migration.Path), "", migration.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, op
 		// Skip symlinked configs to avoid writing outside the selected project.
 		return nil, nil
 	}
-	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Rules...)
+	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
 	if errors.Is(err, config.ErrRuleMetadataRequired) {
 		// Checking can bind legacy selections after plugin registration. Do
 		// not force an implicit rewrite to inspect or execute plugin code.
@@ -260,7 +260,7 @@ func (s Selection) Migrate(ctx context.Context, directory string, input inputmod
 	if s.Disabled || len(s.Paths) != 0 || s.LockFile != "" {
 		return nil
 	}
-	options.Overlays = s.Overlays
+	options.Overlays, options.Acquisition = s.Overlays, s.Acquisition
 	if s.ConfigFile != "" {
 		return MigrateConfiguration(ctx, s.ConfigFile, options)
 	}
@@ -355,7 +355,7 @@ func (s Selection) Migrate(ctx context.Context, directory string, input inputmod
 
 // InitializeConfiguration verifies default plugin artifacts before creating the config
 // and lockfile. A failed resolution leaves both project files untouched.
-func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, version string, format config.FileFormat) (string, error) {
+func InitializeConfiguration(ctx context.Context, rules config.RuleSet, acquisition Acquisition, root, version string, format config.FileFormat) (string, error) {
 	lock, err := OpenSelectedLock(ctx, root, "", "")
 	if err != nil {
 		return "", err
@@ -370,7 +370,7 @@ func InitializeConfiguration(ctx context.Context, rules config.RuleSet, root, ve
 		return "", err
 	}
 	path = filepath.Join(filepath.Dir(path), format.Filename())
-	project, err := OpenProject(ctx, rules, root, "", path)
+	project, err := OpenProject(ctx, rules, acquisition, root, "", path)
 	if err != nil {
 		return "", err
 	}

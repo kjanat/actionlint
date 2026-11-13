@@ -18,6 +18,7 @@ import (
 
 func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	r.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	const mirror = "https://mirror.example/"
@@ -33,8 +34,8 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(".github", "actionlint.yaml")
-	pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
-	installed := pluginCommandTest(t, 0, "plugin", "install", "publisher/plugin", "--registry", mirror, "--json")
+	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
+	installed := pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin", "--registry", mirror, "--json")
 	var selected plugininstall.Lock
 	if err := json.Unmarshal([]byte(installed), &selected); err != nil || len(selected.Plugins) != 1 {
 		t.Fatalf("invalid installed lock selection: %s: %v", installed, err)
@@ -48,7 +49,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	}
 	r.SetOffline(true)
 	requests := len(r.Requests())
-	pluginCommandTest(t, 0, "plugin", "install")
+	pluginCommandTest(t, acquisition, 0, "plugin", "install")
 	if len(r.Requests()) != requests {
 		t.Fatal("repeated installation contacted network")
 	}
@@ -65,7 +66,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pluginCommandTest(t, 3, "plugin", "install", "publisher/plugin", "--registry", fixtureregistry.FixtureRegistryURL, "--plugin-lock", lockPath)
+	pluginCommandTest(t, acquisition, 3, "plugin", "install", "publisher/plugin", "--registry", fixtureregistry.FixtureRegistryURL, "--plugin-lock", lockPath)
 	lockAfter, err := os.ReadFile(lockPath)
 	if err != nil || !bytes.Equal(legacyLock, lockAfter) {
 		t.Fatalf("rejected publisher changed legacy lock: %v", err)
@@ -126,10 +127,11 @@ func TestRegistryInstallDeclarationSelection(t *testing.T) {
 
 func TestRegistryDiscoveryRejectsMissingHostname(t *testing.T) {
 	r := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: r.UserCacheDir(), Connections: r.Connections()}
 	t.Chdir(t.TempDir())
 	for _, registry := range []string{"https://:443/", "https://[]/", "https:///catalogue/"} {
 		for _, args := range [][]string{{"plugin", "search"}, {"plugin", "versions", "publisher/plugin"}} {
-			pluginCommandTest(t, 2, append(args, "--registry", registry)...)
+			pluginCommandTest(t, acquisition, 2, append(args, "--registry", registry)...)
 		}
 	}
 	if len(r.Requests()) != 0 {

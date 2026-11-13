@@ -14,10 +14,8 @@ import (
 // Restoring one digest must satisfy every reference to those bytes, including
 // candidates and per-file tool overrides. Planning must work before a cache exists.
 func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
-	t.Setenv("LocalAppData", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("HOME", cache)
 	a, b, c := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
 	backend := func(path string) *toolconfig.Backend {
 		module, err := toolconfig.NewModule(path)
@@ -38,16 +36,13 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 				"ruff": {Backend: backend("sha256://" + c)},
 			}}},
 		}},
+		Acquisition: Acquisition{UserCacheDir: cache},
 	}
 	plan, err := sources.CachePlan(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	base, err := os.UserCacheDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if plan.Directory != filepath.Join(base, "actionlint", "artifacts") || !reflect.DeepEqual(plan.Artifacts, []string{a, b, c}) {
+	if plan.Directory != filepath.Join(cache, "actionlint", "artifacts") || !reflect.DeepEqual(plan.Artifacts, []string{a, b, c}) {
 		t.Fatalf("cache restore plan: %+v", plan)
 	}
 	if _, err := os.Stat(plan.Directory); !os.IsNotExist(err) {

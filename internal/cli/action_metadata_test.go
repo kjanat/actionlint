@@ -12,6 +12,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -34,22 +36,17 @@ func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 
 func TestActionMetadataModeRejectsUnknownValue(t *testing.T) {
 	t.Parallel()
-	if _, err := (checkInvocation{ActionMetadata: "sometimes"}).actionMetadata(); err == nil {
+	if _, err := (checkInvocation{ActionMetadata: "sometimes"}).actionMetadata(plugininstall.Acquisition{}); err == nil {
 		t.Fatal("unknown network policy accepted")
 	}
 }
 
 func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("HOME", cache)
-	original := http.DefaultTransport
-	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		t.Errorf("disabled acquisition requested %s", r.URL)
 		return nil, errors.New("unexpected network request")
-	})
-	t.Cleanup(func() { http.DefaultTransport = original })
+	})}}
 	path := filepath.Join(t.TempDir(), "actionlint.yml")
 	if err := os.WriteFile(path, []byte("lint:\n  rules:\n    conventions:\n      missing-action-metadata: error\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -65,7 +62,7 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 		t.Run(tc.mode+"/"+tc.ref, func(t *testing.T) {
 			t.Parallel()
 			var out, log bytes.Buffer
-			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
+			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", path, "--action-metadata=" + tc.mode, "--output=json", "--summary=false", "-"})
 			if code != 0 {
 				t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
@@ -90,10 +87,6 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 	t.Setenv("GH_TOKEN", "")
 	t.Setenv("GITHUB_TOKEN", "")
 	sha := strings.Repeat("a", 40)
-	var requests []string
-	original := http.DefaultTransport
-	http.DefaultTransport = actionMetadataFixture(t, sha, "", &requests)
-	t.Cleanup(func() { http.DefaultTransport = original })
 	for _, tc := range []struct {
 		name, settings string
 		timeouts       int
@@ -104,16 +97,15 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 		{"configured exclusion", "lint: {rules: {preset: all, conventions: {job-timeout: off}}}\n", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cache := t.TempDir()
-			for _, name := range []string{"LOCALAPPDATA", "XDG_CACHE_HOME", "HOME"} {
-				t.Setenv(name, cache)
-			}
+			t.Parallel()
+			var requests []string
+			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if err := os.WriteFile(config, []byte("plugins: []\n"+tc.settings), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			var out, log bytes.Buffer
-			command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"), Stdout: &out, Stderr: &log}
+			command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--strict", "--config", config, "--action-metadata=online", "--output=json", "--summary=false", "-"})
 			if code != 1 {
 				t.Fatalf("status=%d stderr=%s output=%s", code, &log, &out)

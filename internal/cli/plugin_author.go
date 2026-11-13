@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"github.com/spf13/cobra"
 )
 
@@ -36,9 +35,9 @@ func (a *commandApp) pluginAuthoringCommands() []*cobra.Command {
 }
 
 func (r pluginValidateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Validate(ctx, commandstreams.Streams(streams), plugincmd.ValidateOptions(r))
+	return plugincmd.Validate(ctx, streams.commandStreams(), plugincmd.ValidateOptions(r))
 }
 
 func (r pluginTestRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Test(ctx, commandstreams.Streams(streams), plugincmd.TestOptions(r))
+	return plugincmd.Test(ctx, streams.commandStreams(), plugincmd.TestOptions(r))
 }

@@ -68,6 +68,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	// Config inspection loads both installed plugins, which need distinct rule names.
 	other, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/insecure-download.wasm")
 	if err != nil {
@@ -80,14 +81,14 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	t.Chdir(commandTestRepo(t))
 	for _, operation := range [][]string{{"-init-config"}, {"config", "init"}, {"version"}, {"rules"}} {
 		args := append([]string{"--output-file", ".github/actionlint.yaml"}, operation...)
-		if got := testRunCommand("", args...); got.Status != 2 {
+		if got := testRunCommandWithAcquisition(acquisition, "", args...); got.Status != 2 {
 			t.Fatalf("accepted check output destination for %q: %+v", operation, got)
 		}
 		if _, err := os.Stat(".github/actionlint.yaml"); !os.IsNotExist(err) {
 			t.Fatalf("invalid output destination created config: %v", err)
 		}
 	}
-	created := testRunCommand("", "--json", "config", "init")
+	created := testRunCommandWithAcquisition(acquisition, "", "--json", "config", "init")
 	var result map[string]string
 	if err := json.Unmarshal([]byte(created.Stdout), &result); err != nil || created.Status != 0 {
 		t.Fatalf("%+v (%v)", created, err)
@@ -96,7 +97,7 @@ func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
 	if err != nil || !bytes.Contains(data, []byte("yaml-language-server: $schema=")) {
 		t.Fatalf("%s (%v)", data, err)
 	}
-	if got := testRunCommand("", "config", "show"); got.Status != 0 || !strings.Contains(got.Stdout, "plugins:") {
+	if got := testRunCommandWithAcquisition(acquisition, "", "config", "show"); got.Status != 0 || !strings.Contains(got.Stdout, "plugins:") {
 		t.Fatal(got)
 	}
 	config := `plugins: []
@@ -107,7 +108,7 @@ repository:
 	if err := os.WriteFile(result["path"], []byte(config), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand("", "config", "show", "--origin", "--json")
+	got := testRunCommandWithAcquisition(acquisition, "", "config", "show", "--origin", "--json")
 	var inspection repoconfig.Inspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
@@ -193,14 +194,15 @@ lint:
 }
 
 func TestCommandConfigAndEmptyArgs(t *testing.T) {
-	fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	t.Setenv("NO_COLOR", "1")
 	t.Chdir(t.TempDir())
 	// Outside a repository, a bare invocation shows help. Importing the test binary's flags
 	// instead would end in a usage error.
 	for _, args := range [][]string{nil, {"actionlint"}} {
 		var out, errout bytes.Buffer
-		cmd := cli.Command{Stdout: &out, Stderr: &errout}
+		cmd := cli.Command{Stdout: &out, Stderr: &errout, Acquisition: acquisition}
 		if code := cmd.Main(args); code != 0 || !strings.Contains(out.String(), "Usage:") || errout.Len() != 0 {
 			t.Fatalf("empty args imported process args: %d %s %s", code, &out, &errout)
 		}
@@ -212,7 +214,7 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand("", "--init-config", "--json")
+	got := testRunCommandWithAcquisition(acquisition, "", "--init-config", "--json")
 	var created struct {
 		Path string `json:"path"`
 	}
@@ -229,7 +231,7 @@ func TestCommandConfigAndEmptyArgs(t *testing.T) {
 	if !strings.Contains(string(data), "yaml-language-server: $schema=") {
 		t.Fatalf("missing editor directive: %s", data)
 	}
-	refused := testRunCommand("", "--init-config", "--json")
+	refused := testRunCommandWithAcquisition(acquisition, "", "--init-config", "--json")
 	if refused.Status != 3 || !strings.Contains(refused.Stderr, "already exists") {
 		t.Fatalf("%+v", refused)
 	}
@@ -240,7 +242,7 @@ lint:
 `), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got = testRunCommand(commandBadWorkflow, "--config-file", created.Path, "--json", "-")
+	got = testRunCommandWithAcquisition(acquisition, commandBadWorkflow, "--config-file", created.Path, "--json", "-")
 	if got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
 		t.Fatalf("explicit config not applied: %+v", got)
 	}

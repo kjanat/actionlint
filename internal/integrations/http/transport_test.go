@@ -102,7 +102,7 @@ func TestGrantAuthority(t *testing.T) {
 		if _, err := ExplicitEndpoint(endpoint); !errors.Is(err, ErrInvalidEndpoint) {
 			t.Fatalf("invalid grant endpoint: %v", err)
 		}
-		if _, err := Transport(endpoint, Grant{}); !errors.Is(err, ErrInvalidEndpoint) {
+		if _, err := Transport(endpoint, Grant{}, Connections{}); !errors.Is(err, ErrInvalidEndpoint) {
 			t.Fatalf("invalid transport endpoint: %v", err)
 		}
 	}

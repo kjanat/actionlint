@@ -21,15 +21,15 @@ func (transport registryTestTransport) RoundTrip(request *http.Request) (*http.R
 }
 
 func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	previous := http.DefaultTransport
+	t.Parallel()
 	dials := 0
-	http.DefaultTransport = &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+	transport := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 		dials++
 		return nil, errors.New("unexpected private connection")
 	}}
-	t.Cleanup(func() { http.DefaultTransport = previous })
-	client, err := plugininstall.NewWithGrant("https://127.0.0.1:8443/catalogue/", acquisitionhttp.Grant{})
+	t.Cleanup(transport.CloseIdleConnections)
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	client, err := plugininstall.NewWithGrant("https://127.0.0.1:8443/catalogue/", plugininstall.StatusOptions{Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,18 +39,17 @@ func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
 }
 
 func TestRegistryExplicitNewPreservesSelectedPrivateAuthority(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	previous := http.DefaultTransport
+	t.Parallel()
 	calls := 0
-	http.DefaultTransport = registryTestTransport(func(request *http.Request) (*http.Response, error) {
+	transport := registryTestTransport(func(request *http.Request) (*http.Response, error) {
 		calls++
 		if request.URL.String() != "https://127.0.0.1:8443/catalogue/index.json" {
 			t.Fatalf("registry request escaped selected authority: %s", request.URL)
 		}
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"schema_version":1,"plugins":[]}`)), Request: request}, nil
 	})
-	t.Cleanup(func() { http.DefaultTransport = previous })
-	client, err := plugininstall.New("https://127.0.0.1:8443/catalogue/")
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	client, err := plugininstall.New("https://127.0.0.1:8443/catalogue/", acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,10 +59,10 @@ func TestRegistryExplicitNewPreservesSelectedPrivateAuthority(t *testing.T) {
 }
 
 func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", []byte(`{"schema_version":1,"plugins":[]}`))
-	client, err := plugininstall.NewWithGrant(fixtureregistry.FixtureRegistryURL, acquisitionhttp.Grant{})
+	client, err := plugininstall.NewWithGrant(fixtureregistry.FixtureRegistryURL, plugininstall.StatusOptions{Acquisition: registryAcquisition(registry)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,4 +73,8 @@ func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
 	if len(requests) != 1 || requests[0] != fixtureregistry.FixtureRegistryURL+"index.json" {
 		t.Fatalf("pinned fixture lost original URL: %v", requests)
 	}
+}
+
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) plugininstall.Acquisition {
+	return plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

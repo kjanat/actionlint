@@ -19,13 +19,12 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("LOCALAPPDATA", cache)
-	t.Setenv("HOME", cache)
+	t.Parallel()
+	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
 	// This module has an invalid code section. Static inspection succeeds, while
 	// compilation or execution would fail; inspection must never start a runtime.
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 10, 1, 255)
@@ -36,7 +35,7 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 	data = append(data, payload...)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(data) }))
 	defer server.Close()
-	got := testRunCommand("", "plugin", "inspect", server.URL, "--json")
+	got := testRunCommandWithAcquisition(acquisition, "", "plugin", "inspect", server.URL, "--json")
 	var info pluginartifact.Info
 	if err := json.Unmarshal([]byte(got.Stdout), &info); err != nil || got.Status != 0 || string(info.Metadata) != metadata || info.Kind != pluginartifact.Core {
 		t.Fatalf("inspection=%+v error=%v info=%+v", got, err, info)
@@ -44,8 +43,9 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 }
 
 func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -63,13 +63,13 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 	registry.SetFile(engineURL, module)
 	registry.SetFile(componentURL, component)
 	config := writeEngineConfig(t, fmt.Sprintf("%s#sha256=%x", engineURL, sha256.Sum256(module)))
-	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
+	got := runWithDefaultRuffAndAcquisition(acquisition, pythonWorkflow, "--config", config, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("remote backend: %+v", got)
 	}
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo true\npermissions: {}\n"
 	source := fmt.Sprintf("%s#sha256=%x", componentURL, sha256.Sum256(component))
-	got = testRunCommand(workflow, "check", "--no-config", "--plugin", source, "-")
+	got = testRunCommandWithAcquisition(acquisition, workflow, "check", "--no-config", "--plugin", source, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "sudo") {
 		t.Fatalf("remote component: %+v", got)
 	}
@@ -79,7 +79,7 @@ func TestConfiguredRemoteEngineAndComponent(t *testing.T) {
 }
 
 func TestRealRemoteRuffArtifact(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	// Opt in to the separately built Ruff artifact. CI unit tests above use
 	// checked-in engines; this test verifies the actual published ABI and section.
 	path := os.Getenv("ACTIONLINT_TEST_RUFF_WASM")
@@ -87,6 +87,7 @@ func TestRealRemoteRuffArtifact(t *testing.T) {
 		t.Skip("set ACTIONLINT_TEST_RUFF_WASM to a packaged Ruff artifact")
 	}
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -94,16 +95,16 @@ func TestRealRemoteRuffArtifact(t *testing.T) {
 	const artifactURL = fixtureregistry.FixtureRegistryURL + "ruff"
 	registry.SetFile(artifactURL, data)
 	uri := fmt.Sprintf("%s#sha256=%x", artifactURL, sha256.Sum256(data))
-	got := testRunCommand("", "plugin", "inspect", uri, "--json")
+	got := testRunCommandWithAcquisition(acquisition, "", "plugin", "inspect", uri, "--json")
 	if got.Status != 0 || !strings.Contains(got.Stdout, `"wasm-core-json"`) {
 		t.Fatalf("Ruff custom section: %+v", got)
 	}
-	got = runWithDefaultRuff(pythonWorkflow, "--no-config", "--plugin", uri, "-")
+	got = runWithDefaultRuffAndAcquisition(acquisition, pythonWorkflow, "--no-config", "--plugin", uri, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20:") || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("Ruff remote plugin: %+v", got)
 	}
 	config := writeEngineConfig(t, uri)
-	got = runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
+	got = runWithDefaultRuffAndAcquisition(acquisition, pythonWorkflow, "--config", config, "-")
 	if got.Status != 1 || !strings.Contains(got.Stdout, "<stdin>:6:20:") || !strings.Contains(got.Stdout, "F821") {
 		t.Fatalf("Ruff remote config: %+v", got)
 	}

@@ -13,12 +13,14 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
 func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
@@ -28,7 +30,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
+	plan, err := plugininstall.PrepareConfigurationMigration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	}
 	registry.SetOffline(true)
 	before := len(registry.Requests())
-	if err := plugininstall.MigrateConfiguration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := plugininstall.MigrateConfiguration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests()) != before {
@@ -73,10 +75,11 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 }
 
 func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
+	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,14 +95,14 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	if err := os.WriteFile(path, []byte("config-variables: []\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Lock.Set(pin); err != nil {
 		t.Fatal(err)
 	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock); err != nil {
+	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, acquisition); err != nil {
 		t.Fatal(err)
 	}
 	if err := project.Lock.Save(t.Context()); err != nil {
@@ -107,7 +110,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 	}
 	registry.SetOffline(true)
 
-	if err := plugininstall.MigrateConfiguration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := plugininstall.MigrateConfiguration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}); err != nil {
 		t.Fatal(err)
 	}
 	migrated, err := checking.ConfigurationRules().Load(path)
@@ -149,7 +152,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err := os.WriteFile(base, []byte("plugins: [publisher/base, publisher/next]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := configplugins.Open(t.Context(), checking.ConfigurationRules(), path)
+	manifest, err := configplugins.Open(t.Context(), checking.ConfigurationRules(), path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,10 +394,11 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 }
 
 func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	root := repositoryfixture.Directory(t)
-	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML)
+	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,23 +407,24 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}
 	registry.SetOffline(true)
-	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML); err == nil || !strings.Contains(err.Error(), "already exists") {
+	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
 	}
 }
 
 func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, name := range []string{fixtureregistry.FixturePluginName, "ruff"} {
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			acquisition := registryAcquisition(registry)
 			registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			url := fixtureregistry.FixtureRegistryURL
 			if name == "ruff" {
 				url = plugininstall.DefaultURL
 			}
-			client, err := plugininstall.New(url)
+			client, err := plugininstall.New(url, acquisition)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -428,7 +433,7 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			root := repositoryfixture.Directory(t)
-			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -438,7 +443,7 @@ func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
 			if err := project.Lock.Save(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML)
+			path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -550,8 +550,8 @@ func (f *LockFile) Remove(name string) error {
 
 // Sync restores exact pins without registry access or guest startup. Cached
 // bytes are re-hashed by artifact.Resolve and work without network access.
-func (l Lock) Sync(ctx context.Context, options artifacts.Options) error {
-	if err := l.CheckStatuses(ctx, StatusOptions{}); err != nil {
+func (l Lock) Sync(ctx context.Context, options artifacts.Options, statuses StatusOptions) error {
+	if err := l.CheckStatuses(ctx, statuses); err != nil {
 		return err
 	}
 	for _, p := range l.Plugins {

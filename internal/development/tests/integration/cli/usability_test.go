@@ -25,10 +25,11 @@ func TestConfigInitAliases(t *testing.T) {
 		{"config", "--init-config"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			acquisition := registryAcquisition(registry)
 			t.Chdir(commandTestRepo(t))
 			t.Setenv("NO_HYPERLINKS", "1")
-			got := testRunCommand("", args...)
+			got := testRunCommandWithAcquisition(acquisition, "", args...)
 			want := "Created " + filepath.Join(".github", "actionlint.yaml") + "\n"
 			if got.Status != 0 || got.Stderr != "" || got.Stdout != want {
 				t.Fatalf("%+v", got)
@@ -37,7 +38,7 @@ func TestConfigInitAliases(t *testing.T) {
 			if err != nil || !bytes.Contains(before, []byte("# tools:")) {
 				t.Fatalf("reference not generated: %s, %v", before, err)
 			}
-			got = testRunCommand("", args...)
+			got = testRunCommandWithAcquisition(acquisition, "", args...)
 			after, err := os.ReadFile(".github/actionlint.yaml")
 			if got.Status != 3 || !strings.Contains(got.Stderr, "already exists") || err != nil || !bytes.Equal(before, after) {
 				t.Fatalf("existing config was not protected: %+v, %v", got, err)
@@ -49,13 +50,14 @@ func TestConfigInitAliases(t *testing.T) {
 func TestConfigInitRelativeHyperlink(t *testing.T) {
 	for _, mode := range []string{"always", "never"} {
 		t.Run(mode, func(t *testing.T) {
-			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+			acquisition := registryAcquisition(registry)
 			t.Chdir(commandTestRepo(t))
 			if err := os.Mkdir("nested", 0700); err != nil {
 				t.Fatal(err)
 			}
 			t.Chdir("nested")
-			got := testRunCommand("", "config", "init", "--hyperlinks="+mode)
+			got := testRunCommandWithAcquisition(acquisition, "", "config", "init", "--hyperlinks="+mode)
 			path := filepath.Join("..", ".github", "actionlint.yaml")
 			display := path
 			if mode == "always" {
@@ -79,7 +81,8 @@ func TestConfigInitRelativeHyperlink(t *testing.T) {
 }
 
 func TestConfigInitThroughRepositoryAlias(t *testing.T) {
-	fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+	acquisition := registryAcquisition(registry)
 	root := t.TempDir()
 	gitRepository(t, root)
 	alias := filepath.Join(t.TempDir(), "checkout")
@@ -88,7 +91,7 @@ func TestConfigInitThroughRepositoryAlias(t *testing.T) {
 	}
 	t.Chdir(alias)
 	t.Setenv("PWD", alias)
-	got := testRunCommand("", "config", "init", "--hyperlinks=never")
+	got := testRunCommandWithAcquisition(acquisition, "", "config", "init", "--hyperlinks=never")
 	want := "Created " + filepath.Join(".github", "actionlint.yaml") + "\n"
 	if got.Status != 0 || got.Stdout != want || got.Stderr != "" {
 		t.Fatalf("repository alias changed display path: %+v; want %q", got, want)

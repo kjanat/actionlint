@@ -70,7 +70,7 @@ func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry
 }
 
 func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	network := fixtureregistry.NewPluginRegistry(t)
 	network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	legacyFiles := network.Files()
@@ -89,7 +89,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	network.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", data)
-	client, err := New(fixtureregistry.FixtureRegistryURL)
+	client, err := New(fixtureregistry.FixtureRegistryURL, Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 	if err != nil || len(reloaded.Lock.Plugins) != 3 {
 		t.Fatalf("lock: %+v, %v", reloaded, err)
 	}
-	if err := reloaded.Lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir()}); err != nil {
+	if err := reloaded.Lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir(), Connections: network.Connections()}, client.StatusOptions); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []CatalogPlugin{first, second} {
@@ -142,7 +142,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 }
 
 func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for name, mutate := range map[string]func(*manifest, *record){
 		"repository":          func(m *manifest, _ *record) { m.Plugin.Repository = "attacker/plugin" },
 		"repository-ID":       func(m *manifest, _ *record) { m.Plugin.RepositoryID = "11" },
@@ -152,7 +152,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 		"discriminator":       func(_ *manifest, r *record) { r.IdentityVersion = 0 },
 	} {
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			t.Parallel()
 			network := fixtureregistry.NewPluginRegistry(t)
 			p, recordURL := publishPackageFixture(t, network, fixtureregistry.FixturePluginName+"/wasm", "v1.0.0", false)
 			var m manifest
@@ -171,7 +171,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 				}
 				network.SetFile(url, data)
 			}
-			client, err := New(fixtureregistry.FixtureRegistryURL)
+			client, err := New(fixtureregistry.FixtureRegistryURL, Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -233,7 +233,7 @@ func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
 				}
 			}
 			u := url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(root), "/") + "/"}
-			client, err := New(u.String())
+			client, err := New(u.String(), Acquisition{UserCacheDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -242,7 +242,7 @@ func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
 				t.Fatalf("candidate case binding: %+v, %v", pin, err)
 			}
 			lock := Lock{SchemaVersion: 1, Plugins: []Pin{pin}}
-			if err := lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir()}); err != nil {
+			if err := lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir()}, client.StatusOptions); err != nil {
 				t.Fatal(err)
 			}
 		})

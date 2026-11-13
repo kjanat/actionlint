@@ -18,8 +18,9 @@ import (
 )
 
 func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -34,13 +35,13 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil || len(sources.Paths) != 1 {
 		t.Fatalf("exact config required a lockfile: %+v, %v", sources, err)
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err != nil {
+	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests()) != 0 {
@@ -56,15 +57,16 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 }
 
 func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.SetAliases("community-check")
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), repositoryfixture.Directory(t), "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, repositoryfixture.Directory(t), "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,11 +93,12 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 }
 
 func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +118,7 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 	}
 	registry.SetRepository(fixtureregistry.FixturePluginName, 99)
 	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

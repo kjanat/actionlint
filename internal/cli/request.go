@@ -8,9 +8,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	configcmd "actionlint.kjanat.dev/v2/internal/cli/config"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -42,17 +40,13 @@ func (r versionRequest) run(_ context.Context, streams Command) (int, error) {
 }
 
 type rulesRequest struct {
-	Plugins   []string
-	Selection plugininstall.Selection
-	Name      string
-	JSON      bool
+	Check checkInvocation
+	Name  string
+	JSON  bool
 }
 
 func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
-	selection := r.Selection
-	if len(r.Plugins) > 0 {
-		selection.Paths = r.Plugins
-	}
+	selection := r.Check.pluginSelection(streams.Acquisition)
 	if len(selection.Paths) > 0 && selection.LockFile != "" {
 		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
@@ -90,7 +84,7 @@ func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
 	for _, warning := range r.Deprecations {
 		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+warning)
 	}
-	return 0, writeDoctor(ctx, streams.Stdout, r)
+	return 0, writeDoctor(ctx, streams.Stdout, r, streams.Acquisition)
 }
 
 type configPathRequest configcmd.PathOptions
@@ -102,13 +96,13 @@ func (r configPathRequest) run(_ context.Context, streams Command) (int, error) 
 type configShowRequest configcmd.ShowOptions
 
 func (r configShowRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, configcmd.WriteShow(ctx, streams.Stdout, configcmd.ShowOptions(r))
+	return 0, configcmd.WriteShow(ctx, streams.Stdout, configcmd.ShowOptions(r), streams.Acquisition)
 }
 
 type configValidateRequest configcmd.ValidateOptions
 
 func (r configValidateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, configcmd.WriteValidation(ctx, streams.Stdout, configcmd.ValidateOptions(r))
+	return 0, configcmd.WriteValidation(ctx, streams.Stdout, configcmd.ValidateOptions(r), streams.Acquisition)
 }
 
 // configSchemaRequest prints the configuration JSON schema with the tool
@@ -116,7 +110,7 @@ func (r configValidateRequest) run(ctx context.Context, streams Command) (int, e
 type configSchemaRequest configcmd.SchemaOptions
 
 func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, configcmd.WriteSchema(ctx, streams.Stdout, configcmd.SchemaOptions(r))
+	return 0, configcmd.WriteSchema(ctx, streams.Stdout, configcmd.SchemaOptions(r), streams.Acquisition)
 }
 
 type configInitRequest struct {
@@ -128,14 +122,14 @@ type configInitRequest struct {
 type configMigrateRequest configcmd.MigrateOptions
 
 func (r configMigrateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return configcmd.Migrate(ctx, commandstreams.Streams(streams), configcmd.MigrateOptions(r))
+	return configcmd.Migrate(ctx, streams.commandStreams(), configcmd.MigrateOptions(r), streams.Acquisition)
 }
 
 func (r configInitRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	return 0, generateCommandConfig(ctx, streams.Stdout, r.JSON, r.Hyperlinks, r.Format)
+	return 0, generateCommandConfig(ctx, streams.Stdout, r.JSON, r.Hyperlinks, r.Format, streams.Acquisition)
 }
 
 type legacyConfigInitRequest struct {

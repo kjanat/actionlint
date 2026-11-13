@@ -52,7 +52,7 @@ func (p *Project) SyncDirect(ctx context.Context) error {
 	return nil
 }
 
-func OpenProject(ctx context.Context, rules config.RuleSet, directory, lockPath, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules config.RuleSet, acquisition Acquisition, directory, lockPath, configPath string) (*Project, error) {
 	lock, err := OpenSelectedLock(ctx, directory, lockPath, configPath)
 	if err != nil {
 		return nil, err
@@ -63,13 +63,13 @@ func OpenProject(ctx context.Context, rules config.RuleSet, directory, lockPath,
 			return nil, err
 		}
 	}
-	manifest, err := configplugins.Open(ctx, rules, configPath)
+	manifest, err := configplugins.Open(ctx, rules, configPath, acquisition.Connections)
 	if err != nil {
 		return nil, err
 	}
 	original := *lock
 	original.Lock.Plugins = slices.Clone(lock.Lock.Plugins)
-	return &Project{Manifest: manifest, Lock: lock, original: original}, nil
+	return &Project{Manifest: manifest, Lock: lock, StatusOptions: StatusOptions{Acquisition: acquisition}, original: original}, nil
 }
 
 // Dependencies migrates lock-only installations only during an explicit mutation.
@@ -114,11 +114,10 @@ func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) 
 			continue
 		}
 		if digest := ref.CandidateDigest(); digest != "" {
-			client, err := NewWithGrant(ref.Registry(), p.StatusOptions.Network)
+			client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
 			if err != nil {
 				return Lock{}, err
 			}
-			client.StatusOptions = p.StatusOptions
 			pin, err := client.LookupCandidate(ctx, ref.Name(), ref.Version(), digest)
 			if err != nil {
 				return Lock{}, err
@@ -141,11 +140,10 @@ func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) 
 				continue
 			}
 		}
-		client, err := NewWithGrant(ref.Registry(), p.StatusOptions.Network)
+		client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
 		if err != nil {
 			return Lock{}, err
 		}
-		client.StatusOptions = p.StatusOptions
 		pin, err := client.Lookup(ctx, ref.Name(), ref.Version())
 		if err != nil {
 			return Lock{}, err
@@ -185,11 +183,10 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 			}
 			continue
 		}
-		client, err := NewWithGrant(ref.Registry(), p.StatusOptions.Network)
+		client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
 		if err != nil {
 			return err
 		}
-		client.StatusOptions = p.StatusOptions
 		var pin Pin
 		var previous *Pin
 		for _, old := range p.original.Lock.Plugins {
@@ -246,7 +243,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 	if err := next.CheckStatuses(ctx, p.StatusOptions); err != nil {
 		return err
 	}
-	if err := Sync(ctx, next); err != nil {
+	if err := Sync(ctx, next, p.StatusOptions.Acquisition); err != nil {
 		return err
 	}
 	for _, pin := range next.Plugins {
@@ -269,11 +266,10 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 		if pin.Origin != "candidate" {
 			continue
 		}
-		client, err := NewWithGrant(pin.Registry, p.StatusOptions.Network)
+		client, err := NewWithGrant(pin.Registry, p.StatusOptions)
 		if err != nil {
 			return err
 		}
-		client.StatusOptions = p.StatusOptions
 		options := p.artifactOptions()
 		options.PullOCI = oci.Cached
 		if err := client.RememberCandidate(ctx, pin, options); err != nil {
@@ -292,11 +288,10 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref plugi
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
 			continue
 		}
-		client, err := NewWithGrant(configured.Registry(), p.StatusOptions.Network)
+		client, err := NewWithGrant(configured.Registry(), p.StatusOptions)
 		if err != nil {
 			return err
 		}
-		client.StatusOptions = p.StatusOptions
 		var previous Pin
 		switch {
 		case configured.CandidateDigest() != "":
@@ -342,11 +337,10 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginref.Ref
 			resolved = append(resolved, ref)
 			continue
 		}
-		client, err := NewWithGrant(selected.Registry, p.StatusOptions.Network)
+		client, err := NewWithGrant(selected.Registry, p.StatusOptions)
 		if err != nil {
 			return nil, err
 		}
-		client.StatusOptions = p.StatusOptions
 		var verified Pin
 		if selected.Origin == "candidate" {
 			verified, err = client.LookupCandidate(ctx, selected.Name, selected.Version, selected.SHA256)
@@ -435,7 +429,7 @@ func (p *Project) MigrationDeclarations(refs []pluginref.Reference) ([]pluginref
 }
 
 func (p *Project) artifactOptions() artifacts.Options {
-	options := DefaultArtifactOptions()
+	options := p.StatusOptions.Acquisition.ArtifactOptions()
 	options.Network = p.StatusOptions.Network
 	return options
 }

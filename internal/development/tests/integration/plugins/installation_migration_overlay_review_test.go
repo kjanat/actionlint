@@ -15,12 +15,13 @@ import (
 )
 
 func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Parallel()
 	for _, input := range []string{"plugins: []", "plugins: null", "tools: {shellcheck: false, ruff: false}"} {
 		for _, explicit := range []bool{false, true} {
 			t.Run(input+map[bool]string{false: "/discovered", true: "/explicit"}[explicit], func(t *testing.T) {
-				t.Setenv("XDG_CACHE_HOME", t.TempDir())
+				t.Parallel()
 				registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
+				acquisition := registryAcquisition(registry)
 				registry.SetOffline(true)
 				root := repositoryfixture.Directory(t)
 				path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -32,7 +33,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				selection := plugininstall.Selection{Overlays: []config.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
+				selection := plugininstall.Selection{Acquisition: acquisition, Overlays: []config.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
 				if explicit {
 					selection.ConfigFile = path
 				}

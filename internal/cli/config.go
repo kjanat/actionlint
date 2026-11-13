@@ -10,6 +10,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -24,7 +25,8 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	}
 
 	if req.ConfigPath != "" {
-		if _, err := checking.ConfigurationRules().LoadContext(ctx, req.ConfigPath); err != nil {
+		reader := configsource.New(ctx, nil, streams.Acquisition.Connections)
+		if _, err := checking.ConfigurationRules().ReadContext(ctx, req.ConfigPath, reader.ReadFile); err != nil {
 			return err
 		}
 	}
@@ -49,15 +51,15 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 			return err
 		}
 	}
-	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, repoconfig.FormatYAML)
+	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, repoconfig.FormatYAML, streams.Acquisition)
 }
 
-func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format repoconfig.FileFormat) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format repoconfig.FileFormat, acquisition plugininstall.Acquisition) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	path, err := plugininstall.InitializeConfiguration(ctx, checking.ConfigurationRules(), discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
+	path, err := plugininstall.InitializeConfiguration(ctx, checking.ConfigurationRules(), acquisition, discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
 	if err != nil {
 		return err
 	}

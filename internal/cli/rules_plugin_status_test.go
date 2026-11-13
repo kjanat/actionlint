@@ -13,6 +13,7 @@ import (
 
 func TestRulesPluginFailureExitStatus(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
+	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	root := t.TempDir()
 	t.Chdir(root)
@@ -21,7 +22,7 @@ func TestRulesPluginFailureExitStatus(t *testing.T) {
 	if err := os.Mkdir(".git", 0o700); err != nil {
 		t.Fatal(err)
 	}
-	installed := pluginCommandTest(t, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--json")
+	installed := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--json")
 	var lock plugininstall.Lock
 	if err := json.Unmarshal([]byte(installed), &lock); err != nil || len(lock.Plugins) != 1 {
 		t.Fatalf("invalid installed lock: %s: %v", installed, err)
@@ -43,7 +44,7 @@ func TestRulesPluginFailureExitStatus(t *testing.T) {
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			t.Parallel()
-			output := pluginCommandTest(t, scenario.status, append([]string{"rules"}, scenario.args...)...)
+			output := pluginCommandTest(t, acquisition, scenario.status, append([]string{"rules"}, scenario.args...)...)
 			if !strings.Contains(output, scenario.message) {
 				t.Fatalf("unexpected failure: %s", output)
 			}
