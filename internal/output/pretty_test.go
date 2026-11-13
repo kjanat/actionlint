@@ -71,6 +71,46 @@ func TestPrettyExplainsNonBlockingDependency(t *testing.T) {
 	}
 }
 
+func TestPrettyRemoteLocationsAndURLsStayIntact(t *testing.T) {
+	t.Parallel()
+	const address = "https://github.com/pypa/gh-action-pypi-publish/blob/7245906fb61fa33a13554f9d5fb856fe61758086/action.yml"
+	for _, hyperlinks := range []bool{false, true} {
+		var out strings.Builder
+		f := FindingOf(results.Diagnostic{
+			Path: address, Start: sourcepos.Position{Line: 168, Column: 11},
+			Message: "See " + address + ".", DocumentationURL: address,
+			Related: []results.Related{{Path: address, Start: sourcepos.Position{Line: 10, Column: 2}}},
+		}, nil)
+		if err := f.printPretty(&out, 100, hyperlinks, false, ""); err != nil {
+			t.Fatal(err)
+		}
+		osc := regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\`)
+		plain := osc.ReplaceAllString(out.String(), "")
+		for _, want := range []string{
+			"  --> " + address + " (line 168, column 11)\n",
+			"    --> " + address + " (line 10, column 2)\n",
+			address + ".\n", address + "\n",
+		} {
+			if !strings.Contains(plain, want) {
+				t.Errorf("hyperlinks=%v: missing intact URL %q in:\n%s", hyperlinks, want, plain)
+			}
+		}
+		if hyperlinks {
+			links := regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\`).FindAllStringSubmatch(out.String(), -1)
+			if len(links) != 4 {
+				t.Fatalf("got %d OSC 8 links, want four:\n%q", len(links), out.String())
+			}
+			for _, match := range links {
+				if match[1] != address {
+					t.Errorf("invalid OSC 8 destination: got %q, want %q", match[1], address)
+				}
+			}
+		} else if strings.Contains(out.String(), "\x1b") {
+			t.Fatal("plain output contains terminal controls")
+		}
+	}
+}
+
 func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 	t.Parallel()
 	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
