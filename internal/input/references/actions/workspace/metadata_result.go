@@ -28,6 +28,7 @@ type MetadataResult struct {
 	metadata  *actionmeta.Metadata
 	cause     error
 	cacheSpec string
+	document  SourceDocument
 }
 
 func (r MetadataResult) Status() MetadataStatus         { return r.status }

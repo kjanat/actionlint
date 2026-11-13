@@ -39,6 +39,9 @@ type Declaration struct {
 
 // Descriptor describes a check independently of its execution backend.
 type Descriptor struct {
+	// ExecutionFailure marks checks whose errors identify invalid syntax or unsupported execution.
+	// Warning and info findings from the same check do not imply execution failure.
+	ExecutionFailure bool `json:"execution_failure,omitempty"`
 	// DefaultLevel is the severity used when enabled; empty selects the ordinary severity.
 	DefaultLevel string `json:"default_level,omitempty"`
 	// DefaultEnabled records the host's default selection when known.

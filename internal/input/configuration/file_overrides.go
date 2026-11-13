@@ -122,6 +122,9 @@ func lintConfigValue(config LintConfig) (any, error) {
 		removeField(rules, "disable")
 	}
 	value := map[string]any{}
+	if config.Dependencies.FailOnAll != nil || config.Dependencies.FailOnCategories != nil || config.Dependencies.FailOnRules != nil {
+		value["dependencies"] = config.Dependencies
+	}
 	if config.MessageIgnores != nil {
 		value["message-ignores"] = config.MessageIgnores
 	}

@@ -1,13 +1,25 @@
 # Remote action metadata
 
 actionlint can acquire remote action manifests to check their declared inputs,
-outputs and runtime. It downloads metadata by default. Use `--action-metadata=offline` to use cached
+outputs, runtime and composite steps. It downloads metadata by default. Use `--action-metadata=offline` to use cached
 metadata without network requests, or `--action-metadata=off` to skip acquisition.
 
 ```console
 actionlint check --action-metadata=online .github/workflows/build.yml
 actionlint check --action-metadata=offline .github/workflows/build.yml
 ```
+
+Composite steps are checked in the calling job's context. For example, a remote
+composite containing a Docker action produces a `container-runner` error when
+called from a Windows job. Calls to other remote composites are followed too.
+Repeated calls share downloaded source files but have separate invocation records.
+Diagnostics link to the manifest at the resolved commit.
+
+The same depth and call limits apply to local and remote composites. Unavailable
+or invalid manifests stop expansion at that call. A `./` reference inside a
+remote composite resolves against the caller's checkout, as it does on the runner.
+`$/` references resolve against the remote action's repository at the same commit.
+Remote action files referenced by scripts are not downloaded with the manifest.
 
 - `off` acquires no metadata. Coverage records `lookup-disabled`.
 - `offline` reads previously acquired manifests for exact commits. It makes no

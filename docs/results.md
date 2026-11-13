@@ -21,8 +21,8 @@ and keep their own formats. Explicit custom templates still control their output
 
 | Status            | Completed | Exit code | Meaning                      |
 | ----------------- | --------- | --------- | ---------------------------- |
-| `success`         | `true`    | 0         | Finished without findings    |
-| `problems-found`  | `true`    | 1         | Finished with findings       |
+| `success`         | `true`    | 0         | No finding requires failure  |
+| `problems-found`  | `true`    | 1         | A finding requires failure   |
 | `invalid-options` | `false`   | 2         | Rejected arguments or inputs |
 | `failure`         | `false`   | 3         | Could not complete the check |
 
@@ -44,6 +44,9 @@ An empty list does not establish complete coverage. See
 Diagnostics contain `rule`, `message`, `path`, `start`, and `end`. Optional `code`
 and `severity` preserve analyzer metadata; `snippet` contains source text. Optional
 `fixes` describe alternatives, each containing edits that must be applied together.
+Dependency findings with `non_blocking: true` appear in the report without
+changing the exit code. A successful result can therefore contain findings.
+The CLI skips fixes that edit remote files when applying changes to disk.
 Positions are one-based Unicode code points, with exclusive ends. Paths are
 relative to the analysis working directory where possible. Do not use array
 indexes as stable identities.

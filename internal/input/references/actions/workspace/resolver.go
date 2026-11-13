@@ -39,6 +39,7 @@ type MetadataDocumentLookup interface {
 // Metadata and consulted sources are shared with composite children. Checkout
 // and environment traversal state belongs to each resolver frame.
 type Resolver struct {
+	repositorySource     func(string) (RepositoryDocument, error)
 	runners              *runnerlang.Knowledge
 	base                 *Cache
 	prepared             preparedAction
@@ -132,6 +133,9 @@ func (c *Resolver) LookupMetadata(spec string) (MetadataResult, bool) {
 		return MetadataResult{status: MetadataLookupDisabled}, false
 	}
 	if local, ok := references.SelfRepositoryLocal(spec); ok {
+		if c.repositorySource != nil {
+			return c.lookupRepositorySource(local), false
+		}
 		return c.findRepositoryMetadata(local, true)
 	}
 	local, ok := c.localSpec(spec)
@@ -176,10 +180,47 @@ func (c *Resolver) SourceDocuments() map[string]SourceDocument {
 
 // SourceDocument returns the cached parse record associated with a lookup.
 func (c *Resolver) SourceDocument(result MetadataResult) (SourceDocument, bool) {
+	if result.document.captured.Valid() {
+		return result.document, true
+	}
 	if c == nil || c.base == nil {
 		return SourceDocument{}, false
 	}
 	return c.base.SourceDocument(result)
+}
+
+// SetRepositorySource selects the repository used by $/ references in this invocation.
+// Workspace-relative ./ references continue to use the caller's checkout.
+func (c *Resolver) SetRepositorySource(load func(string) (RepositoryDocument, error)) {
+	c.repositorySource = load
+}
+
+type RepositoryDocument struct {
+	Parsed   parsing.Document
+	Captured capture.Snapshot
+	Valid    bool
+}
+
+func (c *Resolver) lookupRepositorySource(spec string) MetadataResult {
+	loaded, err := c.repositorySource(spec)
+	if err != nil {
+		return MetadataResult{status: MetadataReadFailed, cause: err}
+	}
+	parsed, captured := loaded.Parsed, loaded.Captured
+	if !captured.Valid() {
+		return MetadataResult{status: MetadataNotFetched}
+	}
+	address := captured.Revision().Document()
+	document := SourceDocument{path: address, address: address, captured: captured, provenance: parsed.Provenance}
+	owner := c.documentOwner()
+	owner.mu.Lock()
+	owner.used[address] = document
+	owner.mu.Unlock()
+	status := MetadataResolved
+	if !loaded.Valid || !parsed.CanAnalyze() {
+		status = MetadataParseFailed
+	}
+	return MetadataResult{status: status, metadata: parsed.Metadata, cause: parsed.ParseError, document: document}
 }
 
 // ApplyCheckout adapts shared script paths to this invocation's checkout placement.

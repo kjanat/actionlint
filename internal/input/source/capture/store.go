@@ -29,9 +29,8 @@ type Overlay struct {
 	Coordinates source.Coordinates
 }
 
-// Store canonicalizes each address once and retains successful and failed reads.
-// Identity always uses host filesystem metadata via PhysicalPath, including when
-// an injected Reader serves virtual content. Only Reader reads source bytes.
+// Store canonicalizes file paths through PhysicalPath and uses remote URLs unchanged.
+// Reader supplies file contents. CaptureRemote supplies downloaded contents.
 // Close must succeed before publication. On abort, cancel the lifetime context
 // before Close; Close itself does not cancel tasks or interrupt filesystem calls.
 type Store struct {
@@ -77,7 +76,7 @@ func New(ctx context.Context, overlays []Overlay, reader Reader) (*Store, error)
 }
 
 func physicalDocument(path string) string {
-	if path == "<stdin>" {
+	if path == "<stdin>" || source.RemoteAddress(path) {
 		return path
 	}
 	return sourceid.Document(files.PhysicalPath(path))
@@ -180,7 +179,7 @@ func validatePath(path string) error {
 	if path == "" || strings.ContainsRune(path, 0) {
 		return errors.New("source capture requires a nonempty address without NUL")
 	}
-	if path != "<stdin>" && !filepath.IsAbs(path) {
+	if path != "<stdin>" && !filepath.IsAbs(path) && !source.RemoteAddress(path) {
 		return errors.New("source capture requires an absolute address or <stdin>")
 	}
 	return nil
@@ -330,8 +329,8 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 			return Snapshot{}, err
 		}
 		e.model, e.done = model, make(chan struct{})
-		if document == "<stdin>" {
-			e.err = &CaptureError{document, errors.New("stdin requires an overlay")}
+		if document == "<stdin>" || source.RemoteAddress(document) {
+			e.err = &CaptureError{document, errors.New("source bytes must be supplied before reading this address")}
 			close(e.done)
 		} else {
 			s.startWork()

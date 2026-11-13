@@ -17,7 +17,9 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
@@ -56,6 +58,9 @@ type compositionSession struct {
 	configForFile          func(string) (*repoconfig.Config, error)
 	configProvenance       repoconfig.Provenance
 	sourceSnapshots        *parsing.SourceSnapshots
+	captures               *capture.Store
+	remoteActions          *remote.Service
+	remoteDocuments        map[string]remoteDocument
 	prepareSource          func(parsing.SourceSnapshot) error
 	invocations            *invocation.Builder
 	budget                 invocation.Budget

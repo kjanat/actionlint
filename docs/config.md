@@ -333,9 +333,10 @@ are migrated to explicit levels, so explicit disables now survive presets and
 `--strict`. Conflicting old and current values in one document are errors.
 Cache safety checks belong to security, with cache-operation under correctness.
 
-Severity is carried through JSON, SARIF and GitHub annotations. As before, the CLI
-exits nonzero for any reported finding, including warnings and informational
-findings. This change does not silently change CI exit-code behavior.
+JSON, SARIF and GitHub annotations include each finding's severity. Findings in
+your workflows and local actions cause exit status 1, including warnings and
+informational findings. See [Findings in dependencies](#findings-in-dependencies)
+for the settings that determine which findings in downloaded actions fail a check.
 
 The compatibility shortcut `disable` accepts any rule ID listed by `actionlint rules`. It suppresses
 that rule's errors and warnings without skipping analysis needed by other checks.
@@ -391,6 +392,35 @@ Select one by setting its rule level or use `--experimental`. Use
 `--experimental=false` to disable all nursery rules. For example, `join-literal` is a nursery rule.
 The former unreleased `lint.rules.experimental` section is rejected; configure
 the four stable checks under `suspicious` instead.
+
+### Findings in dependencies
+
+Findings in your own workflows and local actions affect the exit code as usual.
+Actionlint also checks downloaded composite actions. Their advice stays visible
+but does not fail your check by default. Errors that establish an execution
+failure still count, such as invalid expression syntax or a Docker action
+running on Windows.
+
+To also fail on security findings and selected diagnostics in dependencies:
+
+```toml
+[lint.dependencies]
+fail-on-categories = ["security"]
+fail-on-rules      = ["script-interpolation", "shellcheck/SC2086"]
+```
+
+Set `fail-on-all = true` to include every enabled dependency finding. These
+settings select which findings affect the exit code. Rule enablement and severity
+still come from `lint.rules`. A rule name includes all its codes. A `rule/code`
+entry includes only that code.
+
+Shared configurations can supply these settings through `extends`. Per-file
+overrides match the calling workflow or local action. Lists replace inherited
+lists. An empty list clears that selection. Neither an empty list nor
+`fail-on-all = false` excludes a known execution failure.
+
+JSON findings with `non_blocking: true` remain in the report but do not cause
+exit status 1. Pretty output marks them as dependency findings.
 
 ### Per-file overrides
 
