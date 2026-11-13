@@ -489,6 +489,10 @@
         "message": {
           "type": "string"
         },
+        "non_blocking": {
+          "description": "The finding is reported but does not make the check fail.",
+          "type": "boolean"
+        },
         "path": {
           "description": "Analyzed source path; relative paths use the Action working directory.",
           "type": "string"

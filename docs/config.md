@@ -392,6 +392,35 @@ Select one by setting its rule level or use `--experimental`. Use
 The former unreleased `lint.rules.experimental` section is rejected; configure
 the four stable checks under `suspicious` instead.
 
+### Findings in dependencies
+
+Findings in your own workflows and local actions affect the exit code as usual.
+Actionlint also checks downloaded composite actions. Their advice stays visible
+but does not fail your check by default. Errors that establish an execution
+failure still count, such as invalid expression syntax or a Docker action
+running on Windows.
+
+To also fail on security findings and selected diagnostics in dependencies:
+
+```toml
+[lint.dependencies]
+fail-on-categories = ["security"]
+fail-on-rules      = ["script-interpolation", "shellcheck/SC2086"]
+```
+
+Set `fail-on-all = true` to include every enabled dependency finding. These
+settings select which findings affect the exit code. Rule enablement and severity
+still come from `lint.rules`. A rule name includes all its codes. A `rule/code`
+entry includes only that code.
+
+Shared configurations can supply these settings through `extends`. Per-file
+overrides match the calling workflow or local action. Lists replace inherited
+lists. An empty list clears that selection. Neither an empty list nor
+`fail-on-all = false` excludes a known execution failure.
+
+JSON findings with `non_blocking: true` remain in the report but do not cause
+exit status 1. Pretty output marks them as dependency findings.
+
 ### Per-file overrides
 
 ```yaml

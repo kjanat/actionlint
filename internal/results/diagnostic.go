@@ -5,6 +5,8 @@ import sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 // Diagnostic is the structured CLI representation, separate from legacy template fields.
 type Diagnostic struct {
+	// NonBlocking findings remain visible but do not make the check exit with status 1.
+	NonBlocking      bool                 `json:"non_blocking,omitempty"`
 	Reference        *sourcepos.Reference `json:"reference,omitempty"`
 	Explanation      string               `json:"explanation,omitempty"`
 	Help             string               `json:"help,omitempty"`

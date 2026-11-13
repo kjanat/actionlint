@@ -903,6 +903,69 @@
         {
           "type": "object",
           "properties": {
+            "dependencies": {
+              "title": "dependencies",
+              "description": "Selects additional findings in remote dependencies that fail the check.",
+              "markdownDescription": "Selects additional findings in remote dependencies that fail the check.",
+              "type": "object",
+              "properties": {
+                "fail-on-all": {
+                  "title": "fail-on-all",
+                  "oneOf": [
+                    {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fail-on-categories": {
+                  "title": "fail-on-categories",
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "correctness",
+                          "suspicious",
+                          "security",
+                          "conventions"
+                        ]
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fail-on-rules": {
+                  "title": "fail-on-rules",
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/$defs/rule-name"
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^[^/\\s]+/[^/\\s]+$"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
             "enabled": {
               "title": "enabled",
               "description": "Controls lint diagnostics only, leaving other features independent.",
@@ -2582,6 +2645,69 @@
                   {
                     "type": "object",
                     "properties": {
+                      "dependencies": {
+                        "title": "dependencies",
+                        "description": "Selects additional findings in remote dependencies that fail the check.",
+                        "markdownDescription": "Selects additional findings in remote dependencies that fail the check.",
+                        "type": "object",
+                        "properties": {
+                          "fail-on-all": {
+                            "title": "fail-on-all",
+                            "oneOf": [
+                              {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fail-on-categories": {
+                            "title": "fail-on-categories",
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "correctness",
+                                    "suspicious",
+                                    "security",
+                                    "conventions"
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fail-on-rules": {
+                            "title": "fail-on-rules",
+                            "oneOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "$ref": "#/$defs/rule-name"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[^/\\s]+/[^/\\s]+$"
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
                       "enabled": {
                         "title": "enabled",
                         "description": "Controls lint diagnostics only, leaving other features independent.",
