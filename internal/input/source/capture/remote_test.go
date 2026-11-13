@@ -9,6 +9,7 @@ import (
 )
 
 func TestRemoteCaptureRejectsChangedContent(t *testing.T) {
+	t.Parallel()
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) {
 		t.Fatal("remote capture called the filesystem reader")
 		return nil, nil
@@ -33,6 +34,7 @@ func TestRemoteCaptureRejectsChangedContent(t *testing.T) {
 }
 
 func TestRemoteCaptureHonorsCancellationAndClose(t *testing.T) {
+	t.Parallel()
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return nil, nil })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
