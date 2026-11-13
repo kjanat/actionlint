@@ -11,6 +11,7 @@ import (
 )
 
 func TestMatrixExpandedInsertionChecks(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, matrix, want string }{
 		{"axis insertion duplicate", `os: [ubuntu, "${{ fromJSON('[\"ubuntu\"]') }}"]`, "duplicate value"},
 		{"insertion internal duplicate", `os: ["${{ fromJSON('[\"ubuntu\",\"ubuntu\"]') }}"]`, "duplicate value"},
@@ -38,6 +39,7 @@ func TestMatrixExpandedInsertionChecks(t *testing.T) {
 		{"unknown nested expression differs from returned data", `os: [{name: "${{ vars.OS }}"}, "${{ fromJSON('[{\"name\":\"${{ vars.OS }}\"}]') }}"]`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:

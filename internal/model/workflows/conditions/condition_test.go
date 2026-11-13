@@ -9,6 +9,7 @@ import (
 )
 
 func TestStepCanRunAfterFailure(t *testing.T) {
+	t.Parallel()
 	if CanRunAfterFailure(value.Value{}) {
 		t.Fatal("missing condition must require success")
 	}
@@ -37,6 +38,7 @@ func TestStepCanRunAfterFailure(t *testing.T) {
 		{"before ${{ failure() }}", true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			if got := CanRunAfterFailure(value.Condition(tc.condition, value.Origin{})); got != tc.want {
 				t.Fatalf("stepCanRunAfterFailure() = %v, want %v", got, tc.want)
 			}
@@ -45,6 +47,7 @@ func TestStepCanRunAfterFailure(t *testing.T) {
 }
 
 func TestInvocationCondition(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition      string
 		enabled, known bool
@@ -72,6 +75,7 @@ func TestInvocationCondition(t *testing.T) {
 		{"success() && github.event_name == 'push'", false, false},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			enabled, known := Condition(value.Condition(tc.condition, value.Origin{}))
 			if enabled != tc.enabled || known != tc.known {
 				t.Fatalf("invocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
@@ -81,6 +85,7 @@ func TestInvocationCondition(t *testing.T) {
 }
 
 func TestJobInvocationCondition(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition      string
 		dependencies   bool
@@ -99,6 +104,7 @@ func TestJobInvocationCondition(t *testing.T) {
 		{"case(false, false, true)", true, true, true},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			enabled, known := JobCondition(value.Condition(tc.condition, value.Origin{}), tc.dependencies)
 			if enabled != tc.enabled || known != tc.known {
 				t.Fatalf("jobInvocationCondition() = %v, %v; want %v, %v", enabled, known, tc.enabled, tc.known)
@@ -108,6 +114,7 @@ func TestJobInvocationCondition(t *testing.T) {
 }
 
 func TestConditionNeverRuns(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		never      bool
@@ -134,6 +141,7 @@ func TestConditionNeverRuns(t *testing.T) {
 		{"always()", false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expression := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expression == nil {
 				t.Fatal("invalid test expression")

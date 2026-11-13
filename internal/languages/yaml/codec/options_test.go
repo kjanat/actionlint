@@ -25,6 +25,7 @@ func duplicateKeyResult(decode func([]byte, any) error, target any) error {
 }
 
 func TestDuplicateKeysUseUpstreamDefaultsDirectAndSelect(t *testing.T) {
+	t.Parallel()
 	var direct, wantDirect optionDirect
 	gotErr := duplicateKeyResult(decodeCursorSource, &direct)
 	wantErr := duplicateKeyResult(upstream.Unmarshal, &wantDirect)
@@ -37,6 +38,7 @@ func TestDuplicateKeysUseUpstreamDefaultsDirectAndSelect(t *testing.T) {
 		{"valid selected control", "value: first\nhook: seen\n", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, err := codec.Parse([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
@@ -101,6 +103,7 @@ func aliasExpansionSource(depth, width int) []byte {
 }
 
 func TestAliasExpansionUsesUpstreamDefaultsDirectAndSelect(t *testing.T) {
+	t.Parallel()
 	data := aliasExpansionSource(5, 8)
 	var direct, wantDirect optionDirect
 	gotErr := decodeCursorSource(data, &direct)
@@ -116,6 +119,7 @@ func TestAliasExpansionUsesUpstreamDefaultsDirectAndSelect(t *testing.T) {
 		{"fatal before selected field", 5, 8, 0}, {"valid selected control", 1, 2, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			data := append(aliasExpansionSource(tc.depth, tc.width), []byte("hook: seen\n")...)
 			root, err := codec.Parse(data)
 			if err != nil {
@@ -169,6 +173,7 @@ func TestAliasExpansionUsesUpstreamDefaultsDirectAndSelect(t *testing.T) {
 }
 
 func TestSyntaxNodeCaptureKeepsAliasGraphUnexpanded(t *testing.T) {
+	t.Parallel()
 	data := aliasExpansionSource(5, 8)
 	got, err := codec.Parse(data)
 	if err != nil {

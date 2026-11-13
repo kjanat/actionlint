@@ -8,9 +8,11 @@ import (
 )
 
 func TestActionMappingInterpolationReview(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"env", "with"} {
 		for _, value := range []string{"prefix-${{ inputs.value }}", "${{ inputs.value }}-suffix", "${{ inputs.value }}tail}}", "${{ inputs.value }}${{ inputs.value }}", "${{ fromJSON(inputs.value) }}", `${{ fromJSON('{"key":"${{"}') }}`} {
 			t.Run(field+"/"+value, func(t *testing.T) {
+				t.Parallel()
 				source := `name: test
 description: test
 inputs:

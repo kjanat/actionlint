@@ -41,6 +41,7 @@ func loadScriptFixture03(t *testing.T) *Plugin {
 }
 
 func TestScriptEngine03ContractCurrent(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../../../../plugins/protocol/wit/deps/actionlint-0.3.0/script-engine.wit")
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +54,7 @@ func TestScriptEngine03ContractCurrent(t *testing.T) {
 // The host negotiates the version a component exports: 0.3.0 engines declare
 // capabilities, 0.2.0 engines keep none.
 func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
+	t.Parallel()
 	current := loadScriptFixture03(t)
 	if current.scriptInterface != ScriptEngine03Interface {
 		t.Fatalf("negotiated %q", current.scriptInterface)
@@ -71,6 +73,7 @@ func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
 }
 
 func TestScriptEngineVersionMismatch(t *testing.T) {
+	t.Parallel()
 	instance := func(names ...string) []wacogo.ExportDesc {
 		exports := make([]wacogo.ExportDesc, len(names))
 		for i, name := range names {
@@ -91,6 +94,7 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 		{"unsupported template-effects version", instance(ScriptEngine03Interface, "kjanat:actionlint/template-effects@0.4.0"), "this host supports " + TemplateEffectsInterface + " and " + TemplateEffects03Interface},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := extensionRoles(tc.exports); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
@@ -152,6 +156,7 @@ func json1Request(t *testing.T, name string) (checkinputs.ScriptRequest, []byte)
 // the bundled process provider and a 0.3.0 component: both routes yield the
 // same diagnostics, fixes and reported sources.
 func TestScriptEngine03ProcessParity(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
@@ -163,6 +168,7 @@ func TestScriptEngine03ProcessParity(t *testing.T) {
 	p := loadScriptFixture03(t)
 	for _, name := range []string{"script", "sourced"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			request, stdout := json1Request(t, name)
 			request.Directory = t.TempDir()
 			request.DirectoryFS = directoryGrant(t, request.Directory)
@@ -192,6 +198,7 @@ func TestScriptEngine03ProcessParity(t *testing.T) {
 }
 
 func TestScriptEngine03Excluded(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture03(t)
 	request, _ := json1Request(t, "script")
 	request.Excluded = []string{"SC2035", "SC2086"}
@@ -232,6 +239,7 @@ func directoryGrant(t *testing.T, directory string) *files.SnapshotFS {
 // The engine reads a file only through the host's directory grant. A
 // directory path alone opens nothing.
 func TestScriptEngine03DirectoryGrant(t *testing.T) {
+	t.Parallel()
 	p := loadScriptFixture03(t)
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o755); err != nil {
@@ -266,6 +274,7 @@ func TestScriptEngine03DirectoryGrant(t *testing.T) {
 }
 
 func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, fixture, want string
 		directory           bool
@@ -276,6 +285,7 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 		{"source without a grant", "sourced", "without a granted directory", false, func(*checkinputs.ScriptEngineDescriptor) {}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			p := loadScriptFixture03(t)
 			tc.descriptor(p.scriptDescriptor)
 			request, _ := json1Request(t, tc.fixture)
@@ -293,6 +303,7 @@ func TestScriptEngine03RejectsUndeclaredCapabilities(t *testing.T) {
 const templateFixture03 = "testdata/plugins/template-script-engine-0.3.0.wasm"
 
 func TestTemplateEffects03ContractCurrent(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../../../../plugins/protocol/wit/deps/actionlint-0.3.0/template-effects.wit")
 	if err != nil {
 		t.Fatal(err)
@@ -306,6 +317,7 @@ func TestTemplateEffects03ContractCurrent(t *testing.T) {
 // template-effects check carries excluded codes and the directory grant, and
 // its findings carry fixes and reported sources besides their effects.
 func TestTemplateEffects03Check(t *testing.T) {
+	t.Parallel()
 	p, err := Load(t.Context(), templateFixture03, Options{})
 	if err != nil {
 		t.Fatal(err)

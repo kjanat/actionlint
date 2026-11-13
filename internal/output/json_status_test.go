@@ -11,6 +11,7 @@ import (
 )
 
 func TestJSONRendererUsesSuppliedCompletion(t *testing.T) {
+	t.Parallel()
 	for _, diagnostics := range [][]results.Diagnostic{nil, {{Rule: "test", Message: "partial finding", Path: "workflow.yml"}}} {
 		for _, format := range []Format{FormatJSON, FormatJSONL} {
 			renderer, err := New(format, "", false, func() string { return "test" }, nil)
@@ -38,6 +39,7 @@ func TestJSONRendererUsesSuppliedCompletion(t *testing.T) {
 }
 
 func TestJSONRendererRequiresSuppliedCompletion(t *testing.T) {
+	t.Parallel()
 	for _, format := range []Format{FormatJSON, FormatJSONL} {
 		renderer, err := New(format, "", false, func() string { return "test" }, nil)
 		if err != nil {

@@ -8,6 +8,7 @@ import (
 )
 
 func TestObjectEventVariantsDetachStorage(t *testing.T) {
+	t.Parallel()
 	var builder ObjectBuilder
 	builder.SetProperty("InputName", StringType())
 	original := builder.Build()
@@ -29,6 +30,7 @@ func TestObjectEventVariantsDetachStorage(t *testing.T) {
 }
 
 func TestExprNewMapObjectType(t *testing.T) {
+	t.Parallel()
 	o := NewMapObjectType(StringType())
 	if o.Len() != 0 {
 		t.Fatalf("props should be empty but %v", o)
@@ -42,6 +44,7 @@ func TestExprNewMapObjectType(t *testing.T) {
 }
 
 func TestExprObjectTypeSetStrict(t *testing.T) {
+	t.Parallel()
 	o := NewEmptyObjectType()
 	if o.IsStrict() || !o.IsLoose() {
 		t.Fatal("should be loose")
@@ -60,6 +63,7 @@ func TestExprObjectTypeSetStrict(t *testing.T) {
 }
 
 func TestExprAssignableSimple(t *testing.T) {
+	t.Parallel()
 	testCases := []Type{
 		AnyType(),
 		NullType(),
@@ -75,6 +79,7 @@ func TestExprAssignableSimple(t *testing.T) {
 	for _, ty := range testCases {
 		s := ty.String()
 		t.Run(s, func(t *testing.T) {
+			t.Parallel()
 			if !ty.Assignable(ty) {
 				t.Fatalf("%s is not self-assignable", ty)
 			}
@@ -95,6 +100,7 @@ func TestExprAssignableSimple(t *testing.T) {
 }
 
 func TestExprAssignableObject(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		from, to Type
 		no       bool
@@ -157,6 +163,7 @@ func TestExprAssignableObject(t *testing.T) {
 	for _, tc := range testCases {
 		l, r := tc.to.String(), tc.from.String()
 		t.Run(l+" := "+r, func(t *testing.T) {
+			t.Parallel()
 			if tc.to.Assignable(tc.from) == tc.no {
 				not := ""
 				if tc.no {
@@ -169,6 +176,7 @@ func TestExprAssignableObject(t *testing.T) {
 }
 
 func TestExprEqualTypes(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what string
 		ty   Type
@@ -325,6 +333,7 @@ func TestExprEqualTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			var l, r Type
 
 			l, r = tc.ty, tc.ty
@@ -356,6 +365,7 @@ func TestExprEqualTypes(t *testing.T) {
 }
 
 func TestExprTypeStringize(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what string
 		ty   Type
@@ -466,6 +476,7 @@ func TestExprTypeStringize(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			have := tc.ty.String()
 			if have != tc.want {
 				t.Fatalf("wanted %q but got %q", tc.want, have)
@@ -475,6 +486,7 @@ func TestExprTypeStringize(t *testing.T) {
 }
 
 func TestExprTypeMergeSimple(t *testing.T) {
+	t.Parallel()
 	testCases := []Type{
 		AnyType(),
 		NullType(),
@@ -491,6 +503,7 @@ func TestExprTypeMergeSimple(t *testing.T) {
 
 	for _, ty := range testCases {
 		t.Run("any/"+ty.String(), func(t *testing.T) {
+			t.Parallel()
 			have := ty.Merge(AnyType())
 			if have.Kind() != KindAny {
 				t.Errorf("any type merged with %s was %s while expecting any", ty.String(), have.String())
@@ -505,6 +518,7 @@ func TestExprTypeMergeSimple(t *testing.T) {
 
 	for _, ty := range testCases {
 		t.Run("incompatible/"+ty.String(), func(t *testing.T) {
+			t.Parallel()
 			in := NullType()
 			if ty == NullType() {
 				in = StringType() // null is compatible with null so use string instead
@@ -519,6 +533,7 @@ func TestExprTypeMergeSimple(t *testing.T) {
 
 	for _, ty := range testCases {
 		t.Run("self/"+ty.String(), func(t *testing.T) {
+			t.Parallel()
 			have := ty.Merge(ty)
 			if !cmp.Equal(ty, have, opt) {
 				s := ty.String()
@@ -529,6 +544,7 @@ func TestExprTypeMergeSimple(t *testing.T) {
 }
 
 func TestExprTypeMergeComplicated(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what string
 		ty   Type
@@ -791,6 +807,7 @@ func TestExprTypeMergeComplicated(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			opt := cmpopts.EquateEmpty()
 			ty := tc.with.Merge(tc.ty)
 			if diff := cmp.Diff(tc.want, ty, opt); diff != "" {
@@ -810,6 +827,7 @@ diff:
 }
 
 func TestExprTypeMergeCreateNewInstance(t *testing.T) {
+	t.Parallel()
 	{
 		ty := NewArrayType(NumberType()).Type()
 		ty2 := ty.Merge(NewArrayType(StringType()).Type())
@@ -845,6 +863,7 @@ func TestExprTypeMergeCreateNewInstance(t *testing.T) {
 }
 
 func TestExprTypeDerivedObjectsLeaveOriginalUnchanged(t *testing.T) {
+	t.Parallel()
 	props := map[string]Type{"foo": NumberType()}
 	o := NewObjectType(props)
 	props["foo"] = BoolType()
@@ -891,6 +910,7 @@ func TestExprTypeDerivedObjectsLeaveOriginalUnchanged(t *testing.T) {
 }
 
 func TestExprTypeTypeOfJSONValue(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what  string
 		value any
@@ -980,6 +1000,7 @@ func TestExprTypeTypeOfJSONValue(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			have := TypeOfJSONValue(tc.value)
 			if diff := cmp.Diff(tc.want, have); diff != "" {
 				t.Fatal(diff)
@@ -989,6 +1010,7 @@ func TestExprTypeTypeOfJSONValue(t *testing.T) {
 }
 
 func TestExprTypePanicTypeOfJSONValue(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Fatal("error didn't occur")

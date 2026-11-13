@@ -10,6 +10,7 @@ import (
 )
 
 func TestCheckValidatesDiagnosticRanges(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name       string
 		start, end checkinputs.ScriptPosition
@@ -28,6 +29,7 @@ func TestCheckValidatesDiagnosticRanges(t *testing.T) {
 		{"later row", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: 3, Column: 1}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			engine := pooledEngine(t)
 			module, err := engine.instantiate(t.Context())
 			if err != nil {

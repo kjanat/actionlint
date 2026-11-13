@@ -11,6 +11,7 @@ import (
 )
 
 func TestRawYAMLScalarEquals(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		left, right string
@@ -48,6 +49,7 @@ func TestRawYAMLScalarEquals(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			left := &workflowlang.RawYAMLString{Value: tc.left, Tag: tc.ltag}
 			right := &workflowlang.RawYAMLString{Value: tc.right, Tag: tc.rtag}
 			if got := left.Equals(right); got != tc.want {
@@ -61,6 +63,7 @@ func TestRawYAMLScalarEquals(t *testing.T) {
 }
 
 func TestSourceScalarProvenance(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -115,6 +118,7 @@ jobs:
 }
 
 func TestStringIsExpressionAssigned(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  bool
@@ -143,6 +147,7 @@ func TestStringIsExpressionAssigned(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			s := &workflowlang.String{Value: tc.input}
 			have := s.IsExpressionAssigned()
 			if tc.want != have {
@@ -153,6 +158,7 @@ func TestStringIsExpressionAssigned(t *testing.T) {
 }
 
 func TestStringContainsExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  bool
@@ -167,6 +173,7 @@ func TestStringContainsExpression(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			s := &workflowlang.String{Value: tc.input}
 			if have := s.ContainsExpression(); tc.want != have {
 				t.Fatalf("wanted %v but the method returned %v for input %q", tc.want, have, tc.input)

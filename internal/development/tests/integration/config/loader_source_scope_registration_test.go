@@ -11,6 +11,7 @@ import (
 )
 
 func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, descriptor := range checking.ConfigurationRules().Rules() {
 		if descriptor.Scope != rulescope.SourceConfiguration {
@@ -26,6 +27,7 @@ func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
 				apply func(*repoconfig.Config, string, string) (*repoconfig.Config, error)
 			}{{"action", checking.ConfigurationRules().ForAction}, {"suppressions", checking.ConfigurationRules().ForSuppressions}} {
 				t.Run(descriptor.Name+"/"+group+"/"+project.name, func(t *testing.T) {
+					t.Parallel()
 					input := fmt.Sprintf("lint: {rules: {preset: none, %s: {%s: warn}}}", group, descriptor.Name)
 					cfg, err := checking.ConfigurationRules().Parse([]byte(input))
 					if err != nil {

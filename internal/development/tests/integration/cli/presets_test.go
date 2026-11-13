@@ -2,11 +2,13 @@ package cli_test
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestRulePresetFlags(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   test:
@@ -97,13 +99,14 @@ func TestRulePresetEnvironment(t *testing.T) {
 }
 
 func TestExperimentalFlagDoesNotDisableStableRules(t *testing.T) {
-	t.Chdir(t.TempDir())
-	if err := os.WriteFile("config.yml", []byte("lint: {rules: {suspicious: {case-insensitive-conditions: on}}}"), 0o600); err != nil {
+	t.Parallel()
+	config := filepath.Join(t.TempDir(), "config.yml")
+	if err := os.WriteFile(config, []byte("lint: {rules: {suspicious: {case-insensitive-conditions: on}}}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	source := strings.Replace(commandGoodWorkflow, "    steps:", "    if: github.ref == 'refs/heads/main'\n    steps:", 1)
 	for _, prefix := range [][]string{nil, {"check"}} {
-		args := append(append([]string{}, prefix...), "--config=config.yml", "--experimental=false", "-")
+		args := append(append([]string{}, prefix...), "--config="+config, "--experimental=false", "-")
 		if got := testRunCommand(source, args...); got.Status != 1 {
 			t.Fatal(got)
 		}

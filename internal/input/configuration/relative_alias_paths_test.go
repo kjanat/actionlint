@@ -9,6 +9,7 @@ import (
 )
 
 func TestRepositoryRelativeConfigAliasBoundaries(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	physical := writeOverrideFixture(t, root, "physical/ci.yml", "on: push\n")
 	alias := filepath.Join(root, "alias")

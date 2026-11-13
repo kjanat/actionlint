@@ -20,8 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-
-	"github.com/fatih/color"
 )
 
 const commandGoodWorkflow = `on: push
@@ -137,8 +135,6 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 	}
 	return sources
 }
-
-func init() { color.NoColor = true }
 
 // runTestAnalysis supplies the process pool that production callers must own.
 // It invokes application analysis without input selection or rendering.

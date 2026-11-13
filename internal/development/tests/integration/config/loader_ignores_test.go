@@ -11,6 +11,7 @@ import (
 )
 
 func TestReusableIgnoreConfig(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		`ignores: [{rule: expression, uses: './generated', file: '.github/workflows/*.yml', job: build, step: lint, reason: generated}]`,
 		`{"ignores":[{"rule":"expression","uses":"./generated","file":".github/workflows/*.yml","job":"build","step":"lint","reason":"generated"}]}`,
@@ -33,6 +34,7 @@ func TestReusableIgnoreConfig(t *testing.T) {
 		`{rule: disallow-suppressions, file: '**'}`, `{rule: expression, job: ' '}`,
 	} {
 		t.Run(entry, func(t *testing.T) {
+			t.Parallel()
 			if _, err := checking.ConfigurationRules().Parse([]byte("ignores: [" + entry + "]")); err == nil {
 				t.Fatalf("accepted invalid ignore %s", entry)
 			}
@@ -41,6 +43,7 @@ func TestReusableIgnoreConfig(t *testing.T) {
 }
 
 func TestReusableIgnoreInheritance(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	base := filepath.Join(root, "base.yaml")
 	child := filepath.Join(root, "child.yaml")

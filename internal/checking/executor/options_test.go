@@ -7,6 +7,7 @@ import (
 )
 
 func TestPluginOptionsSchema(t *testing.T) {
+	t.Parallel()
 	schema := json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"required":["count"],"additionalProperties":false}`)
 	for _, test := range []struct {
 		options string

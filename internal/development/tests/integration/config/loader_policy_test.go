@@ -12,6 +12,7 @@ import (
 )
 
 func TestConfigTimeoutBounds(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		min   float64
@@ -24,6 +25,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 		{"{min-minutes: 017, max-minutes: 018}", 17, 18},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {require-job-timeout: " + tc.input + "}"))
 			if err != nil {
 				t.Fatal(err)
@@ -52,6 +54,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 		{"{max-minutes: 5, min-minutes: 30}", "must not exceed"},
 	} {
 		t.Run(tc.mapping, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-job-timeout: " + tc.mapping))
 			var source *repoconfig.SourceError
 			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
@@ -62,6 +65,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 }
 
 func TestJobTimeoutRangeAPI(t *testing.T) {
+	t.Parallel()
 	for _, bounds := range [][2]float64{{0, 0}, {5, 0}, {0, 60}, {5, 60}, {5, 5}} {
 		p, err := repoconfig.RequireJobTimeoutRange(bounds[0], bounds[1])
 		if err != nil || !p.Enabled() {
@@ -96,6 +100,7 @@ func TestJobTimeoutRangeAPI(t *testing.T) {
 }
 
 func TestConfigRequirePermissions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value     string
 		level     repoconfig.Level
@@ -109,6 +114,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 		{"{scope: job}", "error", []repoconfig.PermissionLocation{repoconfig.EveryJobPermissions}},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {require-permissions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
@@ -143,6 +149,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 		{"{scope: [job]}", "must be workflow or job"},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-permissions: " + tc.value))
 			var source *repoconfig.SourceError
 			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {

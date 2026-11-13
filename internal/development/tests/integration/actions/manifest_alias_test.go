@@ -13,9 +13,11 @@ import (
 )
 
 func TestManifestAliasesStandaloneAndNested(t *testing.T) {
+	t.Parallel()
 	for _, filename := range []string{"action.yml", "action.yaml"} {
 		for _, entry := range []string{"action", "workflow"} {
 			t.Run(filename+"/"+entry, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				manifest := "name: &label example\ndescription: *label\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
 				fixturefiles.Write(t, root, "inner/"+filename, manifest)
@@ -49,6 +51,7 @@ func TestManifestAliasesStandaloneAndNested(t *testing.T) {
 }
 
 func TestWorkflowAliasesRemainSupported(t *testing.T) {
+	t.Parallel()
 	source := "on: push\njobs:\n  first:\n    runs-on: ubuntu-latest\n    env: &env {VALUE: example}\n    steps: [{run: echo ok}]\n  second:\n    runs-on: ubuntu-latest\n    env: *env\n    steps: [{run: echo ok}]\npermissions: {}\n"
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil || len(result.Diagnostics) != 0 {

@@ -13,6 +13,7 @@ import (
 )
 
 func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition string
 		want      int
@@ -22,6 +23,7 @@ func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
 		{"${{ secrets.A || secrets.A }}", 2},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n      if: "+tc.condition+"\n")
@@ -34,6 +36,7 @@ func TestMetadataFoldedConditionDiagnostics(t *testing.T) {
 }
 
 func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
+	t.Parallel()
 	const composite = "runs:\n  using: composite\n  steps:\n    - shell: bash\n      "
 	for _, tc := range []struct{ name, body, token, message string }{
 		{"context", composite + "run: echo ${{ forbidden_context.value }}\n", "forbidden_context", "not available"},
@@ -59,6 +62,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 		{"schema-key", "runs:\n  using: docker\n  image: docker://alpine\n  env:\n    prefix_${{ forbidden_context.value }}: value\n", "forbidden_context", "not available in keys"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			metadata := "name: inner\ndescription: test\n" + tc.body

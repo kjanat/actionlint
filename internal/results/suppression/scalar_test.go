@@ -8,8 +8,10 @@ import (
 )
 
 func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{"\"first\n    body_marker\"", "'first\n    body_marker'", "first\n    body_marker"} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			source := "# actionlint:ignore-next-line expression\n- {run: " + value + ", shell: bash}\n- run: sibling\n"
 			directives, invalid := Parse([]byte(source), []string{"expression"}, rule.Names{})
 			if len(invalid) != 0 {
@@ -24,6 +26,7 @@ func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
 }
 
 func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		"first\n  body_marker",
 		"'first\n  body_marker'",
@@ -37,6 +40,7 @@ func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(value+ending, func(t *testing.T) {
+				t.Parallel()
 				input := "# actionlint:ignore-next-line expression\nrun: " + value + "\nnext: sibling\n"
 				body, sibling := 0, 0
 				for i, line := range strings.Split(input, "\n") {

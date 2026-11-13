@@ -9,6 +9,7 @@ import (
 )
 
 func TestLegacyExpressionMigrationReportsIndependentSelectors(t *testing.T) {
+	t.Parallel()
 	for _, control := range []string{
 		"lint: {rules: {correctness: {expression: warn}}}",
 		"lint: {rules: {disable: [expression]}}",
@@ -38,6 +39,7 @@ func TestLegacyExpressionMigrationReportsIndependentSelectors(t *testing.T) {
 }
 
 func TestCanonicalExpressionSelectionIsNotTreatedAsLegacy(t *testing.T) {
+	t.Parallel()
 	source := []byte("lint: {rules: {correctness: {expression: off}}}\n")
 	migration, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", source)
 	if err != nil || migration.Changed || len(migration.Notes) != 0 || !bytes.Equal(migration.Content, source) {

@@ -12,6 +12,7 @@ import (
 )
 
 func TestParseYAMLIntegerRadixBounds(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value string
 		want  int
@@ -26,6 +27,7 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 		{"0o37777777777", -1},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			got, err := parseYAMLInteger(tc.value)
 			if err != nil || got != tc.want {
 				t.Fatalf("got (%d, %v), want (%d, nil)", got, err, tc.want)
@@ -34,6 +36,7 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 	}
 	for _, value := range []string{"0x100000000", "0o40000000000", "0x", "0o8"} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			if _, err := parseYAMLInteger(value); err == nil {
 				t.Fatal("expected invalid or overflowing integer to fail")
 			}
@@ -42,6 +45,7 @@ func TestParseYAMLIntegerRadixBounds(t *testing.T) {
 }
 
 func TestParserRejectsInvalidMappingKeys(t *testing.T) {
+	t.Parallel()
 	doc, err := codec.Parse([]byte(`!!int first: {nested: !!bool nope}
 !!bool second: value
 '': empty
@@ -76,6 +80,7 @@ VALID: duplicate
 	}
 	for _, source := range []string{"!!int invalid: value", "? [invalid]\n: value"} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			doc, err := codec.Parse([]byte(source))
 			if err != nil {
 				t.Fatal(err)
@@ -92,8 +97,10 @@ VALID: duplicate
 }
 
 func TestParserAnchorNames(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"git+opts", "git-opts", "git_opts", "opts123"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			src := fmt.Sprintf(`on: push
 jobs:
   test:
@@ -122,6 +129,7 @@ jobs:
 }
 
 func TestParserAliasTypeLocations(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, value, message string
 		check                func(*Parser, *syntax.Node)
@@ -140,6 +148,7 @@ func TestParserAliasTypeLocations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			src := "anchor: &value " + tt.value + `
 first: *value
 second: *value
@@ -172,6 +181,7 @@ second: *value
 }
 
 func TestParserScriptSource(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		source     string
@@ -313,6 +323,7 @@ next: value
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			p := NewSourceParser([]byte(tc.source))
 			source := p.ScriptSource(tc.node)
 			var have *workflowlang.Pos
@@ -330,6 +341,7 @@ next: value
 	}
 
 	t.Run("parser-backed literal block", func(t *testing.T) {
+		t.Parallel()
 		input := `run: |
   echo $foo
 `
@@ -357,6 +369,7 @@ next: value
 	})
 
 	t.Run("aliased literal block", func(t *testing.T) {
+		t.Parallel()
 		input := `script: &script |
   echo $foo
 run: *script
@@ -388,6 +401,7 @@ run: *script
 	})
 
 	t.Run("parser-backed plain scalar with blank continuation", func(t *testing.T) {
+		t.Parallel()
 		input := `run: echo first
 
   echo $foo
@@ -409,6 +423,7 @@ run: *script
 }
 
 func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, scalar, value                   string
 		tokenLine, decodedLine, decodedColumn int
@@ -418,6 +433,7 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 		{"multiline plain", "echo first\n    $foo\n", "echo first $foo", 4, 1, 12},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			input := "on: push\nenv:\n  SCRIPT: &script " + tc.scalar + "jobs:\n  block:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n  flow:\n    runs-on: ubuntu-latest\n    steps: [{run: *script}]\n"
 			workflow, diagnostics := Parse([]byte(input))
 			if len(diagnostics) != 0 || workflow == nil {

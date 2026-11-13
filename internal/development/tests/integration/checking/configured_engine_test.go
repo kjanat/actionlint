@@ -116,8 +116,10 @@ func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg 
 }
 
 func TestConfigurationSelectedEnginesThroughPublicAPI(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"sources", "files", "repository"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			root, paths, cfg := configuredEngineFixture(t)
 			loaded := map[string]*configuredBackend{}
 			var loadedMu sync.Mutex
@@ -155,8 +157,10 @@ func TestConfigurationSelectedEnginesThroughPublicAPI(t *testing.T) {
 }
 
 func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"sources", "files", "repository"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			root, paths, cfg := configuredEngineFixture(t)
 			failure := errors.New("module failed")
 			options := checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failure }}
@@ -180,6 +184,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 }
 
 func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
+	t.Parallel()
 	root, paths, _ := configuredEngineFixture(t)
 	cfgSource := "tools:\n  shellcheck:\n    backend:\n      wasm: {path: shellcheck.wasm}\n"
 	if err := os.WriteFile(filepath.Join(root, "actionlint.yaml"), []byte(cfgSource), 0o600); err != nil {
@@ -211,12 +216,14 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 }
 
 func TestCompositeOnlyConfiguredEngine(t *testing.T) {
+	t.Parallel()
 	for _, tool := range []struct{ name, shell, script string }{
 		{"ruff", "python", "print(missing)"},
 		{"shellcheck", "bash", "echo $missing"},
 	} {
 		for _, mode := range []string{"sources", "files", "repository"} {
 			t.Run(tool.name+"/"+mode, func(t *testing.T) {
+				t.Parallel()
 				root, paths, _ := configuredEngineFixture(t)
 				cfgSource := fmt.Sprintf("overrides:\n  - includes: [inner/action.yml]\n    tools:\n      %s:\n        backend:\n          wasm: {path: composite.wasm}\n", tool.name)
 				manifest := filepath.Join(root, "inner", "action.yml")

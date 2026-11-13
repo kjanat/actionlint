@@ -11,8 +11,10 @@ import (
 )
 
 func TestDockerfileOnlyActionInputsAndOutputs(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"Dockerfile", "dockerfile"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			dir := filepath.Join(root, "action")
 			if err := os.Mkdir(dir, 0o755); err != nil {

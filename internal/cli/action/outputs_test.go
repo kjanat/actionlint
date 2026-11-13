@@ -26,6 +26,7 @@ func newTestAction(t *testing.T, out *strings.Builder, env map[string]string) *a
 }
 
 func TestAppendOutputsWithoutEnvironmentFile(t *testing.T) {
+	t.Parallel()
 	a := newTestAction(t, &strings.Builder{}, map[string]string{})
 	if err := a.appendOutputs([]namedOutput{{"result", "success"}}); err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ func TestAppendOutputsWithoutEnvironmentFile(t *testing.T) {
 }
 
 func TestAppendOutputs(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "output")
 	a := newTestAction(t, &strings.Builder{}, map[string]string{"GITHUB_OUTPUT": path})
 
@@ -57,6 +59,7 @@ func TestAppendOutputs(t *testing.T) {
 }
 
 func TestAppendOutputsAppendsToExistingFile(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "output")
 	if err := os.WriteFile(path, []byte("existing<<X\nvalue\nX\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -71,6 +74,7 @@ func TestAppendOutputsAppendsToExistingFile(t *testing.T) {
 }
 
 func TestAppendOutputsAvoidsDelimiterCollision(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "output")
 	a := newTestAction(t, &strings.Builder{}, map[string]string{"GITHUB_OUTPUT": path})
 	a.newID = fixedID("DELIM")
@@ -84,6 +88,7 @@ func TestAppendOutputsAvoidsDelimiterCollision(t *testing.T) {
 }
 
 func TestWriteResultFileWithoutTarget(t *testing.T) {
+	t.Parallel()
 	got, err := writeResultFile(openRoot(t, t.TempDir()), "", "content")
 	if err != nil || got != "" {
 		t.Errorf("wanted no written file but got %q and %v", got, err)
@@ -91,6 +96,7 @@ func TestWriteResultFileWithoutTarget(t *testing.T) {
 }
 
 func TestWriteResultFileCreatesMissingDirectories(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	target := filepath.Join("a", "b", "results.json")
 
@@ -107,6 +113,7 @@ func TestWriteResultFileCreatesMissingDirectories(t *testing.T) {
 }
 
 func TestWriteResultFileOverwritesExistingFile(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	if err := os.WriteFile(filepath.Join(workspace, "results.json"), []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
@@ -125,6 +132,7 @@ func TestWriteResultFileOverwritesExistingFile(t *testing.T) {
 }
 
 func TestEmitSkipsEmptyOutput(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	a := newTestAction(t, &out, map[string]string{})
 	a.emit("", 0, formatDefault)
@@ -134,6 +142,7 @@ func TestEmitSkipsEmptyOutput(t *testing.T) {
 }
 
 func TestEmitStatus(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		code       int
@@ -154,6 +163,7 @@ func TestEmitStatus(t *testing.T) {
 		{"failure with unknown files", 3, "", 0, false, &lintRequest{disabledTools: []string{"ruff", "shellcheck"}}, ": failed with unknown problems while checking unknown workflow files (external linters disabled)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var out strings.Builder
 			a := newTestAction(t, &out, map[string]string{})
 			a.emitStatus(tc.code, tc.count, tc.files, tc.filesKnown, tc.req)
@@ -165,6 +175,7 @@ func TestEmitStatus(t *testing.T) {
 }
 
 func TestEmitAnnotatesFailures(t *testing.T) {
+	t.Parallel()
 	for _, code := range []int{2, 3} {
 		var out strings.Builder
 		a := newTestAction(t, &out, map[string]string{})
@@ -176,6 +187,7 @@ func TestEmitAnnotatesFailures(t *testing.T) {
 }
 
 func TestEmitWritesAnnotationsVerbatim(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	a := newTestAction(t, &out, map[string]string{})
 	rendered := "::error file=w.yaml,line=1,col=1,endColumn=1,title=actionlint (k)::m\n"
@@ -186,6 +198,7 @@ func TestEmitWritesAnnotationsVerbatim(t *testing.T) {
 }
 
 func TestEmitStopsWorkflowCommands(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	a := newTestAction(t, &out, map[string]string{})
 	a.emit("line\n", 1, formatDefault)
@@ -195,6 +208,7 @@ func TestEmitStopsWorkflowCommands(t *testing.T) {
 }
 
 func TestEmitTerminatesOutputWithoutTrailingNewline(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	a := newTestAction(t, &out, map[string]string{})
 	a.emit("line", 1, formatJSON)
@@ -204,6 +218,7 @@ func TestEmitTerminatesOutputWithoutTrailingNewline(t *testing.T) {
 }
 
 func TestNewDelimiterIsUnique(t *testing.T) {
+	t.Parallel()
 	first, second := newDelimiter(), newDelimiter()
 	if first == second {
 		t.Errorf("wanted unique delimiters but got %q twice", first)

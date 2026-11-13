@@ -7,6 +7,7 @@ import (
 )
 
 func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
+	t.Parallel()
 	const source = "run: | # actionlint:ignore expression,shellcheck -- reviewed\n  echo first\n  echo second\nnext: value\n"
 	directives, invalid := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 	if len(invalid) != 0 || len(directives) != 1 {
@@ -22,6 +23,7 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 		{"report both", Decision{Report: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result, reports := Evaluate(directives, func(rule string) Decision {
 				if rule == "expression" {
 					return tc.decision
@@ -54,6 +56,7 @@ func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 }
 
 func TestInvalidDirectiveDoesNotSuppress(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"run: echo ok # actionlint:ignore unknown -- reviewed",
 		"run: echo ok # actionlint:ignore expression --",

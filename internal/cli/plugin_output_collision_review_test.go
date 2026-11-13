@@ -12,6 +12,7 @@ import (
 )
 
 func TestCheckRefusesFileURIPluginAsOutput(t *testing.T) {
+	t.Parallel()
 	fixture, err := filepath.Abs(filepath.Join("internal", "plugins", "execution", "component", "testdata", "plugins", "no-sudo.wasm"))
 	if err != nil {
 		t.Fatal(err)

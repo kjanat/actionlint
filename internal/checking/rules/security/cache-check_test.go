@@ -9,6 +9,7 @@ import (
 )
 
 func TestCacheSecurityCallbacksDoNotRequireWorkflowVisits(t *testing.T) {
+	t.Parallel()
 	const source = `on: pull_request_target
 cache-mode: write
 jobs:

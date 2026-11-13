@@ -11,6 +11,7 @@ import (
 )
 
 func TestCollectionComparison(t *testing.T) {
+	t.Parallel()
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#operators
 	for _, tc := range []struct {
 		expression string
@@ -40,6 +41,7 @@ func TestCollectionComparison(t *testing.T) {
 		{`github.event.unknown && (fromJSON('{}') == fromJSON('{}'))`, 1},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)

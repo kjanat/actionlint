@@ -19,6 +19,7 @@ import (
 )
 
 func TestReusableWorkflowDuplicateRootCacheModeMetadataOrder(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		key, first, second, leaf string
 		wantMismatch             bool
@@ -34,6 +35,7 @@ func TestReusableWorkflowDuplicateRootCacheModeMetadataOrder(t *testing.T) {
 		{`!!str "cache-mode"`, "read", "write", "write", true},
 	} {
 		t.Run(fmt.Sprintf("%s/%s/%s/leaf=%s", tc.key, tc.first, tc.second, tc.leaf), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			project := workspace.Identity(root)
 			caller := []byte(`on: push
@@ -132,6 +134,7 @@ permissions: {}
 }
 
 func TestReusableWorkflowInvalidRootKeyMetadataOrder(t *testing.T) {
+	t.Parallel()
 	for _, entry := range []struct{ key, message string }{
 		{"!!int cache-mode", `invalid value "cache-mode" for "!!int" tag`},
 		{"!!bool cache-mode", `invalid value "cache-mode" for "!!bool" tag`},
@@ -155,6 +158,7 @@ func TestReusableWorkflowInvalidRootKeyMetadataOrder(t *testing.T) {
 			{"write", "read", "write", true},
 		} {
 			t.Run(fmt.Sprintf("%s/%s/%s/leaf=%s", entry.key, tc.invalid, tc.valid, tc.leaf), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				project := workspace.Identity(root)
 				caller := []byte(`on: push

@@ -3,6 +3,7 @@ package rule
 import "testing"
 
 func TestNamesResolveDeclaredAliases(t *testing.T) {
+	t.Parallel()
 	descriptors := []Descriptor{{Name: "check", Aliases: []Alias{{Name: "shortcut"}, {Name: "old-check", Deprecated: true}}}}
 	names, err := NewNames(descriptors)
 	if err != nil {
@@ -25,6 +26,7 @@ func TestNamesResolveDeclaredAliases(t *testing.T) {
 }
 
 func TestNamesRejectAmbiguousDeclarations(t *testing.T) {
+	t.Parallel()
 	for _, declarations := range [][]Descriptor{
 		{{Name: "check"}, {Name: "check"}},
 		{{Name: "check", Aliases: []Alias{{Name: "check"}}}},

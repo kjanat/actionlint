@@ -22,6 +22,7 @@ var documentValues = cmp.AllowUnexported(
 )
 
 func TestActionMultiProjectResultParity(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{
 		"z/.git":                       "",
 		"z/.github/workflows/test.yml": cleanWorkflow,

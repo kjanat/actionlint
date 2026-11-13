@@ -92,6 +92,7 @@ func (f *invocationFixture) actionSnapshot(t *testing.T, spec string) parsing.So
 }
 
 func TestComposedInvocationChainsFollowStructuralOwners(t *testing.T) {
+	t.Parallel()
 	workflow := `on: push
 jobs:
   first:
@@ -111,6 +112,7 @@ jobs:
 			name = "three-level"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			aliased := "name: calls\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - &nested\n      uses: $/nested\n    - *nested\n"
 			actions := map[string]string{
 				"outer/action.yml":  aliased,
@@ -192,6 +194,7 @@ jobs:
 }
 
 func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo unused}]}}\n", map[string]string{"self/action.yml": "name: self\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo root\n    - uses: $/self\n"}, nil)
 	metadata, _ := f.cache.LookupMetadata("$/self")
 	result, err := standaloneActionForTest(t, f.options, metadata.Metadata())
@@ -213,6 +216,7 @@ func TestStandaloneEntryCycleHasNoSyntheticCall(t *testing.T) {
 }
 
 func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		budget invocation.Budget
@@ -222,6 +226,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 		{"total", invocation.Budget{MaxDepth: 10, MaxCalls: 1, MaxScripts: invocation.DefaultMaxScripts}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 				"outer/action.yml":  "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo initial\n    - uses: $/nested\n",
 				"nested/action.yml": "name: nested\ndescription: identity\nruns: {using: composite, steps: []}\n",
@@ -246,6 +251,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 }
 
 func TestRepeatedMetadataFailuresRemainUnresolvedCalls(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}, {uses: $/broken}]}}\n", map[string]string{"broken/action.yml": "runs: [\n"}, nil)
 	result, err := Workflow(f.options, f.root)
 	if err != nil {
@@ -266,6 +272,7 @@ func TestRepeatedMetadataFailuresRemainUnresolvedCalls(t *testing.T) {
 }
 
 func TestInvalidAndDynamicCallsRetainDistinctOutcomes(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), `on: push
 jobs:
   test:
@@ -294,12 +301,14 @@ jobs:
 }
 
 func TestCompositionCancellationRetainsEntryOrPendingCall(t *testing.T) {
+	t.Parallel()
 	for _, pending := range []bool{false, true} {
 		name := "entry"
 		if pending {
 			name = "pending-call"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 			f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: identity\nruns: {using: composite, steps: []}\n"}, nil)

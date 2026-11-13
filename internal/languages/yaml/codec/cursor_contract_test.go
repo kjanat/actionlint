@@ -9,6 +9,7 @@ import (
 )
 
 func TestParseEmptySourcesHaveZeroOwnedRoot(t *testing.T) {
+	t.Parallel()
 	for _, data := range [][]byte{nil, {}, []byte(" \n \n"), []byte("# comment\n")} {
 		root, err := Parse(data)
 		if err != nil || root == nil || !reflect.ValueOf(*root).IsZero() {
@@ -23,6 +24,7 @@ func TestParseEmptySourcesHaveZeroOwnedRoot(t *testing.T) {
 }
 
 func TestEmptySourcesDoNotVisitSelectedFields(t *testing.T) {
+	t.Parallel()
 	var roots []*syntax.Node
 	for _, data := range []string{"", "# comment\n"} {
 		root, err := Parse([]byte(data))
@@ -51,6 +53,7 @@ func TestEmptySourcesDoNotVisitSelectedFields(t *testing.T) {
 }
 
 func TestCursorRejectsNodeAndSelectedDecodeTargetsBeforeConstruction(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		target any
 		want   string

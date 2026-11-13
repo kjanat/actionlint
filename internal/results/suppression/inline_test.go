@@ -11,6 +11,7 @@ import (
 )
 
 func TestInlineSuppressionSpellings(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{
 		"actionlint:ignore expression,shellcheck",
 		"actionlint:ignore expression shellcheck",
@@ -29,6 +30,7 @@ func TestInlineSuppressionSpellings(t *testing.T) {
 		for _, next := range []string{"next: value", "next: ["} {
 			for _, ending := range []string{"\n", "\r\n"} {
 				t.Run(declaration+"/"+next+"/"+ending, func(t *testing.T) {
+					t.Parallel()
 					source := strings.ReplaceAll("run: | # "+declaration+" -- reviewed -- input\n  echo first\n  echo second\n"+next+"\n", "\n", ending)
 					directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 					want := []Directive{{
@@ -54,9 +56,11 @@ func TestInlineSuppressionSpellings(t *testing.T) {
 }
 
 func TestInlineSuppressionNextLineSpellings(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"actionlint:ignore-next-line", "actionlint-ignore-next-line", "ignore-next-line"} {
 		for _, selectors := range []string{"expression,shellcheck", "expression shellcheck", "expression,\tshellcheck"} {
 			t.Run(command+"/"+selectors, func(t *testing.T) {
+				t.Parallel()
 				source := "# " + command + " " + selectors + "\nrun: |\n  echo ok\nnext: value\n"
 				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 				want := []Directive{{Position: sourcepos.Position{Line: 1, Column: 1}, First: 2, Last: 3, Rules: []string{"expression", "shellcheck"}}}
@@ -72,6 +76,7 @@ func TestInlineSuppressionNextLineSpellings(t *testing.T) {
 }
 
 func TestInlineSuppressionSpellingIsolation(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{"actionlint:ignore expression", "actionlint-ignore expression", "ignore[expression]", "ignore expression", "ignore-next-line expression"} {
 		for _, next := range []string{"next: value", "next: ["} {
 			source := "name: '# " + declaration + "' # ignored by another tool\nrun: |\n  # " + declaration + "\n  echo ok\n" + next + "\n"
@@ -84,6 +89,7 @@ func TestInlineSuppressionSpellingIsolation(t *testing.T) {
 }
 
 func TestPlainIgnoreNextLineRecovery(t *testing.T) {
+	t.Parallel()
 	for _, next := range []string{"next: value", "next: ["} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll("#ignore-next-line\texpression\nrun: |\n  echo ok\n"+next+"\n", "\n", ending)
@@ -100,6 +106,7 @@ func TestPlainIgnoreNextLineRecovery(t *testing.T) {
 }
 
 func TestInlineSuppressionMalformedSpellings(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{
 		"actionlint:ignore expression,",
 		"actionlint:ignore expression, ,shellcheck",
@@ -125,6 +132,7 @@ func TestInlineSuppressionMalformedSpellings(t *testing.T) {
 	} {
 		for _, next := range []string{"next: value", "next: ["} {
 			t.Run(declaration+"/"+next, func(t *testing.T) {
+				t.Parallel()
 				source := "run: echo ok # " + declaration + "\n" + next + "\n"
 				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 				if len(directives) != 0 || len(findings) != 1 || findings[0].Rule != "inline-suppression" {
@@ -136,6 +144,7 @@ func TestInlineSuppressionMalformedSpellings(t *testing.T) {
 }
 
 func TestInlineSuppressionStages(t *testing.T) {
+	t.Parallel()
 	const source = `name: one
   two # actionlint:ignore cache-operation, cache-operation -- reviewed -- intentionally unused
 run-name: |

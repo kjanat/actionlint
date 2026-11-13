@@ -8,6 +8,7 @@ import (
 )
 
 func TestCursorEnterCycleMatchesUpstreamAndRemainsFatal(t *testing.T) {
+	t.Parallel()
 	const source = "&a {x: *a}\n"
 	var baseline map[string]any
 	wantErr := upstream.Unmarshal([]byte(source), &baseline)

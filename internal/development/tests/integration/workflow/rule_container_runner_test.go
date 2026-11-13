@@ -13,6 +13,7 @@ import (
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idcontainer
 // https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners
 func TestContainerRunner(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, runner, job, steps string
 		want                     int
@@ -41,6 +42,7 @@ func TestContainerRunner(t *testing.T) {
 		{"unrelated unknown matrix", "windows-latest", "    strategy: {matrix: {item: '${{ fromJSON(vars.ITEMS) }}'}}\n", "      - uses: docker://alpine:3\n", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n" + tc.job + "    steps:\n" + tc.steps
 			findings := testutil.WorkflowDiagnostics(t, source, "tools: {shellcheck: false, ruff: false}")
 			count := 0
@@ -60,6 +62,7 @@ func TestContainerRunner(t *testing.T) {
 }
 
 func TestContainerRunnerSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config, comment, severity, runner string
 		strict                                  bool
@@ -77,6 +80,7 @@ func TestContainerRunnerSelection(t *testing.T) {
 		{"slim explicit error", "lint: {rules: {correctness: {container-runner: error}}}", "", "error", "ubuntu-slim", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n    steps:\n      - uses: docker://alpine:3" + tc.comment + "\n"
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
 			count := 0

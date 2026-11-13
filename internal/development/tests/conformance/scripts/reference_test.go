@@ -14,6 +14,7 @@ import (
 
 // These expectations replay captured output. They do not execute Bash.
 func TestRecordedBashErrexit(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/bash-reference.txt")
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +48,7 @@ func TestRecordedBashErrexit(t *testing.T) {
 	invocation := registry.Analyze("bash", false)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			output, ok := outputs[tc.name]
 			if !ok || !strings.HasSuffix(output, "EXIT "+tc.exit) {
 				t.Fatalf("unexpected recorded output %q", output)
@@ -65,6 +67,7 @@ func TestRecordedBashErrexit(t *testing.T) {
 
 // Compare supported workflow-command mistakes with the runner's parser results.
 func TestRecordedRunnerCommands(t *testing.T) {
+	t.Parallel()
 	file, err := os.Open("testdata/runner-reference.jsonl")
 	if err != nil {
 		t.Fatal(err)
@@ -83,6 +86,7 @@ func TestRecordedRunnerCommands(t *testing.T) {
 		}
 		count++
 		t.Run(result.Input, func(t *testing.T) {
+			t.Parallel()
 			var state commands.WorkflowCommandState
 			problem := state.WorkflowCommandProblem(result.Input)
 			if result.Parsed && problem != "" {

@@ -13,10 +13,7 @@ import (
 )
 
 func TestCompositeExecutableUnixPaths(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
-	git("add", "local/bad.sh")
-	git("update-index", "--chmod=-x", "local/bad.sh")
+	t.Parallel()
 	for _, tc := range []struct {
 		name, checkout, directory, script string
 	}{
@@ -26,6 +23,11 @@ func TestCompositeExecutableUnixPaths(t *testing.T) {
 		{"colon direct operand", "a:debug", ".", "./a:debug/local/bad.sh"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, git := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+			git("add", "local/bad.sh")
+			git("update-index", "--chmod=-x", "local/bad.sh")
 			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:

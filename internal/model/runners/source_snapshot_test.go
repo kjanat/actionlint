@@ -7,6 +7,7 @@ import (
 )
 
 func TestNilKnowledgeUsesCanonicalJobFallback(t *testing.T) {
+	t.Parallel()
 	const identity = "ci.yml"
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps: [{run: echo ok}]\n")
 	document := parsing.Workflow(content)

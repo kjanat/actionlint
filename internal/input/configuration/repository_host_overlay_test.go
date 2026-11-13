@@ -8,6 +8,7 @@ import (
 )
 
 func TestRepositoryRunnerOverlayPreservesOtherHostFacts(t *testing.T) {
+	t.Parallel()
 	rules, err := NewRuleSet(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -29,6 +30,7 @@ func TestRepositoryRunnerOverlayPreservesOtherHostFacts(t *testing.T) {
 		{"null repository", `{"repository":null}`, false, nil, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			resolved, err := rules.ResolveDocument([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)

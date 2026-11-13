@@ -14,6 +14,7 @@ import (
 )
 
 func TestKnownShellExpressions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		runner   string
@@ -37,6 +38,7 @@ func TestKnownShellExpressions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -85,6 +87,7 @@ jobs:
 }
 
 func TestKnownShellCommandHelper(t *testing.T) {
+	t.Parallel()
 	index := -1
 	for i, arg := range os.Args {
 		if arg == "--" {

@@ -10,6 +10,7 @@ import (
 )
 
 func TestTemplateSnippetLineEndings(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []struct {
 		name string
 		text string
@@ -21,6 +22,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 		{name: "PS", text: "\u2029"},
 	} {
 		t.Run(ending.name, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
 				d := results.Diagnostic{Start: sourcepos.Position{Line: 1}}
@@ -44,6 +46,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 }
 
 func TestRawCRLFMarkerUsesDisplayEOF(t *testing.T) {
+	t.Parallel()
 	source := []byte("abc\r\n")
 	d := results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 4}, End: sourcepos.Position{Line: 1, Column: 5}}
 	canonical := (&findingmodel.Finding{Diagnostic: d, RawScriptSource: true}).Canonical(source)

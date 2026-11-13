@@ -11,6 +11,7 @@ import (
 )
 
 func TestRemoveSuppressionSelectors(t *testing.T) {
+	t.Parallel()
 	allowed := []string{"expression", "shellcheck", "matrix"}
 	for _, tc := range []struct {
 		name, source, want string
@@ -33,6 +34,7 @@ func TestRemoveSuppressionSelectors(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
+				t.Parallel()
 				content := []byte(strings.ReplaceAll(tc.source, "\n", ending))
 				directives, invalid := Parse(content, allowed, rule.Names{})
 				if len(invalid) != 0 || len(directives) != 1 {

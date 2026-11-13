@@ -11,6 +11,7 @@ import (
 )
 
 func TestEnvironmentPreparationPreservesNamesAndSourceMapping(t *testing.T) {
+	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux}, scriptmodel.EnvironmentLayer{
 		Scope: scriptmodel.EnvironmentStep,
 		Names: []string{"lowercase", "UPPERCASE", "miXedCase", "bad; command", "bad\ncommand", "1bad", "bad=value"},
@@ -34,6 +35,7 @@ func TestEnvironmentPreparationPreservesNamesAndSourceMapping(t *testing.T) {
 }
 
 func TestEnvironmentPreparationPreservesDeclaredNamesWithUnknownRuntime(t *testing.T) {
+	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux},
 		scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true},
 		scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"DECLARED"}},
@@ -57,6 +59,7 @@ func TestEnvironmentPreparationPreservesDeclaredNamesWithUnknownRuntime(t *testi
 }
 
 func TestEnvironmentPreparationUsesAllOperatingSystemAlternatives(t *testing.T) {
+	t.Parallel()
 	layers := []scriptmodel.EnvironmentLayer{
 		{Scope: scriptmodel.EnvironmentWorkflow, Names: []string{"foo"}},
 		{Scope: scriptmodel.EnvironmentStep, Names: []string{"FOO"}},
@@ -78,6 +81,7 @@ func TestEnvironmentPreparationUsesAllOperatingSystemAlternatives(t *testing.T) 
 }
 
 func TestActionInputPreparationImportsEnvironmentNames(t *testing.T) {
+	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"input_env"}})
 	prepared, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Environment: environments}, "echo \"$input_env\"")
 	if err != nil || !strings.HasPrefix(prepared.Source, "export input_env\n") || slices.Contains(prepared.Excluded, "SC2154") {

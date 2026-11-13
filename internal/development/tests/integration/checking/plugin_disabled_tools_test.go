@@ -22,6 +22,7 @@ import (
 // a disabled tool id is neither downloaded nor loaded, and that the id
 // counts as known.
 func TestDisabledToolIsNotResolved(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
@@ -68,6 +69,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 }
 
 func TestUnknownToolIDIsRejected(t *testing.T) {
+	t.Parallel()
 	_, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{
 		Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"),
 	}, plugininstall.Sources{NamedTools: []string{"missing"}})
@@ -81,6 +83,7 @@ func TestUnknownToolIDIsRejected(t *testing.T) {
 // ids as --no-tool, here a lock pin's name and alias, and that naming a
 // plugin keeps it running.
 func TestNamedPluginToolIsAccepted(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
@@ -108,6 +111,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	}
 	for _, id := range []string{fixtureregistry.FixturePluginName, "sudo-check"} {
 		t.Run(id, func(t *testing.T) {
+			t.Parallel()
 			selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules()}, nil, []string{id})
 			sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 			if err != nil {
@@ -127,6 +131,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 }
 
 func TestMetadataToolsReadsStaticMetadata(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		metadata json.RawMessage
@@ -137,6 +142,7 @@ func TestMetadataToolsReadsStaticMetadata(t *testing.T) {
 		{"no metadata", nil, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := pluginexec.MetadataTools(test.metadata)
 			if err != nil || !slices.Equal(got, test.want) {
 				t.Fatalf("metadataTools = %q, %v; want %q", got, err, test.want)

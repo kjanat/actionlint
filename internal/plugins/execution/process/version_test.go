@@ -12,6 +12,7 @@ import (
 )
 
 func TestCompareVersions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		a, b string
 		want int
@@ -42,6 +43,7 @@ func TestCompareVersions(t *testing.T) {
 // The bundled Ruff probe keeps the Ruff adapter's minimum: 0.17.0 releases
 // and newer, never a prerelease of the minimum.
 func TestRuffVersionProbe(t *testing.T) {
+	t.Parallel()
 	probe := bundledManifest(t, "ruff").Process.Version
 	pattern := regexp.MustCompile(probe.Pattern)
 	for output, accepted := range map[string]bool{
@@ -67,6 +69,7 @@ func TestRuffVersionProbe(t *testing.T) {
 }
 
 func TestProbeSharesCompletedResult(t *testing.T) {
+	t.Parallel()
 	var p VersionProbe
 	var runs, warnings atomic.Int32
 	failure := errors.New("unavailable")
@@ -89,6 +92,7 @@ func TestProbeSharesCompletedResult(t *testing.T) {
 }
 
 func TestProbeRetriesAfterCancellation(t *testing.T) {
+	t.Parallel()
 	var p VersionProbe
 	ctx, cancel := context.WithCancel(t.Context())
 	if _, err := p.run(ctx, func() (string, error) {
@@ -104,6 +108,7 @@ func TestProbeRetriesAfterCancellation(t *testing.T) {
 }
 
 func TestFailedOptionalProbeReportsEverySkippedConsumer(t *testing.T) {
+	t.Parallel()
 	var probe VersionProbe
 	var warnings, skipped atomic.Int32
 	runner := &embedded{version: "unrecognized version\n", output: "[]"}

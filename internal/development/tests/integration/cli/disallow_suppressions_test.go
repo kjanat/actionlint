@@ -13,7 +13,7 @@ import (
 )
 
 func TestDisallowSuppressionsCommand(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config string
 		kinds        []string
@@ -37,16 +37,17 @@ func TestDisallowSuppressionsCommand(t *testing.T) {
 			for _, discovery := range []bool{false, true} {
 				name := tc.name + map[bool]string{false: "/trailing", true: "/preceding"}[preceding] + map[bool]string{false: "/explicit", true: "/discovery"}[discovery]
 				t.Run(name, func(t *testing.T) {
-					t.Chdir(t.TempDir())
-					configPath := "config.yaml"
+					t.Parallel()
+					dir := t.TempDir()
+					configPath := filepath.Join(dir, "config.yaml")
 					if discovery {
-						if err := os.Mkdir(".git", 0755); err != nil {
+						if err := os.Mkdir(filepath.Join(dir, ".git"), 0755); err != nil {
 							t.Fatal(err)
 						}
-						if err := os.MkdirAll(filepath.Join(".github", "workflows"), 0755); err != nil {
+						if err := os.MkdirAll(filepath.Join(dir, ".github", "workflows"), 0755); err != nil {
 							t.Fatal(err)
 						}
-						configPath = filepath.Join(".github", "actionlint.yaml")
+						configPath = filepath.Join(dir, ".github", "actionlint.yaml")
 					}
 					if err := os.WriteFile(configPath, []byte(tc.config), 0600); err != nil {
 						t.Fatal(err)
@@ -66,7 +67,7 @@ jobs:
 					if !discovery {
 						args = append(args, "-config-file", configPath)
 					} else {
-						input = filepath.Join(".github", "workflows", "test.yaml")
+						input = filepath.Join(dir, ".github", "workflows", "test.yaml")
 						if err := os.WriteFile(input, []byte(source), 0600); err != nil {
 							t.Fatal(err)
 						}
@@ -108,7 +109,7 @@ jobs:
 }
 
 func TestDisallowSuppressionsOutputAndFilters(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	const source = `on: pull_request_target
 cache-mode: write # actionlint:ignore cache-write-untrusted -- reviewed
 jobs:
@@ -128,6 +129,7 @@ jobs:
 		{"overlapping filters", forbidden, "  message-ignores: {'test.yaml': ['" + violation + "']}\n", "{{json .}}", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			config := filepath.Join(t.TempDir(), "actionlint.yaml")
 			if err := os.WriteFile(config, []byte("lint:\n  rules: {policy: {disallow-suppressions: on}}\n"+tc.configIgnore), 0600); err != nil {
 				t.Fatal(err)

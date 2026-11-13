@@ -8,6 +8,7 @@ import (
 )
 
 func TestSummaryDetails(t *testing.T) {
+	t.Parallel()
 	summary := report.CheckSummary{
 		Files: 4, Findings: 6,
 		ByFile: []report.FileFindingCount{{Path: "a.yml", Count: 3}, {Path: "b.yml", Count: 3}},

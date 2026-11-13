@@ -15,6 +15,7 @@ import (
 )
 
 func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	directory := filepath.Join(root, ".github")
 	if err := os.Mkdir(directory, 0o700); err != nil {
@@ -43,6 +44,7 @@ func TestPluginConfigDiscoverySkipsDanglingLinks(t *testing.T) {
 }
 
 func TestPluginConfigDiscoveryPreservesLookupErrors(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	path := filepath.Join(directory, "actionlint.yaml")
 	if err := os.Symlink(path, path); err != nil {

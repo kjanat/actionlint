@@ -25,7 +25,7 @@ func TestJSONEnvironmentAndOverride(t *testing.T) {
 }
 
 func TestExplicitJSONPrettySelectsJSON(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	for _, tc := range []struct {
 		name             string
 		args, equivalent []string
@@ -39,17 +39,18 @@ func TestExplicitJSONPrettySelectsJSON(t *testing.T) {
 		{"parse failure", []string{"rules", "--unknown", "--json-pretty"}, []string{"rules", "--unknown", "--json"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := testRunCommand(commandGoodWorkflow, tc.args...)
-			want := testRunCommand(commandGoodWorkflow, tc.equivalent...)
+			t.Parallel()
+			got := testRunCommand(commandGoodWorkflow, append(tc.args, "--no-config")...)
+			want := testRunCommand(commandGoodWorkflow, append(tc.equivalent, "--no-config")...)
 			if got.Status != want.Status || compactJSONForComparison(got.Stdout) != compactJSONForComparison(want.Stdout) || compactJSONForComparison(got.Stderr) != compactJSONForComparison(want.Stderr) || !json.Valid([]byte(got.Stdout+got.Stderr)) {
 				t.Fatalf("explicit pretty flag did not select JSON: %+v, want %+v", got, want)
 			}
 		})
 	}
 	for _, args := range [][]string{
-		{"rules"},
-		{"rules", "--json-pretty=false"},
-		{"rules", "--json-pretty", "--json=false"},
+		{"rules", "--no-config"},
+		{"rules", "--json-pretty=false", "--no-config"},
+		{"rules", "--json-pretty", "--json=false", "--no-config"},
 	} {
 		got := testRunCommand("", args...)
 		if got.Status != 0 || json.Valid([]byte(got.Stdout)) {
@@ -57,7 +58,7 @@ func TestExplicitJSONPrettySelectsJSON(t *testing.T) {
 		}
 	}
 	for _, format := range []string{"text", "oneline", "sarif", "jsonl"} {
-		args := []string{"check", "--output-format=" + format, "-"}
+		args := []string{"check", "--output-format=" + format, "--no-config", "-"}
 		got := testRunCommand(commandGoodWorkflow, append([]string{"--json-pretty"}, args...)...)
 		want := testRunCommand(commandGoodWorkflow, args...)
 		if got.Status != want.Status || got.Stderr != want.Stderr || compactJSONForComparison(got.Stdout) != compactJSONForComparison(want.Stdout) {

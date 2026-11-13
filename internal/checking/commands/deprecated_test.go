@@ -12,6 +12,7 @@ import (
 )
 
 func TestDeprecatedReplacementsAppendToQuotedDestination(t *testing.T) {
+	t.Parallel()
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("bash is required to execute replacement snippets")
@@ -25,6 +26,7 @@ func TestDeprecatedReplacementsAppendToQuotedDestination(t *testing.T) {
 		{"::add-path::/path/to/foo", "GITHUB_PATH", "/path/to/foo\n"},
 	} {
 		t.Run(tc.variable, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			name := "command file [1]"
 			destination := filepath.Join(dir, name)
@@ -38,7 +40,7 @@ func TestDeprecatedReplacementsAppendToQuotedDestination(t *testing.T) {
 			script := strings.NewReplacer("{name}", "foo", "{value}", "42", "{path}", "/path/to/foo").Replace(findings[0].Replacement)
 			cmd := exec.CommandContext(t.Context(), bash, "--noprofile", "--norc", "-c", script)
 			cmd.Dir = dir
-			t.Setenv(tc.variable, name)
+			cmd.Env = append(os.Environ(), tc.variable+"="+name)
 			if output, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("replacement failed: %v\n%s", err, output)
 			}
@@ -54,6 +56,7 @@ func TestDeprecatedReplacementsAppendToQuotedDestination(t *testing.T) {
 }
 
 func TestRuleDeprecatedCommandsDetectTargetCommands(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		run  string
@@ -138,6 +141,7 @@ func TestRuleDeprecatedCommandsDetectTargetCommands(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			have := []string{}
 			for _, finding := range workflowcommands.Deprecated(tc.run) {
 				have = append(have, finding.Command)

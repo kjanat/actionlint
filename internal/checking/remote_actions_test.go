@@ -18,6 +18,7 @@ func (p manifestProvider) Lookup(ctx context.Context, reference actions.Referenc
 }
 
 func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
+	t.Parallel()
 	identity, err := actions.NewIdentity("github.com", "example/action", repositoryid.ID{}, strings.Repeat("a", 40), "")
 	if err != nil {
 		t.Fatal(err)
@@ -78,6 +79,7 @@ permissions: {}
 }
 
 func TestRemoteMetadataIsUnavailableWithoutProvider(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
 jobs:

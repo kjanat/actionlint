@@ -7,6 +7,7 @@ import (
 )
 
 func TestTemplateMetadataRequiresMatchingExport(t *testing.T) {
+	t.Parallel()
 	declared := []byte(`{"template_contract":"kjanat:actionlint/template-effects@0.1.0"}`)
 	if err := verifyTemplateMetadata(declared, ""); err == nil {
 		t.Fatal("metadata accepted without matching export")

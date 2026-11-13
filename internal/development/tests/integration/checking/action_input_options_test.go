@@ -63,6 +63,7 @@ func (b *inputOptionsBackend) Check(_ context.Context, request checkinputs.Scrip
 }
 
 func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, shell, base, nested string
 		registration              tools.Registration
@@ -71,6 +72,7 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 		{"shellcheck", "bash", "config: {shell: dash, disable: [SC2086], enable: [check-unassigned-uppercase]}", "config: {shell: bash, disable: [SC2046], enable: [check-unassigned-uppercase]}", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			files := map[string]string{
 				".git/HEAD":               "ref: refs/heads/master\n",

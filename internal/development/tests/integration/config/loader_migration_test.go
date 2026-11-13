@@ -14,6 +14,7 @@ import (
 )
 
 func TestMigrationCanonicalSettings(t *testing.T) {
+	t.Parallel()
 	original := []byte(`# repository settings
 plugins: []
 self-hosted-runner: {labels: [gpu, custom-*]}
@@ -64,6 +65,7 @@ policy:
 }
 
 func TestMigrationNullUsesSelectedPreset(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		rule        string
 		strictLevel repoconfig.Level
@@ -73,6 +75,7 @@ func TestMigrationNullUsesSelectedPreset(t *testing.T) {
 		{"require-commit-hash", "on", (*repoconfig.Config).RequiresCommitHash},
 	} {
 		t.Run(tc.rule, func(t *testing.T) {
+			t.Parallel()
 			result, err := checking.ConfigurationRules().MigrateDocument("config.yaml", []byte("policy: {"+tc.rule+": null}\n"))
 			if err != nil {
 				t.Fatal(err)
@@ -103,6 +106,7 @@ func TestMigrationNullUsesSelectedPreset(t *testing.T) {
 }
 
 func TestMigrationPolicyResetClearsInheritedActionMetadata(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	base := filepath.Join(directory, "base.yaml")
 	leaf := filepath.Join(directory, "config.yaml")
@@ -121,6 +125,7 @@ func TestMigrationPolicyResetClearsInheritedActionMetadata(t *testing.T) {
 }
 
 func TestMigrationConflicts(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct{ source, target string }{
 		{"policy: {cache-operation: false}\nlint: {rules: {correctness: {cache-operation: on}}}", "lint.rules.correctness.cache-operation"},
 		{"config-variables: [OLD]\nlint: {rules: {correctness: {expression-reference: {level: on, options: {variables: [NEW]}}}}}", "repository.variables"},
@@ -139,6 +144,7 @@ func TestMigrationConflicts(t *testing.T) {
 }
 
 func TestMigrationFormatsAndInheritance(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source string }{
 		{"actionlint.yaml", "config-variables: []\r\npolicy: {require-commit-hash: false}\r\n"},
 		{"actionlint.json", `{"config-variables":[],"policy":{"require-commit-hash":false}}`},
@@ -146,6 +152,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 		{"actionlint.toml", "config-variables = []\n[policy]\nrequire-commit-hash = false\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			directory := t.TempDir()
 			path := filepath.Join(directory, tc.name)
 			if err := os.WriteFile(path, []byte(tc.source), 0600); err != nil {
@@ -178,8 +185,10 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 }
 
 func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
+	t.Parallel()
 	for _, changeBase := range []bool{false, true} {
 		t.Run(strconv.FormatBool(changeBase), func(t *testing.T) {
+			t.Parallel()
 			directory := t.TempDir()
 			base, path := filepath.Join(directory, "base.yaml"), filepath.Join(directory, "actionlint.yaml")
 			if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
@@ -215,26 +224,36 @@ func TestMigrationSnapshotRejectsConcurrentEdits(t *testing.T) {
 }
 
 func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
-	directory := t.TempDir()
-	selected := filepath.Join(directory, "actionlint.yaml")
-	base := filepath.Join(directory, "base.yaml")
-	other := filepath.Join(directory, "other.yaml")
-	linkedBase := filepath.Join(directory, "linked-base.yaml")
-	if err := os.WriteFile(base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(other, []byte("config-variables: [OTHER]\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(base, linkedBase); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-	if err := os.WriteFile(selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0600); err != nil {
-		t.Fatal(err)
+	t.Parallel()
+	type inputs struct{ selected, base, other, linkedBase string }
+	fixture := func(t *testing.T) inputs {
+		t.Helper()
+		directory := t.TempDir()
+		paths := inputs{
+			selected:   filepath.Join(directory, "actionlint.yaml"),
+			base:       filepath.Join(directory, "base.yaml"),
+			other:      filepath.Join(directory, "other.yaml"),
+			linkedBase: filepath.Join(directory, "linked-base.yaml"),
+		}
+		if err := os.WriteFile(paths.base, []byte("config-variables: [BASE]\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(paths.other, []byte("config-variables: [OTHER]\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(paths.base, paths.linkedBase); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		if err := os.WriteFile(paths.selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return paths
 	}
 
 	t.Run("unchanged target", func(t *testing.T) {
-		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), selected)
+		t.Parallel()
+		paths := fixture(t)
+		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), paths.selected)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -248,33 +267,26 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 
 	for _, tc := range []struct {
 		name   string
-		change func() error
+		change func(inputs) error
 	}{
-		{name: "retargeted", change: func() error {
-			if err := os.Remove(linkedBase); err != nil {
+		{name: "retargeted", change: func(paths inputs) error {
+			if err := os.Remove(paths.linkedBase); err != nil {
 				return err
 			}
-			return os.Symlink(other, linkedBase)
+			return os.Symlink(paths.other, paths.linkedBase)
 		}},
-		{name: "mutated target", change: func() error {
-			return os.WriteFile(base, []byte("config-variables: [CHANGED]\n"), 0600)
+		{name: "mutated target", change: func(paths inputs) error {
+			return os.WriteFile(paths.base, []byte("config-variables: [CHANGED]\n"), 0600)
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := os.WriteFile(selected, []byte("extends: [linked-base.yaml]\npolicy: {require-job-timeout: false}\n"), 0600); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Remove(linkedBase); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Symlink(base, linkedBase); err != nil {
-				t.Skipf("symlinks unavailable: %v", err)
-			}
-			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), selected)
+			t.Parallel()
+			paths := fixture(t)
+			plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), paths.selected)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := tc.change(); err != nil {
+			if err := tc.change(paths); err != nil {
 				t.Fatal(err)
 			}
 			if err := plan.CheckUnchanged(t.Context()); err == nil || !strings.Contains(err.Error(), "changed before migration") {
@@ -285,8 +297,10 @@ func TestMigrationSnapshotFollowsSymlinkedInheritedInputs(t *testing.T) {
 }
 
 func TestMigrationYAMLBooleanSpellings(t *testing.T) {
+	t.Parallel()
 	for _, spelling := range []string{"true", "True", "TRUE"} {
 		t.Run(spelling, func(t *testing.T) {
+			t.Parallel()
 			migration, err := checking.ConfigurationRules().MigrateDocument("config.yaml", []byte("policy: {require-commit-hash: "+spelling+"}\n"))
 			if err != nil {
 				t.Fatal(err)
@@ -303,6 +317,7 @@ func TestMigrationYAMLBooleanSpellings(t *testing.T) {
 }
 
 func TestMigrationAliasesRetainGlobalKnowledge(t *testing.T) {
+	t.Parallel()
 	source := []byte(`overrides:
   - includes: [special.yml]
     lint:
@@ -333,6 +348,7 @@ self-hosted-runner: *labels
 }
 
 func TestMigrationRetainsInheritedResetsAndEmptyMaps(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	base, path := filepath.Join(directory, "base.yaml"), filepath.Join(directory, "config.yaml")
 	if err := os.WriteFile(base, []byte(`config-variables: [BASE]
@@ -369,6 +385,7 @@ policy: {require-job-timeout: false}
 }
 
 func TestMigrationRejectsLostInheritedTOMLReset(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	base := filepath.Join(directory, "base.toml")
 	path := filepath.Join(directory, "config.toml")
@@ -389,6 +406,7 @@ func TestMigrationRejectsLostInheritedTOMLReset(t *testing.T) {
 }
 
 func TestCanonicalKnowledgeRoundTripAndOverrides(t *testing.T) {
+	t.Parallel()
 	source := []byte(`lint:
   rules:
     correctness:

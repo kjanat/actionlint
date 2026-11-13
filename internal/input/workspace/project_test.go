@@ -25,6 +25,7 @@ func testProjectDir(t *testing.T, fixture string) string {
 }
 
 func TestProjectKnowsDirectoryBoundary(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "repo")
 	p := &Project{root: root}
 	for _, tc := range []struct {
@@ -45,6 +46,7 @@ func TestProjectKnowsDirectoryBoundary(t *testing.T) {
 }
 
 func TestProjectRootLookupCache(t *testing.T) {
+	t.Parallel()
 	root := testProjectDir(t, filepath.Join("testdata", "find-project"))
 	nested := filepath.Join(root, "nested")
 	writeShellcheckFixture(t, nested, ".github/workflows/ci.yml", "on: push\n")
@@ -84,6 +86,7 @@ func TestProjectRootLookupCache(t *testing.T) {
 }
 
 func TestProjectsLookupCacheRetriesFailures(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	projects := NewProjects(repoconfig.RuleSet{})
 	if project, err := projects.At(root); err != nil || project != nil {
@@ -112,9 +115,11 @@ func TestProjectsLookupCacheRetriesFailures(t *testing.T) {
 }
 
 func TestProjectsNestedRepositoryConfigIsolation(t *testing.T) {
+	t.Parallel()
 	for _, markerFile := range []bool{false, true} {
 		for _, innerFirst := range []bool{false, true} {
 			t.Run(fmt.Sprintf("git-file=%t/inner-first=%t", markerFile, innerFirst), func(t *testing.T) {
+				t.Parallel()
 				base := t.TempDir()
 				roots := []string{filepath.Join(base, "repo"), filepath.Join(base, "repo", "sub"), filepath.Join(base, "repo-other")}
 				for index, root := range roots {
@@ -168,13 +173,13 @@ func TestProjectsNestedRepositoryConfigIsolation(t *testing.T) {
 }
 
 func TestProjectsFindProjectFromPath(t *testing.T) {
+	t.Parallel()
 	d := testProjectDir(t, filepath.Join("testdata", "find-project"))
 	abs, err := filepath.Abs(d)
 	if err != nil {
 		panic(err)
 	}
 
-	ps := NewProjects(repoconfig.RuleSet{})
 	for _, tc := range []struct {
 		what string
 		path string
@@ -205,6 +210,8 @@ func TestProjectsFindProjectFromPath(t *testing.T) {
 		},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
+			ps := NewProjects(repoconfig.RuleSet{})
 			p, err := ps.At(tc.path)
 			if err != nil {
 				t.Fatal(err)
@@ -228,6 +235,7 @@ func TestProjectsFindProjectFromPath(t *testing.T) {
 }
 
 func TestProjectsDoesNotFindProjectFromOutside(t *testing.T) {
+	t.Parallel()
 	d := testProjectDir(t, filepath.Join("testdata", "find-project"))
 	abs, err := filepath.Abs(d)
 	if err != nil {
@@ -246,6 +254,7 @@ func TestProjectsDoesNotFindProjectFromOutside(t *testing.T) {
 }
 
 func TestProjectsLoadProjectConfig(t *testing.T) {
+	t.Parallel()
 	for _, n := range []string{"ok", "yml"} {
 		d := testProjectDir(t, filepath.Join("testdata", "config-projects", n))
 		ps := NewProjects(repoconfig.RuleSet{})
@@ -263,6 +272,7 @@ func TestProjectsLoadProjectConfig(t *testing.T) {
 }
 
 func TestProjectsLoadingNoProjectConfig(t *testing.T) {
+	t.Parallel()
 	d := testProjectDir(t, filepath.Join("testdata", "config-projects", "none"))
 	ps := NewProjects(repoconfig.RuleSet{})
 	p, err := ps.At(d)
@@ -278,6 +288,7 @@ func TestProjectsLoadingNoProjectConfig(t *testing.T) {
 }
 
 func TestProjectsLoadingBrokenProjectConfig(t *testing.T) {
+	t.Parallel()
 	want := "could not parse config file"
 	d := testProjectDir(t, filepath.Join("testdata", "config-projects", "err"))
 	ps := NewProjects(repoconfig.RuleSet{})

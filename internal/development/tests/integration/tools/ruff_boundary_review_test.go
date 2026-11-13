@@ -15,6 +15,7 @@ import (
 )
 
 func TestRuffTemplateParenthesisFindings(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F, UP034]}}"))
 	if err != nil {
@@ -36,6 +37,7 @@ func TestRuffTemplateParenthesisFindings(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.script+ending, func(t *testing.T) {
+				t.Parallel()
 				source := `on: push
 jobs:
   test:
@@ -65,45 +67,14 @@ jobs:
 	}
 }
 
-func TestRuffStdinUsesCommandDirectory(t *testing.T) {
+func assertRuffStdinDirectory(t *testing.T, root, working string) {
+	t.Helper()
 	command := testutil.RequireTool(t, "ruff")
 	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F, INP001]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, directory := range []string{t.TempDir(), ".", "symlink", "symlink-parent", "logical-pwd-parent"} {
-		t.Run(directory, func(t *testing.T) {
-			root := t.TempDir()
-			working := directory
-			if directory == "." {
-				t.Chdir(root)
-				working = "python"
-				if err := os.Mkdir(filepath.Join(root, working), 0o755); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if strings.HasPrefix(directory, "symlink") || directory == "logical-pwd-parent" {
-				working = filepath.Join(t.TempDir(), "alias")
-				target := root
-				if directory != "symlink" {
-					target = filepath.Join(root, "nested")
-					if err := os.Mkdir(target, 0o755); err != nil {
-						t.Fatal(err)
-					}
-				}
-				if err := os.Symlink(target, working); err != nil {
-					t.Skipf("directory symlink is unavailable: %v", err)
-				}
-				if directory == "symlink-parent" {
-					working += string(filepath.Separator) + ".."
-				}
-				if directory == "logical-pwd-parent" {
-					t.Chdir(target)
-					t.Setenv("PWD", working)
-					working = ".."
-				}
-			}
-			source := `on: push
+	source := `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -112,18 +83,67 @@ jobs:
         run: print(missing)
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, WorkingDir: working}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
-			if err != nil {
-				t.Fatal(err)
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, WorkingDir: working}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" {
+		t.Fatalf("synthetic filename acquired package findings: %+v", result.Diagnostics)
+	}
+}
+
+func linkDirectory(t *testing.T, target string) string {
+	t.Helper()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(target, alias); err != nil {
+		t.Skipf("directory symlink is unavailable: %v", err)
+	}
+	return alias
+}
+
+func createDirectory(t *testing.T, path string) string {
+	t.Helper()
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestRuffStdinUsesCommandDirectory(t *testing.T) {
+	t.Parallel()
+	for _, directory := range []string{"absolute", "symlink", "symlink-parent"} {
+		t.Run(directory, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			working := t.TempDir()
+			switch directory {
+			case "symlink":
+				working = linkDirectory(t, root)
+			case "symlink-parent":
+				working = linkDirectory(t, createDirectory(t, filepath.Join(root, "nested"))) + string(filepath.Separator) + ".."
 			}
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "F821" {
-				t.Fatalf("synthetic filename acquired package findings: %+v", result.Diagnostics)
-			}
+			assertRuffStdinDirectory(t, root, working)
 		})
 	}
 }
 
+func TestRuffStdinUsesRelativeCommandDirectory(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	createDirectory(t, filepath.Join(root, "python"))
+	assertRuffStdinDirectory(t, root, "python")
+}
+
+func TestRuffStdinUsesLogicalCommandDirectory(t *testing.T) {
+	root := t.TempDir()
+	target := createDirectory(t, filepath.Join(root, "nested"))
+	t.Chdir(target)
+	t.Setenv("PWD", linkDirectory(t, target))
+	assertRuffStdinDirectory(t, root, "..")
+}
+
 func TestRuffAPIIntegrationFlags(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:
@@ -136,6 +156,7 @@ permissions: {}
 `
 	for _, flags := range [][]string{{"--no-cache"}, {"--isolated"}, {"--ignore-noqa"}, {"--no-fix"}, {"--target-version", "py314"}, {"--target-version=py314"}, {"--stdin-filename", "actionlint.py"}, {"--stdin-filename=actionlint.py"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err == nil || !strings.Contains(err.Error(), "integration-owned option") {
 				t.Fatalf("integration flag not rejected: %v", err)
@@ -145,6 +166,7 @@ permissions: {}
 }
 
 func TestRuffRepeatableSelectionFlags(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F], ignore: [F401]}}"))
 	if err != nil {
@@ -161,6 +183,7 @@ permissions: {}
 `
 	for _, flags := range [][]string{{"--select", "F"}, {"--ignore", "F401"}, {"--select=F", "--ignore=F401"}} {
 		t.Run(strings.Join(flags, " "), func(t *testing.T) {
+			t.Parallel()
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source), Config: config}})
 			if err != nil {
 				t.Fatal(err)

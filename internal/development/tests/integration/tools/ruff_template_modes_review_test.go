@@ -15,6 +15,7 @@ import (
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F, B018]}}"))
 	if err != nil {
@@ -32,6 +33,7 @@ func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
+				t.Parallel()
 				script := tc.statement + "\n42\nprint(missing)"
 				source := `on: push
 jobs:
@@ -98,6 +100,7 @@ jobs:
 }
 
 func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {target-version: py314}}"))
 	if err != nil {
@@ -119,7 +122,9 @@ func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
 		`print(f"{"""value"""!${{ 'r' }}}")`,
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
-			source := `on: push
+			t.Run(script+ending, func(t *testing.T) {
+				t.Parallel()
+				source := `on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -130,19 +135,21 @@ jobs:
       - shell: python
         run: print(missing)
 ` + "\npermissions: {}\n"
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(script, 8)...)
-			if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 10+strings.Count(script, "\n") {
-				t.Fatalf("conversion template %q changed independent script findings: %+v", script, result.Diagnostics)
-			}
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Command: command}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Config: config}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				ruff := ruffFindingsWithInterpolation(t, result.Diagnostics, templateDiagnosticLines(script, 8)...)
+				if len(ruff) != 1 || ruff[0].Code != "F821" || ruff[0].Start.Line != 10+strings.Count(script, "\n") {
+					t.Fatalf("conversion template %q changed independent script findings: %+v", script, result.Diagnostics)
+				}
+			})
 		}
 	}
 }
 
 func TestRuffAPINonDiagnosticModes(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
 	source := `on: push
 jobs:

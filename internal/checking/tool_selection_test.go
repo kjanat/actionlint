@@ -13,6 +13,7 @@ import (
 )
 
 func TestRequiredToolsFileSelection(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config := writeFixture(t, root, "actionlint.yml", `files: {excludes: ['skip.yml']}
 overrides:

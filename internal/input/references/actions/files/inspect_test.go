@@ -15,6 +15,7 @@ import (
 )
 
 func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	meta, err := actionmeta.Parse(filepath.Join(root, "action.yml"), []byte("name: test\ndescription: test\nruns: {using: node24, main: index.js, pre: absent.js}\n"))
 	if err != nil {
@@ -59,6 +60,7 @@ func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
 }
 
 func TestExecutionFileSharedByEntrypointsIsReadOnce(t *testing.T) {
+	t.Parallel()
 	meta := &actionmeta.Metadata{Directory: t.TempDir(), Runs: actionmeta.Runs{Using: "node24", Main: "shared.js", Pre: "shared.js", Post: "shared.js"}}
 	reads := 0
 	reader := inputfiles.New(t.Context(), func(string) ([]byte, error) { reads++; return nil, nil }, nil)

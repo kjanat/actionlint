@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -23,6 +22,7 @@ import (
 )
 
 func TestDocumentPluginProcessHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_DOCUMENT_HELPER") == "" {
 		return
 	}
@@ -53,13 +53,12 @@ func nativeDocumentManifest(t *testing.T) manifests.Manifest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", filepath.Dir(executable)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return manifests.Manifest{
 		SchemaVersion: 1, ID: "document-fixture", Version: "1.0.0", Role: manifests.RoleDocument, Scope: manifests.ScopeSource, Transport: manifests.TransportProcess, Preparation: "generic",
 		Rule:         rule.Descriptor{Name: "document-fixture", Description: "Whole document fixture", Category: "correctness", Subcategory: "workflow", Maturity: "stable", Provider: "document-fixture", DocumentationURL: "https://example.com/document-fixture"},
 		Capabilities: manifests.Capabilities{Fixes: true},
 		Selectors:    manifests.Selectors{Documents: []string{"workflow"}},
-		Process:      &manifests.ProcessSpec{Entry: filepath.Base(executable), Args: []string{"-test.run=^TestDocumentPluginProcessHelper$"}, Stdin: manifests.StdinRequest, Env: map[string]string{"ACTIONLINT_DOCUMENT_HELPER": "1"}, Config: manifests.ConfigRendering{Render: manifests.RenderNone}, Output: manifests.Output{Format: manifests.FormatEnvelope}},
+		Process:      &manifests.ProcessSpec{Entry: executable, Args: []string{"-test.run=^TestDocumentPluginProcessHelper$"}, Stdin: manifests.StdinRequest, Env: map[string]string{"ACTIONLINT_DOCUMENT_HELPER": "1"}, Config: manifests.ConfigRendering{Render: manifests.RenderNone}, Output: manifests.Output{Format: manifests.FormatEnvelope}},
 	}
 }
 
@@ -76,6 +75,7 @@ func documentPluginSources(t *testing.T, manifest manifests.Manifest) plugininst
 }
 
 func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
+	t.Parallel()
 	manifest := nativeDocumentManifest(t)
 	sources := documentPluginSources(t, manifest)
 	input := func() inputmodel.Request {

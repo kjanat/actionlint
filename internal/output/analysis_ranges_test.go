@@ -12,6 +12,7 @@ import (
 )
 
 func TestStructuredRenderRanges(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		end        sourcepos.Position
@@ -24,6 +25,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 		{"later line boundary", sourcepos.Position{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("abcde\nfghij\n")
 			finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
 			result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []report.DiagnosticSource{{Content: source}}}
@@ -41,6 +43,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 			}
 			for _, format := range []Format{FormatSARIF, FormatGitHub} {
 				t.Run(string(format), func(t *testing.T) {
+					t.Parallel()
 					renderer, err := New(format, "", false, testVersion, nil)
 					if err != nil {
 						t.Fatal(err)
@@ -81,6 +84,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 }
 
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
+	t.Parallel()
 	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
 	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []report.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: true}}}
 	result := FromAnalysis(analysis)
@@ -112,6 +116,7 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 }
 
 func TestExplicitTextFormatDisablesOneline(t *testing.T) {
+	t.Parallel()
 	source := []byte("on: push\n")
 	finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
 	result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []report.DiagnosticSource{{Content: source}}}
@@ -142,13 +147,15 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 }
 
 func TestOnelineOmitsCapturedSnippet(t *testing.T) {
+	t.Parallel()
 	finding := diagmodel.Diagnostic{
 		Path: "input.yml", Rule: "expression", Message: "bad text",
 		Start: sourcepos.Position{Line: 1, Column: 1}, Snippet: "on: push",
 	}
-	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
 	for _, format := range []Format{"", FormatOneline} {
 		t.Run(string(format), func(t *testing.T) {
+			t.Parallel()
+			result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
 			renderer, err := New(format, "", true, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -172,6 +179,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
 	var out bytes.Buffer
 	if err := template.Render(&out, result); err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestExpressionsUseExpressionBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{"${{ '}}' }}", "${{ 'é' }}", "${{\n github.ref\n}}", "${{ 'it''s }}' }}"} {
 		source := "prefix " + expression + " suffix"
 		got := Expressions(source)
@@ -25,6 +26,7 @@ func TestExpressionsUseExpressionBoundaries(t *testing.T) {
 }
 
 func TestExpressions(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input string
 		want  string
@@ -54,6 +56,7 @@ func TestExpressions(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("%d_%s", i, tc.input), func(t *testing.T) {
+			t.Parallel()
 			if have := Expressions(tc.input); have != tc.want {
 				t.Fatalf("masked result is unexpected.\nwant: %q\nhave: %q", tc.want, have)
 			}

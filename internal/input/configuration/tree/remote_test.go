@@ -12,6 +12,7 @@ import (
 )
 
 func TestRemoteExtendsFormatsAndOrigins(t *testing.T) {
+	t.Parallel()
 	leaf := filepath.Join(t.TempDir(), "actionlint.yaml")
 	remote := "https://example.test/config/base.toml?version=1"
 	shared := "https://example.test/shared.json?version=2"
@@ -48,6 +49,7 @@ func TestRemoteExtendsFormatsAndOrigins(t *testing.T) {
 }
 
 func TestRemoteExtendsCycle(t *testing.T) {
+	t.Parallel()
 	_, err := Load("https://example.test/a.yaml", func(name string) ([]byte, error) {
 		if strings.HasSuffix(name, "/a.yaml") {
 			return []byte("extends: [./b.yaml]"), nil
@@ -60,6 +62,7 @@ func TestRemoteExtendsCycle(t *testing.T) {
 }
 
 func TestRemoteReaderReceivesDeclaredURL(t *testing.T) {
+	t.Parallel()
 	leaf := filepath.Join(t.TempDir(), "actionlint.yaml")
 	declared := "HTTPS://EXAMPLE.TEST/base.yaml?version=1"
 	_, err := Load(leaf, func(name string) ([]byte, error) {
@@ -78,6 +81,7 @@ func TestRemoteReaderReceivesDeclaredURL(t *testing.T) {
 }
 
 func TestRemoteDependencyCancellation(t *testing.T) {
+	t.Parallel()
 	leaf := filepath.Join(t.TempDir(), "actionlint.yaml")
 	_, err := Load(leaf, func(name string) ([]byte, error) {
 		if name == leaf {
@@ -91,8 +95,10 @@ func TestRemoteDependencyCancellation(t *testing.T) {
 }
 
 func TestRemoteExtendsRejectsUnsafeAddressesBeforeReading(t *testing.T) {
+	t.Parallel()
 	for _, reference := range []string{"http://example.test/a.yaml", "https://user:password@example.test/a.yaml", "file:///tmp/a.yaml", "https://example.test/a.yaml#fragment"} {
 		t.Run(reference, func(t *testing.T) {
+			t.Parallel()
 			reads := 0
 			_, err := Load("https://example.test/base.yaml", func(string) ([]byte, error) {
 				reads++
@@ -106,6 +112,7 @@ func TestRemoteExtendsRejectsUnsafeAddressesBeforeReading(t *testing.T) {
 }
 
 func TestInheritedNullThenPartialMappingOrigin(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yaml")
 	middle := filepath.Join(dir, "middle.yaml")
@@ -131,6 +138,7 @@ func TestInheritedNullThenPartialMappingOrigin(t *testing.T) {
 }
 
 func TestExtendsPreservesCauseWithoutExposingMissingBase(t *testing.T) {
+	t.Parallel()
 	leaf := filepath.Join(t.TempDir(), "leaf.yaml")
 	marker := &testSourceError{}
 	for _, tc := range []struct {
@@ -142,6 +150,7 @@ func TestExtendsPreservesCauseWithoutExposingMissingBase(t *testing.T) {
 		{"missing base", fmt.Errorf("missing: %w", os.ErrNotExist), false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := Load(leaf, func(path string) ([]byte, error) {
 				if path == leaf {
 					return []byte("extends: [./base.yaml]"), nil

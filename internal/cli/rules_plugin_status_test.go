@@ -42,6 +42,7 @@ func TestRulesPluginFailureExitStatus(t *testing.T) {
 		{"explicit missing", "missing.wasm", []string{"--plugin", filepath.Join(root, "missing.wasm")}, 2},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
 			output := pluginCommandTest(t, scenario.status, append([]string{"rules"}, scenario.args...)...)
 			if !strings.Contains(output, scenario.message) {
 				t.Fatalf("unexpected failure: %s", output)

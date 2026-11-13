@@ -9,6 +9,7 @@ import (
 )
 
 func TestWorkflowExampleSourceSteps(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		job  string
@@ -20,6 +21,7 @@ func TestWorkflowExampleSourceSteps(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			source := WorkflowExampleSource(tt.job)
 			if _, errors := parser.Parse([]byte(source)); len(errors) > 0 {
 				t.Fatalf("invalid workflow: %v\n%s", errors, source)

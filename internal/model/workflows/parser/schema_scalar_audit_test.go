@@ -8,8 +8,10 @@ import (
 )
 
 func TestSchemaAuditScalarDecoding(t *testing.T) {
+	t.Parallel()
 	for _, spelling := range []string{"true", "True", "TRUE"} {
 		t.Run(spelling, func(t *testing.T) {
+			t.Parallel()
 			workflow, errs := workflowparser.Parse([]byte(`on: push
 jobs:
   build:
@@ -31,6 +33,7 @@ jobs:
 		value    float64
 	}{{"0x1e", 30}, {"0o36", 30}, {"030", 30}, {"3e1", 30}} {
 		t.Run(tc.spelling, func(t *testing.T) {
+			t.Parallel()
 			workflow, errs := workflowparser.Parse(fmt.Appendf(nil, `on: push
 jobs:
   build:
@@ -50,6 +53,7 @@ jobs:
 }
 
 func TestSchemaAuditRequiredFlagsAreStatic(t *testing.T) {
+	t.Parallel()
 	for _, event := range []string{
 		`workflow_dispatch:
     inputs:
@@ -67,6 +71,7 @@ func TestSchemaAuditRequiredFlagsAreStatic(t *testing.T) {
         required: ${{ true }}`,
 	} {
 		t.Run(event, func(t *testing.T) {
+			t.Parallel()
 			_, errs := workflowparser.Parse([]byte("on:\n  " + event + `
 jobs:
   build:

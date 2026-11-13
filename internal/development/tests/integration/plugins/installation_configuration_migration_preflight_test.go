@@ -18,6 +18,7 @@ import (
 )
 
 func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
@@ -74,6 +75,7 @@ func TestMigrationOverlayDisablesLockOnlyPlugins(t *testing.T) {
 }
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	registry.SetOffline(true)
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
@@ -102,6 +104,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 }
 
 func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-secrets: []\n")
@@ -130,6 +133,7 @@ func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T
 }
 
 func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
@@ -177,6 +181,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 }
 
 func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	registry.SetOffline(true)
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
@@ -203,6 +208,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 }
 
 func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	alias := filepath.Join(t.TempDir(), "repo-alias")

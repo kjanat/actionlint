@@ -6,6 +6,7 @@ import (
 )
 
 func TestMetadataDecoderDuplicateAndAliasKeys(t *testing.T) {
+	t.Parallel()
 	src := `on:
   &event workflow_call:
     inputs:
@@ -51,6 +52,7 @@ func TestMetadataDecoderDuplicateAndAliasKeys(t *testing.T) {
 }
 
 func TestMetadataDecoderAliasesAndNullBodies(t *testing.T) {
+	t.Parallel()
 	src := `on:
   workflow_call:
     inputs:
@@ -98,6 +100,7 @@ func TestMetadataDecoderAliasesAndNullBodies(t *testing.T) {
 }
 
 func TestMetadataDecoderAliasedInputsMap(t *testing.T) {
+	t.Parallel()
 	src := `definitions: &definitions
   Shared:
     type: string
@@ -116,7 +119,9 @@ on:
 }
 
 func TestMetadataDecoderMergeKeys(t *testing.T) {
+	t.Parallel()
 	t.Run("definition maps use upstream single and sequence merge semantics", func(t *testing.T) {
+		t.Parallel()
 		src := `on:
   workflow_call:
     inputs:
@@ -149,6 +154,7 @@ func TestMetadataDecoderMergeKeys(t *testing.T) {
 	})
 
 	t.Run("workflow call fields use sequence merge precedence and explicit override", func(t *testing.T) {
+		t.Parallel()
 		src := `base: &base
   inputs:
     inherited: {type: string}
@@ -189,6 +195,7 @@ on:
 	})
 
 	t.Run("merged call fields apply when no explicit field replaces them", func(t *testing.T) {
+		t.Parallel()
 		src := `base: &base
   inputs:
     inherited: {type: string}
@@ -212,6 +219,7 @@ on:
 }
 
 func TestMetadataDecoderNonMappingErrors(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		field string
 		want  string
@@ -221,6 +229,7 @@ func TestMetadataDecoderNonMappingErrors(t *testing.T) {
 		{"secrets", "on.workflow_call.secrets must be mapping node"},
 	} {
 		t.Run(tc.field, func(t *testing.T) {
+			t.Parallel()
 			src := "on:\n  workflow_call:\n    " + tc.field + ": []\n"
 			_, err := ParseMetadata([]byte(src))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {

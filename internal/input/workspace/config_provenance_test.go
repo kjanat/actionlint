@@ -12,8 +12,10 @@ import (
 )
 
 func TestInheritedWarningsSurviveReplacement(t *testing.T) {
+	t.Parallel()
 	for _, replacement := range []string{"self-hosted-runner: null", "self-hosted-runner: {typo: replacement}"} {
 		t.Run(replacement, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			base := writeToolFixture(t, root, "base.yml", `self-hosted-runner:
   typo: value
@@ -70,6 +72,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 }
 
 func TestConfigInheritedOverlayProvenance(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	base := writeToolFixture(t, root, "base.yml", `# base settings
 config-variables: [BASE]
@@ -80,6 +83,7 @@ config-secrets: [SECRET]
 `)
 	for _, overlayText := range []string{"", "policy: {require-commit-hash: false}", "config-variables: [OVERLAY]"} {
 		t.Run(overlayText, func(t *testing.T) {
+			t.Parallel()
 			var overlays []repoconfig.Overlay
 			if overlayText != "" {
 				overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte(overlayText))
@@ -127,9 +131,11 @@ config-secrets: [SECRET]
 }
 
 func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
+	t.Parallel()
 	const pointer = "/lint/rules/security/unpinned-reference/level"
 	for _, value := range []string{"true", "false", "null"} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			line := "policy: {require-commit-hash: " + value + "}"
 			base := writeToolFixture(t, root, "base.yml", "# source policy\n"+line+"\n")

@@ -8,6 +8,7 @@ import (
 )
 
 func TestSecretInterpolationIndependentSemanticFindings(t *testing.T) {
+	t.Parallel()
 	for _, interpolation := range []string{"on", "off"} {
 		for _, tc := range []struct {
 			expression  string
@@ -20,6 +21,7 @@ func TestSecretInterpolationIndependentSemanticFindings(t *testing.T) {
 			{"secrets.TOKEN.invalid", 0},
 		} {
 			t.Run(interpolation+"/"+tc.expression, func(t *testing.T) {
+				t.Parallel()
 				cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {script-interpolation: " + interpolation + "}, security: {script-injection: on}}}"))
 				if err != nil {
 					t.Fatal(err)

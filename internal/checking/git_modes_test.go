@@ -3,6 +3,7 @@ package checking
 import "testing"
 
 func TestGitModesShareOneSnapshotPerRoot(t *testing.T) {
+	t.Parallel()
 	root, git := executableFixture(t)
 	cache := &gitModes{}
 	first := cache.load(t.Context(), root)

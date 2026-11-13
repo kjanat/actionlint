@@ -11,6 +11,7 @@ import (
 )
 
 func TestInspectRegisteredRulesInInheritedConfiguration(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yaml")
 	if err := os.WriteFile(base, []byte("lint: {rules: {disable: [no-sudo]}}\n"), 0o600); err != nil {

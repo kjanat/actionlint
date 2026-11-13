@@ -26,6 +26,7 @@ func (c *identityCapture) CheckDocument(_ context.Context, input checkinputs.Inp
 }
 
 func TestFactsShareOwningStepIdentity(t *testing.T) {
+	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\npermissions: {}\n")
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.Source{{Path: "workflow.yml", Content: content}})
@@ -56,6 +57,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 }
 
 func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
+	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\npermissions: {}\n")
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.Source{{Path: "workflow.yml", Content: content}})
@@ -78,8 +80,10 @@ func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
 }
 
 func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"workflow", "action"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			prefix, path, indent := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n", "workflow.yml", "      "
 			if kind == "action" {
 				prefix, path, indent = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n", "action.yml", "    "

@@ -12,6 +12,7 @@ import (
 )
 
 func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "lib.sh", "echo $VALUE\n")
 	result, err := checking.Analyze(t.Context(), checking.Options{

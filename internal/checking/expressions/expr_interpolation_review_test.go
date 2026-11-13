@@ -18,6 +18,7 @@ import (
 )
 
 func TestExpressionFailurePhases(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source string
 		phase  exprlang.FailurePhase
@@ -29,6 +30,7 @@ func TestExpressionFailurePhases(t *testing.T) {
 		{"${{ case(1, 'a', 'b') }}", exprlang.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindAny},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			rule := newTestChecker()
 			types, valid := rule.checkExprsIn(tc.source, &workflowlang.Pos{Line: 1, Col: 1}, false, false, "env")
 			if valid || len(types) != 1 {
@@ -43,6 +45,7 @@ func TestExpressionFailurePhases(t *testing.T) {
 }
 
 func TestInvalidCallRetainsReturnType(t *testing.T) {
+	t.Parallel()
 	rule := newTestChecker()
 	source := "${{ startsWith('only-one') }}"
 	ty, valid := rule.checkOneExpression(ownedStringFixture(&workflowlang.String{Value: source, Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "value", "env")
@@ -93,6 +96,7 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 }
 
 func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
+	t.Parallel()
 	rule := newTestChecker()
 	rule.options.SuspiciousCoercion = true
 	source := "${{ startsWith(true, 'TR') }}"
@@ -109,6 +113,7 @@ func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
 }
 
 func TestAdvisoryDoesNotHideScriptInterpolation(t *testing.T) {
+	t.Parallel()
 	rule := newTestChecker()
 	rule.options.SuspiciousCoercion = true
 	source := "${{ startsWith(true, 'TR') && github.event.issue.title }}"
@@ -126,6 +131,7 @@ func TestAdvisoryDoesNotHideScriptInterpolation(t *testing.T) {
 }
 
 func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
+	t.Parallel()
 	for _, script := range []bool{false, true} {
 		for _, source := range []string{
 			"${{ unknown.value }} ${{ github.ref && '' || 'fallback' }}",
@@ -155,6 +161,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 }
 
 func TestInterpolationParseErrorsStillStopScanning(t *testing.T) {
+	t.Parallel()
 	for _, script := range []bool{false, true} {
 		for _, source := range []string{
 			"${{ github.ref + }} ${{ github.ref && '' || 'fallback' }}",

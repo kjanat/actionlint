@@ -40,6 +40,7 @@ func loadEngine(t *testing.T, path string, options corewasm.Options) *corewasm.E
 }
 
 func TestEchoEngineChecksAndValidates(t *testing.T) {
+	t.Parallel()
 	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
 	metadata := engine.Metadata()
 	if metadata.ID != "actionlint-engine-echo" || metadata.Engine.Version != "1.0.0" || metadata.Capabilities.MaxInputBytes != 8388608 {
@@ -82,6 +83,7 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 }
 
 func TestGzipModuleLoads(t *testing.T) {
+	t.Parallel()
 	raw, err := os.ReadFile(enginePath("echo"))
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +107,7 @@ func TestGzipModuleLoads(t *testing.T) {
 }
 
 func TestFailedResponsePreservesDiagnostics(t *testing.T) {
+	t.Parallel()
 	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
 	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing # partial", Filename: "step.py"})
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete") {
@@ -116,6 +119,7 @@ func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 }
 
 func TestFailuresDiscardTheInstance(t *testing.T) {
+	t.Parallel()
 	engine := loadEngine(t, enginePath("echo"), corewasm.Options{MemoryPages: 64})
 	if engine.Limits().String() != "memory 4 MiB, time 10s" {
 		t.Fatalf("limits=%s", engine.Limits())
@@ -148,6 +152,7 @@ func TestFailuresDiscardTheInstance(t *testing.T) {
 }
 
 func TestCancelledCallDiscardsTheInstance(t *testing.T) {
+	t.Parallel()
 	callCtx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var instances []api.Module
@@ -187,6 +192,7 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 }
 
 func TestConcurrentChecks(t *testing.T) {
+	t.Parallel()
 	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
 	var wg sync.WaitGroup
 	errs := make(chan error, 32)
@@ -211,6 +217,7 @@ func TestConcurrentChecks(t *testing.T) {
 }
 
 func TestLoadRefusesIncompatibleModules(t *testing.T) {
+	t.Parallel()
 	for name, want := range map[string]string{
 		"imports":        "module imports env.host; a core engine must not import",
 		"missing-export": "metadata advertises no check version this host supports (versions 1 and 3)",
@@ -233,6 +240,7 @@ func TestLoadRefusesIncompatibleModules(t *testing.T) {
 }
 
 func TestClosedEngineRejectsCalls(t *testing.T) {
+	t.Parallel()
 	engine, err := corewasm.Load(t.Context(), enginePath("echo"), corewasm.Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -246,8 +254,10 @@ func TestClosedEngineRejectsCalls(t *testing.T) {
 }
 
 func TestInitializationHonorsEngineTimeout(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"hang-start", "hang-abi", "hang-metadata"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			start := time.Now()
@@ -263,6 +273,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 }
 
 func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
+	t.Parallel()
 	const timeout = corewasm.DefaultTimeout
 	var compiledAt, initializedDeadline time.Time
 	var initialized sync.Once
@@ -294,8 +305,10 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 }
 
 func TestCompilationHonorsCallerCancellation(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"cancel", "deadline"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			deadline := name == "deadline"
 			ctx, cancel := context.WithCancel(t.Context())
 			want := context.Canceled
@@ -329,8 +342,10 @@ func TestCompilationHonorsCallerCancellation(t *testing.T) {
 }
 
 func TestCleanupFailureDiscardsInstance(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"trap-free-output", "trap-free-input", "hang-free-output"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
 			// Trap fixtures fail only their first deallocation. Both calls must
 			// fail, proving the second call receives a fresh instance.

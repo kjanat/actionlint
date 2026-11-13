@@ -18,19 +18,22 @@ import (
 
 func TestDoctorRuffCompatibility(t *testing.T) {
 	unavailable := regexp.MustCompile(`(?m)^ruff:[ \t]+.+ \(unavailable: .+\)$`)
-	bin := t.TempDir()
-	tool := filepath.Join(bin, "ruff")
+	name := "ruff"
 	if runtime.GOOS == "windows" {
-		tool += ".exe"
+		name += ".exe"
 	}
 	// Probe a small native executable: copying this package's race test binary
 	// makes first startup compete with the production probe's five-second limit.
-	build := exec.CommandContext(t.Context(), "go", "build", "-race=false", "-o", tool, "./internal/development/tests/integration/cli/testdata/ruff-probe")
+	probe := filepath.Join(t.TempDir(), name)
+	build := exec.CommandContext(t.Context(), "go", "build", "-race=false", "-o", probe, "./internal/development/tests/integration/cli/testdata/ruff-probe")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build Ruff probe fixture: %v: %s", err, output)
 	}
+	executable, err := os.ReadFile(probe)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Chdir(t.TempDir())
-	t.Setenv("PATH", bin)
 	for _, key := range []string{"ACTIONLINT_TOOL_RUFF_BIN", "ACTIONLINT_TOOL_RUFF_FLAGS", "ACTIONLINT_TOOL_RUFF_ENV"} {
 		t.Setenv(key, "")
 		if err := os.Unsetenv(key); err != nil {
@@ -45,20 +48,30 @@ func TestDoctorRuffCompatibility(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name, version, status, reason string
+		explicit                      bool
 		args                          []string
 		probe                         bool
 	}{
-		{"old", "ruff 0.16.10", "unavailable", "is incompatible; requires 0.17.0 or newer", nil, true},
-		{"current", "ruff 0.17.0", "available", "", nil, true},
-		{"invalid", "unexpected banner", "unavailable", "could not identify ruff version", nil, true},
-		{"explicit", "ruff 0.16.10", "available", "", []string{"--tool=ruff=" + tool}, false},
-		{"disabled", "ruff 0.16.10", "disabled", "", []string{"--tool=ruff=false"}, false},
+		{"old", "ruff 0.16.10", "unavailable", "is incompatible; requires 0.17.0 or newer", false, nil, true},
+		{"current", "ruff 0.17.0", "available", "", false, nil, true},
+		{"invalid", "unexpected banner", "unavailable", "could not identify ruff version", false, nil, true},
+		{"explicit", "ruff 0.16.10", "available", "", true, nil, false},
+		{"disabled", "ruff 0.16.10", "disabled", "", false, []string{"--tool=ruff=false"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			bin := t.TempDir()
+			tool := filepath.Join(bin, name)
+			if err := os.WriteFile(tool, executable, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", bin)
 			// The probe runs with a scrubbed environment; the fake reads its
 			// version from a file beside it.
 			calls := testutil.RuffDiscoveryFixture(t, bin, tc.version)
 			args := append([]string{"doctor", "--no-config", "--tool=shellcheck=false"}, tc.args...)
+			if tc.explicit {
+				args = append(args, "--tool=ruff="+tool)
+			}
 			result := run(append(args, "--json")...)
 			if result.Status != 0 || result.Stderr != "" {
 				t.Fatalf("doctor failed: %+v", result)

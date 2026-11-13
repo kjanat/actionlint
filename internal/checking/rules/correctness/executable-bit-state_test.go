@@ -14,6 +14,7 @@ import (
 )
 
 func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition string
 		continued bool
@@ -24,6 +25,7 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 		{"false", false},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			parent := NewExecutableChecker(ExecutableContext{})
 			parent.executableState = newExecutableState(true, false)
 			parent.changed["source/bad.sh"] = true

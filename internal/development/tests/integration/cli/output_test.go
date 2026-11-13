@@ -8,6 +8,7 @@ import (
 )
 
 func TestCommandJSONErrorsAndLogs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		args     []string
 		status   int

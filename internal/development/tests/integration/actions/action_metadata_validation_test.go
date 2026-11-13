@@ -12,6 +12,7 @@ import (
 )
 
 func TestMetadataFirstVisibleInvocation(t *testing.T) {
+	t.Parallel()
 	for _, metadata := range []struct {
 		name, source string
 		foreign      bool
@@ -20,6 +21,7 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 		{"metadata", "name: inner\ndescription: test\ninputs:\n  token:\n    description: token\n    default: ${{ secrets.TOKEN }}\nruns: {using: node24, main: index.js}\n", true},
 	} {
 		t.Run(metadata.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, "inner/action.yml", metadata.source)
 			fixturefiles.Write(t, root, "inner/index.js", "")
@@ -38,6 +40,7 @@ func TestMetadataFirstVisibleInvocation(t *testing.T) {
 				{"all", "[{rule: action, job: a}, {rule: action, job: b}, {rule: action, job: c}]", -1},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
 					if tc.name == "metadata file" && metadata.foreign {
 						tc.first = -1
 					}

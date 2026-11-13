@@ -15,6 +15,7 @@ import (
 )
 
 func TestPrepareRunVariables(t *testing.T) {
+	t.Parallel()
 	exclude := strings.Join([]string{"SC1091", "SC2194", "SC2050", "SC2157", "SC2043"}, "\n")
 	dash := "dash"
 	no := false
@@ -48,6 +49,7 @@ func TestPrepareRunVariables(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			tc.run.Environment = scriptmodel.EnvironmentAlternatives(tc.run.Shell.Name, []runnerapi.OS{runnerapi.Linux})
 			prepared, err := prepareShellcheck(t, tc.run, tc.text)
 			if err != nil {
@@ -61,6 +63,7 @@ func TestPrepareRunVariables(t *testing.T) {
 }
 
 func TestPrepareRunLineOrigins(t *testing.T) {
+	t.Parallel()
 	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &integrationconfig.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
@@ -74,6 +77,7 @@ func TestPrepareRunLineOrigins(t *testing.T) {
 }
 
 func TestPrepareRunSkipsUnknownDialects(t *testing.T) {
+	t.Parallel()
 	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "pwsh"}}, "Write-Host hi")
 	if err != nil || prepared.Skip == "" || prepared.Source != "" {
 		t.Fatalf("got %+v, %v", prepared, err)
@@ -81,6 +85,7 @@ func TestPrepareRunSkipsUnknownDialects(t *testing.T) {
 }
 
 func TestPrepareRunForEngines(t *testing.T) {
+	t.Parallel()
 	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "sh"}, Sources: true, Engine: true}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
@@ -99,6 +104,7 @@ func TestPrepareRunForEngines(t *testing.T) {
 }
 
 func TestEngineInputRefusesSources(t *testing.T) {
+	t.Parallel()
 	yes := true
 	if _, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Settings: &integrationconfig.Settings{ReadAccess: integrationconfig.ReadAccess{Enabled: &yes}}}, "echo $1"); !errors.Is(err, ErrNoSourceAccess) {
 		t.Fatalf("got %v", err)
@@ -106,6 +112,7 @@ func TestEngineInputRefusesSources(t *testing.T) {
 }
 
 func TestInvalidInvocationCannotBeOverriddenByDirective(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"bash -euo -pipefail {0}", "bash -O definitely_not_a_shopt {0}"} {
 		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: command}}, "# shellcheck shell=bash\necho hi\n")
 		if err != nil || prepared.Skip == "" || prepared.Source != "" {

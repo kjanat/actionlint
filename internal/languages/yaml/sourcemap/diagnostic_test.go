@@ -3,6 +3,7 @@ package sourcemap
 import "testing"
 
 func TestDiagnosticLinePolicies(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		source   string
@@ -20,6 +21,7 @@ func TestDiagnosticLinePolicies(t *testing.T) {
 		{name: "PS", source: "first\u2029second", line: 2, yamlLine: "second", yamlOK: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			gotYAML, okYAML := DiagnosticLine([]byte(tc.source), tc.line, false)
 			if gotYAML != tc.yamlLine || okYAML != tc.yamlOK {
 				t.Fatalf("YAML DiagnosticLine(%q, %d) = (%q, %t), want (%q, %t)", tc.source, tc.line, gotYAML, okYAML, tc.yamlLine, tc.yamlOK)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestDefaultShell(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, runner, want string
 		container          value.Value
@@ -23,6 +24,7 @@ func TestDefaultShell(t *testing.T) {
 		{name: "unknown container blocks runner fallback", runner: "bash", container: value.DynamicValue("${{ inputs.container }}", value.KindUnknown, value.Origin{})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fallback := scriptmodel.DefaultShell(test.container, test.runner)
 			text, known := fallback.ScalarString()
 			if text != test.want || known != test.known {
@@ -41,6 +43,7 @@ func TestDefaultShell(t *testing.T) {
 }
 
 func TestContainerShellUsesSemanticValues(t *testing.T) {
+	t.Parallel()
 	container := value.Map(value.Origin{}, value.Prop{Name: "image", Value: value.YAMLScalar("node:22", "!!str", value.Origin{})})
 	if got := scriptmodel.ContainerShell(container); !got.Known() {
 		t.Fatalf("container shell state = %v", got.State())
@@ -53,6 +56,7 @@ func TestContainerShellUsesSemanticValues(t *testing.T) {
 }
 
 func TestContainerScalarImages(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		state        value.State
@@ -63,6 +67,7 @@ func TestContainerScalarImages(t *testing.T) {
 		{"invalid shape", "${{ fromJSON('[]') }}", value.Dynamic},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got := scriptmodel.ContainerShell(value.Template(tc.source, value.Origin{}))
 			if got.State() != tc.state {
 				t.Fatalf("state=%v, want %v", got.State(), tc.state)

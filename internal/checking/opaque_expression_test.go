@@ -11,10 +11,12 @@ import (
 )
 
 func TestAnalyzeOpaqueCompositeInputsPublishCapturedInspectExpression(t *testing.T) {
+	t.Parallel()
 	for _, standalone := range []bool{false, true} {
 		for _, cycle := range []bool{false, true} {
 			for _, sink := range []struct{ expression, rule string }{{"github.event.issue.title", "script-injection"}, {"github.repository", "script-interpolation"}} {
 				t.Run(fmt.Sprintf("standalone=%t/cycle=%t/%s", standalone, cycle, sink.rule), func(t *testing.T) {
+					t.Parallel()
 					root := t.TempDir()
 					path := filepath.Join(root, "outer", "action.yml")
 					content := "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n"

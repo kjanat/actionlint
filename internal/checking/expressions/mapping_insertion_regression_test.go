@@ -11,8 +11,10 @@ import (
 )
 
 func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
+	t.Parallel()
 	for depth := range 3 {
 		t.Run(fmt.Sprintf("depth=%d", depth), func(t *testing.T) {
+			t.Parallel()
 			matrix := `{'${{ vars.AXIS }}': [ubuntu-latest], count: [1]}`
 			for range depth {
 				matrix = "{'${{ insert }}': " + matrix + "}"
@@ -35,8 +37,10 @@ func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
 }
 
 func TestKnownMatrixKeysStayStrict(t *testing.T) {
+	t.Parallel()
 	for _, key := range []string{"os", "${{ 'os' }}", "${{ format('{0}', 'os') }}"} {
 		t.Run(key, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + fmt.Sprintf("{'${{ insert }}': {%q: [ubuntu-latest]}}", key) + "\n    steps: [{run: echo ok}]\n"
 			workflow, errs := workflowparser.Parse([]byte(source))
 			if len(errs) != 0 {

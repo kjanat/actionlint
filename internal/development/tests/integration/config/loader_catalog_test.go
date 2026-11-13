@@ -9,6 +9,7 @@ import (
 )
 
 func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
+	t.Parallel()
 	groups := (&repoconfig.LintRulesConfig{}).Groups()
 	seen := map[string]bool{}
 	for _, rule := range checking.ConfigurationRules().Rules() {
@@ -39,6 +40,7 @@ func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
 }
 
 func TestCatalogMetadataIsDetached(t *testing.T) {
+	t.Parallel()
 	first, ok := checking.ConfigurationRules().FindRule("script-injection")
 	if !ok || len(first.Examples) == 0 {
 		t.Fatal("script-injection examples missing")

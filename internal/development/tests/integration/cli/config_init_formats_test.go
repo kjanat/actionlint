@@ -17,7 +17,7 @@ func TestConfigInitFormats(t *testing.T) {
 	for _, format := range repoconfig.FileFormats() {
 		t.Run(string(format), func(t *testing.T) {
 			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			got := testRunCommand("", "config", "init", "--"+string(format))
 			if got.Status != 0 || !strings.Contains(got.Stdout, format.Filename()) {
 				t.Fatal(got)
@@ -70,7 +70,7 @@ func TestConfigInitFormatSelection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			got := testRunCommand("", append([]string{"config", "init"}, tc.flags...)...)
 			if got.Status != 0 {
 				t.Fatal(got)
@@ -86,7 +86,7 @@ func TestConfigInitFormatSelection(t *testing.T) {
 				continue
 			}
 			t.Run(string(first)+"/"+string(second), func(t *testing.T) {
-				commandTestRepo(t)
+				t.Chdir(commandTestRepo(t))
 				got := testRunCommand("", "config", "init", "--"+string(first), "--"+string(second))
 				if got.Status != 2 || !strings.Contains(got.Stdout+got.Stderr, "cannot be combined") {
 					t.Fatal(got)
@@ -102,6 +102,7 @@ func TestConfigInitFormatSelection(t *testing.T) {
 }
 
 func TestConfigInitFormatHelp(t *testing.T) {
+	t.Parallel()
 	got := testRunCommand("", "config", "init", "--help")
 	if got.Status != 0 {
 		t.Fatal(got)
@@ -115,7 +116,7 @@ func TestConfigInitFormatHelp(t *testing.T) {
 
 func TestConfigInitJSONReceipt(t *testing.T) {
 	fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	got := testRunCommand("", "--json", "config", "init", "--toml")
 	if got.Status != 0 {
 		t.Fatal(got)

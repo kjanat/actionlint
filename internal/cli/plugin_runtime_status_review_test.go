@@ -44,6 +44,7 @@ func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 		{"explicit", []string{"--plugin", lock.Plugins[0].Source()}, 2},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
+			t.Parallel()
 			args := append([]string{"check", "--no-tool=ruff", "--no-tool=shellcheck", "workflow.yml"}, scenario.args...)
 			output := pluginCommandTest(t, scenario.status, args...)
 			if !strings.Contains(output, "export") {

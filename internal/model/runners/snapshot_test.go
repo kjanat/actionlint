@@ -7,6 +7,7 @@ import (
 )
 
 func TestSnapshotInventoryValidation(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{
 		`null`, `{}`, `{"runners":null}`, `{"runners":[null]}`, `{"runners":[],"typo":true}`,
 		`{"runners":[{"name":"a","shell":"pwsh"}]}`,

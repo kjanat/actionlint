@@ -13,6 +13,7 @@ import (
 )
 
 func TestPreparedScriptsRetainIndependentShells(t *testing.T) {
+	t.Parallel()
 	source := `on: push
 defaults: {run: {shell: python}}
 jobs:

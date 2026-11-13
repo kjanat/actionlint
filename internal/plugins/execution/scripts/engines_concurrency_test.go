@@ -65,6 +65,7 @@ func scriptSignalWithin(t *testing.T, signal <-chan struct{}, operation string) 
 }
 
 func TestScriptEnginesLoadIndependentPathsConcurrently(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
@@ -91,6 +92,7 @@ func TestScriptEnginesLoadIndependentPathsConcurrently(t *testing.T) {
 }
 
 func TestScriptEnginesCanceledWaiterPreservesSharedLoad(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
@@ -126,6 +128,7 @@ func TestScriptEnginesCanceledWaiterPreservesSharedLoad(t *testing.T) {
 }
 
 func TestScriptEnginesCloseDiscardsLateLoad(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
@@ -166,6 +169,7 @@ func TestScriptEnginesCloseDiscardsLateLoad(t *testing.T) {
 }
 
 func TestScriptEnginesLateLoadPreservesCleanupErrors(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
@@ -192,6 +196,7 @@ func TestScriptEnginesLateLoadPreservesCleanupErrors(t *testing.T) {
 }
 
 func TestScriptEnginesConcurrentFailureIsCached(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
@@ -221,6 +226,7 @@ func TestScriptEnginesConcurrentFailureIsCached(t *testing.T) {
 }
 
 func TestScriptEnginesClosesBackendReturnedWithLoadError(t *testing.T) {
+	t.Parallel()
 	loadErr := errors.New("load failed")
 	closeErr := errors.New("cleanup failed")
 	backend := &concurrentEngine{onClose: func(context.Context) error { return closeErr }}
@@ -243,6 +249,7 @@ func TestScriptEnginesClosesBackendReturnedWithLoadError(t *testing.T) {
 }
 
 func TestScriptEnginesReservesPathDuringFailedBackendCleanup(t *testing.T) {
+	t.Parallel()
 	loadErr := errors.New("load failed")
 	closeErr := errors.New("cleanup failed")
 	closeEntered, closeBlocked := make(chan struct{}), make(chan struct{})
@@ -294,6 +301,7 @@ func TestScriptEnginesReservesPathDuringFailedBackendCleanup(t *testing.T) {
 }
 
 func TestScriptEnginesCloseCallbacksReleaseCacheLock(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
@@ -320,6 +328,7 @@ func TestScriptEnginesCloseCallbacksReleaseCacheLock(t *testing.T) {
 }
 
 func TestScriptEnginesCountsInflightAdmissions(t *testing.T) {
+	t.Parallel()
 	entered, blocked := make(chan struct{}, maxScriptEngines), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()

@@ -10,6 +10,7 @@ import (
 )
 
 func TestCoercionSelectionAndSuppression(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config, comment, severity string
 		strict                          bool
@@ -24,6 +25,7 @@ func TestCoercionSelectionAndSuppression(t *testing.T) {
 		{"override", "lint: {rules: {suspicious: {coercion: on}}}\noverrides: [{includes: ['test.yaml'], lint: {rules: {suspicious: {coercion: off}}}}]", "", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - if: startsWith(true, 'TR')%s\n        run: echo ok\n", tc.comment)
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
 			count := 0

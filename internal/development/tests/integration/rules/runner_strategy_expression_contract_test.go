@@ -19,6 +19,7 @@ import (
 )
 
 func TestRunnerMatrixIncludeExcludeParity(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix, runsOn string
 		want                 int
@@ -32,6 +33,7 @@ func TestRunnerMatrixIncludeExcludeParity(t *testing.T) {
 		{"no executed pairing", `{"os":["ubuntu-latest"],"exclude":[{"os":"ubuntu-latest"}]}`, `[linux, windows]`, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runsOn := tc.runsOn
 			if runsOn == "" {
 				runsOn = "${{ matrix.os }}"

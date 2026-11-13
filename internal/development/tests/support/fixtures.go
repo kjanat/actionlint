@@ -86,10 +86,26 @@ func RequireTool(t *testing.T, name string) string {
 	}
 	if spec.UserArgs != nil {
 		for _, variable := range spec.UserArgs.EnvOptions {
-			t.Setenv(variable, "")
+			if os.Getenv(variable) != "" {
+				t.Setenv(variable, "")
+			}
 		}
 	}
 	return path
+}
+
+func bundledEnvironmentOptions() ([]string, error) {
+	manifests, err := pluginmanifests.Bundled()
+	if err != nil {
+		return nil, err
+	}
+	var variables []string
+	for _, manifest := range manifests {
+		if manifest.Process != nil && manifest.Process.UserArgs != nil {
+			variables = append(variables, manifest.Process.UserArgs.EnvOptions...)
+		}
+	}
+	return variables, nil
 }
 
 func AssertSourceFile(t *testing.T, got, want string) {
@@ -130,7 +146,8 @@ func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, c
 	return sources
 }
 
-// Main gives file-based suites a stable repository root and isolated Git settings.
+// Main gives file-based suites a stable repository root, isolated Git settings
+// and no host options for bundled tool providers.
 func Main(m *testing.M) {
 	root, err := os.Getwd()
 	if err != nil {
@@ -161,6 +178,15 @@ func Main(m *testing.M) {
 	}
 	for name, value := range map[string]string{"GIT_CONFIG_GLOBAL": global, "GIT_CONFIG_NOSYSTEM": "1", "XDG_CONFIG_HOME": directory} {
 		if err := os.Setenv(name, value); err != nil {
+			panic(err)
+		}
+	}
+	variables, err := bundledEnvironmentOptions()
+	if err != nil {
+		panic(err)
+	}
+	for _, variable := range variables {
+		if err := os.Unsetenv(variable); err != nil {
 			panic(err)
 		}
 	}

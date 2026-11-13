@@ -9,11 +9,13 @@ import (
 )
 
 func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, filter, diagnostic string }{
 		{"missing axis", `[{os: windows-latest, nokey: x}]`, `"nokey" in "exclude" section does not exist in matrix. available matrix configurations are "os"`},
 		{"empty filter", `"${{ fromJSON('[{}]') }}"`, `matrix filter in "exclude" must not be empty`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
@@ -45,12 +47,14 @@ func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
 }
 
 func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, matrix string }{
 		{"unknown insertion only", `{'${{ insert }}': "${{ fromJSON(vars.AXES) }}", exclude: [{os: ubuntu}]}`},
 		{"unknown insertion with known axis", `{os: [a], '${{ insert }}': "${{ fromJSON(vars.AXES) }}", exclude: [{arch: x}]}`},
 		{"unknown row name", `{"${{ vars.KEY }}": [a], os: [b], exclude: [{k: a}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)

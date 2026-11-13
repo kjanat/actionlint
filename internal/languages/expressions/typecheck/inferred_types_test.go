@@ -13,6 +13,7 @@ import (
 )
 
 func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
+	t.Parallel()
 	node := exprsyntax.ParseAssignedExpression("${{ format('{0}', matrix.value) }}")
 	call, ok := node.(*exprsyntax.FuncCallNode)
 	if !ok {
@@ -50,6 +51,7 @@ func TestInferredTypesAreIndependentOfCheckerReuse(t *testing.T) {
 }
 
 func TestInferredTypesPreserveInvalidCallReturnContract(t *testing.T) {
+	t.Parallel()
 	node := exprsyntax.ParseAssignedExpression("${{ startsWith(true) }}")
 	result := NewChecker(contextspec.DefaultExpressionScope(), nil).CheckResult(expreval.EvaluateSubexpressions(node))
 	got, known := result.Types.TypeOf(node)
@@ -59,8 +61,10 @@ func TestInferredTypesPreserveInvalidCallReturnContract(t *testing.T) {
 }
 
 func TestInferredTypesCoverNodesVisitedThroughNarrowing(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"(inputs.enabled && 1) || 2", "(!inputs.enabled || true) && false", "case(inputs.enabled, toJSON(inputs.count), 'fallback')"} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + source + " }}")
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetContextAvailability([]string{"inputs"})

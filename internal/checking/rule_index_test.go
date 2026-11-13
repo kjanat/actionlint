@@ -10,6 +10,7 @@ import (
 
 // Bundled provider rules use the semantic categories declared by their manifests.
 func TestProviderRulesComeFromManifests(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)

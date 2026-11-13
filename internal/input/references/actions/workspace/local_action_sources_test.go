@@ -11,6 +11,7 @@ import (
 )
 
 func TestLocalActionSourceMappings(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	first := writeFixture(t, root, "source/action.yml", "name: Source\ndescription: Source\ninputs:\n  token:\n    description: Token\n    required: true\noutputs:\n  result:\n    description: Result\nruns:\n  using: composite\n  steps:\n    - run: echo test\n      shell: bash\n")
 	writeFixture(t, root, "other/action.yml", "name: Other\ndescription: Other\nruns: {using: composite, steps: []}\n")
@@ -68,6 +69,7 @@ func TestLocalActionSourceMappings(t *testing.T) {
 }
 
 func TestLocalActionSourceSymlink(t *testing.T) {
+	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
 	writeFixture(t, outside, "action.yml", "name: Outside\n")
 	if err := os.Symlink(outside, filepath.Join(root, "source")); err != nil {
@@ -90,6 +92,7 @@ func TestLocalActionSourceSymlink(t *testing.T) {
 }
 
 func TestLocalActionSourceCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "Source/action.yml", "name: Source\ndescription: Source\nruns: {using: composite, steps: []}\n")
 	view := &Resolver{base: newCapturedActionCache(t, root, nil), sourceMappings: map[string]string{"./generated": "./source"}, caseInsensitive: true}
@@ -103,6 +106,7 @@ func TestLocalActionSourceCaseInsensitive(t *testing.T) {
 }
 
 func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
+	t.Parallel()
 	for _, folded := range []bool{false, true} {
 		root := t.TempDir()
 		writeFixture(t, root, "present/action.yml", "name: present\ndescription: present\nruns: {using: composite, steps: []}\n")
@@ -132,6 +136,7 @@ func TestLocalActionUnknownCheckoutMissingMetadata(t *testing.T) {
 }
 
 func TestMissingLocalActionMappedSourceDiagnostic(t *testing.T) {
+	t.Parallel()
 	for _, folded := range []bool{false, true} {
 		root := t.TempDir()
 		view := &Resolver{base: newCapturedActionCache(t, root, nil), sourceMappings: map[string]string{"./generated": "./absent-source"}, caseInsensitive: folded}

@@ -14,6 +14,7 @@ import (
 )
 
 func TestRepositoryActionMetadata(t *testing.T) {
+	t.Parallel()
 	options := checking.Options{RemoteActions: testutil.FixtureActions(t)}
 	for _, tc := range []struct {
 		ref, inputs, output string
@@ -26,8 +27,10 @@ func TestRepositoryActionMetadata(t *testing.T) {
 		{"kjanat/svg-converter-action@master", "svg-path: drawing.svg", "files-created", false},
 	} {
 		t.Run(tc.ref, func(t *testing.T) {
+			t.Parallel()
 			for _, mutation := range []string{"valid", "input", "output"} {
 				t.Run(mutation, func(t *testing.T) {
+					t.Parallel()
 					inputs, output := tc.inputs, tc.output
 					switch mutation {
 					case "input":
@@ -69,6 +72,7 @@ permissions: {}
 }
 
 func TestCommitishNestedActionOrigins(t *testing.T) {
+	t.Parallel()
 	fixtureDirectory := filepath.Join("internal", "integration", "actions", "testdata", "commitish")
 	if _, err := os.Stat(fixtureDirectory); os.IsNotExist(err) {
 		t.Skip("local Commitish fixtures are unavailable")
@@ -76,6 +80,7 @@ func TestCommitishNestedActionOrigins(t *testing.T) {
 	for _, spelling := range []string{"dot", "dollar"} {
 		for _, checkout := range []string{"self", "foreign"} {
 			t.Run(spelling+"/"+checkout, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				if err := os.CopyFS(root, os.DirFS(fixtureDirectory)); err != nil {
 					t.Fatal(err)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestUnusedYAMLAnchorsReportInDeclarationOrder(t *testing.T) {
+	t.Parallel()
 	const source = "first: &zeta {child: &alpha value}\nused: &used value\ncopy: *used\nlast: &omega value\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {
@@ -31,6 +32,7 @@ func TestUnusedYAMLAnchorsReportInDeclarationOrder(t *testing.T) {
 }
 
 func TestYAMLAliasInspectionVisitsSharedDeclarationsOnce(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"anchor: &shared value\nuse: *shared\ncopy: []\n",
 		"anchor: &shared value\nnested: {ref: *shared}\ncopy: []\n",
@@ -84,6 +86,7 @@ func TestYAMLAliasInspectionVisitsSharedDeclarationsOnce(t *testing.T) {
 }
 
 func TestYAMLAliasInspectionRejectsForwardSharedSource(t *testing.T) {
+	t.Parallel()
 	for _, resolve := range []bool{false, true} {
 		root, err := codec.Parse([]byte("root: &a {nested: {ref: *a}}\nfirst: []\n"))
 		if err != nil {
@@ -127,6 +130,7 @@ func TestYAMLAliasInspectionRejectsForwardSharedSource(t *testing.T) {
 }
 
 func TestYAMLAliasInspectionKeepsSharedRecursiveAliasUnresolved(t *testing.T) {
+	t.Parallel()
 	for _, resolve := range []bool{false, true} {
 		root, err := codec.Parse([]byte("root: &a {nested: {ref: *a}}\ncopy: []\n"))
 		if err != nil {
@@ -178,6 +182,7 @@ func TestYAMLAliasInspectionKeepsSharedRecursiveAliasUnresolved(t *testing.T) {
 }
 
 func TestSharedAliasDiagnosticsAndProjectionFollowParentSlots(t *testing.T) {
+	t.Parallel()
 	for _, sharedBacking := range []bool{false, true} {
 		for _, resolve := range []bool{false, true} {
 			root, err := codec.Parse([]byte("anchor: &invalid+name value\nfirst: [*invalid+name]\nsecond: []\n"))
@@ -235,6 +240,7 @@ func TestSharedAliasDiagnosticsAndProjectionFollowParentSlots(t *testing.T) {
 }
 
 func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
+	t.Parallel()
 	const source = "anchor: &a value\nalias: *a\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {
@@ -280,6 +286,7 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 }
 
 func TestValidateYAMLAliasesPreservesSource(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source   string
 		messages []string

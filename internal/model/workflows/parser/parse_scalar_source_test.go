@@ -12,6 +12,7 @@ import (
 )
 
 func TestQuotedFoldedScriptSource(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, input, token, rawToken string }{
 		{"double", `run: "echo \"hello\" $foo"`, "$foo", "$foo"},
 		{"tagged-double", `run: !!str "echo \"hello\" $foo"`, "$foo", "$foo"},
@@ -39,6 +40,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 		{"folded-leading", "run: >+\n\n  echo\n  $foo\n\n", "$foo", "$foo"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, err := codec.Parse([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
@@ -86,14 +88,17 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 // Runny's next parser at 1ba885c2065fd9be317808ab3fd406f392635cf7
 // also rejects this YAML escape. Unicode escapes such as \u002f are accepted.
 func TestQuotedSlashEscapeRejected(t *testing.T) {
+	t.Parallel()
 	if _, err := codec.Parse([]byte(`run: "https:\/\/github.com/mlugg/setup-zig@v2"`)); err == nil {
 		t.Fatal("slash escape unexpectedly accepted unlike the GitHub runner")
 	}
 }
 
 func TestStandaloneSourceReconstructionPreservesLineBreaks(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []string{"\n", "\r", "\r\n", "\u0085", "\u2028", "\u2029"} {
 		t.Run(ending, func(t *testing.T) {
+			t.Parallel()
 			source := "run: >" + ending + "  echo $FOO" + ending + "next: value" + ending
 			document := sourcemap.NewDocument(source)
 			if got := scalarDocumentSource(document); got != source {
@@ -112,10 +117,12 @@ func TestStandaloneSourceReconstructionPreservesLineBreaks(t *testing.T) {
 }
 
 func TestQuotedScalarEOFPosition(t *testing.T) {
+	t.Parallel()
 	for _, quote := range []string{"\"", "'"} {
 		for _, suffix := range []string{"\n  ", "\n\n  ", "\n\n\n  ", "  "} {
 			for _, newline := range []string{"\n", "\r\n"} {
 				t.Run(quote+suffix+newline, func(t *testing.T) {
+					t.Parallel()
 					content := "run: " + quote + "echo ${{ github.ref"
 					input := strings.ReplaceAll(content+suffix+quote+"\n", "\n", newline)
 					root, err := codec.Parse([]byte(input))
@@ -146,9 +153,11 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 }
 
 func TestBlockScalarEOFPosition(t *testing.T) {
+	t.Parallel()
 	for _, header := range []string{"|", ">", "|-", ">-", "|+", ">+", "!!str &script |", "&script !!str >"} {
 		for _, ending := range []string{"\n", "\r\n", ""} {
 			t.Run(header+ending, func(t *testing.T) {
+				t.Parallel()
 				input := "run: " + header + "\n  echo ${{ github.ref"
 				if ending != "" {
 					input = strings.ReplaceAll(input+"\nnext: value\n", "\n", ending)
@@ -172,9 +181,11 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 }
 
 func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
+	t.Parallel()
 	for _, escape := range []string{`\r`, `\n`, `\r\n`, `\n\r`, `\x0d`, `\u000d`, `\U0000000d`, `\x0a`, `\u000a`} {
 		for _, suffix := range []string{"", "\n  ", "\n\n  "} {
 			t.Run(escape+suffix, func(t *testing.T) {
+				t.Parallel()
 				content := `run: "echo ${{ github.ref` + escape
 				input := content + suffix + "\"\n"
 				root, err := codec.Parse([]byte(input))

@@ -74,6 +74,7 @@ func roundTripError(t *testing.T, transport http.RoundTripper, request *http.Req
 }
 
 func TestGrantAuthority(t *testing.T) {
+	t.Parallel()
 	grant := grantFor(t, "https://bücher.example:443/private?token=secret")
 	for _, test := range []struct {
 		endpoint string
@@ -108,12 +109,14 @@ func TestGrantAuthority(t *testing.T) {
 }
 
 func TestAutomaticPrivateDestinationsNeverDial(t *testing.T) {
+	t.Parallel()
 	base := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 		t.Error("private destination reached dialer")
 		return nil, errors.New("unexpected dial")
 	}}
 	for _, address := range []string{"127.0.0.1", "10.0.0.1", "169.254.169.254", "100.64.0.1", "192.0.2.1", "198.18.0.1", "240.0.0.1", "::1", "fc00::1", "fe80::1", "::ffff:127.0.0.1", "64:ff9b::a00:1", "2001:db8::1", "2002:7f00:1::", "3fff::1"} {
 		t.Run(address, func(t *testing.T) {
+			t.Parallel()
 			for _, target := range []string{"https://" + net.JoinHostPort(address, "443") + "/plugin", "https://configured.example/plugin"} {
 				checked := transportFor(t, target, Grant{}, base, fixedLookup(address))
 				if err := roundTripError(t, checked, requestFor(t, target)); !errors.Is(err, ErrPrivateDestination) {
@@ -134,6 +137,7 @@ func TestAutomaticPrivateDestinationsNeverDial(t *testing.T) {
 }
 
 func TestExplicitInitialPreservesOpaqueTransport(t *testing.T) {
+	t.Parallel()
 	request := requestFor(t, "https://[::1]:8443/private?signature=secret")
 	called := false
 	base := responseTransport(func(actual *http.Request) (*http.Response, error) {
@@ -164,6 +168,7 @@ func TestExplicitInitialPreservesOpaqueTransport(t *testing.T) {
 }
 
 func TestExplicitGrantNeverAuthorizesOtherInitialOrRedirectAuthority(t *testing.T) {
+	t.Parallel()
 	initial := "https://origin.example:8443/"
 	base := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 		t.Error("ungranted private endpoint reached dialer")
@@ -220,6 +225,7 @@ func (c *scriptedConnection) written() string {
 }
 
 func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "xn--bcher-kva.example" {
 			t.Errorf("HTTP host identity changed: %s", r.Host)
@@ -268,6 +274,7 @@ func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
 }
 
 func TestHTTPProxyPinsCONNECTAndTLSIdentity(t *testing.T) {
+	t.Parallel()
 	connection := &scriptedConnection{input: bytes.NewReader([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))}
 	proxyURL, err := url.Parse("http://operator:credential@proxy.example:8080")
 	if err != nil {
@@ -303,6 +310,7 @@ func TestHTTPProxyPinsCONNECTAndTLSIdentity(t *testing.T) {
 }
 
 func TestProxyPolicyAndOriginalURLSelection(t *testing.T) {
+	t.Parallel()
 	proxyFunc := (&httpproxy.Config{HTTPSProxy: "http://proxy.example:8080", NoProxy: "cdn.example"}).ProxyFunc()
 	base := &http.Transport{Proxy: func(request *http.Request) (*url.URL, error) { return proxyFunc(request.URL) }}
 	request := requestFor(t, "https://cdn.example/plugin")
@@ -337,6 +345,7 @@ func TestProxyPolicyAndOriginalURLSelection(t *testing.T) {
 }
 
 func TestFailuresAndCancellation(t *testing.T) {
+	t.Parallel()
 	checked := transportFor(t, "https://configured.example/plugin", Grant{}, &http.Transport{}, func(context.Context, string, string) ([]netip.Addr, error) {
 		return nil, errors.New("lookup https://configured.example/?signed=secret")
 	})
@@ -363,8 +372,10 @@ func TestFailuresAndCancellation(t *testing.T) {
 }
 
 func TestOwnedTransportRejectsCustomTLSAndProtocolHandlersBeforeDial(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"TLS dialer", "protocol handler"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			base := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
 				t.Error("unsupported transport reached dialer")
 				return nil, ErrConnectionFailed
@@ -394,6 +405,7 @@ func TestOwnedTransportRejectsCustomTLSAndProtocolHandlersBeforeDial(t *testing.
 }
 
 func TestOwnedTransportPreservesDetachedSupportedSettings(t *testing.T) {
+	t.Parallel()
 	proxyURL, err := url.Parse("http://operator:credential@proxy.example:8080")
 	if err != nil {
 		t.Fatal(err)
@@ -497,6 +509,7 @@ func TestOwnedTransportPreservesNativeHTTP2AndExplicitDisable(t *testing.T) {
 }
 
 func TestOwnedTransportDoesNotInheritRegisteredProtocolExecutor(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "cdn.example" {
 			t.Errorf("HTTP host identity changed: %s", r.Host)

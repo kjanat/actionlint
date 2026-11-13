@@ -10,9 +10,11 @@ import (
 )
 
 func TestAliasedActionInputsKeepDeclarationCommentsAndAnchoredSpans(t *testing.T) {
+	t.Parallel()
 	for _, action := range []string{"actions/github-script@v7", "docker://example/image:1"} {
 		for _, inserted := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/inserted=%t", action, inserted), func(t *testing.T) {
+				t.Parallel()
 				indent := "          "
 				insertion := ""
 				anchorLine := 8

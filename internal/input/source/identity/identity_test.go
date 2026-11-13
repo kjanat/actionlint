@@ -3,6 +3,7 @@ package sourceid
 import "testing"
 
 func TestIdentityAcrossReorderingAndRevision(t *testing.T) {
+	t.Parallel()
 	first := New("workflow.yml", []byte("one"))
 	a := first.Ref("build", "", "first", "steps[0]")
 	b := first.Ref("build", "named", "", "steps[1]")

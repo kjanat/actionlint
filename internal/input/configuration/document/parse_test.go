@@ -10,6 +10,7 @@ import (
 )
 
 func TestFormats(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, src  string
 		key, value Location
@@ -21,6 +22,7 @@ func TestFormats(t *testing.T) {
 	want := map[string]any{"repository": map[string]any{"runners": []any{"gpu"}}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			d, err := Parse(tc.name, []byte(tc.src))
 			if err != nil {
 				t.Fatal(err)
@@ -39,8 +41,10 @@ func TestFormats(t *testing.T) {
 }
 
 func TestDuplicateKeys(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, src string }{{"x.json", `{"a":1,"a":2}`}, {"x.yaml", "a: 1\na: 2\n"}, {"x.toml", "a=1\na=2\n"}} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := Parse(tc.name, []byte(tc.src)); err == nil {
 				t.Fatal("expected duplicate key error")
 			}
@@ -49,6 +53,7 @@ func TestDuplicateKeys(t *testing.T) {
 }
 
 func TestTOMLArrayTables(t *testing.T) {
+	t.Parallel()
 	d, err := Parse("x.toml", []byte("[[items]]\nname='one'\n[[items]]\nname='two'\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +64,7 @@ func TestTOMLArrayTables(t *testing.T) {
 }
 
 func TestNumberAndMarshal(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"x.json", "x.yaml", "x.toml"} {
 		v := map[string]any{"number": json.Number("123")}
 		data, err := Marshal(name, v)
@@ -76,12 +82,14 @@ func TestNumberAndMarshal(t *testing.T) {
 }
 
 func TestJSONMultipleDocuments(t *testing.T) {
+	t.Parallel()
 	if _, err := Parse("x.json", []byte(`{} {}`)); err == nil || !strings.Contains(err.Error(), "one document") {
 		t.Fatalf("error %v", err)
 	}
 }
 
 func TestTOMLNestedPositions(t *testing.T) {
+	t.Parallel()
 	src := "[[groups]]\nname = 'one'\n[[groups.members]]\nname = 'a'\n[[groups]]\nname = 'two'\n[[groups.members]]\nname = 'b'\nsettings = { enabled = true }\n"
 	d, err := Parse("x.toml", []byte(src))
 	if err != nil {
@@ -95,6 +103,7 @@ func TestTOMLNestedPositions(t *testing.T) {
 }
 
 func TestYAMLMergeLocations(t *testing.T) {
+	t.Parallel()
 	src := "base: &base\n  value: 1\nitem:\n  value: 2\n  <<: *base\n"
 	d, err := Parse("x.yaml", []byte(src))
 	if err != nil {
@@ -106,6 +115,7 @@ func TestYAMLMergeLocations(t *testing.T) {
 }
 
 func TestNumbersAndDates(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ file, src, key, want string }{{"x.json", `{"n":123456789012345678901234567890}`, "n", "123456789012345678901234567890"}, {"x.toml", "n=9223372036854775807", "n", "9223372036854775807"}, {"x.toml", "when=1979-05-27T07:32:00Z", "when", "1979-05-27T07:32:00Z"}} {
 		d, err := Parse(tc.file, []byte(tc.src))
 		if err != nil {
@@ -131,6 +141,7 @@ func TestNumbersAndDates(t *testing.T) {
 }
 
 func TestNestedTOMLLocations(t *testing.T) {
+	t.Parallel()
 	src := "values = [[1], [2, { nested = [3] }]]\n[[items]]\nkey=1\n"
 	d, err := Parse("x.toml", []byte(src))
 	if err != nil {
@@ -147,6 +158,7 @@ func TestNestedTOMLLocations(t *testing.T) {
 }
 
 func TestTOMLMarshalIntegerOverflow(t *testing.T) {
+	t.Parallel()
 	_, err := Marshal("x.toml", map[string]any{"n": json.Number("123456789012345678901234567890")})
 	if err == nil {
 		t.Fatal("expected integer overflow error")
@@ -154,6 +166,7 @@ func TestTOMLMarshalIntegerOverflow(t *testing.T) {
 }
 
 func TestYAMLLargeIntegerRoundTrip(t *testing.T) {
+	t.Parallel()
 	v := map[string]any{"n": json.Number("123456789012345678901234567890")}
 	data, err := Marshal("x.yaml", v)
 	if err != nil {
@@ -169,6 +182,7 @@ func TestYAMLLargeIntegerRoundTrip(t *testing.T) {
 }
 
 func TestYAMLDecimalLeadingZero(t *testing.T) {
+	t.Parallel()
 	d, err := Parse("x.yaml", []byte("first: 017\nsecond: 0o17\nthird: 018\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -180,6 +194,7 @@ func TestYAMLDecimalLeadingZero(t *testing.T) {
 }
 
 func TestRewriteYAMLPreservesMovedComments(t *testing.T) {
+	t.Parallel()
 	original := []byte("# head\nold: 1 # inline\n# other head\nother: keep\n# footer\n")
 	parsed, err := Parse("x.yaml", original)
 	if err != nil {
@@ -206,6 +221,7 @@ func TestRewriteYAMLPreservesMovedComments(t *testing.T) {
 }
 
 func TestRewriteYAMLRetainsAliasComments(t *testing.T) {
+	t.Parallel()
 	original := []byte("base: &shared\n  value: one # anchor value\ncopy: *shared # alias use\n")
 	parsed, err := Parse("x.yaml", original)
 	if err != nil {

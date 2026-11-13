@@ -19,8 +19,12 @@ import (
 // Both the author example and host-boundary fixture use the real optional import.
 // The fixture additionally queries an unauthorized revision.
 func TestGuestReadsOnlyCurrentScriptAnnotations(t *testing.T) {
+	t.Parallel()
 	for _, fixture := range []string{"source-annotations", "source-annotations-example"} {
-		t.Run(fixture, func(t *testing.T) { checkGuestScriptAnnotations(t, fixture) })
+		t.Run(fixture, func(t *testing.T) {
+			t.Parallel()
+			checkGuestScriptAnnotations(t, fixture)
+		})
 	}
 }
 
@@ -60,6 +64,7 @@ func checkGuestScriptAnnotations(t *testing.T, fixture string) {
 }
 
 func TestGuestAnnotationFailureDoesNotPoisonLaterCalls(t *testing.T) {
+	t.Parallel()
 	guest := loadPlugin(t, "source-annotations", component.Options{})
 	ref := sourcepos.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
 	input := checkinputs.Input{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Scripts: []checkinputs.Script{{Reference: ref, Text: "echo root", Comments: []workflowfacts.SourceComment{{Text: "# first\n# second", Start: sourcepos.Position{Line: 2, Column: 7}}}}}}
@@ -74,12 +79,14 @@ func TestGuestAnnotationFailureDoesNotPoisonLaterCalls(t *testing.T) {
 }
 
 func TestGuestAnnotationInterfaceVersions(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(pluginPath("source-annotations"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, version := range []string{"0.2.1", "0.3.0"} {
 		t.Run(version, func(t *testing.T) {
+			t.Parallel()
 			// Keep encoded string lengths unchanged while changing the real import.
 			name := "kjanat:actionlint/source-annotations@" + version
 			changed := bytes.ReplaceAll(data, []byte(component.SourceAnnotationsInterface), []byte(name))

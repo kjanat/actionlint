@@ -6,6 +6,7 @@ import (
 )
 
 func TestGeneratedAllWebhooks(t *testing.T) {
+	t.Parallel()
 	if len(AllWebhookTypes) == 0 {
 		t.Fatal("AllWebhookTypes is empty")
 	}
@@ -28,6 +29,7 @@ func TestGeneratedAllWebhooks(t *testing.T) {
 }
 
 func TestDefaultActivities(t *testing.T) {
+	t.Parallel()
 	for _, event := range []string{"pull_request", "pull_request_target"} {
 		activities, ok := DefaultActivities(event)
 		if !ok || !slices.Equal(activities, []string{"opened", "synchronize", "reopened"}) {

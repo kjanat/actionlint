@@ -13,6 +13,7 @@ import (
 )
 
 func TestEventGuardNarrowing(t *testing.T) {
+	t.Parallel()
 	opened := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"action": exprtypes.StringType(), "title": exprtypes.StringType()})
 	labeled := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"action": exprtypes.StringType(), "label": exprtypes.StringType()})
 	push := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": exprtypes.NewArrayType(exprtypes.StringType()).Type()})
@@ -58,6 +59,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 		{"case(env.DYNAMIC == 'yes', github.event.label, '')", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github", "env"})
@@ -85,6 +87,7 @@ func TestEventGuardNarrowing(t *testing.T) {
 }
 
 func TestEventGuardEliminatedBranches(t *testing.T) {
+	t.Parallel()
 	push := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": exprtypes.NewArrayType(exprtypes.StringType()).Type()})
 	event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: push}})
 	for _, source := range []string{
@@ -96,6 +99,7 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 		"case(github.event_name == 'push', '', github.event.issue.title)",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			contextspec.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github"})

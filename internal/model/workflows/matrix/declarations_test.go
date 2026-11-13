@@ -8,6 +8,7 @@ import (
 )
 
 func TestDeclarationQueriesDetachReturnedStorage(t *testing.T) {
+	t.Parallel()
 	resolution := resolveSemanticMatrix(value.Template(`${{ fromJSON('{"os":["linux","windows"],"include":[{"extra":"added"}],"exclude":[{"os":"windows"}]}') }}`, value.Origin{}))
 	axes := resolution.Axes()
 	if len(axes) != 1 || len(axes[0].Values) != 2 || !axes[0].Complete {

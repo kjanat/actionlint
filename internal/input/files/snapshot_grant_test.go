@@ -8,6 +8,7 @@ import (
 )
 
 func TestSnapshotChildGrantRemainsWithinAuthorizedRoot(t *testing.T) {
+	t.Parallel()
 	workspace, outside := t.TempDir(), t.TempDir()
 	if err := os.Mkdir(filepath.Join(workspace, "nested"), 0o700); err != nil {
 		t.Fatal(err)

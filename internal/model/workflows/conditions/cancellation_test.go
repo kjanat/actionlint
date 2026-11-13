@@ -7,6 +7,7 @@ import (
 )
 
 func TestAlwaysIgnoresCancellation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition string
 		want      bool
@@ -36,6 +37,7 @@ func TestAlwaysIgnoresCancellation(t *testing.T) {
 		{"always(1)", false},
 	} {
 		t.Run(tc.condition, func(t *testing.T) {
+			t.Parallel()
 			expr, err, _ := exprsyntax.ParseConditionExpression(tc.condition)
 			if err != nil || expr == nil {
 				t.Fatalf("parse: %v", err)

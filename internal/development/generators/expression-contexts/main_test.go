@@ -22,6 +22,7 @@ func testRunMain(args []string) (string, string, int) {
 }
 
 func TestOKWriteStdout(t *testing.T) {
+	t.Parallel()
 	f := filepath.Join("testdata", "ok.md")
 	stdout, stderr, status := testRunMain([]string{f, "-"})
 	if status != 0 {
@@ -40,6 +41,7 @@ func TestOKWriteStdout(t *testing.T) {
 }
 
 func TestOKWriteFile(t *testing.T) {
+	t.Parallel()
 	in := filepath.Join("testdata", "ok.md")
 	out := filepath.Join("testdata", "_test_output.gen.go")
 
@@ -71,6 +73,7 @@ func TestOKWriteFile(t *testing.T) {
 }
 
 func TestErrorGenerate(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		file string
 		want string
@@ -83,6 +86,7 @@ func TestErrorGenerate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
 			f := filepath.Join("testdata", tc.file)
 			stdout, stderr, status := testRunMain([]string{f, "-"})
 			if status == 0 {
@@ -96,6 +100,7 @@ func TestErrorGenerate(t *testing.T) {
 }
 
 func TestStripAndUnescape(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -108,6 +113,7 @@ func TestStripAndUnescape(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			have, err := stripAndUnescape(tc.input)
 			if err != nil {
 				t.Fatal(err)
@@ -128,6 +134,7 @@ func (w testErrorWriter) Write(b []byte) (int, error) {
 }
 
 func TestWriteError(t *testing.T) {
+	t.Parallel()
 	f := filepath.Join("testdata", "ok.md")
 	stderr := &bytes.Buffer{}
 	status := run([]string{f, "-"}, testErrorWriter{}, stderr, io.Discard, "")
@@ -141,8 +148,9 @@ func TestWriteError(t *testing.T) {
 }
 
 func TestFetchError(t *testing.T) {
+	t.Parallel()
 	notFound := httptest.NewServer(http.NotFoundHandler())
-	defer notFound.Close()
+	t.Cleanup(notFound.Close)
 
 	testCases := []struct {
 		what string
@@ -155,6 +163,7 @@ func TestFetchError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			stderr := &bytes.Buffer{}
 			status := run([]string{"-"}, io.Discard, stderr, io.Discard, tc.url)
 			if status == 0 {
@@ -169,6 +178,7 @@ func TestFetchError(t *testing.T) {
 }
 
 func TestCmdError(t *testing.T) {
+	t.Parallel()
 	f := filepath.Join("testdata", "ok.md")
 	dirNotExist := filepath.Join("dir", "does", "not", "exist", "out.gen.go")
 	testCases := []struct {
@@ -183,6 +193,7 @@ func TestCmdError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			stdout, stderr, status := testRunMain(tc.args)
 			if status == 0 {
 				t.Fatalf("status was zero: %q", stdout)

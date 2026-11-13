@@ -19,6 +19,7 @@ import (
 )
 
 func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
+	t.Parallel()
 	fixture, err := actionfixtures.ReadManifest("request-action.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +60,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 	// makes no assertion about an upstream tag's target.
 	for _, ref := range []string{"v3.x", "test-tag", commit} {
 		t.Run(ref, func(t *testing.T) {
+			t.Parallel()
 			spec := "octokit/request-action@" + ref
 			definition, err := service.Lookup(t.Context(), spec)
 			if err != nil {

@@ -10,6 +10,7 @@ import (
 )
 
 func TestActionInputMappingPreservesSourceScalarTags(t *testing.T) {
+	t.Parallel()
 	workflow, errs := Parse([]byte("on: push\nenv:\n  NULL: key-value\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/action@v1\n        with:\n          NULL: key-value\n          null-value: null\n          null-text: 'null'\n          false-value: false\n          false-text: 'false'\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)

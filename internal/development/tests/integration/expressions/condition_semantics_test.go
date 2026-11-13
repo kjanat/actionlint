@@ -8,6 +8,7 @@ import (
 )
 
 func TestConditionNormalization(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, want string }{
 		{"null", ""},
 		{"~", ""},
@@ -59,6 +60,7 @@ func TestConditionNormalization(t *testing.T) {
 	} {
 		for _, location := range []string{"step", "job", "snapshot"} {
 			t.Run(location+"/"+tc.source, func(t *testing.T) {
+				t.Parallel()
 				body := "    runs-on: ubuntu-latest\n"
 				switch location {
 				case "job":
@@ -98,6 +100,7 @@ jobs:
 }
 
 func TestConditionComputedValuesStayData(t *testing.T) {
+	t.Parallel()
 	source := `on: push
 env: {X: 'false'}
 jobs:
@@ -116,6 +119,7 @@ permissions: {}
 }
 
 func TestSuspiciousConditionRuleSelection(t *testing.T) {
+	t.Parallel()
 	const header = `on:
   issue_comment:
   label:
@@ -161,6 +165,7 @@ jobs:
 	} {
 		for _, config := range []string{"", "policy: {}", "policy: null", "lint: {rules: {suspicious: off}}", "lint: {rules: {suspicious: {" + tc.check + ": on}}}"} {
 			t.Run(tc.check+"/"+tc.expression+"/"+config, func(t *testing.T) {
+				t.Parallel()
 				errs := testutil.WorkflowDiagnostics(t, header+"${{ "+tc.expression+" }}\npermissions: {}\n", config)
 				if tc.warn && strings.Contains(config, ": on") {
 					want := map[string]string{

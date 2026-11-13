@@ -45,8 +45,8 @@ github.com/kjanat/go-yaml/v4 v4.0.0-rc.7 h1:o1uCGobeROzP60y1ZqoxpQdBIpeTIE4j7vHz
 github.com/kjanat/go-yaml/v4 v4.0.0-rc.7/go.mod h1:ItoijA0Nx9w23vjt7MoOZC8AHlmUlUPt4QvNJ+47/S8=
 github.com/kjanat/wacogo v0.2.3 h1:rb51n/Ch7YzA5SETvAO5xecPXJrmWzFKlNoCmno3SYA=
 github.com/kjanat/wacogo v0.2.3/go.mod h1:yv07cANJgd9wWlfKy4k+RNJgZS5IPQEMj7e5FnL0+yo=
-github.com/kjanat/wazero v1.11.1 h1:nZitQ/QBpM1bquGvsSJf4S9aUtbUMbs0XHwNIPRQCY4=
-github.com/kjanat/wazero v1.11.1/go.mod h1:rUvkQkPCMYXQqVtV+0SjjYlKnI+4TuXkm9AVkhamDvw=
+github.com/kjanat/wazero v1.12.1 h1:b5Iv7nF0v26Yu4SDgpmKUguj7nG1IAsD9pLq5e88Ix8=
+github.com/kjanat/wazero v1.12.1/go.mod h1:kFazw1R/S2MA6Cf/H7MUKfHk/K4+l20e10PKs0auO9s=
 github.com/klauspost/compress v1.18.7 h1:aUyZsS4kH3QTKurYhAOwAHxllVPnOthb3vPfnF1Ehjw=
 github.com/klauspost/compress v1.18.7/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=

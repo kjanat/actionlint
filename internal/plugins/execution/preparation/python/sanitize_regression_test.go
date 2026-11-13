@@ -8,6 +8,7 @@ import (
 )
 
 func TestSanitizePythonScript(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"print(${{ github.sha }})", "print('${{ '}}' }}')", "print(${{\n github.sha\n}})", "print(${{ 'é' }}, missing)"} {
 		got, valid, err := python.Sanitize(source, python.TemplateEnd)
 		if err != nil {

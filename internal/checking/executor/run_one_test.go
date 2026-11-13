@@ -21,6 +21,7 @@ import (
 )
 
 func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("incomplete")
 	options := json.RawMessage(`{"mode":"safe"}`)
 	input := checkinputs.Input{
@@ -69,6 +70,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 }
 
 func TestForwardedAnalyzerUsesSharedAdmission(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("runtime failure")
 	input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Scripts: []checkinputs.Script{{Text: "original"}}}
 	calls := 0
@@ -94,6 +96,7 @@ func TestForwardedAnalyzerUsesSharedAdmission(t *testing.T) {
 }
 
 func TestRunInputValidationSurvivesNoRegistrations(t *testing.T) {
+	t.Parallel()
 	input := checkinputs.Input{AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations}}
 	if _, err := Run(t.Context(), input, nil); !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
 		t.Fatalf("empty registration list skipped input validation: %v", err)
@@ -129,6 +132,7 @@ func (a cancelingDescriptorAnalyzer) CheckDocument(context.Context, checkinputs.
 }
 
 func TestRunOneDoesNotStartAnalysisAfterPreparationCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	calls := 0
@@ -148,6 +152,7 @@ func prepareOne(t *testing.T, registration checkinputs.Registration, available [
 }
 
 func TestPrepareValidatesRegistration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name         string
 		registration checkinputs.Registration
@@ -166,6 +171,7 @@ func TestPrepareValidatesRegistration(t *testing.T) {
 		{name: "duplicate available", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "facts"}}}}, available: []rulemeta.InputKind{rulemeta.Source, rulemeta.Source}, want: "duplicate available input kind"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := Prepare(tc.registration, tc.available); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Prepare error=%v, want %q", err, tc.want)
 			}
@@ -174,6 +180,7 @@ func TestPrepareValidatesRegistration(t *testing.T) {
 }
 
 func TestRunRejectsUnsupportedAndDuplicateAvailableFactsPerRegistration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name      string
 		available []rulemeta.InputKind
@@ -183,6 +190,7 @@ func TestRunRejectsUnsupportedAndDuplicateAvailableFactsPerRegistration(t *testi
 		{name: "duplicate", available: []rulemeta.InputKind{rulemeta.Source, rulemeta.Source}, want: `duplicate available input kind "source"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var calls atomic.Int32
 			registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
 				calls.Add(1)
@@ -212,6 +220,7 @@ func (a *descriptorCountingAnalyzer) CheckDocument(ctx context.Context, input ch
 }
 
 func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
+	t.Parallel()
 	options := json.RawMessage(`{"mode":"safe"}`)
 	available := []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}
 	calls := 0
@@ -252,6 +261,7 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 }
 
 func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
+	t.Parallel()
 	root, callID := checkinputs.OccurrenceID(strings.Repeat("1", 64)), checkinputs.OccurrenceID(strings.Repeat("2", 64))
 	runID, inputID := checkinputs.OccurrenceID(strings.Repeat("3", 64)), checkinputs.OccurrenceID(strings.Repeat("4", 64))
 	entry := source.Reference{Document: "workflow", Revision: "r", Node: "document"}
@@ -304,6 +314,7 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 }
 
 func TestRunOneClonesSharedReturnedFindings(t *testing.T) {
+	t.Parallel()
 	shared := []results.Diagnostic{{Message: "cached"}}
 	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "shared", Explanation: "why", Help: "help", DocumentationURL: "https://example.invalid"}}, run: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) { return shared, nil }}}, nil)
 	var group sync.WaitGroup
@@ -326,8 +337,10 @@ func TestRunOneClonesSharedReturnedFindings(t *testing.T) {
 }
 
 func TestRunOneRetainsCancellationAndPartialFindings(t *testing.T) {
+	t.Parallel()
 	for _, analyzerErr := range []error{nil, errors.New("partial failure"), fmt.Errorf("wrapped: %w", context.Canceled)} {
 		t.Run(fmt.Sprint(analyzerErr), func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "canceling"}}, run: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
@@ -343,6 +356,7 @@ func TestRunOneRetainsCancellationAndPartialFindings(t *testing.T) {
 }
 
 func TestRunOneLeavesAnalyzerPanicsToCaller(t *testing.T) {
+	t.Parallel()
 	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "panicking"}}, run: func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) {
 		panic("analyzer bug")
 	}}}, nil)

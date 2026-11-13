@@ -21,6 +21,7 @@ import (
 )
 
 func TestCheckResultSchema(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("schemas/results/v1.schema.json")
 	if err != nil {
 		t.Fatal(err)

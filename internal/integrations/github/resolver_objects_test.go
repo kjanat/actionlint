@@ -12,6 +12,7 @@ import (
 )
 
 func TestResolverRepositoryRechecksReferences(t *testing.T) {
+	t.Parallel()
 	const id = "0123456789012345678901234567890123456789"
 	for _, changed := range []bool{false, true} {
 		calls := 0
@@ -65,6 +66,7 @@ func TestResolverRepositoryRechecksReferences(t *testing.T) {
 }
 
 func TestResolverRepositoryOfflineDoesNotRequest(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []Mode{Off, Offline} {
 		g, err := New(Options{Mode: mode, Transport: transport(func(*http.Request) (*http.Response, error) { t.Fatal("unexpected request"); return nil, nil })})
 		if err != nil {
@@ -77,6 +79,7 @@ func TestResolverRepositoryOfflineDoesNotRequest(t *testing.T) {
 }
 
 func TestResolverMissingRefRequiresReadableContents(t *testing.T) {
+	t.Parallel()
 	contents := 0
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		status, body := 200, `{"id":42,"full_name":"example/action","default_branch":"main"}`
@@ -105,6 +108,7 @@ func TestResolverMissingRefRequiresReadableContents(t *testing.T) {
 }
 
 func TestResolverAnnotatedTagPeelsToCommit(t *testing.T) {
+	t.Parallel()
 	const tagID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	const commitID = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
@@ -147,14 +151,16 @@ func TestResolverAnnotatedTagPeelsToCommit(t *testing.T) {
 }
 
 func TestResolverRejectsInvalidTagChains(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
-		target   func(string) (string, string)
+		target   func(*testing.T, string) (string, string)
 		expected string
 	}{
-		{"cycle", func(id string) (string, string) { return id, "tag" }, "cycle"},
-		{"type mismatch", func(string) (string, string) { return strings.Repeat("b", 40), "commit" }, "type does not match"},
-		{"depth limit", func(id string) (string, string) {
+		{"cycle", func(_ *testing.T, id string) (string, string) { return id, "tag" }, "cycle"},
+		{"type mismatch", func(*testing.T, string) (string, string) { return strings.Repeat("b", 40), "commit" }, "type does not match"},
+		{"depth limit", func(t *testing.T, id string) (string, string) {
+			t.Helper()
 			var n uint64
 			_, err := fmt.Sscanf(id, "%x", &n)
 			if err != nil {
@@ -164,6 +170,7 @@ func TestResolverRejectsInvalidTagChains(t *testing.T) {
 		}, "limit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 				status, body := 200, `{"id":42,"full_name":"example/action","default_branch":"main"}`
 				switch {
@@ -184,7 +191,7 @@ func TestResolverRejectsInvalidTagChains(t *testing.T) {
 					if tc.name == "type mismatch" && id == strings.Repeat("b", 40) {
 						status, body = 404, ""
 					} else {
-						target, kind := tc.target(id)
+						target, kind := tc.target(t, id)
 						body = fmt.Sprintf(`{"sha":%q,"object":{"sha":%q,"type":%q}}`, id, target, kind)
 					}
 				default:
@@ -208,6 +215,7 @@ func TestResolverRejectsInvalidTagChains(t *testing.T) {
 }
 
 func TestResolverRechecksAbsentReference(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		status, body := 200, `{"id":42,"full_name":"example/action","default_branch":"main"}`
@@ -244,6 +252,7 @@ func TestResolverRechecksAbsentReference(t *testing.T) {
 }
 
 func TestResolverFinishRejectsReplacedRepositoryWithSameRef(t *testing.T) {
+	t.Parallel()
 	const id = "0123456789012345678901234567890123456789"
 	reads := 0
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
@@ -279,6 +288,7 @@ func TestResolverFinishRejectsReplacedRepositoryWithSameRef(t *testing.T) {
 }
 
 func TestResolverAcceptsSixteenAnnotatedTags(t *testing.T) {
+	t.Parallel()
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		status, body := 200, `{"id":42,"full_name":"example/action","default_branch":"main"}`
 		id := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
@@ -330,6 +340,7 @@ func TestResolverAcceptsSixteenAnnotatedTags(t *testing.T) {
 }
 
 func TestResolverDoesNotTreatTree422AsMissing(t *testing.T) {
+	t.Parallel()
 	const id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		status, body := http.StatusOK, `{"id":42,"full_name":"example/action","default_branch":"main"}`
@@ -359,6 +370,7 @@ func TestResolverDoesNotTreatTree422AsMissing(t *testing.T) {
 }
 
 func TestResolverReadsTreeAfterCommitAndTagMisses(t *testing.T) {
+	t.Parallel()
 	const id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		status, body := http.StatusOK, `{"id":42,"full_name":"example/action","default_branch":"main"}`
@@ -392,6 +404,7 @@ func TestResolverReadsTreeAfterCommitAndTagMisses(t *testing.T) {
 }
 
 func TestResolverRepositoryComparesKnownExpectedID(t *testing.T) {
+	t.Parallel()
 	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		body := `{"id":42,"full_name":"example/action","default_branch":"main"}`
 		switch r.URL.Path {

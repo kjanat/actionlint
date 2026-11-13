@@ -9,6 +9,7 @@ import (
 )
 
 func TestPrettyCaseInsensitiveConditionConfiguration(t *testing.T) {
+	t.Parallel()
 	const source = `on: pull_request
 permissions: {}
 jobs:
@@ -31,6 +32,7 @@ jobs:
 		{name: "configured off", flags: []string{"--strict", "--experimental"}, level: "off"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			args := []string{
 				"actionlint", "check", "--output-format=pretty", "--color=never", "--hyperlinks=never",
 				"--action-metadata=off", "--no-tool=shellcheck", "--no-tool=ruff", "--quiet",

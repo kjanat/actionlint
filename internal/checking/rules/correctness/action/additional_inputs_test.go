@@ -11,6 +11,7 @@ import (
 )
 
 func TestAdditionalInputsRetainDeclaredInputValidation(t *testing.T) {
+	t.Parallel()
 	metadata := actionmeta.ParseDefinition([]byte("name: request\ndescription: request\ninputs:\n  route: {required: true}\n  old: {deprecationMessage: use route}\noutputs:\n  result: {description: result}\nruns: {using: node24, main: index.js}\n"))
 	additional := metadata.WithAdditionalInputs()
 	if !additional.Present() || metadata.AllowsAdditionalInputs() || !additional.AllowsAdditionalInputs() || additional.OutputsComplete() {
@@ -22,6 +23,7 @@ func TestAdditionalInputsRetainDeclaredInputValidation(t *testing.T) {
 		{"deprecated declaration", "{route: GET /, old: value, body: payload}", `avoid using deprecated input "old"`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: octokit/request-action@v3.x\n        with: " + test.inputs + "\n"
 			parsed, errors := workflowparser.Parse([]byte(text))
 			if len(errors) != 0 {

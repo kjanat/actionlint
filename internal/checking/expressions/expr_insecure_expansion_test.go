@@ -8,6 +8,7 @@ import (
 )
 
 func TestSecretScriptInterpolation(t *testing.T) {
+	t.Parallel()
 	for _, script := range []string{
 		"release-please release-pr --token=${{ secrets.RELEASE_PLEASE_GH_TOKEN }}",
 		`cargo workspaces publish --token "${{ secrets.CRATES_IO_TOKEN }}" --yes`,
@@ -15,6 +16,7 @@ func TestSecretScriptInterpolation(t *testing.T) {
 		`echo "${{ github.token }}"`,
 	} {
 		t.Run(script, func(t *testing.T) {
+			t.Parallel()
 			rule := newTestChecker()
 			rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: script, Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.run")
 			findings := rule.Findings()
@@ -26,6 +28,7 @@ func TestSecretScriptInterpolation(t *testing.T) {
 }
 
 func TestSecretEnvironmentValueIsNotScriptInterpolation(t *testing.T) {
+	t.Parallel()
 	rule := newTestChecker()
 	rule.checkString(ownedStringFixture(&workflowlang.String{Value: "${{ secrets.TOKEN }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.env")
 	rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: `tool --token "$TOKEN"`, Pos: &workflowlang.Pos{Line: 2, Col: 1}}), "jobs.<job_id>.steps.run")
@@ -35,6 +38,7 @@ func TestSecretEnvironmentValueIsNotScriptInterpolation(t *testing.T) {
 }
 
 func TestAllScriptInterpolationsChecked(t *testing.T) {
+	t.Parallel()
 	rule := newTestChecker()
 	rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "echo '${{ github.event.head_commit.committer.email }}' '${{ github.event.workflow_run.head_branch }}'", Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.run")
 	if len(rule.Findings()) != 2 {
@@ -43,11 +47,13 @@ func TestAllScriptInterpolationsChecked(t *testing.T) {
 }
 
 func TestWorkflowRunHeadRepositoryInjection(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow_run.head_repository.default_branch",
 		"github['event']['workflow_run']['head_repository']['default_branch']",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			rule := newTestChecker()
 			rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "echo '${{ " + expression + " }}'", Pos: &workflowlang.Pos{Line: 1, Col: 1}}), "jobs.<job_id>.steps.run")
 			if len(rule.Findings()) != 1 || rule.Findings()[0].Rule != "script-injection" {

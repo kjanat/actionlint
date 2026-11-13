@@ -13,6 +13,7 @@ import (
 )
 
 func TestOCIReferenceRequiresDigest(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("a", 64)
 	for _, tc := range []struct{ source, want string }{
 		{"oci://ghcr.io/kjanat/tool:v1", "must pin a digest"},
@@ -23,6 +24,7 @@ func TestOCIReferenceRequiresDigest(t *testing.T) {
 		{"oci://ghcr.io", "invalid OCI reference"},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			if err := RequireRemotePin(tc.source); err == nil || !strings.Contains(err.Error(), tc.want) || strings.Contains(err.Error(), "secret") {
 				t.Fatalf("error = %v", err)
 			}
@@ -45,6 +47,7 @@ func TestOCIReferenceRequiresDigest(t *testing.T) {
 }
 
 func TestStoreMaterialize(t *testing.T) {
+	t.Parallel()
 	store := Store{Dir: t.TempDir()}
 	data := []byte("#!/bin/sh\necho provider\n")
 	digest := digestOf(data)

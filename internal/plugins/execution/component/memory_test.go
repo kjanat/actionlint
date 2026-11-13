@@ -32,6 +32,7 @@ func callImportMemory(t *testing.T, plugin *Plugin) uint64 {
 }
 
 func TestComponentAggregateMemoryGrowthAndRelease(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "aggregate-memory.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -72,6 +73,7 @@ func TestComponentAggregateMemoryGrowthAndRelease(t *testing.T) {
 }
 
 func TestMemoryBudgetPreservesContentsAndReusesReleasedCapacity(t *testing.T) {
+	t.Parallel()
 	budget := &memoryBudget{limit: 12}
 	first, second := budget.Allocate(1024, 12), budget.Allocate(1024, 12)
 	copy(first.Reallocate(4), "data")

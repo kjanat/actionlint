@@ -17,6 +17,7 @@ func kindCounts(kinds []string) map[string]int {
 }
 
 func TestDisallowSuppressionsInteractions(t *testing.T) {
+	t.Parallel()
 	const body = `
 jobs:
   test:
@@ -39,6 +40,7 @@ cache-mode: write`, "true", []string{"cache-write-untrusted"}},
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+map[string]string{"\n": "/LF", "\r\n": "/CRLF"}[ending], func(t *testing.T) {
+				t.Parallel()
 				source := strings.ReplaceAll("on: pull_request_target\n"+tc.declaration+body, "\n", ending)
 				var kinds []string
 				for _, err := range testutil.WorkflowDiagnostics(t, source, "policy: {disallow-suppressions: "+tc.config+"}") {

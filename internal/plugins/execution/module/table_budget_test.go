@@ -10,6 +10,7 @@ import (
 )
 
 func TestTableBudgetRejectsUnboundedOrOversized(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name   string
 		limits []byte
@@ -19,6 +20,7 @@ func TestTableBudgetRejectsUnboundedOrOversized(t *testing.T) {
 		{"oversized minimum", []byte{1, 0x80, 0x20, 0x80, 0x20}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			data, err := os.ReadFile("testdata/wat/table-budget.wasm")
 			if err != nil {
 				t.Fatal(err)
@@ -59,6 +61,7 @@ func TestTableBudgetRejectsUnboundedOrOversized(t *testing.T) {
 }
 
 func TestTablesAndLinearMemoryShareInstanceBudget(t *testing.T) {
+	t.Parallel()
 	engine, err := Load(t.Context(), "testdata/wat/table-budget.wasm", Options{MemoryPages: 2})
 	if err != nil {
 		t.Fatal(err)

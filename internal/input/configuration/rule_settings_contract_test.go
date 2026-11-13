@@ -10,8 +10,10 @@ import (
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
+	t.Parallel()
 	for _, d := range checking.ConfigurationRules().Rules() {
 		t.Run(d.Name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
 			if err != nil {
 				t.Fatal(err)
@@ -32,6 +34,7 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 }
 
 func TestRuleLevelAliasesAndDefaults(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		rules string
 		name  string
@@ -63,6 +66,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 		{"suspicious: {case-insensitive-conditions: default}", "case-insensitive-conditions", "off"},
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + tc.rules + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -93,6 +97,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 }
 
 func TestRuleLevelAliasesWithStrict(t *testing.T) {
+	t.Parallel()
 	for _, level := range []string{"off", "false", "default", "null"} {
 		cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {case-insensitive-conditions: " + level + "}}}"))
 		if err != nil {
@@ -109,6 +114,7 @@ func TestRuleLevelAliasesWithStrict(t *testing.T) {
 }
 
 func TestRuleLevelPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		rules  string
 		preset repoconfig.Presets
@@ -130,6 +136,7 @@ func TestRuleLevelPrecedence(t *testing.T) {
 		{"disable: [expression], correctness: error", repoconfig.Presets{Strict: true}, "expression", "off"},
 	} {
 		t.Run(tc.rules+"/"+tc.name+"/"+string(tc.want), func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + tc.rules + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -142,6 +149,7 @@ func TestRuleLevelPrecedence(t *testing.T) {
 }
 
 func TestRuleSettingsInvalid(t *testing.T) {
+	t.Parallel()
 	for _, rules := range []string{
 		"preset: typo", "correctness: typo", "correctness: {expression: ''}",
 		"correctness: {expression: warning}",
@@ -154,6 +162,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 		"policy: {required-actions: on}",
 	} {
 		t.Run(rules, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + rules + "}}"))
 			if err == nil {
 				_, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
@@ -166,6 +175,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 }
 
 func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint:
   rules:
     correctness: warn
@@ -200,12 +210,14 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 }
 
 func TestTypedRuleOptionsNull(t *testing.T) {
+	t.Parallel()
 	for rule, fields := range map[string][]string{
 		"require-job-timeout":   {"min-minutes", "max-minutes"},
 		"require-permissions":   {"scope"},
 		"disallow-suppressions": {"rules", "report"},
 	} {
 		t.Run(rule, func(t *testing.T) {
+			t.Parallel()
 			options := []string{}
 			for _, field := range fields {
 				options = append(options, "{"+field+": null}")
@@ -227,10 +239,12 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 }
 
 func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
+	t.Parallel()
 	for name, options := range map[string]any{
 		"require-job-timeout": map[string]any{"max-minute": 5},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			setting, err := repoconfig.NewSetting("error", options)
 			if err != nil {
 				t.Fatal(err)
@@ -246,6 +260,7 @@ func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
 }
 
 func TestNewSettingRejectsDisabledPolicies(t *testing.T) {
+	t.Parallel()
 	for name, policy := range map[string]any{
 		"require-job-timeout":   &repoconfig.JobTimeoutPolicy{},
 		"require-permissions":   &repoconfig.PermissionsPolicy{},

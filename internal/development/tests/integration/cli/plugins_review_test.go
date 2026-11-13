@@ -11,6 +11,7 @@ import (
 )
 
 func TestOutputCannotReplaceExplicitPlugin(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(pluginFixture("pipe-to-shell"))
 	if err != nil {
 		t.Fatal(err)
@@ -30,6 +31,7 @@ func TestOutputCannotReplaceExplicitPlugin(t *testing.T) {
 }
 
 func TestOutputCannotReplaceConfiguredEngine(t *testing.T) {
+	t.Parallel()
 	fixture := filepath.Join(componentTestdata, "..", "..", "module", "testdata", "engines", "echo.wasm")
 	data, err := os.ReadFile(fixture)
 	if err != nil {

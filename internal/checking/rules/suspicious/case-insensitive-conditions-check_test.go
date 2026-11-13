@@ -13,6 +13,7 @@ import (
 )
 
 func TestCaseInsensitiveConditionsUseCheckedCalls(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source           string
 		findings, errors int
@@ -30,6 +31,7 @@ func TestCaseInsensitiveConditionsUseCheckedCalls(t *testing.T) {
 		{"case(false, startsWith(github.ref, 'main'), false)", 1, 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			root, err, _ := exprsyntax.ParseConditionExpression(tc.source)
 			if err != nil {
 				t.Fatal(err)

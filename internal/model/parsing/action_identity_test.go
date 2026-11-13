@@ -7,6 +7,7 @@ import (
 )
 
 func TestCompositeAliasReferencesFollowStepOwners(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - &shared\n      uses: $/nested\n    - *shared\n")
 	document := Action("outer/action.yml", content)
 	if !document.CanAnalyze() || len(document.SyntaxErrors) != 0 {

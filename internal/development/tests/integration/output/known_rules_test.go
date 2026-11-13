@@ -11,6 +11,7 @@ import (
 )
 
 func TestErrorPrintAllKinds(t *testing.T) {
+	t.Parallel()
 	f, err := render.NewFormatter("{{range $ = allKinds}}{{$.Name}}: {{$.Description}}\n{{end}}", buildinfo.Version, checking.ListRules())
 	if err != nil {
 		t.Fatal(err)

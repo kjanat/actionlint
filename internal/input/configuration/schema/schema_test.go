@@ -50,6 +50,7 @@ func compile(t *testing.T, manifests ...pluginmanifests.Manifest) *configschema.
 }
 
 func TestDocumentInlinesReferencedSchemas(t *testing.T) {
+	t.Parallel()
 	schema := compile(t)
 	// The ShellCheck settings live in schemas/shellcheck, which the
 	// generated file references.
@@ -62,6 +63,7 @@ func TestDocumentInlinesReferencedSchemas(t *testing.T) {
 }
 
 func TestDocumentAddsInstalledProviders(t *testing.T) {
+	t.Parallel()
 	schema := compile(t, installed(false))
 	for _, valid := range []string{
 		`{"tools":{"oci-tool":{"config":{"level":"low"}}}}`,
@@ -89,6 +91,7 @@ func TestDocumentAddsInstalledProviders(t *testing.T) {
 }
 
 func TestDocumentScopesProviderSchemasOnce(t *testing.T) {
+	t.Parallel()
 	manifest := installed(true)
 	manifest.ConfigSchema = json.RawMessage(`{"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
 	manifest.Process.ConfigSchema = json.RawMessage(`{"$id":"https://example.invalid/process-settings","type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
@@ -113,6 +116,7 @@ func TestDocumentScopesProviderSchemasOnce(t *testing.T) {
 }
 
 func TestDocumentShorthandReferences(t *testing.T) {
+	t.Parallel()
 	manifest := installed(false)
 	manifest.ConfigSchema = json.RawMessage(`{"$defs":{"mode":{"enum":["quiet","loud"]}},"type":"object","properties":{"nested":{"type":"object","properties":{"a/b~c":{"$ref":"#/$defs/mode"}},"additionalProperties":false}},"additionalProperties":false}`)
 	manifest.ConfigShorthands = map[string]configschema.Shorthand{"mode": {Path: []string{"nested", "a/b~c"}, Precedence: configschema.PrecedenceConfig}}
@@ -131,6 +135,7 @@ func TestDocumentShorthandReferences(t *testing.T) {
 }
 
 func TestDocumentPreservesUnevaluatedProperties(t *testing.T) {
+	t.Parallel()
 	manifest := installed(false)
 	manifest.Process = nil
 	manifest.ConfigSchema = json.RawMessage(`{"type":"object","allOf":[{"type":"object","properties":{"known":{"type":"integer"}}}],"unevaluatedProperties":false}`)
@@ -144,8 +149,10 @@ func TestDocumentPreservesUnevaluatedProperties(t *testing.T) {
 }
 
 func TestDocumentScopesRelativeProviderSchemas(t *testing.T) {
+	t.Parallel()
 	for _, id := range []string{"", "settings.json", "../settings.json", "/settings.json"} {
 		t.Run(id, func(t *testing.T) {
+			t.Parallel()
 			manifest := installed(false)
 			manifest.ConfigSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
 			manifest.Process.ConfigSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
@@ -163,6 +170,7 @@ func TestDocumentScopesRelativeProviderSchemas(t *testing.T) {
 }
 
 func TestDocumentAddsPluginRuleSettingsToSemanticCategory(t *testing.T) {
+	t.Parallel()
 	manifest := installed(false)
 	manifest.Rule.Name = "custom-check"
 	manifest.Rule.Category = "security"
@@ -187,6 +195,7 @@ func TestDocumentAddsPluginRuleSettingsToSemanticCategory(t *testing.T) {
 }
 
 func TestDocumentRejectsUnsupportedRuleCategory(t *testing.T) {
+	t.Parallel()
 	manifest := installed(false)
 	manifest.Rule.Category = "external"
 	if _, err := Document(moduleRoot, []pluginmanifests.Manifest{manifest}); err == nil || !strings.Contains(err.Error(), `unsupported category "external"`) {
@@ -195,6 +204,7 @@ func TestDocumentRejectsUnsupportedRuleCategory(t *testing.T) {
 }
 
 func TestDocumentUsesInstalledReplacementSettings(t *testing.T) {
+	t.Parallel()
 	manifest := installed(false)
 	manifest.Rule.Name = "shellcheck"
 	manifest.Rule.Category = "correctness"
@@ -208,6 +218,7 @@ func TestDocumentUsesInstalledReplacementSettings(t *testing.T) {
 }
 
 func TestDocumentRefusesReferenceCycle(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{
 		RootFile: {Data: []byte(`{"properties":{"tools":{"oneOf":[{"type":"object","properties":{},"additionalProperties":{}}]}},"$ref":"a.json"}`)},
 		"a.json": {Data: []byte(`{"$ref":"b.json"}`)},

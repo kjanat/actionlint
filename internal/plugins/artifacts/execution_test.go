@@ -6,6 +6,7 @@ import (
 )
 
 func TestRemoteExecutionRequiresPin(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"https://example.com/plugin.wasm", "http://localhost/plugin.wasm"} {
 		if err := RequireRemotePin(source); err == nil {
 			t.Errorf("accepted unpinned execution: %s", source)

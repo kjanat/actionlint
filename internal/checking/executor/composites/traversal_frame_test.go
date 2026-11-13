@@ -32,6 +32,7 @@ func (p *frameObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
 }
 
 func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("child traversal failed")
 	for _, childError := range []error{nil, failure} {
 		name := "success"
@@ -39,6 +40,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 			name = "failure"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 				"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 				"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",

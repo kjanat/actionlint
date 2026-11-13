@@ -8,6 +8,7 @@ import (
 )
 
 func TestFileOverrideToolRequirements(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config := writeFixture(t, root, "actionlint.yml", "tools: {shellcheck: false}\noverrides: [{includes: [ci.yml], tools: {shellcheck: true}}]")
 	options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}

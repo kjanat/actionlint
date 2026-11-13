@@ -26,6 +26,7 @@ func (f scriptBackend) Check(ctx context.Context, request checkinputs.ScriptRequ
 func (scriptBackend) TemplateContract() string { return checkinputs.TemplateEffectsContract }
 
 func TestScriptBackendsWithoutCommands(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("backend partially completed")
 	var mu sync.Mutex
 	seen := map[string]checkinputs.ScriptRequest{}
@@ -101,6 +102,7 @@ jobs:
 }
 
 func TestBackendSelectionIsExclusive(t *testing.T) {
+	t.Parallel()
 	backend := scriptBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		t.Fatal("ambiguous selection ran")
 		return nil, nil
@@ -119,6 +121,7 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 }
 
 func TestUnknownBundledProviderIsRejected(t *testing.T) {
+	t.Parallel()
 	if !slices.Equal(registry.IDs(), []string{"ruff", "shellcheck"}) {
 		t.Fatalf("bundled tools: %v", registry.IDs())
 	}

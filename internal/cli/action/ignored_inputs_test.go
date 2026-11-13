@@ -10,6 +10,7 @@ import (
 // shellcheck, ruff and pyflakes inputs nor warns about them: action.yml
 // marks them with deprecationMessage, and GitHub shows that message.
 func TestToolInputsAreIgnored(t *testing.T) {
+	t.Parallel()
 	ignored := map[string]string{"INPUT_SHELLCHECK": "false", "INPUT_RUFF": "false", "INPUT_PYFLAKES": "not a boolean"}
 	var req lintRequest
 	req.configureTools(func(key string) string { return ignored[key] })

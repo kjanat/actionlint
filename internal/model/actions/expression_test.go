@@ -9,6 +9,7 @@ import (
 )
 
 func TestActionExpressionFallbackDeduplication(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		want       int
@@ -22,6 +23,7 @@ func TestActionExpressionFallbackDeduplication(t *testing.T) {
 		{"${{ unknown() || unknown() }}", 2, true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			got := ValidateExpression(tc.expression, true, "runs.steps.*.if", nil)
 			if len(got) != tc.want {
 				t.Fatalf("want %d violations, got %+v", tc.want, got)
@@ -39,6 +41,7 @@ func TestActionExpressionFallbackDeduplication(t *testing.T) {
 }
 
 func TestActionExpressionContextSuggestions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		field, expression string
 		want              []ExpressionProblem
@@ -52,6 +55,7 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 		{"runs.steps.*.run", "${{ inputs.github_token }} ${{ matrix.runner_os }}", nil},
 	} {
 		t.Run(tc.field+"/"+tc.expression, func(t *testing.T) {
+			t.Parallel()
 			got := ValidateExpression(tc.expression, tc.field == "runs.steps.*.if", tc.field, nil)
 			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(ExpressionProblem{}), cmpopts.IgnoreFields(ExpressionProblem{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
@@ -61,6 +65,7 @@ func TestActionExpressionContextSuggestions(t *testing.T) {
 }
 
 func TestActionCloseNameSuggestions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ field, source, suggestion string }{
 		{"runs.steps.*.run", "${{ githbu.ref }}", "github"},
 		{"runs.steps.*.run", "${{ startWith('abc', 'a') }}", "startsWith"},
@@ -69,6 +74,7 @@ func TestActionCloseNameSuggestions(t *testing.T) {
 		{"runs.steps.*.run", "${{ secret.TOKEN }}", ""},
 	} {
 		t.Run(tc.field+tc.source, func(t *testing.T) {
+			t.Parallel()
 			violations := ValidateExpression(tc.source, false, tc.field, nil)
 			if len(violations) != 1 {
 				t.Fatalf("expected one invalid name, got %+v", violations)
@@ -86,6 +92,7 @@ func TestActionCloseNameSuggestions(t *testing.T) {
 }
 
 func TestActionExpressionFunctions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, field, expression string
 		bare                    bool
@@ -128,6 +135,7 @@ func TestActionExpressionFunctions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if diff := cmp.Diff(tc.want, ValidateExpression(tc.expression, tc.bare, tc.field, nil), cmp.AllowUnexported(ExpressionProblem{}), cmpopts.IgnoreFields(ExpressionProblem{}, "Offset", "EndOffset")); diff != "" {
 				t.Fatal(diff)
 			}
@@ -136,6 +144,7 @@ func TestActionExpressionFunctions(t *testing.T) {
 }
 
 func TestActionConditionCompleteConsumption(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source  string
 		invalid bool
@@ -150,6 +159,7 @@ func TestActionConditionCompleteConsumption(t *testing.T) {
 		{"${{ '' }}", false},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			violations := ValidateExpression(tc.source, true, "runs.steps.*.if", nil)
 			if tc.invalid {
 				if len(violations) != 1 || !strings.Contains(violations[0].Message, "unexpected trailing text in condition") {
@@ -163,6 +173,7 @@ func TestActionConditionCompleteConsumption(t *testing.T) {
 }
 
 func TestCompositeStepUnavailableContexts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		expr string
@@ -188,6 +199,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			got := ValidateExpression(tc.expr, tc.bare, "runs.steps.*.if", nil)
 			var want []ExpressionProblem
 			for _, ctx := range tc.want {
@@ -201,6 +213,7 @@ func TestCompositeStepUnavailableContexts(t *testing.T) {
 }
 
 func TestActionInputDefaultUnavailableContexts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		expr string
@@ -215,6 +228,7 @@ func TestActionInputDefaultUnavailableContexts(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			got := ValidateExpression(tc.expr, false, "inputs.*.default", nil)
 			var want []ExpressionProblem
 			for _, ctx := range tc.want {

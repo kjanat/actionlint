@@ -18,14 +18,7 @@ import (
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - run: missing shell
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		name, destination, extra string
 		read                     bool
@@ -39,6 +32,15 @@ runs:
 		{"tolerated same path", "source", "\n  continue-on-error: true", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - run: missing shell
+`)
 			fixturefiles.Write(t, root, "refresh/action.yml", `name: refresh
 description: test
 runs:
@@ -65,6 +67,7 @@ runs:
 }
 
 func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "scripts/Nested/lib.sh", "VALUE=42\n")
 	want, err := filepath.EvalSymlinks(filepath.Join(root, "scripts", "Nested"))
@@ -88,10 +91,13 @@ func TestRunDirectoryCaseInsensitiveSuffix(t *testing.T) {
 }
 
 func TestCompositeCheckoutAlternateRefMetadata(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+	fixture := func(t *testing.T) (root, metadata, decoy string) {
+		t.Helper()
+		root, _ = testutil.ExecutableFixture(t, "shellcheck")
+		fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+		metadata = fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
@@ -99,7 +105,7 @@ runs:
     - shell: bash
       run: echo $VALUE
 `)
-	decoy := fixturefiles.Write(t, root, "source/local/action.yml", `name: decoy
+		decoy = fixturefiles.Write(t, root, "source/local/action.yml", `name: decoy
 description: test
 runs:
   using: composite
@@ -107,6 +113,8 @@ runs:
     - shell: bash
       run: echo $DECOY
 `)
+		return root, metadata, decoy
+	}
 	for _, destination := range []string{".", "source"} {
 		for _, tc := range []struct {
 			name, ref string
@@ -120,6 +128,8 @@ runs:
 			{"dynamic ref", "${{ inputs.ref }}", true},
 		} {
 			t.Run(destination+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+				root, metadata, decoy := fixture(t)
 				inputs := "path: " + destination
 				if tc.ref != "" {
 					inputs += ", ref: \"" + tc.ref + "\""
@@ -143,6 +153,7 @@ runs:
 			})
 		}
 	}
+	root, metadata, _ := fixture(t)
 	result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {ref: v1}
 - uses: $/local`, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})

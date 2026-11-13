@@ -9,6 +9,7 @@ import (
 )
 
 func TestHyperlinkPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                    string
 		mode                    hyperlinkMode
@@ -28,6 +29,7 @@ func TestHyperlinkPrecedence(t *testing.T) {
 		{name: "auto uses environment", mode: "auto", force: "1", want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			env := map[string]string{"NO_HYPERLINKS": tc.no, "FORCE_HYPERLINKS": tc.force, "TERM": "xterm-256color"}
 			if tc.capable {
 				env["WT_SESSION"] = "session"
@@ -40,6 +42,7 @@ func TestHyperlinkPrecedence(t *testing.T) {
 }
 
 func TestHyperlinkTerminalDetection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		env  map[string]string
@@ -66,6 +69,7 @@ func TestHyperlinkTerminalDetection(t *testing.T) {
 		{"screen", map[string]string{"TERM": "screen-256color", "WT_SESSION": "session"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if got := terminalHyperlinks(func(name string) string { return tc.env[name] }); got != tc.want {
 				t.Fatalf("supported = %t, want %t", got, tc.want)
 			}
@@ -100,6 +104,7 @@ func TestFileURL(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
 			if got := fileURL(tc.path); got != tc.want {
 				t.Fatalf("URL = %q, want %q", got, tc.want)
 			}
@@ -126,6 +131,7 @@ func TestFileURL(t *testing.T) {
 }
 
 func TestFileLinkPresentation(t *testing.T) {
+	t.Parallel()
 	path := "." + string(filepath.Separator) + string(filepath.Separator) + "config.yaml"
 	if got := fileLink(false, path); got != "config.yaml" {
 		t.Fatalf("unclean path label: %q", got)

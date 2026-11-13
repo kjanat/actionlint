@@ -106,6 +106,7 @@ func compareCycleFailure(t *testing.T, got, want error) {
 }
 
 func TestCursorCycleDecodeRetainsAliasAncestorAndPartialTarget(t *testing.T) {
+	t.Parallel()
 	var baseline cursorCycleRoot
 	wantErr := upstream.Unmarshal([]byte(cursorCycleSource), &baseline)
 	if wantErr == nil {
@@ -113,6 +114,7 @@ func TestCursorCycleDecodeRetainsAliasAncestorAndPartialTarget(t *testing.T) {
 	}
 	for _, mode := range []string{"cursor-decode", "entered-decode", "nested-cursor-decode"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			want := baseline.Items
 			failure := wantErr
 			if mode == "nested-cursor-decode" {
@@ -139,6 +141,7 @@ func TestCursorCycleDecodeRetainsAliasAncestorAndPartialTarget(t *testing.T) {
 }
 
 func TestCursorCycleInUnselectedValueIsNotExpanded(t *testing.T) {
+	t.Parallel()
 	const source = "cycle: &cycle {child: *cycle}\nitems: [ok]\n"
 	type selected struct {
 		Items []string `yaml:"items"`

@@ -8,6 +8,7 @@ import (
 )
 
 func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/action@v1\n")
 	workflow, findings := Parse(content)
 	if len(findings) != 0 {

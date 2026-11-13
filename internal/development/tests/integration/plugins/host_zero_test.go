@@ -20,6 +20,7 @@ var (
 )
 
 func TestHostZeroValueGetters(t *testing.T) {
+	t.Parallel()
 	var component componenthost.Plugin
 	if component.HasAnalyzer() || component.HasRunnerProvider() || component.HasScriptEngine() || component.Path() != "" || component.ArtifactDigest() != "" || component.Limits() != (componenthost.Limits{}) {
 		t.Fatal("zero component advertises loaded state")

@@ -9,6 +9,7 @@ import (
 )
 
 func TestUnsoundTernaryConfigurationAndSuppression(t *testing.T) {
+	t.Parallel()
 	src := `on: push
 env:
   VALUE: ${{ github.ref && '' || 'fallback' }}

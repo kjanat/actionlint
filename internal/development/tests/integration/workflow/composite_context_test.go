@@ -13,10 +13,12 @@ import (
 )
 
 func TestCompositeUnavailableContextsDoNotDuplicatePropertyFindings(t *testing.T) {
+	t.Parallel()
 	const expression = "${{ format('{0}:{1}:{2}:{3}:{4}', inputs.token, needs.build.result, secrets.GITHUB_TOKEN, vars.REGION, steps.child.outputs.missing) }}"
 	for _, outputValue := range []bool{false, true} {
 		for _, folded := range []bool{false, true} {
 			t.Run(fmt.Sprintf("output-value=%t/folded=%t", outputValue, folded), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				fixturefiles.Write(t, root, "child/action.yml", "name: child\ndescription: child\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n")

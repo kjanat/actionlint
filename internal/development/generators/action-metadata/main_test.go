@@ -42,6 +42,7 @@ const testRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 // The fixture is the complete runner schema at runner revision
 // 759385a3510197a58b5c08dc1f373b74b9f4643b. Its last schema edit is fee24199.
 func TestCompleteRunnerActionSchema(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("testdata", "action_yaml.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +61,7 @@ func TestCompleteRunnerActionSchema(t *testing.T) {
 }
 
 func TestCollect(t *testing.T) {
+	t.Parallel()
 	defs, err := readSchema([]byte("\ufeff" + testSchema))
 	if err != nil {
 		t.Fatal(err)
@@ -89,6 +91,7 @@ func TestCollect(t *testing.T) {
 }
 
 func TestGenerateRejectsSchemaDrift(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ name, from, to, message string }{
 		{"missing root", "action-root", "renamed-root", "no action-root"},
 		{"unknown reference", `"type": "step-string"`, `"type": "missing"`, "unknown schema definition"},
@@ -103,6 +106,7 @@ func TestGenerateRejectsSchemaDrift(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			data := strings.ReplaceAll(testSchema, tc.from, tc.to)
 			if data == testSchema {
 				t.Fatal("test did not alter schema")
@@ -116,6 +120,7 @@ func TestGenerateRejectsSchemaDrift(t *testing.T) {
 }
 
 func TestGenerateDeterministic(t *testing.T) {
+	t.Parallel()
 	first, err := generate([]byte(testSchema), testRevision)
 	if err != nil {
 		t.Fatal(err)
@@ -149,6 +154,7 @@ type transportFunc func(*http.Request) (*http.Response, error)
 func (f transportFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestRefresh(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, commits, schema string
 		apiStatus, cdnStatus  int
@@ -164,6 +170,7 @@ func TestRefresh(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var apiCalled, cdnCalled bool
 			client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
 				var data string

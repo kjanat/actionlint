@@ -10,6 +10,7 @@ import (
 )
 
 func TestDocumentManifestFactsAndSelectors(t *testing.T) {
+	t.Parallel()
 	document := strings.Replace(minimal, `"role": "script"`, `"role": "document"`, 1)
 	document = strings.Replace(document, `"rule": {`, `"rule": {"required_inputs":["source","dependencies"],`, 1)
 	document = strings.Replace(document, `"selectors": {"filename": "actionlint.sh"}`, `"selectors":{"documents":["workflow","action"]}`, 1)
@@ -30,6 +31,7 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 		"script-selector":   strings.Replace(document, `"documents":["workflow","action"]`, `"documents":["workflow"],"shells":["bash"]`, 1),
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := manifests.Parse([]byte(invalid)); err == nil {
 				t.Fatal("invalid document declaration accepted")
 			}
@@ -38,6 +40,7 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 }
 
 func TestInvocationDefinitionManifest(t *testing.T) {
+	t.Parallel()
 	definition := `"invocation_definitions":[{"id":"example/python-wrapper","executables":["actions-shell"],"prefix":["python"],"delegate":"python-plugin/python"}],`
 	document := strings.Replace(minimal, `"schema_version": 1,`, `"schema_version": 1,`+definition, 1)
 	manifest, err := manifests.Parse([]byte(document))

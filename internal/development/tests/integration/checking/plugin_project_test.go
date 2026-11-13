@@ -17,6 +17,7 @@ import (
 )
 
 func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
@@ -76,6 +77,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 }
 
 func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), root, "", "")
 	if err != nil {
@@ -105,6 +107,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 }
 
 func TestPluginProjectMissingPinsAndForeignScope(t *testing.T) {
+	t.Parallel()
 	root, foreign := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
 	if err := os.MkdirAll(filepath.Join(foreign, ".github"), 0700); err != nil {
 		t.Fatal(err)

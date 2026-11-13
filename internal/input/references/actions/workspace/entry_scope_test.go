@@ -9,6 +9,7 @@ import (
 )
 
 func TestActionEntryHasNoCallerBranchJoin(t *testing.T) {
+	t.Parallel()
 	resolver := NewResolver(nil, nil)
 	resolver.checkoutEnvUnknown, resolver.shellEnvUnknown, resolver.persistentEnvUnknown = true, true, true
 	resolver.checkoutShell = execution.Shell{Name: "bash"}

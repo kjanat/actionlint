@@ -16,6 +16,7 @@ import (
 )
 
 func TestWriteStdoutOK(t *testing.T) {
+	t.Parallel()
 	in := filepath.Join("testdata", "ok.html")
 	stdout := &strings.Builder{}
 	if err := run([]string{in, "-"}, stdout, io.Discard, ""); err != nil {
@@ -45,6 +46,7 @@ func (errWriter) Write([]byte) (int, error) {
 }
 
 func TestWriteError(t *testing.T) {
+	t.Parallel()
 	in := filepath.Join("testdata", "ok.html")
 	err := run([]string{in, "-"}, errWriter{}, io.Discard, "")
 	if err == nil {
@@ -59,6 +61,7 @@ func TestWriteError(t *testing.T) {
 }
 
 func TestInvalidCommandArgs(t *testing.T) {
+	t.Parallel()
 	err := run([]string{"a", "b", "c"}, io.Discard, io.Discard, "")
 	if err == nil {
 		t.Fatal("error did not occur")
@@ -69,6 +72,7 @@ func TestInvalidCommandArgs(t *testing.T) {
 }
 
 func TestParseError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		file string
 		want string
@@ -91,6 +95,7 @@ func TestParseError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
 			stdout := &strings.Builder{}
 			err := run([]string{filepath.Join("testdata", tc.file), "-"}, stdout, io.Discard, "")
 			if err == nil {
@@ -104,6 +109,7 @@ func TestParseError(t *testing.T) {
 }
 
 func TestFetchURL(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "test response")
 	}))

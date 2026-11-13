@@ -13,6 +13,7 @@ import (
 )
 
 func TestConfigMigrationRejectsMixedRemoteSnapshots(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, "actionlint.yaml")

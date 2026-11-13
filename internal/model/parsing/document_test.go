@@ -8,6 +8,7 @@ import (
 )
 
 func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {
+	t.Parallel()
 	source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n")
 	document := Action("/project/action.yml", source)
 	if !document.CanAnalyze() || document.Metadata == nil || document.Workflow != nil {
@@ -25,6 +26,7 @@ func TestActionFactsDoNotBecomeWorkflowTraversalInputs(t *testing.T) {
 }
 
 func TestReferenceIdentitiesPreserveSourceLookupPaths(t *testing.T) {
+	t.Parallel()
 	workflow := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./action\n")
 	action := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n")
 	identify := func(path string) string { return "/physical/" + filepath.Base(path) }

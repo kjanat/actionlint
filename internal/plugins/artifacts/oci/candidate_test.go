@@ -49,10 +49,7 @@ type declaration struct {
 
 func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
 	t.Helper()
-	home := t.TempDir()
-	for _, name := range []string{"XDG_CACHE_HOME", "LOCALAPPDATA", "HOME"} {
-		t.Setenv(name, home)
-	}
+	cache := t.TempDir()
 	registry := ocitest.New(t)
 	metadata := []byte(`{"metadata_version":1,"id":"github.com/publisher/plugin/check","plugin_version":"1.0.0","repository":"https://github.com/publisher/plugin"`)
 	contract := "process/1"
@@ -114,10 +111,7 @@ func newOCICandidate(t *testing.T, kind artifacts.Kind) ociCandidateFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	client.StatusOptions.CacheDir = filepath.Join(cache, "actionlint", "registry")
 	fixture := ociCandidateFixture{
 		registry: registry, client: client, dir: dir, record: record, root: root, manifest: manifest, primary: primary,
 		options: artifacts.Options{CacheDir: filepath.Join(cache, "actionlint", "artifacts"), PullOCI: oci.Pull, Network: grant},
@@ -160,8 +154,10 @@ func (f ociCandidateFixture) cachedOptions() artifacts.Options {
 }
 
 func TestCandidateOCIRootDigestAndMetadataAdmission(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []artifacts.Kind{artifacts.Core, artifacts.Component, artifacts.ProviderManifest} {
 		t.Run(string(kind), func(t *testing.T) {
+			t.Parallel()
 			f := newOCICandidate(t, kind)
 			pin := f.resolve(t)
 			if pin.Source() != f.record.URL || pin.Asset != "" || pin.SHA256 != f.root.Hex() || pin.RepositoryName() != "github.com/publisher/plugin" {
@@ -197,8 +193,10 @@ func TestCandidateOCIRootDigestAndMetadataAdmission(t *testing.T) {
 }
 
 func TestCandidateOCIRejectsForgedRootAndMetadata(t *testing.T) {
+	t.Parallel()
 	for _, mutation := range []string{"root digest", "tag", "noncanonical", "metadata", "primary digest"} {
 		t.Run(mutation, func(t *testing.T) {
+			t.Parallel()
 			f := newOCICandidate(t, artifacts.ProviderManifest)
 			switch mutation {
 			case "root digest":
@@ -232,8 +230,10 @@ func TestCandidateOCIRejectsForgedRootAndMetadata(t *testing.T) {
 }
 
 func TestCandidateOCIRememberRequiresCompleteVerifiedCache(t *testing.T) {
+	t.Parallel()
 	for _, missing := range []string{"root", "manifest", "primary", "forged metadata"} {
 		t.Run(missing, func(t *testing.T) {
+			t.Parallel()
 			f := newOCICandidate(t, artifacts.ProviderManifest)
 			pin := f.resolve(t)
 			if err := f.client.RememberCandidate(t.Context(), pin, f.cachedOptions()); err == nil {
@@ -264,6 +264,7 @@ func TestCandidateOCIRememberRequiresCompleteVerifiedCache(t *testing.T) {
 }
 
 func TestCandidateOCIRejectsForgedPrimaryBytes(t *testing.T) {
+	t.Parallel()
 	f := newOCICandidate(t, artifacts.ProviderManifest)
 	pin := f.resolve(t)
 	f.registry.Tamper(f.primary, bytes.Repeat([]byte("x"), int(f.primary.Size)))
@@ -276,8 +277,10 @@ func TestCandidateOCIRejectsForgedPrimaryBytes(t *testing.T) {
 }
 
 func TestCandidateOCICacheRejectsCorruptionWithoutFetching(t *testing.T) {
+	t.Parallel()
 	for _, corrupted := range []string{"root", "manifest", "primary"} {
 		t.Run(corrupted, func(t *testing.T) {
+			t.Parallel()
 			f := newOCICandidate(t, artifacts.ProviderManifest)
 			pin := f.resolve(t)
 			if err := syncCandidate(t, pin, f.options); err != nil {

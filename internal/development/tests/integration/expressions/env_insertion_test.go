@@ -9,6 +9,7 @@ import (
 )
 
 func TestEnvironmentMappingInsertions(t *testing.T) {
+	t.Parallel()
 	for _, scope := range []struct{ name, source string }{
 		{"workflow", "env:\n  BASE: keep\n  ${{ insert }}: %s\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"},
 		{"job", "jobs:\n  check:\n    runs-on: ubuntu-latest\n    env:\n      BASE: keep\n      ${{ insert }}: %s\n    steps: [{run: echo ok}]\n"},
@@ -42,6 +43,7 @@ func TestEnvironmentMappingInsertions(t *testing.T) {
 			{"invalid literal array", "[]", "mapping node is expected"},
 		} {
 			t.Run(scope.name+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				source := "on: push\n" + fmt.Sprintf(scope.source, tc.value) + "permissions: {}\n"
 				errs := lintCredentialsExpressionTest(t, source)
 				if tc.want == "" {
@@ -57,6 +59,7 @@ func TestEnvironmentMappingInsertions(t *testing.T) {
 }
 
 func TestEnvironmentInsertionDirectiveBoundary(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   check:
@@ -79,6 +82,7 @@ permissions: {}
 		{"multiple expressions", "'${{ insert }}${{ vars.NAME }}'", "plain", `undefined variable "insert"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			errs := lintCredentialsExpressionTest(t, fmt.Sprintf(source, tc.key, tc.value))
 			if tc.want == "" {
 				if len(errs) != 0 {
@@ -92,6 +96,7 @@ permissions: {}
 }
 
 func TestEnvironmentInsertionAvailabilityAndPosition(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 env:
   ${{ insert }}: ${{ fromJSON(env.DATA) }}
@@ -108,6 +113,7 @@ permissions: {}
 }
 
 func TestEnvironmentInsertionAliases(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 env: &shared
   SHARED: value

@@ -12,6 +12,7 @@ import (
 )
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	at := func(line, column int) sourcepos.Position { return sourcepos.Position{Line: line, Column: column} }
 	value := func(line, column int, text string) Value { return Value{Text: text, Start: at(line, column)} }
 	for _, test := range []struct {
@@ -34,6 +35,7 @@ func TestCheck(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			if diff := cmp.Diff(test.want, Check(test.input)); diff != "" {
 				t.Fatal(diff)
 			}

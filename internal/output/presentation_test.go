@@ -13,13 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
-
-func init() {
-	color.NoColor = true
-}
 
 type testErrorWriter struct{}
 
@@ -28,6 +23,7 @@ func (w testErrorWriter) Write(b []byte) (int, error) {
 }
 
 func TestErrorPrettyPrint(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		message  string
 		line     int
@@ -170,6 +166,7 @@ func TestErrorPrettyPrint(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.message, func(t *testing.T) {
+			t.Parallel()
 			err := testFinding(&sourcepos.Position{Line: tc.line, Column: tc.column}, "kind", tc.message)
 			err.Diagnostic.Path = "filename.txt"
 
@@ -190,6 +187,7 @@ have:
 }
 
 func TestErrorGetTemplateFieldsOK(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		message string
 		column  int
@@ -221,6 +219,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
 			err := testFinding(&sourcepos.Position{Line: 1, Column: tc.column}, "kind", tc.message)
 			err.Diagnostic.Path = "filename.txt"
 			f := testFields(err, []byte(tc.source))
@@ -251,6 +250,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 
 // Regression test for #128
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
+	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 9999}, "kind", "this is message")
 	err.Diagnostic.Path = "filename.yaml"
 	f := testFields(err, []byte("this is source"))
@@ -260,6 +260,7 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
+	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 6}, "kind", "this is message")
 	err.EndColumn = 9
 	f := testFields(err, []byte("echo $foo bar"))
@@ -272,6 +273,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
+	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 8}, "kind", "this is message")
 	err.EndColumn = 11
 	f := testFields(err, []byte("echo é $foo"))
@@ -284,6 +286,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 }
 
 func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
+	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 5}, "kind", "this is message")
 	f := testFields(err, []byte("日本語 $foo"))
 	if f.Snippet != "日本語 $foo\n       ^~~~" {
@@ -316,6 +319,7 @@ var testErrorTemplateFields = []*TemplateFields{
 }
 
 func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		temp string
 		want string
@@ -344,6 +348,7 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.temp, func(t *testing.T) {
+			t.Parallel()
 			f, err := newTestFormatter(tc.temp)
 			if err != nil {
 				t.Fatal(err)
@@ -361,6 +366,7 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 }
 
 func TestErrorPrintFormattedErrors(t *testing.T) {
+	t.Parallel()
 	errs := []*Finding{
 		testFinding(&sourcepos.Position{Line: 1, Column: 1}, "kind1", "error1"),
 		testFinding(&sourcepos.Position{Line: 1, Column: 0}, "kind2", "error2"),
@@ -382,6 +388,7 @@ func TestErrorPrintFormattedErrors(t *testing.T) {
 }
 
 func TestErrorPrintSerializedIntoJSON(t *testing.T) {
+	t.Parallel()
 	f, err := newTestFormatter("{{json .}}")
 	if err != nil {
 		t.Fatal(err)
@@ -401,6 +408,7 @@ func TestErrorPrintSerializedIntoJSON(t *testing.T) {
 }
 
 func TestErrorNewErrorFormatterError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		temp string
 		want string
@@ -411,6 +419,7 @@ func TestErrorNewErrorFormatterError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.temp, func(t *testing.T) {
+			t.Parallel()
 			_, err := newTestFormatter(tc.temp)
 			if err == nil {
 				t.Fatal("error did not occur")
@@ -423,6 +432,7 @@ func TestErrorNewErrorFormatterError(t *testing.T) {
 }
 
 func TestErrorFormatterPrintError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		out  io.Writer
 		temp string
@@ -434,6 +444,7 @@ func TestErrorFormatterPrintError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.temp, func(t *testing.T) {
+			t.Parallel()
 			f, err := newTestFormatter(tc.temp)
 			if err != nil {
 				t.Fatal(err)
@@ -450,6 +461,7 @@ func TestErrorFormatterPrintError(t *testing.T) {
 }
 
 func TestErrorFormatterPrintToPascalCase(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -466,6 +478,7 @@ func TestErrorFormatterPrintToPascalCase(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			f, err := newTestFormatter("{{range $ = .}}{{toPascalCase .Message}}{{end}}")
 			if err != nil {
 				t.Fatal(err)
@@ -486,6 +499,7 @@ func TestErrorFormatterPrintToPascalCase(t *testing.T) {
 }
 
 func TestErrorFormatterPrintGetVersion(t *testing.T) {
+	t.Parallel()
 	saved := buildinfo.ReleaseVersion
 	defer func() {
 		buildinfo.ReleaseVersion = saved

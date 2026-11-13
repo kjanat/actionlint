@@ -22,6 +22,7 @@ func errorCursor(t *testing.T, data []byte) Cursor {
 }
 
 func TestDecodeErrorsHaveStableSourceOrder(t *testing.T) {
+	t.Parallel()
 	var target struct {
 		Early Selected `yaml:"early"`
 		Bad   bool     `yaml:"bad"`
@@ -46,6 +47,7 @@ func TestDecodeErrorsHaveStableSourceOrder(t *testing.T) {
 }
 
 func TestDecodeErrorFormatIndependentOfSelectedFields(t *testing.T) {
+	t.Parallel()
 	var direct struct {
 		Bad bool `yaml:"bad"`
 	}
@@ -62,6 +64,7 @@ func TestDecodeErrorFormatIndependentOfSelectedFields(t *testing.T) {
 }
 
 func TestJoinedDecodeErrorsPreserveForeignCauses(t *testing.T) {
+	t.Parallel()
 	foreign := errors.New("foreign failure")
 	located := NewLoadError("located failure", Mark{Line: 2, Column: 1})
 	err := joinDecodeErrors(joinDecodeErrors(located, foreign), NewLoadError("later", Mark{Line: 3}))
@@ -72,6 +75,7 @@ func TestJoinedDecodeErrorsPreserveForeignCauses(t *testing.T) {
 }
 
 func TestEmptyInputValidatesTargets(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"", "# comment\n"} {
 		cursor := errorCursor(t, []byte(source))
 		if err := cursor.Decode((*syntax.Node)(nil)); err == nil {

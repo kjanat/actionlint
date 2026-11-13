@@ -8,8 +8,10 @@ import (
 )
 
 func TestDecodePartialNullAndEmptyMetadata(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"", "null\n"} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			metadata, err := Parse("action.yml", []byte(source))
 			if err != nil {
 				t.Fatal(err)
@@ -22,6 +24,7 @@ func TestDecodePartialNullAndEmptyMetadata(t *testing.T) {
 }
 
 func TestDecodePartialNullInputsOutputsAndDefinition(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte("inputs: null\noutputs: null\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +43,7 @@ func TestDecodePartialNullInputsOutputsAndDefinition(t *testing.T) {
 }
 
 func TestDecodePartialDuplicateInputKeepsAllDefaults(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte(`inputs:
   before:
     default: first
@@ -62,6 +66,7 @@ func TestDecodePartialDuplicateInputKeepsAllDefaults(t *testing.T) {
 }
 
 func TestDecodePartialNonMappingInputKeepsLaterDefaults(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte(`inputs:
   invalid: true
   after:
@@ -79,6 +84,7 @@ func TestDecodePartialNonMappingInputKeepsLaterDefaults(t *testing.T) {
 }
 
 func TestDecodePartialDuplicateDefinitionFieldsKeepsDefaults(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte(`inputs:
   token:
     default: first
@@ -96,6 +102,7 @@ func TestDecodePartialDuplicateDefinitionFieldsKeepsDefaults(t *testing.T) {
 }
 
 func TestDecodeIgnoresUnknownInputMetadata(t *testing.T) {
+	t.Parallel()
 	// actions/runner 1ba885c2065fd9be317808ab3fd406f392635cf7:
 	// action_yaml.json permits arbitrary values for extra input properties.
 	const source = `name: extensions
@@ -122,6 +129,7 @@ inputs:
 }
 
 func TestDecodePartialOutputIgnoresRecursiveAliasPayload(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte(`outputs:
   result: &loop {self: *loop}
 `))
@@ -134,6 +142,7 @@ func TestDecodePartialOutputIgnoresRecursiveAliasPayload(t *testing.T) {
 }
 
 func TestDecodePartialDuplicateOutputDiscardsSection(t *testing.T) {
+	t.Parallel()
 	metadata, err := Parse("action.yml", []byte("outputs:\n  result: {}\n  RESULT: {}\nname: example\n"))
 	if err == nil || !strings.Contains(err.Error(), `output "RESULT" is duplicated`) {
 		t.Fatalf("duplicate output error = %v", err)

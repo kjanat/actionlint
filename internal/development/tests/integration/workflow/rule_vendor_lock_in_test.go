@@ -14,6 +14,7 @@ import (
 // GitHub requires owner/repo[/path]@ref syntax for remote uses references.
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstepsuses
 func TestVendorLockIn(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, uses   string
 		count, fixes int
@@ -24,6 +25,7 @@ func TestVendorLockIn(t *testing.T) {
 		{"Docker registry", "docker://codeberg.org/team/image:v2", 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.uses + "\n"
 			findings := testutil.WorkflowDiagnostics(t, source, "tools: {shellcheck: false, ruff: false}\nlint: {rules: {preset: none, correctness: {vendor-lock-in: on}}}")
 			if len(findings) != tc.count {
@@ -37,6 +39,7 @@ func TestVendorLockIn(t *testing.T) {
 }
 
 func TestVendorLockInSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config, severity, comment, target string
 		strict                                  bool
@@ -49,6 +52,7 @@ func TestVendorLockInSelection(t *testing.T) {
 		{"other target", "", "", "", "buildkite", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			// A reusable-only workflow does not request any runners. Its target
 			// must still be known without consulting a runner provider.
 			source := "on: push\njobs:\n  call:\n    uses: https://github.com/example/repo/.github/workflows/build.yml@v1" + tc.comment + "\n"
@@ -77,6 +81,7 @@ func TestVendorLockInSelection(t *testing.T) {
 }
 
 func TestVendorLockInRecordedWorkflow(t *testing.T) {
+	t.Parallel()
 	// The fixture header records the source repository and exact commit.
 	content, err := os.ReadFile("internal/development/tests/integration/workflow/testdata/repositories/actions-rs.yml")
 	if err != nil {

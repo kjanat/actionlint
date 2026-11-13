@@ -11,6 +11,7 @@ import (
 )
 
 func TestConfigUnknownKeysWarnWithoutRejecting(t *testing.T) {
+	t.Parallel()
 	path := writeToolFixture(t, t.TempDir(), "actionlint.yaml", `config-variable: [FOO]
 self-hosted-runner:
   label: [custom]
@@ -50,6 +51,7 @@ paths:
 }
 
 func TestConfigWarningSurvivesOverlay(t *testing.T) {
+	t.Parallel()
 	path := writeToolFixture(t, t.TempDir(), "actionlint.yaml", "config-variable: [FOO]\n")
 	overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte("config-variables: [BAR]"))
 	if err != nil {

@@ -10,8 +10,10 @@ import (
 )
 
 func TestEveryRuleIsSuppressible(t *testing.T) {
+	t.Parallel()
 	for _, rule := range checking.ConfigurationRules().RuleInfos() {
 		t.Run(rule.Name, func(t *testing.T) {
+			t.Parallel()
 			for _, severity := range []string{"error", "warning", "info"} {
 				source := []byte("name: demo # actionlint:ignore " + rule.Name + " -- reviewed\n")
 				findings := []*findingmodel.Finding{{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: rule.Name, Severity: severity}}
@@ -28,6 +30,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 }
 
 func TestForeignInlineSuppressionSource(t *testing.T) {
+	t.Parallel()
 	source := []byte("name: demo # actionlint:ignore shellcheck -- reviewed\n")
 	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: source}
 	if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, []*findingmodel.Finding{finding}, nil); len(got) != 1 {

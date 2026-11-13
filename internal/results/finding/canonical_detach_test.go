@@ -11,6 +11,7 @@ import (
 // writing through every reference type in the result must leave the finding
 // as it was.
 func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
+	t.Parallel()
 	f := &Finding{
 		Path:      "workflow.yml",
 		Rule:      "rule",
@@ -44,6 +45,7 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 }
 
 func TestForeignSelectsTheFindingsOwnSource(t *testing.T) {
+	t.Parallel()
 	workflow := []byte("workflow")
 	for _, tc := range []struct {
 		name    string

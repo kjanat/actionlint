@@ -14,6 +14,7 @@ import (
 )
 
 func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
+	t.Parallel()
 	root := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "step1", Address: "jobs.test.steps[0]"}
 	invoked := sourcepos.Reference{Document: "action.yml", Revision: "action", Node: "step1", Address: "runs.steps[0]"}
 	actionInput := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "input1", Address: "jobs.test.steps[1].with.script"}
@@ -70,6 +71,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 }
 
 func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
+	t.Parallel()
 	comment := workflowfacts.SourceComment{Text: "# unidentified", Start: sourcepos.Position{Line: 1, Column: 1}}
 	unidentified := checkinputs.Script{Comments: []workflowfacts.SourceComment{comment}}
 	input := checkinputs.Input{
@@ -85,6 +87,7 @@ func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
 }
 
 func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
+	t.Parallel()
 	ref := sourcepos.Reference{Document: "ci.yml", Revision: "root", Node: "step", Address: "jobs.test.steps[0]"}
 	valid := workflowfacts.SourceComment{Text: "# shellcheck disable=SC2086", Start: sourcepos.Position{Line: 3, Column: 7}}
 	for _, test := range []struct {
@@ -104,6 +107,7 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 		{"unknown placement", valid.Text, valid.Start, workflowfacts.CommentPlacement(2), "invalid source comment placement 2"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			input := checkinputs.Input{Scripts: []checkinputs.Script{{
 				Reference: ref,
 				Comments:  []workflowfacts.SourceComment{valid, {Text: test.text, Start: test.start, Placement: test.placement}},

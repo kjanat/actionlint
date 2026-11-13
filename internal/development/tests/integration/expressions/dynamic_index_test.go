@@ -9,8 +9,10 @@ import (
 )
 
 func TestDynamicIndexJobConditionDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, condition := range []string{"a[matrix.k] == 'x'", "${{ a[matrix.k] == 'x' }}"} {
 		t.Run(condition, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   b:

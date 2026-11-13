@@ -9,6 +9,7 @@ import (
 )
 
 func TestExpressionValueContexts(t *testing.T) {
+	t.Parallel()
 	variables := func(name string) (any, bool) {
 		return map[string]any{"pm": "bun", "nested": map[string]any{"tool": "bun"}, "items": []any{"nodejs", "bun"}}, name == "matrix"
 	}
@@ -29,6 +30,7 @@ func TestExpressionValueContexts(t *testing.T) {
 		{"env.TOKEN", nil, false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expression := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			got, known := expreval.ExpressionValue(expression, variables)
 			if known != tc.known || got != tc.want {

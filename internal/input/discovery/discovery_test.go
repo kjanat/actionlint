@@ -14,6 +14,7 @@ import (
 )
 
 func TestRepositoryRootAndWorkflowFiles(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, path := range []string{".git", "src/nested", "inner/.git", ".github/workflows/sub"} {
 		if err := os.MkdirAll(filepath.Join(root, path), 0750); err != nil {
@@ -51,6 +52,7 @@ func TestRepositoryRootAndWorkflowFiles(t *testing.T) {
 }
 
 func TestHasWorkflowFilesUnreadable(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("directory permissions are not enforced")
 	}
@@ -69,8 +71,10 @@ func TestHasWorkflowFilesUnreadable(t *testing.T) {
 }
 
 func TestWorkflowTypo(t *testing.T) {
+	t.Parallel()
 	for _, directory := range []string{".gihub/workflows", ".githbu/workflows", ".github/workflow", ".github/wrokflows", ".github/workflows", "unrelated/workflows"} {
 		t.Run(directory, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			for _, path := range []string{".git", "src/nested", directory} {
 				if err := os.MkdirAll(filepath.Join(root, path), 0750); err != nil {

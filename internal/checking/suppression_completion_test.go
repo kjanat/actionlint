@@ -32,6 +32,7 @@ func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input c
 }
 
 func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
+	t.Parallel()
 	const prefix = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n"
 	cause := errors.New("scanner unavailable")
 	result, err := Analyze(t.Context(), Options{
@@ -50,11 +51,13 @@ func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
 }
 
 func TestUnusedSuppressionsRequireParsedDeclarations(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{
 		"on: [ # ignore expression-reference\n",
 		"on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: false # ignore expression-reference\n",
 	} {
 		t.Run(strings.TrimSpace(content), func(t *testing.T) {
+			t.Parallel()
 			result, err := Analyze(t.Context(), Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yml", Content: []byte(content)}})
 			if err != nil || result == nil {
 				t.Fatalf("lost syntax result: %v", err)
@@ -74,6 +77,7 @@ func TestUnusedSuppressionsRequireParsedDeclarations(t *testing.T) {
 }
 
 func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	missing := filepath.Join(root, "scanner-not-installed")
 	for _, tc := range []struct {
@@ -84,6 +88,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 		{"disabled", "tools: {shellcheck: false}", "", []string{"shellcheck", "expression-reference"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := ConfigurationRules().Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
@@ -119,6 +124,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 }
 
 func TestUnavailableToolRetainsNestedActionSuppression(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeSuppressionFixture(t, root, ".git/HEAD", "ref: refs/heads/master\n")
 	path := writeSuppressionFixture(t, root, "workflow.yml", "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./inner\n      - uses: ./inner\npermissions: {}\n")

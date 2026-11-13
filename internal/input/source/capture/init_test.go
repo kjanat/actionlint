@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	first, later := filepath.Join(root, "first.yml"), filepath.Join(root, "later.yml")
 	started, release := make(chan struct{}), make(chan struct{})
@@ -130,6 +131,7 @@ func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
 }
 
 func TestNewValidatesEverythingBeforeStartingMetadata(t *testing.T) {
+	t.Parallel()
 	valid := Overlay{Path: filepath.Join(t.TempDir(), "valid.yml"), Coordinates: source.YAML}
 	for _, tc := range []struct {
 		name     string
@@ -144,6 +146,7 @@ func TestNewValidatesEverythingBeforeStartingMetadata(t *testing.T) {
 		{name: "later NUL", overlays: []Overlay{valid, {Path: "invalid\x00", Coordinates: source.YAML}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			if tc.cancel {
@@ -184,6 +187,7 @@ func TestNewValidatesEverythingBeforeStartingMetadata(t *testing.T) {
 }
 
 func TestNewOverlayAliasesShareCanonicalMemoAndMergeDocuments(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	a, b, document := filepath.Join(root, "a.yml"), filepath.Join(root, "b.yml"), filepath.Join(root, "document.yml")
 	for _, tc := range []struct {
@@ -197,6 +201,7 @@ func TestNewOverlayAliasesShareCanonicalMemoAndMergeDocuments(t *testing.T) {
 		{"model conflict", "same", source.RawLF, Conflicted},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var conflictMessage string
 			for _, reverse := range []bool{false, true} {
 				overlays := []Overlay{

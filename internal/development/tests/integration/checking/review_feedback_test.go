@@ -26,6 +26,7 @@ func (namedFindingAnalyzer) CheckDocument(context.Context, checkinputs.Input) ([
 }
 
 func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
+	t.Parallel()
 	result, err := checking.Analyze(t.Context(),
 
 		checking.Options{Analyzers: []checkinputs.Registration{
@@ -46,6 +47,7 @@ func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
 }
 
 func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "ci.yml")
 	if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {

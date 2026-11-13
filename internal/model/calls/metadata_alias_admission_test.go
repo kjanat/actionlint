@@ -9,6 +9,7 @@ import (
 )
 
 func TestMetadataAliasAdmissionRejectsUndeclaredSource(t *testing.T) {
+	t.Parallel()
 	root, err := codec.Parse([]byte("anchor: &a value\nalias: *a\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -27,6 +28,7 @@ func TestMetadataAliasAdmissionRejectsUndeclaredSource(t *testing.T) {
 }
 
 func TestMetadataAliasesCanReferenceOtherRootSections(t *testing.T) {
+	t.Parallel()
 	metadata, err := ParseMetadata([]byte("definitions: &definitions {flag: {type: boolean}}\non:\n  workflow_call:\n    inputs: *definitions\n"))
 	if err != nil {
 		t.Fatal(err)

@@ -17,6 +17,7 @@ import (
 )
 
 func TestWorkflowRunPathsUntrusted(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow_run.path",
 		"github['event']['workflow_run']['path']",
@@ -50,6 +51,7 @@ permissions: {}
 }
 
 func TestWorkflowRunNamesUntrusted(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow_run.name",
 		"github['event']['workflow_run']['name']",
@@ -57,6 +59,7 @@ func TestWorkflowRunNamesUntrusted(t *testing.T) {
 		"format('{0}', github.event.workflow_run.name)",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			source := `on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
 jobs:
   report:
@@ -85,8 +88,10 @@ permissions: {}
 }
 
 func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
+	t.Parallel()
 	for _, reference := range []string{"", "${{ '' }}"} {
 		t.Run(reference, func(t *testing.T) {
+			t.Parallel()
 			source := "on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `], types: [completed]}}
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 permissions: {}
@@ -112,6 +117,7 @@ permissions: {}
 }
 
 func TestWorkflowRunDiscoveryInput(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
 	consumer := `on: {workflow_run: {workflows: [Build], types: [completed]}}
@@ -142,6 +148,7 @@ permissions: {}
 }
 
 func TestWorkflowRunPullRequestHeadRefs(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow_run.pull_requests[0].head.ref",
 		"github['event']['workflow_run']['pull_requests'][0]['head']['ref']",
@@ -150,6 +157,7 @@ func TestWorkflowRunPullRequestHeadRefs(t *testing.T) {
 		"format('{0}', github.event.workflow_run.pull_requests[0].head.ref)",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			source := `on: {workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
   report:
@@ -207,6 +215,7 @@ permissions: {}
 }
 
 func TestWorkflowRunLiteralReferences(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		producer, reference string
 		want                int
@@ -223,6 +232,7 @@ func TestWorkflowRunLiteralReferences(t *testing.T) {
 		{"Build", "${{ 'Typo' }} suffix", 0},
 	} {
 		t.Run(tc.producer+tc.reference, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			producer := "name: " + strconv.Quote(tc.producer) + "\n" + testutil.GoodWorkflow
 			fixturefiles.Write(t, root, ".github/workflows/build.yml", producer)

@@ -3,6 +3,7 @@ package payload
 import "testing"
 
 func TestCatalogueReferences(t *testing.T) {
+	t.Parallel()
 	c := data()
 	if len(c.Events) < 70 {
 		t.Fatalf("unexpected event count: %d", len(c.Events))
@@ -34,6 +35,7 @@ func TestCatalogueReferences(t *testing.T) {
 }
 
 func TestObservationsAreIsolated(t *testing.T) {
+	t.Parallel()
 	variants, ok := Variants("push")
 	if !ok {
 		t.Fatal("missing push observation")

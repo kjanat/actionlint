@@ -18,9 +18,11 @@ import (
 )
 
 func TestCacheModeLiteralExpressionMetadata(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
 		for _, aliased := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/alias=%v", kind, aliased), func(t *testing.T) {
+				t.Parallel()
 				expression := "${{ '" + kind.String() + "' }}"
 				workflowMode, jobMode := expression, expression
 				if aliased {

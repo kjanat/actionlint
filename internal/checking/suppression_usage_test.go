@@ -11,6 +11,7 @@ import (
 )
 
 func TestSuppressionUseAcrossInvocations(t *testing.T) {
+	t.Parallel()
 	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
 	position := sourcepos.Position{Line: 4, Column: 15}
 	var usage suppressionUses
@@ -36,6 +37,7 @@ func TestSuppressionUseAcrossInvocations(t *testing.T) {
 }
 
 func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
+	t.Parallel()
 	const content = "run: echo ok # ignore shellcheck expression-reference -- keep reason\n"
 	position := sourcepos.Position{Line: 1, Column: strings.Index(content, "#") + 1}
 	ref := sourcepos.Reference{Document: "physical-action.yml", Revision: sourceid.Digest([]byte(content))}
@@ -59,6 +61,7 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 }
 
 func TestIncompleteSuppressionInvocationInvalidatesOnlyItsRevision(t *testing.T) {
+	t.Parallel()
 	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
 	var usage suppressionUses
 	var completion checkCompletion

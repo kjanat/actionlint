@@ -11,6 +11,7 @@ import (
 )
 
 func TestSameRegistry(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, left, right string
 		equal             bool
@@ -27,6 +28,7 @@ func TestSameRegistry(t *testing.T) {
 		{"credentials", "https://user@catalogue.example/", "https://catalogue.example/", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			if got := plugininstall.SameRegistry(test.left, test.right); got != test.equal {
 				t.Fatalf("SameRegistry(%q, %q) = %v, want %v", test.left, test.right, got, test.equal)
 			}
@@ -35,6 +37,7 @@ func TestSameRegistry(t *testing.T) {
 }
 
 func TestLockSetAcceptsRegistryHostCase(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
 	pin, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
@@ -67,6 +70,7 @@ func TestLockSetAcceptsRegistryHostCase(t *testing.T) {
 }
 
 func TestLockCheckUnchanged(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), plugininstall.LockName)
 	file, err := plugininstall.OpenLock(t.Context(), path)
 	if err != nil {
@@ -84,6 +88,7 @@ func TestLockCheckUnchanged(t *testing.T) {
 }
 
 func TestLockCheckUnchangedRejectsNewAncestorSymlink(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	parent := filepath.Join(directory, "config")
 	target := filepath.Join(directory, "other")

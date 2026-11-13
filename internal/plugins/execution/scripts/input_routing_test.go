@@ -22,6 +22,7 @@ func (r routingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.
 }
 
 func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
+	t.Parallel()
 	disabled, enabled := &config.Config{}, &config.Config{}
 	disabled.Overrides = []config.Override{{Includes: []string{"other/**"}}}
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
@@ -79,6 +80,7 @@ func (b routingBackend) Check(ctx context.Context, request checkinputs.ScriptReq
 }
 
 func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
+	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
 	registration := tools.Registration{
 		Descriptor: rule.Descriptor{Name: "tool"},
@@ -121,6 +123,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 }
 
 func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
+	t.Parallel()
 	nativeFailure, inputFailure := errors.New("native incomplete"), errors.New("input incomplete")
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
 	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ScriptInputs: []checkinputs.ScriptInput{site}}
@@ -167,6 +170,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 }
 
 func TestInputFilterCannotHideForeignSource(t *testing.T) {
+	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 		return preparation.Prepared{Source: script.Text, AcceptDiagnostic: func(checkinputs.ScriptDiagnostic) bool { return false }}, nil
@@ -189,6 +193,7 @@ func TestInputFilterCannotHideForeignSource(t *testing.T) {
 }
 
 func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
+	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	for _, contract := range []string{"", "unknown", checkinputs.TemplateEffectsContract} {
 		calls := 0
@@ -219,6 +224,7 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 }
 
 func TestInputDeclaredContractRequiresExplicitEffect(t *testing.T) {
+	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	for _, effect := range []checkinputs.ScriptTemplateEffect{"", "unknown", checkinputs.TemplateEffectNone} {
 		engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
@@ -249,6 +255,7 @@ func (b describedRoutingBackend) ScriptDescriptor() checkinputs.ScriptEngineDesc
 }
 
 func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
+	t.Parallel()
 	engine := describedRoutingBackend{descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool"}}
 	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -273,6 +280,7 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 }
 
 func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
+	t.Parallel()
 	first, second := &config.Config{}, &config.Config{}
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "code", Language: "python"}
 	checks, nativeCalls := 0, 0
@@ -304,6 +312,7 @@ func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 }
 
 func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		t.Fatal("native route bypassed adapter")
@@ -336,6 +345,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 }
 
 func TestConfigureBindsLoaderOnce(t *testing.T) {
+	t.Parallel()
 	loads, nativeCalls := 0, 0
 	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, ConfiguredBackend: func(tools.Context) (checkinputs.ScriptBackend, error) {
 		loads++
@@ -358,6 +368,7 @@ func TestConfigureBindsLoaderOnce(t *testing.T) {
 }
 
 func TestConfiguredRouteRejectsForeignEngineIdentity(t *testing.T) {
+	t.Parallel()
 	calls := 0
 	foreign := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		calls++

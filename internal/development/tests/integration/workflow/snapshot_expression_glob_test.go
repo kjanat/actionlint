@@ -10,6 +10,7 @@ import (
 )
 
 func TestSnapshotExpressionVersionGlobs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, field, kind string
 		line, column      int
@@ -50,6 +51,7 @@ func TestSnapshotExpressionVersionGlobs(t *testing.T) {
 		{"null image name", "snapshot:\n      image-name: ${{ null }}", "expression", 6, 19},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error

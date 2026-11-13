@@ -10,6 +10,7 @@ import (
 )
 
 func TestResolveProcessProviderPackage(t *testing.T) {
+	t.Parallel()
 	const metadata = `{"metadata_version":1,"id":"example","name":"Example","description":"Example process provider","license":"MIT","repository":"https://github.com/publisher/plugin","plugin_version":"1.0.0","transport":"process"}`
 	content := []byte(`{"schema_version":1,"transport":"process","metadata":` + metadata + `}`)
 	path := filepath.Join(t.TempDir(), "provider.json")

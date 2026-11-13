@@ -10,6 +10,7 @@ import (
 )
 
 func TestSourcePolicyRequiresPreparedConfiguration(t *testing.T) {
+	t.Parallel()
 	processor := policy.Processor{RuleSet: checking.ConfigurationRules()}
 	sources := map[string][]byte{"inner/action.yml": []byte("name: inner\n")}
 	if _, err := processor.Apply(policy.Policy{Path: "workflow.yml"}, nil, sources, nil); err == nil || !strings.Contains(err.Error(), "configuration was not prepared") {

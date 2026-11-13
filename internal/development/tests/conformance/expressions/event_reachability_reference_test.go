@@ -8,6 +8,7 @@ import (
 )
 
 func TestEventReachabilityReference(t *testing.T) {
+	t.Parallel()
 	events := []string{"push", "pull_request", "pull_request_target"}
 	for _, tc := range []struct {
 		expression string
@@ -19,6 +20,7 @@ func TestEventReachabilityReference(t *testing.T) {
 	} {
 		for _, event := range events {
 			t.Run(tc.expression+"/"+event, func(t *testing.T) {
+				t.Parallel()
 				want := slices.Contains(tc.want, event)
 				got := workflowconditions.ReachableEvents([]string{event}, tc.expression)
 				if (len(got) != 0) != want {

@@ -9,6 +9,7 @@ import (
 )
 
 func TestPluginSuppressionsUseInvocationRegistry(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo make install # actionlint:ignore no-sudo -- intentional\npermissions: {}\n"
 	args := []string{"check", "--no-config", "--plugin", pluginFixture("no-sudo"), "-"}
 	got := testRunCommand(workflow, args...)
@@ -56,6 +57,7 @@ func pluginFixture(name string) string {
 }
 
 func TestCheckLoadsComponentPlugins(t *testing.T) {
+	t.Parallel()
 	got := testRunCommand(pluginWorkflow, "check", "--no-config", "--output-format=text", "--plugin", pluginFixture("pipe-to-shell"), "--plugin", pluginFixture("no-sudo"), "--plugin", pluginFixture("insecure-download"), "-")
 	if got.Status != 1 || got.Stderr != "" {
 		t.Fatalf("status=%d stderr=%q stdout=%q", got.Status, got.Stderr, got.Stdout)
@@ -72,6 +74,7 @@ func TestCheckLoadsComponentPlugins(t *testing.T) {
 }
 
 func TestCheckRendersPluginRulesInSARIF(t *testing.T) {
+	t.Parallel()
 	got := testRunCommand(pluginWorkflow, "check", "--no-config", "--output-format", "sarif", "--plugin", pluginFixture("pipe-to-shell"), "-")
 	if got.Status != 1 {
 		t.Fatalf("status=%d stderr=%q", got.Status, got.Stderr)
@@ -107,6 +110,7 @@ func TestCheckRendersPluginRulesInSARIF(t *testing.T) {
 }
 
 func TestCheckReportsPluginFailures(t *testing.T) {
+	t.Parallel()
 	missing := testRunCommand(pluginWorkflow, "check", "--no-config", "--plugin", pluginFixture("missing"), "-")
 	if missing.Status != 2 || !strings.Contains(missing.Stderr, "missing.wasm") {
 		t.Fatalf("missing: %+v", missing)

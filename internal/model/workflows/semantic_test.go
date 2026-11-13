@@ -10,6 +10,7 @@ import (
 )
 
 func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
+	t.Parallel()
 	name := &workflowlang.String{Value: "before", Pos: &workflowlang.Pos{Line: 2, Col: 4}}
 	condition := &workflowlang.String{Value: "${{ true }}", Pos: &workflowlang.Pos{Line: 3, Col: 7}}
 	job := &workflowlang.Job{
@@ -99,6 +100,7 @@ func gotText(v value.Value) string {
 }
 
 func TestPublishedConditionsIncludeNestedParallelStepsAndSnapshot(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -154,6 +156,7 @@ jobs:
 }
 
 func TestPublishedEnvironmentNullStatesFromParsedYAML(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -217,6 +220,7 @@ jobs:
 }
 
 func TestPublishedSourceScalarIsPointerFreeSnapshot(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -261,6 +265,7 @@ jobs:
 }
 
 func TestStaticStringFoldPublishesEvaluatedDataAndSource(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -296,6 +301,7 @@ jobs:
 }
 
 func TestActionInputSourcesMatchResolvedKeyOrigins(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -348,6 +354,7 @@ jobs:
 }
 
 func TestPublishedIncompleteEnvironmentLookupStaysDynamic(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   build:
@@ -375,6 +382,7 @@ jobs:
 }
 
 func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, runsOn string
 		wantKind     value.Kind
@@ -384,6 +392,7 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 		{name: "labels expression with group", runsOn: "\n      labels: ${{ fromJSON('[\"linux\",\"arm64\"]') }}\n      group: custom", wantKind: value.Object, wantState: value.Literal},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  build:\n    runs-on: " + test.runsOn + "\n    steps:\n      - run: echo ok\n"
 			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {

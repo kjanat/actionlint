@@ -27,6 +27,7 @@ func (b *countedPluginBackend) Check(context.Context, checkinputs.ScriptRequest)
 }
 
 func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
+	t.Parallel()
 	const path = "../plugins/execution/component/testdata/plugins/no-sudo.wasm"
 	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n"
 	for _, tc := range []struct {
@@ -39,6 +40,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 		{"standalone unaffected", "", "{}", "no-sudo", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			selected := plugininstall.Sources{Paths: []string{path}}
 			if tc.managed {
 				data, err := os.ReadFile("../plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
@@ -95,9 +97,11 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 }
 
 func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
+	t.Parallel()
 	for _, engine := range []string{"ruff", "shellcheck"} {
 		for _, enabled := range []bool{false, true} {
 			t.Run(engine+"/"+map[bool]string{false: "disabled", true: "enabled"}[enabled], func(t *testing.T) {
+				t.Parallel()
 				backend := &countedPluginBackend{}
 				shell := "bash"
 				if engine == "ruff" {
@@ -149,6 +153,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				name = "runs-and-inputs"
 			}
 			t.Run(entrypoint+"/"+name, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				for name, content := range map[string]string{
 					".git/HEAD":               "ref: refs/heads/master\n",
@@ -177,6 +182,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				sources := plugininstall.Sources{Paths: []string{plugin}}
 				input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
 				var result *checking.Result
+				var err error
 				if entrypoint == "editor" {
 					session, openErr := newEditorSources(t.Context(), options, sources)
 					if openErr != nil {

@@ -17,6 +17,7 @@ import (
 )
 
 func TestRuffLauncherArguments(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -61,40 +62,45 @@ permissions: {}
 		}
 		for _, optional := range []bool{false, true} {
 			for _, disabled := range []string{"", "shell", "config"} {
-				calls, output := filepath.Join(t.TempDir(), "calls"), filepath.Join(t.TempDir(), "output.json")
-				args := []string{"--from", "ruff"}
-				if tc.invalid != nil {
-					args = tc.invalid
-				}
-				if launcher == "env" {
-					args = []string{"RUFF_OUTPUT_FILE=" + output, "ruff"}
-				}
-				options := &processconfig.Options{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
-				input := source
-				var config *repoconfig.Config
-				switch disabled {
-				case "shell":
-					input = strings.Replace(source, "shell: python", "shell: bash", 1)
-				case "config":
-					config, err = checking.ConfigurationRules().Parse([]byte("tools: {ruff: false}"))
-					if err != nil {
-						t.Fatal(err)
+				t.Run(launcher+strconv.FormatBool(optional)+"disabled"+disabled, func(t *testing.T) {
+					t.Parallel()
+					calls, output := filepath.Join(t.TempDir(), "calls"), filepath.Join(t.TempDir(), "output.json")
+					args := []string{"--from", "ruff"}
+					if tc.invalid != nil {
+						args = tc.invalid
 					}
-				}
-				_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(input), Config: config}})
-				if (err != nil) != (disabled == "") {
-					t.Fatalf("invalid launcher result: optional=%v disabled=%s error=%v", optional, disabled, err)
-				}
-				for _, path := range []string{calls, output} {
-					if _, err := os.Stat(path); !os.IsNotExist(err) {
-						t.Fatalf("invalid launcher executed or wrote output: %s, %v", path, err)
+					if launcher == "env" {
+						args = []string{"RUFF_OUTPUT_FILE=" + output, "ruff"}
 					}
-				}
+					options := &processconfig.Options{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+					input := source
+					var config *repoconfig.Config
+					switch disabled {
+					case "shell":
+						input = strings.Replace(source, "shell: python", "shell: bash", 1)
+					case "config":
+						parsed, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: false}"))
+						if err != nil {
+							t.Fatal(err)
+						}
+						config = parsed
+					}
+					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(input), Config: config}})
+					if (err != nil) != (disabled == "") {
+						t.Fatalf("invalid launcher result: optional=%v disabled=%s error=%v", optional, disabled, err)
+					}
+					for _, path := range []string{calls, output} {
+						if _, err := os.Stat(path); !os.IsNotExist(err) {
+							t.Fatalf("invalid launcher executed or wrote output: %s, %v", path, err)
+						}
+					}
+				})
 			}
 		}
 		for _, literal := range []bool{false, true} {
 			for _, flags := range [][]string{{"--preview"}, {"other.py"}, {"--select", "F", "other.py"}, {"--silent"}, {"--extension=py:ipynb"}, {"--output-file", "output.json"}, {"--isolated"}} {
 				t.Run(launcher+strconv.FormatBool(literal)+strings.Join(flags, " "), func(t *testing.T) {
+					t.Parallel()
 					calls := filepath.Join(t.TempDir(), "calls")
 					options := &processconfig.Options{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 					command := strconv.Quote(tool)

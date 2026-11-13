@@ -11,6 +11,7 @@ import (
 )
 
 func TestDescriptorNameFitsInlineSuppressionSelector(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(pluginPath("no-sudo"))
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +32,7 @@ func TestDescriptorNameFitsInlineSuppressionSelector(t *testing.T) {
 		{"org/foo", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "plugin.wasm")
 			if err := os.WriteFile(path, bytes.ReplaceAll(data, []byte("no-sudo"), []byte(test.name)), 0o600); err != nil {
 				t.Fatal(err)

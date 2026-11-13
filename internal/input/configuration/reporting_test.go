@@ -10,6 +10,7 @@ import (
 )
 
 func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	base := filepath.Join(dir, "base.yaml")
 	child := filepath.Join(dir, "actionlint.yaml")
@@ -40,6 +41,7 @@ func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
 }
 
 func TestReportingValidation(t *testing.T) {
+	t.Parallel()
 	rules, err := NewRuleSet(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -54,6 +56,7 @@ func TestReportingValidation(t *testing.T) {
 		{"output: {unexpected: true}", "unexpected"},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			_, err := rules.Parse([]byte(tc.source))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("expected %q, got %v", tc.want, err)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestConfigurationSelectionJSON(t *testing.T) {
+	t.Parallel()
 	// Configuration selections expose their file, overlays and source metadata.
 	selected := configreport.Report{
 		Project: "project", File: "actionlint.yml", Explicit: true,
@@ -51,6 +52,7 @@ func TestConfigurationSelectionJSON(t *testing.T) {
 }
 
 func TestConfigurationReportWithoutProvenanceJSON(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		overrides []string
 		json      string
@@ -59,6 +61,7 @@ func TestConfigurationReportWithoutProvenanceJSON(t *testing.T) {
 		{[]string{}, "[]"},
 	} {
 		t.Run(tc.json, func(t *testing.T) {
+			t.Parallel()
 			result := report.FromAnalysis(report.Analysis{})
 			result.AddConfiguration(configreport.Report{Overrides: tc.overrides})
 			got, err := json.Marshal(result.Configs)

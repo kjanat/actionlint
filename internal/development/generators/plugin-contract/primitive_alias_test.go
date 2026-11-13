@@ -8,6 +8,7 @@ import (
 )
 
 func TestNamedPrimitiveKeepsDefinedTypeIdentity(t *testing.T) {
+	t.Parallel()
 	resolved, err := wit.DecodeWIT(strings.NewReader(`package test:contract;
 interface ids { type occurrence-id = string; }
 interface analyzer {

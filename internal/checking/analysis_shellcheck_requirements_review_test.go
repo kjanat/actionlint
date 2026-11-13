@@ -17,6 +17,7 @@ import (
 )
 
 func TestShellcheckRequiredToolsCompositeBackends(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config string
 		want         bool
@@ -44,6 +45,7 @@ overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: false}}, {i
 overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: {backend: {wasm: {path: workflow.wasm}}}}}]`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeFixture(t, root, ".git", "")
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{uses: $/shell-action}]\n")
@@ -61,6 +63,7 @@ overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: {backend: {
 }
 
 func TestShellcheckRequiredToolsExplicitProcessAndCancellation(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config := writeFixture(t, root, "actionlint.yml", "tools: {shellcheck: {backend: {wasm: {path: never-load.wasm}}}}")
 	ctx, cancel := context.WithCancel(t.Context())
@@ -80,6 +83,7 @@ func TestShellcheckRequiredToolsExplicitProcessAndCancellation(t *testing.T) {
 }
 
 func TestShellcheckProcessPlanMatchesCompositeExecution(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

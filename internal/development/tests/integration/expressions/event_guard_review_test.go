@@ -9,6 +9,7 @@ import (
 )
 
 func TestEventGuardReview(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, trigger, condition string
 		wantFinding              bool
@@ -22,6 +23,7 @@ func TestEventGuardReview(t *testing.T) {
 		{"reachable missing property", "push", "github.event_name == 'push' && github.event.issue.title", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)

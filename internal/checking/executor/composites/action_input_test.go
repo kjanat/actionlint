@@ -9,6 +9,7 @@ import (
 )
 
 func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		action, selector string
 		matches          bool
@@ -21,6 +22,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 	} {
 		for _, collect := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/%s/collect=%t", tc.action, tc.selector, collect), func(t *testing.T) {
+				t.Parallel()
 				analysis := compositeAnalyzer{compositionSession: &compositionSession{collectScripts: collect, scriptInputs: []checkinputs.ScriptInput{{Action: tc.selector, Input: "code", Language: "javascript"}}}}
 				content := []byte(fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n        with: {code: 'missing()'}\n", tc.action))
 				parsed := parsing.Workflow(content)
@@ -54,6 +56,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 }
 
 func TestScriptInputCatalogueCombinesPerEngineLimits(t *testing.T) {
+	t.Parallel()
 	var all []checkinputs.ScriptInput
 	for engine := range 2 {
 		inputs := make([]checkinputs.ScriptInput, 200)
@@ -83,6 +86,7 @@ func TestScriptInputCatalogueCombinesPerEngineLimits(t *testing.T) {
 }
 
 func TestScriptInputLanguagesMustAgree(t *testing.T) {
+	t.Parallel()
 	javascript := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
 	python := javascript
 	python.Language = "python"

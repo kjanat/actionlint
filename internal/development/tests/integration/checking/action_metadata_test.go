@@ -13,6 +13,7 @@ import (
 )
 
 func TestCheckJSONPreservesActionMetadataCoverage(t *testing.T) {
+	t.Parallel()
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}})
 	if err != nil {
 		t.Fatal(err)

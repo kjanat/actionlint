@@ -35,6 +35,7 @@ func (probe failedActionFactProbe) CheckDocument(_ context.Context, input checki
 }
 
 func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	var sourceCalls, scriptCalls atomic.Int32
 	source := []byte("name: recovered\ninputs: invalid\nruns: {using: composite, steps: [{run: echo $HI, shell: bash}]}\n")

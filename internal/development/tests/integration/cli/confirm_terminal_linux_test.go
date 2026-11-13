@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 )
 
 func TestReportOverwriteConfirmation(t *testing.T) {
+	t.Parallel()
 	for _, modern := range []bool{false, true} {
 		for _, tc := range []struct {
 			name, answer, flag string
@@ -35,11 +37,14 @@ func TestReportOverwriteConfirmation(t *testing.T) {
 			{name: "workflow stdin confirmed", flag: "-y", answer: commandGoodWorkflow, stdinWorkflow: true, wantOverwrite: true},
 		} {
 			t.Run(fmtTestName(modern, tc.name), func(t *testing.T) {
-				t.Chdir(t.TempDir())
-				if err := os.WriteFile("input.yml", []byte(commandGoodWorkflow), 0600); err != nil {
+				t.Parallel()
+				dir := t.TempDir()
+				workflow := filepath.Join(dir, "input.yml")
+				report := filepath.Join(dir, "report.json")
+				if err := os.WriteFile(workflow, []byte(commandGoodWorkflow), 0600); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile("report.json", []byte("previous report"), 0600); err != nil {
+				if err := os.WriteFile(report, []byte("previous report"), 0600); err != nil {
 					t.Fatal(err)
 				}
 				terminal, finish := commandTestTerminal(t)
@@ -63,21 +68,21 @@ func TestReportOverwriteConfirmation(t *testing.T) {
 				if modern {
 					args = append(args, "check")
 				}
-				args = append(args, "--no-tool=shellcheck", "--no-tool=ruff", "--json", "--output-file=report.json")
+				args = append(args, "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "--output-file="+report)
 				if tc.flag != "" {
 					args = append(args, tc.flag)
 				}
 				if tc.stdinWorkflow {
 					args = append(args, "-")
 				} else {
-					args = append(args, "input.yml")
+					args = append(args, workflow)
 				}
 				status := cmd.Main(args)
 				stderr := finish()
 				if strings.Contains(stderr, "Overwrite? [y/N]") != tc.wantPrompt {
 					t.Fatalf("unexpected confirmation: %s", stderr)
 				}
-				data, err := os.ReadFile("report.json")
+				data, err := os.ReadFile(report)
 				if err != nil {
 					t.Fatal(err)
 				}

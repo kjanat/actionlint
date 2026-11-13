@@ -17,12 +17,14 @@ import (
 // composite action under local/ is checked and the calling workflow's own
 // run step is not. The ShellCheck adapter skipped both.
 func TestShellcheckCompositeOverrideEnablesCallerDisabledTool(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	for _, tc := range []struct{ name, base, override string }{
 		{"tool disabled", "tools: {shellcheck: false}\n", "tools: {shellcheck: true}"},
 		{"rule disabled", "lint: {rules: {external: {shellcheck: off}}}\n", "lint: {rules: {external: {shellcheck: on}}}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			fixturefiles.Write(t, root, ".git/HEAD", "ref: refs/heads/master\n")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.base+"overrides:\n  - includes: ['local/**']\n    "+tc.override+"\n")

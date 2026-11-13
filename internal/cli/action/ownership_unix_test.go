@@ -23,6 +23,7 @@ func ownerOf(t *testing.T, path string) (uint32, uint32) {
 }
 
 func TestWriteResultFileKeepsCreatedOwnership(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	target := filepath.Join("a", "b", "results.json")
 	if _, err := writeResultFile(openRoot(t, workspace), target, "content"); err != nil {
@@ -39,6 +40,7 @@ func TestWriteResultFileKeepsCreatedOwnership(t *testing.T) {
 }
 
 func TestWriteResultFileWithDifferentWorkspaceOwner(t *testing.T) {
+	t.Parallel()
 	// Shared temporary directories let an ordinary user create files without
 	// owning the workspace. No elevated privileges or ownership changes are needed.
 	workspace := resolved(t, os.TempDir())

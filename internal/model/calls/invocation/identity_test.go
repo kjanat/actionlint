@@ -10,6 +10,7 @@ import (
 )
 
 func TestIdentityVectors(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/identity-vectors.json")
 	if err != nil {
 		t.Fatal(err)
@@ -49,6 +50,7 @@ func TestIdentityVectors(t *testing.T) {
 	}
 	for _, vector := range vectors.Cases {
 		t.Run(vector.Name, func(t *testing.T) {
+			t.Parallel()
 			root, err := invocation.NewRootID(vector.Entry.Kind, vector.Entry.Reference)
 			if err != nil || root != vector.Expected.RootID {
 				t.Fatalf("root %q, want %q: %v", root, vector.Expected.RootID, err)
@@ -76,6 +78,7 @@ func TestIdentityVectors(t *testing.T) {
 }
 
 func TestEntryKindSeparatesOccurrences(t *testing.T) {
+	t.Parallel()
 	ref := reference("same-source", "document")
 	workflow, err := invocation.NewRootID(invocation.EntryWorkflow, ref)
 	if err != nil {
@@ -88,6 +91,7 @@ func TestEntryKindSeparatesOccurrences(t *testing.T) {
 }
 
 func TestInvalidIdentityInputs(t *testing.T) {
+	t.Parallel()
 	good := reference("entry", "document")
 	for name, ref := range map[string]source.Reference{
 		"missing-document": {Node: "node"},
@@ -97,6 +101,7 @@ func TestInvalidIdentityInputs(t *testing.T) {
 		"invalid-address":  {Document: "doc", Node: "node", Address: "\xff"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := invocation.NewRootID(invocation.EntryWorkflow, ref); err == nil {
 				t.Fatal("accepted invalid source identity")
 			}

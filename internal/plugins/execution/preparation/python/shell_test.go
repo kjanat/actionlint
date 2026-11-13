@@ -5,6 +5,7 @@ import (
 )
 
 func TestQuotedPythonShells(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ shell, target string }{
 		{`"python" {0}`, ""},
 		{`'python' {0}`, ""},
@@ -25,6 +26,7 @@ func TestQuotedPythonShells(t *testing.T) {
 }
 
 func TestAdapterTargetRequiresSupportedShell(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []string{
 		"", "actions-shells py -3.9", "actions-shells py -3.9 {0} later.py",
 		"actions-shells python3 -3.9 {0}", "actions-shells PY -3.9 {0}",
@@ -33,6 +35,7 @@ func TestAdapterTargetRequiresSupportedShell(t *testing.T) {
 		"actions-shells $RUNTIME -3.9 {0}",
 	} {
 		t.Run(shell, func(t *testing.T) {
+			t.Parallel()
 			if IsShell(shell) || ShellTarget(shell) != "" {
 				t.Fatalf("unsupported adapter inferred a Python target: %q", shell)
 			}

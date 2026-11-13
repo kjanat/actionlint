@@ -8,6 +8,7 @@ import (
 )
 
 func TestFlowStepSelectors(t *testing.T) {
+	t.Parallel()
 	source := "jobs: {test: {steps: [{uses: ./a}, {uses: ./b}]}}"
 	index := Contexts([]byte(source), nil)
 	for _, action := range []string{"./a", "./b"} {
@@ -24,6 +25,7 @@ func TestFlowStepSelectors(t *testing.T) {
 }
 
 func TestNestedParallelScopes(t *testing.T) {
+	t.Parallel()
 	source := `jobs:
   test:
     steps:
@@ -50,6 +52,7 @@ func TestNestedParallelScopes(t *testing.T) {
 }
 
 func TestFlowJobSelectors(t *testing.T) {
+	t.Parallel()
 	source := "jobs: {a: {uses: ./one}, b: {uses: ./two}}"
 	index := Contexts([]byte(source), nil)
 	column := strings.Index(source, "./two") + 1
@@ -59,6 +62,7 @@ func TestFlowJobSelectors(t *testing.T) {
 }
 
 func TestSourcedBlockScope(t *testing.T) {
+	t.Parallel()
 	index := Contexts([]byte("jobs:\n  test:\n    steps:\n      - id: script\n        run: |\n          echo hi\n      - run: echo bye\n"), nil)
 	if !index.Match(5, 0, "test", "script", "") {
 		t.Fatal("unambiguous block header did not match without a column")
@@ -69,6 +73,7 @@ func TestSourcedBlockScope(t *testing.T) {
 }
 
 func TestSourcedFirstStepKeyBoundary(t *testing.T) {
+	t.Parallel()
 	index := Contexts([]byte("jobs:\n  test:\n    steps:\n      - run: echo first\n        id: first\n      - run: . script.sh\n        id: second\n"), nil)
 	if !index.Match(6, 0, "test", "second", "") {
 		t.Fatal("preceding range excluded the new step's run key")
@@ -79,6 +84,7 @@ func TestSourcedFirstStepKeyBoundary(t *testing.T) {
 }
 
 func TestSourcedMultilineFlowBoundary(t *testing.T) {
+	t.Parallel()
 	source := "jobs: {test: {steps: [{id: first,\nrun: echo first}, {id: second, run: echo second}]}}"
 	index := Contexts([]byte(source), nil)
 	for _, step := range []string{"first", "second"} {
@@ -89,6 +95,7 @@ func TestSourcedMultilineFlowBoundary(t *testing.T) {
 }
 
 func TestContextsUseYAMLSourceLines(t *testing.T) {
+	t.Parallel()
 	source := "\uFEFFjobs:\r\n  test:\r\n    steps:\r\n      - uses: ./a\r\n"
 	index := Contexts([]byte(source), nil)
 	if !index.Match(4, 9, "test", "", "./a") {
@@ -97,6 +104,7 @@ func TestContextsUseYAMLSourceLines(t *testing.T) {
 }
 
 func TestSuppressionYAMLLineEndings(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []struct {
 		name string
 		text string
@@ -108,6 +116,7 @@ func TestSuppressionYAMLLineEndings(t *testing.T) {
 		{name: "PS", text: "\u2029"},
 	} {
 		t.Run(ending.name, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("\ufeffjobs:" + ending.text +
 				"  test:" + ending.text +
 				"    steps:" + ending.text +

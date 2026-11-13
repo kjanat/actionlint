@@ -9,6 +9,7 @@ import (
 )
 
 func TestSuppliedSourceDeterminesSnippet(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		source []byte
@@ -20,6 +21,7 @@ func TestSuppliedSourceDeterminesSnippet(t *testing.T) {
 		{"captured fallback", nil, 2, "captured\n^"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			f := FindingOf(results.Diagnostic{Start: sourcepos.Position{Line: tc.line, Column: 1}, End: sourcepos.Position{Line: tc.line, Column: 2}, Snippet: "captured"}, tc.source)
 			if got := f.TemplateFields().Snippet; got != tc.want {
 				t.Fatalf("snippet=%q, want %q", got, tc.want)

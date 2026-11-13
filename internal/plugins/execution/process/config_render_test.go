@@ -14,6 +14,7 @@ import (
 )
 
 func TestTOMLPairs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		config string
 		want   []string
@@ -43,6 +44,7 @@ func TestTOMLPairs(t *testing.T) {
 }
 
 func TestRuffConfigTransform(t *testing.T) {
+	t.Parallel()
 	manifest := bundledManifest(t, "ruff")
 	source, err := manifests.ResolveTransform(manifest.Process.Config.Transform, bundled.Program)
 	if err != nil {
@@ -85,6 +87,7 @@ func TestRuffConfigTransform(t *testing.T) {
 }
 
 func TestConfigTransformContract(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ program, problem string }{
 		{`[.]`, "must produce an object"},
 		{`{config: ., extra: 1}`, "unknown member"},
@@ -105,6 +108,7 @@ func TestConfigTransformContract(t *testing.T) {
 }
 
 func TestRuffForbiddenConfig(t *testing.T) {
+	t.Parallel()
 	forbidden := bundledManifest(t, "ruff").Process.Config.Forbidden
 	if len(forbidden) == 0 {
 		t.Fatal("bundled Ruff manifest forbids no configuration keys")
@@ -123,6 +127,7 @@ func TestRuffForbiddenConfig(t *testing.T) {
 }
 
 func TestConfigFiles(t *testing.T) {
+	t.Parallel()
 	config, err := decodeConfig([]byte(`{"line-length": 100, "lint": {"select": ["F"], "unset": null}, "ratio": 0.5}`))
 	if err != nil {
 		t.Fatal(err)

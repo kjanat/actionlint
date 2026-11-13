@@ -9,6 +9,7 @@ import (
 )
 
 func TestCompileRefusesExternalReferences(t *testing.T) {
+	t.Parallel()
 	for _, document := range []string{
 		`{"$ref": "https://example.invalid/schema.json"}`,
 		`{"properties": {"rc": {"$ref": "file:///etc/schema.json"}}}`,
@@ -23,6 +24,7 @@ func TestCompileRefusesExternalReferences(t *testing.T) {
 }
 
 func TestValidateNamesFailingLocations(t *testing.T) {
+	t.Parallel()
 	schema, err := configschema.Compile([]byte(`{
   "type": "object",
   "additionalProperties": false,
@@ -50,6 +52,7 @@ func TestValidateNamesFailingLocations(t *testing.T) {
 }
 
 func TestValidationErrorsRetainDetachedPaths(t *testing.T) {
+	t.Parallel()
 	schema, err := configschema.Compile([]byte(`{"type":"object","additionalProperties":false,"properties":{"count":{"type":"integer"}}}`))
 	if err != nil {
 		t.Fatal(err)

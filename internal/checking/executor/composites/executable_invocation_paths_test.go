@@ -68,6 +68,7 @@ func (p *executablePathsProbe) LeaveInvocation(call invocation.Context) error {
 }
 
 func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}, {run: echo after}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inside}]}\n",

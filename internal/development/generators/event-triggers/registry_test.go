@@ -11,6 +11,7 @@ import (
 )
 
 func TestPinnedTriggerReconciliation(t *testing.T) {
+	t.Parallel()
 	registry, _, err := loadRegistry()
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +32,7 @@ func TestPinnedTriggerReconciliation(t *testing.T) {
 }
 
 func TestReviewedSchemaActivitySupplements(t *testing.T) {
+	t.Parallel()
 	registry, _, err := loadRegistry()
 	if err != nil {
 		t.Fatal(err)
@@ -52,6 +54,7 @@ func TestReviewedSchemaActivitySupplements(t *testing.T) {
 }
 
 func TestGeneratedTriggerRegistryCurrent(t *testing.T) {
+	t.Parallel()
 	want, err := registrySource()
 	if err != nil {
 		t.Fatal(err)
@@ -66,6 +69,7 @@ func TestGeneratedTriggerRegistryCurrent(t *testing.T) {
 }
 
 func TestStrictSchemaRejectsPermissivePath(t *testing.T) {
+	t.Parallel()
 	src, err := sources.ReadFile("sources/workflow-v1.0.json")
 	if err != nil {
 		t.Fatal(err)
@@ -77,6 +81,7 @@ func TestStrictSchemaRejectsPermissivePath(t *testing.T) {
 }
 
 func TestDocumentationParserRejectsUnknownActivityCell(t *testing.T) {
+	t.Parallel()
 	src := "## `merge_group`\n\n| Webhook event payload | Activity types | SHA |\n| --- | --- | --- |\n| payload | Unexpected format | sha |\n"
 	if _, err := documentedTriggers([]byte(src), nil); err == nil {
 		t.Fatal("unrecognized activity table silently accepted")
@@ -84,6 +89,7 @@ func TestDocumentationParserRejectsUnknownActivityCell(t *testing.T) {
 }
 
 func TestDocumentationParserSelectsCurrentTableVariant(t *testing.T) {
+	t.Parallel()
 	src := "## `pull_request_target`\n" +
 		"| Webhook event payload | Activity types | SHA |\n" +
 		"| --- | --- | --- |\n" +
@@ -102,6 +108,7 @@ func TestDocumentationParserSelectsCurrentTableVariant(t *testing.T) {
 }
 
 func TestPinnedPullRequestTargetActivities(t *testing.T) {
+	t.Parallel()
 	registry, _, err := loadRegistry()
 	if err != nil {
 		t.Fatal(err)
@@ -116,6 +123,7 @@ func TestPinnedPullRequestTargetActivities(t *testing.T) {
 }
 
 func TestDocumentationParserRejectsUnknownTableCondition(t *testing.T) {
+	t.Parallel()
 	src := "## `pull_request_target`\n| {% ifversion unknown-product %} |\n| payload | `opened` | sha |\n"
 	if _, err := documentedTriggers([]byte(src), nil); err == nil || !strings.Contains(err.Error(), "unsupported documentation table condition") {
 		t.Fatalf("unknown table variant accepted: %v", err)
@@ -123,6 +131,7 @@ func TestDocumentationParserRejectsUnknownTableCondition(t *testing.T) {
 }
 
 func TestReconciliationRequiresReviewedCurrentExceptions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, want string }{
 		{"missing", "unreviewed difference: payload-activity-only:merge_group:destroyed"},
 		{"stale", "stale exception: payload-activity-only:merge_group:invented"},
@@ -131,6 +140,7 @@ func TestReconciliationRequiresReviewedCurrentExceptions(t *testing.T) {
 		{"payload supplement", "schema supplement requires a schema activity"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			files := fstest.MapFS{}
 			entries, err := sources.ReadDir("sources")
 			if err != nil {

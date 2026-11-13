@@ -10,6 +10,7 @@ import (
 )
 
 func TestFromJSONCompositeConversion(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source  string
 		invalid bool
@@ -22,6 +23,7 @@ func TestFromJSONCompositeConversion(t *testing.T) {
 		{"fromJSON(matrix.unknown)", false},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -50,11 +52,13 @@ func TestFromJSONCompositeConversion(t *testing.T) {
 }
 
 func TestFromJSONUnknownCollectionMembers(t *testing.T) {
+	t.Parallel()
 	for _, collection := range []exprtypes.Type{
 		exprtypes.NewArrayType(exprtypes.AnyType()).Type(),
 		exprtypes.NewMapObjectType(exprtypes.AnyType()).Type(),
 	} {
 		t.Run(collection.String(), func(t *testing.T) {
+			t.Parallel()
 			const source = "fromJSON(matrix.collection)"
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
 			if err != nil {

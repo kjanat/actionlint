@@ -33,6 +33,7 @@ func (*registrationBoundaryTrap) NegotiateTool(context.Context, json.RawMessage,
 }
 
 func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		analyzer checkinputs.Checker
@@ -42,6 +43,7 @@ func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 		{name: "typed nil integrator", analyzer: (*registrationBoundaryTrap)(nil)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, endpoint := range []struct {
 				name string
 				run  func(checking.Options) error
@@ -64,6 +66,7 @@ func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 				}},
 			} {
 				t.Run(endpoint.name, func(t *testing.T) {
+					t.Parallel()
 					options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: &registrationBoundaryTrap{}}, {Checker: tc.analyzer}}}
 					if err := endpoint.run(options); err == nil || !strings.Contains(err.Error(), "nil analyzer registration") {
 						t.Fatalf("invalid registration was not rejected: %v", err)

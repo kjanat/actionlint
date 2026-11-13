@@ -7,6 +7,7 @@ import (
 )
 
 func TestTemplateStringAlternatives(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		want         []string
@@ -27,6 +28,7 @@ func TestTemplateStringAlternatives(t *testing.T) {
 		{"size budget", strings.Repeat("a", maxAlternativeBytes+1), nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, complete := TemplateStringAlternatives(tc.source)
 			if complete != (tc.want != nil) || !slices.Equal(got, tc.want) {
 				t.Fatalf("alternatives=%v, complete=%t; want %v", got, complete, tc.want)

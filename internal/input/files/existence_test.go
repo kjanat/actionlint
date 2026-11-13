@@ -10,6 +10,7 @@ import (
 )
 
 func TestPathExistsUsesContentProvider(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	present := filepath.Join(root, "virtual-empty.js")
 	missing := filepath.Join(root, "missing.js")

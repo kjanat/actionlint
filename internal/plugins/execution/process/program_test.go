@@ -47,10 +47,8 @@ func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *proces
 	return manifest, command
 }
 
-func programTempRoot(t *testing.T) string {
+func pathWithBun(t *testing.T) string {
 	t.Helper()
-	// Resolve the caller's runtime before changing its temporary directory;
-	// a version-manager shim may create its own cache while resolving Bun.
 	bun, err := exec.LookPath("bun")
 	if err != nil {
 		t.Skip("Bun not installed")
@@ -59,13 +57,14 @@ func programTempRoot(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", filepath.Dir(strings.TrimSpace(string(output)))+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return filepath.Dir(strings.TrimSpace(string(output))) + string(os.PathListSeparator) + os.Getenv("PATH")
+}
+
+func programTempRoot(t *testing.T) string {
+	t.Helper()
 	root := filepath.Join(t.TempDir(), "program path with whitespace")
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
-	}
-	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
-		t.Setenv(name, root)
 	}
 	return root
 }
@@ -79,7 +78,11 @@ func assertProgramsCleaned(t *testing.T, root string) {
 }
 
 func TestInlineProgramBunStandaloneRequestAndCleanup(t *testing.T) {
+	t.Setenv("PATH", pathWithBun(t))
 	temporary := programTempRoot(t)
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, temporary)
+	}
 	manifest, command := inlineBunManifest(t, `import {readFileSync} from 'node:fs';
 const request=JSON.parse(readFileSync(0,'utf8'));
 console.log(JSON.stringify({ok:true,diagnostics:[{filename:request.filename,code:'INLINE',message:JSON.stringify({source:request.source,config:request.config,path:process.argv[1],args:process.argv.slice(2)}),location:{row:1,column:1}}]}));`)
@@ -115,7 +118,11 @@ console.log(JSON.stringify({ok:true,diagnostics:[{filename:request.filename,code
 func TestInlineProgramFailureAndCancellationCleanup(t *testing.T) {
 	for _, mode := range []string{"failure", "cancellation"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Setenv("PATH", pathWithBun(t))
 			temporary := programTempRoot(t)
+			for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+				t.Setenv(name, temporary)
+			}
 			source := "process.exit(9);"
 			marker := filepath.Join(t.TempDir(), "started")
 			if mode == "cancellation" {
@@ -167,9 +174,9 @@ func TestInlineProgramFailureAndCancellationCleanup(t *testing.T) {
 
 func TestInlineProgramCreationFailureCleanup(t *testing.T) {
 	temporary := t.TempDir()
-	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
-		t.Setenv(name, temporary)
-	}
+	t.Setenv("TMPDIR", temporary)
+	t.Setenv("TMP", temporary)
+	t.Setenv("TEMP", temporary)
 	path, cleanup, err := materializeProgram(t.Context(), manifests.InlineProgram{Filename: "../escape.mjs", Inline: "exact source\n"})
 	if err == nil || path != "" || cleanup != nil {
 		t.Fatalf("invalid filename materialized: %q, %v", path, err)
@@ -178,7 +185,11 @@ func TestInlineProgramCreationFailureCleanup(t *testing.T) {
 }
 
 func TestInlineProgramReadOnlyAndEntryProbe(t *testing.T) {
+	t.Setenv("PATH", pathWithBun(t))
 	temporary := programTempRoot(t)
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, temporary)
+	}
 	path, cleanup, err := materializeProgram(t.Context(), manifests.InlineProgram{Filename: "source.mjs", Inline: "exact source\n"})
 	if err != nil {
 		t.Fatal(err)

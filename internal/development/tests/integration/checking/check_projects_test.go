@@ -18,6 +18,7 @@ import (
 )
 
 func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	parent := t.TempDir()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	for _, name := range []string{"first", "second"} {

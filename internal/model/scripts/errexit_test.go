@@ -9,6 +9,7 @@ import (
 )
 
 func TestErrexitStatusReads(t *testing.T) {
+	t.Parallel()
 	// Bash's set builtin documents the exceptions for conditions, AND/OR lists,
 	// negation and pipelines: https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html.
 	for _, tc := range []struct {
@@ -45,6 +46,7 @@ func TestErrexitStatusReads(t *testing.T) {
 		{"unknown function effects", "bash", `f() { alias set=true; }; f; set -e; false; status=$?`, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			inv := interpreters.Builtin().Analyze(tc.shell, false)
 			got := scripts.ErrexitStatusReads(tc.text, inv, interpreters.Builtin())
 			if len(got) != tc.want {

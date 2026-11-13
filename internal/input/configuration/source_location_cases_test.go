@@ -34,6 +34,7 @@ func assertNeutralSource(t *testing.T, err error, file string, line, column int,
 }
 
 func TestNeutralInheritedInvalidSourceLocation(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	base := writeNeutralFixture(t, dir, "base.yaml", "repository:\n  runners: 5\n")
 	leaf := writeNeutralFixture(t, dir, "leaf.jsonc", "{\"extends\":[\"base.yaml\"], \"repository\":{\"runners\":[]}}\n")
@@ -42,6 +43,7 @@ func TestNeutralInheritedInvalidSourceLocation(t *testing.T) {
 }
 
 func TestNeutralUnknownRuleOptionsHaveLocations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		file, source string
 		line, col    int
@@ -52,6 +54,7 @@ func TestNeutralUnknownRuleOptionsHaveLocations(t *testing.T) {
 		{"x.toml", "[lint.rules.security.missing-permissions]\nlevel = 'on'\n[lint.rules.security.missing-permissions.options]\nunexpected = true\n", 4, 1},
 	} {
 		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			path := filepath.Join(dir, tc.file)
 			if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {
@@ -67,6 +70,7 @@ func TestNeutralUnknownRuleOptionsHaveLocations(t *testing.T) {
 }
 
 func TestNeutralLegacyScopeErrorLocation(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := writeNeutralFixture(t, dir, "legacy.yaml", "policy:\n  require-permissions:\n    scope: invalid\n")
 	_, err := checking.ConfigurationRules().Load(path)

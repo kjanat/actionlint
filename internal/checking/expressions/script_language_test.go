@@ -10,9 +10,11 @@ import (
 )
 
 func TestShellWordProofsRequireShellSink(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []string{"bash", "sh", "pwsh", "cmd", "python", "", "bash -c 'python3 {0}'", "bash -ec 'python3 {0}'", "sh -lc 'node {0}'", "bash wrapper.sh {0}"} {
 		for _, expression := range []string{"github.repository", "github.repositoryUrl", "github.sha", "runner.os", "hashFiles('**/go.sum')", "'safe'"} {
 			t.Run(shell+"/"+expression, func(t *testing.T) {
+				t.Parallel()
 				rule := newTestChecker()
 				key := "jobs.<job_id>.steps.run"
 				if shell == "" {
@@ -31,6 +33,7 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 }
 
 func TestGitHubScriptDoesNotUseShellWordProof(t *testing.T) {
+	t.Parallel()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v8\n        with:\n          script: |\n            const repo = ${{ github.repository }}\n"
 	workflow, errs := workflowparser.Parse([]byte(source))
 	if len(errs) != 0 {

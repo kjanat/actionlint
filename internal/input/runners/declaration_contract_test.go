@@ -12,6 +12,7 @@ import (
 )
 
 func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, exclude, include string
 		want                   int
@@ -21,6 +22,7 @@ func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {
 		{"excluded original and separate include", `[{os: ubuntu-lates}]`, `[{os: ubuntu-lates}, "${{ fromJSON(vars.INCLUDE) }}"]`, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-latest, ubuntu-lates], arch: [x64, arm64], exclude: "+tc.exclude+", include: "+tc.include+"}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 			knowledge, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {
@@ -40,6 +42,7 @@ func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {
 }
 
 func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("provider unavailable")
 	for _, tc := range []struct {
 		name           string
@@ -54,6 +57,7 @@ func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
 		{name: "provider failure is not invalid", failure: failure},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-lates, queue-windows], exclude: [{os: ubuntu-lates}]}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
 			provider := &testProvider{resolve: func(request runnerapi.Request) ([]runnerapi.Answer, error) {
 				answers := make([]runnerapi.Answer, len(request.Selectors))
@@ -83,6 +87,7 @@ func TestDeclarationChecksPreserveExternalProviderAuthority(t *testing.T) {
 }
 
 func TestBuiltinLabelRejectionsRespectSnapshotEvidence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		snapshot runnerapi.Snapshot
@@ -95,6 +100,7 @@ func TestBuiltinLabelRejectionsRespectSnapshotEvidence(t *testing.T) {
 		{name: "metadata only", snapshot: runnerapi.Snapshot{Scope: "scope", ObtainedAt: "2026-10-27T00:00:00Z"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-lates, windows-latest], exclude: [{os: ubuntu-lates}]}\n    runs-on: [linux, '${{ matrix.os }}']\n    steps: [{run: echo ok}]\n")
 			knowledge, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{Snapshot: tc.snapshot}, "scope")
 			if err != nil {

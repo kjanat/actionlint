@@ -8,6 +8,7 @@ import (
 )
 
 func TestConfigOverlayRejectsInvalidInputs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ input, value string }{
 		{"config", ""},
 		{"config", "[broken"},
@@ -24,6 +25,7 @@ func TestConfigOverlayRejectsInvalidInputs(t *testing.T) {
 		{"unknown", "null"},
 	} {
 		t.Run(tc.input+"/"+tc.value, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().ParseOverlay(tc.input, []byte(tc.value))
 			if err == nil || !strings.Contains(err.Error(), tc.input) {
 				t.Errorf("want error naming input %q, got %v", tc.input, err)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what  string
 		value string
@@ -104,6 +105,7 @@ func TestRuleExpressionCheckRawYAMLStringTag(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			rule := newTestChecker()
 			have := rule.checkRawYAMLString(ownedRawStringFixture(&workflowlang.RawYAMLString{Value: tc.value, Tag: tc.tag, Position: &workflowlang.Pos{}}))
 			if diff := cmp.Diff(tc.want, have); diff != "" {

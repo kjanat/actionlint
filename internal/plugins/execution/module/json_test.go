@@ -8,7 +8,8 @@ import (
 	"testing"
 )
 
-func TestProtocolJSONDecoding(t *testing.T) {
+func loadJSONProtocolEngine(t *testing.T) *Engine {
+	t.Helper()
 	engine, err := Load(t.Context(), filepath.Join("testdata", "wat", "json-protocol.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -18,6 +19,11 @@ func TestProtocolJSONDecoding(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	return engine
+}
+
+func TestProtocolJSONDecoding(t *testing.T) {
+	t.Parallel()
 
 	for _, tc := range []struct {
 		name     string
@@ -62,6 +68,8 @@ func TestProtocolJSONDecoding(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			engine := loadJSONProtocolEngine(t)
 			for boundary, err := range map[string]error{
 				"metadata": engine.negotiate([]byte(tc.metadata)),
 				"response": engine.ValidateConfig(t.Context(), json.RawMessage(tc.response)),
@@ -78,6 +86,8 @@ func TestProtocolJSONDecoding(t *testing.T) {
 	}
 
 	t.Run("case-sensitive protocol fields", func(t *testing.T) {
+		t.Parallel()
+		engine := loadJSONProtocolEngine(t)
 		if err := engine.negotiate([]byte(`{"ABI_VERSION":1}`)); err == nil || !strings.Contains(err.Error(), "metadata reports ABI version 0") {
 			t.Fatalf("metadata accepted incorrectly cased ABI field: %v", err)
 		}
@@ -86,6 +96,8 @@ func TestProtocolJSONDecoding(t *testing.T) {
 		}
 	})
 	t.Run("duplicate schema members", func(t *testing.T) {
+		t.Parallel()
+		engine := loadJSONProtocolEngine(t)
 		if err := engine.negotiate([]byte(`{"abi_version":1,"config_schema":{"type":"object","type":"array"}}`)); err == nil || !strings.Contains(err.Error(), "duplicate object member name") {
 			t.Fatalf("metadata accepted duplicate keys inside raw schema: %v", err)
 		}

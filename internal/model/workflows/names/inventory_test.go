@@ -7,6 +7,7 @@ import (
 )
 
 func TestInventoryDetachesNamesAndSeparatesCompleteness(t *testing.T) {
+	t.Parallel()
 	input := []string{"Build", "Build"}
 	complete := names.NewInventory(input, true)
 	incomplete := names.NewInventory(input, false)

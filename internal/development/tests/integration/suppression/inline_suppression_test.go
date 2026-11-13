@@ -8,6 +8,7 @@ import (
 )
 
 func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		"name: one\n  two",
 		"name: !!str\n  example",
@@ -23,6 +24,7 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 				{"prohibited", "cache-operation", "policy: {disallow-suppressions: true}", []string{"unused-suppression", "forbidden-suppression"}},
 			} {
 				t.Run(value+"/"+ending+"/"+tc.name, func(t *testing.T) {
+					t.Parallel()
 					source := "on: push\n" + value + " # actionlint:ignore " + tc.rule + " -- reviewed\n"
 					if strings.Contains(value, "&title") {
 						source += "run-name: *title\n"
@@ -46,6 +48,7 @@ func TestInlineSuppressionMultilinePlainComments(t *testing.T) {
 }
 
 func TestInlineSuppressionScalarPrefixes(t *testing.T) {
+	t.Parallel()
 	const invalid = "# actionlint:ignore unknown-rule -- reviewed"
 	const allowed = "# actionlint:ignore cache-operation -- reviewed"
 	for _, tc := range []struct {
@@ -66,6 +69,7 @@ func TestInlineSuppressionScalarPrefixes(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+"/"+ending, func(t *testing.T) {
+				t.Parallel()
 				source := "on: push\n" + tc.value + `jobs:
   test:
 ` + testutil.WorkflowSteps + "\npermissions: {}\n"
@@ -103,6 +107,7 @@ jobs:
 }
 
 func TestInlineSuppressionBlockExpression(t *testing.T) {
+	t.Parallel()
 	source := `on: issues
 jobs:
   test:

@@ -31,6 +31,7 @@ func runWithDefaultRuff(input string, args ...string) commandTranscript {
 }
 
 func TestCheckRunsConfiguredWasmEngine(t *testing.T) {
+	t.Parallel()
 	module, err := os.ReadFile(filepath.Join(componentTestdata, "..", "..", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -58,6 +59,7 @@ func TestCheckRunsConfiguredWasmEngine(t *testing.T) {
 }
 
 func TestCheckReportsEngineLoadFailures(t *testing.T) {
+	t.Parallel()
 	config := writeEngineConfig(t, filepath.Join(componentTestdata, "wat", "forbidden-import.wasm"))
 	got := runWithDefaultRuff(pythonWorkflow, "--config", config, "-")
 	if got.Status != 3 || !strings.Contains(got.Stderr, "could not initialize ruff: plugin ") ||

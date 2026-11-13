@@ -14,8 +14,10 @@ import (
 )
 
 func TestRepositoryActionDiscovery(t *testing.T) {
+	t.Parallel()
 	for _, workflows := range []bool{false, true} {
 		t.Run(map[bool]string{false: "actions only", true: "mixed"}[workflows], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeGitRepository(t, root)
 			want := []string{".github/actions/unused/action.yaml", "action.yml", "packages/build/action.yml"}
@@ -53,6 +55,7 @@ func TestRepositoryActionDiscovery(t *testing.T) {
 }
 
 func TestRepositoryActionDiscoverySymlinks(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeGitRepository(t, root)
 	manifest := writeFixture(t, root, "action.yml", compositeAction)
@@ -70,6 +73,7 @@ func TestRepositoryActionDiscoverySymlinks(t *testing.T) {
 }
 
 func TestRequiredToolsDiscoversActions(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeGitRepository(t, root)
 	writeFixture(t, root, "action.yml", compositeAction)

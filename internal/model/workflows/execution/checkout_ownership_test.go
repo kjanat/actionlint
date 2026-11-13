@@ -7,6 +7,7 @@ import (
 )
 
 func TestCheckoutPlacementOwnsValuesAndImmutableLinks(t *testing.T) {
+	t.Parallel()
 	input := execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "parent"}, CaseInsensitive: true}
 	parent := execution.NewCheckoutPlacement(input, execution.CheckoutPlacement{})
 	child := execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: "child"}}, parent)
@@ -31,6 +32,7 @@ func TestCheckoutPlacementOwnsValuesAndImmutableLinks(t *testing.T) {
 }
 
 func TestEmptyCheckoutPlacementHasNoMatch(t *testing.T) {
+	t.Parallel()
 	var empty execution.CheckoutPlacement
 	if empty.Present() || empty.Previous().Present() || empty.Matching("file").Present() || empty.SameSelfCheckout(".") {
 		t.Fatal("empty handle fabricated a placement")
@@ -41,12 +43,14 @@ func TestEmptyCheckoutPlacementHasNoMatch(t *testing.T) {
 }
 
 func TestCheckoutForUsesTheMatchedPrefixLength(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ placement, requested, want string }{
 		{"discarded/../s", "S/a", "S"},
 		{"./repo/./", "REPO/script", "REPO"},
 		{"repo/..", "script", "."},
 	} {
 		t.Run(tc.placement, func(t *testing.T) {
+			t.Parallel()
 			paths := execution.Paths{Placements: execution.NewCheckoutPlacement(execution.Checkout{
 				Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.placement}, CaseInsensitive: true,
 			}, execution.CheckoutPlacement{})}

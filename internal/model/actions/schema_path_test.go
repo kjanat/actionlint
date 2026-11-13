@@ -7,6 +7,7 @@ import (
 )
 
 func TestSchemaPathRendering(t *testing.T) {
+	t.Parallel()
 	root := schemaPath{}
 	for _, tc := range []struct {
 		path            schemaPath
@@ -40,6 +41,7 @@ func TestSchemaPathRendering(t *testing.T) {
 }
 
 func TestSchemaPathBranchesAreIndependent(t *testing.T) {
+	t.Parallel()
 	base := schemaPath{}.Key("runs").Key("steps").Index(0).Key("with")
 	first := base.LooseKey("first")
 	second := base.LooseKey("second")

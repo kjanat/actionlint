@@ -7,7 +7,7 @@ import (
 )
 
 func TestNoConfigAliases(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	if err := os.WriteFile(".github/actionlint.yaml", []byte("invalid: [yaml\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

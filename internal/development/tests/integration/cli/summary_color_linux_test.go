@@ -27,6 +27,7 @@ func TestSummaryTerminalColor(t *testing.T) {
 		{name: "forced", flags: []string{"--color"}, colored: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			terminal, finish := commandTestTerminal(t)
 			var stdout bytes.Buffer
 			cmd := cli.Command{Stdin: strings.NewReader(commandGoodWorkflow), Stdout: &stdout, Stderr: terminal}

@@ -7,6 +7,7 @@ import (
 )
 
 func TestNewLockFileMode(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	control := filepath.Join(dir, "control")
 	if err := os.WriteFile(control, nil, 0o644); err != nil {

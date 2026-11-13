@@ -12,12 +12,14 @@ import (
 )
 
 func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
+	t.Parallel()
 	for _, standalone := range []bool{false, true} {
 		for _, tc := range []struct{ unknown, disabled, extraSelector bool }{
 			{false, false, false}, {true, false, false}, {false, false, true}, {true, false, true}, {true, true, false},
 		} {
 			unknown := tc.unknown
 			t.Run(fmt.Sprintf("standalone=%t/unknown=%t/disabled=%t/extra=%t", standalone, unknown, tc.disabled, tc.extraSelector), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				dir := filepath.Join(root, "local")
 				if err := os.MkdirAll(dir, 0o755); err != nil {

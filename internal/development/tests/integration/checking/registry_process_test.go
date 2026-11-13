@@ -25,6 +25,7 @@ import (
 // Registry installation must preserve the process boundary: install without
 // executing, refuse repository execution without consent, then work offline.
 func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	network := fixtureregistry.NewPluginRegistry(t)
 	network.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})

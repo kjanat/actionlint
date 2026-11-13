@@ -18,6 +18,7 @@ func TestFileInputsUseCallerDirectory(t *testing.T) {
 	}
 	for _, path := range []string{"ci.yml", "./ci.yml", ".github/workflows"} {
 		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 			var reads []string
 			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: working, SkipProjectConfig: true, ReadFile: func(name string) ([]byte, error) {
 				reads = append(reads, name)

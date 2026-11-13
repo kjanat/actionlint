@@ -16,6 +16,7 @@ import (
 )
 
 func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 	metadata := writeFixture(t, root, "local/action.yml", `name: lint
@@ -72,6 +73,7 @@ permissions: {}
 }
 
 func TestCompositeShellcheckConfigValidation(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, actionSteps, workflowSteps string
@@ -92,6 +94,7 @@ func TestCompositeShellcheckConfigValidation(t *testing.T) {
   run: echo hello`, false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: '${{ github.action_path }}/.shellcheckrc'}}\n")
 			writeFixture(t, root, "local/action.yml", `name: local
@@ -125,6 +128,7 @@ jobs:
 }
 
 func TestCompositeMacOSExecutableBit(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	writeFixture(t, root, "local/action.yml", `name: local
 description: test
@@ -164,14 +168,7 @@ jobs:
 }
 
 func TestCompositeNestedCheckoutGitEnvironment(t *testing.T) {
-	root, _ := executableFixture(t)
-	writeFixture(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: ./inner
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		name, workflowEnv, jobEnv, callEnv, checkoutEnv string
 		want                                            bool
@@ -184,6 +181,15 @@ runs:
 		{"caller trace", "", "", "        env: {GIT_TRACE: '1'}\n", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := executableFixture(t)
+			writeFixture(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: ./inner
+`)
 			metadata := writeFixture(t, root, "inner/action.yml", `name: inner
 description: test
 runs:
@@ -218,9 +224,11 @@ runs:
 }
 
 func TestCompositeShellcheckWindowsDirectory(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, checkout := range []string{"", "source"} {
 		t.Run(checkout, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 			prefix := ""
@@ -271,6 +279,7 @@ jobs:
 }
 
 func TestCompositeShellcheckCallerCheckoutAcrossJobs(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")

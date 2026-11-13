@@ -7,6 +7,7 @@ import (
 )
 
 func TestContainerTargetExcludesOnlyProvedFalseConditions(t *testing.T) {
+	t.Parallel()
 	target := ContainerTarget{OS: runnerapi.Windows}
 	for _, tc := range []struct {
 		name   string
@@ -23,6 +24,7 @@ func TestContainerTargetExcludesOnlyProvedFalseConditions(t *testing.T) {
 		{"status and OS", []string{"success() && runner.os == 'Linux'"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			if got := target.MayRun(tc.guards...); got != tc.want {
 				t.Fatalf("MayRun(%v)=%t, want %t", tc.guards, got, tc.want)
 			}

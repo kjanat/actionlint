@@ -8,7 +8,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
-	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
 )
 
@@ -38,23 +37,14 @@ func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, form
 		defer restore()
 	}
 	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (format == render.FormatJSON || format == render.FormatSARIF)
-	previous := color.NoColor
-	defer func() { color.NoColor = previous }()
+	colored := renderColor(r.Color, terminal, os.Getenv)
+	renderer.SetColor(colored)
+	translate := colored
 	if legacy {
-		out = legacyColorOutput(out, r.Color, links)
+		translate = r.Color != render.ColorNever
 	}
-	if !legacy {
-		switch r.Color {
-		case render.ColorNever:
-			color.NoColor = true
-		case render.ColorAlways:
-			color.NoColor = false
-		case render.ColorAuto:
-			// Keep the terminal detection result.
-		}
-		if file, ok := out.(*os.File); ok && !color.NoColor && !links {
-			out = colorable.NewColorable(file)
-		}
+	if file, ok := out.(*os.File); ok && translate && !links {
+		out = colorable.NewColorable(file)
 	}
 	writes := &commandResultWriter{Writer: out}
 	out = writes
@@ -104,16 +94,13 @@ func newResultRenderer(options renderOptions, format render.Format) (*render.Ren
 	return renderer, nil
 }
 
-func legacyColorOutput(out io.Writer, mode render.Color, hyperlinks bool) io.Writer {
-	if mode == render.ColorNever {
-		color.NoColor = true
-	} else {
-		if mode == render.ColorAlways {
-			color.NoColor = false
-		}
-		if file, ok := out.(*os.File); ok && !hyperlinks {
-			out = colorable.NewColorable(file)
-		}
+func renderColor(mode render.Color, terminal bool, getenv func(string) string) bool {
+	switch mode {
+	case render.ColorAlways:
+		return true
+	case render.ColorNever:
+		return false
+	case render.ColorAuto:
 	}
-	return out
+	return terminal && getenv("NO_COLOR") == "" && getenv("TERM") != "dumb"
 }

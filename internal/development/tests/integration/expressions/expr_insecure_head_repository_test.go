@@ -9,6 +9,7 @@ import (
 )
 
 func TestExprInsecureHeadRepositoryMetadata(t *testing.T) {
+	t.Parallel()
 	for _, property := range []string{"description", "homepage"} {
 		for _, expression := range []string{
 			"github.event.workflow_run.head_repository." + property,
@@ -17,6 +18,7 @@ func TestExprInsecureHeadRepositoryMetadata(t *testing.T) {
 			"format('{0}', github.event.workflow_run.head_repository." + property + ")",
 		} {
 			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
 				workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
   report:
@@ -36,6 +38,7 @@ jobs:
 }
 
 func TestExprInsecureHeadRepositorySafeControls(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow_run.head_repository.id",
 		"github.event.workflow_run.head_repository.name",
@@ -46,6 +49,7 @@ func TestExprInsecureHeadRepositorySafeControls(t *testing.T) {
 		"contains(github.event.workflow_run.head_repository.description, 'release')",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
   report:
@@ -83,6 +87,7 @@ permissions: {}
 }
 
 func TestWorkflowRunUserProfileInjection(t *testing.T) {
+	t.Parallel()
 	for _, path := range []string{"head_repository.owner.name", "head_repository.owner.email", "actor.email", "triggering_actor.email"} {
 		parts := strings.Split(path, ".")
 		brackets := "github.event.workflow_run['" + strings.Join(parts, "']['") + "']"
@@ -94,14 +99,20 @@ func TestWorkflowRunUserProfileInjection(t *testing.T) {
 			"format('{0}', github.event.workflow_run." + path + ")",
 			"toJSON(github.event.workflow_run." + path + ")",
 		} {
-			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
+			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
+				checkReferencedWorkflowExpression(t, expression, true)
+			})
 		}
 		for _, expression := range []string{
 			"contains(github.event.workflow_run." + path + ", 'trusted')",
 			"startsWith(github.event.workflow_run." + path + ", 'trusted')",
 			"endsWith(github.event.workflow_run." + path + ", 'trusted')",
 		} {
-			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false) })
+			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
+				checkReferencedWorkflowExpression(t, expression, false)
+			})
 		}
 		workflow := `on: {workflow_run: {workflows: [Build], types: [completed]}}
 jobs:
@@ -122,6 +133,7 @@ jobs:
 		for _, field := range []string{"login", "id", "node_id", "type", "site_admin", "url", "html_url", "avatar_url"} {
 			path := owner + "." + field
 			t.Run(path, func(t *testing.T) {
+				t.Parallel()
 				checkReferencedWorkflowExpression(t, "github.event.workflow_run."+path, false, field != "id" && field != "site_admin")
 				checkReferencedWorkflowExpression(t, "github.event.workflow_run['"+strings.ToUpper(strings.ReplaceAll(path, ".", "']['"))+"']", false, field != "id" && field != "site_admin")
 			})
@@ -130,6 +142,7 @@ jobs:
 }
 
 func TestWorkflowRunUserProfileObjectFilters(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"join(github.event.workflow_run.head_repository.*.name, ',')",
 		"join(github.event.workflow_run.head_repository.*.email, ',')",
@@ -139,17 +152,24 @@ func TestWorkflowRunUserProfileObjectFilters(t *testing.T) {
 		"join(github.event.workflow_run.triggering_actor.*, ',')",
 		"join(github.event.workflow_run.*.email, ',')",
 	} {
-		t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
+		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
+			checkReferencedWorkflowExpression(t, expression, true)
+		})
 	}
 	for _, expression := range []string{
 		"join(github.event.workflow_run.head_repository.*.login, ',')",
 		"join(github.event.workflow_run.*.login, ',')",
 	} {
-		t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, false, true) })
+		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
+			checkReferencedWorkflowExpression(t, expression, false, true)
+		})
 	}
 }
 
 func TestWorkflowRunUserProfileScriptLocations(t *testing.T) {
+	t.Parallel()
 	for _, path := range []string{"head_repository.owner.name", "head_repository.owner.email", "actor.email", "triggering_actor.email"} {
 		for _, script := range []struct {
 			step string

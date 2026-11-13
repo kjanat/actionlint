@@ -8,6 +8,7 @@ import (
 )
 
 func TestDirectURL(t *testing.T) {
+	t.Parallel()
 	source := "https://EXAMPLE.com/Plugin.wasm?version=1#sha256=" + strings.Repeat("AB", 32)
 	ref, err := Parse(source)
 	if err != nil {
@@ -32,6 +33,7 @@ func TestDirectURL(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input, name, version, canonical string
 	}{
@@ -53,6 +55,7 @@ func TestParse(t *testing.T) {
 		{"owner/repo@area/v1.LOCK", "github.com/owner/repo", "area/v1.LOCK", "github.com/owner/repo@area/v1.LOCK"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			ref, err := Parse(tc.input)
 			if err != nil {
 				t.Fatal(err)
@@ -65,6 +68,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestRejectInvalidReference(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"", ".plugin", "under_score", strings.Repeat("a", 65), "owner/repo@", "owner/repo@@v1", "owner/repo@^1.0", "owner/repo@v1//extra", "owner/repo@v1/../extra",
 		"github.com/owner/repo/../extra", "github.com/owner/repo//extra", "github.com/owner/repo/./extra", "github.com/owner/.", "github.com/owner/..", "https://github.com/owner/repo", "codeberg.org/owner/repo",
@@ -75,6 +79,7 @@ func TestRejectInvalidReference(t *testing.T) {
 		"gitlab.com/group/plugin.atom", "gitlab.com/group/../plugin", "gitlab.com/group%2ename/plugin",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			if _, err := Parse(input); err == nil {
 				t.Fatalf("accepted %q", input)
 			}
@@ -83,6 +88,7 @@ func TestRejectInvalidReference(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
+	t.Parallel()
 	ref, err := New("owner/repo", "v1", "https://Example.com/catalog")
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +121,7 @@ func TestRegistry(t *testing.T) {
 }
 
 func TestCandidateBinding(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	registryPath := filepath.ToSlash(directory)
 	if !strings.HasPrefix(registryPath, "/") {
@@ -147,6 +154,7 @@ func TestCandidateBinding(t *testing.T) {
 }
 
 func TestRegistryPreservesIPv6Zone(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"https://[FE80::1%25Ethernet]/",
 		"https://[FE80::1%25Ethernet]:443/catalog/",
@@ -165,6 +173,7 @@ func TestRegistryPreservesIPv6Zone(t *testing.T) {
 // Equivalent directory spellings must produce one manifest and lock identity,
 // including paths whose names contain URL delimiters.
 func TestLocalRegistryNormalization(t *testing.T) {
+	t.Parallel()
 	directory := filepath.Join(t.TempDir(), "space # percent%", "catalogue")
 	u := url.URL{Scheme: "file", Path: filepath.ToSlash(directory)}
 	if !strings.HasPrefix(u.Path, "/") {
@@ -192,6 +201,7 @@ func TestLocalRegistryNormalization(t *testing.T) {
 
 // Only local absolute directory URIs may opt into candidate installation.
 func TestLocalRegistryRejectsAuthorityAndAmbiguousPaths(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		"", "catalogue", "file:", "file://", "file:catalogue", "file://catalogue", "file://localhost/catalogue",
 		"file://user:password@server/catalogue", "file:////server/share", "file:///%2fserver/share",
@@ -199,6 +209,7 @@ func TestLocalRegistryRejectsAuthorityAndAmbiguousPaths(t *testing.T) {
 		"file:///catalogue%5cchild", "file:///catalogue%zz", "https://example.com/catalogue/",
 	} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			if directory, err := LocalRegistryDirectory(value); err == nil {
 				t.Fatalf("accepted %q as local directory %q", value, directory)
 			}

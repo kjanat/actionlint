@@ -18,6 +18,7 @@ import (
 )
 
 func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "pinned-actions", component.Options{})
 	if got := plugin.Descriptor().RequiredInputs; len(got) != 1 || got[0] != rulemeta.Dependencies {
 		t.Fatalf("requires=%v", got)
@@ -42,6 +43,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 		{"unknown kind", "future", "owner/repo@v1", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			input := checkinputs.Input{Path: "workflow.yml", AvailableInputs: []rulemeta.InputKind{rulemeta.Dependencies}, Dependencies: []workflowfacts.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
 				Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 7, Column: 24},
@@ -70,6 +72,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 }
 
 func TestDependencyAnalyzerSharedDeclarationFacts(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "pinned-actions", component.Options{})
 	const workflow = `on: push
 jobs:

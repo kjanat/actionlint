@@ -15,6 +15,7 @@ import (
 )
 
 func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, job, step, want string
 	}{
@@ -104,6 +105,7 @@ func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
         "${{ case(true, 'exclude', missing) }}": [{axis: one}]`, "run: echo ok", `undefined variable "missing"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -135,6 +137,7 @@ jobs:
 }
 
 func TestSchemaAuditRunnerObjectExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value, want string
 	}{
@@ -145,6 +148,7 @@ func TestSchemaAuditRunnerObjectExpressions(t *testing.T) {
 		{`fromJSON(vars.RUNNERS)`, ""},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			workflow, rule := schemaAuditExpressionRule(t, `on: push
 jobs:
   test:

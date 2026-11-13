@@ -11,6 +11,7 @@ import (
 )
 
 func TestScriptRuntimeRuleSelection(t *testing.T) {
+	t.Parallel()
 	for _, rule := range []struct {
 		name, script      string
 		column, endColumn int
@@ -38,6 +39,7 @@ func TestScriptRuntimeRuleSelection(t *testing.T) {
 			{name: "experimental explicit off", level: "off", experimental: new(true)},
 		} {
 			t.Run(rule.name+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				config := ""
 				if tc.preset != "" {
 					config = "lint: {rules: {preset: " + tc.preset + "}}"
@@ -77,6 +79,7 @@ func TestScriptRuntimeRuleSelection(t *testing.T) {
 }
 
 func TestScriptRuntimeWorkflowShells(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, shell, script, rule string
 		want                      int
@@ -104,6 +107,7 @@ func TestScriptRuntimeWorkflowShells(t *testing.T) {
 		{"ignored errexit group", "bash", `{ false; echo '::notice: bad'; } || :`, "workflow-command-syntax", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow := fmt.Sprintf("on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: %s\n        run: |\n          %s\n", tc.shell, tc.script)
 			config := "lint: {rules: {preset: none, suspicious: {" + tc.rule + ": on}}}"
 			all := testutil.WorkflowDiagnostics(t, workflow, config)

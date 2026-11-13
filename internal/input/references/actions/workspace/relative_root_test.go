@@ -12,6 +12,7 @@ import (
 )
 
 func TestRelativeRepositoryRootUsesSessionWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	root := filepath.Join(base, "repository")
 	writeFixture(t, root, "source/action.yml", "name: relative\ndescription: session root\nruns: {using: composite, steps: []}\n")

@@ -7,6 +7,7 @@ import (
 )
 
 func TestUnsoundTernary(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		count      int
@@ -58,6 +59,7 @@ func TestUnsoundTernary(t *testing.T) {
 		{"github.ref && fromJSON('broken') || 'fallback'", 0},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			rule := newTestChecker()
 			rule.checkExprsIn("${{ "+tc.expression+" }}", &workflowlang.Pos{Line: 3, Col: 5}, false, false, "env")
 			count := 0

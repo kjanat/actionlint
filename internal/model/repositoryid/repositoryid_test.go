@@ -16,6 +16,7 @@ func known(t *testing.T, value uint64) ID {
 }
 
 func TestKnownRejectsZero(t *testing.T) {
+	t.Parallel()
 	if _, err := Known(0); err == nil {
 		t.Fatal("Known(0) returned no error")
 	}
@@ -32,6 +33,7 @@ func TestKnownRejectsZero(t *testing.T) {
 }
 
 func TestConflicts(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name        string
 		left, right ID
@@ -54,6 +56,7 @@ type record struct {
 }
 
 func TestJSON(t *testing.T) {
+	t.Parallel()
 	for name, marshal := range map[string]func(any) ([]byte, error){
 		"v1": json.Marshal,
 		"v2": func(v any) ([]byte, error) { return jsonv2.Marshal(v) },

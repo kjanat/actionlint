@@ -8,6 +8,7 @@ import (
 )
 
 func TestLexOneToken(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what  string
 		input string
@@ -312,6 +313,7 @@ func TestLexOneToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			tokens, offset, err := LexExpression(tc.input + "}}")
 			if err != nil {
 				t.Fatal("error while lexing:", err)
@@ -337,6 +339,7 @@ func TestLexOneToken(t *testing.T) {
 }
 
 func TestLexExpression(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what   string
 		input  string
@@ -590,6 +593,7 @@ func TestLexExpression(t *testing.T) {
 			panic(tc)
 		}
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			tokens, offset, err := LexExpression(tc.input + "}}")
 			if err != nil {
 				t.Fatal("error while lexing:", err)
@@ -626,6 +630,7 @@ func TestLexExpression(t *testing.T) {
 }
 
 func TestLexExprError(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what  string
 		input string
@@ -846,6 +851,7 @@ func TestLexExprError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			_, _, err := LexExpression(tc.input)
 			if err == nil {
 				t.Fatal("error did not occur")
@@ -861,6 +867,7 @@ func TestLexExprError(t *testing.T) {
 }
 
 func TestLexTokenPos(t *testing.T) {
+	t.Parallel()
 	input := "foo( true && 0.1234, github.issue )"
 	want := []int{0, 3, 5, 10, 13, 19, 21, 27, 28, 34, 35}
 

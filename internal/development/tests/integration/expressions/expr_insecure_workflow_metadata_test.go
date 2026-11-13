@@ -11,6 +11,7 @@ import (
 )
 
 func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow.name",
 		"github.event.workflow.path",
@@ -22,6 +23,7 @@ func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
 		"join(github.event.workflow.*, ',')",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			for _, script := range []struct {
 				step string
 				line int
@@ -45,6 +47,7 @@ func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
 }
 
 func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"github.event.workflow.id",
 		"github.event.workflow.node_id",
@@ -59,6 +62,7 @@ func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
 		"endsWith(github.event.workflow.path, '.yml')",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			findings := lintSiblingWorkflowMetadata(t, "      - run: echo '${{ "+expression+" }}'\n", "\n")
 			if expression == "github.event.workflow.id" || strings.HasPrefix(expression, "contains(") || strings.HasPrefix(expression, "startsWith(") || strings.HasPrefix(expression, "endsWith(") {
 				if len(findings) != 0 {

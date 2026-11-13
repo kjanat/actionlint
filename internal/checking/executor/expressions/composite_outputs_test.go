@@ -18,6 +18,7 @@ func (m invocationMetadata) FindMetadata(string) (*actionmeta.Metadata, bool, er
 }
 
 func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "outer/action.yml")
 	content := []byte("name: outer\ndescription: outer\noutputs:\n  result:\n    description: result\n    value: ${{ steps.child.outputs.missing }}\nruns:\n  using: composite\n  steps:\n    - uses: $/child\n      id: child\n    - run: echo ready\n      shell: bash\n      env: {VALUE: '${{ steps.child.outputs.missing }}'}\n")

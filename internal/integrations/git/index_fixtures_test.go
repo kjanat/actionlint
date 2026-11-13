@@ -23,7 +23,6 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 		t.Fatal(err)
 	}
 	t.Setenv("GIT_CONFIG_GLOBAL", config)
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("XDG_CONFIG_HOME", configRoot)
 	command := func(args ...string) {
 		t.Helper()

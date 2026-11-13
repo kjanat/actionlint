@@ -10,12 +10,14 @@ import (
 )
 
 func TestInheritedBackendSelectionReplacesTransport(t *testing.T) {
+	t.Parallel()
 	for _, tool := range []string{"ruff", "shellcheck"} {
 		for _, selection := range []struct{ base, child string }{
 			{"process: {executable: checker}", "wasm: {path: checker.wasm}"},
 			{"wasm: {path: checker.wasm}", "process: {executable: checker}"},
 		} {
 			t.Run(tool+selection.child, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				base := filepath.Join(root, "base.yml")
 				child := filepath.Join(root, "child.yml")

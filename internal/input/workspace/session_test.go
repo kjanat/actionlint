@@ -13,6 +13,7 @@ import (
 )
 
 func TestProjectDiscoveryStopsWithSessionContext(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "{}\n")
@@ -31,6 +32,7 @@ func TestProjectDiscoveryStopsWithSessionContext(t *testing.T) {
 }
 
 func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['excluded.yml']}\n")
@@ -69,6 +71,7 @@ func TestSelectionPreparesSourcesWithoutParsing(t *testing.T) {
 }
 
 func TestSelectionProvenanceDoesNotLeakAcrossBatches(t *testing.T) {
+	t.Parallel()
 	session, err := New(t.Context(), Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -94,6 +97,7 @@ func TestSelectionProvenanceDoesNotLeakAcrossBatches(t *testing.T) {
 }
 
 func TestNamedContentTracksPathRelativeToWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	session, err := New(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true})
 	if err != nil {
@@ -112,6 +116,7 @@ func TestNamedContentTracksPathRelativeToWorkingDirectory(t *testing.T) {
 }
 
 func TestOptionsConfigReplacesRepositoryConfiguration(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['workflow.yml']}\n")

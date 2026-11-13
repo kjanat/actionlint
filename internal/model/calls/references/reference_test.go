@@ -5,6 +5,7 @@ import (
 )
 
 func TestActionReferenceProblem(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ spec, problem string }{
 		{"owner/repo@v1", ""},
 		{"owner/repo/path/to/action@refs/heads/master", ""},
@@ -15,6 +16,7 @@ func TestActionReferenceProblem(t *testing.T) {
 		{"owner/repo@", "owner and repo and ref should not be empty"},
 	} {
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
 			if got := ActionReferenceProblem(tc.spec); got != tc.problem {
 				t.Fatalf("problem=%q, want %q", got, tc.problem)
 			}
@@ -23,6 +25,7 @@ func TestActionReferenceProblem(t *testing.T) {
 }
 
 func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		spec string
 		want string
@@ -43,6 +46,7 @@ func TestRuleActionSelfRepositoryUsesLocalSpec(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
 			have, ok := SelfRepositoryLocal(tc.spec)
 			if ok != tc.ok {
 				t.Fatalf("wanted ok=%v but have ok=%v for %q", tc.ok, ok, tc.spec)

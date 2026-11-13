@@ -8,6 +8,7 @@ import (
 )
 
 func TestUnknownDiffersFromKnownEmptyFacts(t *testing.T) {
+	t.Parallel()
 	var unknown repository.Snapshot
 	names, err := repository.NewNames()
 	if err != nil {
@@ -30,6 +31,7 @@ func TestUnknownDiffersFromKnownEmptyFacts(t *testing.T) {
 }
 
 func TestSnapshotsOwnNameAndValueCollections(t *testing.T) {
+	t.Parallel()
 	source := []string{"TOKEN"}
 	names, err := repository.NewNames(source...)
 	if err != nil {

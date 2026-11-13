@@ -15,6 +15,7 @@ import (
 )
 
 func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, shell, script string
 		want                int
@@ -29,6 +30,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 	} {
 		for _, called := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/%s/%d/called=%v", tc.name, tc.shell, tc.want, called), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
 				configPath := fixturefiles.Write(t, root, ".github/actionlint.yaml", "lint: {rules: {preset: none, suspicious: {"+tc.name+": on}}}\n")
 				action := fmt.Sprintf("name: Script regression\ndescription: Check runner script behavior\nruns:\n  using: composite\n  steps:\n    - shell: %s\n      run: |\n        %s\n", tc.shell, tc.script)
@@ -67,6 +69,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 }
 
 func TestScriptRuntimePublicGPGAction(t *testing.T) {
+	t.Parallel()
 	// These exact public files were fetched without executing their commands.
 	// The first revision contains the failures described in PR343 comment
 	// 6713776814. The second is the fixed revision cited in that comment.
@@ -78,6 +81,7 @@ func TestScriptRuntimePublicGPGAction(t *testing.T) {
 		{"gpg-ac6e230b.action.yml", 0},
 	} {
 		t.Run(tc.file, func(t *testing.T) {
+			t.Parallel()
 			content, err := os.ReadFile(filepath.Join("internal", "development", "tests", "integration", "actions", "testdata", "script-runtime", tc.file))
 			if err != nil {
 				t.Fatal(err)

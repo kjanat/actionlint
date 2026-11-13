@@ -40,6 +40,7 @@ func ref(t *testing.T, spec string) actions.Reference {
 }
 
 func TestDefaultOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
+	t.Parallel()
 	cache := t.TempDir()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/action/"+sha+"/sub/action.yml" {
@@ -81,6 +82,7 @@ func TestDefaultOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
 }
 
 func TestNativeHostDoesNotResolveNamesOrSHA256(t *testing.T) {
+	t.Parallel()
 	client, err := New(Options{Mode: Online, Transport: transport(func(*http.Request) (*http.Response, error) {
 		t.Fatal("unsupported request used network")
 		return nil, errors.New("network")
@@ -103,6 +105,7 @@ func TestNativeHostDoesNotResolveNamesOrSHA256(t *testing.T) {
 }
 
 func TestUnsupportedMetadataHostDoesNotUseNetwork(t *testing.T) {
+	t.Parallel()
 	client, err := New(Options{Transport: transport(func(*http.Request) (*http.Response, error) {
 		t.Fatal("unsupported host used the GitHub API")
 		return nil, errors.New("unexpected network request")
@@ -121,6 +124,7 @@ func TestUnsupportedMetadataHostDoesNotUseNetwork(t *testing.T) {
 }
 
 func TestTransportFailuresNeverLeakCredentials(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		status int
 		want   availability.Reason

@@ -7,6 +7,7 @@ import (
 )
 
 func TestClosedScriptArgumentLists(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, script, env, shell string
 		unsafe                   bool
@@ -35,6 +36,7 @@ func TestClosedScriptArgumentLists(t *testing.T) {
 		{name: "unknown mapping", script: "tool ${{ env.ARGS }}", env: "--flag value", unsafe: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			shell := tc.shell
 			if shell == "" {
 				shell = "bash"

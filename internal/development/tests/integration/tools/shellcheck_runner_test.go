@@ -38,8 +38,10 @@ func TestEmbeddedShellcheckRunner(t *testing.T) {
 }
 
 func TestEmbeddedShellcheckFailure(t *testing.T) {
+	t.Parallel()
 	for _, output := range []string{"invalid json", ""} {
 		t.Run(output, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 				if output == "" {
 					return nil, errors.New("worker timed out")

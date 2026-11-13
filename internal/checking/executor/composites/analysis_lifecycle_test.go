@@ -39,6 +39,7 @@ func (r *cancelBeforeStep) VisitWorkflowPre(workflowdecl.WorkflowView) error {
 }
 
 func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
@@ -56,8 +57,10 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 }
 
 func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T) {
+	t.Parallel()
 	for _, unfinished := range []bool{false, true} {
 		t.Run(map[bool]string{false: "invalid batch", true: "unfinished graph"}[unfinished], func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", nil, nil)
 			visited, joined := true, false
 			pass := &phaseRule{Base: workflowvisit.NewBase("phase", ""), visited: &visited, joined: &joined}
@@ -98,6 +101,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 }
 
 func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{"on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "jobs: ["} {
 		parsed := parsing.Workflow([]byte(content))
 		input, err := CheckInput(Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
@@ -112,8 +116,10 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 }
 
 func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
+	t.Parallel()
 	for _, using := range []string{"node24", "docker"} {
 		t.Run(using, func(t *testing.T) {
+			t.Parallel()
 			body := "main: index.js"
 			if using == "docker" {
 				body = "image: Dockerfile"
@@ -148,8 +154,10 @@ type phaseRule struct {
 
 func (r *phaseRule) VisitStep(workflowdecl.StepView) error { *r.visited = true; return r.failure }
 func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) {
+	t.Parallel()
 	for _, failVisit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "visit failure"}[failVisit], func(t *testing.T) {
+			t.Parallel()
 			parsed := parsing.Workflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"))
 			scriptFailure := errors.New("script failure")
 			visitFailure := errors.New("visit failure")

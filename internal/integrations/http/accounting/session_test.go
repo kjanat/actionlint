@@ -43,6 +43,7 @@ func quota(remaining int, reset time.Time, resource string) http.Header {
 }
 
 func TestTransportCountsNestedRequestsOnceAndRedacts(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	base := roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return response(200, quota(8, time.Now().Add(time.Hour), "core"), ""), nil
@@ -70,6 +71,7 @@ func TestTransportCountsNestedRequestsOnceAndRedacts(t *testing.T) {
 }
 
 func TestReservationsProtectDependenciesAtomically(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	reset := time.Now().Add(time.Hour)
 	calls := 0
@@ -125,6 +127,7 @@ func TestReservationsProtectDependenciesAtomically(t *testing.T) {
 }
 
 func TestQuotaPoolsAndSecondaryBackoff(t *testing.T) {
+	t.Parallel()
 	ctx, _ := TrackRequests(t.Context())
 	reset := time.Now().Add(time.Hour)
 	transport := TrackHTTPRequests(roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -174,6 +177,7 @@ func TestQuotaPoolsAndSecondaryBackoff(t *testing.T) {
 }
 
 func TestConcurrentAdmissionDoesNotOverspend(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	r := request(t, ctx, "/repos/example/action", "")
 	_, key, _ := requestKeys(r)
@@ -201,6 +205,7 @@ func TestConcurrentAdmissionDoesNotOverspend(t *testing.T) {
 }
 
 func TestPreflightCoalescesAndRefreshesAfterReset(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	now := time.Now()
 	s.now = func() time.Time { return now }
@@ -231,6 +236,7 @@ func TestPreflightCoalescesAndRefreshesAfterReset(t *testing.T) {
 }
 
 func TestConcurrentPreflightSharesOneRequest(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	started, release := make(chan struct{}), make(chan struct{})
 	var calls atomic.Int32
@@ -262,6 +268,7 @@ func TestConcurrentPreflightSharesOneRequest(t *testing.T) {
 }
 
 func TestPreflightWaitIsOutsideLookupBudget(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		ctx, s := TrackRequests(t.Context())
 		reset := time.Now().Add(time.Hour)
@@ -284,6 +291,7 @@ func TestPreflightWaitIsOutsideLookupBudget(t *testing.T) {
 }
 
 func TestOlderQuotaResponsesCannotRestoreSpentUnits(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	now := time.Now().Truncate(time.Second)
 	s.now = func() time.Time { return now }
@@ -318,6 +326,7 @@ func TestOlderQuotaResponsesCannotRestoreSpentUnits(t *testing.T) {
 }
 
 func TestResolverCoverageIsNotInvented(t *testing.T) {
+	t.Parallel()
 	ctx, s := TrackRequests(t.Context())
 	RecordResolverCall(ctx, nil, false)
 	RecordResolverCall(ctx, nil, true)

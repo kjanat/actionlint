@@ -8,6 +8,7 @@ import (
 )
 
 func TestRuleInputRequirementsReachConfigurationAndCatalogue(t *testing.T) {
+	t.Parallel()
 	listed, ok := FindRule("deprecated-commands")
 	if !ok || !slices.Equal(listed.RequiredInputs, []rule.InputKind{rule.Scripts, rule.Invocations}) {
 		t.Fatalf("catalogue requirements: %+v", listed)

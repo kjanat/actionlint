@@ -11,6 +11,7 @@ import (
 )
 
 func TestCachedWorkflowFailuresPreserveCauses(t *testing.T) {
+	t.Parallel()
 	cause := &os.PathError{Op: "read", Path: "callee.yml", Err: context.Canceled}
 	for _, failure := range []metadataError{readFailure("./callee.yml", cause), parseFailure("./callee.yml", cause)} {
 		cache := NewCache(t.TempDir(), nil)
@@ -28,6 +29,7 @@ func TestCachedWorkflowFailuresPreserveCauses(t *testing.T) {
 }
 
 func TestWorkflowReadFailurePreservesCauseThroughCapture(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	cause := &os.PathError{Op: "read", Path: "callee.yml", Err: context.Canceled}
 	reads := 0

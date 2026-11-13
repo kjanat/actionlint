@@ -10,6 +10,7 @@ import (
 )
 
 func TestCheckStringRejectsRawTagReview(t *testing.T) {
+	t.Parallel()
 	for _, allowEmpty := range []bool{false, true} {
 		p := &workflowparser.Parser{}
 		n := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!custom", Value: "max", Style: syntax.TaggedStyle, Line: 1, Column: 1}
@@ -20,6 +21,7 @@ func TestCheckStringRejectsRawTagReview(t *testing.T) {
 }
 
 func TestWorkflowExpressionLiteralBoundaryReview(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{"pre-${{ '' }}", "${{ '' }}-post", "${{ '' }}-${{ '' }}", "${{ '' }}tail}}", "  ${{ '' }}  ", "${{ '' }}\n", "\t${{ '' }}"} {
 		if got, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value}); known {
 			t.Errorf("fragment %q folded to %#v", value, got)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestRepositoryDeclarationCatalogueConsistency(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, name := range []string{
 		"gitlab.com/backend.services/plugin", "gitlab.com/Backend.Services/Team.Tools/plugin-v1",
 		"gitlab.com/a/b", "github.com/owner/plugin.v1", "github.com/dotted.owner/plugin",
@@ -20,6 +21,7 @@ func TestRepositoryDeclarationCatalogueConsistency(t *testing.T) {
 		"gitlab.com/group//plugin", "gitlab.com/group/plugin/", "gitlab.com/group/plugin?query",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			r := fixtureregistry.NewPluginRegistry(t)
 			data, err := json.Marshal(plugininstall.Catalog{SchemaVersion: 1, Plugins: []plugininstall.CatalogPlugin{{
 				Name: name, PluginID: "vendor/engine", Manifest: "plugins/" + strings.Repeat("a", 64) + "/index.json",

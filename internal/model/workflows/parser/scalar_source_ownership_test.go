@@ -11,6 +11,7 @@ import (
 )
 
 func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
+	t.Parallel()
 	const input = "script: &script echo $HI # anchor\nrun: *script # first\nnext: *script # second\n"
 	root, err := codec.Parse([]byte(input))
 	if err != nil {
@@ -18,6 +19,7 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 	}
 	for _, mode := range []string{"cold", "warm", "alias", "nil-declaration"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			parser := NewSourceParser([]byte(input))
 			parser.IndexScalarSources(root)
 			projected := projectAliasTestInput(parser, root)

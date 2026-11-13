@@ -12,6 +12,7 @@ import (
 )
 
 func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value string
 		want  bool
@@ -22,6 +23,7 @@ func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
 		{"null", false},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			base, err := checking.ConfigurationRules().ParseOverlay("config", []byte("policy: {require-commit-hash: true}"))
 			if err != nil {
 				t.Fatal(err)
@@ -46,6 +48,7 @@ func TestConfigOverlayEmptyAndNullMappings(t *testing.T) {
 }
 
 func TestConfigOverlaysPreserveFileSettings(t *testing.T) {
+	t.Parallel()
 	base := `self-hosted-runner: {labels: [original]}
 config-variables: [ORIGINAL]
 config-secrets: [DEPLOY_TOKEN]
@@ -140,6 +143,7 @@ paths:
 }
 
 func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, base, overlay string
 		labels, variables   []string
@@ -150,6 +154,7 @@ func TestConfigOverlaysPreserveYAMLAliases(t *testing.T) {
 		{"explicit key wins", "<<: {self-hosted-runner: {labels: [inherited]}}\nself-hosted-runner: {labels: [explicit]}", "{}", []string{"explicit"}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "config.yaml")
 			if err := os.WriteFile(path, []byte(tc.base), 0o600); err != nil {
 				t.Fatal(err)

@@ -15,6 +15,7 @@ import (
 )
 
 func TestExecutableIndexPreparation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, level string
 		failure     error
@@ -27,6 +28,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 		{name: "cancellation", level: "on", failure: context.Canceled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			indexPath := filepath.Join(root, ".git", "index")
 			rules := checking.ConfigurationRules()

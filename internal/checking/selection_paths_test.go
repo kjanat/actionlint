@@ -16,11 +16,15 @@ import (
 )
 
 func TestCallerRelativeDisplaySpelling(t *testing.T) {
-	root := t.TempDir()
-	t.Chdir(root)
-	workflow := writeFixture(t, root, "ci.yml", badWorkflow)
-	for _, path := range []string{"ci.yml", "./ci.yml", workflow} {
-		t.Run(path, func(t *testing.T) {
+	for _, spelling := range []string{"ci.yml", "./ci.yml", "absolute"} {
+		t.Run(spelling, func(t *testing.T) {
+			root := t.TempDir()
+			t.Chdir(root)
+			workflow := writeFixture(t, root, "ci.yml", badWorkflow)
+			path := spelling
+			if spelling == "absolute" {
+				path = workflow
+			}
 			readPath := ""
 			session := checking.Options{WorkingDir: root, ReadFile: func(name string) ([]byte, error) {
 				if absolute, err := filepath.Abs(name); err == nil && absolute == workflow {
@@ -83,12 +87,16 @@ func TestCallerRelativeSelection(t *testing.T) {
 }
 
 func TestCallerRelativeOverlaySelection(t *testing.T) {
-	parent := t.TempDir()
-	t.Chdir(parent)
-	root := filepath.Join(parent, "repo")
-	writeFixture(t, root, ".github/workflows/ci.yml", goodWorkflow)
-	for _, working := range []string{"repo", root} {
-		t.Run(working, func(t *testing.T) {
+	for _, spelling := range []string{"relative", "absolute"} {
+		t.Run(spelling, func(t *testing.T) {
+			parent := t.TempDir()
+			t.Chdir(parent)
+			root := filepath.Join(parent, "repo")
+			writeFixture(t, root, ".github/workflows/ci.yml", goodWorkflow)
+			working := root
+			if spelling == "relative" {
+				working = "repo"
+			}
 			options := checking.Options{WorkingDir: working, SkipProjectConfig: true, SourceOverlays: []checking.SourceOverlay{{Path: ".github/workflows/ci.yml", Content: []byte(badWorkflow)}}}
 			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) == 0 {
@@ -104,6 +112,7 @@ func TestCallerRelativeOverlaySelection(t *testing.T) {
 }
 
 func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
 		t.Fatal(err)
@@ -140,6 +149,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 }
 
 func TestPhysicalProjectAliasSelection(t *testing.T) {
+	t.Parallel()
 	parent := t.TempDir()
 	root := filepath.Join(parent, "physical")
 	content := `on: push

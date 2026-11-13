@@ -11,6 +11,7 @@ import (
 )
 
 func TestCompositeDiagnosticStepPaths(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo first\n    - run: echo second\n")
 	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{})

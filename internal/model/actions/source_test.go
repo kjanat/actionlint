@@ -3,6 +3,7 @@ package action
 import "testing"
 
 func TestOriginalSourceSurvivesInputAndMetadataMutation(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: original\ndescription: test\nruns: {using: node24, main: index.js}\n")
 	want := string(content)
 	metadata, err := Parse("action.yml", content)

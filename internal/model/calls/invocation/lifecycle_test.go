@@ -64,12 +64,14 @@ func expand(t *testing.T, b *invocation.Builder, ticket invocation.Ticket, targe
 }
 
 func TestInterruptionStopsAdmission(t *testing.T) {
+	t.Parallel()
 	for _, atEntry := range []bool{true, false} {
 		name := "call"
 		if atEntry {
 			name = "entry"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			if atEntry {
 				if err := b.InterruptEntry(invocation.ReasonCanceled, "canceled"); err != nil {
@@ -93,12 +95,14 @@ func TestInterruptionStopsAdmission(t *testing.T) {
 }
 
 func TestTraversalRejectsUnfinishedSibling(t *testing.T) {
+	t.Parallel()
 	for _, expanded := range []bool{false, true} {
 		name := "pending"
 		if expanded {
 			name = "expanded"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			first := begin(t, b, b.RootID(), reference("entry", "first"))
 			if expanded {
@@ -112,12 +116,14 @@ func TestTraversalRejectsUnfinishedSibling(t *testing.T) {
 }
 
 func TestInterruptionBetweenTopLevelCalls(t *testing.T) {
+	t.Parallel()
 	for _, exhausted := range []bool{false, true} {
 		name := "completed-call"
 		if exhausted {
 			name = "exhausted-budget"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 10, MaxCalls: 1, MaxScripts: invocation.DefaultMaxScripts})
 			first := begin(t, b, b.RootID(), reference("entry", "first"))
 			opaque(t, b, first)
@@ -145,6 +151,7 @@ func TestInterruptionBetweenTopLevelCalls(t *testing.T) {
 }
 
 func TestUnwindingDoesNotDuplicateInterruption(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	outer := begin(t, b, b.RootID(), reference("entry", "outer"))
 	expand(t, b, outer, reference("outer", "document"))

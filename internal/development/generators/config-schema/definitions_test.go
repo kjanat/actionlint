@@ -13,6 +13,7 @@ import (
 )
 
 func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {
+	t.Parallel()
 	var root map[string]any
 	if err := json.Unmarshal(generatedSchema(t), &root); err != nil {
 		t.Fatal(err)

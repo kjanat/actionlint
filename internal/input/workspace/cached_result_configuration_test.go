@@ -12,6 +12,7 @@ import (
 )
 
 func TestCheckResultRetainsCachedConfiguration(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	config := filepath.Join(dir, "actionlint.yaml")
 	workflow := filepath.Join(dir, "ci.yml")

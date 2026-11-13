@@ -9,6 +9,7 @@ import (
 )
 
 func TestRuleMatrixUnknownOrInvalidStrategyExpression(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"fromJSON(vars.STRATEGY)",
 		"fromJSON('{}')",
@@ -18,6 +19,7 @@ func TestRuleMatrixUnknownOrInvalidStrategyExpression(t *testing.T) {
 		`fromJSON('{"matrix":{"exclude":"linux"}}')`,
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:

@@ -32,6 +32,7 @@ func editorSymlink(tb testing.TB, target, alias string) {
 }
 
 func TestEditorRealConflictingBuffersPreserveCallerAndOtherEntry(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, directory := range []string{".git", "local", "alias"} {
 		if err := os.Mkdir(filepath.Join(root, directory), 0o755); err != nil {
@@ -85,6 +86,7 @@ func TestEditorRealConflictingBuffersPreserveCallerAndOtherEntry(t *testing.T) {
 }
 
 func TestEditorMissingOnDiskEntryAndExcludedDependencyUseBuffers(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatal(err)
@@ -111,6 +113,7 @@ func TestEditorMissingOnDiskEntryAndExcludedDependencyUseBuffers(t *testing.T) {
 }
 
 func TestEditorSymlinkDependencyAndClosingBufferUseCurrentCapture(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, directory := range []string{".git", "real"} {
 		if err := os.Mkdir(filepath.Join(root, directory), 0o755); err != nil {
@@ -142,6 +145,7 @@ func TestEditorSymlinkDependencyAndClosingBufferUseCurrentCapture(t *testing.T) 
 }
 
 func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, directory := range []string{".git", "invalid"} {
 		if err := os.Mkdir(filepath.Join(root, directory), 0o755); err != nil {
@@ -180,6 +184,7 @@ func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinp
 }
 
 func TestCancelledEditorAnalysisPublishesNoCapturedText(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	root := t.TempDir()

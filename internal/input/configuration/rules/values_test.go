@@ -8,6 +8,7 @@ import (
 )
 
 func TestValueSetsDriveValidationAndDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, level := range Levels() {
 		var decoded Level
 		if err := decodeTestConfig([]byte(level), &decoded); err != nil || decoded != level || !level.Valid() {
@@ -43,6 +44,7 @@ func TestValueSetsDriveValidationAndDiagnostics(t *testing.T) {
 }
 
 func TestValueSetsBelongToCaller(t *testing.T) {
+	t.Parallel()
 	levels := Levels()
 	firstLevel := levels[0]
 	levels[0] = "mutated"

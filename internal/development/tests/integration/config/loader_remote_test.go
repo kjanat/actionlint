@@ -10,6 +10,7 @@ import (
 )
 
 func TestRemoteConfigPaths(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, document, want string
 	}{
@@ -23,6 +24,7 @@ func TestRemoteConfigPaths(t *testing.T) {
 		{"local-actions", "local-actions: {./generated: ./source}", ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "actionlint.yaml")
 			remote := "https://example.test/base.yaml"
 			loaded, err := checking.ConfigurationRules().Read(path, func(name string) ([]byte, error) {

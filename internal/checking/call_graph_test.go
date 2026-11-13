@@ -30,6 +30,7 @@ func (collector *callGraphCollector) CheckDocument(_ context.Context, input chec
 }
 
 func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}, {uses: $/outer}]}}\n"
 	first := writeFixture(t, root, "one.yml", workflow)

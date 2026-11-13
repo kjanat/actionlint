@@ -7,6 +7,7 @@ import (
 )
 
 func TestWorkflowOutputReferencesUseCalledWorkflowDeclarations(t *testing.T) {
+	t.Parallel()
 	const source = `on:
   workflow_call:
     outputs:

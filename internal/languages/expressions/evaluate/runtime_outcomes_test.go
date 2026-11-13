@@ -9,6 +9,7 @@ import (
 )
 
 func TestRuntimeOutcomesThroughParentExpressions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		state exprvalues.EvaluationState
@@ -37,6 +38,7 @@ func TestRuntimeOutcomesThroughParentExpressions(t *testing.T) {
 		{"!format()", exprvalues.EvaluationNotAttempted, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
@@ -50,6 +52,7 @@ func TestRuntimeOutcomesThroughParentExpressions(t *testing.T) {
 }
 
 func TestRuntimeFailureStopsLaterArguments(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"fromJSON(null) == later",
 		"fromJSON(null)[later]",
@@ -57,6 +60,7 @@ func TestRuntimeFailureStopsLaterArguments(t *testing.T) {
 		"contains(fromJSON(null), later)",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")

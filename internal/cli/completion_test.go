@@ -35,6 +35,7 @@ func TestCompletionShellResolution(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.in, func(t *testing.T) {
+			t.Parallel()
 			have, ok := completionShellFromPath(tc.in)
 			if ok != tc.ok || have != tc.want {
 				t.Fatalf("completionShellFromPath(%q) = (%q, %v) but wanted (%q, %v)", tc.in, have, ok, tc.want, tc.ok)
@@ -73,6 +74,7 @@ func TestCompletionShellPathExt(t *testing.T) {
 }
 
 func TestCompletionShellDetection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what              string
 		shellVar          string
@@ -90,6 +92,7 @@ func TestCompletionShellDetection(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			have, ok := detectCompletionShell(tc.shellVar, tc.powerShellPresent)
 			if ok != tc.ok || have != tc.want {
 				t.Fatalf("detectCompletionShell(%q, %v) = (%q, %v) but wanted (%q, %v)", tc.shellVar, tc.powerShellPresent, have, ok, tc.want, tc.ok)

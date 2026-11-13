@@ -16,6 +16,7 @@ func parseActionOutline(path string, content []byte) (Action, error) {
 }
 
 func TestParseActionOutlineDeclarations(t *testing.T) {
+	t.Parallel()
 	const source = `name: Example
 description: Test action
 inputs:
@@ -79,6 +80,7 @@ runs:
 }
 
 func TestParseActionOutlineRuntimes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, runs string
 		want       ActionRuns
@@ -100,6 +102,7 @@ func TestParseActionOutlineRuntimes(t *testing.T) {
   steps: []`, NewCompositeRuns([]Step{})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			outline, err := parseActionOutline("action.yaml", []byte(`name: Test
 description: Test action
 runs:
@@ -126,6 +129,7 @@ runs:
 }
 
 func TestParseActionOutlinePartial(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source, status string
 		parseError           bool
@@ -138,6 +142,7 @@ runs: {using: node24, main: main.mjs}
 `, "partial", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			outline, err := parseActionOutline("action.yml", []byte(tc.source))
 			if (err != nil) != tc.parseError || outline.ParseStatus() != tc.status {
 				t.Fatalf("status=%q error=%v; wanted status=%q parse error=%t", outline.ParseStatus(), err, tc.status, tc.parseError)
@@ -158,6 +163,7 @@ runs: {using: node24, main: main.mjs}
 }
 
 func TestActionOutlineParseStatusDoesNotValidate(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 	}{
@@ -175,6 +181,7 @@ func TestActionOutlineParseStatusDoesNotValidate(t *testing.T) {
 		{"conflicting step", "runs: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			outline, err := parseActionOutline("action.yml", []byte(tc.source))
 			if err != nil || outline.ParseStatus() != "complete" {
 				t.Fatalf("decoded declarations treated as validation failure: status=%q error=%v", outline.ParseStatus(), err)
@@ -195,6 +202,7 @@ func TestActionOutlineParseStatusDoesNotValidate(t *testing.T) {
 }
 
 func TestParseActionOutlineRequiredBooleans(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		literal string
 		want    bool
@@ -202,6 +210,7 @@ func TestParseActionOutlineRequiredBooleans(t *testing.T) {
 		{"true", true}, {"false", false}, {"yes", true}, {"No", false}, {"on", true}, {"OFF", false},
 	} {
 		t.Run(tc.literal, func(t *testing.T) {
+			t.Parallel()
 			source := `name: Test
 description: Test action
 inputs:
@@ -229,6 +238,7 @@ runs: {using: node24, main: main.mjs}
 }
 
 func TestStandaloneMetadataConstruction(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{"null\n", "name: standalone\nruns: {using: composite, steps: []}\n"} {
 		outline, err := parseActionOutline("action.yml", []byte(content))
 		if err != nil || outline.DocumentPath() != "action.yml" {

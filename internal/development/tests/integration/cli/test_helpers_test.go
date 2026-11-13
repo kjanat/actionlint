@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -28,16 +29,49 @@ func gitRepository(t *testing.T, dir string) {
 	}
 }
 
-func commandTestRepo(t *testing.T) {
+func commandTestRepo(t *testing.T) string {
 	t.Helper()
-	t.Chdir(t.TempDir())
-	gitRepository(t, ".")
-	if err := os.MkdirAll(".github/workflows", 0o700); err != nil {
+	dir := t.TempDir()
+	gitRepository(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, ".github", "workflows"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(".github/workflows/ci.yml", []byte(commandBadWorkflow), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".github", "workflows", "ci.yml"), []byte(commandBadWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	return dir
+}
+
+func workingDirectoryPath(t *testing.T, path string) string {
+	t.Helper()
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relative, err := filepath.Rel(directory, path); err == nil {
+		return relative
+	}
+	return path
+}
+
+func physicalWorkingDirectoryPath(t *testing.T, path string) string {
+	t.Helper()
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalDirectory, err := filepath.EvalSymlinks(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relative, err := filepath.Rel(physicalDirectory, physicalPath); err == nil {
+		return relative
+	}
+	return filepath.ToSlash(physicalPath)
 }
 
 const commandGoodWorkflow = `on: push

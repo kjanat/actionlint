@@ -12,6 +12,7 @@ import (
 )
 
 func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "ci.yml")
 	if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {

@@ -2,11 +2,13 @@ package cli_test
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestCommandSuspiciousCoercionSelection(t *testing.T) {
+	t.Parallel()
 	const workflow = `on: push
 jobs:
   test:
@@ -26,15 +28,18 @@ permissions: {}
 		{"error", "lint: {rules: {preset: none, suspicious: {coercion: error}}}", "error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			commandTestRepo(t)
-			if err := os.WriteFile(".github/workflows/ci.yml", []byte(workflow), 0o600); err != nil {
+			t.Parallel()
+			dir := commandTestRepo(t)
+			path := filepath.Join(dir, ".github", "workflows", "ci.yml")
+			if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(".github/actionlint.yaml", []byte(tc.config), 0o600); err != nil {
+			config := filepath.Join(dir, ".github", "actionlint.yaml")
+			if err := os.WriteFile(config, []byte(tc.config), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			for _, prefix := range [][]string{nil, {"check"}} {
-				got := testRunCommand("", append(append([]string{}, prefix...), "--config=.github/actionlint.yaml", "--output=pretty", ".github/workflows/ci.yml")...)
+				got := testRunCommand("", append(append([]string{}, prefix...), "--config="+config, "--output=pretty", path)...)
 				if tc.severity == "" {
 					if got != (commandTranscript{}) {
 						t.Fatalf("%v: disabled coercion warning produced output: %+v", prefix, got)

@@ -7,6 +7,7 @@ import (
 )
 
 func TestGeneralInlineSuppression(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ body, config string }{
 		{"    if: true # actionlint:ignore if-cond -- intentionally always runs\n", ""},
 		{`    # actionlint:ignore-next-line expression-reference -- provided by invocation

@@ -14,11 +14,11 @@ import (
 )
 
 func TestShellcheckInlineConfigAnalysis(t *testing.T) {
+	t.Parallel()
 	command, err := exec.LookPath("shellcheck")
 	if err != nil {
 		t.Skip("ShellCheck required")
 	}
-	t.Setenv("SHELLCHECK_OPTS", "")
 	for _, tc := range []struct {
 		name, settings, script, finding string
 	}{
@@ -34,8 +34,8 @@ func TestShellcheckInlineConfigAnalysis(t *testing.T) {
 		{"external sources disabled", `config: {source-path: ["lib's directory"], external-sources: false}`, ". config.sh\necho $VALUE", "SC2086"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
-			t.Chdir(root)
 			for _, dir := range []string{".git", ".github/workflows", "lib's directory"} {
 				if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
 					t.Fatal(err)

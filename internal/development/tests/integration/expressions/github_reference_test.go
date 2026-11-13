@@ -10,6 +10,7 @@ import (
 // Whole-workflow examples from GitHub's expression reference, checked 2026-11-04:
 // https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#fromjson
 func TestGitHubReferenceWorkflows(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source string }{
 		{"literals", `on: push
 env:
@@ -108,6 +109,7 @@ permissions: {}
 `},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, finding := range testutil.WorkflowDiagnostics(t, tc.source, "") {
 				// The published matrix example interpolates runtime values into a
 				// shell command. That security finding is separate from expression validity.
@@ -121,8 +123,10 @@ permissions: {}
 }
 
 func TestGitHubReferenceMatrixMembers(t *testing.T) {
+	t.Parallel()
 	for _, member := range []string{"project", "config", "missing"} {
 		t.Run(member, func(t *testing.T) {
+			t.Parallel()
 			workflow := `on: push
 jobs:
   build:

@@ -20,6 +20,7 @@ import (
 )
 
 func TestStandaloneActionVirtualSourceThroughSymlink(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	physical := filepath.Join(root, "real")
 	if err := os.Mkdir(physical, 0700); err != nil {
@@ -45,6 +46,7 @@ func TestStandaloneActionVirtualSourceThroughSymlink(t *testing.T) {
 }
 
 func TestStandaloneActionMetadata(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source, message string
 		line                  int
@@ -67,6 +69,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 		{"expression", strings.Replace(testutil.CompositeAction, "echo ok", "echo ${{ secrets.TOKEN }}", 1), "secrets", 6},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "main.js", "")
 			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "action.yml", Content: []byte(tc.source)}})
@@ -92,6 +95,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 }
 
 func TestStandaloneActionMixedInputs(t *testing.T) {
+	t.Parallel()
 	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{
 		{Path: "ci.yml", Content: []byte(testutil.GoodWorkflow)},
 		{Path: "a/action.yml", Content: []byte(testutil.CompositeAction)},
@@ -112,6 +116,7 @@ func TestStandaloneActionMixedInputs(t *testing.T) {
 }
 
 func TestStandaloneActionWorkflowFilename(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, cwd := range []string{".", ".github", ".github/workflows"} {
 		for _, name := range []string{"action.yml", "action.yaml"} {
@@ -132,6 +137,7 @@ func TestStandaloneActionWorkflowFilename(t *testing.T) {
 }
 
 func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	manifest := strings.Replace(testutil.CompositeAction, "echo ok", "./bad.sh", 1)
 	fixturefiles.Write(t, root, "action.yml", manifest)
@@ -153,6 +159,7 @@ func TestStandaloneActionExecutableBitRequiresCaller(t *testing.T) {
 }
 
 func TestStandaloneActionNestedAndReferenced(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	outer := strings.Replace(testutil.CompositeAction, "    - run: echo ok\n      shell: bash", "    - uses: ./inner", 1)
 	inner := strings.Replace(testutil.CompositeAction, "echo ok", "echo '::set-output name=x::1'", 1)
@@ -175,6 +182,7 @@ func TestStandaloneActionNestedAndReferenced(t *testing.T) {
 }
 
 func TestStandaloneActionSuppression(t *testing.T) {
+	t.Parallel()
 	bad := strings.Replace(testutil.CompositeAction, "echo ok", "echo ${{ secrets.TOKEN }}", 1)
 	for _, tc := range []struct{ name, source, config string }{
 		{"inline", strings.Replace(bad, "    - run:", "    # actionlint:ignore-next-line action\n    - run:", 1), ""},
@@ -184,6 +192,7 @@ func TestStandaloneActionSuppression(t *testing.T) {
 		{"override", bad, "overrides: [{includes: [action.yml], lint: {rules: {correctness: {action: off}}}}]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
@@ -197,8 +206,10 @@ func TestStandaloneActionSuppression(t *testing.T) {
 }
 
 func TestStandaloneActionScriptTools(t *testing.T) {
+	t.Parallel()
 	for _, tool := range []string{"shellcheck", "ruff"} {
 		t.Run(tool, func(t *testing.T) {
+			t.Parallel()
 			executable, err := execabs.LookPath(tool)
 			if err != nil {
 				t.Skipf("%s unavailable: %v", tool, err)
@@ -228,12 +239,14 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 }
 
 func TestMixedActionShellcheckLevels(t *testing.T) {
+	t.Parallel()
 	executable, err := execabs.LookPath("shellcheck")
 	if err != nil {
 		t.Skipf("ShellCheck unavailable: %v", err)
 	}
 	for _, level := range []string{"warn", "info", "off"} {
 		t.Run(level, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("overrides: [{includes: [inner/action.yml], lint: {rules: {external: {shellcheck: " + level + "}}}}]"))
 			if err != nil {

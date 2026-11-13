@@ -9,6 +9,7 @@ import (
 )
 
 func TestIgnoreSelectors(t *testing.T) {
+	t.Parallel()
 	rules, err := repoconfig.NewRuleSet([]rule.Declaration{{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true, Aliases: []rule.Alias{{Name: "old-shellcheck"}}}})
 	if err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ func TestIgnoreSelectors(t *testing.T) {
 		{"shell.*", "shellcheck", "SC2086", false},
 	} {
 		t.Run(tc.selector+"/"+tc.name+"/"+tc.code, func(t *testing.T) {
+			t.Parallel()
 			selectors, err := CompileIgnoreSelectors([]string{tc.selector, tc.selector})
 			if err != nil {
 				t.Fatal(err)
@@ -46,6 +48,7 @@ func TestIgnoreSelectors(t *testing.T) {
 }
 
 func TestInvalidIgnoreSelectors(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{"", " ", "a b", "a,b", "/code", "rule/"} {
 		if _, err := CompileIgnoreSelectors([]string{value}); err == nil {
 			t.Errorf("accepted invalid selector %q", value)

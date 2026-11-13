@@ -7,6 +7,7 @@ import (
 )
 
 func TestUNCFileURI(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "windows" {
 		if _, err := filePath("file://server/share/workflow.yml"); err == nil {
 			t.Fatal("accepted a remote file authority on a non-Windows host")
@@ -18,6 +19,7 @@ func TestUNCFileURI(t *testing.T) {
 		{"file://server/share/a%20b/%23workflow.yml", `\\server\share\a b\#workflow.yml`},
 	} {
 		t.Run(tc.uri, func(t *testing.T) {
+			t.Parallel()
 			got, err := filePath(tc.uri)
 			if err != nil || got != tc.path {
 				t.Fatalf("filePath(%q)=%q, %v; want %q", tc.uri, got, err, tc.path)
@@ -30,6 +32,7 @@ func TestUNCFileURI(t *testing.T) {
 }
 
 func TestFileURILocalPathsAndInvalidAuthorities(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	uri := FileURI(path)
 	if got, err := filePath(uri); err != nil || got != path {

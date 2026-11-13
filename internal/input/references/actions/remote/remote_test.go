@@ -64,12 +64,14 @@ func manifestWithID(t *testing.T, id repositoryid.ID, repo, commit, directory, r
 const source = "name: test\ndescription: test\nruns: {using: composite, steps: []}\n"
 
 func TestRejectForeignAndUnpinnedMetadata(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct{ name, repo, path, ref string }{
 		{"foreign repository", "other/action", "", "v1"},
 		{"foreign path", "example/action", "sub", "v1"},
 		{"different request spelling", "example/action", "", "alias"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			value := manifest(t, test.repo, strings.Repeat("a", 40), test.path, "v1", source)
 			service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
 				return value, nil
@@ -82,6 +84,7 @@ func TestRejectForeignAndUnpinnedMetadata(t *testing.T) {
 }
 
 func TestUnavailableMetadataAndCancellation(t *testing.T) {
+	t.Parallel()
 	for _, failure := range []error{errors.New("network unavailable"), context.Canceled, context.DeadlineExceeded} {
 		service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
 			return actions.UnavailableManifest(availability.Failed()), failure
@@ -95,6 +98,7 @@ func TestUnavailableMetadataAndCancellation(t *testing.T) {
 }
 
 func TestProviderFailureCannotHideAnalysisCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
@@ -107,6 +111,7 @@ func TestProviderFailureCannotHideAnalysisCancellation(t *testing.T) {
 }
 
 func TestImmutableIdentityCannotChangeContent(t *testing.T) {
+	t.Parallel()
 	for _, initial := range []string{source, "name: ["} {
 		calls := 0
 		service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
@@ -127,6 +132,7 @@ func TestImmutableIdentityCannotChangeContent(t *testing.T) {
 }
 
 func TestInvalidReferencesNeverReachProvider(t *testing.T) {
+	t.Parallel()
 	called := false
 	service := remote.New(provider(func(context.Context, actions.Reference) (actions.Manifest, error) {
 		called = true
@@ -143,6 +149,7 @@ func TestInvalidReferencesNeverReachProvider(t *testing.T) {
 }
 
 func TestInvalidMetadataPreservesDiagnosticCodes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, code string }{
 		{"name: [", "metadata-parse"},
 		{strings.Replace(source, "name: test", "name: &name test", 1), "yaml-anchor"},
@@ -162,6 +169,7 @@ func TestInvalidMetadataPreservesDiagnosticCodes(t *testing.T) {
 }
 
 func TestRepositoryIDsAreComparedOnlyWhenBothAreKnown(t *testing.T) {
+	t.Parallel()
 	commit := strings.Repeat("a", 40)
 	for _, test := range []struct {
 		name     string
@@ -178,6 +186,7 @@ func TestRepositoryIDsAreComparedOnlyWhenBothAreKnown(t *testing.T) {
 		{name: "known ID under another name", first: knownRepositoryID(t, 42), second: knownRepositoryID(t, 42), repo: "example/renamed", rejected: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
 				if reference.Ref() == "v1" {
 					return manifestWithID(t, test.first, "example/action", commit, "", "v1", source), nil

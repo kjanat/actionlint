@@ -8,8 +8,10 @@ import (
 )
 
 func TestInterruptPreservesOwnedContext(t *testing.T) {
+	t.Parallel()
 	for _, state := range []string{"entry", "pending", "expanded"} {
 		t.Run(state, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			want := b.RootContext()
 			target := reference("child", "document")
@@ -57,6 +59,7 @@ func TestInterruptPreservesOwnedContext(t *testing.T) {
 }
 
 func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
+	t.Parallel()
 	first := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	second := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	if first.RootID() != second.RootID() || first.Owns(second.RootContext()) || first.Owns(invocation.Context{}) {
@@ -117,6 +120,7 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 }
 
 func TestUnadmittedTicketsDoNotSupplyContexts(t *testing.T) {
+	t.Parallel()
 	depth := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 1, MaxCalls: 5, MaxScripts: 5})
 	first := begin(t, depth, depth.RootID(), reference("entry", "first"))
 	expand(t, depth, first, reference("child", "document"))
@@ -156,8 +160,10 @@ func TestUnadmittedTicketsDoNotSupplyContexts(t *testing.T) {
 }
 
 func TestCallSiteMustBelongToParentRevision(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"document", "revision"} {
 		t.Run(field, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			site := reference("entry", "call")
 			if field == "document" {
@@ -173,6 +179,7 @@ func TestCallSiteMustBelongToParentRevision(t *testing.T) {
 }
 
 func TestFactsRejectContradictoryAndMalformedValues(t *testing.T) {
+	t.Parallel()
 	for name, facts := range map[string]invocation.Facts{
 		"invalid condition":    {},
 		"absent nonempty uses": {Uses: "./child", Condition: invocation.ConditionEnabled},
@@ -181,6 +188,7 @@ func TestFactsRejectContradictoryAndMalformedValues(t *testing.T) {
 		"partial position":     {Step: invocation.Position{Line: 1}, Condition: invocation.ConditionEnabled},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			if _, err := b.Begin(b.RootContext(), reference("entry", "call"), facts); !errors.Is(err, invocation.ErrInvalidFacts) {
 				t.Fatalf("invalid facts accepted: %v", err)

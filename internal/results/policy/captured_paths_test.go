@@ -11,6 +11,7 @@ import (
 )
 
 func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	checkout := filepath.Join(directory, "checkout-alias")
 	physical := filepath.Join(directory, "captured-checkout")

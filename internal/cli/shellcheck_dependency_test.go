@@ -13,6 +13,7 @@ import (
 )
 
 func TestShellcheckDependencyProcess(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_SOURCE_HELPER") != "1" {
 		return
 	}
@@ -29,6 +30,7 @@ func TestShellcheckDependencyProcess(t *testing.T) {
 }
 
 func TestReportCannotOverwriteCleanShellcheckDependency(t *testing.T) {
+	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
 	file := filepath.Join(outside, "clean.sh")
 	const original = "VALUE=clean\n"

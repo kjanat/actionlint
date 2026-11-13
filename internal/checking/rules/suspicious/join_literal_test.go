@@ -10,6 +10,7 @@ import (
 )
 
 func TestJoinLiteral(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source string
 		want   int
@@ -25,6 +26,7 @@ func TestJoinLiteral(t *testing.T) {
 		{"join('a', '/', 'extra')", 0},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)

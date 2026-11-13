@@ -85,6 +85,7 @@ func testCheckCachedFlag(t *testing.T, want, have bool) {
 // Normal cases
 
 func TestLocalActionsFindMetadataOK(t *testing.T) {
+	t.Parallel()
 	testdir := "testdata"
 	root := testdir
 	c := newCapturedActionCache(t, root, nil)
@@ -185,6 +186,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
 			// read metadata repeatedly (should be cached)
 			for i := range 3 {
 				have, cached, err := c.FindMetadata(tc.spec)
@@ -203,6 +205,7 @@ func TestLocalActionsFindMetadataOK(t *testing.T) {
 }
 
 func TestLocalActionsFindConcurrently(t *testing.T) {
+	t.Parallel()
 	n := 10
 	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
@@ -245,6 +248,7 @@ func TestLocalActionsFindConcurrently(t *testing.T) {
 }
 
 func TestLocalActionsParsingSkipped(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		what string
 		root string
@@ -264,6 +268,7 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			c := newCapturedActionCache(t, tc.root, nil)
 			m, cached, err := c.FindMetadata(tc.spec)
 			if err != nil {
@@ -278,6 +283,7 @@ func TestLocalActionsParsingSkipped(t *testing.T) {
 }
 
 func TestLocalActionsMissingMetadata(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, "empty"), 0750); err != nil {
 		t.Fatal(err)
@@ -297,6 +303,7 @@ func TestLocalActionsMissingMetadata(t *testing.T) {
 }
 
 func TestLocalActionsCaseScopedCache(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	file := writeFixture(t, root, "local/Nested/action.yml", `name: local
 description: test
@@ -325,6 +332,7 @@ runs: {using: node24, main: index.js}
 }
 
 func TestLocalActionsCaseCollision(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "local/action.yml", "name: lower\n")
 	if _, err := os.Stat(filepath.Join(root, "LOCAL")); err == nil {
@@ -342,6 +350,7 @@ func TestLocalActionsCaseCollision(t *testing.T) {
 }
 
 func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
+	t.Parallel()
 	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 	for _, spec := range []string{"actions/checkout@v2", "docker://example.com/foo/bar"} {
@@ -357,6 +366,7 @@ func TestLocalActionsIgnoreRemoteActions(t *testing.T) {
 }
 
 func TestLocalActionsLogCacheHit(t *testing.T) {
+	t.Parallel()
 	dbg := &bytes.Buffer{}
 	testdir := "testdata"
 	root := testdir
@@ -385,6 +395,7 @@ func TestLocalActionsLogCacheHit(t *testing.T) {
 }
 
 func TestLocalActionsNullCache(t *testing.T) {
+	t.Parallel()
 	c := newCapturedActionCache(t, "", io.Discard)
 	m, cached, err := c.FindMetadata("./path/to/action.yaml")
 	if m != nil {
@@ -399,6 +410,7 @@ func TestLocalActionsNullCache(t *testing.T) {
 // Error cases
 
 func TestLocalActionsBrokenMetadata(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		spec string
 		want string
@@ -414,6 +426,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
 			m, cached, err := c.FindMetadata(tc.spec)
 			if err == nil {
 				t.Fatal("error was not returned", m)
@@ -438,6 +451,7 @@ func TestLocalActionsBrokenMetadata(t *testing.T) {
 }
 
 func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
+	t.Parallel()
 	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 
@@ -455,6 +469,7 @@ func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
 		},
 	} {
 		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
 			m, cached, err := c.FindMetadata(tc.spec)
 			if err == nil {
 				t.Fatal("error was not returned", m)
@@ -469,6 +484,7 @@ func TestLocalActionsDuplicateInputsOutputs(t *testing.T) {
 }
 
 func TestLocalActionsConcurrentFailures(t *testing.T) {
+	t.Parallel()
 	n := 10
 	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
@@ -504,6 +520,7 @@ func TestLocalActionsConcurrentFailures(t *testing.T) {
 }
 
 func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
+	t.Parallel()
 	root := "testdata"
 	c := newCapturedActionCache(t, root, nil)
 
@@ -602,6 +619,7 @@ func TestLocalActionsConcurrentMultipleMetadataAndFailures(t *testing.T) {
 }
 
 func TestLocalActionsCacheFactory(t *testing.T) {
+	t.Parallel()
 	f := NewFactory(io.Discard)
 	p1 := "path/to/project1"
 	c1 := f.GetCache(t.Context(), p1)

@@ -43,6 +43,7 @@ func (scope branchScope) NarrowContext(guard exprsyntax.Node, truth bool, lookup
 }
 
 func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
+	t.Parallel()
 	original := exprtypes.NewEmptyStrictObjectType()
 	scope := branchScope{suppliedScope{
 		variables: map[string]exprtypes.Type{"flag": exprtypes.BoolType(), "subject": original.Type()},
@@ -78,6 +79,7 @@ func (scope suppliedScope) FunctionOverloads() map[string][]*exprfunctions.FuncS
 }
 
 func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
+	t.Parallel()
 	scope := suppliedScope{
 		variables:    map[string]exprtypes.Type{"counter": exprtypes.NumberType()},
 		names:        []string{"counter"},
@@ -120,6 +122,7 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 }
 
 func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
+	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"target": exprtypes.NumberType()}).Type())
 	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.if"))
@@ -138,6 +141,7 @@ func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 }
 
 func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
+	t.Parallel()
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextType("CuStOm", exprtypes.NumberType())
 	if value, found := checker.ContextType("CUSTOM"); !found || value.Kind() != exprtypes.KindNumber {
@@ -158,6 +162,7 @@ func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
 }
 
 func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, key, expression, condition string
 		valid                            bool
@@ -168,6 +173,7 @@ func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
 		{"step filesystem function", "jobs.<job_id>.steps.if", "hashFiles('**') != ''", "    steps:\n      - if: hashFiles('**') != ''\n        run: echo ok", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			checker := NewChecker(contextspec.WorkflowExpressionScope(tc.key), nil)
 			expression := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expression == nil {
@@ -184,6 +190,7 @@ func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
 }
 
 func TestAvailableContextsDetachSnapshot(t *testing.T) {
+	t.Parallel()
 	checker := NewChecker(suppliedScope{variables: map[string]exprtypes.Type{"subject": exprtypes.NewEmptyObjectType().Type()}, names: []string{"subject"}}, nil)
 	contexts := checker.AvailableContexts()
 	contexts["subject"] = exprtypes.StringType()

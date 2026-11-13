@@ -7,6 +7,7 @@ import (
 )
 
 func TestApplicabilityWireContract(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		wire string
 		want Applicability
@@ -50,6 +51,7 @@ func TestApplicabilityWireContract(t *testing.T) {
 }
 
 func TestInvalidApplicabilityCannotSerialize(t *testing.T) {
+	t.Parallel()
 	if _, err := json.Marshal(Fix{Applicability: 255}); err == nil {
 		t.Fatal("serialized an invalid applicability")
 	}

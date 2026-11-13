@@ -12,6 +12,7 @@ import (
 )
 
 func TestActionInputMappingInsertions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"dynamic", "${{ fromJSON(vars.EXTRA) }}", ""},
 		{"object", `${{ fromJSON('{"token":"value"}') }}`, ""},
@@ -27,6 +28,7 @@ func TestActionInputMappingInsertions(t *testing.T) {
 		{"invalid literal", "[]", "mapping node is expected"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -49,6 +51,7 @@ jobs:
 }
 
 func TestMatrixMappingInsertions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
 		count        int
@@ -76,6 +79,7 @@ func TestMatrixMappingInsertions(t *testing.T) {
 		{"undefined source", `base: [one], '${{ insert }}': "${{ missing }}"`, 0, `undefined variable "missing"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -113,6 +117,7 @@ jobs:
 }
 
 func TestCaseMappingSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expr, want string }{
 		{`case(true, false, 'fallback')`, ""},
 		{`case(true, false, fromJSON('bad JSON'))`, ""},
@@ -125,6 +130,7 @@ func TestCaseMappingSelection(t *testing.T) {
 		{`case(true, false, unknownFunction())`, "undefined function"},
 	} {
 		t.Run(tc.expr, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env:\n          VALUE: ${{ toJSON(%s) }}\npermissions: {}\n", tc.expr)
 			errs := lintCredentialsExpressionTest(t, source)
 			if tc.want == "" {
@@ -139,6 +145,7 @@ func TestCaseMappingSelection(t *testing.T) {
 }
 
 func TestMappingInsertionPreservesDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source, want string }{
 		{"inserted runner labels", `on: push
 jobs:
@@ -188,6 +195,7 @@ permissions: {}
 `, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			errs := lintMatrixWithKnownRunnerLabels(t, tc.source)
 			if tc.want == "" {
 				if len(errs) != 0 {
@@ -201,6 +209,7 @@ permissions: {}
 }
 
 func TestUnsupportedStructuralTemplatesRemainRejected(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"on: push\njobs: ${{ fromJSON('{}') }}\n",
 		"on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: ${{ fromJSON('[{\"run\":\"echo ok\"}]') }}\npermissions: {}\n",
@@ -213,6 +222,7 @@ func TestUnsupportedStructuralTemplatesRemainRejected(t *testing.T) {
 }
 
 func TestRepeatedMappingInsertions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, section, first, second string }{
 		{"environment", "env", "{FIRST: one}", "{SECOND: two}"},
 		{"inputs", "with", "{first: one}", "{second: two}"},
@@ -220,6 +230,7 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 	} {
 		for _, nested := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/nested=%v", tc.name, nested), func(t *testing.T) {
+				t.Parallel()
 				contents := "{'${{ insert }}': " + tc.first + ", '${{ insert }}': " + tc.second + "}"
 				if nested {
 					contents = "{'${{ insert }}': " + contents + "}"
@@ -277,6 +288,7 @@ func insertionSectionWorkflow(section, mapping string) string {
 }
 
 func TestInsertedMappingKeyCollisions(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"env", "with", "matrix"} {
 		for _, mapping := range []string{
 			`{key: [one], '${{ insert }}': {KEY: [two]}}`,
@@ -286,6 +298,7 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 			`{key: [one], '${{ insert }}': "${{ fromJSON('{\"KEY\":[\"two\"]}') }}"}`,
 		} {
 			t.Run(section+mapping, func(t *testing.T) {
+				t.Parallel()
 				_, errs := workflowparser.Parse([]byte(insertionSectionWorkflow(section, mapping)))
 				found := false
 				for _, err := range errs {
@@ -308,9 +321,11 @@ func TestInsertedMappingKeyCollisions(t *testing.T) {
 }
 
 func TestDockerInsertedReservedInputs(t *testing.T) {
+	t.Parallel()
 	for _, nested := range []bool{false, true} {
 		for _, entrypoint := range []string{"bash", ""} {
 			t.Run(fmt.Sprintf("nested=%v/entrypoint=%q", nested, entrypoint), func(t *testing.T) {
+				t.Parallel()
 				mapping := "{entrypoint: '" + entrypoint + "', args: hello}"
 				if nested {
 					mapping = "{'${{ insert }}': " + mapping + "}"

@@ -11,6 +11,7 @@ import (
 )
 
 func TestQueuedCallKeepsExecutionBudget(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{path: "queued.wasm", limits: Limits{Timeout: time.Millisecond}, gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)
@@ -33,6 +34,7 @@ func TestQueuedCallKeepsExecutionBudget(t *testing.T) {
 }
 
 func TestQueuedCallHonorsCallerCancellation(t *testing.T) {
+	t.Parallel()
 	p := &Plugin{limits: Limits{Timeout: time.Second}, gate: semaphore.NewWeighted(1)}
 	if err := p.gate.Acquire(t.Context(), 1); err != nil {
 		t.Fatal(err)

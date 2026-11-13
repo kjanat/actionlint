@@ -13,6 +13,7 @@ import (
 )
 
 func TestRepositoryRuffCommandHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_REPO_RUFF_HELPER") != "1" {
 		return
 	}

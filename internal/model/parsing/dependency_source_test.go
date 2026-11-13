@@ -9,6 +9,7 @@ import (
 )
 
 func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
+	t.Parallel()
 	for _, action := range []bool{false, true} {
 		language := "workflow"
 		indent := 6
@@ -34,6 +35,7 @@ func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
 			{"scalar alias", `&shared "owner/action@v1"`, 6, 34, false, true},
 		} {
 			t.Run(language+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				content := prefix + strings.Repeat(" ", indent) + "- uses: " + tc.scalar + "\n"
 				if tc.block {
 					content += strings.Repeat(" ", indent+4) + "owner/action@v1\n"
@@ -85,6 +87,7 @@ func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
 }
 
 func TestReusableAndParallelDependencySpans(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  caller:\n    uses: './.github/workflows/shared.yml'\n  steps:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - uses: \"owner/action@v1\"\n")
 	document := Workflow(content)
 	if len(document.SyntaxErrors) != 0 {
@@ -108,6 +111,7 @@ func TestReusableAndParallelDependencySpans(t *testing.T) {
 }
 
 func TestMappingAliasDependencySpans(t *testing.T) {
+	t.Parallel()
 	for _, action := range []bool{false, true} {
 		name := "workflow"
 		indent := 6
@@ -119,6 +123,7 @@ func TestMappingAliasDependencySpans(t *testing.T) {
 			address = "runs.steps"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			content := []byte(prefix + strings.Repeat(" ", indent) + "- &step\n" + strings.Repeat(" ", indent+2) + "uses: owner/action@v1\n" + strings.Repeat(" ", indent) + "- *step\n")
 			document := Workflow(content)
 			if action {
@@ -152,6 +157,7 @@ func TestMappingAliasDependencySpans(t *testing.T) {
 }
 
 func TestFoldedReusableDependencyPhysicalSpan(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  caller:\n    uses: ${{ './.github/workflows/shared.yml' }}\n")
 	document := Workflow(content)
 	if len(document.SyntaxErrors) != 0 {
@@ -173,6 +179,7 @@ func TestFoldedReusableDependencyPhysicalSpan(t *testing.T) {
 }
 
 func TestAliasedParallelDependencySpans(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &batch\n        parallel:\n          - uses: owner/action@v1\n      - *batch\n")
 	document := Workflow(content)
 	if len(document.SyntaxErrors) != 0 {

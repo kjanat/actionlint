@@ -7,6 +7,7 @@ import (
 )
 
 func TestTypeWithFallbackSeparatesValuesFromEvaluationState(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		item Value
@@ -21,6 +22,7 @@ func TestTypeWithFallbackSeparatesValuesFromEvaluationState(t *testing.T) {
 		{"missing", Value{}, exprtypes.KindNumber},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			state, known := tc.item.State(), tc.item.Known()
 			if ty := tc.item.TypeWithFallback(exprtypes.NumberType()); ty.Kind() != tc.want {
 				t.Fatalf("type=%v, want kind %v", ty, tc.want)
@@ -33,6 +35,7 @@ func TestTypeWithFallbackSeparatesValuesFromEvaluationState(t *testing.T) {
 }
 
 func TestTypeWithFallbackUsesOnlyCorrespondingUnknownParts(t *testing.T) {
+	t.Parallel()
 	unknown := Template("${{ inputs.value }}", Origin{})
 	item := Map(Origin{},
 		Prop{Name: "known", Value: FromJSON("text", Origin{})},

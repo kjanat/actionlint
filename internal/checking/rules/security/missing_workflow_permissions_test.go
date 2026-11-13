@@ -11,6 +11,7 @@ import (
 )
 
 func TestMissingPermissions(t *testing.T) {
+	t.Parallel()
 	if security.MissingPermissionsDeclaration().DefaultLevel != "error" || !security.MissingPermissionsDeclaration().Recommended {
 		t.Fatal("missing permissions must be an error by default")
 	}
@@ -43,6 +44,7 @@ func TestMissingPermissions(t *testing.T) {
 		{"no triggers", "on: {}\n", "", "  build:\n" + local, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := tc.trigger + tc.permissions + "jobs:\n" + tc.jobs
 			ast, errs := workflowparser.Parse([]byte(source))
 			if len(errs) != 0 {

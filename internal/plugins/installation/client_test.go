@@ -28,6 +28,7 @@ func registryClient(t *testing.T) *plugininstall.Client {
 }
 
 func TestRegistrySelection(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	r := fixtureregistry.NewPluginRegistry(t)
 	for _, tag := range []string{"v1.9.0", "v1.10.0", "v2.0.0-rc.1", "nightly"} {
 		r.Add(t, tag, emptyComponent)
@@ -64,6 +65,7 @@ func TestRegistrySelection(t *testing.T) {
 }
 
 func TestRegistryRejectsMalformedResponses(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, tc := range []struct {
 		name, before, after string
 		index               bool
@@ -82,6 +84,7 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 		{"unsupported schema", `"schema_version":1`, `"schema_version":2`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			r := fixtureregistry.NewPluginRegistry(t)
 			r.Add(t, "v1.0.0", emptyComponent)
 			url := r.RecordURL("v1.0.0")
@@ -97,6 +100,7 @@ func TestRegistryRejectsMalformedResponses(t *testing.T) {
 }
 
 func TestRegistryLegacyAndUnknownContract(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
 	url := r.RecordURL("v1.0.0")
@@ -114,6 +118,7 @@ func TestRegistryLegacyAndUnknownContract(t *testing.T) {
 }
 
 func TestPinnedSyncAndLockTransactions(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
 	p, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
@@ -174,6 +179,7 @@ func TestPinnedSyncAndLockTransactions(t *testing.T) {
 }
 
 func TestLockValidation(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
 	p, err := registryClient(t).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
@@ -190,6 +196,7 @@ func TestLockValidation(t *testing.T) {
 		{"registry", func(p *plugininstall.Pin) { p.Registry = "http://example.com/" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			candidate := p
 			tc.edit(&candidate)
 			if err := candidate.Validate(); err == nil {
@@ -227,6 +234,7 @@ func TestLockValidation(t *testing.T) {
 }
 
 func TestCompressedRegistryArtifact(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	r := fixtureregistry.NewPluginRegistry(t)
 	raw := r.Add(t, "v1.0.0", emptyComponent)
 	var compressed bytes.Buffer
@@ -260,6 +268,7 @@ func TestCompressedRegistryArtifact(t *testing.T) {
 }
 
 func TestGitLabCorePin(t *testing.T) {
+	t.Parallel()
 	p := plugininstall.Pin{
 		Registry: plugininstall.DefaultURL, Name: "gitlab.com/backend.services/team.tools/plugin",
 		RepositoryID: "10", OwnerID: "5", PluginID: "vendor/engine", Selector: "v1.0.0", Version: "v1.0.0",
@@ -282,6 +291,7 @@ func TestGitLabCorePin(t *testing.T) {
 }
 
 func TestGitHubPinWithSlashTag(t *testing.T) {
+	t.Parallel()
 	p := plugininstall.Pin{
 		Registry: plugininstall.DefaultURL, Name: "github.com/owner/.github",
 		RepositoryID: "10", OwnerID: "5", PluginID: "vendor/engine", Selector: "area/v1.2.3", Version: "area/v1.2.3",

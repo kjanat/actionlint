@@ -9,6 +9,7 @@ import (
 )
 
 func TestSuppressionsPolicyInspection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value, report string
 		set           bool
@@ -22,6 +23,7 @@ func TestSuppressionsPolicyInspection(t *testing.T) {
 		{"{report: all}", "all", true},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
@@ -40,6 +42,7 @@ func TestSuppressionsPolicyInspection(t *testing.T) {
 }
 
 func TestSuppressionsPolicyConstruction(t *testing.T) {
+	t.Parallel()
 	for _, report := range []string{"suppression", "violation", "all"} {
 		for _, rules := range [][]string{nil, {"cache-operation", "cache-operation", "cache-write-untrusted"}} {
 			p, err := checking.ConfigurationRules().DisallowSuppressions(report, rules...)

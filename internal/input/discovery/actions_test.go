@@ -39,7 +39,6 @@ func gitFixture(t *testing.T, root string) func(...string) {
 	writeFixture(t, config, "excludes", "global/\n")
 	writeFixture(t, config, "gitconfig", "[user]\n\tname = Fixture\n\temail = fixture@example.invalid\n[commit]\n\tgpgsign = false\n[core]\n\texcludesFile = "+filepath.ToSlash(filepath.Join(config, "excludes"))+"\n")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(config, "gitconfig"))
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	git := func(args ...string) {
 		t.Helper()
 		if out, err := exec.CommandContext(t.Context(), "git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
@@ -183,6 +182,7 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 			root := t.TempDir()
 			git := gitFixture(t, root)
 			for _, name := range []string{"tracked/action.yml", "ignored/kept/action.yml", "sub/tracked/action.yml", "node_modules/pkg/action.yml", ".github/workflows/action.yml", "README.md"} {
@@ -218,6 +218,7 @@ func TestActionsHonourGitIgnore(t *testing.T) {
 func TestActionsDirectoryError(t *testing.T) {
 	for _, repository := range []bool{false, true} {
 		t.Run(map[bool]string{false: "walk", true: "git"}[repository], func(t *testing.T) {
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 			root := t.TempDir()
 			writeFixture(t, root, "loop/action.yml", "name: fixture\n")
 			if repository {
@@ -288,6 +289,7 @@ func TestActionsGitError(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 			root := t.TempDir()
 			for _, name := range []string{"action.yml", "ignored/action.yml"} {
 				writeFixture(t, root, name, "name: fixture\n")
@@ -302,6 +304,7 @@ func TestActionsGitError(t *testing.T) {
 }
 
 func TestActionsOutsideRepository(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, name := range []string{"action.yml", "ignored/action.yml", "node_modules/action.yml"} {
 		writeFixture(t, root, name, "name: fixture\n")
@@ -317,6 +320,7 @@ func TestActionsOutsideRepository(t *testing.T) {
 }
 
 func TestActionsDirectoryNamesFollowGitIgnoreAndTracking(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := t.TempDir()
 	git := gitFixture(t, root)
 	writeFixture(t, root, ".gitignore", "*/\n")
@@ -336,6 +340,7 @@ func TestActionsDirectoryNamesFollowGitIgnoreAndTracking(t *testing.T) {
 }
 
 func TestActionsReportReadDirectories(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "a/b/action.yml", "name: fixture\n")
 	writeFixture(t, root, "node_modules/x/action.yml", "name: fixture\n")
@@ -358,6 +363,7 @@ func TestActionsReportReadDirectories(t *testing.T) {
 }
 
 func TestActionsCaseInsensitiveWorktree(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := t.TempDir()
 	git := gitFixture(t, root)
 	writeFixture(t, root, "actions/build/action.yml", "name: fixture\n")
@@ -376,6 +382,7 @@ func TestActionsCaseInsensitiveWorktree(t *testing.T) {
 }
 
 func TestActionsReportGitInputs(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := t.TempDir()
 	git := gitFixture(t, root)
 	writeFixture(t, root, ".gitignore", "ignored/\n")
@@ -424,6 +431,7 @@ func TestActionsReportGitInputs(t *testing.T) {
 }
 
 func TestActionsReportSplitIndexAndGitfile(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := t.TempDir()
 	git := gitFixture(t, root)
 	writeFixture(t, root, "action.yml", "name: fixture\n")
@@ -470,6 +478,7 @@ func TestActionsReportSplitIndexAndGitfile(t *testing.T) {
 }
 
 func TestActionsExpandHomeInExcludesFile(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := t.TempDir()
 	git := gitFixture(t, root)
 	home := t.TempDir()
@@ -496,6 +505,7 @@ func TestActionsExpandHomeInExcludesFile(t *testing.T) {
 }
 
 func TestGitConfigSettings(t *testing.T) {
+	t.Parallel()
 	settings := parseGitConfig([]byte("file:.git/config\x00core.ignorecase\ntrue\x00file:.git/config\x00core.precomposeunicode\x00command line:\x00core.excludesfile\nrelative\x00"), "/top")
 	if !settings.ignoreCase || !settings.precompose || !slices.Equal(settings.files, []string{filepath.Join("/top", ".git", "config")}) {
 		t.Fatalf("settings = %+v", settings)
@@ -507,6 +517,7 @@ func TestGitConfigSettings(t *testing.T) {
 }
 
 func TestActionsReportLogicalDirectories(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "a/action.yml", "name: fixture\n")
 	alias := filepath.Join(t.TempDir(), "alias")
@@ -530,6 +541,7 @@ func TestActionsReportLogicalDirectories(t *testing.T) {
 func TestActionsCancelled(t *testing.T) {
 	for _, repository := range []bool{false, true} {
 		t.Run(map[bool]string{false: "walk", true: "git"}[repository], func(t *testing.T) {
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 			root := t.TempDir()
 			writeFixture(t, root, "action.yml", "name: fixture\n")
 			if repository {

@@ -11,6 +11,7 @@ import (
 )
 
 func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value string
 		valid bool
@@ -20,6 +21,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		{"null", true},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			setting := "ruff: {target-version: " + tc.value + "}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
 				_, err := checking.ConfigurationRules().Parse([]byte(text))
@@ -62,6 +64,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 }
 
 func TestRuffShorthandOverlay(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, base, overlay string
 		enabled             bool
@@ -71,6 +74,7 @@ func TestRuffShorthandOverlay(t *testing.T) {
 		{"settings retain switch", "tools: {ruff: false}", "ruff: {target-version: py312, select: [F821], ignore: [F401]}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			path := writeToolFixture(t, t.TempDir(), "actionlint.yml", tc.base)
 			overlay, err := checking.ConfigurationRules().ParseOverlay("tools", []byte(tc.overlay))
 			if err != nil {

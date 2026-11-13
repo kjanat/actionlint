@@ -64,6 +64,7 @@ func requireConflict(t *testing.T, err error) conflictDetails {
 }
 
 func TestConcurrentAliasesShareOneReadAndCacheSuccess(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "workflow.yml")
 	alias := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "workflow.yml"
@@ -104,6 +105,7 @@ func TestConcurrentAliasesShareOneReadAndCacheSuccess(t *testing.T) {
 }
 
 func TestFailuresAreCached(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "missing.yml")
 	want := &os.PathError{Op: "read", Path: path, Err: os.ErrNotExist}
 	var reads int
@@ -131,6 +133,7 @@ func TestFailuresAreCached(t *testing.T) {
 }
 
 func TestCancelledWaiterDoesNotPoisonSharedCapture(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "shared")
 	started, release := make(chan struct{}), make(chan struct{})
 	var reads atomic.Int32
@@ -159,6 +162,7 @@ func TestCancelledWaiterDoesNotPoisonSharedCapture(t *testing.T) {
 }
 
 func TestAlreadyCancelledCallerStartsNoRead(t *testing.T) {
+	t.Parallel()
 	var reads atomic.Int32
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) {
 		reads.Add(1)
@@ -175,6 +179,7 @@ func TestAlreadyCancelledCallerStartsNoRead(t *testing.T) {
 }
 
 func TestRootCancellationStopsAndCachesBackingRead(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "shared")
 	root, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -206,6 +211,7 @@ func TestRootCancellationStopsAndCachesBackingRead(t *testing.T) {
 }
 
 func TestOverlayAndSnapshotMutationIsolation(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "file")
 	alias := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "file"
@@ -235,6 +241,7 @@ func TestOverlayAndSnapshotMutationIsolation(t *testing.T) {
 }
 
 func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad")
 	alias := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "bad"
@@ -272,6 +279,7 @@ func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
 }
 
 func TestCoordinateMismatchPreservesAcceptedCapture(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "file")
 	store := newStore(t, []Overlay{{path, []byte("abc\r\n"), source.RawLF}}, func(context.Context, string) ([]byte, error) { return nil, nil })
 	snapshot := readSnapshot(t, store, path, source.RawLF)
@@ -284,6 +292,7 @@ func TestCoordinateMismatchPreservesAcceptedCapture(t *testing.T) {
 }
 
 func TestVerifyRejectsMismatchedBytesAndHandles(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "file")
 	reader := func(context.Context, string) ([]byte, error) { return []byte("captured"), nil }
 	store := newStore(t, nil, reader)
@@ -306,6 +315,7 @@ func TestVerifyRejectsMismatchedBytesAndHandles(t *testing.T) {
 }
 
 func TestStdinAndInvalidUTF8(t *testing.T) {
+	t.Parallel()
 	invalid := []byte{0xff, '\r', '\n'}
 	store := newStore(t, []Overlay{{"<stdin>", invalid, source.RawLF}}, func(context.Context, string) ([]byte, error) { return nil, nil })
 	snapshot := readSnapshot(t, store, "<stdin>", source.RawLF)
@@ -321,6 +331,7 @@ func TestStdinAndInvalidUTF8(t *testing.T) {
 }
 
 func TestCanonicalSymlinkAndMissingParentMemoized(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	physicalRoot := filepath.Join(dir, "real")
 	if err := os.Mkdir(physicalRoot, 0o700); err != nil {
@@ -359,6 +370,7 @@ func TestCanonicalSymlinkAndMissingParentMemoized(t *testing.T) {
 }
 
 func TestMalformedConfigurationReturnsNoStore(t *testing.T) {
+	t.Parallel()
 	reader := func(context.Context, string) ([]byte, error) { return nil, nil }
 	for _, overlays := range [][]Overlay{{{"", nil, source.YAML}}, {{filepath.Join(t.TempDir(), "file"), nil, ""}}, {{"a\x00b", nil, source.RawLF}}, {{"relative", nil, source.RawLF}}} {
 		if store, err := New(t.Context(), overlays, reader); store != nil || err == nil {
@@ -371,6 +383,7 @@ func TestMalformedConfigurationReturnsNoStore(t *testing.T) {
 }
 
 func TestReadAliasesExcludeUnusedOverlaysAndIdentityLookups(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	used, unused := filepath.Join(root, "used.yml"), filepath.Join(root, "unused.yml")
 	alias := root + string(filepath.Separator) + "." + string(filepath.Separator) + "used.yml"
@@ -401,6 +414,7 @@ func TestReadAliasesExcludeUnusedOverlaysAndIdentityLookups(t *testing.T) {
 }
 
 func TestReadErrorShowsCaptureCause(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "missing.yml")
 	cause := &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return nil, cause })

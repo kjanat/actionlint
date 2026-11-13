@@ -11,6 +11,7 @@ import (
 )
 
 func TestInheritedConfigDirectorySpellings(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"${{ configdir }}", "${{ CONFIGDIR }}", "${{  configdir }}",
 		"${{configdir}}", "${{\tConFigDir\t}}",
@@ -18,6 +19,7 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 		for _, override := range []bool{false, true} {
 			root := t.TempDir()
 			t.Run(fmt.Sprintf("%s/override=%v", expression, override), func(t *testing.T) {
+				t.Parallel()
 				setting := fmt.Sprintf("tools: {shellcheck: {config: %q}}", expression+"/.shellcheckrc")
 				originKey := "/tools/shellcheck/config"
 				if override {

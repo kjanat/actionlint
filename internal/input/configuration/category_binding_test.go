@@ -21,6 +21,7 @@ func resolveRules(t *testing.T, presets repoconfig.Presets, config *repoconfig.C
 }
 
 func TestCategoryBindingProgrammaticAliases(t *testing.T) {
+	t.Parallel()
 	setting, err := repoconfig.NewSetting("warn", map[string]int{"max-minutes": 12})
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +41,7 @@ func TestCategoryBindingProgrammaticAliases(t *testing.T) {
 }
 
 func TestCategoryBindingValidatesHiddenInheritedRules(t *testing.T) {
+	t.Parallel()
 	read := func(path string) ([]byte, error) {
 		if filepath.Base(path) == "base.yml" {
 			return []byte("lint: {rules: {correctness: {community-check: on}}}"), nil
@@ -57,6 +59,7 @@ func TestCategoryBindingValidatesHiddenInheritedRules(t *testing.T) {
 }
 
 func TestCategoryBindingPluginOptions(t *testing.T) {
+	t.Parallel()
 	descriptor := rule.Descriptor{
 		Name: "community-check", Category: "security", Provider: "community", Maturity: "stable",
 		OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`),
@@ -84,6 +87,7 @@ func TestCategoryBindingPluginOptions(t *testing.T) {
 }
 
 func TestCategoryBindingFailures(t *testing.T) {
+	t.Parallel()
 	valid := rule.Descriptor{Name: "community-check", Category: "security", Provider: "community", Maturity: "stable"}
 	for _, tc := range []struct {
 		name        string
@@ -104,6 +108,7 @@ func TestCategoryBindingFailures(t *testing.T) {
 		{"bad options", `security: {community-check: {level: on, options: {count: wrong}}}`, []rule.Descriptor{{Name: "community-check", Category: "security", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer"}}}`)}}, `options for rule "community-check"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			rules := tc.rules
 			if rules != "{}" {
 				rules = "{" + rules + "}"
@@ -120,6 +125,7 @@ func TestCategoryBindingFailures(t *testing.T) {
 }
 
 func TestCategoryBindingNurserySelection(t *testing.T) {
+	t.Parallel()
 	for _, maturity := range []string{rule.NurseryMaturity} {
 		descriptor := rule.Descriptor{Name: "community-check", Category: "correctness", Provider: "community", Maturity: maturity, Recommended: true}
 		for _, tc := range []struct {
@@ -141,6 +147,7 @@ func TestCategoryBindingNurserySelection(t *testing.T) {
 			{"{correctness: {community-check: warn}}", repoconfig.Presets{Experimental: new(false)}, "off"},
 		} {
 			t.Run(maturity+"/"+tc.rules+"/"+string(tc.want), func(t *testing.T) {
+				t.Parallel()
 				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
 				if err != nil {
 					t.Fatal(err)

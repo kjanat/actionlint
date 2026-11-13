@@ -6,6 +6,7 @@ import (
 )
 
 func TestReusableIgnoresDistinguishAliasedSteps(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   a:
@@ -29,6 +30,7 @@ permissions: {}
 }
 
 func TestReusableIgnoresDistinguishAliasedActionSteps(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   a:

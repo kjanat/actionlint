@@ -18,6 +18,7 @@ import (
 )
 
 func TestConfiguredBackendProcessHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_BACKEND_HELPER") != "1" {
 		return
 	}
@@ -56,6 +57,7 @@ func TestConfiguredBackendProcessHelper(t *testing.T) {
 }
 
 func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -69,6 +71,7 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	process := toolconfig.ProcessBackend(command)
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			cfg := &repoconfig.Config{}
 			request := checking.Options{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
 			var requestSources []workspace.Source

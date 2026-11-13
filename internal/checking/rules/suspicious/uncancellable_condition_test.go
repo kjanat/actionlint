@@ -14,6 +14,7 @@ import (
 )
 
 func TestUncancellableCondition(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, jobIf, stepIf, uses string
 		jobs, steps               int
@@ -33,6 +34,7 @@ func TestUncancellableCondition(t *testing.T) {
 		{"other checkout", "", "always()", "example/checkout@v1", 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
 			if tc.jobIf != "" {
 				source += "    if: " + tc.jobIf + "\n"
@@ -77,12 +79,14 @@ func TestUncancellableCondition(t *testing.T) {
 }
 
 func TestUncancellableConditionFix(t *testing.T) {
+	t.Parallel()
 	for _, scalar := range []string{
 		"always()", "${{ always() }}", "'${{ always() }}'", `"${{ always() }}"`,
 		`"${{ \u0061lways() }}"`, "&gate always()", "(always())",
 		">-\n      always()", "${{ always( ) }}",
 	} {
 		t.Run(scalar, func(t *testing.T) {
+			t.Parallel()
 			content := "on: push\njobs:\n  build:\n    if: " + scalar + " # keep comment\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 			if strings.HasPrefix(scalar, ">") {
 				content = strings.Replace(content, " # keep comment", "", 1)
@@ -136,6 +140,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 }
 
 func TestCleanupStepCancellationTimeouts(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, timeout, jobIf string
 	}{
@@ -150,6 +155,7 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 		{"job data predicate", "1", "github.ref == 'refs/heads/master'"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
 			if tc.timeout != "" {
 				content += "    cancel-timeout-minutes: " + tc.timeout + "\n"

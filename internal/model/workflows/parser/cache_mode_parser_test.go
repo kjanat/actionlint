@@ -11,6 +11,7 @@ import (
 )
 
 func TestParseCacheMode(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		value string
 		kind  workflowlang.CacheModeKind
@@ -51,6 +52,7 @@ func TestParseCacheMode(t *testing.T) {
 	for _, placement := range []string{"workflow", "job", "call"} {
 		for _, tt := range tests {
 			t.Run(placement+"/"+tt.value, func(t *testing.T) {
+				t.Parallel()
 				src := "on: push\n"
 				wantPos := workflowlang.Pos{Line: 4, Col: 17}
 				if placement == "workflow" {
@@ -103,6 +105,7 @@ func TestParseCacheMode(t *testing.T) {
 }
 
 func TestParseCacheModeOmittedAndAliased(t *testing.T) {
+	t.Parallel()
 	for _, declaration := range []string{"", "cache-mode: &mode read\n"} {
 		src := "on: pull_request_target\n" + declaration + `jobs:
   test:
@@ -129,6 +132,7 @@ func TestParseCacheModeOmittedAndAliased(t *testing.T) {
 }
 
 func TestParseCacheModeLowTrustWrites(t *testing.T) {
+	t.Parallel()
 	for _, event := range []string{"pull_request_target", "issue_comment", "workflow_run"} {
 		for _, mode := range []string{"write", "write-only"} {
 			src := fmt.Sprintf(`on: %s

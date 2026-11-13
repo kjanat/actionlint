@@ -69,6 +69,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 }
 
 func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		selection string
 		custom    []string
@@ -87,6 +88,7 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 		{"[self-hosted, xcode-cache]", []string{"xcode-*"}, runnerapi.UnknownOS},
 	} {
 		t.Run(tc.selection, func(t *testing.T) {
+			t.Parallel()
 			workflow := runnerWorkflow(t, tc.selection)
 			knowledge, err := Prepare(t.Context(), workflow.Snapshot, tc.custom, runnerapi.Options{}, "scope")
 			if err != nil || len(knowledge.Report().Answers) != 1 {
@@ -107,8 +109,10 @@ func TestBuiltinCandidateOSIgnoresCustomLabelSpelling(t *testing.T) {
 }
 
 func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"self-32vcpu-windows-2022", "buildjet-8vcpu-windows-2022", "namespace-profile-8x16-windows", "my-WINDOWS-box"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			workflow := runnerWorkflow(t, label)
 			knowledge, err := Prepare(t.Context(), workflow.Snapshot, []string{label}, runnerapi.Options{}, "scope")
 			if err != nil {
@@ -133,6 +137,7 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 		{"[macos, my-windows-box]", []string{"my-windows-box"}, 1},
 	} {
 		t.Run(tc.selection, func(t *testing.T) {
+			t.Parallel()
 			workflow := runnerWorkflow(t, tc.selection)
 			knowledge, err := Prepare(t.Context(), workflow.Snapshot, tc.custom, runnerapi.Options{}, "scope")
 			if err != nil {
@@ -147,6 +152,7 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 }
 
 func TestProviderKnowledgeUncertainty(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name           string
 		resolution     runnerapi.Resolution
@@ -170,6 +176,7 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 		{"failure", nil, runnerapi.Fresh, true, runnerapi.Snapshot{}, errors.New("offline"), "", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerWorkflow(t, "buildkite-windows")
 			if tc.snapshot != (runnerapi.Snapshot{}) {
 				tc.snapshot.Scope = "scope"
@@ -193,6 +200,7 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 }
 
 func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		snapshot runnerapi.Snapshot
@@ -206,6 +214,7 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 		{"missing", runnerapi.Snapshot{Scope: "scope", Freshness: runnerapi.Missing}, runnerapi.Missing, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerWorkflow(t, "queue")
 			p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 				if r.Snapshot.Freshness != tc.fresh {
@@ -236,6 +245,7 @@ func TestProviderRequestNormalizesSnapshotFreshness(t *testing.T) {
 }
 
 func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
+	t.Parallel()
 	w := runnerWorkflow(t, "ubuntu-latest")
 	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 	if err != nil {
@@ -248,6 +258,7 @@ func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
 }
 
 func TestKnowledgeReadersOwnTheirValues(t *testing.T) {
+	t.Parallel()
 	w := runnerWorkflow(t, "ubuntu-lates")
 	k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 	if err != nil {
@@ -268,9 +279,11 @@ func TestKnowledgeReadersOwnTheirValues(t *testing.T) {
 }
 
 func TestProviderEmptyNoMatch(t *testing.T) {
+	t.Parallel()
 	for _, freshness := range []runnerapi.Freshness{runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing} {
 		for _, complete := range []bool{false, true} {
 			t.Run(string(freshness)+"/complete="+strconv.FormatBool(complete), func(t *testing.T) {
+				t.Parallel()
 				w := runnerWorkflow(t, "queue")
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 					return []runnerapi.Answer{{Resolution: runnerapi.NoMatch{}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: freshness, Complete: complete}}}, nil
@@ -289,6 +302,7 @@ func TestProviderEmptyNoMatch(t *testing.T) {
 }
 
 func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
+	t.Parallel()
 	w := runnerWorkflow(t, "ubuntu-latest")
 	dataset := "v1"
 	p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
@@ -341,6 +355,7 @@ func TestProviderSelectionAndEvidenceIdentity(t *testing.T) {
 }
 
 func TestPreparedRunnerGroupUncertainty(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, label, group, shell string
 		findings                  int
@@ -353,6 +368,7 @@ func TestPreparedRunnerGroupUncertainty(t *testing.T) {
 		{"invalid label", "invalid-runner", "${{ vars.GROUP }}", "", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			w := runnerWorkflow(t, "\n      labels: "+tc.label+"\n      group: "+tc.group)
 			k, err := Prepare(t.Context(), w.Snapshot, nil, runnerapi.Options{}, "scope")
 			if err != nil {

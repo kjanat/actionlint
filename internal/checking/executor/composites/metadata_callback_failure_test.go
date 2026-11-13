@@ -38,6 +38,7 @@ func (p *failingMetadataCallback) VisitStep(step declaration.StepView) error {
 }
 
 func TestMetadataCallbackFailurePreservesFindingAndSource(t *testing.T) {
+	t.Parallel()
 	const outer = "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n"
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 		"outer/action.yml": outer,
@@ -58,6 +59,7 @@ func TestMetadataCallbackFailurePreservesFindingAndSource(t *testing.T) {
 }
 
 func TestMetadataCallbacksRunForEveryParticipant(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: []}\n",

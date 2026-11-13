@@ -3,6 +3,7 @@ package sourcemap
 import "testing"
 
 func TestUnicodeEscapeBounds(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		escape string
 		want   string
@@ -22,6 +23,7 @@ func TestUnicodeEscapeBounds(t *testing.T) {
 		{`\UFFFFFFFF`, "", false},
 	} {
 		t.Run(tc.escape, func(t *testing.T) {
+			t.Parallel()
 			source := `"` + tc.escape + `"`
 			got, err := NewDocument(source).Decode(Position{Line: 1, Column: 1}, Context{Indent: -1})
 			if (err == nil) != tc.valid {

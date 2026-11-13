@@ -10,6 +10,7 @@ import (
 )
 
 func TestRepositoryRetainsExcludedCandidates(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeGitRepository(t, root)
 	writeFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['**/excluded.yml']}\n")

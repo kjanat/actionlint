@@ -12,6 +12,7 @@ import (
 )
 
 func TestOCIResolutionHookSnapshots(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("a", 64)
 	source := "oci://registry.example/tools/echo@sha256:" + digest
 	cache := t.TempDir()
@@ -50,6 +51,7 @@ func TestOCIResolutionHookSnapshots(t *testing.T) {
 }
 
 func TestOCIResolutionHookDefaultsAndFailures(t *testing.T) {
+	t.Parallel()
 	source := "oci://registry.example/echo@sha256:" + strings.Repeat("a", 64)
 	want := errors.New("hook refused")
 	_, err := pluginartifact.Resolve(context.Background(), source, pluginartifact.Options{PullOCI: func(ctx context.Context, ref pluginartifact.OCIReference, options pluginartifact.Options) (*pluginartifact.Artifact, error) {
@@ -70,6 +72,7 @@ func TestOCIResolutionHookDefaultsAndFailures(t *testing.T) {
 }
 
 func TestOCIReferenceIdentity(t *testing.T) {
+	t.Parallel()
 	ref, err := pluginartifact.ParseOCITag("oci://REGISTRY.example/tools/echo:v1")
 	if err != nil {
 		t.Fatal(err)

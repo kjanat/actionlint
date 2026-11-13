@@ -55,6 +55,7 @@ func runnerFixtureRequest(t *testing.T) runner.Request {
 }
 
 func TestRunnerProviderComponent(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	request := runnerFixtureRequest(t)
 	answers, err := p.ResolveRunners(t.Context(), request)
@@ -108,6 +109,7 @@ func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.Inp
 }
 
 func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
+	t.Parallel()
 	p := loadRunnerFixture(t)
 	for _, tc := range []struct {
 		name, shell string
@@ -119,6 +121,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 		{"explicit shell survives missing evidence", "shell: bash\n        ", runner.Snapshot{}, "bash"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			observer := &runtimeObserver{}
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
@@ -147,6 +150,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 }
 
 func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
+	t.Parallel()
 	observer := &runtimeObserver{}
 	label := "self-32vcpu-windows-2022"
 	cfg, err := (config.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
@@ -190,6 +194,7 @@ type parityOutput struct {
 }
 
 func TestRunnerProviderWasmtimeParity(t *testing.T) {
+	t.Parallel()
 	host := os.Getenv("ACTIONLINT_RUNNER_HOST")
 	if host == "" {
 		t.Skip("set ACTIONLINT_RUNNER_HOST to the built internal/development/tests/conformance/wasm/runner-host executable")

@@ -14,6 +14,7 @@ import (
 )
 
 func TestResultCaptureSharesRevisionAcrossRepositoryCaches(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	const manifest = "name: shared\ndescription: capture\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo first\n"
 	path := writeFixture(t, root, "shared/action.yml", manifest)
@@ -55,6 +56,7 @@ func TestResultCaptureSharesRevisionAcrossRepositoryCaches(t *testing.T) {
 }
 
 func TestResultCaptureQuarantinesConflictsWithoutDiscardingOtherEntries(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo '${{ missing.value }}'\n"
 	sources := []workspace.Source{
@@ -64,6 +66,7 @@ func TestResultCaptureQuarantinesConflictsWithoutDiscardingOtherEntries(t *testi
 	}
 	for _, reversed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "forward", true: "reverse"}[reversed], func(t *testing.T) {
+			t.Parallel()
 			ordered := slices.Clone(sources)
 			if reversed {
 				slices.Reverse(ordered)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestSchemaNestedTimezoneAliases(t *testing.T) {
+	t.Parallel()
 	// LoadLocation can resolve casing variants through the host filesystem.
 	// Invalid/Timezone exercises rejection independently of filesystem casing.
 	for _, tz := range []struct {
@@ -19,6 +20,7 @@ func TestSchemaNestedTimezoneAliases(t *testing.T) {
 		valid bool
 	}{{"UTC", true}, {"Etc/UTC", true}, {"Universal", true}, {"Europe/Amsterdam", true}, {"Local", false}, {"local", false}, {"Invalid/Timezone", false}} {
 		t.Run(tz.name, func(t *testing.T) {
+			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
 			rule.checkTimezone(ownedString(&workflowlang.String{Value: tz.name, Pos: &workflowlang.Pos{Line: 1, Col: 1}}))
 			if valid := len(rule.Findings) == 0; valid != tz.valid {
@@ -29,6 +31,7 @@ func TestSchemaNestedTimezoneAliases(t *testing.T) {
 }
 
 func TestWebhookOnlyActivitiesRejected(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		event, activity string
 		valid           bool
@@ -46,6 +49,7 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 		{"image_version", "deleted", true},
 	} {
 		t.Run(tc.event+"/"+tc.activity, func(t *testing.T) {
+			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
 			pos := &workflowlang.Pos{Line: 1, Col: 1}
 			rule.checkTypes(tc.event, pos, slices.Values([]declaration.StringView{ownedString(&workflowlang.String{Value: tc.activity, Pos: pos})}), triggers.AllWebhookTypes[tc.event])

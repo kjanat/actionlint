@@ -33,8 +33,10 @@ func publishStatuses(t *testing.T, registry *fixtureregistry.PluginRegistry, sta
 }
 
 func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, state := range []plugininstall.ReleaseState{plugininstall.ReleaseWithdrawn, plugininstall.ReleaseRevoked} {
 		t.Run(string(state), func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			registry := fixtureregistry.NewPluginRegistry(t)
 			registry.Add(t, "v1.0.0", emptyComponent)
 			registry.Add(t, "v2.0.0", emptyComponent)
@@ -56,6 +58,7 @@ func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
 }
 
 func TestDeprecatedSelectionWarns(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
 	client := registryClient(t)
@@ -74,6 +77,7 @@ func TestDeprecatedSelectionWarns(t *testing.T) {
 }
 
 func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
 	client := registryClient(t)
@@ -132,6 +136,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 }
 
 func TestStatusRequiresExactDigestAndValidSnapshot(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
 	client := registryClient(t)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestUnknownNodeRepresentationRejected(t *testing.T) {
+	t.Parallel()
 	for _, node := range []*syntax.Node{
 		{Kind: 1 << 31},
 		{Kind: syntax.ScalarNode, Style: 1 << 31},
@@ -30,6 +31,7 @@ func TestUnknownNodeRepresentationRejected(t *testing.T) {
 }
 
 func TestCursorRejectsNilSyntaxTarget(t *testing.T) {
+	t.Parallel()
 	root, err := Parse([]byte("key: value\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +48,7 @@ func TestCursorRejectsNilSyntaxTarget(t *testing.T) {
 }
 
 func TestEncodeSyntaxValuesAndRejectNestedNodes(t *testing.T) {
+	t.Parallel()
 	node := syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "example"}
 	for _, value := range []any{node, &node} {
 		encoded, err := Marshal(value)

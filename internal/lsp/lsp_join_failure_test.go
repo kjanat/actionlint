@@ -14,6 +14,7 @@ import (
 )
 
 func TestEditorFailedCaptureJoinReturnsWithoutPublishingSources(t *testing.T) {
+	t.Parallel()
 	started, release := make(chan struct{}), make(chan struct{})
 	lifetime, stopLifetime := context.WithCancel(context.Background())
 	store, err := capture.New(lifetime, nil, func(context.Context, string) ([]byte, error) {

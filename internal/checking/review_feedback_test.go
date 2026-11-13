@@ -29,6 +29,7 @@ func writeReviewFixture(t *testing.T, root, path, content string) {
 }
 
 func TestActionMetadataFailureHasOneOwningRule(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeReviewFixture(t, root, "broken/action.yml", "runs: [")
 	source := []byte(`on: push
@@ -59,6 +60,7 @@ func (b *reviewShellcheckBackend) Check(context.Context, checkinputs.ScriptReque
 }
 
 func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeReviewFixture(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo inner\n")
 	writeReviewFixture(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: $/inner\n")
@@ -83,6 +85,7 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 }
 
 func TestRepositoryProcessHelper(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_REPOSITORY_PROCESS") != "1" {
 		return
 	}
@@ -102,12 +105,14 @@ func TestRepositoryProcessHelper(t *testing.T) {
 }
 
 func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, tool := range []string{"ruff", "shellcheck"} {
 		t.Run(tool, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			marker := filepath.Join(root, "executed")
 			command, err := toolconfig.NewCommand(executable,

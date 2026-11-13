@@ -3,6 +3,7 @@ package results
 import "testing"
 
 func TestFixCloneOwnsEditsAndRevisions(t *testing.T) {
+	t.Parallel()
 	original := Fix{
 		Applicability: FixSafe,
 		Revisions:     map[string]string{"a.yml": "revision"},

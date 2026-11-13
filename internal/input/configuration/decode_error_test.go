@@ -7,6 +7,7 @@ import (
 )
 
 func TestDecodeErrorPreservesSentinelIdentity(t *testing.T) {
+	t.Parallel()
 	sentinel := errors.New("first line\nsecond line")
 	cause := fmt.Errorf("configuration decode: %w", sentinel)
 	err := decodeError{cause: cause}

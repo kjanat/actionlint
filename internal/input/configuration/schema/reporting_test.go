@@ -3,6 +3,7 @@ package schema
 import "testing"
 
 func TestReportingDefaultsSchema(t *testing.T) {
+	t.Parallel()
 	schema := compile(t)
 	for _, tc := range []struct {
 		name, source string
@@ -14,6 +15,7 @@ func TestReportingDefaultsSchema(t *testing.T) {
 		{"invalid summary", `{"output":{"summary":"false"}}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			err := schema.Validate([]byte(tc.source))
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%v, error=%v", tc.valid, err)

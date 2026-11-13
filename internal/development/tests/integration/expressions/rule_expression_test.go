@@ -10,9 +10,11 @@ import (
 )
 
 func TestRuleExpressionBareFunctionCondition(t *testing.T) {
+	t.Parallel()
 	for _, location := range []string{"job", "step"} {
 		for _, condition := range []string{"always", "${{ always }}", "always()", "unrelated"} {
 			t.Run(location+"/"+condition, func(t *testing.T) {
+				t.Parallel()
 				job, step := "", ""
 				line, column := 4, 9
 				if location == "job" {

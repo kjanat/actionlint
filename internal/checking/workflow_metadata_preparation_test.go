@@ -8,6 +8,7 @@ import (
 )
 
 func TestWorkflowMetadataPreparationDoesNotRequireLintRules(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, trigger string
 		metadata      bool
@@ -17,6 +18,7 @@ func TestWorkflowMetadataPreparationDoesNotRequireLintRules(t *testing.T) {
 		{"invalid reusable metadata", "{workflow_call: {inputs: invalid}}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			cache := newCapturedWorkflowCache(t, root, root, nil)
 			content := []byte("on: " + tc.trigger + "\njobs:\n  build:\n    runs-on: ubuntu-latest\n    outputs: {artifact: value}\n    steps: [{run: echo ok}]\n")

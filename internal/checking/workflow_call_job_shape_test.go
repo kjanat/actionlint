@@ -16,6 +16,7 @@ import (
 )
 
 func TestWorkflowCallMixedJobMetadataOrder(t *testing.T) {
+	t.Parallel()
 	for _, field := range []struct{ key, value string }{
 		{"runs-on", "ubuntu-latest"},
 		{"steps", "[{run: echo ok}]"},
@@ -43,6 +44,7 @@ permissions: {}
 `},
 		} {
 			t.Run(field.key+"/"+leaf.name, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				caller := []byte(`on: push
 cache-mode: read

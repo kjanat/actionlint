@@ -55,15 +55,8 @@ func cyclePartialField(t *testing.T, parent Entered, selected string) Cursor {
 }
 
 func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
+	t.Parallel()
 	const source = "a: &a {x: 1, c: *a}\nitems: *a\n"
-	root, err := Parse([]byte(source))
-	if err != nil {
-		t.Fatal(err)
-	}
-	graph, err := toParser(root)
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, mode := range []string{"cursor", "entered", "nested-entered", "repeated-alias"} {
 		for _, prefilled := range []bool{false, true} {
 			name := mode + "/empty"
@@ -71,6 +64,15 @@ func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
 				name = mode + "/prefilled"
 			}
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				root, err := Parse([]byte(source))
+				if err != nil {
+					t.Fatal(err)
+				}
+				graph, err := toParser(root)
+				if err != nil {
+					t.Fatal(err)
+				}
 				initial := func() map[string]any {
 					if prefilled {
 						return map[string]any{"existing": "unchanged"}

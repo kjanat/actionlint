@@ -21,6 +21,7 @@ func diagnostic(filename, code, message string, row, column int) checkinputs.Scr
 }
 
 func TestPointDiagnosticJSONOmitsEndLocation(t *testing.T) {
+	t.Parallel()
 	encoded, err := json.Marshal(diagnostic("a.py", "E1", "point", 1, 1))
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +48,7 @@ func TestPointDiagnosticJSONOmitsEndLocation(t *testing.T) {
 }
 
 func TestEnvelopeDecode(t *testing.T) {
+	t.Parallel()
 	stdout := `{"ok":false,"diagnostics":[{"filename":"actionlint.sh","code":"X1","message":"m","severity":"warning","location":{"row":2,"column":3},"end_location":{"row":2,"column":5},"template_effect":"opaque-name"}],"errors":["partial analysis"]}`
 	got, err := process.Envelope{}.Decode(t.Context(), []byte(stdout), nil)
 	if err != nil {
@@ -60,6 +62,7 @@ func TestEnvelopeDecode(t *testing.T) {
 }
 
 func TestEnvelopeFailureWithoutExplanation(t *testing.T) {
+	t.Parallel()
 	got, err := process.Envelope{}.Decode(t.Context(), []byte(`{"ok":false}`), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -70,6 +73,7 @@ func TestEnvelopeFailureWithoutExplanation(t *testing.T) {
 }
 
 func TestEnvelopeRejects(t *testing.T) {
+	t.Parallel()
 	tooMany := `{"ok":true,"diagnostics":[` + strings.TrimSuffix(strings.Repeat(`{},`, process.MaxDiagnostics+1), ",") + `]}`
 	for name, stdout := range map[string]string{
 		"missing ok":     `{"diagnostics":[]}`,
@@ -79,6 +83,7 @@ func TestEnvelopeRejects(t *testing.T) {
 		"too much input": `{"ok":true,"errors":["` + strings.Repeat("x", process.MaxOutputBytes) + `"]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := (process.Envelope{}).Decode(t.Context(), []byte(stdout), nil); err == nil {
 				t.Error("decoded invalid envelope")
 			}
@@ -88,6 +93,7 @@ func TestEnvelopeRejects(t *testing.T) {
 
 // testdata/ruff.sarif is Ruff 0.17 `check --output-format sarif` output.
 func TestSARIFDecodeRuffCapture(t *testing.T) {
+	t.Parallel()
 	stdout, err := os.ReadFile("testdata/ruff.sarif")
 	if err != nil {
 		t.Fatal(err)
@@ -117,6 +123,7 @@ func TestSARIFDecodeRuffCapture(t *testing.T) {
 // testdata/edge.sarif is hand-written: rule lookup by index, a finding in a
 // followed file, a suppressed result and a passing result.
 func TestSARIFDecodeEdges(t *testing.T) {
+	t.Parallel()
 	stdout, err := os.ReadFile("testdata/edge.sarif")
 	if err != nil {
 		t.Fatal(err)
@@ -136,6 +143,7 @@ func TestSARIFDecodeEdges(t *testing.T) {
 }
 
 func TestSARIFNativeSuppressionDecisions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, suppressions string
 		count              int
@@ -158,6 +166,7 @@ func TestSARIFNativeSuppressionDecisions(t *testing.T) {
 		{"invalid after accepted", `[{"kind":"inSource","status":"accepted"},{"kind":"invalid"}]`, 0, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			stdout := `{"version":"2.1.0","runs":[{"results":[{"ruleId":"X1","message":{"text":"finding"},"suppressions":` + tc.suppressions + `,"locations":[{"physicalLocation":{"artifactLocation":{"uri":"workflow.yml"},"region":{"startLine":1}}}]}]}]}`
 			got, err := (process.SARIF{}).Decode(t.Context(), []byte(stdout), map[string]string{"filename": "workflow.yml"})
 			if tc.invalid {
@@ -174,6 +183,7 @@ func TestSARIFNativeSuppressionDecisions(t *testing.T) {
 }
 
 func TestSARIFRejects(t *testing.T) {
+	t.Parallel()
 	location := `"locations":[{"physicalLocation":{"artifactLocation":{"uri":"a"},"region":{"startLine":1}}}]`
 	for name, stdout := range map[string]string{
 		"version":     `{"version":"2.0.0","runs":[]}`,
@@ -183,6 +193,7 @@ func TestSARIFRejects(t *testing.T) {
 		"no line":     `{"version":"2.1.0","runs":[{"results":[{"ruleId":"X","message":{"text":"m"},"locations":[{"physicalLocation":{"region":{"charOffset":3}}}]}]}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if _, err := (process.SARIF{}).Decode(t.Context(), []byte(stdout), nil); err == nil {
 				t.Error("decoded invalid SARIF")
 			}
@@ -200,6 +211,7 @@ func decodeJQ(t *testing.T, ctx context.Context, program string, input process.J
 }
 
 func TestJQDecodesBothResultShapes(t *testing.T) {
+	t.Parallel()
 	const one = `{filename: $vars.filename, code: "X1", message: ., location: {row: 1, column: 1}}`
 	got, err := decodeJQ(t, t.Context(), "["+one+"]", process.JQText, "plain text")
 	if err != nil {
@@ -235,6 +247,7 @@ func TestJQEnvironmentIsEmpty(t *testing.T) {
 }
 
 func TestJQRefusesModulesAndInputs(t *testing.T) {
+	t.Parallel()
 	for _, program := range []string{
 		`import "lib" as lib; .`,
 		`import "data" as $data; .`,
@@ -254,6 +267,7 @@ func TestJQRefusesModulesAndInputs(t *testing.T) {
 }
 
 func TestJQHonoursDeadline(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 	start := time.Now()
@@ -267,6 +281,7 @@ func TestJQHonoursDeadline(t *testing.T) {
 }
 
 func TestJQRejects(t *testing.T) {
+	t.Parallel()
 	const item = `{filename: "f", code: "X", message: "m", location: {row: 1, column: 1}}`
 	for name, program := range map[string]string{
 		"no value":           `empty`,
@@ -283,6 +298,7 @@ func TestJQRejects(t *testing.T) {
 		"output over limits": `[range(0; 300) | ` + item + ` | .message = ("x" * 30000)]`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, err := decodeJQ(t, t.Context(), program, process.JQJSON, `null`)
 			if err == nil {
 				t.Fatal("accepted invalid transform output")
@@ -293,6 +309,7 @@ func TestJQRejects(t *testing.T) {
 }
 
 func TestJQRejectsOversizedInput(t *testing.T) {
+	t.Parallel()
 	decoder, err := process.NewJQ(`[]`, process.JQText)
 	if err != nil {
 		t.Fatal(err)
@@ -303,6 +320,7 @@ func TestJQRejectsOversizedInput(t *testing.T) {
 }
 
 func TestNewJQRejectsUnknownInput(t *testing.T) {
+	t.Parallel()
 	if _, err := process.NewJQ(`.`, process.JQInput("yaml")); err == nil {
 		t.Error("accepted unknown input format")
 	}

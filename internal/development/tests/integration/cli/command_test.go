@@ -13,7 +13,7 @@ import (
 )
 
 func TestModernCommandDispatch(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	if err := os.WriteFile("good.yml", []byte(commandGoodWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestModernCommandDispatch(t *testing.T) {
 }
 
 func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	if err := os.WriteFile(".github/actionlint.yaml", []byte("policy: {bad: true}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +90,7 @@ func TestModernInformationCommandsDoNotRunAnalysis(t *testing.T) {
 }
 
 func TestCommandStreamsAndContext(t *testing.T) {
+	t.Parallel()
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: commandFailingIO{}, Stdout: &out, Stderr: &errout}
 	if code := cmd.Main([]string{"actionlint", "--json", "-"}); code != 3 || !strings.Contains(errout.String(), "read failed") {
@@ -121,7 +122,7 @@ func TestCommandStreamsAndContext(t *testing.T) {
 }
 
 func TestCancelledMetadataCommands(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, args := range [][]string{
@@ -144,6 +145,7 @@ func TestCancelledMetadataCommands(t *testing.T) {
 }
 
 func TestCommandMain(t *testing.T) {
+	t.Parallel()
 	var output bytes.Buffer
 
 	// Create command instance populating stdin/stdout/stderr

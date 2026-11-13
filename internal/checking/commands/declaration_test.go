@@ -11,6 +11,7 @@ import (
 )
 
 func TestCheckerUsesItsRuleDeclaration(t *testing.T) {
+	t.Parallel()
 	declaration := correctness.DeprecatedCommandsDeclaration()
 	descriptor := (Checker{}).Descriptor()
 	if !reflect.DeepEqual(descriptor.Descriptor, declaration.Descriptor) ||

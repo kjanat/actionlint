@@ -10,6 +10,7 @@ import (
 )
 
 func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct{ level, reported, severity string }{
 		{"info", "error", "info"},
 		{"warn", "error", "warning"},
@@ -17,6 +18,7 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 		{"", "info", "info"},
 	} {
 		t.Run(test.level, func(t *testing.T) {
+			t.Parallel()
 			rules, err := repoconfig.NewRuleSet([]rule.Declaration{{Name: "example", Category: "correctness", Maturity: "stable", Recommended: true, DefaultLevel: test.level}})
 			if err != nil {
 				t.Fatal(err)

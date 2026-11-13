@@ -12,6 +12,7 @@ import (
 )
 
 func TestCompositeSuggestionPositions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, declaration, token string
 		fallback                 bool
@@ -35,6 +36,7 @@ func TestCompositeSuggestionPositions(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+ending, func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				metadata := "name: inner\ndescription: test\ninputs:\n  custom_name:\n    description: custom\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      " + tc.declaration + "\n"

@@ -48,6 +48,7 @@ func (m responseMemory) Read(offset, length uint32) ([]byte, bool) {
 }
 
 func TestResponseLimitPrecedesGuestMemoryRead(t *testing.T) {
+	t.Parallel()
 	engine := pooledEngine(t)
 	module, err := engine.instantiate(t.Context())
 	if err != nil {
@@ -66,6 +67,7 @@ func TestResponseLimitPrecedesGuestMemoryRead(t *testing.T) {
 }
 
 func TestResponseAtHostLimitRemainsUsable(t *testing.T) {
+	t.Parallel()
 	for _, length := range []uint32{8*1024*1024 - 1, 8 * 1024 * 1024} {
 		engine := pooledEngine(t)
 		module, err := engine.instantiate(t.Context())

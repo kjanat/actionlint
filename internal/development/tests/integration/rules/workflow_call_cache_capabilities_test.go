@@ -63,6 +63,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 }
 
 func TestWorkflowCallCacheModeCapabilities(t *testing.T) {
+	t.Parallel()
 	allowed := map[string][]string{
 		"":           {"none", "read", "write", "write-only"},
 		"none":       {"none"},
@@ -74,6 +75,7 @@ func TestWorkflowCallCacheModeCapabilities(t *testing.T) {
 		for _, callerMode := range []string{"", "none", "read", "write-only", "write"} {
 			for _, calleeMode := range []string{"none", "read", "write-only", "write"} {
 				t.Run(fmt.Sprintf("AST=%v/%s/%s", fromAST, callerMode, calleeMode), func(t *testing.T) {
+					t.Parallel()
 					caller := "on: pull_request_target\n"
 					if callerMode != "" {
 						caller += "cache-mode: " + callerMode + "\n"
@@ -113,6 +115,7 @@ jobs:
 }
 
 func TestWorkflowCallCacheModeInheritance(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, workflowMode, jobMode, calleeMode, calleeJobMode string
 		wantError                                              bool
@@ -128,6 +131,7 @@ func TestWorkflowCallCacheModeInheritance(t *testing.T) {
 	for _, tt := range tests {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", tt.name, fromAST), func(t *testing.T) {
+				t.Parallel()
 				caller := "on: push\ncache-mode: " + tt.workflowMode + `
 jobs:
   call:
@@ -163,6 +167,7 @@ jobs:
 }
 
 func TestWorkflowCallCacheModeNested(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name, callerMode, middleMode, leafMode string
 		wantError                              bool
@@ -178,6 +183,7 @@ func TestWorkflowCallCacheModeNested(t *testing.T) {
 	for _, tt := range tests {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", tt.name, fromAST), func(t *testing.T) {
+				t.Parallel()
 				caller := "on: push\n"
 				if tt.callerMode != "" {
 					caller += "cache-mode: " + tt.callerMode + "\n"
@@ -214,6 +220,7 @@ jobs:
 }
 
 func TestWorkflowCallCacheModeCycleAndUnknownCallee(t *testing.T) {
+	t.Parallel()
 	caller := `on: push
 cache-mode: read
 jobs:
@@ -232,6 +239,7 @@ jobs:
 }
 
 func TestWorkflowCallCacheModeSharedCallee(t *testing.T) {
+	t.Parallel()
 	caller := `on: push
 cache-mode: write
 jobs:

@@ -15,6 +15,7 @@ import (
 )
 
 func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatal(err)
@@ -51,6 +52,7 @@ func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
 }
 
 func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatal(err)
@@ -95,6 +97,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 }
 
 func TestEditorConflictingAliasesWithholdOnlyConflictedSource(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
 		t.Fatal(err)

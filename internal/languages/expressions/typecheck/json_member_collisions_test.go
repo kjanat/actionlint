@@ -14,6 +14,7 @@ import (
 )
 
 func TestJSONMemberCollisions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		count int
@@ -34,6 +35,7 @@ func TestJSONMemberCollisions(t *testing.T) {
 		{`[{"a":1,"A":2}] false`, 1},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			collisions := runnerjson.JSONMemberCollisions(tc.input)
 			if len(collisions) != tc.count {
 				t.Fatalf("got %v", collisions)
@@ -53,11 +55,13 @@ func TestJSONMemberCollisions(t *testing.T) {
 }
 
 func TestJSONCollisionsDoNotMaskInvalidJSON(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		`{"a":1,"A":2`, `[{"a":1,"A":2} false]`,
 		`{"a":1,"A":2,,}`, `{"a":1,"A":2 /* unterminated`,
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			if got := runnerjson.JSONMemberCollisions(input); len(got) != 0 {
 				t.Fatal(got)
 			}

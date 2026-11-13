@@ -23,7 +23,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
-	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -44,6 +43,7 @@ func TestCommandWorkflowPaths(t *testing.T) {
 	for _, modern := range []bool{false, true} {
 		for _, input := range []string{"", outside, filepath.Join("..", "outside.yml")} {
 			t.Run(fmtTestName(modern, input), func(t *testing.T) {
+				t.Parallel()
 				args := []string{"--json"}
 				if input != "" {
 					args = append(args, input)
@@ -69,6 +69,7 @@ func TestCommandWorkflowPaths(t *testing.T) {
 }
 
 func TestCLIWriteErrors(t *testing.T) {
+	t.Parallel()
 	for _, format := range []render.Format{render.FormatText, render.FormatPretty, render.FormatOneline, render.FormatGCC, render.FormatJSON, render.FormatJSONL, render.FormatSARIF, render.FormatGitHub} {
 		var stderr strings.Builder
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &stderr}
@@ -80,7 +81,7 @@ func TestCLIWriteErrors(t *testing.T) {
 }
 
 func TestModernOutputDestinationsAndSummary(t *testing.T) {
-	commandTestRepo(t)
+	t.Chdir(commandTestRepo(t))
 	if err := os.WriteFile("report.json", []byte("previous report"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -127,14 +128,16 @@ func TestModernOutputDestinationsAndSummary(t *testing.T) {
 }
 
 func TestReportMayReplaceUnusedStdinFilename(t *testing.T) {
-	commandTestRepo(t)
+	t.Parallel()
+	dir := commandTestRepo(t)
+	report := filepath.Join(dir, "report.json")
 	for _, modern := range []bool{false, true} {
-		args := []string{"--stdin-filename", "report.json", "--yes", "--output-file", "report.json", "--json", ".github/workflows/ci.yml"}
+		args := []string{"--stdin-filename", report, "--yes", "--output-file", report, "--json", filepath.Join(dir, ".github", "workflows", "ci.yml")}
 		if modern {
 			args = append([]string{"check"}, args...)
 		}
 		got := testRunCommand("", args...)
-		data, err := os.ReadFile("report.json")
+		data, err := os.ReadFile(report)
 		if got.Status != 1 || got.Stderr != "" || err != nil || !json.Valid(data) {
 			t.Fatalf("unused stdin filename prevented report output: %+v (%v)", got, err)
 		}
@@ -143,8 +146,6 @@ func TestReportMayReplaceUnusedStdinFilename(t *testing.T) {
 
 func TestModernRendererAndUsageErrors(t *testing.T) {
 	t.Chdir(t.TempDir())
-	oldColor := color.NoColor
-	t.Cleanup(func() { color.NoColor = oldColor })
 	for _, format := range []string{"text", "oneline", "json", "jsonl", "github", "sarif"} {
 		var errout bytes.Buffer
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &errout}
@@ -188,6 +189,7 @@ func TestModernRendererAndUsageErrors(t *testing.T) {
 }
 
 func TestCommandNativeJSON(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{commandGoodWorkflow, commandBadWorkflow, ""} {
 		legacy := testRunCommand(input, "-format", "{{json .}}", "-")
 		for _, args := range [][]string{{"--json", "-"}, {"--output=json", "-"}, {"-o", "json", "-"}} {
@@ -253,13 +255,15 @@ func TestCommandNativeJSON(t *testing.T) {
 }
 
 func TestCommandMultiFileJSON(t *testing.T) {
-	t.Chdir(t.TempDir())
-	for _, path := range []string{"one.yml", "two.yml"} {
+	t.Parallel()
+	dir := t.TempDir()
+	paths := []string{filepath.Join(dir, "one.yml"), filepath.Join(dir, "two.yml")}
+	for _, path := range paths {
 		if err := os.WriteFile(path, []byte(commandBadWorkflow), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	got := testRunCommand("", "--json", "one.yml", "two.yml")
+	got := testRunCommand("", "--json", paths[0], paths[1])
 	var result resultreport.CheckResult
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil {
 		t.Fatal(err)
@@ -268,14 +272,15 @@ func TestCommandMultiFileJSON(t *testing.T) {
 	if got.Status != 1 || got.Stderr != "" || len(fields) != 2 {
 		t.Fatalf("%+v", got)
 	}
-	for i, path := range []string{"one.yml", "two.yml"} {
-		if fields[i].Path != path || fields[i].Start.Line != 6 || fields[i].Rule != "expression-reference" || !strings.Contains(fields[i].Snippet, "missing.value") {
+	for i, path := range paths {
+		if fields[i].Path != workingDirectoryPath(t, path) || fields[i].Start.Line != 6 || fields[i].Rule != "expression-reference" || !strings.Contains(fields[i].Snippet, "missing.value") {
 			t.Errorf("wrong diagnostic: %+v", fields[i])
 		}
 	}
 }
 
 func TestCommandOutputSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		mode string
 		args []string
@@ -293,6 +298,7 @@ func TestCommandOutputSelection(t *testing.T) {
 }
 
 func TestApplicationBuiltInOutput(t *testing.T) {
+	t.Parallel()
 	for _, format := range []render.Format{render.FormatText, render.FormatOneline, render.FormatJSON, render.FormatJSONL, render.FormatSARIF} {
 		var out bytes.Buffer
 		result, err := checking.Check(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(commandBadWorkflow)})
@@ -324,23 +330,25 @@ func TestApplicationBuiltInOutput(t *testing.T) {
 }
 
 func TestReportCannotReplaceConsumedFile(t *testing.T) {
+	t.Parallel()
 	for _, modern := range []bool{false, true} {
 		for _, kind := range []string{"stdin", "action", "reusable", "hardlink", "symlink"} {
 			t.Run(fmtTestName(modern, kind), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
-				t.Chdir(root)
-				gitRepository(t, ".")
+				gitRepository(t, root)
 				for _, dir := range []string{".github/workflows", "local"} {
-					if err := os.MkdirAll(dir, 0700); err != nil {
+					if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
 						t.Fatal(err)
 					}
 				}
-				target := ".github/workflows/input.yml"
+				input := filepath.Join(root, ".github", "workflows", "input.yml")
+				target := input
 				workflow := commandGoodWorkflow
 				content := workflow
 				switch kind {
 				case "action", "hardlink", "symlink":
-					target = "local/action.yml"
+					target = filepath.Join(root, "local", "action.yml")
 					content = `name: local
 runs:
   using: composite
@@ -357,7 +365,7 @@ jobs:
 permissions: {}
 `
 				case "reusable":
-					target = ".github/workflows/called.yml"
+					target = filepath.Join(root, ".github", "workflows", "called.yml")
 					content = strings.Replace(commandGoodWorkflow, "on: push", "on: workflow_call", 1)
 					workflow = `on: push
 jobs:
@@ -371,30 +379,30 @@ permissions: {}
 				}
 				report := target
 				if kind == "hardlink" || kind == "symlink" {
-					report = "alias.yml"
+					report = filepath.Join(root, "alias.yml")
 					var err error
 					if kind == "hardlink" {
 						err = os.Link(target, report)
 					} else {
-						err = os.Symlink(filepath.Join(root, target), report)
+						err = os.Symlink(target, report)
 					}
 					if err != nil {
 						t.Skip(err)
 					}
 				}
 				args := []string{"--yes", "--output-file", report, "--stdin-filename", target, "-"}
-				input := workflow
+				stdin := workflow
 				if kind != "stdin" {
-					if err := os.WriteFile(".github/workflows/input.yml", []byte(workflow), 0644); err != nil {
+					if err := os.WriteFile(input, []byte(workflow), 0644); err != nil {
 						t.Fatal(err)
 					}
-					args = []string{"--yes", "--output-file", report, ".github/workflows/input.yml"}
-					input = ""
+					args = []string{"--yes", "--output-file", report, input}
+					stdin = ""
 				}
 				if modern {
 					args = append([]string{"check"}, args...)
 				}
-				got := testRunCommand(input, args...)
+				got := testRunCommand(stdin, args...)
 				if got.Status != 3 || !strings.Contains(got.Stderr, "also an input") {
 					t.Fatalf("%+v", got)
 				}
@@ -410,7 +418,7 @@ permissions: {}
 func TestReportMayReplaceUnselectedConfig(t *testing.T) {
 	for _, modern := range []bool{false, true} {
 		t.Run(fmtTestName(modern, "config"), func(t *testing.T) {
-			commandTestRepo(t)
+			t.Chdir(commandTestRepo(t))
 			selected := filepath.Join(".github", "actionlint.yaml")
 			if err := os.WriteFile(selected, []byte("{}\n"), 0600); err != nil {
 				t.Fatal(err)
@@ -436,18 +444,19 @@ func TestReportMayReplaceUnselectedConfig(t *testing.T) {
 }
 
 func TestReportPreservesPermissions(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX permission bits")
 	}
-	t.Chdir(t.TempDir())
-	if err := os.WriteFile("report", []byte("old"), 0640); err != nil {
+	report := filepath.Join(t.TempDir(), "report")
+	if err := os.WriteFile(report, []byte("old"), 0640); err != nil {
 		t.Fatal(err)
 	}
-	got := testRunCommand(commandGoodWorkflow, "check", "--yes", "--output-file", "report", "-")
+	got := testRunCommand(commandGoodWorkflow, "check", "--yes", "--output-file", report, "--no-config", "-")
 	if got.Status != 0 {
 		t.Fatal(got)
 	}
-	info, err := os.Stat("report")
+	info, err := os.Stat(report)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,14 +473,15 @@ func cleanCheckJSON(data string) bool {
 }
 
 func TestCheckJSONFailureContract(t *testing.T) {
-	commandTestRepo(t)
+	t.Parallel()
+	missing := filepath.Join(commandTestRepo(t), "missing.yml")
 	for _, tc := range []struct {
 		args []string
 		code int
 	}{
-		{[]string{"check", "--json", "missing.yml"}, 3},
+		{[]string{"check", "--json", missing}, 3},
 		{[]string{"check", "--json", "--does-not-exist"}, 2},
-		{[]string{"--json", "missing.yml"}, 3},
+		{[]string{"--json", missing}, 3},
 	} {
 		got := testRunCommand("", tc.args...)
 		var result resultreport.CheckResult
@@ -491,6 +501,7 @@ func TestCheckJSONFailureContract(t *testing.T) {
 }
 
 func TestJSONErrorsBeforeOperationSelection(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"--version", "--json", "--does-not-exist"},
 		{"--json", "--does-not-exist", "--version"},

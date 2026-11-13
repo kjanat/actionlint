@@ -8,6 +8,7 @@ import (
 )
 
 func TestRegisteredNurseryPresetSelection(t *testing.T) {
+	t.Parallel()
 	descriptor := repoconfig.Rule{Name: "experimental-plugin", Maturity: "nursery", Group: "plugins"}
 	for _, test := range []struct {
 		root, group repoconfig.Preset

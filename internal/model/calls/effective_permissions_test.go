@@ -8,6 +8,7 @@ import (
 )
 
 func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
+	t.Parallel()
 	view := func(permissions *workflowlang.Permissions) declaration.PermissionsView {
 		return declaration.Publish("", &workflowlang.Workflow{Permissions: permissions}, false, "").Bind("permissions").Workflow().Permissions()
 	}
@@ -28,6 +29,7 @@ func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
 		{"invalid workflow stops inheritance", invalid, declaration.PermissionsView{}, PermissionsInvalid, PermissionLevelNone},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result := EffectivePermissions(tc.workflow, tc.job, defaults)
 			if result.Kind != tc.kind || result.Levels["contents"] != tc.contents {
 				t.Fatalf("effective permissions=%+v", result)

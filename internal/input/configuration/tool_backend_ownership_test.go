@@ -9,6 +9,7 @@ import (
 )
 
 func TestToolBackendsAreValidatedAndOwned(t *testing.T) {
+	t.Parallel()
 	source := []byte(`tools:
   ruff:
     backend: {process: {executable: launcher, args: [--isolated], env: {MODE: strict}}}

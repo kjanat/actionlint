@@ -11,6 +11,7 @@ import (
 )
 
 func TestScalarAttachedComments(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, input string
 		want        []workflowlang.ScalarComment
@@ -32,6 +33,7 @@ func TestScalarAttachedComments(t *testing.T) {
 	} {
 		for _, newline := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+newline, func(t *testing.T) {
+				t.Parallel()
 				input := strings.ReplaceAll(tc.input, "\n", newline)
 				root, err := codec.Parse([]byte(input))
 				if err != nil {
@@ -60,6 +62,7 @@ func TestScalarAttachedComments(t *testing.T) {
 }
 
 func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
+	t.Parallel()
 	const input = "script: &script echo $HI # shellcheck disable=SC2034\n# shellcheck disable=SC2086\nrun: *script\nnext: *script # shellcheck shell=sh\n"
 	root, err := codec.Parse([]byte(input))
 	if err != nil {
@@ -101,6 +104,7 @@ func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 }
 
 func TestStandaloneAliasDeclarationCommentsUseLazyPhysicalGraph(t *testing.T) {
+	t.Parallel()
 	const input = "script: &script echo $HI # shellcheck disable=SC2034\n# shellcheck disable=SC2086\nrun: *script\n"
 	root, err := codec.Parse([]byte(input))
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 )
 
 func TestCanonicalContractIsCurrent(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("../../../../plugins/protocol/wit/analyzer.wit")
 	if err != nil {
 		t.Fatal(err)
@@ -22,8 +23,10 @@ func TestCanonicalContractIsCurrent(t *testing.T) {
 }
 
 func TestCanonicalContractChecksCompleteShape(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"compatible-contract", "wrong-signature", "wrong-record", "wrong-enum"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			data, err := os.ReadFile(filepath.Join("testdata", "contracts", name+".wasm"))
 			if err != nil {
 				t.Fatal(err)

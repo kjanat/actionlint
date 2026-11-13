@@ -65,6 +65,7 @@ func requireInvocationResult[T any](value T, err error) T {
 }
 
 func TestInvocationContextUnavailableOutsideCallAndWhenCanceled(t *testing.T) {
+	t.Parallel()
 	api := invocationContext{}
 	assertUnavailable := func(t *testing.T, ctx context.Context, want string) {
 		t.Helper()
@@ -80,9 +81,11 @@ func TestInvocationContextUnavailableOutsideCallAndWhenCanceled(t *testing.T) {
 		}
 	}
 	t.Run("missing graph", func(t *testing.T) {
+		t.Parallel()
 		assertUnavailable(t, context.Background(), "invocation graph is unavailable")
 	})
 	t.Run("canceled context", func(t *testing.T) {
+		t.Parallel()
 		ctx, cancel := context.WithCancel(invocationContextFor(invocationContextGraph(t)))
 		cancel()
 		assertUnavailable(t, ctx, context.Canceled.Error())
@@ -90,6 +93,7 @@ func TestInvocationContextUnavailableOutsideCallAndWhenCanceled(t *testing.T) {
 }
 
 func TestInvocationContextValidEmptyGraph(t *testing.T) {
+	t.Parallel()
 	api, ctx := invocationContext{}, invocationContextFor(invocationContextGraph(t))
 	summaryResult, ok := requireInvocationResult(api.Describe(ctx)).(bind.ResultSummaryStringOk)
 	if !ok {
@@ -161,6 +165,7 @@ func invocationContextPagedGraph(t *testing.T, count int) (checkinputs.CallGraph
 }
 
 func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing.T) {
+	t.Parallel()
 	graph, callIDs, scriptIDs := invocationContextPagedGraph(t, checkinputs.MaxCallGraphPageSize+1)
 	api, ctx := invocationContext{}, invocationContextFor(graph)
 	var calls []bind.Call
@@ -225,6 +230,7 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 }
 
 func TestInvocationContextPageBoundsAndNilEndPages(t *testing.T) {
+	t.Parallel()
 	graph, _, _ := invocationContextPagedGraph(t, checkinputs.MaxCallGraphPageSize+1)
 	api, ctx := invocationContext{}, invocationContextFor(graph)
 	count := uint32(graph.CallCount())
@@ -245,7 +251,9 @@ func TestInvocationContextPageBoundsAndNilEndPages(t *testing.T) {
 }
 
 func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
+	t.Parallel()
 	t.Run("stop", func(t *testing.T) {
+		t.Parallel()
 		base := invocationContextGraph(t).Export()
 		callID := checkinputs.OccurrenceID(strings.Repeat("b", 64))
 		callSite := sourcepos.Reference{Document: base.Entry.Reference.Document, Revision: base.Entry.Reference.Revision, Node: "call"}
@@ -266,6 +274,7 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 		}
 	})
 	t.Run("entry interruption", func(t *testing.T) {
+		t.Parallel()
 		base := invocationContextGraph(t).Export()
 		base.EntryInterruption = checkinputs.Present(checkinputs.Interruption{Reason: checkinputs.OperationalFailure, Detail: "entry expansion failed"})
 		base.Complete = false
@@ -281,6 +290,7 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 }
 
 func TestInvocationContextRejectsBudgetOverflow(t *testing.T) {
+	t.Parallel()
 	if strconv.IntSize <= 32 {
 		t.Skip("int cannot exceed WIT u32 on 32-bit platforms")
 	}
@@ -291,6 +301,7 @@ func TestInvocationContextRejectsBudgetOverflow(t *testing.T) {
 		"scripts": func(data *checkinputs.CallGraphData) { data.Budget.MaxScripts = int(beyondU32) },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			data := invocationContextGraph(t).Export()
 			set(&data)
 			graph, err := checkinputs.NewCallGraph(data)

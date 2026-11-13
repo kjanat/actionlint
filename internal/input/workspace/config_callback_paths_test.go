@@ -17,6 +17,7 @@ func TestConfigCallbacksUseAbsolutePaths(t *testing.T) {
 	for _, initial := range []string{"config.yml", "./config.yml"} {
 		for _, inherited := range []bool{false, true} {
 			t.Run(initial+strconv.FormatBool(inherited), func(t *testing.T) {
+				t.Parallel()
 				base := filepath.Join(root, "base.yml")
 				content := "lint: {rules: {correctness: {if-cond: warn}}}\n"
 				if inherited {

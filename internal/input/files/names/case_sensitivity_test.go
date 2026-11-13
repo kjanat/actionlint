@@ -8,6 +8,7 @@ import (
 )
 
 func TestCaseInsensitivePathconf(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value int
 		err   error
@@ -33,6 +34,7 @@ func TestCaseInsensitivePathconf(t *testing.T) {
 }
 
 func TestCaseInsensitiveDirectoryEvidence(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, name := range []string{"Probe", "probe", "123"} {
 		if err := os.WriteFile(filepath.Join(root, name), nil, 0o600); err != nil {
@@ -65,6 +67,7 @@ func TestCaseInsensitiveDirectoryEvidence(t *testing.T) {
 		{"unreadable alias", []os.DirEntry{entry("Probe")}, nil, os.ErrPermission, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got := caseInsensitiveDirectoryEntries(root, func(path string) (os.FileInfo, error) {
 				if filepath.Dir(path) != root {
 					t.Fatalf("inspected parent filesystem: %s", path)
@@ -87,6 +90,7 @@ func TestCaseInsensitiveDirectoryEvidence(t *testing.T) {
 }
 
 func TestCaseInsensitiveDirectoryIgnoresSymlinks(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.Symlink(t.TempDir(), filepath.Join(root, "Alias")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)

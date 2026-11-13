@@ -112,6 +112,7 @@ func problemResult(t *testing.T, format outputFormat) *lintResult {
 }
 
 func TestActionReportsSuccess(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
@@ -154,6 +155,7 @@ func TestActionReportsSuccess(t *testing.T) {
 }
 
 func TestActionReportsProblems(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, problemResult(t, formatGitHub),
 		"w.yaml", "github", "", "", ".", "", "true")
@@ -174,6 +176,7 @@ func TestActionReportsProblems(t *testing.T) {
 }
 
 func TestActionKeepsProblemsNonFatal(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, problemResult(t, formatOneline),
 		"", "oneline", "", "", ".", "", "false")
@@ -187,6 +190,7 @@ func TestActionKeepsProblemsNonFatal(t *testing.T) {
 }
 
 func TestActionReportsFailure(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "could not read \"w.yaml\"\n", commandstatus.ExitFailure}, 1),
 		"w.yaml", "json", "", "", ".", "", "false")
@@ -207,6 +211,7 @@ func TestActionReportsFailure(t *testing.T) {
 }
 
 func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	run, _ := runAction(t, workspace, unknownFiles(&lintOutcome{"", "no project\n", commandstatus.ExitFailure}),
 		"", "json", "", "", ".", "", "true")
@@ -221,6 +226,7 @@ func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 }
 
 func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
@@ -244,6 +250,7 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 }
 
 func TestActionReportsInvalidInput(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	run, recorder := runAction(t, workspace, nil, "", "text", "", "", ".", "", "true")
 
@@ -263,6 +270,7 @@ func TestActionReportsInvalidInput(t *testing.T) {
 }
 
 func TestActionWritesOutputFile(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	analysis := problemResult(t, formatJSONLines)
 	run, _ := runAction(t, workspace, analysis,
@@ -286,6 +294,7 @@ func TestActionWritesOutputFile(t *testing.T) {
 }
 
 func TestActionRejectsEscapingOutputPath(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	for _, tc := range []struct {
 		name string
@@ -311,6 +320,7 @@ func TestActionRejectsEscapingOutputPath(t *testing.T) {
 }
 
 func TestActionReportsMissingWorkspace(t *testing.T) {
+	t.Parallel()
 	workspace := filepath.Join(resolved(t, t.TempDir()), "missing")
 	run, recorder := runAction(t, workspace, nil, "", "json", "", "", ".", "", "true")
 
@@ -326,6 +336,7 @@ func TestActionReportsMissingWorkspace(t *testing.T) {
 }
 
 func TestActionPassesInputsToLinter(t *testing.T) {
+	t.Parallel()
 	workspace := resolved(t, t.TempDir())
 	if err := os.MkdirAll(filepath.Join(workspace, "sub"), 0o755); err != nil {
 		t.Fatal(err)
@@ -387,6 +398,7 @@ func TestActionFallsBackToProcessDirectory(t *testing.T) {
 }
 
 func TestActionTimesOut(t *testing.T) {
+	t.Parallel()
 	if lintTimeout != 300*time.Second {
 		t.Errorf("wanted a 300 second lint timeout but got %s", lintTimeout)
 	}

@@ -14,6 +14,7 @@ import (
 )
 
 func TestScriptEnvironmentResponseLimit(t *testing.T) {
+	t.Parallel()
 	environments := []checkinputs.ScriptEnvironment{{
 		OperatingSystem:  runnerapi.Linux,
 		MergeComparison:  scriptmodel.NameSensitive,
@@ -27,6 +28,7 @@ func TestScriptEnvironmentResponseLimit(t *testing.T) {
 }
 
 func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
+	t.Parallel()
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(
 		scriptmodel.EnvironmentAlternatives("bash", nil, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"lowercase", "UPPERCASE", "miXedCase"}}),
 	)))
@@ -67,6 +69,7 @@ func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 }
 
 func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
+	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Windows}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"miXedCase"}})
 	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: checkinputs.ScriptOccurrence{ID: "selected"}, Environment: environments}}}
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
@@ -95,6 +98,7 @@ func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
 }
 
 func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
+	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("pwsh", []runnerapi.OS{runnerapi.Windows}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentWorkflow, Names: []string{"lowercase"}})
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(environments)))
 	result, err := (scriptEnvironments{}).Current(ctx)
@@ -120,6 +124,7 @@ func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 }
 
 func TestSuppliedScriptWithoutEnvironmentFactsReturnsAnEmptyList(t *testing.T) {
+	t.Parallel()
 	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: checkinputs.ScriptOccurrence{ID: "selected"}}}}
 	document := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	result, err := (scriptEnvironments{}).ForScript(document, "selected")

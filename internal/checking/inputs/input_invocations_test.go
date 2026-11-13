@@ -11,6 +11,7 @@ import (
 )
 
 func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(*Input){
 		"graph absent":             func(input *Input) { input.CallGraph = CallGraph{} },
 		"invocations input absent": func(input *Input) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Scripts} },
@@ -25,6 +26,7 @@ func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 		"missing text":             func(input *Input) { input.Invoked = nil },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			graph := graphFixture(t)
 			occurrence := graph.clone().Scripts[0]
 			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
@@ -40,6 +42,7 @@ func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 }
 
 func TestInputScriptSelectionCoverage(t *testing.T) {
+	t.Parallel()
 	graph := graphFixture(t)
 	second := graph.clone().Scripts[0]
 	second.ID = OccurrenceID(strings.Repeat("d", 64))
@@ -63,6 +66,7 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 		{"unknown selection", []OccurrenceID{"unknown"}, nil, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
 			if err := input.ValidateInvocations(); (err == nil) != test.valid {
 				t.Fatalf("valid=%v: %v", test.valid, err)
@@ -80,12 +84,14 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 }
 
 func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
+	t.Parallel()
 	for name, occurrence := range map[string]ScriptOccurrence{
 		"id": {ID: "id"}, "owner": {Owner: "owner"}, "ancestry": {Ancestry: []OccurrenceID{"owner"}},
 		"depth": {Depth: 1}, "declaration": {Declaration: source.Reference{Document: "document"}},
 		"kind": {Kind: RunScript}, "input": {Input: "script"},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			for _, input := range []Input{
 				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
 				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Invoked: []Script{{Occurrence: occurrence}}},

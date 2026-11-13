@@ -10,6 +10,7 @@ import (
 )
 
 func TestMissingAncestorStopsAtUnreadablePath(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	info, err := os.Stat(root)
 	if err != nil {
@@ -36,6 +37,7 @@ func TestMissingAncestorStopsAtUnreadablePath(t *testing.T) {
 }
 
 func TestMissingAncestorRejectsFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	file := filepath.Join(root, "file")
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
@@ -60,6 +62,7 @@ func TestMissingAncestorRejectsFile(t *testing.T) {
 }
 
 func TestMissingAncestorIdentity(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	alias := filepath.Join(t.TempDir(), "alias")
 	if err := os.Symlink(root, alias); err != nil {
@@ -89,6 +92,7 @@ func TestMissingAncestorIdentity(t *testing.T) {
 }
 
 func TestMissingAncestorOverlayWork(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	alias := filepath.Join(t.TempDir(), "alias")
 	if err := os.Symlink(root, alias); err != nil {
@@ -117,6 +121,7 @@ func TestMissingAncestorOverlayWork(t *testing.T) {
 }
 
 func TestMissingAncestorCaseSensitivity(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, insensitive := range []bool{false, true} {
 		for _, suffix := range []string{".github/workflows", ".GITHUB/WORKFLOWS", ".other/workflows", ".github/workflows/extra"} {

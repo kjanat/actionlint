@@ -13,6 +13,7 @@ import (
 )
 
 func TestReusableIgnoreWorkflowCallOrigin(t *testing.T) {
+	t.Parallel()
 	const source = `on: push
 jobs:
   caller:
@@ -28,6 +29,7 @@ permissions: {}
 }
 
 func TestReusableIgnoresAliasedSourcedShellcheck(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "scripts/check.sh", "echo $VALUE\n")

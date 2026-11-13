@@ -7,6 +7,7 @@ import (
 )
 
 func TestDeclarationCombinationsKeepValidationAndExecutionSeparate(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix       string
 		declared, executed int
@@ -16,6 +17,7 @@ func TestDeclarationCombinationsKeepValidationAndExecutionSeparate(t *testing.T)
 		{"include correlations", `{"os":["linux"],"exclude":[{"os":"linux"}],"include":[{"os":"linux","image":"first"},{"os":"linux","extra":"second"}]}`, 3, 2, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			strategies := []string{"strategy:\n      matrix: " + tc.matrix, "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"}
 			for _, strategy := range strategies {
 				workflow, findings := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    " + strategy + "\n    steps: [{run: echo ok}]\n"))

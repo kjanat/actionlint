@@ -11,6 +11,7 @@ import (
 )
 
 func TestValid(t *testing.T) {
+	t.Parallel()
 	for value, want := range map[string]bool{
 		"build": true, "_build": true, "Build-1_2": true,
 		"1build": false, "build.1": false, "build 1": false, "": false, "ünïcode": false,
@@ -22,6 +23,7 @@ func TestValid(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	at := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 5} }
 	long := strings.Repeat("x", 100)
 	job := Job{

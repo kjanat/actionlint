@@ -7,6 +7,7 @@ import (
 )
 
 func TestOutputLimitHelper(t *testing.T) {
+	t.Parallel()
 	mode := os.Getenv("ACTIONLINT_OUTPUT_LIMIT_HELPER")
 	if mode == "" {
 		return
@@ -26,6 +27,7 @@ func TestOutputLimitHelper(t *testing.T) {
 }
 
 func TestExecutionOutputLimit(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

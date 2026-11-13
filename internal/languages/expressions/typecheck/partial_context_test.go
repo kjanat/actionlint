@@ -9,6 +9,7 @@ import (
 )
 
 func TestPartialContextLookup(t *testing.T) {
+	t.Parallel()
 	lookup := func(name string) (any, bool) { return "Windows", name == "runner.os" }
 	for _, tc := range []struct {
 		input string
@@ -21,6 +22,7 @@ func TestPartialContextLookup(t *testing.T) {
 		{"runner.arch != 'X64'", false, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)

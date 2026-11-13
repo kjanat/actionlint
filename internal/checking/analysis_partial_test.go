@@ -22,6 +22,7 @@ import (
 )
 
 func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
@@ -43,6 +44,7 @@ permissions: {}
 }
 
 func TestAnalysisPartialFindings(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -78,6 +80,7 @@ permissions: {}
 	for _, adapter := range []string{"sources", "files"} {
 		for _, failingFirst := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/failing-first=%t", adapter, failingFirst), func(t *testing.T) {
+				t.Parallel()
 				sources := []workspace.Source{{Path: "successful.yml", Content: []byte(successful)}, {Path: "failing.yml", Content: []byte(failing)}}
 				if failingFirst {
 					slices.Reverse(sources)
@@ -121,6 +124,7 @@ permissions: {}
 }
 
 func TestAnalysisPartialAnalyzerHelper(t *testing.T) {
+	t.Parallel()
 	separator := slices.Index(os.Args, "--")
 	if separator < 0 || separator+1 >= len(os.Args) {
 		return

@@ -66,6 +66,7 @@ func TestCategoryMigrationUsesCachedManifestWithoutExecuting(t *testing.T) {
 }
 
 func TestCheckingDefersUninspectableLegacyPluginSettings(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, "actionlint.yaml")
 	original := []byte("plugins: []\nlint: {rules: {plugins: {custom-check: off}}}\n")

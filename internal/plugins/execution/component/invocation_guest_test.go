@@ -17,6 +17,7 @@ import (
 )
 
 func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
+	t.Parallel()
 	graph, calls, scripts := invocationContextPagedGraph(t, 257)
 	var logs []string
 	// 257 pages take about 1s natively; race and coverage builds run 10x slower
@@ -69,6 +70,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 }
 
 func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
+	t.Parallel()
 	for _, selected := range [][]checkinputs.OccurrenceID{nil, {}, {"chosen"}} {
 		value := lowerInput(checkinputs.Input{SelectedScripts: selected})
 		option, ok := value.Field("selected-scripts").(*wacogo.ValOption)

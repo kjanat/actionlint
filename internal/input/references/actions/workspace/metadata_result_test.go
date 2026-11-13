@@ -21,6 +21,7 @@ import (
 )
 
 func TestMetadataAdmissionFailureNeverPublishesUsableMetadata(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("name: rejected\ninputs: invalid\nruns:\n  using: composite\n  steps:\n    - run: echo unsafe\n      shell: bash\n      a0: &a0 [value]\n")
 	for level := 1; level <= 8; level++ {
@@ -45,6 +46,7 @@ func TestMetadataAdmissionFailureNeverPublishesUsableMetadata(t *testing.T) {
 }
 
 func TestMetadataCachePreservesNativeLoadErrorText(t *testing.T) {
+	t.Parallel()
 	var fatal strings.Builder
 	fatal.WriteString("name: rejected\ndefinitions: &definitions\n")
 	for input := range 650 {
@@ -68,6 +70,7 @@ func TestMetadataCachePreservesNativeLoadErrorText(t *testing.T) {
 }
 
 func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
+	t.Parallel()
 	for _, failure := range []error{context.Canceled, context.DeadlineExceeded} {
 		for _, docker := range []bool{false, true} {
 			name := failure.Error() + "/manifest"
@@ -75,6 +78,7 @@ func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
 				name = failure.Error() + "/dockerfile"
 			}
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				cache := newCapturedActionCache(t, t.TempDir(), nil)
 				failed := false
 				cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(path string) ([]byte, error) {
@@ -120,9 +124,11 @@ func TestMetadataReadCancellationDoesNotPoisonCache(t *testing.T) {
 }
 
 func TestCaseInsensitiveResolutionPreservesInterruption(t *testing.T) {
+	t.Parallel()
 	for _, mapped := range []bool{false, true} {
 		for _, deadline := range []bool{false, true} {
 			t.Run(fmt.Sprintf("mapped=%t/deadline=%t", mapped, deadline), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				writeFixture(t, root, "Target/action.yml", "name: retry\ndescription: test\nruns: {using: composite, steps: []}\n")
 				ctx, cancel := context.WithCancel(t.Context())
@@ -155,6 +161,7 @@ func TestCaseInsensitiveResolutionPreservesInterruption(t *testing.T) {
 }
 
 func TestDockerfileReadFailureSurvivesReporting(t *testing.T) {
+	t.Parallel()
 	cache := newCapturedActionCache(t, t.TempDir(), nil)
 	reads := 0
 	cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(path string) ([]byte, error) {
@@ -178,6 +185,7 @@ func TestDockerfileReadFailureSurvivesReporting(t *testing.T) {
 }
 
 func TestEmptyParseErrorRetainsItsPath(t *testing.T) {
+	t.Parallel()
 	failure := NewParseError("broken/action.yml", nil)
 	if got := failure.Error(); got != `could not parse action metadata in "broken/action.yml"` {
 		t.Fatal(got)
@@ -188,6 +196,7 @@ func TestEmptyParseErrorRetainsItsPath(t *testing.T) {
 }
 
 func TestCachedMetadataIsVisibleDuringDocumentNotification(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "action/action.yml", "name: published\ndescription: identity\nruns: {using: composite, steps: []}\n")
 	cache := newCapturedActionCache(t, root, nil)
@@ -247,6 +256,7 @@ func TestCachedMetadataIsVisibleDuringDocumentNotification(t *testing.T) {
 }
 
 func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
+	t.Parallel()
 	for _, broken := range []bool{false, true} {
 		name := "valid"
 		content := "name: published\ndescription: identity\nruns: {using: composite, steps: []}\n"
@@ -254,6 +264,7 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 			name, content = "broken", "runs: [\n"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeFixture(t, root, "action/action.yml", content)
 			cache := newCapturedActionCache(t, root, nil)
@@ -300,12 +311,14 @@ func TestConcurrentFirstMetadataPublicationNotifiesOnce(t *testing.T) {
 }
 
 func TestMetadataLookupRetainsFailureIndependentlyOfReporting(t *testing.T) {
+	t.Parallel()
 	for _, typedFirst := range []bool{false, true} {
 		name := "validation-first"
 		if typedFirst {
 			name = "lookup-first"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeFixture(t, root, "broken/action.yml", "runs: [\n")
 			cache := newCapturedActionCache(t, root, nil)
@@ -334,6 +347,7 @@ func TestMetadataLookupRetainsFailureIndependentlyOfReporting(t *testing.T) {
 }
 
 func TestMetadataReadFailureSurvivesReporting(t *testing.T) {
+	t.Parallel()
 	cache := newCapturedActionCache(t, t.TempDir(), nil)
 	cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(string) ([]byte, error) {
 		return nil, os.ErrPermission
@@ -348,31 +362,35 @@ func TestMetadataReadFailureSurvivesReporting(t *testing.T) {
 }
 
 func TestMetadataOutcomesDistinguishMissingAndUnavailable(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "docker/Dockerfile", "FROM scratch\n")
 	cache := newCapturedActionCache(t, root, nil)
-	resolver := NewResolver(cache, map[string]string{"./generated": "./missing-source"})
+	mappings := map[string]string{"./generated": "./missing-source"}
 	for _, tc := range []struct {
 		name     string
-		lookup   func() (MetadataResult, bool)
+		lookup   func(*Resolver) (MetadataResult, bool)
 		status   MetadataStatus
 		hasError bool
 	}{
-		{"dockerfile", func() (MetadataResult, bool) { return resolver.LookupMetadata("$/docker") }, MetadataDockerfileOnly, false},
-		{"missing", func() (MetadataResult, bool) { return resolver.LookupMetadata("$/missing") }, MetadataMissingManifest, true},
-		{"mapping", func() (MetadataResult, bool) { return resolver.LookupMetadata("$/generated") }, MetadataMappingFailed, true},
-		{"remote", func() (MetadataResult, bool) { return resolver.LookupMetadata("owner/repo@v1") }, MetadataNonLocal, false},
-		{"disabled", func() (MetadataResult, bool) { return NewResolver(nil, nil).LookupMetadata("./action") }, MetadataLookupDisabled, false},
+		{"dockerfile", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("$/docker") }, MetadataDockerfileOnly, false},
+		{"missing", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("$/missing") }, MetadataMissingManifest, true},
+		{"mapping", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("$/generated") }, MetadataMappingFailed, true},
+		{"remote", func(resolver *Resolver) (MetadataResult, bool) { return resolver.LookupMetadata("owner/repo@v1") }, MetadataNonLocal, false},
+		{"disabled", func(*Resolver) (MetadataResult, bool) { return NewResolver(nil, nil).LookupMetadata("./action") }, MetadataLookupDisabled, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			resolver := NewResolver(cache, mappings)
 			for range 2 {
-				result, _ := tc.lookup()
+				result, _ := tc.lookup(resolver)
 				if result.Status() != tc.status || (result.Err() != nil) != tc.hasError || result.Metadata() != nil {
 					t.Fatalf("lookup result: %+v", result)
 				}
 			}
 		})
 	}
+	resolver := NewResolver(cache, mappings)
 	resolver.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
 	result, _ := resolver.LookupMetadata("./uncertain")
 	if result.Status() != MetadataPlacementUncertain || result.Err() != nil {
@@ -386,6 +404,7 @@ func TestMetadataOutcomesDistinguishMissingAndUnavailable(t *testing.T) {
 }
 
 func TestMetadataDiagnosticClaimIsConcurrentAndSeparateFromLookup(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "broken/action.yml", "runs: [\n")
 	cache := newCapturedActionCache(t, root, nil)

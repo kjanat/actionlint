@@ -14,6 +14,7 @@ import (
 )
 
 func TestConfigExtends(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "base/first.yml", `lint: {rules: {correctness: {if-cond: warn}, policy: {require-job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}}}}
 config-variables: [first]
@@ -66,6 +67,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 }
 
 func TestConfigExtendsFailures(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, content, want string }{
 		{"missing", "extends: [missing.yml]", "missing.yml"},
 		{"cycle", "extends: [actionlint.yml]", "cyclic"},
@@ -74,6 +76,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 		{"nonstring", "extends: [123]", "expected a string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			path := fixturefiles.Write(t, t.TempDir(), "actionlint.yml", tc.content)
 			_, err := checking.ConfigurationRules().Load(path)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -85,6 +88,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 		})
 	}
 	t.Run("HTTPS source via reader", func(t *testing.T) {
+		t.Parallel()
 		root := t.TempDir()
 		remote := "https://example.com/config.yml"
 		path := fixturefiles.Write(t, root, "actionlint.yml", "extends: ["+remote+"]\n")

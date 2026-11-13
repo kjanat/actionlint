@@ -3,6 +3,7 @@ package permissions
 import "testing"
 
 func TestScopesIsACopy(t *testing.T) {
+	t.Parallel()
 	first := Scopes()
 	first["contents"][0] = "mutated"
 	delete(first, "issues")

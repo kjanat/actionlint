@@ -23,6 +23,7 @@ import (
 )
 
 func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
+	t.Parallel()
 	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/script-engine.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -39,6 +40,7 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 }
 
 func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
+	t.Parallel()
 	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/script-engine.wasm")
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +93,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 }
 
 func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	module, err := filepath.Abs("../../../../plugins/execution/module/testdata/engines/echo.wasm")
 	if err != nil {
@@ -138,6 +141,7 @@ func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
 }
 
 func TestModuleKindSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		path string
 		core bool

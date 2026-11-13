@@ -7,6 +7,7 @@ import (
 )
 
 func TestDefinitionOwnsCallSiteFacts(t *testing.T) {
+	t.Parallel()
 	metadata, err := action.Parse("action.yml", []byte("name: test\ninputs:\n  token: {required: true}\noutputs:\n  result: {description: result}\nruns: {using: node24, main: index.js}\n"))
 	if err != nil {
 		t.Fatal(err)

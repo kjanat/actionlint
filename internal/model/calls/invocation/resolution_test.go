@@ -8,6 +8,7 @@ import (
 )
 
 func TestResolutionOutcomesRemainDistinctWithoutScripts(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		kind   invocation.OutcomeKind
@@ -39,6 +40,7 @@ func TestResolutionOutcomesRemainDistinctWithoutScripts(t *testing.T) {
 		{"dynamic", invocation.OutcomeDynamic, invocation.ReasonExpression, func() (invocation.Outcome, error) { return invocation.Dynamic("${{ inputs.action }}") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			call := begin(t, b, b.RootID(), reference("entry", "call"))
 			outcome, err := tc.make()
@@ -68,6 +70,7 @@ func TestResolutionOutcomesRemainDistinctWithoutScripts(t *testing.T) {
 }
 
 func TestCycleBetweenAncestorsAndRepeatedSibling(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	first := begin(t, b, b.RootID(), reference("entry", "first"))
 	expand(t, b, first, reference("outer", "document"))
@@ -100,6 +103,7 @@ func TestCycleBetweenAncestorsAndRepeatedSibling(t *testing.T) {
 }
 
 func TestInvalidOutcomeDoesNotConsumeReservation(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	call := begin(t, b, b.RootID(), reference("entry", "call"))
 	if _, err := invocation.Unresolved(invocation.ReasonDockerfileOnly, "wrong category"); !errors.Is(err, invocation.ErrInvalidOutcome) {

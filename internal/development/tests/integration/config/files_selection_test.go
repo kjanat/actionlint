@@ -8,6 +8,7 @@ import (
 )
 
 func TestFilesSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		setting string
 		want    bool
@@ -21,6 +22,7 @@ func TestFilesSelection(t *testing.T) {
 		{"{includes: ['!**/ci.yml', '**/*.yml']}", false},
 	} {
 		t.Run(tc.setting, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("files: " + tc.setting))
 			if err != nil {
 				t.Fatal(err)

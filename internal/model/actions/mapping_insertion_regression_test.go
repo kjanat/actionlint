@@ -6,6 +6,7 @@ import (
 )
 
 func TestActionMetadataInsertionDuplicates(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"env", "with"} {
 		for _, directive := range []string{"${{ insert }}", "${{insert}}"} {
 			for _, tc := range []struct {
@@ -23,6 +24,7 @@ func TestActionMetadataInsertionDuplicates(t *testing.T) {
 				{"unknown", `{FOO: one, INSERT: '${{ inputs.extra }}'}`, 0, 0},
 			} {
 				t.Run(section+"/"+directive+"/"+tc.name, func(t *testing.T) {
+					t.Parallel()
 					mapping := strings.ReplaceAll(tc.mapping, "INSERT", "'"+directive+"'")
 					source := "name: test\ndescription: test\ninputs:\n  extra:\n    description: extra\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      " + section + ": " + mapping + "\n    - uses: example/action@v1\n      " + section + ": {FOO: separate}\n"
 					meta, err := Parse("action.yml", []byte(source))

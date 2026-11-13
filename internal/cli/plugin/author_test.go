@@ -12,6 +12,7 @@ import (
 )
 
 func TestPluginValidateBoundsLocalManifestRead(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "manifest.json")
 	if err := os.WriteFile(path, []byte(strings.Repeat(" ", authoringManifestLimit+1)), 0o600); err != nil {
 		t.Fatal(err)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
+	t.Parallel()
 	rules, err := NewRuleSet([]rule.Declaration{{Name: "example", Aliases: []rule.Alias{{Name: "old-example"}}, Category: "correctness", Maturity: "stable", Recommended: true}})
 	if err != nil {
 		t.Fatal(err)

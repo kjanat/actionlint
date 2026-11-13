@@ -10,6 +10,7 @@ import (
 )
 
 func TestRelatedSchemaRequiresPairedValidBinding(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("schemas/results/v1.schema.json")
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +41,7 @@ func TestRelatedSchemaRequiresPairedValidBinding(t *testing.T) {
 		{"bad digest", map[string]any{"document": "/repo/ci.yml", "digest": strings.Repeat("A", 64)}, "raw-lf", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			value := map[string]any{"message": "r", "path": "ci.yml", "start": map[string]any{"line": 1, "column": 1}, "end": map[string]any{"line": 1, "column": 1}}
 			if tc.revision != nil {
 				value["revision"] = tc.revision

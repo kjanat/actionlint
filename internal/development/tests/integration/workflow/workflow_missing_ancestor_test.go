@@ -23,8 +23,10 @@ permissions: {}
 }
 
 func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
+	t.Parallel()
 	for _, existing := range []string{".", ".github", ".github/workflows"} {
 		t.Run(existing, func(t *testing.T) {
+			t.Parallel()
 			base := t.TempDir()
 			root := filepath.Join(base, "checkout")
 			if err := os.MkdirAll(filepath.Join(root, existing), 0o755); err != nil {
@@ -39,6 +41,7 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 				producer := filepath.Join(roots[0], ".github/workflows/build.yml")
 				for _, name := range []string{"New", "Old", "Outside", "Missing"} {
 					t.Run(roots[0]+name, func(t *testing.T) {
+						t.Parallel()
 						result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
 							{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},
 							{Path: filepath.Join(base, "outside/.github/workflows/build.yml"), Content: []byte("name: Outside\n" + testutil.GoodWorkflow), Project: project},
@@ -58,6 +61,7 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 				}
 				// Different contents supplied under two spellings of the same path conflict.
 				t.Run(roots[0]+"Conflict", func(t *testing.T) {
+					t.Parallel()
 					_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
 						{Path: filepath.Join(roots[1], ".github/workflows/build.yml"), Content: []byte("name: Old\n" + testutil.GoodWorkflow), Project: project},
 						{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},

@@ -13,6 +13,7 @@ import (
 )
 
 func TestKnownShellExternalLinters(t *testing.T) {
+	t.Parallel()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +46,7 @@ func TestKnownShellExternalLinters(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\n"
 			if tc.workflowShell != "" {
 				source += `defaults:

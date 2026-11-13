@@ -8,6 +8,7 @@ import (
 )
 
 func TestFunctionArgumentEvaluationOrder(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name      string
 		input     string
@@ -25,6 +26,7 @@ func TestFunctionArgumentEvaluationOrder(t *testing.T) {
 		{"array membership is exact", "contains(fromJSON('[\"push\",\"pull_request\"]'), event)", map[string]any{"event": "pull_request_target"}, false, true, []string{"event"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")

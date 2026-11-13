@@ -20,6 +20,7 @@ import (
 )
 
 func TestPartialResultAnalyzer(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("ACTIONLINT_PARTIAL_RESULT_HELPER") != "1" {
 		return
 	}
@@ -163,6 +164,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 		{"same workflow", "./both.yaml", "./both.yaml", "runner-label"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			resultPath := filepath.Join(t.TempDir(), "result.json")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": filepath.Join(t.TempDir(), "outputs"),

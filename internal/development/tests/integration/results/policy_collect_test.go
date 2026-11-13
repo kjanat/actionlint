@@ -19,6 +19,7 @@ import (
 )
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
+	t.Parallel()
 	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 1, Column: 1}, EndColumn: 4, Source: []byte("echo $VALUE\n")}
 	var files []policy.File
 	for _, change := range []func(*findingmodel.Finding){
@@ -41,6 +42,7 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 }
 
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
+	t.Parallel()
 	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 2}, SuppressionTarget: &findingmodel.SuppressionOrigin{First: 2, Last: 3}}
 	_, sources := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Collect([]policy.File{{InputPath: "workflow.yml", Findings: []*findingmodel.Finding{finding}}})
 	if len(sources) != 1 || sources[0].Suppression == nil || *sources[0].Suppression != (report.SuppressionTarget{Path: "workflow.yml", First: 2, Last: 3}) {
@@ -54,6 +56,7 @@ func TestCollectProjectsSuppressionTarget(t *testing.T) {
 }
 
 func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	first, second, alias := filepath.Join(root, "first.yml"), filepath.Join(root, "second.yml"), filepath.Join(root, "alias.yml")
 	content := []byte("invalid action source")
@@ -95,6 +98,7 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 }
 
 func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name        string
 		content     []byte
@@ -106,6 +110,7 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: sourcepos.Position{Line: 1, Column: 12}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			finding := &findingmodel.Finding{
 				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: sourcepos.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
 				Reference: &sourcepos.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []diagmodel.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
@@ -136,6 +141,7 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 }
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
+	t.Parallel()
 	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 1, Column: 1}}
 	var files []policy.File
 	for _, change := range []func(*findingmodel.Finding){
@@ -159,6 +165,7 @@ func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 // Findings that point into the same foreign file share one copy of it in the
 // reported sources, and that copy is not the findings' own Source.
 func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
+	t.Parallel()
 	script := []byte("echo $A\necho $B\n")
 	findings := []*findingmodel.Finding{
 		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: sourcepos.Position{Line: 1, Column: 6}, Source: script},

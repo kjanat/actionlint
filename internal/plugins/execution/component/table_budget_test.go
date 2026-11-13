@@ -18,6 +18,7 @@ import (
 )
 
 func TestComponentTableReservationsShareLinearMemoryBudget(t *testing.T) {
+	t.Parallel()
 	budget := &memoryBudget{limit: 128}
 	table := wacogo.CoreTable{Min: 0, Max: wasmparser.Some(uint32(2))}
 	release, err := budget.allocateTables([]wacogo.CoreTable{table})
@@ -51,6 +52,7 @@ func TestComponentTableReservationsShareLinearMemoryBudget(t *testing.T) {
 }
 
 func TestComponentNestedTablesBoundMemoryGrowthAndRelease(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("testdata", "wat", "aggregate-tables.wasm"))
 	if err != nil {
 		t.Fatal(err)
@@ -92,6 +94,7 @@ func TestComponentNestedTablesBoundMemoryGrowthAndRelease(t *testing.T) {
 }
 
 func TestPluginCallAccountsForCoreTables(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join("testdata", "wat", "aggregate-tables.wasm")
 	data, err := os.ReadFile(path)
 	if err != nil {

@@ -42,6 +42,7 @@ func splitAliasBudgetSource() []byte {
 }
 
 func TestSelectedItemsShareAliasExpansionBudgetAndStopAfterFatal(t *testing.T) {
+	t.Parallel()
 	data := splitAliasBudgetSource()
 	var baseline upstreamAliasBudgetTarget
 	wantErr := upstream.Unmarshal(data, &baseline)
@@ -153,6 +154,7 @@ func inheritedAliasSource() []byte {
 }
 
 func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
+	t.Parallel()
 	data := inheritedAliasSource()
 	var baseline inheritedAliasTarget
 	wantErr := upstream.Unmarshal(data, &baseline)
@@ -219,6 +221,7 @@ func TestNestedHookKeepsAliasBudgetFromCapturedOccurrence(t *testing.T) {
 }
 
 func TestNestedHookAliasBudgetMatchesPlainDecode(t *testing.T) {
+	t.Parallel()
 	aliased := string(inheritedAliasSource())
 	oneAlias := strings.Replace(aliased, strings.Repeat("  - *payload\n", inheritedAliasOccurrences), "  - *payload\n", 1)
 	literal := "[" + strings.TrimSuffix(strings.Repeat("value, ", inheritedAliasWidth), ", ") + "]"
@@ -233,6 +236,7 @@ func TestNestedHookAliasBudgetMatchesPlainDecode(t *testing.T) {
 		{"aliased containing sequence", strings.Replace(aliased, "items:", "list: &list", 1) + "items: *list\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var plain inheritedAliasTarget
 			plainErr := upstream.Unmarshal([]byte(tc.source), &plain)
 			if tc.limit {

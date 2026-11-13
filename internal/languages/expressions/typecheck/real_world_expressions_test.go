@@ -14,6 +14,7 @@ import (
 )
 
 func TestExprSemanticsCheckRealWorld(t *testing.T) {
+	t.Parallel()
 	f, err := os.Open(filepath.Join("testdata", "expressions.txt"))
 	if err != nil {
 		panic(err)

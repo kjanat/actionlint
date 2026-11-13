@@ -33,6 +33,7 @@ func TestDirectoryInputsDiscoverScopedDocuments(t *testing.T) {
 		{".github/actions", []string{".github/actions/build/action.yml"}},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
 			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
@@ -81,6 +82,7 @@ func TestDirectoryInputsDeduplicateDiscoveryAndExplicitFiles(t *testing.T) {
 }
 
 func TestDirectoryInputsKeepDirectoryNamesAndEnterNestedRepositories(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
 	writeToolFixture(t, root, "nested/action.yml", "name: local\n")
@@ -168,6 +170,7 @@ func TestDirectoryInputsDiscoverWorkflowFileLinks(t *testing.T) {
 	}
 	for _, path := range []string{".", ".github", ".github/workflows"} {
 		t.Run(path, func(t *testing.T) {
+			t.Parallel()
 			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, SkipProjectConfig: true, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)

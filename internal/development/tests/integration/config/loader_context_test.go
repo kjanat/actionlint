@@ -10,6 +10,7 @@ import (
 )
 
 func TestLoadRepositoryContextStopsBeforeReading(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	_, _, err := checking.ConfigurationRules().LoadRepositoryContext(ctx, t.TempDir(), func(string) ([]byte, error) {
@@ -22,6 +23,7 @@ func TestLoadRepositoryContextStopsBeforeReading(t *testing.T) {
 }
 
 func TestInspectContextStopsBeforeSelection(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	_, err := checking.ConfigurationRules().InspectContext(ctx, repoconfig.Selection{Path: "missing.yaml"}, true)

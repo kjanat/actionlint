@@ -19,6 +19,7 @@ import (
 const configurationWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
 
 func TestValidatedRuleOptions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name    string
 		exclude []string
@@ -28,6 +29,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 		{"excluded action", []string{"actions/checkout"}, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			exclusions, err := json.Marshal(tc.exclude)
 			if err != nil {
 				t.Fatal(err)
@@ -56,6 +58,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 }
 
 func TestOverlayErrorsAreClassifiable(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if output, err := exec.CommandContext(t.Context(), "git", "init", "--quiet", root).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
@@ -78,6 +81,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: overlays}
 	for _, mode := range []string{"files", "repository"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
 			var err error
 			if mode == "files" {
 				_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
@@ -93,6 +97,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 }
 
 func TestShellcheckSourcesAreValidatedAndOwned(t *testing.T) {
+	t.Parallel()
 	for _, settings := range []string{"'./.shellcheckrc'", "{disable: [SC2086], enable: [all], shell: bash, extended-analysis: true, external-sources: false, source-path: [scripts]}"} {
 		source := []byte("tools: {shellcheck: {config: " + settings + "}}")
 		parsed, err := checking.ConfigurationRules().Parse(source)

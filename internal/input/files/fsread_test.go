@@ -29,6 +29,7 @@ func tree(t *testing.T) string {
 }
 
 func TestReaderRecordsSuccessfulReads(t *testing.T) {
+	t.Parallel()
 	root := tree(t)
 	var recorded []string
 	reader := New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })
@@ -62,6 +63,7 @@ func TestReaderRecordsSuccessfulReads(t *testing.T) {
 }
 
 func TestReaderUsesContents(t *testing.T) {
+	t.Parallel()
 	var recorded []string
 	reader := New(t.Context(), func(path string) ([]byte, error) {
 		if path == "virtual" {
@@ -81,6 +83,7 @@ func TestReaderUsesContents(t *testing.T) {
 }
 
 func TestReaderWalkDir(t *testing.T) {
+	t.Parallel()
 	root := tree(t)
 	var recorded, visited []string
 	reader := New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })
@@ -150,6 +153,7 @@ func TestReaderWalkDir(t *testing.T) {
 }
 
 func TestReaderWalkDirUnreadable(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("directory permissions are not enforced")
 	}
@@ -177,6 +181,7 @@ func TestReaderWalkDirUnreadable(t *testing.T) {
 }
 
 func TestReaderMapped(t *testing.T) {
+	t.Parallel()
 	root := tree(t)
 	var recorded []string
 	reader := New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })
@@ -193,6 +198,7 @@ func TestReaderMapped(t *testing.T) {
 }
 
 func TestReaderCancelled(t *testing.T) {
+	t.Parallel()
 	root := tree(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -215,6 +221,7 @@ func TestReaderCancelled(t *testing.T) {
 }
 
 func TestReaderWalkStopsWhenCancelled(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, name := range []string{"a", "b", "c"} {
 		if err := os.WriteFile(filepath.Join(root, name), nil, 0o600); err != nil {
@@ -243,6 +250,7 @@ func TestReaderWalkStopsWhenCancelled(t *testing.T) {
 }
 
 func TestUnrecordedHelpers(t *testing.T) {
+	t.Parallel()
 	root := tree(t)
 	if data, err := Disk(filepath.Join(root, "top.txt")); err != nil || string(data) != "top.txt" {
 		t.Fatalf("Disk = %q, %v", data, err)

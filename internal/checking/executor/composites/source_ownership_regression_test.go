@@ -134,6 +134,7 @@ func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.StepV
 var _ checkcalls.InvocationParticipant = (*canonicalFactObserver)(nil)
 
 func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
+	t.Parallel()
 	for _, composite := range []bool{false, true} {
 		name := "workflow"
 		workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo original}]}}\n"
@@ -144,6 +145,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 			actions = map[string]string{"child/action.yml": "name: child\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo original}]}\n"}
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 			captureMutableMetadata(f)
 			mutations := 0
@@ -170,8 +172,10 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 }
 
 func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
+	t.Parallel()
 	for _, level := range []string{"workflow", "job"} {
 		t.Run(level, func(t *testing.T) {
+			t.Parallel()
 			workflow := "on: push\ndefaults: {run: {shell: bash}}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo original}]}}\n"
 			if level == "job" {
 				workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, defaults: {run: {shell: bash}}, steps: [{run: echo original}]}}\n"
@@ -202,6 +206,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 }
 
 func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.T) {
+	t.Parallel()
 	for _, composite := range []bool{false, true} {
 		name := "workflow"
 		workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/a}]}}\n"
@@ -215,6 +220,7 @@ func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.
 			actions["outer/action.yml"] = "name: outer\ndescription: test\nruns: {using: composite, steps: [{uses: $/a}]}\n"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 			captureMutableMetadata(f)
 			mutations := 0
@@ -248,6 +254,7 @@ func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.
 }
 
 func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n"
 	actions := map[string]string{
 		"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: [{uses: $/a}]}\n",
@@ -318,6 +325,7 @@ func (rule *workflowPreCallMutation) VisitWorkflowPre(_ workflowdecl.WorkflowVie
 }
 
 func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/a}]}}\n")
 	actions := map[string]string{
 		"a/action.yml": "name: a\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo original-a}]}\n",
@@ -363,6 +371,7 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 }
 
 func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T) {
+	t.Parallel()
 	content := "on: push\nenv: {ROOT_VALUE: original}\ndefaults: {run: {shell: bash, working-directory: source-dir}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: {JOB_VALUE: original}\n    container: alpine\n    steps:\n      - run: echo original\n"
 	f := newInvocationFixture(t, t.Context(), content, nil, nil)
 	baseline, err := Workflow(f.options, f.root)
@@ -404,6 +413,7 @@ func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T)
 }
 
 func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
+	t.Parallel()
 	content := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - run: echo original\n"
 	f := newInvocationFixture(t, t.Context(), content, nil, nil)
 	baseline, err := Workflow(f.options, f.root)
@@ -431,6 +441,7 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 }
 
 func TestParallelChildrenStayBoundToCanonicalVariantsBeforeTraversal(t *testing.T) {
+	t.Parallel()
 	content := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - if: ${{ true }}\n            run: echo original\n          - uses: $/a\n"
 	actions := map[string]string{"a/action.yml": "name: a\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo action-a}]}\n", "b/action.yml": "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo action-b}]}\n"}
 	f := newInvocationFixture(t, t.Context(), content, actions, nil)

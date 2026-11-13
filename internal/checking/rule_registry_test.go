@@ -7,6 +7,7 @@ import (
 )
 
 func TestRuleNamespaceAndDescriptorIsolation(t *testing.T) {
+	t.Parallel()
 	example := rule.Descriptor{Name: "example", Examples: []rule.Example{{Before: "original"}}, OptionsSchema: []byte(`{}`)}
 	rules, err := CombineRuleDeclarations(example)
 	if err != nil {

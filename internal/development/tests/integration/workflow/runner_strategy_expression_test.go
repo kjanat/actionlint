@@ -13,6 +13,7 @@ import (
 )
 
 func TestKnownStrategyRunnerLabelsLint(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ matrix, label string }{
 		{`{"os":["ubuntu-lates"]}`, "ubuntu-lates"},
 		{`{"include":[{"os":"ubuntu-lates"}]}`, "ubuntu-lates"},
@@ -28,6 +29,7 @@ func TestKnownStrategyRunnerLabelsLint(t *testing.T) {
 		{`{"include":[{"os":{"labels":null}}]}`, ""},
 	} {
 		t.Run(tc.matrix, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:
@@ -49,6 +51,7 @@ permissions: {}
 }
 
 func TestKnownStrategyRunnerGroupsLint(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
 		conflict     bool
@@ -61,6 +64,7 @@ func TestKnownStrategyRunnerGroupsLint(t *testing.T) {
 		{"group only", `{"os":[{"group":"custom-group"}]}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error
@@ -91,6 +95,7 @@ permissions: {}
 }
 
 func TestRunnerMatrixCorrelatedLabels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix, runsOn string
 		want                 []string
@@ -116,8 +121,10 @@ func TestRunnerMatrixCorrelatedLabels(t *testing.T) {
 		{"unknown label remains checked", `{"include":[{"os":"linux","image":"ubuntu-lates"}]}`, "", []string{`label "ubuntu-lates" is unknown`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, expression := range []bool{false, true} {
 				t.Run(fmt.Sprintf("expression=%v", expression), func(t *testing.T) {
+					t.Parallel()
 					strategy := "strategy:\n      matrix: " + tc.matrix
 					if expression {
 						strategy = "strategy: ${{ fromJSON('{\"matrix\":" + tc.matrix + "}') }}"
@@ -159,6 +166,7 @@ permissions: {}
 }
 
 func TestRunnerMatrixCorrelationFallback(t *testing.T) {
+	t.Parallel()
 	var extra []string
 	for i := range 257 {
 		extra = append(extra, strconv.Itoa(i))
@@ -174,6 +182,7 @@ func TestRunnerMatrixCorrelationFallback(t *testing.T) {
 		{"bounded expansion keeps fixed conflicts", `{os: [windows], image: [x64], extra: [` + strings.Join(extra, ",") + `]}`, `[linux, "${{ matrix.os }}", "${{ matrix.image }}"]`, `label "windows" conflicts with label "linux"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runsOn := tc.runsOn
 			if runsOn == "" {
 				runsOn = `["${{ matrix.os }}", "${{ matrix.image }}"]`
@@ -200,6 +209,7 @@ permissions: {}
 }
 
 func TestKnownStrategyCorrelatedLabelsStayData(t *testing.T) {
+	t.Parallel()
 	source := `on: push
 jobs:
   test:

@@ -8,6 +8,7 @@ import (
 )
 
 func TestMetadataIsPackagedAtComponentRoot(t *testing.T) {
+	t.Parallel()
 	component := []byte{0, 'a', 's', 'm', 13, 0, 1, 0}
 	metadata := []byte(`{"metadata_version":1}`)
 	packaged, err := packageMetadata(component, metadata)

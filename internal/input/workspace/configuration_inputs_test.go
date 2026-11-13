@@ -56,6 +56,7 @@ func TestAnalysisSelectedConfigInput(t *testing.T) {
 }
 
 func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, dir := range []string{".git", ".gihub/workflows", "src"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o750); err != nil {
@@ -73,6 +74,7 @@ func TestAnalysisSessionWorkflowDirectoryTypo(t *testing.T) {
 }
 
 func TestAnalysisSessionConfigInputs(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflowA := filepath.Join(root, "a", ".github", "workflows", "first.yml")
 	workflowB := filepath.Join(root, "b", ".github", "workflows", "first.yml")
@@ -97,10 +99,6 @@ func TestAnalysisSessionConfigInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, Rules: checking.ConfigurationRules()})
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, tc := range []struct {
 		name   string
 		paths  []string
@@ -112,6 +110,11 @@ func TestAnalysisSessionConfigInputs(t *testing.T) {
 		{"no project", []string{loose}, []string{loose}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: root, Rules: checking.ConfigurationRules()})
+			if err != nil {
+				t.Fatal(err)
+			}
 			result, err := session.Files(tc.paths, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -126,6 +129,7 @@ func TestAnalysisSessionConfigInputs(t *testing.T) {
 }
 
 func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	workflow := filepath.Join(root, "workflow.yml")
 	config := filepath.Join(root, "config.yml")
@@ -154,6 +158,7 @@ func TestAnalysisSessionExplicitConfigInput(t *testing.T) {
 }
 
 func TestAnalysisSessionEmpty(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config := filepath.Join(root, ".github", "actionlint.yaml")
 	for _, dir := range []string{".git", ".github/workflows"} {

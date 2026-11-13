@@ -8,6 +8,7 @@ import (
 )
 
 func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(*ScriptOccurrence){
 		"unknown id":  func(value *ScriptOccurrence) { value.ID = OccurrenceID("unknown") },
 		"owner":       func(value *ScriptOccurrence) { value.Owner = OccurrenceID("foreign") },
@@ -18,6 +19,7 @@ func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
 		"input":       func(value *ScriptOccurrence) { value.Input = "foreign" },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			records := graphFixture(t)
 			occurrence := records.Scripts[0]
 			input := Input{

@@ -9,6 +9,7 @@ import (
 )
 
 func TestActionDiagnosticCodes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
 		want         []string
@@ -22,6 +23,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 		{"schema type", "name: example\ndescription: example\nruns: {using: composite, steps: [{run: echo ok, shell: bash, continue-on-error: []}]}\n", []string{"invalid-field-type"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
@@ -43,6 +45,7 @@ func TestActionDiagnosticCodes(t *testing.T) {
 }
 
 func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
+	t.Parallel()
 	const expression = "${{ format('{0}', startsWith(true, 'TR')) }}"
 	for _, tc := range []struct{ name, source string }{
 		{"output value", "name: example\ndescription: example\noutputs:\n  value:\n    description: value\n    value: " + expression + "\nruns: {using: composite, steps: []}\n"},
@@ -52,6 +55,7 @@ func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
 		{"composite step", "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - name: " + expression + "\n      run: echo ok\n      shell: bash\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)

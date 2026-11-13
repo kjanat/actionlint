@@ -13,6 +13,7 @@ import (
 )
 
 func TestEmptySummaryIsNotAllClear(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	if err := writeCheckSummary(&out, render.ColorNever, resultreport.NewCheckSummary(resultreport.Analysis{})); err != nil {
 		t.Fatal(err)
@@ -23,6 +24,7 @@ func TestEmptySummaryIsNotAllClear(t *testing.T) {
 }
 
 func TestIncompleteActionCheckIsNotAllClear(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	path := filepath.Join(root, "action.yml")
 	if err := os.WriteFile(path, []byte("name: test\ndescription: test\nruns: {using: node24, main: \"bad\\u0000.js\"}\n"), 0o600); err != nil {
@@ -30,6 +32,7 @@ func TestIncompleteActionCheckIsNotAllClear(t *testing.T) {
 	}
 	for _, format := range []string{"pretty", "json"} {
 		t.Run(format, func(t *testing.T) {
+			t.Parallel()
 			var out, log bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &log}
 			args := []string{"actionlint", "check", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--summary", "--output-format=" + format, path}

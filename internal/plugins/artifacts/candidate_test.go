@@ -27,12 +27,14 @@ func (r *candidateTransport) RoundTrip(*http.Request) (*http.Response, error) {
 
 // Rejected imports must leave both existing cache entries and absent entries alone.
 func TestCandidateImportPreservesCacheOnFailure(t *testing.T) {
+	t.Parallel()
 	data := module(`{"id":"candidate"}`)
 	digest := fmt.Sprintf("%x", sha256.Sum256(data))
 	readFailure := errors.New("source read failed")
 	for _, existing := range []bool{false, true} {
 		for _, failure := range []string{"digest mismatch", "size", "cancel", "read"} {
 			t.Run(fmt.Sprintf("existing=%t/%s", existing, failure), func(t *testing.T) {
+				t.Parallel()
 				cache := t.TempDir()
 				options := Options{CacheDir: cache}
 				if existing {
@@ -85,6 +87,7 @@ func TestCandidateImportPreservesCacheOnFailure(t *testing.T) {
 
 // Invalid import requests fail before consuming their source.
 func TestCandidateImportRejectsInvalidRequest(t *testing.T) {
+	t.Parallel()
 	input := candidateReader(func([]byte) (int, error) {
 		t.Fatal("invalid request consumed candidate bytes")
 		return 0, io.EOF
@@ -105,6 +108,11 @@ func TestCandidateCacheResolution(t *testing.T) {
 	previous := http.DefaultTransport
 	http.DefaultTransport = transport
 	t.Cleanup(func() { http.DefaultTransport = previous })
+	t.Cleanup(func() {
+		if transport.requests != 0 {
+			t.Errorf("candidate execution fetched %d times", transport.requests)
+		}
+	})
 	raw := module(`{"id":"candidate"}`)
 	for _, packed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("gzip=%t", packed), func(t *testing.T) {
@@ -146,13 +154,11 @@ func TestCandidateCacheResolution(t *testing.T) {
 			}
 		})
 	}
-	if transport.requests != 0 {
-		t.Fatalf("candidate execution fetched %d times", transport.requests)
-	}
 }
 
 // A cache locator cannot carry another location or a second digest.
 func TestCandidateCacheRejectsInvalidURI(t *testing.T) {
+	t.Parallel()
 	digest := strings.Repeat("ab", 32)
 	for _, source := range []string{
 		"sha256://", "sha256://../outside", "sha256://" + strings.Repeat("a", 63),

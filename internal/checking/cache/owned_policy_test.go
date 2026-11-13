@@ -12,6 +12,7 @@ import (
 )
 
 func TestTrustReadsPublishedDeclarations(t *testing.T) {
+	t.Parallel()
 	mode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}
 	hook := &workflowlang.String{Value: "pull_request_target"}
 	job := &workflowlang.Job{}
@@ -39,6 +40,7 @@ func TestTrustReadsPublishedDeclarations(t *testing.T) {
 }
 
 func TestSharedWriteGrantHasStableSourceOrderOwnership(t *testing.T) {
+	t.Parallel()
 	const source = `on: [pull_request_target, issue_comment]
 cache-mode: write
 jobs:
@@ -77,6 +79,7 @@ func (m fixedMetadata) LookupForCall(string) (*calls.Metadata, error) {
 }
 
 func TestReusableMetadataGrantBoundary(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\ncache-mode: read\njobs:\n  caller:\n    uses: ./.github/workflows/child.yml\n"
 	parsed, findings := workflowparser.Parse([]byte(source))
 	if len(findings) != 0 {
@@ -98,6 +101,7 @@ func TestReusableMetadataGrantBoundary(t *testing.T) {
 		{"explicit write exceeds caller", calls.DeclaredCacheMode(workflowlang.CacheModeWrite), 1, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			metadata := &calls.Metadata{JobCacheAccess: map[string]calls.CacheAccess{
 				"nested": {Mode: tc.mode, Operations: []string{"actions/cache/save"}},
 			}}

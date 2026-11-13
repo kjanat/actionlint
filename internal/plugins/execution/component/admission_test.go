@@ -13,8 +13,10 @@ import (
 )
 
 func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
+	t.Parallel()
 	for _, cancelQueued := range []bool{true, false} {
 		t.Run(map[bool]string{true: "cancellation", false: "timeout"}[cancelQueued], func(t *testing.T) {
+			t.Parallel()
 			entered, release := make(chan struct{}), make(chan struct{})
 			plugin := loadPlugin(t, "misbehave", component.Options{
 				Timeout: 2 * time.Second,

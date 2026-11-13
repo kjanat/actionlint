@@ -15,6 +15,7 @@ import (
 )
 
 func TestSchemaNestedEmptyChoiceOption(t *testing.T) {
+	t.Parallel()
 	src := `on:
   workflow_dispatch:
     inputs:
@@ -42,6 +43,7 @@ jobs:
 }
 
 func TestSchemaNestedImageVersionFilters(t *testing.T) {
+	t.Parallel()
 	for _, filters := range []string{
 		`names: build-image
     versions: '1.*'`,
@@ -72,11 +74,13 @@ jobs:
 }
 
 func TestSchemaNestedImageVersionActivities(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		activity string
 		valid    bool
 	}{{"created", true}, {"ready", true}, {"deleted", true}, {"unsupported", false}} {
 		t.Run(tc.activity, func(t *testing.T) {
+			t.Parallel()
 			src := `on:
   image_version:
     types: ` + tc.activity + `
@@ -106,11 +110,13 @@ jobs:
 }
 
 func TestSchemaNestedStackedPullRequests(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		activity string
 		valid    bool
 	}{{"stacked", true}, {"unsupported", false}} {
 		t.Run(tc.activity, func(t *testing.T) {
+			t.Parallel()
 			w, errs := workflowparser.Parse([]byte(`on:
   pull_request:
     types: ` + tc.activity + `
@@ -141,11 +147,13 @@ jobs:
 }
 
 func TestSchemaNestedStepIDBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		id    string
 		valid bool
 	}{{"_user", true}, {"__reserved", false}, {strings.Repeat("a", 99), true}, {strings.Repeat("a", 100), false}} {
 		t.Run(tc.id, func(t *testing.T) {
+			t.Parallel()
 			w, errs := workflowparser.Parse([]byte(`on: push
 jobs:
   test:

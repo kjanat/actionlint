@@ -11,6 +11,7 @@ import (
 )
 
 func TestLoadedConfigProvenanceReachesAnalysisInputs(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	base := filepath.Join(root, "base.yml")
 	leaf := filepath.Join(root, "actionlint.yml")

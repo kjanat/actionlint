@@ -13,9 +13,11 @@ import (
 )
 
 func TestWorkflowCallMetadataFailureSpelling(t *testing.T) {
+	t.Parallel()
 	for _, malformed := range []bool{false, true} {
 		for _, prefix := range []string{"./", "$/", "$//"} {
 			t.Run(fmt.Sprintf("malformed=%v/prefix=%s", malformed, prefix), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				if malformed {
 					if err := os.WriteFile(filepath.Join(root, "broken.yaml"), []byte("on: ["), 0o600); err != nil {
@@ -72,6 +74,7 @@ permissions: {}
 }
 
 func TestWorkflowCallInvalidJobKeyDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, key, value, leaf string
 	}{
@@ -81,6 +84,7 @@ func TestWorkflowCallInvalidJobKeyDiagnostics(t *testing.T) {
 		{"malformed unintended callee", "USES", "./leaf.yaml", "on: ["},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			caller := []byte(`on: push
 cache-mode: read

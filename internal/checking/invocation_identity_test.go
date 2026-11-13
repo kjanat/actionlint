@@ -42,6 +42,7 @@ func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs
 }
 
 func TestStandaloneActionInvocationDepth(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	outer := writeFixture(t, root, "outer/action.yml", "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - uses: $/nested\n")
 	writeFixture(t, root, "nested/action.yml", "name: nested\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo nested\n")
@@ -70,6 +71,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 }
 
 func TestNestedInvocationIdentity(t *testing.T) {
+	t.Parallel()
 	const oneCall = `on: push
 jobs:
   verify:
@@ -88,6 +90,7 @@ jobs:
 		{name: "different workflows", workflows: []string{oneCall, oneCall}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			outerTarget := "nested"
 			caller := "outer/action.yml"

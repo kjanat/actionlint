@@ -13,6 +13,7 @@ import (
 )
 
 func TestReadLocal(t *testing.T) {
+	t.Parallel()
 	const program = "[]\n"
 	sum := sha256.Sum256([]byte(program))
 	digest := "sha256:" + hex.EncodeToString(sum[:])
@@ -54,6 +55,7 @@ func TestReadLocal(t *testing.T) {
 }
 
 func TestReadLocalLoadsConfigurationTransforms(t *testing.T) {
+	t.Parallel()
 	const source = `{options:.config}`
 	sum := sha256.Sum256([]byte(source))
 	digest := "sha256:" + hex.EncodeToString(sum[:])

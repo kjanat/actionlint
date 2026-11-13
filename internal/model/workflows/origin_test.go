@@ -8,12 +8,14 @@ import (
 )
 
 func TestOriginOwnsSelectorValuesAndPosition(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"plain", "selector", "selector"},
 		{"literal", "${{ 'selector' }}", "selector"},
 		{"dynamic", "${{ inputs.selector }}", "${{ inputs.selector }}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			value := &workflowlang.String{Value: tc.value}
 			step := &workflowlang.Step{Pos: &workflowlang.Pos{Line: 3, Col: 7}, ID: value, Name: value, Exec: &workflowlang.ExecAction{Uses: value}}
 			bound := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("origin-fixture")
@@ -40,12 +42,14 @@ func TestOriginOwnsSelectorValuesAndPosition(t *testing.T) {
 }
 
 func TestJobOriginOwnsUsesSelector(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"plain", "org/repo/.github/workflows/check.yml@main", "org/repo/.github/workflows/check.yml@main"},
 		{"literal", "${{ './.github/workflows/check.yml' }}", "./.github/workflows/check.yml"},
 		{"dynamic", "${{ inputs.workflow }}", "${{ inputs.workflow }}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			uses := &workflowlang.String{Value: tc.value}
 			job := &workflowlang.Job{ID: &workflowlang.String{Value: "Build"}, WorkflowCall: &workflowlang.WorkflowCall{Uses: uses}}
 			bound := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}, false, "").Bind("origin-fixture")

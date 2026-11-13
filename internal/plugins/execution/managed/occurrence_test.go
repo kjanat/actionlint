@@ -39,6 +39,15 @@ func (observer *occurrenceObserver) CheckDocument(_ context.Context, input check
 	return nil, nil
 }
 
+func emptyGitConfig(t *testing.T) string {
+	t.Helper()
+	global := filepath.Join(t.TempDir(), "gitconfig")
+	if err := os.WriteFile(global, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return global
+}
+
 func occurrenceRepository(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -46,12 +55,6 @@ func occurrenceRepository(t *testing.T) string {
 	if err != nil {
 		t.Skip("Git required")
 	}
-	global := filepath.Join(t.TempDir(), "gitconfig")
-	if err := os.WriteFile(global, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("GIT_CONFIG_GLOBAL", global)
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	if output, err := gitclient.Command(t.Context(), git, root, "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("initialize fixture: %v: %s", err, output)
 	}
@@ -59,6 +62,8 @@ func occurrenceRepository(t *testing.T) string {
 }
 
 func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", emptyGitConfig(t))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := occurrenceRepository(t)
 	for name, content := range map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
@@ -133,6 +138,7 @@ func (observer *actionInputObserver) Analyze(_ context.Context, batch tools.Batc
 }
 
 func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
+	t.Parallel()
 	guest, observer := &occurrenceGuest{}, &actionInputObserver{}
 	registration, err := shellcheckRegistration(scriptsbackend.Selection{Command: "shellcheck"}).WithAnalyzer(guest)
 	if err != nil {
@@ -170,6 +176,8 @@ func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 }
 
 func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", emptyGitConfig(t))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root := occurrenceRepository(t)
 	child := filepath.Join(root, "child")
 	if err := os.Mkdir(child, 0o700); err != nil {

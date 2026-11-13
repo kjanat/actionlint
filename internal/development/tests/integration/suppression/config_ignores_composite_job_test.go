@@ -14,6 +14,7 @@ import (
 )
 
 func TestReusableIgnoreCompositeJob(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	for _, nested := range []bool{false, true} {
 		for _, tc := range []struct {
@@ -27,6 +28,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 			{"ab", "[{rule: shellcheck, job: a}, {rule: shellcheck, job: b}]", 0},
 		} {
 			t.Run(fmt.Sprintf("nested=%t/%s/%s", nested, tc.jobs, tc.ignores), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores + "\n"))
 				if err != nil {

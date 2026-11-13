@@ -9,12 +9,14 @@ import (
 )
 
 func TestNativeCodePresentation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ code, prefix string }{
 		{"SC2086", "SC2086: "},
 		{"", ""},
 		{"shellcheck", ""},
 	} {
 		t.Run(tc.code, func(t *testing.T) {
+			t.Parallel()
 			finding := FindingOf(results.Diagnostic{Rule: "shellcheck", Code: tc.code, Path: "workflow.yml", Start: sourcepos.Position{Line: 2, Column: 3}, Message: "Quote this value"}, nil)
 			var output bytes.Buffer
 			finding.PrettyPrint(&output)

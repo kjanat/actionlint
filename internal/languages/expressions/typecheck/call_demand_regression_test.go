@@ -23,6 +23,7 @@ import (
 // These paths follow Runny's next engine, pinned through ACTIONLINT_REFERENCE_IMAGE.
 // Parsing always visits nested calls; evaluation visits only demanded arguments.
 func TestCallEvaluationDemand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input   string
 		valid   bool
@@ -57,6 +58,7 @@ func TestCallEvaluationDemand(t *testing.T) {
 		{"join(fromJSON('[true,false]'), fromJSON(null))", false, exprvalues.EvaluationInvalid, nil, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, runnerreference.RuntimeFailure, "System.Text.Json.JsonException"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
 			var wantPhase FailurePhase
 			switch tc.failure {
@@ -87,6 +89,7 @@ func TestCallEvaluationDemand(t *testing.T) {
 }
 
 func TestRuntimeFailurePropagationAgainstRunner(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"!fromJSON(null)",
 		"fromJSON(null) || true",
@@ -99,6 +102,7 @@ func TestRuntimeFailurePropagationAgainstRunner(t *testing.T) {
 		"fromJSON('[1]')[fromJSON(null)]",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
@@ -112,6 +116,7 @@ func TestRuntimeFailurePropagationAgainstRunner(t *testing.T) {
 }
 
 func TestCallConditionalDemand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input   string
 		demands []exprfunctions.ArgumentDemand
@@ -124,6 +129,7 @@ func TestCallConditionalDemand(t *testing.T) {
 		{"case(github.event.unknown, 'a', true && 'text', 'b', 'c')", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandConditional, exprfunctions.DemandConditional, exprfunctions.DemandSkipped, exprfunctions.DemandSkipped}},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
 			if !got.Valid || got.Evaluation.State != exprvalues.EvaluationUnknown || got.FailurePhase != FailureNone {
 				t.Fatalf("conditional failure became certain: %+v", got)
@@ -145,6 +151,7 @@ func TestCallConditionalDemand(t *testing.T) {
 		{"case(github.event.unknown, 'a', fromJSON(null))", "invalid predicate", float64(1), runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.InvalidOperationException"}},
 	} {
 		t.Run(tc.input+"/"+tc.name, func(t *testing.T) {
+			t.Parallel()
 			variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": tc.context}}}
 			runnerreference.CheckOutcome(t, tc.input, variables, tc.want)
 		})
@@ -152,6 +159,7 @@ func TestCallConditionalDemand(t *testing.T) {
 }
 
 func TestFormatTemplateGrammar(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		value string
@@ -169,6 +177,7 @@ func TestFormatTemplateGrammar(t *testing.T) {
 		{"format('{0} {} {x} {', 1)", "", false},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
 			want := runnerreference.Expectation{Value: tc.value}
 			if tc.valid {
@@ -187,6 +196,7 @@ func TestFormatTemplateGrammar(t *testing.T) {
 }
 
 func TestLogicalBranchEvaluationDemand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		state exprvalues.EvaluationState
@@ -205,6 +215,7 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 		{"false && noSuchFunction()", exprvalues.EvaluationNotAttempted, FailureStaticValidation, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
 			if got.Valid != (tc.phase == FailureNone) || got.Evaluation.State != tc.state || got.FailurePhase != tc.phase || !cmp.Equal(got.Evaluation.Value, tc.value) {
 				t.Fatalf("logical branch result: %+v; want state=%v phase=%v value=%v", got, tc.state, tc.phase, tc.value)
@@ -241,6 +252,7 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 			name = tc.input + "/true"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": tc.left}}}
 			runnerreference.CheckOutcome(t, tc.input, variables, tc.want)
 		})
@@ -248,6 +260,7 @@ func TestLogicalBranchEvaluationDemand(t *testing.T) {
 }
 
 func TestFormatReplacementExecutionOrder(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input         string
 		demands       []exprfunctions.ArgumentDemand
@@ -259,6 +272,7 @@ func TestFormatReplacementExecutionOrder(t *testing.T) {
 		{"format('{1}{0}',fromJSON(null),fromJSON('bad'))", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandSkipped, exprfunctions.DemandRequired}, "invalid-json", "System.Text.Json.JsonException"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
 			if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
 				t.Fatalf("missing first replacement failure: %+v", got)
@@ -273,6 +287,7 @@ func TestFormatReplacementExecutionOrder(t *testing.T) {
 }
 
 func TestFormatUnknownReplacementOrder(t *testing.T) {
+	t.Parallel()
 	const input = "format('{1}{0}',fromJSON(null),github.event.unknown)"
 	got := checkCallDemandResult(t, input)
 	if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation {
@@ -288,6 +303,7 @@ func TestFormatUnknownReplacementOrder(t *testing.T) {
 			name = "true"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": left}}}
 			runnerreference.CheckOutcome(t, input, variables, runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
 		})
@@ -295,6 +311,7 @@ func TestFormatUnknownReplacementOrder(t *testing.T) {
 }
 
 func TestNestedConditionalCallDemand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input   string
 		demands []exprfunctions.ArgumentDemand
@@ -304,6 +321,7 @@ func TestNestedConditionalCallDemand(t *testing.T) {
 		{"format('{0}',github.event.unknown || fromJSON(null))", []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired}, "true"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, tc.input)
 			if !got.Valid || got.Evaluation.State != exprvalues.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 {
 				t.Fatalf("nested conditional JSON failure became certain: %+v", got)
@@ -317,6 +335,7 @@ func TestNestedConditionalCallDemand(t *testing.T) {
 					want = runnerreference.Expectation{Value: tc.value}
 				}
 				t.Run(name, func(t *testing.T) {
+					t.Parallel()
 					variables := map[string]any{"github": map[string]any{"event": map[string]any{"unknown": left}}}
 					runnerreference.CheckOutcome(t, tc.input, variables, want)
 				})
@@ -326,7 +345,9 @@ func TestNestedConditionalCallDemand(t *testing.T) {
 }
 
 func TestCaseTypedPredicateFailures(t *testing.T) {
+	t.Parallel()
 	t.Run("later predicate range", func(t *testing.T) {
+		t.Parallel()
 		const input = "case(false, 'a', 'text', 'b', 'c')"
 		got := checkCallDemandResult(t, input)
 		if got.Valid || got.FailurePhase != FailureEvaluation || len(got.Findings) != 1 {
@@ -341,6 +362,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 	})
 
 	t.Run("required predicate", func(t *testing.T) {
+		t.Parallel()
 		const input = "case(github.event_name, fromJSON(null), fromJSON(null))"
 		got := checkCallDemandResult(t, input)
 		if got.Valid || got.Evaluation.State != exprvalues.EvaluationInvalid || got.FailurePhase != FailureEvaluation || got.Type.Kind() != exprtypes.KindAny {
@@ -358,6 +380,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 	})
 
 	t.Run("conditional predicate", func(t *testing.T) {
+		t.Parallel()
 		const input = "case(github.event.unknown, fromJSON('[]'), github.event_name, 'b', 'c')"
 		got := checkCallDemandResult(t, input)
 		if !got.Valid || got.Evaluation.State != exprvalues.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 || got.Type.Kind() != exprtypes.KindArray {
@@ -379,6 +402,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 				want = runnerreference.Expectation{Value: []any{}}
 			}
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				variables := map[string]any{"github": map[string]any{"event_name": "push", "event": map[string]any{"unknown": first}}}
 				runnerreference.CheckOutcome(t, input, variables, want)
 			})
@@ -387,6 +411,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 }
 
 func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
+	t.Parallel()
 	for _, operation := range []struct {
 		input, exception string
 	}{
@@ -397,6 +422,7 @@ func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
 		for _, predicate := range []string{"true", "false", "github.event.unknown"} {
 			input := "case(" + predicate + ", " + operation.input + ", 'fallback')"
 			t.Run(input, func(t *testing.T) {
+				t.Parallel()
 				got := checkCallDemandResult(t, input)
 				wantState := exprvalues.EvaluationUnknown
 				wantPhase := FailureNone
@@ -434,12 +460,14 @@ func TestNestedFunctionProblemsFollowExecutionDemand(t *testing.T) {
 }
 
 func TestCaseArityRejectsSkippedPaths(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"case(true, 'a')",
 		"case(true, 'a', false, 'b')",
 		"case(true, 'a', startsWith(true))",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			got := checkCallDemandResult(t, input)
 			if got.Valid || got.Evaluation.State != exprvalues.EvaluationNotAttempted || got.FailurePhase != FailureStaticValidation || len(got.Findings) == 0 {
 				t.Fatalf("invalid arity survived static validation: %+v", got)
@@ -450,6 +478,7 @@ func TestCaseArityRejectsSkippedPaths(t *testing.T) {
 }
 
 func TestJoinPreservesArrayArgumentFacts(t *testing.T) {
+	t.Parallel()
 	const input = "join(fromJSON('[true,false]'), ',')"
 	got := checkCallDemandResult(t, input)
 	if !got.Valid || got.Evaluation.State != exprvalues.EvaluationKnown || got.Evaluation.Value != "true,false" {
@@ -474,6 +503,7 @@ func TestJoinPreservesArrayArgumentFacts(t *testing.T) {
 }
 
 func TestCaseArgumentContracts(t *testing.T) {
+	t.Parallel()
 	got := checkCallDemandResult(t, "case(true, 'a', 'b')")
 	checkCallArgumentDemands(t, got, []exprfunctions.ArgumentDemand{exprfunctions.DemandRequired, exprfunctions.DemandRequired, exprfunctions.DemandSkipped})
 	for i, arg := range got.Call.Arguments {

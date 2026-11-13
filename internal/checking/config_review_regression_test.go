@@ -51,9 +51,11 @@ func checkoutManifestProvider(t *testing.T) actions.Provider {
 }
 
 func TestDependencyPathsDoNotResolveWorkflowOverrides(t *testing.T) {
+	t.Parallel()
 	for _, dependency := range []string{"local/action.yml", "scripts/lib.sh"} {
 		for _, ignore := range []bool{false, true} {
 			t.Run(dependency+"/"+strconv.FormatBool(ignore), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				text := `lint:
   rules:
@@ -90,6 +92,7 @@ overrides:
 }
 
 func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, lint, severity string }{
 		{"disabled workflow", "enabled: false", ""},
 		{"disabled rule", "rules: {correctness: {expression-reference: off}}", ""},
@@ -98,6 +101,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 	} {
 		for _, dependency := range []string{"local/action.yml", "scripts/lib.sh"} {
 			t.Run(tc.name+"/"+dependency, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				cfg, err := ConfigurationRules().Parse([]byte("overrides: [{includes: ['./.github/workflows/**'], lint: {" + tc.lint + "}}]"))
 				if err != nil {
@@ -178,11 +182,13 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 }
 
 func TestWorkflowOverrideControlsCompositeFindings(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ lint, severity string }{
 		{"rules: {correctness: {action: warn}}", "warning"},
 		{"enabled: false", ""},
 	} {
 		t.Run(tc.lint, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			writeShellcheckFixture(t, root, "local/action.yml", `name: local
 description: test

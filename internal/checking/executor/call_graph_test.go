@@ -14,6 +14,7 @@ import (
 )
 
 func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
+	t.Parallel()
 	root, call, script := checkinputs.OccurrenceID(strings.Repeat("1", 64)), checkinputs.OccurrenceID(strings.Repeat("2", 64)), checkinputs.OccurrenceID(strings.Repeat("3", 64))
 	ref := source.Reference{Document: "entry", Node: "document"}
 	target := source.Reference{Document: "child", Node: "document"}

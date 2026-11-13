@@ -11,6 +11,7 @@ import (
 )
 
 func TestInputOnlyScriptMetadata(t *testing.T) {
+	t.Parallel()
 	p, err := Load(t.Context(), "testdata/plugins/action-input.wasm", Options{})
 	if err != nil {
 		t.Fatal(err)

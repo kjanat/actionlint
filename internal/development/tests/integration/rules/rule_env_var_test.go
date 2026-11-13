@@ -32,6 +32,7 @@ func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {
 }
 
 func TestRuleEnvVarCheckValidName(t *testing.T) {
+	t.Parallel()
 	valids := []string{
 		"foo_bar",
 		"FOO_BAR",
@@ -42,6 +43,7 @@ func TestRuleEnvVarCheckValidName(t *testing.T) {
 
 	for _, n := range valids {
 		t.Run(n, func(t *testing.T) {
+			t.Parallel()
 			if errs := testValidateEnvVarName(t, n); len(errs) > 0 {
 				t.Fatalf("env var %q should be valid but got errors: %v", n, errs)
 			}
@@ -50,6 +52,7 @@ func TestRuleEnvVarCheckValidName(t *testing.T) {
 }
 
 func TestRuleEnvVarCheckInvalidName(t *testing.T) {
+	t.Parallel()
 	invalids := []string{
 		"a b",
 		"a=b",
@@ -58,6 +61,7 @@ func TestRuleEnvVarCheckInvalidName(t *testing.T) {
 
 	for _, n := range invalids {
 		t.Run(n, func(t *testing.T) {
+			t.Parallel()
 			if errs := testValidateEnvVarName(t, n); len(errs) == 0 {
 				t.Fatalf("env var %q should be invalid but got no error", n)
 			}
@@ -66,6 +70,7 @@ func TestRuleEnvVarCheckInvalidName(t *testing.T) {
 }
 
 func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
+	t.Parallel()
 	w := &workflowlang.Workflow{Env: nil}
 	r := declarationchecks.New(checking.ConfigurationRules(), correctness.EnvVarCheck())
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {

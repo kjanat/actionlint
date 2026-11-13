@@ -13,6 +13,7 @@ import (
 )
 
 func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -41,6 +42,7 @@ runs:
 }
 
 func TestCompositeShellcheckSiblingWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")

@@ -3,6 +3,7 @@ package references
 import "testing"
 
 func TestRepositoryURL(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input, host, shorthand string
 	}{
@@ -26,6 +27,7 @@ func TestRepositoryURL(t *testing.T) {
 		{"docker://codeberg.org/team/image:v2", "", ""},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			ref, present := ParseRepositoryURL(tc.input)
 			if present != (tc.host != "") || ref.Host() != tc.host || ref.Shorthand() != tc.shorthand {
 				t.Fatalf("got %+v/%t, want host=%q shorthand=%q", ref, present, tc.host, tc.shorthand)

@@ -11,6 +11,7 @@ import (
 // https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions
 // Check the analyzer's reachability decisions, not actual runner execution.
 func TestGitHubReferenceStatusChecks(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input                       string
 		afterFailure, whenCancelled bool
@@ -25,6 +26,7 @@ func TestGitHubReferenceStatusChecks(t *testing.T) {
 		{"failure() && steps.demo.conclusion == 'failure'", true, true},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 			if node == nil {
 				t.Fatal("invalid reference expression")

@@ -51,6 +51,7 @@ func TestRunnerProviderCLI(t *testing.T) {
 }
 
 func TestRunnerSnapshotValidation(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{`{"freshness":"current"}`, `{"freshness":"fresh","typo":true}`, `null`, `{`} {
 		file := filepath.Join(t.TempDir(), "snapshot.json")
 		if err := os.WriteFile(file, []byte(content), 0600); err != nil {
@@ -93,6 +94,7 @@ func TestGitHubRunnerSnapshotCLI(t *testing.T) {
 }
 
 func TestRunnerSnapshotContent(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, value, want string
 	}{
@@ -102,6 +104,7 @@ func TestRunnerSnapshotContent(t *testing.T) {
 		{"null", `null`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			file := filepath.Join(t.TempDir(), "snapshot.json")
 			data := `{"content":` + tc.value + `,"scope":"org/repo","obtained_at":"2026-10-23T00:00:00Z","freshness":"fresh","complete":true}`
 			if err := os.WriteFile(file, []byte(data), 0o600); err != nil {

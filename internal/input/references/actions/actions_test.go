@@ -19,6 +19,7 @@ func knownRepositoryID(t *testing.T, value uint64) repositoryid.ID {
 }
 
 func TestRawTagObjectPreservesRequestAndTerminalCommit(t *testing.T) {
+	t.Parallel()
 	object, commit := strings.Repeat("a", 40), strings.Repeat("b", 40)
 	request, err := actions.ParseReference("github.com", "example/action@"+object)
 	if err != nil {
@@ -44,6 +45,7 @@ func TestRawTagObjectPreservesRequestAndTerminalCommit(t *testing.T) {
 }
 
 func TestInvalidSelectionCannotBecomeManifest(t *testing.T) {
+	t.Parallel()
 	if _, err := actions.NewManifest(actions.Selection{}, []byte("name: example")); err == nil {
 		t.Fatal("zero selection became a manifest")
 	}
@@ -61,6 +63,7 @@ func TestInvalidSelectionCannotBecomeManifest(t *testing.T) {
 }
 
 func TestHeadSelectionKeepsSyntheticLookupKey(t *testing.T) {
+	t.Parallel()
 	route, err := actions.RefRoute("HEAD")
 	if err != nil {
 		t.Fatal(err)
@@ -71,6 +74,7 @@ func TestHeadSelectionKeepsSyntheticLookupKey(t *testing.T) {
 }
 
 func TestIdentityWithoutRepositoryID(t *testing.T) {
+	t.Parallel()
 	commit := strings.Repeat("d", 40)
 	identity, err := actions.NewIdentity("github.com", "example/action", repositoryid.ID{}, commit, "")
 	if err != nil {

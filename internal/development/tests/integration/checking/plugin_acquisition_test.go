@@ -25,6 +25,7 @@ import (
 )
 
 func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	fixtureenvironment.IsolateUserCache(t)
 	previous := http.DefaultTransport
 	dials := 0
@@ -71,6 +72,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 }
 
 func TestExplicitPluginSelectionCarriesOnlyItsOwnSourceGrant(t *testing.T) {
+	t.Parallel()
 	source := "https://127.0.0.1:8443/plugin.wasm#sha256=" + strings.Repeat("a", 64)
 	sources, err := (plugininstall.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {

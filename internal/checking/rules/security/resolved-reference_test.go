@@ -11,6 +11,7 @@ import (
 )
 
 func TestResolvedReferenceUsesCapturedTargets(t *testing.T) {
+	t.Parallel()
 	commit := strings.Repeat("a", 40)
 	ref := sourcepos.Reference{Document: "workflow.yml", Revision: "captured", Node: "step"}
 	dependency := workflowfacts.Dependency{Reference: ref, Uses: "owner/repo/subpath@v1", Start: sourcepos.Position{Line: 3, Column: 15}, End: sourcepos.Position{Line: 3, Column: 40}}

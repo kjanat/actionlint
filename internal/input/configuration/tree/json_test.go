@@ -8,8 +8,10 @@ import (
 )
 
 func TestDecodeJSONCommentsAndTrailingCommas(t *testing.T) {
+	t.Parallel()
 	for _, extension := range []string{"json", "jsonc"} {
 		t.Run(extension, func(t *testing.T) {
+			t.Parallel()
 			source := "{\n  // settings\n  \"value\": [true,], /* comment */\n  \"text\": \"https://example.test/*literal*/\",\n}\n"
 			node, err := Decode("actionlint."+extension, []byte(source))
 			if err != nil {

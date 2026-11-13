@@ -14,6 +14,7 @@ import (
 )
 
 func TestSecretInterpolationValueFlow(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression string
 		count      int
@@ -53,6 +54,7 @@ func TestSecretInterpolationValueFlow(t *testing.T) {
 		{"'literal'", 0},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -71,6 +73,7 @@ func TestSecretInterpolationValueFlow(t *testing.T) {
 }
 
 func TestSecretInterpolationPreservesName(t *testing.T) {
+	t.Parallel()
 	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("secrets.MixedCaseToken}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -82,6 +85,7 @@ func TestSecretInterpolationPreservesName(t *testing.T) {
 }
 
 func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		expression              string
 		wantSecrets, wantErrors int
@@ -97,6 +101,7 @@ func TestSecretInterpolationWithIndependentSemanticError(t *testing.T) {
 		{"secrets.TOKEN", 1, 0},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)

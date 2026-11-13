@@ -44,6 +44,7 @@ func opaque(t *testing.T, b *invocation.Builder, ticket invocation.Ticket) {
 }
 
 func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	var branches [][]invocation.ID
 	var sites [][]source.Reference
@@ -115,6 +116,7 @@ func TestRepeatedCallsRetainExactAncestry(t *testing.T) {
 }
 
 func TestStandaloneEntryDepthAndCycle(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryAction, invocation.DefaultBudget())
 	first := begin(t, b, b.RootID(), reference("entry", "nested"))
 	expand(t, b, first, reference("nested", "document"))
@@ -146,9 +148,11 @@ func TestStandaloneEntryDepthAndCycle(t *testing.T) {
 }
 
 func TestDepthBudgetStopsBeforeLookup(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []invocation.EntryKind{invocation.EntryWorkflow, invocation.EntryAction} {
 		for _, maxDepth := range []int{1, invocation.DefaultMaxDepth} {
 			t.Run(fmt.Sprintf("%s/%d", kind, maxDepth), func(t *testing.T) {
+				t.Parallel()
 				b := builder(t, kind, invocation.Budget{MaxDepth: maxDepth, MaxCalls: 100, MaxScripts: invocation.DefaultMaxScripts})
 				parent := b.RootID()
 				document := "entry"
@@ -183,6 +187,7 @@ func TestDepthBudgetStopsBeforeLookup(t *testing.T) {
 }
 
 func TestTotalBudgetRetainsOneBoundary(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.Budget{MaxDepth: 10, MaxCalls: 2, MaxScripts: invocation.DefaultMaxScripts})
 	for i := range 2 {
 		opaque(t, b, begin(t, b, b.RootID(), reference("entry", strconv.Itoa(i))))
@@ -204,8 +209,10 @@ func TestTotalBudgetRetainsOneBoundary(t *testing.T) {
 }
 
 func TestInterruptionPreservesAncestorsAndCompletedCalls(t *testing.T) {
+	t.Parallel()
 	for _, resolved := range []bool{false, true} {
 		t.Run(fmt.Sprintf("resolved=%v", resolved), func(t *testing.T) {
+			t.Parallel()
 			b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 			completed := begin(t, b, b.RootID(), reference("entry", "completed"))
 			opaque(t, b, completed)
@@ -234,6 +241,7 @@ func TestInterruptionPreservesAncestorsAndCompletedCalls(t *testing.T) {
 }
 
 func TestConditionIsIndependentOfResolution(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	conditions := []invocation.Condition{invocation.ConditionEnabled, invocation.ConditionSkipped, invocation.ConditionRuntimeDependent}
 	for i, condition := range conditions {
@@ -252,6 +260,7 @@ func TestConditionIsIndependentOfResolution(t *testing.T) {
 }
 
 func TestInvalidBudgetsAndAdmission(t *testing.T) {
+	t.Parallel()
 	for _, budget := range []invocation.Budget{{}, {MaxDepth: 1}, {MaxCalls: 1}, {MaxDepth: -1, MaxCalls: 1}} {
 		if _, err := invocation.NewBuilder(invocation.EntryWorkflow, reference("entry", "document"), budget); !errors.Is(err, invocation.ErrInvalidBudget) {
 			t.Errorf("accepted invalid budget: %+v", budget)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestQuotesSortedQuotes(t *testing.T) {
+	t.Parallel()
 	testCases := [][]string{
 		{},
 		{"foo"},
@@ -18,6 +19,7 @@ func TestQuotesSortedQuotes(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
 			ss := tc
 			sort.Strings(ss)
 			qs := make([]string, 0, len(ss))
@@ -34,6 +36,7 @@ func TestQuotesSortedQuotes(t *testing.T) {
 }
 
 func TestQuotesSortedQuotesDoesNotSortItsArgument(t *testing.T) {
+	t.Parallel()
 	ss := []string{"piyo", "foo", "bar"}
 	want := []string{"piyo", "foo", "bar"}
 
@@ -49,6 +52,7 @@ have: %v`, want, ss)
 }
 
 func TestQuotesQuotesRunes(t *testing.T) {
+	t.Parallel()
 	testCases := [][]rune{
 		{},
 		{'a'},
@@ -58,6 +62,7 @@ func TestQuotesQuotesRunes(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
 			qs := make([]string, 0, len(tc))
 			for _, r := range tc {
 				qs = append(qs, strconv.QuoteRune(r))
@@ -76,6 +81,7 @@ func TestQuotesQuotesRunes(t *testing.T) {
 }
 
 func TestQuotesQuotesAll(t *testing.T) {
+	t.Parallel()
 	testCases := [][][]string{
 		{{}},
 		{{"foo"}},
@@ -87,6 +93,7 @@ func TestQuotesQuotesAll(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
 			qs := []string{}
 			for _, ss := range tc {
 				for _, s := range ss {

@@ -8,6 +8,7 @@ import (
 )
 
 func TestRunnerExpressionNonemptyLabels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, value, kind string
 	}{
@@ -24,6 +25,7 @@ func TestRunnerExpressionNonemptyLabels(t *testing.T) {
 		{"unknown labels", `{labels: "${{ fromJSON(vars.LABELS) }}"}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   build:

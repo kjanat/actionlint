@@ -9,6 +9,7 @@ import (
 )
 
 func TestConstantPredicateAmbiguousNumbersStayUnknown(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"contains(-0, '0')", "startsWith(-0.0, '-')",
 		"contains(1e15, '1')", "contains(1e-5, '0')",
@@ -16,6 +17,7 @@ func TestConstantPredicateAmbiguousNumbersStayUnknown(t *testing.T) {
 		"contains(inputs.number, '1')",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			value, known := expreval.ConditionConstantValue(exprsyntax.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
 				t.Fatalf("unexpected constant value %v", value)

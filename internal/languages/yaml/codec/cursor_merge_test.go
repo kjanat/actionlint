@@ -7,6 +7,7 @@ import (
 )
 
 func TestCursorLeafMergeCountsAndIgnoredRecursiveField(t *testing.T) {
+	t.Parallel()
 	const source = `base: &base {name: merged, enabled: true}
 template: &template
   <<: *base

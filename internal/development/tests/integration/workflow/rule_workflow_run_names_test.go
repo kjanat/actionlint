@@ -18,6 +18,7 @@ import (
 )
 
 func TestWorkflowRunNames(t *testing.T) {
+	t.Parallel()
 	root := tempdir.Physical(t)
 	producer := fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: Build\n"+testutil.GoodWorkflow)
 	fixturefiles.Write(t, root, ".github/workflows/unnamed.yaml", testutil.GoodWorkflow)
@@ -35,6 +36,7 @@ func TestWorkflowRunNames(t *testing.T) {
 		{"Typo", "lint: {rules: {correctness: {workflow-run-names: off}}}", 0},
 	} {
 		t.Run(tc.name+tc.config, func(t *testing.T) {
+			t.Parallel()
 			src := `on:
   workflow_run:
     workflows: ['` + tc.name + `']
@@ -68,6 +70,7 @@ permissions: {}
 }
 
 func TestWorkflowRunNamesLiteralNames(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, reference string
 		want            int
@@ -83,6 +86,7 @@ func TestWorkflowRunNamesLiteralNames(t *testing.T) {
 	} {
 		for _, inMemory := range []bool{false, true} {
 			t.Run(tc.name+tc.reference+strconv.FormatBool(inMemory), func(t *testing.T) {
+				t.Parallel()
 				root := tempdir.Physical(t)
 				project := workspace.Identity(root)
 				producer := "name: " + tc.name + "\n" + testutil.GoodWorkflow
@@ -117,9 +121,11 @@ permissions: {}
 }
 
 func TestWorkflowRunNamesFilesystemPathCasing(t *testing.T) {
+	t.Parallel()
 	for _, disk := range []string{"name: Old\n" + testutil.GoodWorkflow, "name: [\n"} {
 		for _, reference := range []string{"New", "Old", "Typo"} {
 			t.Run(disk+reference, func(t *testing.T) {
+				t.Parallel()
 				root := tempdir.Physical(t)
 				producer := fixturefiles.Write(t, root, ".github/workflows/build.yml", disk)
 				if _, err := os.Stat(strings.ToUpper(root)); err != nil {
@@ -169,6 +175,7 @@ func TestWorkflowRunNamesRelativeProject(t *testing.T) {
 	}
 	for _, name := range []string{"Build", "Missing"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			src := "on: {workflow_run: {workflows: [" + name + `], types: [completed]}}
 jobs:
   test:
@@ -193,6 +200,7 @@ permissions: {}
 }
 
 func TestWorkflowRunNamesPatterns(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, filters string
 		want          int
@@ -210,6 +218,7 @@ func TestWorkflowRunNamesPatterns(t *testing.T) {
 		{"Build/CI", "'Build**'", 0},
 	} {
 		t.Run(tc.name+tc.filters, func(t *testing.T) {
+			t.Parallel()
 			root := tempdir.Physical(t)
 			project := workspace.Identity(root)
 			consumer := "on: {workflow_run: {workflows: [" + tc.filters + `], types: [completed]}}
@@ -278,8 +287,10 @@ permissions: {}
 }
 
 func TestWorkflowRunNamesUnreadableSibling(t *testing.T) {
+	t.Parallel()
 	for _, readErr := range []error{os.ErrPermission, os.ErrNotExist, context.Canceled, context.DeadlineExceeded} {
 		t.Run(readErr.Error(), func(t *testing.T) {
+			t.Parallel()
 			root := tempdir.Physical(t)
 			producer := fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: Build\n"+testutil.GoodWorkflow)
 			consumer := `on: {workflow_run: {workflows: [Missing], types: [completed]}}
@@ -313,6 +324,7 @@ permissions: {}
 }
 
 func TestWorkflowRunNamesInMemoryAndIncomplete(t *testing.T) {
+	t.Parallel()
 	root := tempdir.Physical(t)
 	producer := fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: Old\n"+testutil.GoodWorkflow)
 	consumer := `on: {workflow_run: {workflows: [New], types: [completed]}}

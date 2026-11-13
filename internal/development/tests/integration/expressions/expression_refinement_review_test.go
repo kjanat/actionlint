@@ -12,6 +12,7 @@ import (
 )
 
 func TestExpressionRefinementReview(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, field, want string }{
 		{"queue integer", "concurrency: {group: build, queue: '${{ 1 }}'}", "must be single or max"},
 		{"queue float", "concurrency: {group: build, queue: '${{ 1.5 }}'}", "must be single or max"},
@@ -23,11 +24,15 @@ func TestExpressionRefinementReview(t *testing.T) {
 		{"environment null", "environment: ${{ null }}", "must be a non-empty string"},
 		{"environment unknown", "environment: ${{ vars.ENVIRONMENT }}", ""},
 	} {
-		t.Run(tc.name, func(t *testing.T) { checkJobField(t, tc.field, tc.want) })
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			checkJobField(t, tc.field, tc.want)
+		})
 	}
 }
 
 func TestConcurrencyExpressionConflictReview(t *testing.T) {
+	t.Parallel()
 	for _, scope := range []string{"workflow", "job"} {
 		for _, tc := range []struct {
 			queue, cancel string
@@ -43,6 +48,7 @@ func TestConcurrencyExpressionConflictReview(t *testing.T) {
 			{"max", "${{ github.ref == 'refs/heads/main' }}", false},
 		} {
 			t.Run(scope+"/"+tc.queue+"/"+tc.cancel, func(t *testing.T) {
+				t.Parallel()
 				field := fmt.Sprintf(`concurrency:
   group: build
   queue: %s

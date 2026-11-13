@@ -13,6 +13,7 @@ import (
 )
 
 func TestWorkflowRunOrderedFilters(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, producer, config string
 		patterns               []string
@@ -34,6 +35,7 @@ func TestWorkflowRunOrderedFilters(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+strconv.Quote(ending), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: "+strconv.Quote(tc.producer)+"\n"+testutil.GoodWorkflow)
 				config, err := checking.ConfigurationRules().Parse([]byte(tc.config))

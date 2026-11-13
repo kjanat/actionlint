@@ -8,8 +8,10 @@ import (
 )
 
 func TestResolverLeavesInvalidReferenceDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, uses := range []string{"owner/@v1", "https://host/owner/repo@v1"} {
 		t.Run(uses, func(t *testing.T) {
+			t.Parallel()
 			want := "invalid format"
 			if strings.HasPrefix(uses, "https://") {
 				want = "[vendor-lock-in]"

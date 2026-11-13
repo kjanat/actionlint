@@ -14,6 +14,7 @@ import (
 )
 
 func TestDoctorToolPresentation(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +63,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 }
 
 func TestDoctorResolverSelection(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +75,7 @@ func TestDoctorResolverSelection(t *testing.T) {
 		{"missing", filepath.Join(t.TempDir(), "missing-resolver"), "unavailable"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var out, stderr bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &stderr}
 			args := []string{"actionlint", "doctor", "--no-config", "--no-tool=ruff", "--no-tool=shellcheck", "--json", "--resolve-with", tc.command, "--resolver-arg=argument with spaces", "--resolver-arg=--literal"}

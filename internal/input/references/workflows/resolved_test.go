@@ -14,6 +14,7 @@ import (
 )
 
 func TestResolvedWorkflowLookupNeverLoadsAndDetachesMetadata(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	reads := map[string]int{}
 	store, err := capture.New(t.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
@@ -59,6 +60,7 @@ func TestResolvedWorkflowLookupNeverLoadsAndDetachesMetadata(t *testing.T) {
 }
 
 func TestInvalidWorkflowMetadataRejectsQuarantinedCapture(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store, err := capture.New(t.Context(), nil, func(context.Context, string) ([]byte, error) {
 		return []byte("on: [broken\n"), nil

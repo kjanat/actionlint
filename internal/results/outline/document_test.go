@@ -10,6 +10,7 @@ import (
 )
 
 func TestReportsDecodeWithoutAnalysis(t *testing.T) {
+	t.Parallel()
 	input := outline.Outlines{
 		outline.NewWorkflow(outline.WorkflowFields{Path: "ci.yml", ParseStatus: "complete", Triggers: []string{"push"}, Jobs: []outline.Job{
 			outline.NewJob(outline.JobFields{ID: "build", Needs: []string{}, Steps: []outline.Step{outline.NewStep(outline.StepFields{Kind: "uses", Uses: "./action"})}}),
@@ -37,6 +38,7 @@ func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 }
 
 func TestActionOutlinesWithoutRuntimeRoundTrip(t *testing.T) {
+	t.Parallel()
 	input := outline.NewAction(outline.ActionFields{Path: "action.yml"})
 	data, err := json.Marshal(input)
 	if err != nil {
@@ -64,6 +66,7 @@ func TestActionOutlinesWithoutRuntimeRoundTrip(t *testing.T) {
 }
 
 func TestOutlineAccessorsReturnDetachedCopies(t *testing.T) {
+	t.Parallel()
 	needs := []string{"lint"}
 	workflow := outline.NewWorkflow(outline.WorkflowFields{Path: "ci.yml", Jobs: []outline.Job{
 		outline.NewJob(outline.JobFields{ID: "build", Needs: needs, Start: &sourcepos.Position{Line: 3, Column: 3}}),

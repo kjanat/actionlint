@@ -12,11 +12,11 @@ import (
 )
 
 func TestFmtCompositeArgumentInterpolation(t *testing.T) {
+	t.Parallel()
 	fixture, err := os.ReadFile("internal/development/tests/integration/actions/testdata/fmt/action.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
 	for _, tc := range []struct {
 		name, source string
 		unsafe       bool
@@ -29,6 +29,8 @@ func TestFmtCompositeArgumentInterpolation(t *testing.T) {
 		{"command substitution", strings.Replace(string(fixture), "--excludes .github", "--excludes $(id)", 1), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
 			fixturefiles.Write(t, root, "fmt/action.yml", tc.source)
 			result := testutil.Composite(t, root, "- uses: ./fmt", checking.Options{})
 			interpolation := false
@@ -46,6 +48,7 @@ func TestFmtCompositeArgumentInterpolation(t *testing.T) {
 }
 
 func TestFmtCompositeUnusedSuppression(t *testing.T) {
+	t.Parallel()
 	fixture, err := os.ReadFile("internal/development/tests/integration/actions/testdata/fmt/action.yml")
 	if err != nil {
 		t.Fatal(err)

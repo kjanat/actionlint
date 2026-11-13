@@ -11,6 +11,7 @@ import (
 )
 
 func TestResolvedActionsCannotFetch(t *testing.T) {
+	t.Parallel()
 	requests := 0
 	service := remote.New(provider(func(_ context.Context, reference actions.Reference) (actions.Manifest, error) {
 		requests++
@@ -39,6 +40,7 @@ func TestResolvedActionsCannotFetch(t *testing.T) {
 }
 
 func TestNilResolvedActionsReportDisabledLookup(t *testing.T) {
+	t.Parallel()
 	var resolved *remote.ResolvedActions
 	if got := resolved.Inspect("example/action@v1"); got.Availability().Reason() != availability.LookupDisabledReason || resolved.Lookup("example/action@v1").Present() {
 		t.Fatalf("disabled lookup = %+v", got)

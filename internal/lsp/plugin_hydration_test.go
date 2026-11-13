@@ -13,6 +13,7 @@ import (
 )
 
 func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	module, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {

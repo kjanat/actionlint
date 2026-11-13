@@ -3,13 +3,17 @@ package context
 import (
 	"regexp"
 	"slices"
+	"sync"
 	"testing"
 )
 
 func TestWorkflowKeyAvailability(t *testing.T) {
+	t.Parallel()
+	var seenMutex sync.Mutex
 	seenCtx := map[string]struct{}{}
 	for _, key := range AllWorkflowKeys {
 		t.Run(key, func(t *testing.T) {
+			t.Parallel()
 			ctx, sp := WorkflowKeyAvailability(key)
 			if ctx == nil || sp == nil {
 				t.Error("workflow key has not availability info:", key)
@@ -24,7 +28,9 @@ func TestWorkflowKeyAvailability(t *testing.T) {
 				} else if !slices.Contains(ks, key) {
 					t.Errorf("Workflow key %q is not included in workflow keys of AllContexts %v", key, ks)
 				}
+				seenMutex.Lock()
 				seenCtx[c] = struct{}{}
+				seenMutex.Unlock()
 			}
 
 			r := regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -48,15 +54,17 @@ func TestWorkflowKeyAvailability(t *testing.T) {
 			}
 		})
 	}
-	if len(AllContexts) != len(seenCtx) {
-		t.Errorf(
-			"AllContexts has %d elems but %d contexts were found. Found contexts are %v and AllContexts is %v",
-			len(AllContexts),
-			len(seenCtx),
-			seenCtx,
-			AllContexts,
-		)
-	}
+	t.Cleanup(func() {
+		if len(AllContexts) != len(seenCtx) {
+			t.Errorf(
+				"AllContexts has %d elems but %d contexts were found. Found contexts are %v and AllContexts is %v",
+				len(AllContexts),
+				len(seenCtx),
+				seenCtx,
+				AllContexts,
+			)
+		}
+	})
 
 	ctx, sp := WorkflowKeyAvailability("unknown.workflow.key")
 	if len(ctx) != 0 {
@@ -68,6 +76,7 @@ func TestWorkflowKeyAvailability(t *testing.T) {
 }
 
 func TestSpecialFunctionNames(t *testing.T) {
+	t.Parallel()
 	if len(SpecialFunctionNames) == 0 {
 		t.Error("No special function is registered in SpecialFunctionNames")
 	}

@@ -15,6 +15,7 @@ import (
 )
 
 func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	directory := filepath.Join(root, ".github", "workflows")
 	if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -62,6 +63,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 }
 
 func TestIncompleteWorkflowNamesDoNotProveUnusedSuppression(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, producer, selector string
 		wantUnused               bool
@@ -71,6 +73,7 @@ func TestIncompleteWorkflowNamesDoNotProveUnusedSuppression(t *testing.T) {
 		{"unrelated selector", "name: [broken\n", "workflow-run-names permissions", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			directory := filepath.Join(root, ".github", "workflows")
 			if err := os.MkdirAll(directory, 0o755); err != nil {

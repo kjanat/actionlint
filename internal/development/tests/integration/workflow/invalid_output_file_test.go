@@ -25,6 +25,7 @@ jobs:
 `
 
 func TestInvalidOutputFileSelectionAndSuppression(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config, comment, severity string
 	}{
@@ -35,6 +36,7 @@ func TestInvalidOutputFileSelectionAndSuppression(t *testing.T) {
 		{"unrelated suppression", "", " # ignore[deprecated-commands]", "error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := strings.Replace(outputFileWorkflow, "run: |", "run: |"+tc.comment, 1)
 			findings := onlyOutputFileFindings(testutil.WorkflowDiagnostics(t, source, tc.config))
 			if tc.severity == "" {
@@ -54,6 +56,7 @@ func TestInvalidOutputFileSelectionAndSuppression(t *testing.T) {
 }
 
 func TestInvalidOutputFileValidAndUnknown(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, script, shell string }{
 		{"assignment", `echo 'available=true' >> "$GITHUB_OUTPUT"`, "bash"},
 		{"partial assignment", "printf 'available=' >> \"$GITHUB_OUTPUT\"\nprintf '%s\\n' true >> \"$GITHUB_OUTPUT\"", "bash"},
@@ -64,6 +67,7 @@ func TestInvalidOutputFileValidAndUnknown(t *testing.T) {
 		{"PowerShell", `echo '{' >> "$GITHUB_OUTPUT"`, "pwsh"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: %s\n        run: |\n          %s\n", tc.shell, strings.ReplaceAll(tc.script, "\n", "\n          "))
 			if findings := onlyOutputFileFindings(testutil.WorkflowDiagnosticsWithOptions(t, source, "", checking.Options{})); len(findings) != 0 {
 				t.Fatalf("valid or unknown write reported: %+v", findings)

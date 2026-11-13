@@ -12,6 +12,7 @@ import (
 )
 
 func TestCollectionComparisonSeverity(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, settings, severity string
 		strict                   bool
@@ -24,6 +25,7 @@ func TestCollectionComparisonSeverity(t *testing.T) {
 	} {
 		for _, kind := range []string{"workflow", "composite"} {
 			t.Run(tc.name+"/"+kind, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				config := filepath.Join(root, "actionlint.yaml")
 				if err := os.WriteFile(config, []byte("plugins: []\n"+tc.settings), 0o600); err != nil {
@@ -84,6 +86,7 @@ func TestCollectionComparisonSeverity(t *testing.T) {
 }
 
 func TestCollectionComparisonAcceptsAutofixWorkflow(t *testing.T) {
+	t.Parallel()
 	// actionlint f03a587da066c821a400d81e5990662b36754dae uses null checks
 	// to choose how fixes are published for stacked pull requests.
 	const path = ".github/workflows/autofix.yml"
@@ -116,6 +119,7 @@ func TestCollectionComparisonAcceptsAutofixWorkflow(t *testing.T) {
 }
 
 func TestCollectionComparisonWriteGate(t *testing.T) {
+	t.Parallel()
 	const source = "name: Write gate\non: issues\npermissions:\n  issues: write\njobs:\n  update:\n    runs-on: ubuntu-latest\n    steps:\n      - if: ${{ github.event.issue != fromJSON('{}') }}\n        run: gh api --method PATCH repos/example/project/issues/1 -f title=approved\n"
 	root := t.TempDir()
 	config := filepath.Join(root, "actionlint.yaml")

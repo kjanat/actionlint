@@ -10,6 +10,7 @@ import (
 )
 
 func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {
+	t.Parallel()
 	inputs := make([]checkinputs.ScriptInput, 257)
 	for i := range inputs {
 		inputs[i] = checkinputs.ScriptInput{Action: "owner/action", Input: fmt.Sprintf("input-%d", i), Language: "javascript"}
@@ -21,6 +22,7 @@ func TestInputRegistrationRetainsPerEngineLimit(t *testing.T) {
 }
 
 func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
+	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/repository", Input: "source", Language: "javascript"}
 	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "input"}, ScriptInputs: []checkinputs.ScriptInput{site}}
 	backend := &selectorBackend{}

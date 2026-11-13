@@ -11,6 +11,7 @@ import (
 )
 
 func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, filters, message string
 		complete               bool
@@ -24,6 +25,7 @@ func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
 		{"literal expression", `["${{ 'Build docs' }}"]`, "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			text := "on:\n  workflow_run:\n    workflows: " + tc.filters + "\n    types: [completed]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
 			parsed, errors := workflowparser.Parse([]byte(text))
 			if len(errors) != 0 {

@@ -15,6 +15,7 @@ import (
 )
 
 func TestExpressionRefinementStates(t *testing.T) {
+	t.Parallel()
 	checker := newTestChecker()
 	for _, tc := range []struct {
 		name       string
@@ -26,6 +27,7 @@ func TestExpressionRefinementStates(t *testing.T) {
 		{"invalid", exprvalues.EvaluationResult{State: exprvalues.EvaluationInvalid}, value.Invalid},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got := checker.expressionType("${{ env.value }}", tc.evaluation)
 			if got.state != tc.want || got.hasTemplateInvalid {
 				t.Fatalf("refinement=%+v, want state %v without invalid template row", got, tc.want)
@@ -38,6 +40,7 @@ func TestExpressionRefinementStates(t *testing.T) {
 }
 
 func TestKP2BWMatrixExpressionTypes(t *testing.T) {
+	t.Parallel()
 	source, err := os.ReadFile(filepath.Join("..", "..", "development", "tests", "integration", "workflow", "testdata", "repositories", "kp2bw-windows-bw-cmd.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -83,6 +86,7 @@ func TestKP2BWMatrixExpressionTypes(t *testing.T) {
 }
 
 func TestFiniteMatrixObjectCannotBeInterpolatedAsString(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		`fromJSON(format('{{"value":"{0}"}}', matrix.item))`,
 		`matrix.item == 'one' && fromJSON('{}') || 'ok'`,
@@ -90,6 +94,7 @@ func TestFiniteMatrixObjectCannotBeInterpolatedAsString(t *testing.T) {
 		`matrix.item == 'one' && fromJSON('{}') || null`,
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			checker, workflow := newTestCheckerForSource(t, `on: push
 jobs:
   check:

@@ -13,6 +13,7 @@ import (
 )
 
 func TestMapKeyErrorRejectsMutableKeys(t *testing.T) {
+	t.Parallel()
 	fixture := types.NewPackage("fixture", "fixture")
 	pointerKey := types.NewPointer(types.Typ[types.Int])
 	structKey := types.NewStruct([]*types.Var{
@@ -24,6 +25,7 @@ func TestMapKeyErrorRejectsMutableKeys(t *testing.T) {
 		"unsafe pointer":            types.Typ[types.UnsafePointer],
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			if err := mapKeyError(key); err == nil {
 				t.Fatal("accepted map key containing a pointer")
 			}
@@ -32,6 +34,7 @@ func TestMapKeyErrorRejectsMutableKeys(t *testing.T) {
 }
 
 func TestInterfaceImplementationsRejectUnsupportedShapes(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name       string
 		typeName   string
@@ -43,6 +46,7 @@ func TestInterfaceImplementationsRejectUnsupportedShapes(t *testing.T) {
 		{name: "exported pointer implementation", typeName: "PointerImpl"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := types.NewPackage("fixture", "fixture")
 			scope := types.NewScope(fixture.Scope(), token.NoPos, token.NoPos, "fixture")
 			namedInterface := types.NewInterfaceType([]*types.Func{
@@ -73,6 +77,7 @@ func TestInterfaceImplementationsRejectUnsupportedShapes(t *testing.T) {
 }
 
 func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
+	t.Parallel()
 	generateDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -126,6 +131,7 @@ func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := filepath.Join(t.TempDir(), "fixture")
 			workflow := filepath.Join(fixture, "internal", "model", "workflows", "definition")
 			if err := os.MkdirAll(workflow, 0o755); err != nil {
@@ -157,6 +163,7 @@ func TestGeneratorRejectsUnsupportedShapesBeforeEmitting(t *testing.T) {
 }
 
 func TestGeneratedFilesAreCurrent(t *testing.T) {
+	t.Parallel()
 	generateDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

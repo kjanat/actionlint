@@ -12,6 +12,7 @@ import (
 )
 
 func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo original}]}}\n")
 	document := Workflow(content)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -24,9 +25,11 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 }
 
 func TestOwnedDeclarationSurvivesDecoderAndPositionMutation(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: original\n        name: Original\n        run: echo original\n")
 	for _, access := range []string{"before binding", "position accessor", "original model after binding"} {
 		t.Run(access, func(t *testing.T) {
+			t.Parallel()
 			document := Workflow(content)
 			cursor := document.Workflow.Jobs["build"].Steps[0]
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -78,6 +81,7 @@ func TestOwnedDeclarationSurvivesDecoderAndPositionMutation(t *testing.T) {
 }
 
 func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: original\ndescription: test\nruns:\n  using: composite\n  steps:\n    - &shared\n      shell: bash\n      run: echo original\n    - *shared\n")
 	metadata, err := actionmeta.Parse("action.yml", content)
 	if err != nil {
@@ -119,6 +123,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 }
 
 func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	document := Workflow(content)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -146,6 +151,7 @@ func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 }
 
 func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	first, second := Workflow(content), Workflow(content)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -179,6 +185,7 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 }
 
 func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo owned}]}}\n")
 	document := Workflow(content)
 	firstRegistry := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -207,6 +214,7 @@ func TestOwnedHandlesAreScopedToRegistryBinding(t *testing.T) {
 }
 
 func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo owned}]}}\n")
 	document := Workflow(content)
 	const workers = 24
@@ -249,6 +257,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 }
 
 func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: broken\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo missing shell\n")
 	document := Action("action.yml", content)
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
@@ -271,6 +280,7 @@ func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
 }
 
 func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{"", "null\n", "[unterminated", "jobs: !!unknown {}\n"} {
 		for _, action := range []bool{false, true} {
 			document := Workflow([]byte(content))
@@ -297,6 +307,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 }
 
 func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: recovered\ndescription: test\ninputs:\n  value:\n    required: [invalid]\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo recovered\n")
 	metadata, parseErr := actionmeta.Parse("action.yml", content)
 	if parseErr == nil || len(metadata.Runs.Steps) != 1 {

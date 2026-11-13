@@ -35,8 +35,10 @@ func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input chec
 }
 
 func TestResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T) {
+	t.Parallel()
 	for _, aliasedRoot := range []bool{false, true} {
 		t.Run(fmt.Sprintf("aliased-root=%t", aliasedRoot), func(t *testing.T) {
+			t.Parallel()
 			testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t, aliasedRoot)
 		})
 	}

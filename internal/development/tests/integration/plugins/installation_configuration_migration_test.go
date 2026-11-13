@@ -17,6 +17,7 @@ import (
 )
 
 func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -72,6 +73,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 }
 
 func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL)
@@ -121,6 +123,7 @@ func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
 }
 
 func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
+	t.Parallel()
 	root := repositoryfixture.Directory(t)
 	path := filepath.Join(root, "actionlint.yaml")
 	base := filepath.Join(root, "base.yaml")
@@ -156,6 +159,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 }
 
 func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
+	t.Parallel()
 	workspace := t.TempDir()
 	root := filepath.Join(workspace, "repo")
 	shared := filepath.Join(workspace, "shared")
@@ -197,6 +201,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 }
 
 func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name          string
 		inputName     string
@@ -213,6 +218,7 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 		{name: "existing named", inputName: "workflow.yml", exists: true, shouldMigrate: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			configDir := filepath.Join(root, ".github")
 			if err := os.Mkdir(configDir, 0700); err != nil {
@@ -261,6 +267,7 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 }
 
 func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ config, want string }{
 		{"{}", "ruff,shellcheck"},
 		{"plugins: []", ""},
@@ -274,6 +281,7 @@ func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 		{"tools: {shellcheck: {config: {source-path: [scripts]}}}", "ruff,shellcheck"},
 	} {
 		t.Run(tc.config, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
@@ -294,11 +302,13 @@ func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 }
 
 func TestConfigMigrationRejectsChangedCandidate(t *testing.T) {
+	t.Parallel()
 	for _, candidate := range []string{
 		"plugins: []\nlint: {rules: {correctness: {runner-label: {options: {unknown: true}}}}}\n",
 		"plugins: []\nextends: [new-base.yaml]\n",
 	} {
 		t.Run(candidate, func(t *testing.T) {
+			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, "actionlint.yaml")
 			original := []byte("plugins: []\nconfig-variables: []\n")
@@ -330,8 +340,10 @@ func TestConfigMigrationRejectsChangedCandidate(t *testing.T) {
 }
 
 func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
+	t.Parallel()
 	for _, editBase := range []bool{false, true} {
 		t.Run(map[bool]string{false: "selected", true: "inherited"}[editBase], func(t *testing.T) {
+			t.Parallel()
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, "actionlint.yaml")
 			base := filepath.Join(root, "base.yaml")
@@ -379,6 +391,7 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 }
 
 func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	root := repositoryfixture.Directory(t)
 	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), root, "2.0.0", config.FormatYAML)
@@ -396,8 +409,10 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 }
 
 func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, name := range []string{fixtureregistry.FixturePluginName, "ruff"} {
 		t.Run(name, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			url := fixtureregistry.FixtureRegistryURL

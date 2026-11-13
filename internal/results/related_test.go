@@ -9,6 +9,7 @@ import (
 )
 
 func TestRelatedJSONRevisionBindingRoundTrip(t *testing.T) {
+	t.Parallel()
 	revision, err := sourcepos.NewRevision("/repo/ci.yml", strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)

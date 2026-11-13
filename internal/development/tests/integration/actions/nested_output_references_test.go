@@ -17,6 +17,7 @@ import (
 // These cases promote the saved issue #361 reproductions in
 // .review-artifacts/pr343-output-completeness to permanent host regressions.
 func TestNestedCompositeOutputReferences(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, metadata, reference string
 		want                      int
@@ -32,6 +33,7 @@ func TestNestedCompositeOutputReferences(t *testing.T) {
 	} {
 		for _, standalone := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/standalone=%t", tc.name, standalone), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 				if tc.metadata != "" {
@@ -71,6 +73,7 @@ func TestNestedCompositeOutputReferences(t *testing.T) {
 }
 
 func TestCompositeOutputReferencesAcrossStepFields(t *testing.T) {
+	t.Parallel()
 	for _, field := range []struct{ name, step, outputs string }{
 		{"environment", "    - run: echo ready\n      shell: bash\n      env:\n        VALUE: ${{ steps.child.outputs.missing }}\n", ""},
 		{"folded environment", "    - run: echo ready\n      shell: bash\n      env:\n        VALUE: >-\n          prefix\n          ${{ steps.child.outputs.missing }}\n", ""},
@@ -84,6 +87,7 @@ func TestCompositeOutputReferencesAcrossStepFields(t *testing.T) {
 		{"folded output value", "", "outputs:\n  result:\n    description: result\n    value: >-\n      prefix\n      ${{ steps.child.outputs.missing }}\n"},
 	} {
 		t.Run(field.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 			fixturefiles.Write(t, root, "child/action.yml", "name: child\ndescription: child\ninputs: {message: {description: message}}\noutputs: {result: {description: result, value: ready}}\nruns: {using: composite, steps: []}\n")
@@ -117,6 +121,7 @@ func TestCompositeOutputReferencesAcrossStepFields(t *testing.T) {
 }
 
 func TestCompositeOutputReferencePolicy(t *testing.T) {
+	t.Parallel()
 	for _, outputValue := range []bool{false, true} {
 		for _, tc := range []struct{ name, config, comment, severity string }{
 			{"warning", "lint: {rules: {correctness: {expression-reference: warn}}}\n", "", "warning"},
@@ -124,6 +129,7 @@ func TestCompositeOutputReferencePolicy(t *testing.T) {
 			{"inline", "", " # ignore[expression-reference]", ""},
 		} {
 			t.Run(fmt.Sprintf("%s/output-value=%t", tc.name, outputValue), func(t *testing.T) {
+				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
 				fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.config+"tools: {shellcheck: false, ruff: false}\n")
 				fixturefiles.Write(t, root, "child/action.yml", "name: child\ndescription: child\nruns: {using: composite, steps: []}\n")
@@ -161,6 +167,7 @@ func TestCompositeOutputReferencePolicy(t *testing.T) {
 }
 
 func TestCompositePropertyFindingsHaveOneOwner(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 	entry := fixturefiles.Write(t, root, "outer/action.yml", "name: outer\ndescription: outer\noutputs:\n  result:\n    description: result\n    value: ${{ github.no_such_property }}\nruns:\n  using: composite\n  steps:\n    - run: echo ready\n      shell: bash\n      env:\n        VALUE: ${{ github.no_such_property }}\n")

@@ -12,8 +12,10 @@ import (
 )
 
 func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	for _, repositoryID := range []int{11, 99} {
 		t.Run(map[int]string{11: "same publisher", 99: "changed publisher"}[repositoryID], func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), repositoryfixture.Directory(t), "", "")
 			if err != nil {

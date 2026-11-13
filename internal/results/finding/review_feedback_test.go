@@ -9,6 +9,7 @@ import (
 )
 
 func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
+	t.Parallel()
 	base := Finding{Rule: "first", Path: "ci.yml", Message: "same", Start: sourcepos.Position{Line: 1, Column: 1}}
 	for _, change := range []struct {
 		name string
@@ -21,6 +22,7 @@ func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
 		{"fix", func(e *Finding) { e.Fixes = []results.Fix{{Description: "fix"}} }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
+			t.Parallel()
 			other := base
 			change.edit(&other)
 			if Equal(&base, &other) {

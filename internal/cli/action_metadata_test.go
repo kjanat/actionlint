@@ -16,6 +16,7 @@ import (
 )
 
 func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
+	t.Parallel()
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
 	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=off", "--output-format=json", "--summary=false", "-"})
@@ -32,6 +33,7 @@ func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 }
 
 func TestActionMetadataModeRejectsUnknownValue(t *testing.T) {
+	t.Parallel()
 	if _, err := (checkInvocation{ActionMetadata: "sometimes"}).actionMetadata(); err == nil {
 		t.Fatal("unknown network policy accepted")
 	}
@@ -39,9 +41,9 @@ func TestActionMetadataModeRejectsUnknownValue(t *testing.T) {
 
 func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 	cache := t.TempDir()
-	for _, name := range []string{"LOCALAPPDATA", "XDG_CACHE_HOME", "HOME"} {
-		t.Setenv(name, cache)
-	}
+	t.Setenv("LOCALAPPDATA", cache)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("HOME", cache)
 	original := http.DefaultTransport
 	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
 		t.Errorf("disabled acquisition requested %s", r.URL)
@@ -61,6 +63,7 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 		{"off", "v1", availability.LookupDisabledReason},
 	} {
 		t.Run(tc.mode+"/"+tc.ref, func(t *testing.T) {
+			t.Parallel()
 			var out, log bytes.Buffer
 			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
 			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", path, "--action-metadata=" + tc.mode, "--output=json", "--summary=false", "-"})

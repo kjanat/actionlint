@@ -16,6 +16,7 @@ type recursiveValue struct {
 }
 
 func TestCursorPlainRecursiveTypeMatchesUpstream(t *testing.T) {
+	t.Parallel()
 	const source = "name: root\nchildren:\n  - name: child\n    children:\n      - name: leaf\n"
 	var got recursiveValue
 	if err := decodeCursorSource([]byte(source), &got); err != nil {
@@ -49,6 +50,7 @@ type upstreamExportedEmbeddedTarget struct {
 }
 
 func TestCursorExportedEmbeddedMethodTypeMatchesUpstream(t *testing.T) {
+	t.Parallel()
 	const source = "prefix: before\nvalue: embedded\nhook: called\n"
 	var got exportedEmbeddedTarget
 	if err := decodeCursorSource([]byte(source), &got); err != nil {
@@ -78,6 +80,7 @@ type upstreamPrivateEmbeddedTarget struct {
 }
 
 func TestCursorUnexportedEmbeddedFieldMatchesUpstream(t *testing.T) {
+	t.Parallel()
 	const source = "value: embedded\nhook: called\n"
 	var got privateEmbeddedTarget
 	if err := decodeCursorSource([]byte(source), &got); err != nil {
@@ -102,6 +105,7 @@ type recursiveHookTarget struct {
 }
 
 func TestCursorRejectsRecursiveHookTargetWithoutCallingHook(t *testing.T) {
+	t.Parallel()
 	var got recursiveHookTarget
 	if err := decodeCursorSource([]byte("name: value\n"), &got); err == nil {
 		t.Fatal("hook target accepted")
@@ -112,6 +116,7 @@ func TestCursorRejectsRecursiveHookTargetWithoutCallingHook(t *testing.T) {
 }
 
 func TestSelectedNodeKeepsCallerGraphIdentity(t *testing.T) {
+	t.Parallel()
 	const source = "node:\n  nested: value\nhook: seen\n"
 	root, err := codec.Parse([]byte(source))
 	if err != nil {
@@ -159,8 +164,10 @@ func (v *textWithNode) UnmarshalText(data []byte) error {
 }
 
 func TestCursorTextUnmarshalerPolicy(t *testing.T) {
+	t.Parallel()
 	const source = "decoded text\n"
 	t.Run("plain representation dispatches", func(t *testing.T) {
+		t.Parallel()
 		var got, want textScalar
 		if err := decodeCursorSource([]byte(source), &got); err != nil {
 			t.Fatal(err)
@@ -173,6 +180,7 @@ func TestCursorTextUnmarshalerPolicy(t *testing.T) {
 		}
 	})
 	t.Run("node representation rejected before dispatch", func(t *testing.T) {
+		t.Parallel()
 		// Cursor validates the complete representation even when upstream text dispatch bypasses fields.
 		got := textWithNode{Value: "keep"}
 		before := got
@@ -210,6 +218,7 @@ type legacyValueHook struct{ calls *int }
 func (h legacyValueHook) UnmarshalYAML(func(any) error) error { (*h.calls)++; return nil }
 
 func TestCursorAndSelectRejectYAMLHookSignaturesBeforeCalling(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		target func(*int) any
@@ -236,6 +245,7 @@ func TestCursorAndSelectRejectYAMLHookSignaturesBeforeCalling(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, selected := range []bool{false, true} {
 				root, err := codec.Parse([]byte("hook: value\n"))
 				if err != nil {

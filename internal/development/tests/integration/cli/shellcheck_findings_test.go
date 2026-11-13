@@ -17,11 +17,11 @@ import (
 )
 
 func TestShellcheckCommandFindingsWithExpressionError(t *testing.T) {
+	t.Parallel()
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Chdir(t.TempDir())
 	command := fmt.Sprintf(`"%s" -test.run=^TestShellcheckFindingsHelper$ -- -x -o all`, filepath.ToSlash(executable))
 	const workflow = `on: push
 jobs:
@@ -34,6 +34,7 @@ permissions: {}
 `
 	for _, modern := range []bool{false, true} {
 		t.Run(fmt.Sprintf("modern=%t", modern), func(t *testing.T) {
+			t.Parallel()
 			args := []string{"actionlint", "--no-config", "--no-color", "--no-tool=ruff", "--tool=shellcheck=" + command, "--json", "--summary=false"}
 			if modern {
 				args = append(args, "check")
@@ -61,6 +62,7 @@ permissions: {}
 }
 
 func TestShellcheckFindingsHelper(t *testing.T) {
+	t.Parallel()
 	separator := slices.Index(os.Args, "--")
 	if separator == -1 {
 		return

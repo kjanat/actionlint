@@ -32,6 +32,7 @@ func (p provider) Lookup(ctx context.Context, ref actions.Reference) (actions.Ma
 }
 
 func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
+	t.Parallel()
 	const source = "name: test\ndescription: test\ninputs: {token: {description: token, required: true}}\noutputs: {value: {description: result, value: ok}}\nruns: {using: composite, steps: []}\n"
 	metadata, err := actionmeta.Parse("action.yml", []byte(source))
 	if err != nil {
@@ -92,6 +93,7 @@ func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 }
 
 func TestUnavailableDefinitionsAndLookupFailures(t *testing.T) {
+	t.Parallel()
 	resolver := lookup.New(t.Context(), nil, nil)
 	for _, reference := range []string{"./action", "$/action", "example/action@v1", "docker://alpine:latest"} {
 		definition, err := resolver.Lookup(reference)

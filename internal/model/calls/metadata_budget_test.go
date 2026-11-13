@@ -11,6 +11,7 @@ import (
 )
 
 func TestMetadataAdmissionRejectsExpansionOutsideSelectedDeclarations(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.WriteString("on: workflow_call\njobs:\n  build:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        a0: &a0 [value]\n")
 	for level := 1; level <= 8; level++ {
@@ -24,6 +25,7 @@ func TestMetadataAdmissionRejectsExpansionOutsideSelectedDeclarations(t *testing
 }
 
 func TestMetadataAdmissionPreservesEmptyAndRecursiveErrors(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"", " ", "# comment\n"} {
 		metadata, err := ParseMetadata([]byte(source))
 		if metadata != nil || err == nil || err.Error() != "\"on:\" is not found" {
@@ -38,6 +40,7 @@ func TestMetadataAdmissionPreservesEmptyAndRecursiveErrors(t *testing.T) {
 }
 
 func TestMetadataDecoderKeepsSelectedAliasBudget(t *testing.T) {
+	t.Parallel()
 	var definitions strings.Builder
 	for i := range 650 {
 		fmt.Fprintf(&definitions, "  input%d: {type: string}\n", i)

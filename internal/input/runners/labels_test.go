@@ -11,6 +11,7 @@ import (
 )
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		what   string
 		labels []string
@@ -387,6 +388,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
+			t.Parallel()
 			quoted := func(values []string) string {
 				items := make([]string, len(values))
 				for i, item := range values {

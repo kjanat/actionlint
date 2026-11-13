@@ -9,22 +9,24 @@ import (
 )
 
 func TestCommandDirectoryInputs(t *testing.T) {
-	commandTestRepo(t)
-	if err := os.MkdirAll(".github/actions/build", 0o700); err != nil {
+	t.Parallel()
+	dir := commandTestRepo(t)
+	github := filepath.Join(dir, ".github")
+	if err := os.MkdirAll(filepath.Join(github, "actions", "build"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	action := "name: build\ndescription: build\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n"
-	if err := os.WriteFile(".github/actions/build/action.yml", []byte(action), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(github, "actions", "build", "action.yml"), []byte(action), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(".github/dependabot.yml", []byte("version: 2\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(github, "dependabot.yml"), []byte("version: 2\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{
-		{".", "--json"},
-		{".github/", "--json"},
-		{"check", ".", "--json"},
-		{"check", ".github/", ".github/workflows", ".github/actions/build/action.yml", "--json"},
+		{dir, "--json"},
+		{github + string(filepath.Separator), "--json"},
+		{"check", dir, "--json"},
+		{"check", github + string(filepath.Separator), filepath.Join(github, "workflows"), filepath.Join(github, "actions", "build", "action.yml"), "--json"},
 	} {
 		got := testRunCommand("", args...)
 		var result struct {
@@ -35,7 +37,8 @@ func TestCommandDirectoryInputs(t *testing.T) {
 		}
 	}
 	t.Run("action-only directory", func(t *testing.T) {
-		got := testRunCommand("", filepath.Join(".github", "actions"), "--json")
+		t.Parallel()
+		got := testRunCommand("", filepath.Join(github, "actions"), "--json")
 		if got.Status != 0 || !cleanCheckJSON(got.Stdout) || got.Stderr != "" {
 			t.Fatalf("action directory: %+v", got)
 		}

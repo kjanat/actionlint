@@ -17,6 +17,7 @@ import (
 )
 
 func TestInlineSuppressionMalformedYAML(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"jobs: [ # actionlint:ignore syntax-check -- intentional",
 		"jobs: [ # actionlint-ignore syntax-check -- intentional",
@@ -135,6 +136,7 @@ jobs: [`,
 }
 
 func TestRecoveredSplitPrefixSuppressionBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []string{"\n", "\r\n"} {
 		for _, prefix := range []string{
 			`name: # actionlint:ignore syntax-check -- unrelated

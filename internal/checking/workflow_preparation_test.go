@@ -12,6 +12,7 @@ import (
 )
 
 func TestWorkflowMetadataIsPreparedBeforeRuleConstruction(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	reads := map[string]int{}
 	constructed := false
@@ -47,6 +48,7 @@ func TestWorkflowMetadataIsPreparedBeforeRuleConstruction(t *testing.T) {
 }
 
 func TestWorkflowPreparationObservesRequestCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	root := t.TempDir()
@@ -72,8 +74,10 @@ func TestWorkflowPreparationObservesRequestCancellation(t *testing.T) {
 }
 
 func TestWorkflowPreparationReportsInvalidDependencies(t *testing.T) {
+	t.Parallel()
 	for _, missing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "invalid YAML", true: "missing file"}[missing], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			result, err := runTestAnalysis(t.Context(), analysisRequest{
 				WorkingDir: root,
@@ -103,8 +107,10 @@ func TestWorkflowPreparationReportsInvalidDependencies(t *testing.T) {
 }
 
 func TestWorkflowPreparationPreservesOperationalFailures(t *testing.T) {
+	t.Parallel()
 	for _, cause := range []error{context.Canceled, os.ErrPermission} {
 		t.Run(cause.Error(), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			constructed := false
 			result, err := runTestAnalysis(t.Context(), analysisRequest{

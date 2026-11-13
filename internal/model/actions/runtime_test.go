@@ -6,6 +6,7 @@ import (
 )
 
 func TestNode20HostedMigration(t *testing.T) {
+	t.Parallel()
 	for _, using := range []string{"node20", "NODE20"} {
 		code, message := RuntimeProblem(using)
 		if code != CodeRuntimeDeprecated {
@@ -23,6 +24,7 @@ func TestNode20HostedMigration(t *testing.T) {
 }
 
 func TestRuntimeProblemCodeAndMessage(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		using   string
 		code    ProblemCode
@@ -40,6 +42,7 @@ func TestRuntimeProblemCodeAndMessage(t *testing.T) {
 		{"", "", ""},
 	} {
 		t.Run(tc.using, func(t *testing.T) {
+			t.Parallel()
 			code, message := RuntimeProblem(tc.using)
 			if code != tc.code {
 				t.Fatalf("code=%q message=%q; want code %q", code, message, tc.code)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestReferencesErrorPaths(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -18,6 +19,7 @@ func TestReferencesErrorPaths(t *testing.T) {
 		{"unknown field", []any{map[string]any{"unknown": "value"}}, "/plugins/0/unknown"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, declared, err := References(map[string]any{"plugins": tc.value})
 			failure, ok := errors.AsType[*binding.Error](err)
 			if !declared || !ok || failure.Path != tc.path {

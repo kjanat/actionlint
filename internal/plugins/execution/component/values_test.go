@@ -7,6 +7,7 @@ import (
 )
 
 func TestLowerU32Saturates(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		input int
 		want  uint64

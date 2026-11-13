@@ -6,6 +6,7 @@ import (
 )
 
 func TestTokenEndColumn(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		line       string
 		start, end int
@@ -33,6 +34,7 @@ func TestTokenEndColumn(t *testing.T) {
 }
 
 func TestByteOffsetAtColumn(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		text   string
 		column int
@@ -62,6 +64,7 @@ func TestByteOffsetAtColumn(t *testing.T) {
 }
 
 func TestInclusiveEnd(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		line                  string
 		start, explicit, want int

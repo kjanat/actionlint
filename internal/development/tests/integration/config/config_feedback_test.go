@@ -13,6 +13,7 @@ import (
 )
 
 func TestCommitHashExceptionsPreserveOtherFindings(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint:
   rules:
     policy:

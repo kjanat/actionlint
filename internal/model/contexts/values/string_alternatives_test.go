@@ -6,6 +6,7 @@ import (
 )
 
 func TestStringAlternativesPreserveEvaluationBoundary(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value Value
@@ -19,6 +20,7 @@ func TestStringAlternativesPreserveEvaluationBoundary(t *testing.T) {
 		{"missing", Value{}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			values, complete := tc.value.StringAlternatives()
 			if complete != (tc.want != nil) || !slices.Equal(values, tc.want) {
 				t.Fatalf("alternatives=%v, complete=%t; want %v", values, complete, tc.want)

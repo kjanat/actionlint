@@ -7,6 +7,7 @@ import (
 )
 
 func TestConsolidateCountsWrappedBranchesWithoutRecountingAggregates(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("source unavailable")
 	first := Consolidate(failure, 2)
 	aggregate := Consolidate(fmt.Errorf("bridge: %w", first), 3)

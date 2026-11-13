@@ -11,6 +11,7 @@ import (
 )
 
 func TestMatrixExcludeSequenceInsertions(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, axis, filter string
 		missing            bool
@@ -40,6 +41,7 @@ func TestMatrixExcludeSequenceInsertions(t *testing.T) {
 		{"known object index before insertion", `[false, "${{ inputs.value }}"]`, `{'0': true, '2': true}`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf(`on: push
 jobs:
   test:

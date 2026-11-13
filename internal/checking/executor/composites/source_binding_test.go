@@ -19,6 +19,7 @@ import (
 )
 
 func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n", map[string]string{
 		"child/action.yml": "name: child\ndescription: child\nruns: {using: composite, steps: [{shell: bash, run: echo child}]}\n",
 	}, nil)
@@ -43,8 +44,10 @@ func TestWorkflowRegistersNestedDeclarationsInConfiguredRegistry(t *testing.T) {
 }
 
 func TestRejectedRunValuesDoNotBecomeScriptOccurrences(t *testing.T) {
+	t.Parallel()
 	for _, invalid := range []string{"*job", "[echo, bad]", "{command: bad}", "!unsupported bad"} {
 		t.Run(invalid, func(t *testing.T) {
+			t.Parallel()
 			content := []byte("on: push\njobs:\n  test: &job\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo before\n      - run: " + invalid + "\n      - run: echo after\n")
 			checkOnlySurroundingRuns(t, content)
 		})
@@ -52,6 +55,7 @@ func TestRejectedRunValuesDoNotBecomeScriptOccurrences(t *testing.T) {
 }
 
 func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	firstDocument := parsing.Workflow(content)
 	secondDocument := parsing.Workflow(content)
@@ -71,8 +75,10 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 }
 
 func TestRejectedScriptInputsDoNotBecomeOccurrences(t *testing.T) {
+	t.Parallel()
 	for _, invalid := range []string{"[bad]", "{command: bad}", "!unsupported bad"} {
 		t.Run(invalid, func(t *testing.T) {
+			t.Parallel()
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo before\n      - uses: actions/github-script@v7\n        with:\n          script: " + invalid + "\n      - run: echo after\n")
 			checkOnlySurroundingRuns(t, content)
 		})
@@ -80,11 +86,13 @@ func TestRejectedScriptInputsDoNotBecomeOccurrences(t *testing.T) {
 }
 
 func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
+	t.Parallel()
 	for name, steps := range map[string]string{
 		"ordinary": "      - run: ''\n",
 		"parallel": "      - parallel:\n          - run: ''\n",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + steps)
 			document := parsing.Workflow(content)
 			// GitHub accepts an empty script; the empty-run rule reports it after parsing.
@@ -110,6 +118,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 }
 
 func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
+	t.Parallel()
 	workflow := "on: push\njobs:\n  Release:\n    runs-on: ubuntu-latest\n    steps: [{uses: $/outer}]\n  Verify:\n    runs-on: ubuntu-latest\n    steps: [{uses: $/outer}]\n"
 	outerSource := "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n"
 	innerSource := "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n"
@@ -159,6 +168,7 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 }
 
 func TestStandaloneNestedScriptHasNoJobIdentity(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo unused}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
@@ -179,6 +189,7 @@ func TestStandaloneNestedScriptHasNoJobIdentity(t *testing.T) {
 }
 
 func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
+	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {Build: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
@@ -250,6 +261,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 }
 
 func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
+	t.Parallel()
 	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -286,6 +298,7 @@ func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 }
 
 func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 	document := parsing.Workflow(content)
 	registry, _, fixture := newCapturedSnapshots(t, sourceFixtureBase(t))

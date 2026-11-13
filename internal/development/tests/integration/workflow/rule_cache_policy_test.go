@@ -10,6 +10,7 @@ import (
 )
 
 func TestCachePolicyRemoteCallBoundaries(t *testing.T) {
+	t.Parallel()
 	const remote = "example/repo/.github/workflows/build.yaml@main"
 	for _, tc := range []struct {
 		name, uses, before, config string
@@ -27,6 +28,7 @@ func TestCachePolicyRemoteCallBoundaries(t *testing.T) {
 		{"path expression", "example/repo/.github/workflows/${{ 'build' }}.yaml@main", "", "", []string{"expression"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: pull_request_target
 jobs:
   call:
@@ -43,6 +45,7 @@ jobs:
 }
 
 func TestCachePolicyConfig(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, source string }{
 		{"cache-write-untrusted", `on: pull_request_target
 cache-mode: write
@@ -66,6 +69,7 @@ jobs:
 	} {
 		for _, value := range []string{"true", "false", "null"} {
 			t.Run(tc.name+"/"+value, func(t *testing.T) {
+				t.Parallel()
 				errs := testutil.WorkflowDiagnostics(t, tc.source+"permissions: {}\n", fmt.Sprintf("policy: {%s: %s}", tc.name, value))
 				if value == "false" {
 					if len(errs) != 0 {

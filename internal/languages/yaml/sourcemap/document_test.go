@@ -6,6 +6,7 @@ import (
 )
 
 func TestDocumentColumnIndex(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{"", "ascii", "é日本😀", "prefix日本suffix", "\t😀 x"} {
 		d := NewDocument(text)
 		column := 1
@@ -35,6 +36,7 @@ func TestDocumentColumnIndex(t *testing.T) {
 }
 
 func TestDocumentPhysicalLines(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []string{"\n", "\r", "\r\n", "\u0085", "\u2028", "\u2029"} {
 		d := NewDocument("\ufeffé" + ending + "日本")
 		first, firstBreak := d.Line(0)

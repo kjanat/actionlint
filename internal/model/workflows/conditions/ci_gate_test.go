@@ -13,6 +13,7 @@ import (
 )
 
 func TestCIActionResultGate(t *testing.T) {
+	t.Parallel()
 	source, err := os.ReadFile("../../../../.github/workflows/ci.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -48,6 +49,7 @@ func TestCIActionResultGate(t *testing.T) {
 	for _, status := range []string{"success", "failure", "other"} {
 		for _, cancelled := range []bool{false, true} {
 			t.Run(fmt.Sprintf("condition/%s/cancelled=%t", status, cancelled), func(t *testing.T) {
+				t.Parallel()
 				want := conditionTrue
 				if cancelled {
 					want = conditionFalse
@@ -63,6 +65,7 @@ func TestCIActionResultGate(t *testing.T) {
 		t.Fatalf("aggregate must require both successful or both unselected dependencies: %+v", step)
 	}
 	t.Run("assertion", func(t *testing.T) {
+		t.Parallel()
 		bash, err := exec.LookPath("bash")
 		if err != nil {
 			t.Skip("bash is required to execute the Ubuntu aggregate assertion")
@@ -70,6 +73,7 @@ func TestCIActionResultGate(t *testing.T) {
 		for _, result := range []string{"success", "failure", "skipped", "cancelled"} {
 			for _, slim := range []string{"success", "failure", "skipped", "cancelled"} {
 				t.Run(result+"/"+slim, func(t *testing.T) {
+					t.Parallel()
 					cmd := exec.CommandContext(t.Context(), bash, "--noprofile", "--norc", "-exo", "pipefail", "-c", step.Run)
 					cmd.Env = append(os.Environ(), "RESULT="+result, "SLIM_RESULT="+slim)
 					output, err := cmd.CombinedOutput()

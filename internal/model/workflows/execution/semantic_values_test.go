@@ -7,6 +7,7 @@ import (
 )
 
 func TestResolveShellPreservesSemanticStates(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		step     value.Value
@@ -21,6 +22,7 @@ func TestResolveShellPreservesSemanticStates(t *testing.T) {
 		{name: "invalid step stops fallback", step: value.Condition("${{ true + }}", value.Origin{}), job: value.YAMLScalar("pwsh", "!!str", value.Origin{})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got := ResolveShell(tc.step, tc.job, value.Value{}, value.Value{})
 			if got.Name != tc.want || got.Implicit != tc.implicit {
 				t.Fatalf("ResolveShell() = %+v, want name=%q implicit=%v", got, tc.want, tc.implicit)
@@ -30,6 +32,7 @@ func TestResolveShellPreservesSemanticStates(t *testing.T) {
 }
 
 func TestDefaultShellUsesCanonicalSemanticValues(t *testing.T) {
+	t.Parallel()
 	defaults := value.Template(`${{ fromJSON('{"shell":"pwsh"}') }}`, value.Origin{})
 	if got := DefaultShell(defaults); !got.Known() || got.Kind() != value.String {
 		t.Fatalf("folded defaults shell = state %v kind %v", got.State(), got.Kind())
@@ -39,6 +42,7 @@ func TestDefaultShellUsesCanonicalSemanticValues(t *testing.T) {
 }
 
 func TestDirectoryValueDoesNotRetemplateEvaluatedText(t *testing.T) {
+	t.Parallel()
 	text := "${{ github.workspace }}"
 	got := DirectoryValue(value.FromJSON(text, value.Origin{}))
 	if got.Kind != DirectoryKnown || got.Path != text {

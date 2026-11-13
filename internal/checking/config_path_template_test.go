@@ -12,6 +12,7 @@ import (
 )
 
 func TestShellcheckWorkflowPathValidation(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, selection := range []struct{ config, message string }{
 		{`"${{ github.action_path }}/.shellcheckrc"`, "requires an analyzed composite action"},
@@ -19,6 +20,7 @@ func TestShellcheckWorkflowPathValidation(t *testing.T) {
 		{`{source-path: ["${{ env.HOME }}"]}`, "unknown path interpolation"},
 	} {
 		t.Run(selection.config, func(t *testing.T) {
+			t.Parallel()
 			for _, tc := range []struct{ name, step string }{
 				{"uses only", "uses: actions/checkout@v6"},
 				{"python", "shell: python\n        run: print('hello')"},
@@ -26,6 +28,7 @@ func TestShellcheckWorkflowPathValidation(t *testing.T) {
 				{"bash", "shell: bash\n        run: echo hello"},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
 					root := t.TempDir()
 					config := writeFixture(t, root, "actionlint.yaml", `tools:
   shellcheck:

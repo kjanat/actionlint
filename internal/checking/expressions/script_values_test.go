@@ -27,6 +27,7 @@ import (
 )
 
 func TestUnusedFormatArgumentDoesNotHideScriptSafety(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, runner, format, args  string
 		wantCall, wantInterpolation bool
@@ -37,6 +38,7 @@ func TestUnusedFormatArgumentDoesNotHideScriptSafety(t *testing.T) {
 		{"unknown shell without advisory", "${{ vars.RUNNER }}", "{0}{1}", "1, 2", false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n    steps:\n      - run: echo \"${{ format('" + tc.format + "', " + tc.args + ") }}\"\n"
 			rule, workflow := newTestCheckerForSource(t, source)
 			job := testJob(t, workflow, "test")
@@ -58,6 +60,7 @@ func TestUnusedFormatArgumentDoesNotHideScriptSafety(t *testing.T) {
 }
 
 func TestInheritedScriptEnvironment(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, workflowEnv, jobEnv, stepEnv string
 		unsafe                             bool
@@ -76,6 +79,7 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 		{"aliased env lacks variable", "&defaults {OTHER: safe}", "{OTHER: safe}", "*defaults", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\nenv: %s\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: %s\n    steps:\n      - env: %s\n        run: echo '${{ env.VALUE }}'\n", tc.workflowEnv, tc.jobEnv, tc.stepEnv)
 			rule, workflow := newTestCheckerForSource(t, source)
 			job := testJob(t, workflow, "test")
@@ -99,6 +103,7 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 }
 
 func TestSafeMatrixScriptReferences(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
 		paths        []string
@@ -140,6 +145,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 		{"unknown insertion", `{target: [linux], "${{ insert }}": "${{ fromJSON(inputs.extra) }}"}`, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
 			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {
@@ -161,6 +167,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 }
 
 func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
+	t.Parallel()
 	const source = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy: ${{ fromJSON('{\"matrix\":{\"os\":[\"ubuntu-latest\"]}}') }}\n    steps:\n      - run: echo ${{ matrix.os }}\n"
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -205,6 +212,7 @@ func TestWholeStrategyScriptProofUsesCanonicalMatrixResolution(t *testing.T) {
 }
 
 func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
+	t.Parallel()
 	proofs := map[string]scriptValueProof{
 		"matrix.container[*]": scriptArgumentOnly,
 		"matrix.nested[0][0]": scriptLiteralWord,
@@ -244,6 +252,7 @@ func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
 }
 
 func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix, path string
 		want               scriptValueProof
@@ -261,6 +270,7 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 		{"definite array index", `{target: [[linux, windows], [linux, macos]]}`, "matrix.target[1]", scriptLiteralWord},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
 			workflow, errors := workflowparser.Parse([]byte(source))
 			if len(errors) != 0 {
@@ -275,6 +285,7 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 }
 
 func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
+	t.Parallel()
 	checker := &Checker{
 		stepsTy: new(exprtypes.NewObjectType(map[string]exprtypes.Type{"producer": exprtypes.StringType()})),
 		needsTy: new(exprtypes.NewObjectType(map[string]exprtypes.Type{"build": exprtypes.StringType()})),
@@ -294,6 +305,7 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 		{"steps.producer.outputs", false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -306,6 +318,7 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 }
 
 func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
+	t.Parallel()
 	steps := exprtypes.NewObjectType(map[string]exprtypes.Type{
 		"producer": exprtypes.NewObjectType(map[string]exprtypes.Type{
 			"outcome": exprtypes.StringType(),
@@ -331,6 +344,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 		{"steps.producer.outputs.value", false, false},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -367,6 +381,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 }
 
 func TestNestedMatrixScriptInterpolation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
 		unsafe       bool
@@ -380,6 +395,7 @@ func TestNestedMatrixScriptInterpolation(t *testing.T) {
 		{"include alternatives", `{include: [{target: {name: linux}}, {target: {version: 1}}]}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo '${{ matrix.target.name }}'\n"
 			rule, workflow := newTestCheckerForSource(t, source)
 			job := testJob(t, workflow, "test")

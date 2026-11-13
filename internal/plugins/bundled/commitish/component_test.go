@@ -7,6 +7,7 @@ import (
 )
 
 func TestBundledComponentMatchesSourceRecord(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("source.json")
 	if err != nil {
 		t.Fatal(err)

@@ -8,8 +8,10 @@ import (
 )
 
 func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := (config.RuleSet{}).Parse(fmt.Appendf(nil, `overrides:
   - includes: ['process-action/**']
     tools: {%s: {backend: {process: {executable: checker}}}}

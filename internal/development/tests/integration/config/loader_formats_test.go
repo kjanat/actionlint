@@ -31,8 +31,10 @@ func writeConfig(t *testing.T, dir, name, content string) string {
 }
 
 func TestReadConfigFormats(t *testing.T) {
+	t.Parallel()
 	for name, source := range formatSources {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			loaded, err := checking.ConfigurationRules().Read(writeConfig(t, t.TempDir(), name, source), os.ReadFile)
 			if err != nil {
 				t.Fatal(err)
@@ -51,8 +53,10 @@ func TestReadConfigFormats(t *testing.T) {
 }
 
 func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
+	t.Parallel()
 	for _, name := range repoconfig.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			github := filepath.Join(root, ".github")
 			if err := os.Mkdir(github, 0o755); err != nil {
@@ -124,6 +128,7 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 }
 
 func TestTOMLConfigReportsPositions(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	_, err := checking.ConfigurationRules().Load(writeConfig(t, dir, "actionlint.toml", "config-variables = [\"A\"]\n\n[self-hosted-runner]\nlabels = 7\n"))
 	location, located := errors.AsType[*repoconfig.SourceError](err)
@@ -144,6 +149,7 @@ func TestTOMLConfigReportsPositions(t *testing.T) {
 }
 
 func TestExtendsAcrossFormats(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	writeConfig(t, dir, "base.json", "{\"self-hosted-runner\": {\"labels\": [\"gpu\"]}}\n")
 	writeConfig(t, dir, "middle.toml", "extends = [\"base.json\"]\nconfig-secrets = [\"TOKEN\"]\n")

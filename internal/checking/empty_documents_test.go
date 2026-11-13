@@ -9,6 +9,7 @@ import (
 )
 
 func TestAnalysisEmptyDocuments(t *testing.T) {
+	t.Parallel()
 	result, err := runTestAnalysis(t.Context(), analysisRequest{})
 	if err != nil {
 		t.Fatal(err)

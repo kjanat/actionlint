@@ -14,6 +14,7 @@ import (
 )
 
 func TestSuspiciousCoercion(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input    string
 		warnings int
@@ -38,6 +39,7 @@ func TestSuspiciousCoercion(t *testing.T) {
 		{"startsWith(github.event.unknown, 'x')", 0},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -62,6 +64,7 @@ func TestSuspiciousCoercion(t *testing.T) {
 }
 
 func TestCoercionFollowsArgumentDemand(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source      string
 		warnings    int
@@ -77,6 +80,7 @@ func TestCoercionFollowsArgumentDemand(t *testing.T) {
 		{"endsWith(startsWith(true, 'TR'), true)", 3, false},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			node := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))

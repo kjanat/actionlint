@@ -7,6 +7,7 @@ import (
 )
 
 func TestResolutionPlanOwnsProviderInputsAndAnswers(t *testing.T) {
+	t.Parallel()
 	workflow := runnerWorkflow(t, "{group: build, labels: queue}")
 	descriptor := runnerapi.Descriptor{Name: "queues", Targets: []string{"custom"}}
 	plan, err := NewResolutionPlan(workflow.Snapshot, KnownLabels(nil), runnerapi.Request{Target: "custom", Scope: "scope"}, ProviderSelection{Descriptor: descriptor, ImplementationID: "implementation"}, false)

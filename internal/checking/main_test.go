@@ -8,7 +8,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	dir, err := isolateGitConfig()
+	dir, err := isolateToolEnvironment()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -18,8 +18,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// Tests that create real repositories must not see the developer's Git configuration.
-func isolateGitConfig() (string, error) {
+// Tests must not see the developer's Git configuration, ShellCheck options or Actions workspace.
+func isolateToolEnvironment() (string, error) {
 	dir, err := os.MkdirTemp("", "actionlint-git-config-")
 	if err != nil {
 		return "", err
@@ -28,7 +28,7 @@ func isolateGitConfig() (string, error) {
 	if err := os.WriteFile(global, nil, 0o600); err != nil {
 		return "", err
 	}
-	for name, value := range map[string]string{"GIT_CONFIG_GLOBAL": global, "GIT_CONFIG_NOSYSTEM": "1", "XDG_CONFIG_HOME": dir} {
+	for name, value := range map[string]string{"GIT_CONFIG_GLOBAL": global, "GIT_CONFIG_NOSYSTEM": "1", "XDG_CONFIG_HOME": dir, "SHELLCHECK_OPTS": "", "GITHUB_WORKSPACE": ""} {
 		if err := os.Setenv(name, value); err != nil {
 			return "", err
 		}

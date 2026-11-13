@@ -16,6 +16,7 @@ import (
 )
 
 func TestShellcheckEnvironmentDeclarations(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("shellcheck"); err != nil {
 		t.Skip("ShellCheck is required for the native environment comparison")
 	}
@@ -29,6 +30,7 @@ func TestShellcheckEnvironmentDeclarations(t *testing.T) {
 		{"unknown case variant", "ubuntu-latest", `printf '%s\n' "$MIXEDCASE"`, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := "on: push\nenv: {lowercase: lower, UPPERCASE: upper, miXedCase: mixed, foo: outer}\njobs:\n  test:\n    runs-on: " + tc.runner + "\n    env: {FOO: inner, LOWERCASE: override}\n    steps:\n      - shell: bash\n        run: |\n          " + tc.script + "\n"
 			report, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}, []workspace.Source{{Path: "environment.yml", Content: []byte(content)}})
 			if err != nil {
@@ -51,6 +53,7 @@ func TestShellcheckEnvironmentDeclarations(t *testing.T) {
 }
 
 func TestScriptEngineReceivesUnknownRunnerEnvironment(t *testing.T) {
+	t.Parallel()
 	engine := &recordingEngine{code: "SC2086"}
 	content := "on: push\npermissions: {}\nenv: {WORKFLOW_NAME: workflow}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    env: {JOB_NAME: job}\n    steps:\n      - shell: bash\n        env: {STEP_NAME: step}\n        run: echo missing\n"
 	_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: engine}})}, []workspace.Source{{Path: "environment.yml", Content: []byte(content)}})
@@ -72,11 +75,11 @@ func TestScriptEngineReceivesUnknownRunnerEnvironment(t *testing.T) {
 }
 
 func TestShellcheckInheritedRunnerEnvironment(t *testing.T) {
+	t.Parallel()
 	command, err := exec.LookPath("shellcheck")
 	if err != nil {
 		t.Skip("ShellCheck is required for the native environment comparison")
 	}
-	t.Setenv("SHELLCHECK_OPTS", "")
 	configFile := filepath.Join(t.TempDir(), "actionlint.yaml")
 	if err := os.WriteFile(configFile, []byte("tools:\n  shellcheck:\n    config: {enable: [all]}\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -93,6 +96,7 @@ func TestShellcheckInheritedRunnerEnvironment(t *testing.T) {
 		{"earlier GITHUB_ENV step", "ubuntu-24.04", "      - run: echo 'FROM_PREVIOUS_STEP=value' >> \"$GITHUB_ENV\"\n", "FROM_PREVIOUS_STEP"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := "on: push\npermissions: {}\njobs:\n"
 			if tc.name == "dynamic runner" {
 				content += "  plan:\n    runs-on: ubuntu-24.04\n    timeout-minutes: 5\n    outputs:\n      matrix: ${{ steps.plan.outputs.matrix }}\n    steps:\n      - id: plan\n        run: echo 'matrix={\"include\":[{\"runner\":\"ubuntu-24.04\"}]}' >> \"$GITHUB_OUTPUT\"\n"

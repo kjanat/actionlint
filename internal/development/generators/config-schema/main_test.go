@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/url"
@@ -29,6 +30,7 @@ import (
 const shellcheckSchemaPath = "schemas/shellcheck/0.11.0.schema.json"
 
 func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
+	t.Parallel()
 	var root any
 	if err := json.Unmarshal(generatedSchema(t), &root); err != nil {
 		t.Fatal(err)
@@ -72,23 +74,45 @@ func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
 }
 
 func TestPermissionLocationsDoNotSuggestBothAsDefault(t *testing.T) {
+	t.Parallel()
 	schema := mapYAMLType(reflect.TypeFor[actionlint.PermissionLocationList](), nil)
 	if schema.Default != nil {
 		t.Fatalf("require-at has no value equivalent to omission; schema suggests %v", schema.Default)
 	}
 }
 
+var (
+	repositoryRoot   string
+	generatedRoot    []byte
+	errGeneratedRoot error
+)
+
+func TestMain(m *testing.M) {
+	packageDirectory, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	repositoryRoot = filepath.Join(packageDirectory, "..", "..", "..", "..")
+	if err := os.Chdir(repositoryRoot); err != nil {
+		panic(err)
+	}
+	generatedRoot, errGeneratedRoot = generate()
+	if err := os.Chdir(packageDirectory); err != nil {
+		panic(err)
+	}
+	os.Exit(m.Run())
+}
+
 func generatedSchema(t *testing.T) []byte {
 	t.Helper()
-	t.Chdir("../../../..")
-	b, err := generate()
-	if err != nil {
-		t.Fatal(err)
+	if errGeneratedRoot != nil {
+		t.Fatal(errGeneratedRoot)
 	}
-	return b
+	return bytes.Clone(generatedRoot)
 }
 
 func TestTombiMetadata(t *testing.T) {
+	t.Parallel()
 	data := generatedSchema(t)
 	var schema struct {
 		Version string            `json:"x-tombi-toml-version"`
@@ -136,6 +160,7 @@ func TestTombiMetadata(t *testing.T) {
 }
 
 func TestRuleLevelSuggestions(t *testing.T) {
+	t.Parallel()
 	if schema := mapYAMLType(reflect.TypeFor[actionlint.Level](), nil); schema.Ref != "#/$defs/level" {
 		t.Fatalf("level property does not reference its shared definition: %+v", schema)
 	}
@@ -155,6 +180,7 @@ func TestRuleLevelSuggestions(t *testing.T) {
 }
 
 func TestSchemaReferenceNotSuggested(t *testing.T) {
+	t.Parallel()
 	var schema struct {
 		Properties        map[string]json.RawMessage `json:"properties"`
 		PatternProperties map[string]struct {
@@ -173,6 +199,7 @@ func TestSchemaReferenceNotSuggested(t *testing.T) {
 }
 
 func TestPluginRuleSelectors(t *testing.T) {
+	t.Parallel()
 	ignore := mapYAMLType(reflect.TypeFor[actionlint.IgnoreConfig](), nil)
 	rule, _ := ignore.Properties.Get("rule")
 	lint := mapYAMLType(reflect.TypeFor[actionlint.LintRulesConfig](), nil)
@@ -214,6 +241,7 @@ func ruffShorthand(t *testing.T, key string) map[string]any {
 }
 
 func TestRuffTargetVersionSuggestions(t *testing.T) {
+	t.Parallel()
 	var target struct {
 		OneOf []struct {
 			Type         string `json:"type"`
@@ -238,6 +266,7 @@ func TestRuffTargetVersionSuggestions(t *testing.T) {
 }
 
 func TestRuffSelectorSuggestions(t *testing.T) {
+	t.Parallel()
 	for _, key := range []string{"select", "ignore"} {
 		var property struct {
 			Not   any `json:"not"`
@@ -268,6 +297,7 @@ func TestRuffSelectorSuggestions(t *testing.T) {
 }
 
 func TestRuffEditorCompletions(t *testing.T) {
+	t.Parallel()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("Node.js is not installed")
@@ -307,7 +337,7 @@ func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
 		t.Fatal(err)
 	}
 	for _, filename := range []string{shellcheckSchemaPath} {
-		data, err := os.ReadFile(filename)
+		data, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(filename)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -323,6 +353,7 @@ func addToolSchemas(t *testing.T, compiler *validator.Compiler, base string) {
 }
 
 func TestRuffEngineIndependentSchema(t *testing.T) {
+	t.Parallel()
 	root := generatedSchema(t)
 	var document any
 	if err := json.Unmarshal(root, &document); err != nil {
@@ -373,6 +404,7 @@ func TestRuffEngineIndependentSchema(t *testing.T) {
 }
 
 func TestLintRuleCategoriesAcceptPluginsAndRejectWrongGroups(t *testing.T) {
+	t.Parallel()
 	root := generatedSchema(t)
 	var document any
 	if err := json.Unmarshal(root, &document); err != nil {
@@ -416,8 +448,9 @@ func TestLintRuleCategoriesAcceptPluginsAndRejectWrongGroups(t *testing.T) {
 }
 
 func TestGeneratedSchemaUpToDate(t *testing.T) {
+	t.Parallel()
 	got := generatedSchema(t)
-	want, err := os.ReadFile("actionlint.schema.json")
+	want, err := os.ReadFile(filepath.Join(repositoryRoot, "actionlint.schema.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,11 +469,12 @@ func TestGeneratedSchemaUpToDate(t *testing.T) {
 }
 
 func TestGeneratedSchemaFormatting(t *testing.T) {
+	t.Parallel()
 	content := generatedSchema(t)
 	if _, err := exec.LookPath("kprint"); err != nil {
 		t.Skip("kprint is not installed")
 	}
-	want, err := os.ReadFile("actionlint.schema.json")
+	want, err := os.ReadFile(filepath.Join(repositoryRoot, "actionlint.schema.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,6 +502,7 @@ func TestBundledProviderSchemas(t *testing.T) {
 	}
 	for _, provider := range providers {
 		t.Run(provider.Rule.Name, func(t *testing.T) {
+			t.Parallel()
 			if len(provider.ConfigSchema) == 0 {
 				return
 			}
@@ -542,6 +577,7 @@ func TestProviderSettingsDoNotRequireHostFields(t *testing.T) {
 		{`{"config":{"new-check-option":7,"unknown":true}}`, false},
 	} {
 		t.Run(tc.config, func(t *testing.T) {
+			t.Parallel()
 			var value any
 			if err := json.Unmarshal([]byte(tc.config), &value); err != nil {
 				t.Fatal(err)
@@ -554,6 +590,7 @@ func TestProviderSettingsDoNotRequireHostFields(t *testing.T) {
 }
 
 func TestShellcheckSchemaReference(t *testing.T) {
+	t.Parallel()
 	b := generatedSchema(t)
 	if !strings.Contains(string(b), `"$ref": "`+shellcheckSchemaPath+`"`) {
 		t.Fatal("root schema must reference the versioned ShellCheck schema")
@@ -564,6 +601,7 @@ func TestShellcheckSchemaReference(t *testing.T) {
 }
 
 func TestSchemaRelativeResolution(t *testing.T) {
+	t.Parallel()
 	root := generatedSchema(t)
 	for _, base := range []string{
 		"file:///offline/node_modules/@kjanat/actionlint/actionlint.schema.json",
@@ -571,6 +609,7 @@ func TestSchemaRelativeResolution(t *testing.T) {
 		"https://raw.githubusercontent.com/kjanat/actionlint/b837c5abb3549967ff6f30c852ede599dabdb339/actionlint.schema.json",
 	} {
 		t.Run(base, func(t *testing.T) {
+			t.Parallel()
 			c := validator.NewCompiler()
 			c.UseLoader(validator.SchemeURLLoader{})
 			addToolSchemas(t, c, base)
@@ -589,6 +628,7 @@ func TestSchemaRelativeResolution(t *testing.T) {
 }
 
 func TestSchemaValidation(t *testing.T) {
+	t.Parallel()
 	b := generatedSchema(t)
 	var document any
 	if err := json.Unmarshal(b, &document); err != nil {
@@ -919,6 +959,7 @@ policy: {}
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var value any
 			if err := yaml.Unmarshal([]byte(tt.input), &value); err != nil {
 				t.Fatal(err)
@@ -977,6 +1018,7 @@ func TestDocumentedReflectorUsesImportPaths(t *testing.T) {
 }
 
 func TestSchemaDescriptions(t *testing.T) {
+	t.Parallel()
 	b := generatedSchema(t)
 	var document map[string]any
 	if err := json.Unmarshal(b, &document); err != nil {
@@ -992,6 +1034,7 @@ func TestSchemaDescriptions(t *testing.T) {
 				for name, raw := range properties {
 					property := raw.(map[string]any)
 					t.Run(path+"."+name, func(t *testing.T) {
+						t.Parallel()
 						if property["title"] != name {
 							t.Errorf("hover title = %v, want %s", property["title"], name)
 						}
@@ -1016,7 +1059,7 @@ func TestSchemaDescriptions(t *testing.T) {
 		}
 	}
 	check(document, "config")
-	toolSchema, err := os.ReadFile(shellcheckSchemaPath)
+	toolSchema, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(shellcheckSchemaPath)))
 	if err != nil {
 		t.Fatal(err)
 	}

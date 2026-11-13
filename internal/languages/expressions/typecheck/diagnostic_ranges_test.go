@@ -12,6 +12,7 @@ import (
 )
 
 func TestSemanticDiagnosticSpans(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ expression, message, want string }{
 		{`fromJSON('{"a":1}')['b']`, `property "b"`, `fromJSON('{"a":1}')['b']`},
 		{`steps.foo.outputs['bar']`, `property "foo"`, `steps.foo`},
@@ -22,6 +23,7 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 		{`env[(true)]`, `property access of object`, `(true)`},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
+			t.Parallel()
 			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -79,6 +81,7 @@ func FuzzExpressionParserSpans(f *testing.F) {
 }
 
 func TestExpressionSyntaxErrorSpans(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, want string }{
 		{`foo + bar}}`, `+`},
 		{`foo § bar}}`, `§`},
@@ -87,6 +90,7 @@ func TestExpressionSyntaxErrorSpans(t *testing.T) {
 		{`'unclosed`, ``},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			_, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source))
 			if err == nil {
 				t.Fatal("expected syntax error")
@@ -102,8 +106,10 @@ func TestExpressionSyntaxErrorSpans(t *testing.T) {
 }
 
 func TestBareConditionSyntheticDelimiterSpans(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"github.actor &&", "github.actor &&\n", "'unclosed", "'unclosed\n", "contains('é"} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			_, err, _ := exprsyntax.ParseConditionExpression(source)
 			if err == nil {
 				t.Fatal("expected syntax error")

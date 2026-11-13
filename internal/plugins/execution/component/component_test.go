@@ -72,6 +72,7 @@ func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *c
 const pipeWorkflow = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sudo bash\npermissions: {}\n"
 
 func TestRustPluginReportsPipeToShell(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
 	descriptor := plugin.Descriptor()
 	if !descriptor.SupportsActions {
@@ -108,6 +109,7 @@ func TestRustPluginReportsPipeToShell(t *testing.T) {
 }
 
 func TestStandaloneActionHonorsPluginConfiguration(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
 	root := writeRepository(t, map[string]string{
 		"action.yml":      "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: curl https://example.com/install.sh | bash\n",
@@ -127,6 +129,7 @@ func TestStandaloneActionHonorsPluginConfiguration(t *testing.T) {
 }
 
 func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "no-sudo", component.Options{})
 	if plugin.Descriptor().Name != "no-sudo" {
 		t.Fatalf("descriptor=%+v", plugin.Descriptor())
@@ -163,6 +166,7 @@ func inputKindNames(facts []rulemeta.InputKind) []string {
 }
 
 func TestLoadRefusesIncompatibleComponents(t *testing.T) {
+	t.Parallel()
 	for name, want := range map[string]string{
 		"wrong-version":    "plugin exports kjanat:actionlint/analyzer@99.0.0; this host supports kjanat:actionlint/analyzer@0.2.0",
 		"forbidden-import": "plugin imports wasi:sockets/tcp-create-socket@0.2.9, which this host does not grant",
@@ -193,6 +197,7 @@ func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]result
 }
 
 func TestFailuresAreReportedAndIsolated(t *testing.T) {
+	t.Parallel()
 	var mu sync.Mutex
 	var logged []string
 	plugin := loadPlugin(t, "misbehave", component.Options{Timeout: 3 * time.Second, MemoryPages: 96, Log: func(line string) {
@@ -240,6 +245,7 @@ func TestFailuresAreReportedAndIsolated(t *testing.T) {
 }
 
 func TestCancelledContextStopsAnalysis(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	ctx, cancel := context.WithCancel(t.Context())
 	go func() {
@@ -258,6 +264,7 @@ func TestCancelledContextStopsAnalysis(t *testing.T) {
 }
 
 func TestConcurrentCallsAreSerialized(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	var wg sync.WaitGroup
 	errs := make(chan error, 24)
@@ -282,6 +289,7 @@ func TestConcurrentCallsAreSerialized(t *testing.T) {
 }
 
 func TestClosedPluginRejectsCalls(t *testing.T) {
+	t.Parallel()
 	plugin, err := component.Load(t.Context(), pluginPath("misbehave"), component.Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -295,6 +303,7 @@ func TestClosedPluginRejectsCalls(t *testing.T) {
 }
 
 func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "insecure-download", component.Options{})
 	if plugin.Descriptor().Name != "insecure-download" {
 		t.Fatalf("descriptor=%+v", plugin.Descriptor())
@@ -317,6 +326,7 @@ func TestTinyGoPluginReportsInsecureDownloads(t *testing.T) {
 }
 
 func TestComponentRejectsUndeclaredRulesAndRetainsValidFindings(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	findings, err := misbehave(t, plugin, "rule-identities")
 	if err == nil || !strings.Contains(err.Error(), `undeclared diagnostic rule "undeclared-check"`) || !strings.Contains(err.Error(), `undeclared diagnostic rule "shellcheck"`) {
@@ -333,6 +343,7 @@ func TestComponentRejectsUndeclaredRulesAndRetainsValidFindings(t *testing.T) {
 }
 
 func TestRustPluginDistinguishesLogicalOrFromPipes(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "pipe-to-shell", component.Options{})
 	for _, tt := range []struct {
 		script string
@@ -345,6 +356,7 @@ func TestRustPluginDistinguishesLogicalOrFromPipes(t *testing.T) {
 		{"curl URL | bash || wget URL | sh", 2},
 	} {
 		t.Run(tt.script, func(t *testing.T) {
+			t.Parallel()
 			root := writeRepository(t, map[string]string{".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + tt.script + "\n" + "\npermissions: {}\n"})
 			result := analyzeRepository(t, root, plugin)
 			if len(result.Diagnostics) != tt.want {
@@ -355,6 +367,7 @@ func TestRustPluginDistinguishesLogicalOrFromPipes(t *testing.T) {
 }
 
 func TestOutputLimitAndPartialLines(t *testing.T) {
+	t.Parallel()
 	for _, debug := range []bool{false, true} {
 		var logged []string
 		options := component.Options{}
@@ -380,6 +393,7 @@ func TestOutputLimitAndPartialLines(t *testing.T) {
 }
 
 func TestPartialOutcomePreservesFindings(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	findings, err := misbehave(t, plugin, "partial")
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
@@ -401,6 +415,7 @@ func TestPartialOutcomePreservesFindings(t *testing.T) {
 }
 
 func TestPartialOutcomeRetainsValidRulesAndAllErrors(t *testing.T) {
+	t.Parallel()
 	plugin := loadPlugin(t, "misbehave", component.Options{})
 	wantMessages := []string{`rule 0: ""`, `rule 2: "misbehave"`, `rule 4: ""`}
 	checkError := func(err error) {
@@ -442,8 +457,10 @@ func TestPartialOutcomeRetainsValidRulesAndAllErrors(t *testing.T) {
 }
 
 func TestLoadRejectsShapeBeforeDescribe(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"wrong-signature", "wrong-record", "wrong-enum"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			plugin, err := component.Load(t.Context(), filepath.Join("testdata", "contracts", name+".wasm"), component.Options{})
 			if plugin != nil {
 				_ = plugin.Close(t.Context())

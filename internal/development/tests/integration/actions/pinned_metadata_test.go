@@ -23,6 +23,7 @@ func (p pinnedMetadataFixture) Lookup(_ context.Context, ref actions.Reference) 
 }
 
 func TestPinnedActionInputsAndOutputs(t *testing.T) {
+	t.Parallel()
 	const pinned = "11d5960a326750d5838078e36cf38b85af677262"
 	ref, err := actions.ParseReference("github.com", "actions/checkout@"+pinned)
 	if err != nil {

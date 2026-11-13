@@ -12,6 +12,7 @@ import (
 // Configuration reads bundled manifests without the provider package; its
 // view must equal the validated manifests.
 func TestToolProvidersMatchManifests(t *testing.T) {
+	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		t.Fatal(err)

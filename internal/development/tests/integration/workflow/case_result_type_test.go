@@ -14,6 +14,7 @@ import (
 // a workflow using a string-valued case() where a number is required is
 // reported, while number-valued and unknown-valued ones pass.
 func TestCaseResultTypeInference(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, timeout, want string
 	}{
@@ -26,6 +27,7 @@ func TestCaseResultTypeInference(t *testing.T) {
 		{"constant predicate narrows to reachable branch", "case(true, 10, 'unreachable')", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			src := `on: push
 env:

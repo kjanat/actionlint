@@ -16,10 +16,7 @@ import (
 )
 
 func TestContainerRunnerNestedComposites(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
-	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
-	fixturefiles.Write(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: $/inner\n")
-	fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: docker://alpine:3\n")
+	t.Parallel()
 	for _, tc := range []struct {
 		name, guard, comment string
 		want                 int
@@ -29,6 +26,11 @@ func TestContainerRunnerNestedComposites(t *testing.T) {
 		{"suppressed in action", "", " # ignore[container-runner]", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
+			fixturefiles.Write(t, root, "outer/action.yml", "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: $/inner\n")
+			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: docker://alpine:3\n")
 			fixturefiles.Write(t, root, "inner/action.yml", "name: inner\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: docker://alpine:3"+tc.comment+"\n")
 			source := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v6\n      - uses: $/outer\n" + tc.guard + "      - uses: $/outer\n" + tc.guard + "\npermissions: {}\n"
 			workflow := fixturefiles.Write(t, root, ".github/workflows/docker.yml", source)
@@ -53,6 +55,7 @@ func TestContainerRunnerNestedComposites(t *testing.T) {
 }
 
 func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
+	t.Parallel()
 	// This fixture records an action that declares a Docker runtime.
 	// https://github.com/actions/hello-world-docker-action/blob/8bcd8e1af3c095561f1043123848fc8b2db0f189/action.yml
 	const sha = "8bcd8e1af3c095561f1043123848fc8b2db0f189"
@@ -78,6 +81,7 @@ func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
 	}
 	for _, label := range []string{"ubuntu-latest", "windows-latest", "ubuntu-slim"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: %s\n    steps:\n      - uses: actions/hello-world-docker-action@%s\npermissions: {}\n", label, sha)
 			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}", checking.Options{RemoteActions: pinnedMetadataFixture{manifest}})
 			count := 0

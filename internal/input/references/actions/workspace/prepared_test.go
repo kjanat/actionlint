@@ -10,6 +10,7 @@ import (
 )
 
 func TestPreparedActionsDoNotAcquireMetadata(t *testing.T) {
+	t.Parallel()
 	reads := 0
 	cache := newCapturedActionCache(t, t.TempDir(), nil)
 	cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(string) ([]byte, error) {
@@ -46,8 +47,10 @@ func TestPreparedActionsDoNotAcquireMetadata(t *testing.T) {
 }
 
 func TestActionPreparationPreservesReadFailures(t *testing.T) {
+	t.Parallel()
 	for _, cause := range []error{context.Canceled, os.ErrPermission} {
 		t.Run(cause.Error(), func(t *testing.T) {
+			t.Parallel()
 			cache := newCapturedActionCache(t, t.TempDir(), nil)
 			cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(string) ([]byte, error) {
 				return nil, cause
@@ -61,6 +64,7 @@ func TestActionPreparationPreservesReadFailures(t *testing.T) {
 }
 
 func TestActionPreparationAccountsForReportedParseFailures(t *testing.T) {
+	t.Parallel()
 	cache := newCapturedActionCache(t, t.TempDir(), nil)
 	cache.Configure(Options{CustomReader: true, Reader: files.New(t.Context(), func(string) ([]byte, error) {
 		return []byte("name: [broken\n"), nil

@@ -9,6 +9,7 @@ import (
 )
 
 func TestDisallowSuppressionsConfig(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value string
 		want  repoconfig.SuppressionReport
@@ -22,6 +23,7 @@ func TestDisallowSuppressionsConfig(t *testing.T) {
 		{"{report: all}", repoconfig.ReportAll},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: " + tc.value + "}"))
 			if err != nil {
 				t.Fatal(err)
@@ -49,6 +51,7 @@ func TestDisallowSuppressionsConfig(t *testing.T) {
 }
 
 func TestDisallowSuppressionsInvalidConfig(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{
 		"'true'", "1", "[]", "{report: null}", "{report: true}", "{report: ignore}",
 		"{rules: null}", "{rules: []}", "{rules: cache-operation}", "{rules: [1]}",
@@ -57,6 +60,7 @@ func TestDisallowSuppressionsInvalidConfig(t *testing.T) {
 		"{typo: true}", "{report: all, report: violation}",
 	} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  disallow-suppressions: " + value))
 			if err == nil || !strings.Contains(err.Error(), "line") {
 				t.Fatalf("expected positioned config error, got %v", err)

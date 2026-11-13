@@ -12,6 +12,7 @@ import (
 )
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
+	t.Parallel()
 	var metadata Metadata
 	if err := json.Unmarshal([]byte(`{"name":"bundled","inputs":{"token":{"name":"token"}}}`), &metadata); err != nil {
 		t.Fatal(err)
@@ -37,6 +38,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 }
 
 func TestProvenanceSourceOwnsResults(t *testing.T) {
+	t.Parallel()
 	const input = "name: test\nruns:\n  using: composite\n  steps:\n    - run: echo $HI # source\n      shell: bash\n"
 	for _, warm := range []bool{false, true} {
 		meta, err := Parse("action.yml", []byte(input))
@@ -68,6 +70,7 @@ func TestProvenanceSourceOwnsResults(t *testing.T) {
 }
 
 func TestSchemaRecursiveInsertionsDoNotExpandRejectedAliases(t *testing.T) {
+	t.Parallel()
 	const source = "name: cycle\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/checkout@v4\n      with: &values\n        '${{ insert }}': *values\n        '${{insert}}': *values\n"
 	meta, _ := Parse("action.yml", []byte(source))
 	findings := Validate(meta).Problems
@@ -82,6 +85,7 @@ func TestSchemaRecursiveInsertionsDoNotExpandRejectedAliases(t *testing.T) {
 }
 
 func TestMetadataPositionCache(t *testing.T) {
+	t.Parallel()
 	const source = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ github_repository }}\n      shell: bash\n"
 	meta, err := Parse("action.yml", []byte(source))
 	if err != nil {

@@ -67,6 +67,7 @@ func TestDownloadExplicitGrantPreservesInitialAndConfinesRedirect(t *testing.T) 
 }
 
 func TestAcquisitionErrorClassifications(t *testing.T) {
+	t.Parallel()
 	for failure, expected := range map[acquisitionhttp.PolicyError]error{
 		acquisitionhttp.ErrInvalidEndpoint:      acquisitionhttp.ErrInvalidEndpoint,
 		acquisitionhttp.ErrConnectionFailed:     acquisitionhttp.ErrConnectionFailed,

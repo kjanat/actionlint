@@ -50,8 +50,10 @@ func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.In
 }
 
 func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t *testing.T) {
+	t.Parallel()
 	for _, quarantined := range []bool{false, true} {
 		t.Run(map[bool]string{false: "public Analyze healthy", true: "full run quarantined after composition"}[quarantined], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			metadataPath := filepath.Join(root, "broken", "action.yml")
 			if err := os.MkdirAll(filepath.Dir(metadataPath), 0o700); err != nil {
@@ -125,6 +127,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 }
 
 func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store, _ := capturefixture.NewCapturedSources(t, root)
 	ctx, cancel := context.WithCancel(t.Context())
@@ -141,8 +144,10 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 }
 
 func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *testing.T) {
+	t.Parallel()
 	for _, missing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "Verify mismatch", true: "missing parse provenance"}[missing], func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
 			store, fixture := capturefixture.NewCapturedSources(t, root)

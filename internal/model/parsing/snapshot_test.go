@@ -7,6 +7,7 @@ import (
 )
 
 func TestSourceSnapshotReusesIndexedWorkflow(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n")
 	first := Workflow(content)
 	second := Workflow(content)
@@ -43,6 +44,7 @@ func TestSourceSnapshotReusesIndexedWorkflow(t *testing.T) {
 }
 
 func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
+	t.Parallel()
 	content := []byte("name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - &shared\n      uses: $/nested\n    - *shared\n")
 	document := Action("outer/action.yml", content)
 	if !document.CanAnalyze() {
@@ -50,6 +52,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 	}
 	for _, mappedFirst := range []bool{false, true} {
 		t.Run(map[bool]string{false: "unmapped first", true: "mapped first"}[mappedFirst], func(t *testing.T) {
+			t.Parallel()
 			plain, mapped := *document.Metadata, *document.Metadata
 			mapped.SourceMapped = true
 			first, second := &plain, &mapped
@@ -95,6 +98,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 }
 
 func TestSourceSnapshotRejectsRevisionAndKindConflicts(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 	snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
 	snapshot, err := snapshots.Document("ci.yml", content, Workflow(content))

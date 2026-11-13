@@ -8,6 +8,7 @@ import (
 )
 
 func TestConfigurationConstructors(t *testing.T) {
+	t.Parallel()
 	if _, err := checking.ConfigurationRules().ParseOverlay("tools", []byte("{shellcheck: false}")); err != nil {
 		t.Fatal(err)
 	}
@@ -24,6 +25,7 @@ func TestConfigurationConstructors(t *testing.T) {
 }
 
 func TestExtendsErrorRequiresFilePath(t *testing.T) {
+	t.Parallel()
 	_, err := checking.ConfigurationRules().Parse([]byte("extends: [./base.yaml]\n"))
 	if err == nil || !strings.Contains(err.Error(), "load the configuration file") {
 		t.Fatalf("missing usable recovery instruction: %v", err)

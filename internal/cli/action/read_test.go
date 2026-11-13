@@ -11,6 +11,7 @@ import (
 )
 
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, map[string]string{"ci.yml": brokenWorkflow})
 	other := workspaceWith(t, map[string]string{
 		"ci.yml": brokenWorkflow,
@@ -30,6 +31,7 @@ tools: {shellcheck: false}
 		{"external config for local file", ".", "ci.yml", filepath.Join(other, "actionlint.yml")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_WORKING-DIRECTORY": tc.directory,
 				"INPUT_FILES": tc.file, "INPUT_CONFIG-FILE": tc.config,
@@ -70,6 +72,7 @@ func linkWorkspaceFile(t *testing.T, target, link string) {
 }
 
 func TestActionReportsExternalWorkflowFindings(t *testing.T) {
+	t.Parallel()
 	workspace := workspaceWith(t, nil)
 	outside := workspaceWith(t, map[string]string{"workflow.yml": "on: [\n"})
 	file := filepath.Join(outside, "workflow.yml")
@@ -79,6 +82,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 	}
 	for _, format := range []string{"github", "json", "sarif"} {
 		t.Run(format, func(t *testing.T) {
+			t.Parallel()
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": file, "INPUT_FORMAT": format,
 				"INPUT_SARIF":              "true",
@@ -108,6 +112,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 }
 
 func TestRunLinterDependentSymlinks(t *testing.T) {
+	t.Parallel()
 	const metadata = `name: local
 description: local
 runs: {using: composite, steps: [{run: 'echo hi', shell: bash}]}
@@ -137,6 +142,7 @@ permissions: {}
 	} {
 		for _, contained := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: "/outside", true: "/inside"}[contained], func(t *testing.T) {
+				t.Parallel()
 				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": tc.caller})
 				targetDir := t.TempDir()
 				if contained {
@@ -163,9 +169,11 @@ permissions: {}
 }
 
 func TestActionConfigSymlinks(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{".github/actionlint.yaml", ".github/actionlint.yml", "custom.yml"} {
 		for _, contained := range []bool{false, true} {
 			t.Run(name+map[bool]string{false: "/outside", true: "/inside"}[contained], func(t *testing.T) {
+				t.Parallel()
 				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": brokenWorkflow})
 				targetDir := t.TempDir()
 				content := `self-hosted-runner: {labels: [unknown-runner]}

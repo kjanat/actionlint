@@ -9,8 +9,10 @@ import (
 const standaloneComposite = "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"
 
 func TestStandaloneActionCustomRules(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"step-name", "action", "shellcheck", "ruff", "deprecated-commands", "executable-bit"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			calls := 0
 			custom := workflowvisit.NewBase(name, "custom rule")
 			request := analysisRequest{

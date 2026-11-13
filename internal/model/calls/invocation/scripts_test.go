@@ -10,8 +10,10 @@ import (
 )
 
 func TestScriptBudgetRetainsFirstBoundaryAndStopsCalls(t *testing.T) {
+	t.Parallel()
 	for _, nested := range []bool{false, true} {
 		t.Run(fmt.Sprintf("nested=%t", nested), func(t *testing.T) {
+			t.Parallel()
 			budget := invocation.DefaultBudget()
 			budget.MaxScripts = 1
 			b := builder(t, invocation.EntryWorkflow, budget)
@@ -57,6 +59,7 @@ func TestScriptBudgetRetainsFirstBoundaryAndStopsCalls(t *testing.T) {
 }
 
 func TestScriptBudgetIsSharedAcrossOwners(t *testing.T) {
+	t.Parallel()
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 2
 	b := builder(t, invocation.EntryWorkflow, budget)
@@ -82,6 +85,7 @@ func TestScriptBudgetIsSharedAcrossOwners(t *testing.T) {
 }
 
 func TestInvalidScriptAttemptsDoNotConsumeBudget(t *testing.T) {
+	t.Parallel()
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 2
 	b := builder(t, invocation.EntryWorkflow, budget)
@@ -116,6 +120,7 @@ func TestInvalidScriptAttemptsDoNotConsumeBudget(t *testing.T) {
 }
 
 func TestCallBudgetRemainsCauseOfRejectedScript(t *testing.T) {
+	t.Parallel()
 	budget := invocation.DefaultBudget()
 	budget.MaxCalls = 1
 	b := builder(t, invocation.EntryWorkflow, budget)
@@ -132,6 +137,7 @@ func TestCallBudgetRemainsCauseOfRejectedScript(t *testing.T) {
 }
 
 func TestInterruptedScriptOwnerRetainsRegisteredScripts(t *testing.T) {
+	t.Parallel()
 	b := builder(t, invocation.EntryWorkflow, invocation.DefaultBudget())
 	call := begin(t, b, b.RootID(), reference("entry", "call"))
 	expand(t, b, call, reference("action", "document"))
@@ -151,6 +157,7 @@ func TestInterruptedScriptOwnerRetainsRegisteredScripts(t *testing.T) {
 }
 
 func TestScriptBudgetMustBePositive(t *testing.T) {
+	t.Parallel()
 	for _, limit := range []int{0, -1} {
 		budget := invocation.DefaultBudget()
 		budget.MaxScripts = limit
@@ -161,6 +168,7 @@ func TestScriptBudgetMustBePositive(t *testing.T) {
 }
 
 func TestBudgetStopClassificationPreservesOtherCauses(t *testing.T) {
+	t.Parallel()
 	budget := invocation.DefaultBudget()
 	budget.MaxScripts = 1
 	b := builder(t, invocation.EntryWorkflow, budget)
@@ -185,6 +193,7 @@ func TestBudgetStopClassificationPreservesOtherCauses(t *testing.T) {
 		{"nil", nil, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			if got := b.IsBudgetStop(test.err); got != test.want {
 				t.Fatalf("IsBudgetStop = %t, want %t", got, test.want)
 			}
@@ -197,6 +206,7 @@ func TestBudgetStopClassificationPreservesOtherCauses(t *testing.T) {
 }
 
 func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
+	t.Parallel()
 	entry := source.Reference{Document: "workflow.yml", Revision: "workflow-revision", Node: "root"}
 	declaration := entry
 	declaration.Node = "steps[0]"
@@ -277,6 +287,7 @@ func TestRegisteredScriptsFollowTheirOwningBodies(t *testing.T) {
 }
 
 func TestInterruptedBuilderRejectsFurtherScripts(t *testing.T) {
+	t.Parallel()
 	entry := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "root"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {

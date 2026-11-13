@@ -59,6 +59,7 @@ func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input chec
 // capture conflict, so reports order by path. The source that sorts first
 // finishes last, and completion order must not leak into the evidence.
 func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	const slow, fast = "alpha", "beta"
 	source := func(path, label string) workspace.Source {

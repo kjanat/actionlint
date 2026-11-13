@@ -14,6 +14,7 @@ import (
 )
 
 func TestKnownStrategyRunnerLabels(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, expression, runsOn string
 		want                     []string
@@ -58,6 +59,7 @@ func TestKnownStrategyRunnerLabels(t *testing.T) {
 		{"labels field", `fromJSON('{"matrix":{"os":["ubuntu-lates"]}}')`, `{group: example, labels: "${{ matrix.os }}"}`, []string{`label "ubuntu-lates" is unknown`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runsOn := tc.runsOn
 			if runsOn == "" {
 				runsOn = "${{ matrix.os }}"

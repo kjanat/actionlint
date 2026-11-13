@@ -16,16 +16,21 @@ import (
 )
 
 func TestExecutableBitWorkflows(t *testing.T) {
-	root, git := executableFixture(t)
-	link := writeFixture(t, root, "link", "bad.sh")
-	object, err := gitclient.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	git("update-index", "--add", "--cacheinfo", "120000", strings.TrimSpace(string(object)), "link")
-	index, err := os.Stat(filepath.Join(root, ".git", "index"))
-	if err != nil {
-		t.Fatal(err)
+	t.Parallel()
+	fixture := func(t *testing.T) (string, os.FileInfo) {
+		t.Helper()
+		root, git := executableFixture(t)
+		link := writeFixture(t, root, "link", "bad.sh")
+		object, err := gitclient.Command(t.Context(), "git", root, "hash-object", "-w", "--", link).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		git("update-index", "--add", "--cacheinfo", "120000", strings.TrimSpace(string(object)), "link")
+		index, err := os.Stat(filepath.Join(root, ".git", "index"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return root, index
 	}
 	for _, tc := range []struct {
 		name, runner, defaults, steps string
@@ -518,6 +523,8 @@ func TestExecutableBitWorkflows(t *testing.T) {
 - run: ./bad.sh`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, index := fixture(t)
 			job := `on: push
 jobs:
   test:
@@ -528,7 +535,7 @@ jobs:
 			job += `    steps:
       - uses: actions/checkout@v6
       ` + strings.ReplaceAll(tc.steps, "\n", "\n      ") + "\n"
-			workflow := writeFixture(t, root, ".github/workflows/test.yml", job)
+			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), job)
 			session := checking.Options{WorkingDir: root}
 			var err error
 
@@ -572,9 +579,7 @@ jobs:
 }
 
 func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
-	root, _ := executableFixture(t)
-	session := checking.Options{WorkingDir: root}
-
+	t.Parallel()
 	for _, tc := range []struct {
 		event string
 		want  bool
@@ -586,7 +591,10 @@ func TestExecutableBitReusableWorkflowRepository(t *testing.T) {
 		{"workflow_dispatch", true},
 	} {
 		t.Run(tc.event, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: "+tc.event+`
+			t.Parallel()
+			root, _ := executableFixture(t)
+			session := checking.Options{WorkingDir: root}
+			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), "on: "+tc.event+`
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -607,9 +615,7 @@ jobs:
 }
 
 func TestExecutableBitWorkflowShellOptions(t *testing.T) {
-	root, _ := executableFixture(t)
-	session := checking.Options{WorkingDir: root}
-
+	t.Parallel()
 	for _, tc := range []struct {
 		env  string
 		want bool
@@ -629,7 +635,10 @@ func TestExecutableBitWorkflowShellOptions(t *testing.T) {
 		{"XDG_CONFIG_HOME: config-home", false},
 	} {
 		t.Run(tc.env, func(t *testing.T) {
-			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: push\nenv: {"+tc.env+`}
+			t.Parallel()
+			root, _ := executableFixture(t)
+			session := checking.Options{WorkingDir: root}
+			workflow := writeFixture(t, root, workflowFixturePath(t, "test"), "on: push\nenv: {"+tc.env+`}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -649,6 +658,7 @@ jobs:
 }
 
 func TestExecutableBitCheckoutPrefixedInvocation(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	workflow := writeFixture(t, root, ".github/workflows/test.yml", `on: push
 jobs:
@@ -672,11 +682,8 @@ jobs:
 	}
 }
 
-func TestExecutableBitCheckoutAndFreshIndex(t *testing.T) {
-	root, git := executableFixture(t)
-	session := checking.Options{WorkingDir: root}
-	var err error
-
+func TestExecutableBitCheckout(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, with, directory string
 		want                  bool
@@ -703,9 +710,11 @@ func TestExecutableBitCheckoutAndFreshIndex(t *testing.T) {
 		{"nonempty expression ref", "ref: ${{ 'other' }}", "", false},
 		{"dynamic path", "path: ${{ github.event.inputs.path }}", "", false},
 		{"checkout outside workspace", "path: ../source", "../source", false},
-		{"working tree updated index", "", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := executableFixture(t)
+			session := checking.Options{WorkingDir: root}
 			workflow := `on: push
 jobs:
   test:
@@ -720,7 +729,7 @@ jobs:
 			if tc.directory != "" {
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
-			file := writeFixture(t, root, ".github/workflows/test.yml", workflow)
+			file := writeFixture(t, root, workflowFixturePath(t, "test"), workflow)
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
 			if err != nil {
 				t.Fatal(err)
@@ -731,8 +740,29 @@ jobs:
 			}
 		})
 	}
+}
+
+func TestExecutableBitFreshIndex(t *testing.T) {
+	t.Parallel()
+	root, git := executableFixture(t)
+	session := checking.Options{WorkingDir: root}
+	file := writeFixture(t, root, ".github/workflows/test.yml", `on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ./bad.sh
+`)
+	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" }) {
+		t.Fatalf("unexpected executable-bit result: %+v", result.Diagnostics)
+	}
 	git("update-index", "--chmod=+x", "bad.sh")
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, ".github/workflows/test.yml")}})
+	result, err = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{file}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,6 +11,7 @@ import (
 )
 
 func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		base, leaf string
@@ -23,6 +24,7 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 		{"category reset", "lint: {rules: {external: {shellcheck: off}}}", "extends: [base.yml]\nlint: {rules: {correctness: null}}", "on"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			directory := t.TempDir()
 			reads := 0
 			loaded, err := checking.ConfigurationRules().Read(filepath.Join(directory, "leaf.yml"), func(path string) ([]byte, error) {

@@ -8,8 +8,10 @@ import (
 )
 
 func TestCallCloseDoesNotRunGuestDestructors(t *testing.T) {
+	t.Parallel()
 	for _, operation := range []string{"trap", "hang"} {
 		t.Run(operation, func(t *testing.T) {
+			t.Parallel()
 			plugin, err := Load(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{Timeout: 2 * time.Second})
 			if err != nil {
 				t.Fatal(err)

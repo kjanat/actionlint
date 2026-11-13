@@ -9,8 +9,10 @@ import (
 )
 
 func TestSourceTransformRejectsMalformedPlans(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{`null`, `[]`, `{source_prefix:"unterminated"}`, `{unknown:true}`, `{startup:[]}`, `{variables:{mode:42}}`, `{}, {}`} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			transform, err := NewSourceTransform(&manifests.Transform{Language: manifests.LanguageJQ, Inline: source}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -23,6 +25,7 @@ func TestSourceTransformRejectsMalformedPlans(t *testing.T) {
 }
 
 func TestSourceTransformHonorsCancellation(t *testing.T) {
+	t.Parallel()
 	transform, err := NewSourceTransform(&manifests.Transform{Language: manifests.LanguageJQ, Inline: `def loop: loop; loop`}, nil)
 	if err != nil {
 		t.Fatal(err)

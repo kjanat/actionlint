@@ -11,6 +11,7 @@ import (
 )
 
 func TestMissingPermissionsLocations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name    string
 		options map[string]any
@@ -31,6 +32,7 @@ func TestMissingPermissionsLocations(t *testing.T) {
 		{"unknown field", map[string]any{"require-at": "workflow", "scope": "job"}, nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var options config.MissingPermissionsOptions
 			err := binding.Decode(tc.options, &options)
 			if tc.invalid {
@@ -53,6 +55,7 @@ func TestMissingPermissionsLocations(t *testing.T) {
 }
 
 func TestMissingPermissionsMigration(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ source, want, level string }{
 		{"policy: {require-permissions: true}", "workflow", "error"},
 		{"policy: {require-permissions: {scope: job}}", "every-job", "error"},
@@ -61,6 +64,7 @@ func TestMissingPermissionsMigration(t *testing.T) {
 		{"lint: {rules: {security: {missing-workflow-permissions: on}}}", "", "warn"},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			migrated, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
@@ -100,6 +104,7 @@ func permissionLocations(t *testing.T, cfg *config.Config) []config.PermissionLo
 }
 
 func TestLegacyPermissionsRejectNonObjectSections(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"lint: false\npolicy: {require-permissions: true}",
 		"lint: {rules: false}\npolicy: {require-permissions: true}",
@@ -107,6 +112,7 @@ func TestLegacyPermissionsRejectNonObjectSections(t *testing.T) {
 		"lint: null\npolicy: {require-permissions: true}",
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			_, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", []byte(source))
 			if err == nil {
 				t.Fatal("accepted legacy settings conflicting with a non-object lint section")

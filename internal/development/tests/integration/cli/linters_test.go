@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -31,6 +32,7 @@ func TestLinterSwitches(t *testing.T) {
 		{"custom commands", "available", custom},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var out, stderr bytes.Buffer
 			cmd := cli.Command{Stdout: &out, Stderr: &stderr}
 			args := append([]string{"actionlint", "doctor", "--no-config", "--json"}, tc.flags...)
@@ -96,8 +98,9 @@ func TestLinterCommandSpellings(t *testing.T) {
 // TestToolFlagValuesLeaveWorkflowArguments checks that --tool and the
 // deprecated --shellcheck flag take only their own value as an argument.
 func TestToolFlagValuesLeaveWorkflowArguments(t *testing.T) {
-	t.Chdir(t.TempDir())
-	if err := os.WriteFile("input.yml", []byte(commandGoodWorkflow), 0600); err != nil {
+	t.Parallel()
+	input := filepath.Join(t.TempDir(), "input.yml")
+	if err := os.WriteFile(input, []byte(commandGoodWorkflow), 0600); err != nil {
 		t.Fatal(err)
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {
@@ -105,7 +108,7 @@ func TestToolFlagValuesLeaveWorkflowArguments(t *testing.T) {
 			var out, stderr bytes.Buffer
 			cmd := cli.Command{Stdout: &out, Stderr: &stderr}
 			args := append([]string{"actionlint"}, prefix...)
-			args = append(args, dash+"tool", "ruff", dash+"shellcheck", "shellcheck", "--no-tool=ruff", "--no-tool=shellcheck", "--no-config", "--json", "--summary=false", "input.yml")
+			args = append(args, dash+"tool", "ruff", dash+"shellcheck", "shellcheck", "--no-tool=ruff", "--no-tool=shellcheck", "--no-config", "--json", "--summary=false", input)
 			if status := cmd.Main(args); status != 0 || !onlyDeprecationWarnings(stderr.String()) || !cleanCheckJSON(out.String()) {
 				t.Fatalf("%v: exit=%d stdout=%s stderr=%s", args, status, &out, &stderr)
 			}
@@ -125,6 +128,7 @@ func onlyDeprecationWarnings(stderr string) bool {
 }
 
 func TestUnknownToolIDs(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		args []string
 		want string

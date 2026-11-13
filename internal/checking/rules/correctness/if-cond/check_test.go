@@ -7,6 +7,7 @@ import (
 )
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	start := sourcepos.Position{Line: 3, Column: 9}
 	for _, test := range []struct {
 		value, message string
@@ -21,6 +22,7 @@ func TestCheck(t *testing.T) {
 		{"${{ 0 }}", `constant expression "0" in condition is always falsy. this step or job will be skipped`},
 	} {
 		t.Run(test.value, func(t *testing.T) {
+			t.Parallel()
 			findings := Check(test.value, start)
 			if test.message == "" {
 				if len(findings) != 0 {

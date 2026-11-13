@@ -54,6 +54,7 @@ func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, sn
 func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule { return r }
 
 func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
+	t.Parallel()
 	metadata, err := actionmeta.Parse("action.yml", []byte("name: fixture\ndescription: fixture\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +74,7 @@ func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 }
 
 func TestSourcePreparationPrecedesWorkflowAndCompositeChecks(t *testing.T) {
+	t.Parallel()
 	fixture := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo ok}]}\n",
@@ -93,6 +95,7 @@ func TestSourcePreparationPrecedesWorkflowAndCompositeChecks(t *testing.T) {
 }
 
 func TestSourcePreparationFailureStopsChecks(t *testing.T) {
+	t.Parallel()
 	fixture := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", nil, nil)
 	failure := errors.New("dependency acquisition failed")
 	fixture.options.PrepareSource = func(parsing.SourceSnapshot) error { return failure }

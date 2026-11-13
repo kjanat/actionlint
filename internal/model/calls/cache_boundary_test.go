@@ -11,6 +11,7 @@ import (
 )
 
 func TestProductionCannotUseUncapturedASTMetadataWriters(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join("..", "..", "..")
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {

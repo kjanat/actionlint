@@ -10,6 +10,7 @@ import (
 )
 
 func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, config, firstIgnore string
 		wantPaths, wantSeverities []string
@@ -22,6 +23,7 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 		{"all-ignored", "ignores: [{rule: action, file: '.github/workflows/*.yml'}]\n", "", nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n"+tc.config)
 			writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
@@ -51,6 +53,7 @@ func TestMetadataIgnoresAcrossWorkflows(t *testing.T) {
 }
 
 func TestMetadataDedupKeepsInvocationErrorsAcrossWorkflows(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\ninputs:\n  token:\n    required: true\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")
@@ -88,6 +91,7 @@ func TestMetadataDedupKeepsInvocationErrorsAcrossWorkflows(t *testing.T) {
 }
 
 func TestMetadataDedupKeepsDistinctSuppressionViolations(t *testing.T) {
+	t.Parallel()
 	root, _ := executableFixture(t)
 	writeFixture(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\npolicy: {disallow-suppressions: {report: suppression}}\nignores:\n  - {rule: action, file: '.github/workflows/a.yml'}\n  - {rule: action, file: '.github/workflows/b.yml'}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo ok\n")

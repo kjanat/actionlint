@@ -11,6 +11,7 @@ import (
 )
 
 func TestRunnerMatrixFilterExpansion(t *testing.T) {
+	t.Parallel()
 	// Matrix filters compare leaf values; include entries preserve original axes.
 	// https://github.com/actions/runner/blob/759385a3510197a58b5c08dc1f373b74b9f4643b/src/Sdk/WorkflowParser/Conversion/MatrixBuilder.cs#L509-L730
 	for _, tc := range []struct {
@@ -43,6 +44,7 @@ func TestRunnerMatrixFilterExpansion(t *testing.T) {
 		{"missing nonnull leaf", `{"config":[{"os":"linux"}],"exclude":[{"config":{"version":24}}]}`, []string{`{"config": {"os": "linux"}}`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, expression := range []bool{false, true} {
 				strategy := "strategy:\n      matrix: " + tc.matrix
 				if expression {
@@ -83,6 +85,7 @@ jobs:
 }
 
 func TestRunnerMatrixNumericFilters(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value, filter string
 		matches       bool
@@ -98,6 +101,7 @@ func TestRunnerMatrixNumericFilters(t *testing.T) {
 		{"0", "1e-999", true},
 	} {
 		t.Run(tc.value+"_"+tc.filter, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:

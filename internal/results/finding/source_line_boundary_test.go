@@ -7,6 +7,7 @@ import (
 )
 
 func TestCanonicalSnippetLineEndings(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []struct {
 		name string
 		text string
@@ -18,6 +19,7 @@ func TestCanonicalSnippetLineEndings(t *testing.T) {
 		{name: "PS", text: "\u2029"},
 	} {
 		t.Run(ending.name, func(t *testing.T) {
+			t.Parallel()
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
 				finding := &Finding{Start: sourcepos.Position{Line: 1}, RawScriptSource: raw}

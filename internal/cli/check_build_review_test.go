@@ -11,6 +11,7 @@ import (
 )
 
 func TestCheckVerboseReportsBuildIdentity(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	if err := os.WriteFile(path, []byte("name: Test\non: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -36,6 +37,7 @@ func TestCheckVerboseReportsBuildIdentity(t *testing.T) {
 		{"quiet json", []string{"--debug", "--quiet", "--json"}, false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var out, stderr bytes.Buffer
 			command := Command{Stdout: &out, Stderr: &stderr}
 			args := append([]string{"actionlint", "check", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff"}, tc.flags...)

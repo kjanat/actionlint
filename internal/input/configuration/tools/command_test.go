@@ -12,6 +12,7 @@ import (
 )
 
 func TestBackendSelectsOneTransport(t *testing.T) {
+	t.Parallel()
 	for input, want := range map[string]string{
 		"process: {executable: ruff}":                  "",
 		"wasm: {path: ./engines/ruff.wasm}":            "",
@@ -44,6 +45,7 @@ func TestBackendSelectsOneTransport(t *testing.T) {
 }
 
 func TestBackendRoundTripsThroughYAML(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"process:\n    executable: ruff\n    args:\n        - --isolated\n    env:\n        MODE: strict\n",
 		"wasm:\n    path: engines/ruff.wasm\n",
@@ -62,6 +64,7 @@ func TestBackendRoundTripsThroughYAML(t *testing.T) {
 }
 
 func TestCommandOwnsItsArgumentsAndEnvironment(t *testing.T) {
+	t.Parallel()
 	args, env := []string{"--isolated"}, map[string]string{"MODE": "strict"}
 	command, err := NewCommand("ruff", args, env)
 	if err != nil {
@@ -90,6 +93,7 @@ func TestCommandOwnsItsArgumentsAndEnvironment(t *testing.T) {
 }
 
 func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	absolute := filepath.Join(root, "opt", "shellcheck.wasm")
 	node, err := document.Parse("test.yaml", []byte("tools:\n  ruff:\n    backend:\n      wasm: {path: engines/ruff.wasm}\n  shellcheck:\n    backend:\n      wasm: {path: '"+strings.ReplaceAll(absolute, "'", "''")+"'}\noverrides:\n  - includes: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          process: {executable: ./bin/ruff}\n"))
@@ -111,6 +115,7 @@ func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
 }
 
 func TestNormalizePathsPreservesPluginURIs(t *testing.T) {
+	t.Parallel()
 	for _, uri := range []string{"https://example.com/ruff.wasm.gz#sha256=abc", "file:///opt/ruff.wasm", "http://localhost:8123/ruff"} {
 		input := "tools:\n  ruff:\n    backend:\n      wasm: {path: '" + uri + "'}\noverrides:\n  - files: ['*.yml']\n    tools:\n      ruff:\n        backend:\n          wasm: {path: '" + uri + "'}\n"
 		node, err := document.Parse("test.yaml", []byte(input))

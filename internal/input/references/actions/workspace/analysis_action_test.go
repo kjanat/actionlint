@@ -9,6 +9,7 @@ import (
 )
 
 func TestActionSnapshotManifestPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, diskYAML, diskYML, explicitYAML, explicitYML, wantName, wantContent string
 	}{
@@ -20,6 +21,7 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 		{"disk-yaml-fallback", "disk yaml", "", "", "", "action.yaml", "disk yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			var overlays []capture.Overlay
 			for name, content := range map[string]string{"action.yaml": tc.diskYAML, "action.yml": tc.diskYML} {

@@ -136,6 +136,7 @@ func assertOriginalItemAliases(t *testing.T, root *syntax.Node, anchorName strin
 }
 
 func TestCursorAliasBudgetMatchesUpstreamAndEnteredDecode(t *testing.T) {
+	t.Parallel()
 	data := inheritedAliasSource()
 	var baseline cursorPlainStrings
 	wantErr := upstream.Unmarshal(data, &baseline)
@@ -161,6 +162,7 @@ func TestCursorAliasBudgetMatchesUpstreamAndEnteredDecode(t *testing.T) {
 }
 
 func TestCursorStopsAtAliasLimitBeforeTrailingKeys(t *testing.T) {
+	t.Parallel()
 	var source strings.Builder
 	source.Write(inheritedAliasSource())
 	for i := range 2500 {
@@ -186,6 +188,7 @@ func TestCursorStopsAtAliasLimitBeforeTrailingKeys(t *testing.T) {
 }
 
 func TestCursorSplitAliasBudgetMatchesUpstream(t *testing.T) {
+	t.Parallel()
 	data := splitAliasBudgetSource()
 	var baseline upstreamAliasBudgetTarget
 	wantErr := upstream.Unmarshal(data, &baseline)
@@ -206,6 +209,7 @@ func TestCursorSplitAliasBudgetMatchesUpstream(t *testing.T) {
 }
 
 func TestCursorParentAliasSequenceCarriesExpansionContext(t *testing.T) {
+	t.Parallel()
 	data := inheritedAliasSource()
 	oldItems := "items:\n  - *payload\n  - *payload\n  - *payload\n"
 	newItems := "sequence: &sequence\n  - *payload\n  - *payload\n  - *payload\nitems: *sequence\n"
@@ -251,6 +255,7 @@ func TestCursorParentAliasSequenceCarriesExpansionContext(t *testing.T) {
 }
 
 func TestCursorValidAliasAndUnselectedControlsMatchUpstream(t *testing.T) {
+	t.Parallel()
 	literal := "[" + strings.TrimSuffix(strings.Repeat("value, ", inheritedAliasWidth), ", ") + "]"
 	oneAlias := strings.Replace(string(inheritedAliasSource()), strings.Repeat("  - *payload\n", inheritedAliasOccurrences), "  - *payload\n", 1)
 	literalItems := "items:\n" + strings.Repeat("  - "+literal+"\n", inheritedAliasOccurrences)
@@ -260,6 +265,7 @@ func TestCursorValidAliasAndUnselectedControlsMatchUpstream(t *testing.T) {
 		source string
 	}{{"one alias", oneAlias}, {"literal expansion", literalItems}, {"ignored alias field", ignoredBomb}} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var baseline cursorPlainStrings
 			if err := upstream.Unmarshal([]byte(tc.source), &baseline); err != nil {
 				t.Fatalf("upstream.Unmarshal: %v", err)
@@ -314,6 +320,7 @@ func openFirstEnteredItem(root *syntax.Node) (*codec.Session, codec.Cursor, code
 }
 
 func TestCursorZeroAndClosedSessionRejectOperations(t *testing.T) {
+	t.Parallel()
 	assertInactive := func(err error) {
 		t.Helper()
 		if _, ok := errors.AsType[*codec.GraphError](err); !ok {
@@ -348,6 +355,7 @@ func TestCursorZeroAndClosedSessionRejectOperations(t *testing.T) {
 }
 
 func TestCursorEnteredDecodeRepeatedCallCountsRootAgain(t *testing.T) {
+	t.Parallel()
 	const width = 496
 	var source strings.Builder
 	source.WriteString("payload: &payload [")
@@ -388,6 +396,7 @@ func TestCursorEnteredDecodeRepeatedCallCountsRootAgain(t *testing.T) {
 }
 
 func TestCursorInvalidTargetDoesNotConsumeEnteredRoot(t *testing.T) {
+	t.Parallel()
 	const width = 992
 	var source strings.Builder
 	source.WriteString("payload: &payload [")
@@ -426,6 +435,7 @@ func TestCursorInvalidTargetDoesNotConsumeEnteredRoot(t *testing.T) {
 }
 
 func TestCursorFatalAliasBudgetIsSticky(t *testing.T) {
+	t.Parallel()
 	data := inheritedAliasSource()
 	var baseline cursorPlainStrings
 	wantErr := upstream.Unmarshal(data, &baseline)

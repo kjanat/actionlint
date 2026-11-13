@@ -11,6 +11,7 @@ import (
 )
 
 func TestPluginTestUsesHostPipelineAndReportsAssertions(t *testing.T) {
+	t.Parallel()
 	manifest := authoringTestManifest(t)
 	input, err := json.Marshal(map[string]any{
 		"manifest": manifest,
@@ -47,6 +48,7 @@ func TestPluginTestUsesHostPipelineAndReportsAssertions(t *testing.T) {
 }
 
 func TestPluginTestRejectsMalformedFixturesAndWrongExpectations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		input string
 		want  string
@@ -63,6 +65,7 @@ func TestPluginTestRejectsMalformedFixturesAndWrongExpectations(t *testing.T) {
 }
 
 func TestPluginTestDistinguishesExpectedPipelineErrorFromMismatch(t *testing.T) {
+	t.Parallel()
 	manifest := authoringTestManifest(t)
 	input, err := json.Marshal(map[string]any{
 		"manifest": manifest,
@@ -104,6 +107,7 @@ func TestPluginTestDistinguishesExpectedPipelineErrorFromMismatch(t *testing.T) 
 }
 
 func TestPluginTestRejectsUnknownAndInvalidFixtureFields(t *testing.T) {
+	t.Parallel()
 	manifest, err := json.Marshal(authoringTestManifest(t))
 	if err != nil {
 		t.Fatal(err)
@@ -131,6 +135,7 @@ func TestPluginTestRejectsUnknownAndInvalidFixtureFields(t *testing.T) {
 }
 
 func TestPluginTestAcceptsExpectationWithoutTemplateEffect(t *testing.T) {
+	t.Parallel()
 	manifest := authoringTestManifest(t)
 	manifest.Capabilities.TemplateContract = ""
 	manifest.Process.TemplateEffects = nil

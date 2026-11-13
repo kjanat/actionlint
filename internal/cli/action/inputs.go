@@ -149,11 +149,11 @@ func resolvePath(path string) (string, error) {
 func workspaceRel(workspaceDir, value, name string) (string, error) {
 	rel := filepath.Clean(value)
 	if filepath.IsAbs(rel) {
-		r, err := filepath.Rel(workspaceDir, rel)
-		if err != nil {
-			return "", inputErrorf("Input '%s' must stay within the repository workspace", name)
+		absolute := rel
+		rel = relativePath(workspaceDir, absolute)
+		if physical, err := resolvePath(absolute); err == nil && rel != "." && !filepath.IsLocal(rel) {
+			rel = relativePath(workspaceDir, physical)
 		}
-		rel = r
 	}
 	if rel == "." {
 		return ".", nil
@@ -162,6 +162,13 @@ func workspaceRel(workspaceDir, value, name string) (string, error) {
 		return "", inputErrorf("Input '%s' must stay within the repository workspace", name)
 	}
 	return rel, nil
+}
+
+func relativePath(base, path string) string {
+	if rel, err := filepath.Rel(base, path); err == nil {
+		return rel
+	}
+	return path
 }
 
 func inputPath(directory, value string) string {

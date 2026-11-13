@@ -13,6 +13,7 @@ import (
 )
 
 func TestDirectPluginDeclaration(t *testing.T) {
+	t.Parallel()
 	source := "https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32)
 	cfg, err := checking.ConfigurationRules().Parse([]byte("plugins: [\"" + source + "\"]"))
 	if err != nil {
@@ -36,6 +37,7 @@ func TestDirectPluginDeclaration(t *testing.T) {
 }
 
 func TestPluginDeclarations(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`plugins:
   - Kjanat/Shellcheck@v1
   - name: gitlab.com/Group/Subgroup/Plugin
@@ -75,6 +77,7 @@ func declarationFields(refs repoconfig.PluginDeclarations) [][3]string {
 }
 
 func TestPluginAliasRegistryScope(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte(`plugins:
   - community-check
   - name: community-check
@@ -102,6 +105,7 @@ func TestPluginAliasRegistryScope(t *testing.T) {
 }
 
 func TestPluginDeclarationsPresence(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{"plugins: null", "plugins: []", "plugins:"} {
 		cfg, err := checking.ConfigurationRules().Parse([]byte(input))
 		if err != nil {
@@ -121,6 +125,7 @@ func TestPluginDeclarationsPresence(t *testing.T) {
 }
 
 func TestPluginDeclarationsReject(t *testing.T) {
+	t.Parallel()
 	for _, input := range []string{
 		"plugins: owner/repo", "plugins: [null]", "plugins: [42]", "plugins: [{}]",
 		"plugins: [{name: owner/repo, extra: true}]", "plugins: [{name: owner/repo, version: 1}]",
@@ -130,6 +135,7 @@ func TestPluginDeclarationsReject(t *testing.T) {
 		"plugins: [owner/repo, {name: owner/repo, registry: 'https://custom.example/'}]",
 	} {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			if _, err := checking.ConfigurationRules().Parse([]byte(input)); err == nil {
 				t.Fatalf("accepted %q", input)
 			}
@@ -138,6 +144,7 @@ func TestPluginDeclarationsReject(t *testing.T) {
 }
 
 func TestPluginDeclarationsExtends(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	write := func(name, content string) string {
 		t.Helper()

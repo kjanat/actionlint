@@ -36,6 +36,7 @@ func fixtureArchive(t *testing.T, root string) (Source, string) {
 }
 
 func TestSourceArchiveVerification(t *testing.T) {
+	t.Parallel()
 	s, dir := fixtureArchive(t, "suite-"+strings.Repeat("a", 40))
 	root, closeSource, err := s.Open(dir)
 	if err != nil {
@@ -66,6 +67,7 @@ func TestSourceArchiveVerification(t *testing.T) {
 }
 
 func TestSourceArchiveMissingRoot(t *testing.T) {
+	t.Parallel()
 	s, dir := fixtureArchive(t, "wrong-root")
 	if _, closeSource, err := s.Open(dir); err == nil {
 		_ = closeSource()

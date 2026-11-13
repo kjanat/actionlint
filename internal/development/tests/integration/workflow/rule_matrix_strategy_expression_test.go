@@ -11,6 +11,7 @@ import (
 )
 
 func TestRuleMatrixKnownStrategyExpression(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix, want string
 	}{
@@ -36,6 +37,7 @@ func TestRuleMatrixKnownStrategyExpression(t *testing.T) {
 		{"identical expression-looking data", `{"os":["${{ vars.RUNNER }}"],"exclude":[{"os":"${{ vars.RUNNER }}"}]}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := `on: push
 jobs:
   test:

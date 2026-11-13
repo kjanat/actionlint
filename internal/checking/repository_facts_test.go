@@ -15,6 +15,7 @@ import (
 const variableWorkflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.%s }}'}\npermissions: {}\n"
 
 func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
+	t.Parallel()
 	first, second, unknown := t.TempDir(), t.TempDir(), t.TempDir()
 	variables, err := repository.NewVariables(repository.Variable{Name: "HOST"})
 	if err != nil {
@@ -61,6 +62,7 @@ func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
 }
 
 func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	write := func(path, content string) {
 		t.Helper()
@@ -91,6 +93,7 @@ func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *tes
 }
 
 func TestEnvironmentNamesAreScopedPerJob(t *testing.T) {
+	t.Parallel()
 	cfg, err := ConfigurationRules().Parse([]byte(`repository:
   variables: {}
   secrets: []
@@ -114,6 +117,7 @@ func TestEnvironmentNamesAreScopedPerJob(t *testing.T) {
 		{"dynamic environment in reusable workflow", "    environment: '${{ github.ref }}'\n", "{workflow_call: {secrets: {}}}", 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			content := "on: " + test.trigger + "\njobs:\n  test:\n" + test.environment + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.DEPLOY }}', TOKEN: '${{ secrets.ENV_TOKEN }}'}\npermissions: {}\n"
 			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte(content)}})
@@ -133,6 +137,7 @@ func TestEnvironmentNamesAreScopedPerJob(t *testing.T) {
 }
 
 func TestUnavailableRunnerLabelsDoNotBecomeAnEmptyAllowlist(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		config, selector string
 		findings         int
@@ -144,6 +149,7 @@ func TestUnavailableRunnerLabelsDoNotBecomeAnEmptyAllowlist(t *testing.T) {
 		{"{}", "[ubuntu-latest, windows-latest]", 1},
 	} {
 		t.Run(test.config+"/"+test.selector, func(t *testing.T) {
+			t.Parallel()
 			cfg, err := ConfigurationRules().Parse([]byte(test.config))
 			if err != nil {
 				t.Fatal(err)

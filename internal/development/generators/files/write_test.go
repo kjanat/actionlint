@@ -55,6 +55,7 @@ func fmtTestName(exists, exclusive bool) string {
 }
 
 func TestWriteNewFileRefusesReplacement(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "snapshot.schema.json")
 	if err := writeNewFile(path, []byte("original\n")); err != nil {
 		t.Fatal(err)

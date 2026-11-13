@@ -16,6 +16,7 @@ import (
 )
 
 func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		uses string
 		ok   bool
@@ -46,6 +47,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.uses, func(t *testing.T) {
+			t.Parallel()
 			c := newCapturedWorkflowCache(t, "", "", nil)
 			r := workflowCallVisitor(t, fixturedecl.Workflow(&workflowlang.Workflow{}), c, repofacts.Snapshot{})
 			j := &workflowlang.Job{
@@ -74,6 +76,7 @@ func TestRuleWorkflowCallCheckWorkflowCallUsesFormat(t *testing.T) {
 }
 
 func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
+	t.Parallel()
 	w := &workflowlang.Workflow{
 		On: []workflowlang.Event{
 			&workflowlang.WorkflowCallEvent{
@@ -109,6 +112,7 @@ func TestRuleWorkflowCallNestedWorkflowCalls(t *testing.T) {
 }
 
 func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
+	t.Parallel()
 	cwd := filepath.Join(sourceFixtureBase(t), "path", "to", "project")
 	path := filepath.Join(cwd, "test-workflow.yaml")
 	content := []byte("on:\n  workflow_call:\n    inputs:\n      input1: {type: string}\n    outputs:\n      output1: {value: '${{ jobs.test.outputs.value }}'}\n    secrets:\n      secret1: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")

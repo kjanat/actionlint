@@ -11,6 +11,7 @@ import (
 )
 
 func TestMetadataDocumentRetainsSameLookupProvenance(t *testing.T) {
+	t.Parallel()
 	for _, resolver := range []bool{false, true} {
 		for _, broken := range []bool{false, true} {
 			name := "cache"
@@ -21,6 +22,7 @@ func TestMetadataDocumentRetainsSameLookupProvenance(t *testing.T) {
 				name += "/parse-failure"
 			}
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				content := "name: captured\ndescription: provenance\nruns: {using: composite, steps: []}\n"
 				if broken {

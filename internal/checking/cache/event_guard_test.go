@@ -10,6 +10,7 @@ import (
 )
 
 func TestCachePolicyEventGuards(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		condition string
 		events    []string
@@ -41,6 +42,7 @@ func TestCachePolicyEventGuards(t *testing.T) {
 			}
 			for _, mode := range []string{"call", "job-write", "workflow-write", "call-write"} {
 				t.Run(mode+"/"+condition, func(t *testing.T) {
+					t.Parallel()
 					source := "on: [pull_request, pull_request_target, issue_comment]\n"
 					if mode == "workflow-write" {
 						source += "cache-mode: write\n"
@@ -90,6 +92,7 @@ func TestCachePolicyEventGuards(t *testing.T) {
 }
 
 func TestCachePolicyInheritedEventUnion(t *testing.T) {
+	t.Parallel()
 	for _, conditions := range [][]string{
 		{"github.event_name == 'pull_request'", "true"},
 		{"true", "github.event_name == 'pull_request'"},

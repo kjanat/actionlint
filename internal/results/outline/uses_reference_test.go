@@ -7,6 +7,7 @@ import (
 )
 
 func TestUsesReference(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		raw  string
 		want UsesReference
@@ -30,6 +31,7 @@ func TestUsesReference(t *testing.T) {
 		{"docker://", UnknownReference{}},
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
+			t.Parallel()
 			got := ParseReference(tc.raw)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v (%T), want %+v", got, got, tc.want)
@@ -50,6 +52,7 @@ func TestUsesReference(t *testing.T) {
 }
 
 func TestWorkflowCallReference(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		raw  string
 		want UsesReference
@@ -63,6 +66,7 @@ func TestWorkflowCallReference(t *testing.T) {
 		{"", nil},
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
+			t.Parallel()
 			if got := ParseWorkflowReference(tc.raw); !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v (%T), want %+v", got, got, tc.want)
 			}

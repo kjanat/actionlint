@@ -14,6 +14,7 @@ import (
 )
 
 func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
+	t.Parallel()
 	for _, disk := range []bool{false, true} {
 		for _, manifest := range []string{
 			testutil.CompositeAction, "name: inner\ndescription: inner\nruns: {using: node24}\n",
@@ -23,6 +24,7 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 				"branding: {icon: invalid-icon}\n",
 		} {
 			t.Run(fmt.Sprintf("disk=%t/manifest=%q", disk, manifest), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				if disk {
 					fixturefiles.Write(t, root, "inner/action.yml", "stale: true\n")
@@ -61,10 +63,12 @@ func TestExplicitActionSnapshotAliasedRoot(t *testing.T) {
 }
 
 func TestExplicitActionSnapshotAndDeduplication(t *testing.T) {
+	t.Parallel()
 	for _, disk := range []bool{false, true} {
 		for _, reverse := range []bool{false, true} {
 			for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
 				t.Run(fmt.Sprintf("disk=%t/reverse=%t/%s", disk, reverse, runner), func(t *testing.T) {
+					t.Parallel()
 					root := t.TempDir()
 					if disk {
 						fixturefiles.Write(t, root, "inner/action.yml", testutil.CompositeAction)
@@ -143,6 +147,7 @@ func TestRelativeProjectExplicitActionSnapshot(t *testing.T) {
 }
 
 func TestSelectedActionDeclarationPreference(t *testing.T) {
+	t.Parallel()
 	for _, reverse := range []bool{false, true} {
 		for _, tc := range []struct {
 			name, manifest, config, rule, path, severity string
@@ -152,6 +157,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 			{"malformed-declaration-disabled", "name: [\n", "overrides: [{includes: [inner/action.yml], lint: {rules: {correctness: {syntax-check: off}}}}]", "action", "ci.yml", ""},
 		} {
 			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
+				t.Parallel()
 				root := t.TempDir()
 				cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
 				if err != nil {

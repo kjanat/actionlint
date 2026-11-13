@@ -12,6 +12,7 @@ import (
 // This optional comparison exercises the independently built Rust adapter and
 // real GitHub requests. Ordinary Go tests do not need the adapter or credentials.
 func TestCommitishReportsActualRESTAttempts(t *testing.T) {
+	t.Parallel()
 	executable := os.Getenv("ACTIONLINT_TEST_COMMITISH_RESOLVER")
 	const tokenEnv = "ACTIONLINT_TEST_COMMITISH_TOKEN"
 	if executable == "" || os.Getenv(tokenEnv) == "" {

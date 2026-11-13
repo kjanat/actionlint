@@ -17,6 +17,7 @@ import (
 )
 
 func TestCompositeActionPathCasing(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFixture(t, root, "local/Nested/lib.sh", "VALUE=42\n")
 	wantDirectory, err := filepath.EvalSymlinks(filepath.Join(root, "local", "Nested"))
@@ -28,6 +29,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 		{"placed", "Source", "./source/LOCAL/nested", "Source/local/Nested"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			actions := &Resolver{caseInsensitive: true}
 			actions.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true}, execution.CheckoutPlacement{}))
 			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState()}
@@ -70,6 +72,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 }
 
 func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
+	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - uses: ./REPO/child\n")
 	parsed := parsing.Workflow(content)
 	if len(parsed.SyntaxErrors) != 0 {

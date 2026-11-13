@@ -31,6 +31,7 @@ func TestRootFlagsBetweenFilenames(t *testing.T) {
 		{name: "command boundary", args: []string{"check", "first.yml", "--json"}, want: []string{"check", "first.yml", "--json"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			app := newCommandApp(t.Context(), &Command{})
 			rest, terminated, err := app.parseRoot(tc.args)
 			if err != nil || !slices.Equal(rest, tc.want) || terminated != tc.terminated || app.inv.JSON != tc.json || app.errorJSON != tc.json {
@@ -41,6 +42,7 @@ func TestRootFlagsBetweenFilenames(t *testing.T) {
 }
 
 func TestRootUsesCommandFlagDefinitions(t *testing.T) {
+	t.Parallel()
 	app := newCommandApp(t.Context(), &Command{})
 	var enabled bool
 	app.root.Flags().BoolVarP(&enabled, "test-option", "t", false, "")
@@ -51,6 +53,7 @@ func TestRootUsesCommandFlagDefinitions(t *testing.T) {
 }
 
 func TestSubcommandLegacyFlagBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		args, want []string
@@ -66,6 +69,7 @@ func TestSubcommandLegacyFlagBoundaries(t *testing.T) {
 		{"short flags", []string{"check", "-q", "-ojson", "-"}, []string{"check", "--quiet", "--output-format=json", "-"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			app := newCommandApp(t.Context(), &Command{})
 			if got := normalizeCommandArgs(app.root, tc.args); !slices.Equal(got, tc.want) {
 				t.Fatalf("got %q, want %q", got, tc.want)

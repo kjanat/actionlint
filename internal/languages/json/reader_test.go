@@ -21,6 +21,7 @@ import (
 // These cases follow the runner receipts in docs/expression-results/2026-09-14.md
 // and Runny 0.3.0's loose engines (runner 1ba885c2065fd9be317808ab3fd406f392635cf7).
 func TestFromJSONValue(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source string
 		want   any
@@ -54,6 +55,7 @@ func TestFromJSONValue(t *testing.T) {
 		{`{123:1,é:2,$n:3,_n:4}`, map[string]any{"123": float64(1), "é": float64(2), "$n": float64(3), "_n": float64(4)}},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
+			t.Parallel()
 			got, err := jsonlang.FromJSONValue(tc.source)
 			if err != nil || !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %#v, %v; want %#v", got, err, tc.want)
@@ -79,6 +81,7 @@ func TestFromJSONValue(t *testing.T) {
 }
 
 func TestFromJSONIntegerNegativeZeroRemainsModeDependent(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{"-0", "[-0]", "{value:-0}"} {
 		value, err := jsonlang.FromJSONValue(text)
 		if err != nil {
@@ -98,6 +101,7 @@ func TestFromJSONIntegerNegativeZeroRemainsModeDependent(t *testing.T) {
 }
 
 func TestFromJSONInvalidSyntax(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{
 		"", " ", "0o17", "+1", "08", "0x", "0x10000000000000000", "truex", "31trailing",
 		"[1 2]", "{a:1 b:2}", "{a:}", "[", "{", "'unterminated", `"\x20"`, `"\uZZZZ"`,
@@ -106,6 +110,7 @@ func TestFromJSONInvalidSyntax(t *testing.T) {
 		strings.Repeat("[", 65) + "0" + strings.Repeat("]", 65), strings.Repeat("9", 381),
 	} {
 		t.Run(source, func(t *testing.T) {
+			t.Parallel()
 			if got, err := jsonlang.FromJSONValue(source); err == nil {
 				t.Fatalf("accepted invalid input: %#v", got)
 			}
@@ -122,6 +127,7 @@ func TestFromJSONInvalidSyntax(t *testing.T) {
 }
 
 func TestFromJSONErrorOffsets(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		source string
 		offset int
@@ -139,6 +145,7 @@ func TestFromJSONErrorOffsets(t *testing.T) {
 }
 
 func TestFromJSONUnsupportedConstructor(t *testing.T) {
+	t.Parallel()
 	for _, source := range []string{"new Date(0)", "{a:new Date(0),}", "[new Foo(true,undefined,)]"} {
 		if _, err := jsonlang.FromJSONValue(source); !errors.Is(err, jsonlang.ErrUnsupportedValue) {
 			t.Fatalf("%s: %v", source, err)
@@ -159,6 +166,7 @@ func TestFromJSONUnsupportedConstructor(t *testing.T) {
 }
 
 func TestFromJSONCollisionOffsets(t *testing.T) {
+	t.Parallel()
 	source := `{/*π*/ 'é':1, É:2, '\u00e9':3,} trailing`
 	collisions := jsonlang.JSONMemberCollisions(source)
 	want := []jsonlang.MemberCollision{

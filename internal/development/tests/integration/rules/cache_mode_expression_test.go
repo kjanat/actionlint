@@ -9,9 +9,11 @@ import (
 )
 
 func TestWorkflowCallCacheModeLiteralExpressions(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
 		for _, fromAST := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/AST=%v", kind, fromAST), func(t *testing.T) {
+				t.Parallel()
 				caller := `on: push
 cache-mode: ${{ 'none' }}
 jobs:

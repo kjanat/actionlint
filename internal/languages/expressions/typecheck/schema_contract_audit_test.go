@@ -17,6 +17,7 @@ import (
 // The context profiles follow runner 759385a3510197a58b5c08dc1f373b74b9f4643b
 // and languageservices 4043eda158e16579cc5fb1b0b07a4bce2a76f0b5.
 func TestSchemaAuditContextProfiles(t *testing.T) {
+	t.Parallel()
 	profiles := []struct {
 		keys     string
 		contexts string
@@ -42,6 +43,7 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 		for key := range strings.FieldsSeq(profile.keys) {
 			covered[key] = true
 			t.Run(key, func(t *testing.T) {
+				t.Parallel()
 				contexts, functions := contextspec.WorkflowKeyAvailability(key)
 				if !slices.Equal(contexts, strings.Fields(profile.contexts)) || !slices.Equal(functions, strings.Fields(profile.funcs)) {
 					t.Fatalf("contexts %v; functions %v", contexts, functions)
@@ -72,6 +74,7 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 }
 
 func TestSchemaAuditFunctionContracts(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		key, expression string
 		valid           bool
@@ -93,6 +96,7 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 		{"jobs.<job_id>.steps.run", "case(" + strings.Repeat("true,'x',", 128) + "'y')", false},
 	} {
 		t.Run(tc.key+"/"+tc.expression, func(t *testing.T) {
+			t.Parallel()
 			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
@@ -108,6 +112,7 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 }
 
 func TestSchemaAuditExpressionDepth(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, expression string
 		valid            bool
@@ -126,6 +131,7 @@ func TestSchemaAuditExpressionDepth(t *testing.T) {
 		{"flattened parenthesized chain", strings.Repeat("true || (", 60) + "true" + strings.Repeat(")", 60), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%v, error=%v", tc.valid, err)

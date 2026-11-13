@@ -13,6 +13,7 @@ import (
 )
 
 func TestExecutableLookupSharesConcurrentSearches(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "git")
 	if err := os.WriteFile(path, nil, 0o700); err != nil {
 		t.Fatal(err)
@@ -36,6 +37,7 @@ func TestExecutableLookupSharesConcurrentSearches(t *testing.T) {
 }
 
 func TestExecutableLookupRetriesFailuresAndRemovedFiles(t *testing.T) {
+	t.Parallel()
 	var lookup executableLookup
 	calls := 0
 	missing := func(string) (string, error) { calls++; return "", exec.ErrNotFound }

@@ -15,9 +15,11 @@ import (
 )
 
 func TestCompositeShellcheck(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	for _, filename := range []string{"action.yml", "action.yaml"} {
 		t.Run(filename, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
 			metadata := fixturefiles.Write(t, root, ".github/actions/lint/"+filename, `name: lint
@@ -58,6 +60,7 @@ func TestCompositeShellcheckActionPaths(t *testing.T) {
 		`{source-path: ["${{ github.action_path }}/lib"]}`,
 	} {
 		t.Run(selection, func(t *testing.T) {
+			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: {config: "+selection+"}}\n")
 			outerRC := fixturefiles.Write(t, root, "outer/.shellcheckrc", "disable=SC2086\n")
@@ -107,6 +110,7 @@ runs:
 }
 
 func TestCompositeSyntaxAndNestedActions(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -142,15 +146,7 @@ runs:
 }
 
 func TestCompositeExecutableBit(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      run: ./bad.sh
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		name, steps string
 		want        bool
@@ -207,6 +203,16 @@ runs:
   background: ${{ inputs.background }}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: ./bad.sh
+`)
 			result := testutil.Composite(t, root, tc.steps, checking.Options{})
 			found := false
 			for _, d := range result.Diagnostics {
@@ -225,19 +231,8 @@ runs:
 }
 
 func TestConditionalCompositeRetainsStaticChecks(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	inner := fixturefiles.Write(t, root, "inner/action.yml", `name: inner
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      run: |
-        ./bad.sh
-        echo $VALUE
-`)
 	for _, tc := range []struct {
 		outer, inner string
 		finding      bool
@@ -250,6 +245,19 @@ runs:
 		{"github.event.repository.name", "false", false},
 	} {
 		t.Run(tc.outer+"/"+tc.inner, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+			inner := fixturefiles.Write(t, root, "inner/action.yml", `name: inner
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        ./bad.sh
+        echo $VALUE
+`)
 			fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -276,6 +284,7 @@ runs:
 }
 
 func TestCompositeScriptConfig(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "local/action.yml", `name: local
@@ -299,6 +308,7 @@ runs:
 }
 
 func TestCompositeShellcheckWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -323,6 +333,7 @@ runs:
 }
 
 func TestCompositeActionPathWorkingDirectory(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -362,6 +373,7 @@ runs:
 }
 
 func TestCompositeNestedMetadataErrors(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	outer := fixturefiles.Write(t, root, "outer/action.yml", `name: outer
 description: test
@@ -388,7 +400,7 @@ runs:
 }
 
 func TestCompositeExecutionState(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
+	t.Parallel()
 	for _, tc := range []struct {
 		name, actionSteps, workflowSteps string
 		want                             bool
@@ -490,6 +502,8 @@ func TestCompositeExecutionState(t *testing.T) {
   run: ./bad.sh`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -506,9 +520,11 @@ runs:
 }
 
 func TestCompositeToleratedFailureState(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
+	t.Parallel()
 	for _, setting := range []string{"true", "${{ github.event_name == 'push' }}", "false", "${{ false }}"} {
 		t.Run(setting, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -562,15 +578,7 @@ runs:
 }
 
 func TestCompositeCheckoutEmptyExpressions(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      run: ./source/bad.sh
-`)
+	t.Parallel()
 	for _, inputs := range []string{
 		"path: ' source '",
 		"path: \"${{ ' source ' }}\"",
@@ -580,6 +588,16 @@ runs:
 		"repository: \"${{ '' }}\", ref: \"${{ '' }}\", sparse-checkout: \"${{ '' }}\"",
 	} {
 		t.Run(inputs, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: ./source/bad.sh
+`)
 			checkout := inputs
 			if !strings.HasPrefix(checkout, "path:") {
 				checkout = "path: source, " + checkout
@@ -598,8 +616,12 @@ runs:
 }
 
 func TestCompositeCheckoutActionOutputs(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	for _, spec := range []string{"./source/local", "$/local"} {
+		t.Run(spec, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 outputs:
   answer:
@@ -611,8 +633,6 @@ runs:
     - shell: bash
       run: echo ok
 `)
-	for _, spec := range []string{"./source/local", "$/local"} {
-		t.Run(spec, func(t *testing.T) {
 			result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {path: source}
 - uses: `+spec+`
@@ -628,14 +648,7 @@ runs:
 }
 
 func TestCompositeParallelCheckoutPlacement(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - run: echo missing shell
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		name, steps string
 		read        bool
@@ -656,6 +669,15 @@ runs:
 - uses: ./source/local`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - run: echo missing shell
+`)
 			result := testutil.Composite(t, root, tc.steps, checking.Options{})
 			if read := slices.Contains(result.Inputs, metadata); read != tc.read {
 				t.Fatalf("metadata read = %v, want %v: %v", read, tc.read, result.Inputs)
@@ -665,6 +687,7 @@ runs:
 }
 
 func TestCompositeShellcheckRelocatedCheckout(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
@@ -690,18 +713,8 @@ runs:
 }
 
 func TestCompositeShellcheckCallerCheckoutState(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - uses: actions/checkout@v6
-      with: {path: relocated}
-`)
-	fixturefiles.Write(t, root, "lib.sh", "VALUE=42\n")
 	run := `- shell: bash
   working-directory: .
   run: |
@@ -748,6 +761,18 @@ runs:
 ` + run, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+			fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v6
+      with: {path: relocated}
+`)
+			fixturefiles.Write(t, root, "lib.sh", "VALUE=42\n")
 			result := testutil.Composite(t, root, tc.steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 			warnings := 0
 			for _, diagnostic := range result.Diagnostics {
@@ -763,8 +788,12 @@ runs:
 }
 
 func TestCompositeCheckoutEmptyPath(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	for _, value := range []string{"", "${{ '' }}"} {
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
@@ -772,8 +801,6 @@ runs:
     - shell: bash
       run: echo ok
 `)
-	for _, value := range []string{"", "${{ '' }}"} {
-		t.Run(value, func(t *testing.T) {
 			result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n  with: {path: \""+value+"\"}\n- uses: ./local", checking.Options{})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("empty checkout path did not use workspace root: %v", result.Inputs)
@@ -783,6 +810,7 @@ runs:
 }
 
 func TestCompositeShellcheckUnknownCheckout(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")

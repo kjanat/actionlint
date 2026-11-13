@@ -13,6 +13,7 @@ import (
 )
 
 func TestMatrixCombinationInsertionValidation(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"include", "exclude"} {
 		for _, tc := range []struct {
 			name, expression string
@@ -36,6 +37,7 @@ func TestMatrixCombinationInsertionValidation(t *testing.T) {
 			{"scalar", `1`, 1},
 		} {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
 				matrix := "item: [one], " + section + ": [" + strconv.Quote("${{ "+tc.expression+" }}") + "]"
 				workflow, errs := workflowparser.Parse([]byte(`on: push
 jobs:
@@ -65,8 +67,10 @@ jobs:
 }
 
 func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
+	t.Parallel()
 	for _, section := range []string{"include", "exclude"} {
 		t.Run(section, func(t *testing.T) {
+			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '%s', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n", section)
 			workflow, errs := workflowparser.Parse([]byte(source))
 			if len(errs) != 0 {
@@ -92,6 +96,7 @@ func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
 }
 
 func TestMatrixSequenceInsertion(t *testing.T) {
+	t.Parallel()
 	// Local SDK: 80bb1fb827fa44d489263061e71ef4adba7ad8cd, EvalStrategy,
 	// next engine, loose JSON, anchors rejected. Hosted behavior is unmeasured.
 	for _, tc := range []struct{ name, matrix, want string }{
@@ -104,6 +109,7 @@ func TestMatrixSequenceInsertion(t *testing.T) {
 		{"empty include insertion", `item: [before], include: ["${{ fromJSON('[]') }}"]`, "string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			workflow, errs := workflowparser.Parse([]byte(`on: push
 jobs:
   test:

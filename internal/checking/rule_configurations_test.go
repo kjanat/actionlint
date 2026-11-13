@@ -10,6 +10,7 @@ import (
 )
 
 func TestRegisteredRuleConfigurationScopes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                   string
 		scope                  rule.ConfigurationScope
@@ -21,6 +22,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 		{"caller", rule.CallerConfiguration, false, "on", "on"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}
 			rules, err := ConfigurationRules().WithRegisteredRules(registration)
 			if err != nil {
@@ -56,6 +58,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 }
 
 func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
+	t.Parallel()
 	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}
 	setting, err := repoconfig.NewSetting("error", nil)
 	if err != nil {
@@ -84,6 +87,7 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 }
 
 func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
+	t.Parallel()
 	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
 	if _, err := ConfigurationRules().WithRegisteredRules(registration); err == nil {
 		t.Fatal("unknown configuration scope was accepted")
@@ -91,6 +95,7 @@ func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
 }
 
 func TestExplicitPluginOptionsUseTheirJSONSchema(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		schema, options string
 		valid           bool
@@ -102,6 +107,7 @@ func TestExplicitPluginOptionsUseTheirJSONSchema(t *testing.T) {
 		{`{}`, `{`, false},
 	} {
 		t.Run(tc.schema+"/"+tc.options, func(t *testing.T) {
+			t.Parallel()
 			registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}, Options: json.RawMessage(tc.options)}
 			_, err := ConfigurationRules().ResolveRegisteredRules(repoconfig.Presets{}, &repoconfig.Config{}, registration)
 			if (err == nil) != tc.valid {
@@ -112,9 +118,11 @@ func TestExplicitPluginOptionsUseTheirJSONSchema(t *testing.T) {
 }
 
 func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
+	t.Parallel()
 	for _, category := range []string{"conventions", "policy"} {
 		for _, name := range []string{"forbidden-suppression", "disallow-suppressions"} {
 			t.Run(category+"/"+name, func(t *testing.T) {
+				t.Parallel()
 				project, err := ConfigurationRules().Parse(fmt.Appendf(nil, "policy: {disallow-suppressions: true}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {%s: {%s: off}}}\n", category, name))
 				if err != nil {
 					t.Fatal(err)
@@ -133,6 +141,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 }
 
 func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
+	t.Parallel()
 	settings := newRuleConfigurations(nil, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
 	config, err := settings.workflow("ci.yml")
 	if err != nil {
@@ -149,6 +158,7 @@ func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
 }
 
 func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
+	t.Parallel()
 	project, err := ConfigurationRules().Parse([]byte("lint:\n  rules:\n    correctness: {action: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
 	if err != nil {
 		t.Fatal(err)

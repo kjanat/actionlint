@@ -11,6 +11,7 @@ import (
 )
 
 func TestFileOverrideToolSettings(t *testing.T) {
+	t.Parallel()
 	config, err := checking.ConfigurationRules().Parse([]byte(`tools:
   shellcheck: {enabled: true, config: {disable: [SC2086]}}
 overrides:
@@ -61,6 +62,7 @@ overrides:
 }
 
 func TestFileOverrideInheritedToolConfigPath(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeOverrideFixture(t, root, "base/base.yml", "overrides: [{includes: [ci.yml], tools: {shellcheck: {config: .shellcheckrc}}}]")
 	path := writeOverrideFixture(t, root, "project/actionlint.yml", "extends: [../base/base.yml]")
@@ -78,6 +80,7 @@ func TestFileOverrideInheritedToolConfigPath(t *testing.T) {
 }
 
 func TestFileOverrideRejectsInvalidTools(t *testing.T) {
+	t.Parallel()
 	for _, settings := range []string{"{typo: true}", "{shellcheck: {enabled: wrong}}", "{shellcheck: {config: {typo: true}}}"} {
 		if _, err := checking.ConfigurationRules().Parse([]byte("overrides: [{includes: [ci.yml], tools: " + settings + "}]")); err == nil {
 			t.Errorf("accepted invalid override tool settings: %s", settings)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
+	t.Parallel()
 	custom := installed(false)
 	custom.Rule.Name = "custom-check"
 	bundled := installed(false)
@@ -58,6 +59,7 @@ func TestInstalledRuleNamesExtendSharedSelectors(t *testing.T) {
 }
 
 func TestInstalledRuleUsesSharedSettingContract(t *testing.T) {
+	t.Parallel()
 	for _, typedOptions := range []bool{false, true} {
 		manifest := installed(false)
 		manifest.Rule.Name = "custom-check"

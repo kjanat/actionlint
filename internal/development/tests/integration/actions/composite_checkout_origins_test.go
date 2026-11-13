@@ -14,25 +14,8 @@ import (
 )
 
 func TestCompositeCheckoutLocations(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-outputs:
-  answer:
-    description: test
-    value: '42'
-runs:
-  using: composite
-  steps:
-    - shell: bash
-      working-directory: source/local
-      run: |
-        . ./lib.sh
-        echo $VALUE
-`)
-	fixturefiles.Write(t, root, "local/lib.sh", "VALUE=42\n")
 	for _, tc := range []struct {
 		name, second string
 		read         bool
@@ -47,6 +30,25 @@ runs:
 		{"unknown destination", "with: {path: '${{ inputs.path }}'}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+outputs:
+  answer:
+    description: test
+    value: '42'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: source/local
+      run: |
+        . ./lib.sh
+        echo $VALUE
+`)
+			fixturefiles.Write(t, root, "local/lib.sh", "VALUE=42\n")
 			steps := `- uses: actions/checkout@v6
   with: {path: source}
 - uses: actions/checkout@v6
@@ -73,10 +75,24 @@ runs:
 }
 
 func TestCompositeIndependentSelfRepositoryOrigin(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
-	root, git := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+	for _, tc := range []struct {
+		name, before, call string
+		executable         bool
+	}{
+		{"foreign checkout", "- uses: actions/checkout@v6\n  with: {repository: other/repo}", "", true},
+		{"unknown checkout", "- uses: actions/checkout@v6\n  with: {path: '${{ inputs.path }}'}", "", true},
+		{"opaque execution", `- uses: actions/checkout@v6
+  with: {repository: other/repo}
+- uses: other/action@v1`, "", false},
+		{"startup environment", "- uses: actions/checkout@v6\n  with: {repository: other/repo}", "\n  env: {BASH_ENV: setup.sh}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, git := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
@@ -95,23 +111,11 @@ runs:
         . ./lib.sh
         echo $VALUE
 `)
-	fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
-	fixturefiles.Write(t, root, "local/lib.sh", "VALUE=42\n")
-	fixturefiles.Write(t, root, "lib.sh", "VALUE=42\n")
-	git("add", "local/bad.sh")
-	git("update-index", "--chmod=-x", "local/bad.sh")
-	for _, tc := range []struct {
-		name, before, call string
-		executable         bool
-	}{
-		{"foreign checkout", "- uses: actions/checkout@v6\n  with: {repository: other/repo}", "", true},
-		{"unknown checkout", "- uses: actions/checkout@v6\n  with: {path: '${{ inputs.path }}'}", "", true},
-		{"opaque execution", `- uses: actions/checkout@v6
-  with: {repository: other/repo}
-- uses: other/action@v1`, "", false},
-		{"startup environment", "- uses: actions/checkout@v6\n  with: {repository: other/repo}", "\n  env: {BASH_ENV: setup.sh}", false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
+			fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+			fixturefiles.Write(t, root, "local/lib.sh", "VALUE=42\n")
+			fixturefiles.Write(t, root, "lib.sh", "VALUE=42\n")
+			git("add", "local/bad.sh")
+			git("update-index", "--chmod=-x", "local/bad.sh")
 			result := testutil.Composite(t, root, tc.before+"\n- uses: $/local"+tc.call+`
 - shell: bash
   working-directory: .
@@ -140,6 +144,7 @@ runs:
 }
 
 func TestCompositeSelfRepositoryKeepsWorkspaceUnknown(t *testing.T) {
+	t.Parallel()
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
@@ -162,6 +167,7 @@ runs:
 }
 
 func TestCompositeNestedIndependentActionPath(t *testing.T) {
+	t.Parallel()
 	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "outer/action.yml", `name: outer
 description: test
@@ -201,8 +207,12 @@ runs:
 }
 
 func TestCompositeCheckoutChanges(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	for _, mutation := range []string{"chmod +x source/bad.sh", "unknown-command"} {
+		t.Run(mutation, func(t *testing.T) {
+			t.Parallel()
+			root, git := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
@@ -211,10 +221,8 @@ runs:
       working-directory: source
       run: ./bad.sh
 `)
-	git("add", "bad.sh")
-	git("update-index", "--chmod=-x", "bad.sh")
-	for _, mutation := range []string{"chmod +x source/bad.sh", "unknown-command"} {
-		t.Run(mutation, func(t *testing.T) {
+			git("add", "bad.sh")
+			git("update-index", "--chmod=-x", "bad.sh")
 			steps := `- uses: actions/checkout@v6
   with: {path: source}
 - shell: bash
@@ -240,6 +248,7 @@ runs:
 }
 
 func TestCompositeIndependentActionChangesSurviveCheckout(t *testing.T) {
+	t.Parallel()
 	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
@@ -264,11 +273,7 @@ runs:
 }
 
 func TestCompositeConditionalModeChanges(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
-	fixturefiles.Write(t, root, "probe/action.yml", "name: probe\n")
-	git("add", "local/bad.sh", "probe/action.yml")
-	git("update-index", "--chmod=-x", "local/bad.sh")
+	t.Parallel()
 	for _, condition := range []string{"github.event.repository.name", "true", "false"} {
 		for _, independent := range []bool{false, true} {
 			for _, checkIndependent := range []bool{false, true} {
@@ -284,6 +289,12 @@ func TestCompositeConditionalModeChanges(t *testing.T) {
 					name += "/check-workspace"
 				}
 				t.Run(name, func(t *testing.T) {
+					t.Parallel()
+					root, git := testutil.ExecutableFixture(t, "shellcheck")
+					fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+					fixturefiles.Write(t, root, "probe/action.yml", "name: probe\n")
+					git("add", "local/bad.sh", "probe/action.yml")
+					git("update-index", "--chmod=-x", "local/bad.sh")
 					fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
@@ -327,14 +338,7 @@ runs:
 }
 
 func TestCompositeForeignCheckoutMetadata(t *testing.T) {
-	root, _ := testutil.ExecutableFixture(t, "shellcheck")
-	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
-description: test
-runs:
-  using: composite
-  steps:
-    - run: missing shell
-`)
+	t.Parallel()
 	for _, tc := range []struct {
 		name, input, spec, condition string
 		read                         bool
@@ -346,6 +350,15 @@ runs:
 		{"independent action", "repository: other/repo", "$/local", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root, _ := testutil.ExecutableFixture(t, "shellcheck")
+			metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
+description: test
+runs:
+  using: composite
+  steps:
+    - run: missing shell
+`)
 			result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n  with: {"+tc.input+"}"+tc.condition+"\n- uses: "+tc.spec, checking.Options{})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("wrong foreign metadata selection: %v", result.Inputs)
@@ -355,8 +368,12 @@ runs:
 }
 
 func TestCompositeIndependentModeChangesKeepWorkspaceFinding(t *testing.T) {
-	root, git := testutil.ExecutableFixture(t, "shellcheck")
-	fixturefiles.Write(t, root, "local/action.yml", `name: local
+	t.Parallel()
+	for _, spec := range []string{"$/local", "./local"} {
+		t.Run(spec, func(t *testing.T) {
+			t.Parallel()
+			root, git := testutil.ExecutableFixture(t, "shellcheck")
+			fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test
 runs:
   using: composite
@@ -365,11 +382,9 @@ runs:
       working-directory: ${{ github.action_path }}
       run: chmod +x bad.sh
 `)
-	fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
-	git("add", "local/bad.sh")
-	git("update-index", "--chmod=-x", "local/bad.sh")
-	for _, spec := range []string{"$/local", "./local"} {
-		t.Run(spec, func(t *testing.T) {
+			fixturefiles.Write(t, root, "local/bad.sh", "#!/bin/sh\necho bad\n")
+			git("add", "local/bad.sh")
+			git("update-index", "--chmod=-x", "local/bad.sh")
 			result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n- uses: "+spec+`
 - shell: bash
   working-directory: .
@@ -385,6 +400,7 @@ runs:
 }
 
 func TestCompositeWorkspaceModeChangesKeepIndependentFinding(t *testing.T) {
+	t.Parallel()
 	root, git := testutil.ExecutableFixture(t, "shellcheck")
 	metadata := fixturefiles.Write(t, root, "local/action.yml", `name: local
 description: test

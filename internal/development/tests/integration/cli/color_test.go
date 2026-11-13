@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	"github.com/fatih/color"
 )
 
 func TestGitHubActionsColor(t *testing.T) {
@@ -40,9 +39,6 @@ func TestGitHubActionsColor(t *testing.T) {
 			for _, modern := range []bool{false, true} {
 				for _, help := range []bool{false, true} {
 					t.Run(fmt.Sprintf("modern=%t/help=%t", modern, help), func(t *testing.T) {
-						previous := color.NoColor
-						t.Cleanup(func() { color.NoColor = previous })
-						color.NoColor = true
 						args := append([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, tc.flags...)
 						if modern {
 							args = append(args, "check")
@@ -76,8 +72,6 @@ func TestGitHubActionsColor(t *testing.T) {
 func TestGitHubActionsPlainOutput(t *testing.T) {
 	t.Setenv("GITHUB_ACTIONS", "true")
 	t.Setenv("NO_COLOR", "")
-	previous := color.NoColor
-	t.Cleanup(func() { color.NoColor = previous })
 	for _, args := range [][]string{
 		{"--version"},
 		{"version"},
@@ -96,7 +90,7 @@ func TestGitHubActionsPlainOutput(t *testing.T) {
 		{"completion", "bash"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			color.NoColor = true
+			t.Parallel()
 			var out, stderr bytes.Buffer
 			cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: &out, Stderr: &stderr}
 			code := cmd.Main(append([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff"}, args...))
@@ -114,9 +108,7 @@ func TestGitHubActionsOutputDestination(t *testing.T) {
 	for _, args := range [][]string{{"--help"}, {"-"}, {"check", "--help"}, {"check", "--output-format=oneline", "-"}} {
 		for _, pipe := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/pipe=%t", strings.Join(args, " "), pipe), func(t *testing.T) {
-				previous := color.NoColor
-				t.Cleanup(func() { color.NoColor = previous })
-				color.NoColor = true
+				t.Parallel()
 				var read, write *os.File
 				var err error
 				if pipe {
@@ -155,6 +147,7 @@ func TestGitHubActionsOutputDestination(t *testing.T) {
 	}
 	for _, force := range []bool{false, true} {
 		t.Run(fmt.Sprintf("report/forced=%t", force), func(t *testing.T) {
+			t.Parallel()
 			path := filepath.Join(t.TempDir(), "report.txt")
 			args := []string{"check", "--output-file", path}
 			if force {

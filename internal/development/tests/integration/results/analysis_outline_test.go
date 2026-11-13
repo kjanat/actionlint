@@ -26,6 +26,7 @@ import (
 )
 
 func TestAnalysisWorkflowOutlines(t *testing.T) {
+	t.Parallel()
 	const source = `name: Build
 on: [push, workflow_dispatch]
 jobs:
@@ -105,6 +106,7 @@ jobs:
 }
 
 func TestAnalysisActionDocuments(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	const manifest = `name: Local
 description: Local test action
@@ -168,6 +170,7 @@ permissions: {}
 }
 
 func TestAnalysisActionOutlineValidationDiagnostics(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, manifest string
 		messages       []string
@@ -181,6 +184,7 @@ description: Test
 runs: {using: composite, steps: [{run: echo hi, uses: actions/checkout@v7, shell: bash}]}`, []string{`cannot have both "run" and "uses" keys`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			if err := os.WriteFile(filepath.Join(dir, "action.yml"), []byte(tc.manifest), 0600); err != nil {
 				t.Fatal(err)
@@ -235,6 +239,7 @@ func requireWorkflowOutline(t *testing.T, document documentmodel.Outline) docume
 }
 
 func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
+	t.Parallel()
 	const caller = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\npermissions: {}\n"
 	for _, tc := range []struct{ name, runs string }{
 		{"javascript", "using: node24\n  main: index.js\n"},
@@ -242,6 +247,7 @@ func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
 		{"composite", "using: composite\n  steps:\n    - run: echo ok\n      shell: bash\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  "+tc.runs)
@@ -263,6 +269,7 @@ func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
 }
 
 func TestAnalysisFailureKeepsOutline(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
 	fixturefiles.Write(t, root, "local/action.yml", `name: local
@@ -304,6 +311,7 @@ permissions: {}
 		{"one of several sources", bogus("bad.yml"), "", map[string]string{"bad.yml": workflow, "ok.yml": workflow}, "rule level", []string{"bad.yml:complete", "ok.yml:complete", action}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			var sources []workspace.Source
 			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
 				sources = append(sources, workspace.Source{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})

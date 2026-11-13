@@ -36,6 +36,7 @@ func (e *configurationEngine) Check(context.Context, checkinputs.ScriptRequest) 
 }
 
 func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, settings string
 		want           map[string]any
@@ -47,8 +48,10 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 		{"engine read-only boundary", "config: {src: [virtual-root]}", map[string]any{"src": []any{"virtual-root"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			for _, injected := range []bool{false, true} {
 				t.Run(map[bool]string{false: "configured", true: "injected"}[injected], func(t *testing.T) {
+					t.Parallel()
 					root, workflows := writeScriptEngineRepository(t)
 					config := "tools: {ruff: {" + tc.settings
 					if !injected {
@@ -81,6 +84,7 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 }
 
 func TestEngineConfigurationFailurePreventsCheck(t *testing.T) {
+	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	failure := errors.New("engine rejected settings")
 	engine := &configurationEngine{failure: failure}

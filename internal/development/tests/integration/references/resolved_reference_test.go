@@ -38,12 +38,14 @@ func knownRepositoryID(value uint64) repositoryid.ID {
 }
 
 func TestCheckingSessionPreparesResolverFacts(t *testing.T) {
+	t.Parallel()
 	for _, partial := range []bool{false, true} {
 		name := "complete"
 		if partial {
 			name = "partial"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			provider := &fakeResolver{}
 			wantRequests := 1
 			steps := "      - uses: owner/repo@v1\n"
@@ -75,6 +77,7 @@ func TestCheckingSessionPreparesResolverFacts(t *testing.T) {
 }
 
 func TestDisabledResolutionDoesNotCallProvider(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	config := filepath.Join(root, "actionlint.yml")
 	if err := os.WriteFile(config, []byte("lint: {rules: {security: {remote-resolution: off}}}\n"), 0o600); err != nil {
@@ -103,6 +106,7 @@ func (f *fakeResolver) Resolve(_ context.Context, r references.Request) (referen
 }
 
 func TestConsumerAndPinProvenance(t *testing.T) {
+	t.Parallel()
 	provider := &fakeResolver{}
 	rule := newReferenceCheck(provider)
 	ref := sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "step", Address: "jobs.build.steps[0]"}
@@ -129,6 +133,7 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 }
 
 func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
+	t.Parallel()
 	provider := &fakeResolver{ids: []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
 	first := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
@@ -149,6 +154,7 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 }
 
 func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
+	t.Parallel()
 	provider := &fakeResolver{ids: []repositoryid.ID{{}, knownRepositoryID(42), {}, knownRepositoryID(42)}}
 	rule := newReferenceCheck(provider)
 	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2", "owner/repo@v3", "OWNER/REPO@v4"} {
@@ -169,6 +175,7 @@ func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
 }
 
 func TestRepositoryIdentityRetainsPartialFindings(t *testing.T) {
+	t.Parallel()
 	provider := &fakeResolver{ids: []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
 	input := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
@@ -196,6 +203,7 @@ func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request refere
 }
 
 func TestRepositoryIdentityConcurrentFirstResults(t *testing.T) {
+	t.Parallel()
 	provider := &concurrentIdentityResolver{started: make(chan struct{}, 2), release: make(chan struct{})}
 	rule := newReferenceCheck(provider)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
@@ -235,12 +243,14 @@ func TestRepositoryIdentityConcurrentFirstResults(t *testing.T) {
 }
 
 func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
+	t.Parallel()
 	for _, uses := range []string{
 		"owner/@v1", "https://host/owner/repo@v1", "owner/repo@", "/repo@v1",
 		"owner/repo", "owner//repo@v1", "owner/repo/../action@v1", "owner/repo@${{ inputs.ref }}",
 		"./local", "$/action@v1", "docker://alpine:3", "self:owner/repo@v1",
 	} {
 		t.Run(uses, func(t *testing.T) {
+			t.Parallel()
 			provider := &fakeResolver{err: errors.New("unsupported reference reached provider")}
 			rule := newReferenceCheck(provider)
 			findings, err := rule.CheckDocument(t.Context(), checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
@@ -252,8 +262,10 @@ func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
 }
 
 func TestConsumerPreservesSubpathAndRef(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"action", "workflow"} {
 		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
 			provider := &fakeResolver{}
 			rule := newReferenceCheck(provider)
 			uses := "Owner/Repo/.github/workflows/build.yml@feature/release"

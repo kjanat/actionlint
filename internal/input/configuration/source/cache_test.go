@@ -20,6 +20,7 @@ func (transport configCacheTransport) RoundTrip(request *http.Request) (*http.Re
 }
 
 func TestReadConfigCachesHTTPSAcrossReaders(t *testing.T) {
+	t.Parallel()
 	ctx := WithReadCache(t.Context())
 	var requests atomic.Int32
 	for range 3 {
@@ -35,6 +36,7 @@ func TestReadConfigCachesHTTPSAcrossReaders(t *testing.T) {
 }
 
 func TestReadCacheCapturesOneCommand(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "actionlint.yaml")
 	if err := os.WriteFile(path, []byte("first"), 0600); err != nil {
 		t.Fatal(err)
@@ -63,6 +65,7 @@ func TestReadCacheCapturesOneCommand(t *testing.T) {
 }
 
 func TestReadCacheDoesNotCacheCustomReaders(t *testing.T) {
+	t.Parallel()
 	var calls int
 	read := func(string) ([]byte, error) { calls++; return []byte("custom"), nil }
 	reader := New(WithReadCache(t.Context()), read)
@@ -77,6 +80,7 @@ func TestReadCacheDoesNotCacheCustomReaders(t *testing.T) {
 }
 
 func TestReadCacheWaitCancellationAndRetry(t *testing.T) {
+	t.Parallel()
 	cache := &readCache{entries: make(map[string]*cachedRead)}
 	started, release, completed := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	var calls atomic.Int32

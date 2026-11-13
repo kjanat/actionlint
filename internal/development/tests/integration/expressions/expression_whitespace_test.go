@@ -14,6 +14,7 @@ import (
 )
 
 func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
+	t.Parallel()
 	// TemplateReader preserves whitespace outside expression delimiters as text.
 	// https://github.com/actions/runner/blob/fee24199cba8acf6c25da3a061c986066f42327a/src/Sdk/DTObjectTemplating/ObjectTemplating/TemplateReader.cs#L563-L593
 	for _, tc := range []struct{ name, field, message string }{
@@ -29,11 +30,15 @@ func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
 		{"bare if whitespace", `if: "  github.ref == 'refs/heads/main'  "`, ""},
 		{"interpolated if", `if: "  ${{ false }}  "`, "always evaluated to true because extra characters"},
 	} {
-		t.Run(tc.name, func(t *testing.T) { checkJobField(t, tc.field, tc.message) })
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			checkJobField(t, tc.field, tc.message)
+		})
 	}
 }
 
 func TestExpressionWhitespaceStaticUses(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, value, parsed string
 		invalid             bool
@@ -44,6 +49,7 @@ func TestExpressionWhitespaceStaticUses(t *testing.T) {
 		{"stripped block", "|-\n          ${{ './action' }}", "./action", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			source := []byte(`on: push
 jobs:
   check:
@@ -78,8 +84,10 @@ jobs:
 }
 
 func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
+	t.Parallel()
 	for _, value := range []string{"${{ ... }}", "${{ fromJSON( }}", "${{ 'unfinished }}"} {
 		t.Run(value, func(t *testing.T) {
+			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.Source
 			var err error

@@ -10,6 +10,7 @@ import (
 )
 
 func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	for _, platform := range []runnerlang.Platform{runnerlang.Any, runnerlang.Windows, runnerlang.MacOrLinux} {
 		path, known := execution.LocalDirectoryPath(directory, platform)
@@ -22,6 +23,7 @@ func TestShellcheckAbsoluteDirectoryPlatform(t *testing.T) {
 }
 
 func TestShellcheckWindowsRootedDirectory(t *testing.T) {
+	t.Parallel()
 	for _, path := range []string{`\scripts\build`, `\\server\share`, `\\?\C:\scripts`} {
 		if runtime.GOOS != "windows" {
 			if got, known := execution.LocalDirectoryPath(path, runnerlang.Windows); known {

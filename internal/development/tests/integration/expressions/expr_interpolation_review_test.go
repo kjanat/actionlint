@@ -10,6 +10,7 @@ import (
 )
 
 func TestInterpolationChecksContinueAfterSemanticErrors(t *testing.T) {
+	t.Parallel()
 	value := "${{ unknown.value }} ${{ github.ref && '' || 'fallback' }}"
 	for _, field := range []struct {
 		name, workflow string
@@ -81,6 +82,7 @@ jobs:
 			{"off", "off", false, false},
 		} {
 			t.Run(field.name+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
+				t.Parallel()
 				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {expression-reference: " + levels.expression + ", unsound-ternary: " + levels.ternary + "}}}"))
 				if err != nil {
 					t.Fatal(err)

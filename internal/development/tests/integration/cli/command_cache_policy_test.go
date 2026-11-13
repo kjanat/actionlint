@@ -18,6 +18,7 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 `
 
 func TestCommandCachePolicyDefaults(t *testing.T) {
+	t.Parallel()
 	for _, policy := range []struct{ name, category, workflow string }{
 		{"cache-write-untrusted", "security", `on: pull_request_target
 cache-mode: write
@@ -57,13 +58,13 @@ permissions: {}
 					continue
 				}
 				t.Run(fmt.Sprintf("%s/%s/explicit=%v", policy.name, config.name, explicit), func(t *testing.T) {
+					t.Parallel()
 					root := t.TempDir()
 					for _, dir := range []string{".git", ".github/workflows"} {
 						if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
 							t.Fatal(err)
 						}
 					}
-					t.Chdir(root)
 					workflow := filepath.Join(root, ".github", "workflows", "cache.yaml")
 					if err := os.WriteFile(workflow, []byte(policy.workflow), 0o600); err != nil {
 						t.Fatal(err)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestRuleRequirePermissions(t *testing.T) {
+	t.Parallel()
 	const steps = `    runs-on: ubuntu-latest
     steps:
       - run: echo hello
@@ -40,6 +41,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 	} {
 		for _, assumption := range []string{"restricted", "permissive"} {
 			t.Run(tc.name+"/"+assumption, func(t *testing.T) {
+				t.Parallel()
 				cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "assume-default-permissions: %s\npolicy: {require-permissions: %s}", assumption, tc.policy))
 				if err != nil {
 					t.Fatal(err)
@@ -70,6 +72,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 }
 
 func TestWorkflowPermissionsSuppressionLocation(t *testing.T) {
+	t.Parallel()
 	for _, prefix := range []string{"# license\n", "\n\n", "# license\n\n---\n"} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			for _, declaration := range []string{
@@ -93,6 +96,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 }
 
 func TestWorkflowPermissionsSuppressionBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		header, declaration, policy string
 		want                        []string

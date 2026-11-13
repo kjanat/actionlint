@@ -13,6 +13,7 @@ import (
 )
 
 func TestGitIndexLocationCompatibility(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	if runtime.GOOS == "windows" {
 		t.Skip("Git compatibility shim requires a Unix shell")
 	}
@@ -74,6 +75,7 @@ exec "$ACTIONLINT_TEST_REAL_GIT" "$@"
 }
 
 func TestRepositoryGitDisablesFSMonitor(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root, configure := executableFixture(t)
 	configure("config", "core.fsmonitor", "true")
 	git, err := exec.LookPath("git")
@@ -91,6 +93,7 @@ func TestRepositoryGitDisablesFSMonitor(t *testing.T) {
 }
 
 func TestGitIndexSeparateDirectory(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	metadata := filepath.Join(t.TempDir(), "metadata")
 	git, err := exec.LookPath("git")
@@ -123,6 +126,7 @@ func TestGitIndexSeparateDirectory(t *testing.T) {
 }
 
 func TestGitModesIntentToAdd(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root, git := executableFixture(t)
 	writeIndexFixture(t, root, "staged-empty.sh", "")
 	git("add", "staged-empty.sh")
@@ -161,6 +165,7 @@ func TestGitModesIntentToAdd(t *testing.T) {
 }
 
 func TestGitModesIntentToAddAfterRemoval(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	root, git := executableFixture(t)
 	git("config", "user.name", "Test")
 	git("config", "user.email", "test@example.com")

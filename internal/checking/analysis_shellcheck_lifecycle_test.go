@@ -10,6 +10,7 @@ import (
 )
 
 func TestShellcheckPipelineCompletesAfterTraversalFailure(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("stop traversal")
 	var completed atomic.Bool
 	result, err := runTestAnalysis(t.Context(), analysisRequest{

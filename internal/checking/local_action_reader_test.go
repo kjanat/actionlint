@@ -12,8 +12,10 @@ import (
 )
 
 func TestLocalActionSourceCustomReader(t *testing.T) {
+	t.Parallel()
 	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
 		t.Run(runner, func(t *testing.T) {
+			t.Parallel()
 			root, _ := executableFixture(t)
 			writeFixture(t, root, ".github/actionlint.yaml", "local-actions: {'./generated': './virtual'}\n")
 			manifest := filepath.Join(root, "virtual", "action.yml")

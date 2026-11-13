@@ -3,6 +3,7 @@ package cli_test
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func TestFixGitHubContextEnvironment(t *testing.T) {
+	t.Parallel()
 	for _, scalar := range []string{
 		`bun "${{ github.action_path }}/../runtime/client.mjs" begin`,
 		`'bun "${{ github.action_path }}/../runtime/client.mjs" begin'`,
@@ -22,8 +24,8 @@ func TestFixGitHubContextEnvironment(t *testing.T) {
 	} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			t.Run(scalar+ending, func(t *testing.T) {
-				t.Chdir(t.TempDir())
-				const path = "action.yml"
+				t.Parallel()
+				path := filepath.Join(t.TempDir(), "action.yml")
 				before := strings.ReplaceAll("name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: "+scalar+"\n", "\n", ending)
 				after := strings.NewReplacer(
 					"${{ github.action_path }}", "${GITHUB_ACTION_PATH}",
@@ -55,13 +57,14 @@ func TestFixGitHubContextEnvironment(t *testing.T) {
 }
 
 func TestFixEnvironmentAvailabilityPerFinding(t *testing.T) {
-	t.Chdir(t.TempDir())
+	t.Parallel()
 	const content = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: |\n          echo \"${{ github.workspace }}\"\n          echo '${{ github.workspace }}'\npermissions: {}\n"
-	if err := os.WriteFile("workflow.yml", []byte(content), 0600); err != nil {
+	path := filepath.Join(t.TempDir(), "workflow.yml")
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
 	for _, include := range []bool{false, true} {
-		args := []string{"fix", "--norc", "workflow.yml"}
+		args := []string{"fix", "--norc", path}
 		if include {
 			args = append(args, "--include-suggested")
 		}

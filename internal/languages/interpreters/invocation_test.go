@@ -13,6 +13,7 @@ import (
 )
 
 func TestBashInvocationMatchesActualBash(t *testing.T) {
+	t.Parallel()
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("Bash is required for the invocation reference")
@@ -25,6 +26,7 @@ func TestBashInvocationMatchesActualBash(t *testing.T) {
 		"bash --noprofile --norc -eu {0}", "bash -e --noprofile {0}", "bash -Oextglob {0}",
 	} {
 		t.Run(command, func(t *testing.T) {
+			t.Parallel()
 			invocation := Builtin().AnalyzeFor(command, false, commands.UnixArguments)
 			var arguments []string
 			for _, token := range invocation.Arguments {
@@ -43,6 +45,7 @@ func TestBashInvocationMatchesActualBash(t *testing.T) {
 }
 
 func TestWrapperDelegationAndCustomDiagnostics(t *testing.T) {
+	t.Parallel()
 	registry, err := New([]commands.Definition{
 		{ID: "example/python", Executables: []string{"python"}, Language: "python", Options: []commands.Option{{Short: "u"}}},
 		{ID: "example/actions-python", Executables: []string{"actions-shell"}, Prefix: []string{"python"}, Delegate: "example/python"},
@@ -73,6 +76,7 @@ func TestWrapperDelegationAndCustomDiagnostics(t *testing.T) {
 }
 
 func TestUnknownOptionsDoNotLookLikeValidatedInvocations(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"unregistered {0}", "bash ${{ vars.FLAGS }} {0}"} {
 		result := Builtin().Analyze(command, false)
 		if result.Status != commands.Unknown || result.Reason == "" {
@@ -82,6 +86,7 @@ func TestUnknownOptionsDoNotLookLikeValidatedInvocations(t *testing.T) {
 }
 
 func TestBashPreparationMatchesStartupOptions(t *testing.T) {
+	t.Parallel()
 	executable, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("Bash is required")
@@ -98,6 +103,7 @@ func TestBashPreparationMatchesStartupOptions(t *testing.T) {
 		"bash -O inherit_errexit -o posix +o posix {0}",
 	} {
 		t.Run(command, func(t *testing.T) {
+			t.Parallel()
 			if strings.Contains(command, "inherit_errexit") {
 				probe := exec.CommandContext(t.Context(), executable, "--noprofile", "--norc", "-c", "shopt -s inherit_errexit")
 				if err := probe.Run(); err != nil {

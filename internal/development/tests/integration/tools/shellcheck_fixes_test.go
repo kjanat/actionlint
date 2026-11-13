@@ -45,6 +45,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 }
 
 func TestShellcheckStructuredDiagnostic(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\npermissions: {}\n"
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
@@ -82,6 +83,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 }
 
 func TestShellcheckCompositeFixPath(t *testing.T) {
+	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: true}\n")

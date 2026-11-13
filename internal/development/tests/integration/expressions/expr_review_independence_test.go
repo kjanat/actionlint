@@ -9,6 +9,7 @@ import (
 )
 
 func TestReferencedWorkflowInjectionSources(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"ref", "path"} {
 		for _, expression := range []string{
 			"github.event.workflow_run.referenced_workflows[0]." + field,
@@ -17,6 +18,7 @@ func TestReferencedWorkflowInjectionSources(t *testing.T) {
 			"join(github.event.workflow_run.referenced_workflows.*." + field + ", ',')",
 		} {
 			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
 				checkReferencedWorkflowExpression(t, expression, true)
 			})
 		}
@@ -28,6 +30,7 @@ func TestReferencedWorkflowInjectionSources(t *testing.T) {
 		"startsWith(github.event.workflow_run.referenced_workflows[0].path, 'owner/')",
 	} {
 		t.Run(expression, func(t *testing.T) {
+			t.Parallel()
 			checkReferencedWorkflowExpression(t, expression, false, strings.HasSuffix(expression, ".sha") || strings.HasPrefix(expression, "join("))
 		})
 	}
@@ -49,6 +52,7 @@ permissions: {}
 }
 
 func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
+	t.Parallel()
 	checkReferencedWorkflowExpression(t, "github.event.issue.title", true)
 	checkReferencedWorkflowExpression(t, "github.event['ISSUE']['TITLE']", true)
 	for _, actor := range []string{"actor", "triggering_actor"} {
@@ -59,7 +63,10 @@ func TestWorkflowRunActorDisplayNameInjection(t *testing.T) {
 			strings.ToUpper("github.event.workflow_run." + actor + ".name"),
 			"format('{0}', github.event.workflow_run." + actor + ".name)",
 		} {
-			t.Run(expression, func(t *testing.T) { checkReferencedWorkflowExpression(t, expression, true) })
+			t.Run(expression, func(t *testing.T) {
+				t.Parallel()
+				checkReferencedWorkflowExpression(t, expression, true)
+			})
 		}
 		for _, field := range []string{"login", "id", "type"} {
 			checkReferencedWorkflowExpression(t, "github.event.workflow_run."+actor+"."+field, false, field != "id")
@@ -83,6 +90,7 @@ jobs:
 }
 
 func TestScriptInterpolationRemainsWhenInjectionIsDisabled(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, injection, interpolation, want string
 	}{
@@ -91,6 +99,7 @@ func TestScriptInterpolationRemainsWhenInjectionIsDisabled(t *testing.T) {
 		{"both disabled", "off", "off", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			configText := "lint: {rules: {correctness: {script-interpolation: " + tc.interpolation + "}, security: {script-injection: " + tc.injection + "}}}"
 			cfg, err := checking.ConfigurationRules().Parse([]byte(configText))
 			if err != nil {
@@ -122,6 +131,7 @@ permissions: {}
 }
 
 func TestSecretInterpolationRemainsWhenScriptInterpolationIsDisabled(t *testing.T) {
+	t.Parallel()
 	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {script-interpolation: off}, security: {script-injection: on}}}"))
 	if err != nil {
 		t.Fatal(err)
@@ -173,6 +183,7 @@ jobs:
 }
 
 func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
+	t.Parallel()
 	for _, expression := range []string{
 		"secrets.UNKNOWN && '' || 'fallback'",
 		"github.event.issue.title && '' || 'fallback'",
@@ -191,6 +202,7 @@ func TestUnsoundTernaryIndependentExpressionErrors(t *testing.T) {
 			{"off", "off", false, false},
 		} {
 			t.Run(expression+"/"+levels.expression+"/"+levels.ternary, func(t *testing.T) {
+				t.Parallel()
 				configText := "lint: {rules: {correctness: {unsound-ternary: " + levels.ternary + ", context-availability: " + levels.expression + "}, security: {script-injection: " + levels.expression + "}}}"
 				cfg, err := checking.ConfigurationRules().Parse([]byte(configText))
 				if err != nil {

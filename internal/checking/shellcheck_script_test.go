@@ -11,6 +11,7 @@ import (
 )
 
 func TestShellcheckScriptSemantics(t *testing.T) {
+	t.Parallel()
 	command := shellcheckForTest(t)
 	for _, tc := range []struct {
 		name, shell, script, env, config string
@@ -54,9 +55,9 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		{name: "config and user header combine", shell: "bash", script: "#!/bin/bash\n# shellcheck disable=SC2086\necho $HOME\necho $HOME", config: "disable: [SC2016]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("SHELLCHECK_OPTS", tc.env)
+			t.Parallel()
 			options := checking.Options{WorkingDir: t.TempDir()}
-			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args}}}
+			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
 			if tc.config != "" {
 				options.ConfigFile = writeFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
 			}

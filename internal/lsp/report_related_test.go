@@ -15,8 +15,10 @@ import (
 )
 
 func TestEditorRelatedRequiresCapturedRevisionModelAndRange(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"valid", "different revision", "different model", "outside source", "unbound", "zero end"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			path, relatedPath := filepath.Join(root, "workflow.yml"), filepath.Join(root, "related.yml")
 			main := reportfixture.CapturedSource(t, path, []byte("main\n"), sourcepos.YAML)

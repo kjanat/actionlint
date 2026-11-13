@@ -9,6 +9,7 @@ import (
 )
 
 func TestComponentRejectsReversedRanges(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name       string
 		start, end sourcepos.Position
@@ -21,7 +22,9 @@ func TestComponentRejectsReversedRanges(t *testing.T) {
 		{"later line", sourcepos.Position{Line: 9, Column: 8}, sourcepos.Position{Line: 10, Column: 2}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			t.Run("related", func(t *testing.T) {
+				t.Parallel()
 				_, err := liftRelated(wacogo.NewValListOf(wacogo.NewValRecord(
 					field("message", wacogo.ValString("related")), field("path", wacogo.ValString("workflow.yml")),
 					field("start", lowerPosition(tc.start)), field("end", lowerPosition(tc.end)),
@@ -32,6 +35,7 @@ func TestComponentRejectsReversedRanges(t *testing.T) {
 			})
 			for _, edit := range []bool{false, true} {
 				t.Run(map[bool]string{false: "diagnostic", true: "edit"}[edit], func(t *testing.T) {
+					t.Parallel()
 					var err error
 					if edit {
 						_, err = liftEdits(wacogo.NewValListOf(wacogo.NewValRecord(

@@ -11,6 +11,7 @@ import (
 )
 
 func TestSnapshotDoesNotBlockOnFIFO(t *testing.T) {
+	t.Parallel()
 	directory := t.TempDir()
 	file := filepath.Join(directory, "source.sh")
 	if err := unix.Mkfifo(file, 0o600); err != nil {

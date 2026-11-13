@@ -23,6 +23,7 @@ func (context *recordedContext) Argument(index int) exprvalues.EvaluationResult 
 }
 
 func TestBuiltinImplementationsRequestRequiredArguments(t *testing.T) {
+	t.Parallel()
 	bad := invalidValue()
 	for _, tc := range []struct {
 		name, function string
@@ -51,6 +52,7 @@ func TestBuiltinImplementationsRequestRequiredArguments(t *testing.T) {
 		{"JSON escaping is mode dependent", "tojson", []exprvalues.EvaluationResult{knownValue("<")}, unknownValue(), []int{0}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			context := &recordedContext{arguments: tc.args, seen: map[int]bool{}}
 			got := Builtins[tc.function].Evaluate(context)
 			if !reflect.DeepEqual(got, tc.want) || !reflect.DeepEqual(context.order, tc.order) {
@@ -61,6 +63,7 @@ func TestBuiltinImplementationsRequestRequiredArguments(t *testing.T) {
 }
 
 func TestBuiltinArityAndUnsupportedEvaluation(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		count int

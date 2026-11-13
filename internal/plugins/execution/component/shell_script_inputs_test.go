@@ -10,6 +10,7 @@ import (
 )
 
 func TestPreparedScriptsRejectForeignReference(t *testing.T) {
+	t.Parallel()
 	called := false
 	scope := shellScriptInputScope{prepare: func(context.Context, checkinputs.OccurrenceID, *string) (*checkinputs.ShellScriptInput, error) {
 		called = true
@@ -28,8 +29,10 @@ func TestPreparedScriptsRejectForeignReference(t *testing.T) {
 }
 
 func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
+	t.Parallel()
 	for _, invoked := range []bool{false, true} {
 		t.Run(map[bool]string{false: "declared", true: "invoked"}[invoked], func(t *testing.T) {
+			t.Parallel()
 			script := checkinputs.Script{
 				Text: "echo ${{ inputs.name }}", Shell: "bash",
 				Occurrence: checkinputs.ScriptOccurrence{ID: "run", Kind: checkinputs.RunScript},
@@ -59,6 +62,7 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 }
 
 func TestStandaloneAnalyzerUsesExplicitShellScriptInputBuilder(t *testing.T) {
+	t.Parallel()
 	script := checkinputs.Script{Occurrence: checkinputs.ScriptOccurrence{ID: "run", Kind: checkinputs.RunScript}}
 	input := checkinputs.Input{Scripts: []checkinputs.Script{script}, BuildShellScriptInput: func(context.Context, checkinputs.OccurrenceID, *string) (*checkinputs.ShellScriptInput, error) {
 		return &checkinputs.ShellScriptInput{Text: "custom input"}, nil
@@ -72,6 +76,7 @@ func TestStandaloneAnalyzerUsesExplicitShellScriptInputBuilder(t *testing.T) {
 }
 
 func TestPreparationScopeExcludesUnselectedAndNonRunOccurrences(t *testing.T) {
+	t.Parallel()
 	selected := checkinputs.Script{Occurrence: checkinputs.ScriptOccurrence{ID: "selected", Kind: checkinputs.RunScript}}
 	action := checkinputs.ActionInput{Occurrence: checkinputs.ScriptOccurrence{ID: "action-input", Kind: checkinputs.ActionInputScript}}
 	calls := 0
