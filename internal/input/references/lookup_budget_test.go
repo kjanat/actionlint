@@ -156,3 +156,30 @@ func TestLookupBudgetWaitAfterExpiryDoesNotRestartTimer(t *testing.T) {
 		}
 	})
 }
+
+func TestLookupBudgetExpiresBeforeWaitWithDelayedCallback(t *testing.T) {
+	t.Parallel()
+	for _, elapsed := range []time.Duration{time.Second, 2 * time.Second} {
+		t.Run(elapsed.String(), func(t *testing.T) {
+			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				ctx, stop := StartLookupBudget(t.Context(), time.Second)
+				defer stop()
+				budget := ctx.Value(lookupBudgetKey{}).(*lookupBudget)
+				budget.timer.Stop()
+				generation := budget.generation
+				time.Sleep(elapsed)
+				err := WaitOutsideLookupBudget(ctx, func() error {
+					if !errors.Is(context.Cause(ctx), ErrLookupBudgetExhausted) {
+						t.Errorf("wait began with cancellation cause %v, want exhausted budget", context.Cause(ctx))
+					}
+					budget.expire(generation)
+					return ctx.Err()
+				})
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("wait returned %v, want cancellation", err)
+				}
+			})
+		})
+	}
+}

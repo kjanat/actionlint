@@ -45,8 +45,7 @@ func (b *lookupBudget) stop(cause error) {
 	b.cancel(cause)
 }
 
-// The caller holds mu. Each timer gets a generation so an expired callback
-// cannot cancel a lookup after pause has stopped that timer.
+// arm starts a timer for the remaining lookup time. The caller must hold mu.
 func (b *lookupBudget) arm() {
 	b.resumed = time.Now()
 	b.generation++
@@ -81,6 +80,10 @@ func (b *lookupBudget) pause() {
 		b.timer.Stop()
 		b.generation++
 		b.remaining -= time.Since(b.resumed)
+		if b.remaining <= 0 && !b.stopped {
+			b.stopped = true
+			b.cancel(ErrLookupBudgetExhausted)
+		}
 	}
 	b.waiting++
 }
