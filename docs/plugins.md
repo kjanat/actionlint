@@ -53,20 +53,20 @@ are specified alongside WIT. Check operation 2 carries the same template-effect 
 
 ## Install from the registry
 
-Install the example integrations by name:
+Install ShellCheck, Ruff or Shuck by name:
 
 ```sh
-actionlint plugin install yamllint
-actionlint check --allow-config-processes .github
+actionlint plugin install shellcheck
+actionlint check .github
 ```
 
-The registry also provides `zizmor`, `poutine`, `runner-guard`, `syft`, `grype`,
-`grant`, `psscriptanalyzer`, `trailing-space` and `shuck`. The external-linter
-examples need Node and their scanner on `PATH`. PSScriptAnalyzer needs Node,
-PowerShell and the PSScriptAnalyzer module. The trailing-space example needs
-Node. Shuck includes its scanner in WebAssembly. Enable its nursery rule with `--experimental` or an
-explicit `lint.rules.correctness.shuck` setting. The trailing-space example is
-also a nursery rule.
+Shuck includes its scanner in WebAssembly. Enable its nursery rule with
+`--experimental` or `lint.rules.correctness.shuck`.
+
+The `zizmor`, `poutine`, `runner-guard`, `syft`, `grype`, `grant`, `yamllint`,
+`psscriptanalyzer` and `trailing-space` examples are not published in the registry.
+The external-linter examples need Node and their scanner on `PATH`.
+PSScriptAnalyzer also needs PowerShell and the PSScriptAnalyzer module.
 
 ### Install a preview or CDN artifact
 
