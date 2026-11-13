@@ -1,6 +1,7 @@
 package git
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ func TestMain(m *testing.M) {
 			}
 			fmt.Fprintln(os.Stdout, child.Process.Pid)
 		case "pipe-holder":
-			time.Sleep(3 * time.Second)
+			time.Sleep(time.Minute)
 		case "stall":
 			fmt.Fprint(os.Stdout, "ready")
 			time.Sleep(time.Minute)
@@ -43,6 +44,32 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
+}
+
+type slowOutputWriter struct {
+	output bytes.Buffer
+}
+
+func (w *slowOutputWriter) Write(p []byte) (int, error) {
+	time.Sleep(1500 * time.Millisecond)
+	return w.output.Write(p)
+}
+
+func TestCommandAllowsOutputDrainingAfterExit(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ACTIONLINT_GIT_COMMAND_HELPER", "success")
+	command := Command(t.Context(), executable, t.TempDir())
+	var output slowOutputWriter
+	command.Stdout = &output
+	if err := command.Run(); err != nil {
+		t.Fatalf("successful process failed while draining output: %v", err)
+	}
+	if output.output.String() != "output" {
+		t.Fatalf("got stdout %q, want output", output.output.String())
+	}
 }
 
 func TestCommandBoundsInheritedPipes(t *testing.T) {
