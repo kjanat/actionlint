@@ -911,6 +911,8 @@
               "properties": {
                 "fail-on-all": {
                   "title": "fail-on-all",
+                  "description": "Makes every enabled dependency finding count toward exit status 1.",
+                  "markdownDescription": "Makes every enabled dependency finding count toward exit status 1.",
                   "oneOf": [
                     {
                       "default": false,
@@ -923,6 +925,8 @@
                 },
                 "fail-on-categories": {
                   "title": "fail-on-categories",
+                  "description": "Selects rule categories whose dependency findings fail the check.",
+                  "markdownDescription": "Selects rule categories whose dependency findings fail the check.",
                   "oneOf": [
                     {
                       "type": "array",
@@ -943,6 +947,8 @@
                 },
                 "fail-on-rules": {
                   "title": "fail-on-rules",
+                  "description": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
+                  "markdownDescription": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
                   "oneOf": [
                     {
                       "type": "array",
@@ -2653,6 +2659,8 @@
                         "properties": {
                           "fail-on-all": {
                             "title": "fail-on-all",
+                            "description": "Makes every enabled dependency finding count toward exit status 1.",
+                            "markdownDescription": "Makes every enabled dependency finding count toward exit status 1.",
                             "oneOf": [
                               {
                                 "default": false,
@@ -2665,6 +2673,8 @@
                           },
                           "fail-on-categories": {
                             "title": "fail-on-categories",
+                            "description": "Selects rule categories whose dependency findings fail the check.",
+                            "markdownDescription": "Selects rule categories whose dependency findings fail the check.",
                             "oneOf": [
                               {
                                 "type": "array",
@@ -2685,6 +2695,8 @@
                           },
                           "fail-on-rules": {
                             "title": "fail-on-rules",
+                            "description": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
+                            "markdownDescription": "Accepts rule names and rule/code pairs, such as shellcheck/SC2086.",
                             "oneOf": [
                               {
                                 "type": "array",

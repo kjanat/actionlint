@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestRepositoryActionMetadata(t *testing.T) {
@@ -52,6 +53,22 @@ jobs:
 permissions: {}
 `, tc.ref, inputs, output)
 					findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "repository: {runners: []}\ntools: {shellcheck: false, ruff: false}", options)
+					var callerFindings []results.Diagnostic
+					dependencyCount := 0
+					for _, diagnostic := range findings {
+						if diagnostic.Path == "test.yaml" {
+							callerFindings = append(callerFindings, diagnostic)
+							continue
+						}
+						dependencyCount++
+						if tc.ref != "kjanat/beepboop/actions/credentials@master" || diagnostic.Rule != "script-interpolation" || !diagnostic.NonBlocking {
+							t.Fatalf("unexpected dependency finding: %+v", diagnostic)
+						}
+					}
+					if tc.ref == "kjanat/beepboop/actions/credentials@master" && dependencyCount != 1 {
+						t.Fatalf("want one interpolation finding in the captured Beepboop action, got %d", dependencyCount)
+					}
+					findings = callerFindings
 					if mutation == "valid" || mutation == "output" && !tc.closedOutputs {
 						if len(findings) != 0 {
 							t.Fatalf("valid action invocation rejected: %v", findings)
