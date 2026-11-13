@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
@@ -59,9 +60,10 @@ func (p *Plugin) NewSession() references.Resolver {
 }
 
 type pendingReferenceResolution struct {
-	done   chan struct{}
-	result references.Result
-	err    error
+	done      chan struct{}
+	result    references.Result
+	err       error
+	abandoned bool
 }
 
 type referenceResolverSession struct {
@@ -72,24 +74,32 @@ type referenceResolverSession struct {
 }
 
 func (s *referenceResolverSession) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
-	if err := ctx.Err(); err != nil {
-		return references.Result{}, err
-	}
-	s.mu.Lock()
-	if result, ok := s.cache[request]; ok {
+	for {
+		if err := ctx.Err(); err != nil {
+			return references.Result{}, err
+		}
+		s.mu.Lock()
+		if result, ok := s.cache[request]; ok {
+			s.mu.Unlock()
+			accounting.RecordResolverCall(ctx, nil, true)
+			return result.Clone(), nil
+		}
+		pending, ok := s.pending[request]
+		if !ok {
+			break
+		}
 		s.mu.Unlock()
-		accounting.RecordResolverCall(ctx, nil, true)
-		return result.Clone(), nil
-	}
-	if pending, ok := s.pending[request]; ok {
-		s.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return references.Result{}, ctx.Err()
-		case <-pending.done:
-			if err := ctx.Err(); err != nil {
-				return references.Result{}, err
+		if err := references.WaitOutsideLookupBudget(ctx, func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-pending.done:
+				return ctx.Err()
 			}
+		}); err != nil {
+			return references.Result{}, err
+		}
+		if !pending.abandoned {
 			accounting.RecordResolverCall(ctx, nil, true)
 			return pending.result.Clone(), pending.err
 		}
@@ -102,7 +112,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 	s.mu.Unlock()
 	result, err := s.resolver.Resolve(ctx, request)
 	s.mu.Lock()
-	pending.result, pending.err = result.Clone(), err
+	pending.result, pending.err, pending.abandoned = result.Clone(), err, err != nil && ctx.Err() != nil
 	if err == nil {
 		if s.cache == nil {
 			s.cache = make(map[references.Request]references.Result)
@@ -162,7 +172,8 @@ func (r *repositoryObjects) open(ctx context.Context, name string, expectedID re
 		return repository.Identity{}, r.fail(errors.New("repository lookup can be opened once during reference resolution"))
 	}
 	r.opened = true
-	if name != r.request.Repository || expectedID.IsSome != (r.request.ExpectedRepositoryID != 0) || expectedID.IsSome && expectedID.Value != r.request.ExpectedRepositoryID {
+	expected, hasExpected := r.request.ExpectedRepositoryID.Value()
+	if name != r.request.Repository || expectedID.IsSome != hasExpected || hasExpected && expectedID.Value != expected {
 		return repository.Identity{}, r.fail(errors.New("repository lookup does not match the resolution request"))
 	}
 	if r.access == nil {
@@ -176,7 +187,7 @@ func (r *repositoryObjects) open(ctx context.Context, name string, expectedID re
 		return repository.Identity{}, r.fail(errors.New("repository access returned no lookup"))
 	}
 	identity := session.Repository()
-	if identity.ID == 0 || !strings.EqualFold(identity.Name, r.request.Repository) || r.request.ExpectedRepositoryID != 0 && identity.ID != r.request.ExpectedRepositoryID {
+	if !strings.EqualFold(identity.Name, r.request.Repository) || identity.ID.Conflicts(r.request.ExpectedRepositoryID) {
 		return repository.Identity{}, r.fail(errors.New("repository lookup returned a different repository"))
 	}
 	r.session, r.identity = session, identity
@@ -189,7 +200,7 @@ func (r *repositoryObjects) Open(ctx context.Context, name string, expectedID re
 	if err != nil {
 		return repositorybind.ResultRepositoryStringErr{Value: r.fail(err).Error()}, nil
 	}
-	return repositorybind.ResultRepositoryStringOk{Value: repositorybind.Repository{Host: identity.Host, ID: identity.ID, Name: identity.Name, ObservedAt: identity.ObservedAt}}, nil
+	return repositorybind.ResultRepositoryStringOk{Value: repositorybind.Repository{Host: identity.Host, ID: lowerRepositoryID(identity.ID), Name: identity.Name, ObservedAt: identity.ObservedAt}}, nil
 }
 
 func (r *repositoryObjects) GetRef(ctx context.Context, name string) (repositorybind.ResultOptionStringString, error) {
@@ -320,6 +331,13 @@ func (r *repositoryObjects) validate(result references.Result) error {
 	return nil
 }
 
+func lowerRepositoryID(id repositoryid.ID) repositorybind.OptionU64 {
+	if value, known := id.Value(); known {
+		return repositorybind.SomeU64(value)
+	}
+	return repositorybind.NoneU64()
+}
+
 func fullObjectID(id string) bool {
 	if len(id) != 40 && len(id) != 64 {
 		return false
@@ -346,8 +364,8 @@ func lowerReferenceRequest(request references.Request) (wacogo.Val, error) {
 		return nil, fmt.Errorf("unknown reference consumer %q", request.Kind)
 	}
 	expected := wacogo.ValOptionNone()
-	if request.ExpectedRepositoryID != 0 {
-		expected = wacogo.ValOptionSome(wacogo.ValU64(request.ExpectedRepositoryID))
+	if id, known := request.ExpectedRepositoryID.Value(); known {
+		expected = wacogo.ValOptionSome(wacogo.ValU64(id))
 	}
 	return wacogo.NewValRecord(field("repository", wacogo.ValString(request.Repository)), field("reference", wacogo.ValString(request.Ref)), field("kind", wacogo.NewValEnum(kind)), field("expected-repository-id", expected)), nil
 }
@@ -369,11 +387,19 @@ func liftReferenceResolution(value wacogo.Val) (references.Result, error) {
 		return references.Result{}, err
 	}
 	result := references.Result{Version: 1}
-	identity, ok := record.Field("repository-id").(wacogo.ValU64)
+	identity, ok := record.Field("repository-id").(*wacogo.ValOption)
 	if !ok {
 		return result, liftError{"reference repository ID", record.Field("repository-id")}
 	}
-	result.RepositoryID = uint64(identity)
+	if !identity.IsNone() {
+		value, ok := identity.Val().(wacogo.ValU64)
+		if !ok {
+			return result, liftError{"reference repository ID", identity.Val()}
+		}
+		if result.RepositoryID, err = repositoryid.Known(uint64(value)); err != nil {
+			return result, liftError{"reference repository ID", identity.Val()}
+		}
+	}
 	for name, destination := range map[string]*string{"repository": &result.Repository, "observed-at": &result.ObservedAt, "selected-object": &result.SelectedObject} {
 		if *destination, err = liftString(record, name); err != nil {
 			return result, err

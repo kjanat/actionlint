@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 
 	"github.com/kjanat/wacogo"
@@ -17,7 +18,7 @@ import (
 )
 
 func (p *Plugin) callInterface(ctx context.Context, iface, name string, args ...wacogo.Val) (wacogo.Val, error) {
-	if err := p.gate.Acquire(ctx, 1); err != nil {
+	if err := references.WaitOutsideLookupBudget(ctx, func() error { return p.gate.Acquire(ctx, 1) }); err != nil {
 		return nil, p.failure(ctx, err)
 	}
 	defer p.gate.Release(1)

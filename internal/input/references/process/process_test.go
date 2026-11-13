@@ -16,6 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 func TestResolverProcessHelper(t *testing.T) {
@@ -55,7 +56,18 @@ func TestResolverProcessHelper(t *testing.T) {
 	if json.Unmarshal(data, &request) != nil {
 		os.Exit(5)
 	}
-	result := references.Result{Version: 1, Repository: request.Repository, RepositoryID: 42, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
+	if mode == "zero-repository-id" {
+		fmt.Printf(`{"version":1,"repository_id":0,"repository":%q,"commit":%q,"observed_at":"2026-10-16T00:00:00Z","fetch_log":{}}`, request.Repository, strings.Repeat("a", 40))
+		os.Exit(0)
+	}
+	repositoryID, err := repositoryid.Known(42)
+	if err != nil {
+		os.Exit(9)
+	}
+	if mode == "no-repository-id" {
+		repositoryID = repositoryid.ID{}
+	}
+	result := references.Result{Version: 1, Repository: request.Repository, RepositoryID: repositoryID, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
 	if mode == "wrong-repository" {
 		result.Repository = "other/repository"
 	}
@@ -197,7 +209,7 @@ func TestProcessBoundsAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := references.Request{Version: 1, Repository: "owner/repo", Ref: "main", Kind: "action"}
-	for _, mode := range []string{"ok", "wrong-repository", "tree-and-commit", "oversize", "sleep"} {
+	for _, mode := range []string{"ok", "no-repository-id", "zero-repository-id", "wrong-repository", "tree-and-commit", "oversize", "sleep"} {
 		t.Run(mode, func(t *testing.T) {
 			timeout := 10 * time.Second
 			if mode == "sleep" {
@@ -205,8 +217,11 @@ func TestProcessBoundsAndIdentity(t *testing.T) {
 			}
 			p := NewProcess(executable, []string{"-test.run=^TestResolverProcessHelper$", "--", "--resolver-helper", mode}, timeout)
 			result, err := p.Resolve(t.Context(), request)
-			if (err == nil) != (mode == "ok") {
+			if (err == nil) != (mode == "ok" || mode == "no-repository-id") {
 				t.Fatalf("result=%+v err=%v", result, err)
+			}
+			if err == nil && result.RepositoryID.IsZero() != (mode == "no-repository-id") {
+				t.Fatalf("repository ID = %+v in mode %s", result.RepositoryID, mode)
 			}
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()

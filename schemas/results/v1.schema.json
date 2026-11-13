@@ -164,7 +164,6 @@
             "host",
             "manifest",
             "repository",
-            "repository_id",
             "selected_object"
           ],
           "properties": {
@@ -182,7 +181,6 @@
             "manifest",
             "problems",
             "repository",
-            "repository_id",
             "selected_object"
           ],
           "properties": {

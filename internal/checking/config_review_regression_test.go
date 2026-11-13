@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -21,7 +22,7 @@ import (
 func checkoutManifestProvider(t *testing.T) actions.Provider {
 	t.Helper()
 	const commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	identity, err := actions.NewIdentity("github.com", "actions/checkout", 1, commit, "")
+	identity, err := actions.NewIdentity("github.com", "actions/checkout", repositoryid.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}

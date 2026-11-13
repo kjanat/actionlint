@@ -168,6 +168,25 @@ several repositories, each repository supplies its own lint settings, but its
 `output` section does not change the command's output. `--no-config` disables
 configured reporting too.
 
+## Network
+
+Configure fallback services for remote action and reusable workflow files:
+
+```toml
+[network.metadata-mirrors]
+services                   = ["jsdelivr"]
+allow-unknown-repositories = false
+```
+
+These defaults allow jsDelivr after a raw-file failure only when actionlint has
+established that the repository is public. Other lookups fall back to GitHub REST.
+Use `services = []` to disable metadata mirrors. Set
+`allow-unknown-repositories = true` to allow jsDelivr for repositories whose
+visibility has not been established. That discloses the repository name, commit
+hash and file path to jsDelivr. Known private repositories are always excluded.
+See [metadata mirrors](remote-actions.md#metadata-mirrors) for how actionlint
+determines visibility.
+
 ## File selection
 
 Top-level `files` controls which files are analyzed, independently of lint rule

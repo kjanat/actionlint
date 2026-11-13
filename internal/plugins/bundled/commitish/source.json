@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/kjanat/commitish",
-  "revision": "3e1c8e170c4169d6863205e1613a13914757a16e",
-  "tree": "bc6fcc5af6613e6b10388532daf25fdbfc69cbb7",
+  "revision": "d01b4fa22f49f5e50432286c45517227cfb2709c",
+  "tree": "bb763577bfe5037e27e154cfe4673159e13f8e99",
   "crate": "actionlint-plugin-commitish",
   "target": "wasm32-wasip2",
   "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
   "wasm_tools": "1.263.0",
   "build": "cargo build --locked --release -p actionlint-plugin-commitish --lib --target wasm32-wasip2",
   "strip": "wasm-tools strip target/wasm32-wasip2/release/actionlint_plugin_commitish.wasm -o plugin.wasm",
-  "sha256": "f5c5966a99cff81f020ccf6fe418256eab0557956e41c70e4939685be28072e1"
+  "sha256": "bf9cf76d1343c0d03a9bee40bb62e71e0b6ee8fe0d0c47b33f640e286a26c879"
 }

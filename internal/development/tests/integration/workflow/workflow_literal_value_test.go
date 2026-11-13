@@ -14,6 +14,7 @@ import (
 	sourceref "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
@@ -36,7 +37,7 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), 1, commit, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}

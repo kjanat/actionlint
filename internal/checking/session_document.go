@@ -25,6 +25,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
@@ -42,7 +43,10 @@ import (
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
+	"golang.org/x/sync/errgroup"
 )
+
+const concurrentMetadataLookups = 8
 
 // analysisSession holds invocation resources assembled by the application.
 // The workflow engine receives only prepared passes from the composition service.
@@ -60,7 +64,7 @@ type analysisSession struct {
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
 	workflowNames        *workflownames.Index
-	remoteActions        *actionremote.Service
+	remoteActions        map[references.MirrorAccess]*actionremote.Service
 	repositories         map[string]repository.Snapshot
 	analysisLogger
 	ctx             context.Context
@@ -318,7 +322,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	context.Runners = runners
 	context.Debug = s.debugWriter()
 	context.Repository = host
-	context.RemoteActions = s.remoteActions.Resolved()
+	remoteActions := s.remoteActions[cfg.MetadataMirrorAccess()]
+	context.RemoteActions = remoteActions.Resolved()
 	if s.gitModes != nil {
 		context.Index = s.gitModes.load
 	}
@@ -358,15 +363,18 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		SourceSnapshots: s.snapshots,
 		PrepareSource: func(snapshot parsing.SourceSnapshot) error {
 			_, dependencies := snapshot.Declarations()
+			var lookups errgroup.Group
+			lookups.SetLimit(concurrentMetadataLookups)
 			for _, dependency := range dependencies {
 				if dependency.Kind != "action" {
 					continue
 				}
-				if _, err := s.remoteActions.Inspect(s.ctx, dependency.Uses); err != nil {
+				lookups.Go(func() error {
+					_, err := remoteActions.Inspect(s.ctx, dependency.Uses)
 					return err
-				}
+				})
 			}
-			return nil
+			return lookups.Wait()
 		},
 		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,

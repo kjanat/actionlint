@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +22,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	"golang.org/x/sync/semaphore"
 )
 
 type Mode string
@@ -41,6 +42,7 @@ type Options struct {
 	Token     string
 	Resolver  func() references.Resolver
 	Transport http.RoundTripper
+	Mirrors   references.MirrorAccess
 }
 
 type GitHub struct {
@@ -48,14 +50,22 @@ type GitHub struct {
 	cacheDir, token string
 	resolver        func() references.Resolver
 	client          *http.Client
+	listings        *refListings
+	requests        *semaphore.Weighted
+	mirrors         references.MirrorAccess
 }
 
 const (
-	maxBody  = 1 << 20
-	maxCache = 8 << 20
+	maxBody             = 1 << 20
+	maxCache            = 8 << 20
+	concurrentTransfers = 16
+	lookupBudget        = 30 * time.Second
 )
 
 func New(options Options) (*GitHub, error) {
+	if options.Mirrors > references.NoMirrors {
+		return nil, errors.New("invalid metadata mirror access")
+	}
 	if options.Mode == "" {
 		options.Mode = Online
 	}
@@ -68,7 +78,7 @@ func New(options Options) (*GitHub, error) {
 	return &GitHub{mode: options.Mode, cacheDir: options.CacheDir, token: options.Token, resolver: options.Resolver, client: &http.Client{
 		Transport: accounting.TrackHTTPRequests(options.Transport), Timeout: 15 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}}, nil
+	}, listings: newRefListings(), requests: semaphore.NewWeighted(concurrentTransfers), mirrors: options.Mirrors}, nil
 }
 
 func fullSHA1(value string) bool {
@@ -122,8 +132,149 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	if !fullSHA1(ref.Ref()) && g.resolver == nil {
 		return unavailableFile(availability.ResolverNotConfigured()), nil
 	}
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	budgeted, stop := references.StartLookupBudget(ctx, lookupBudget)
+	defer stop()
+	var (
+		file repositoryFile
+		err  error
+	)
+	if fullSHA1(ref.Ref()) {
+		file, err = g.lookupCommitFile(budgeted, ref, kind, filenames)
+	} else {
+		file, err = g.lookupNamedFile(budgeted, ref, kind, filenames)
+	}
+	if errors.Is(err, errEnvironment) {
+		file, err = g.lookupFileREST(budgeted, ref, kind, filenames)
+	}
+	if err != nil && ctx.Err() == nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		return unavailableFile(availability.Failed()), nil
+	}
+	return file, err
+}
+
+func (g *GitHub) lookupCommitFile(ctx context.Context, ref actions.Reference, kind string, filenames []string) (repositoryFile, error) {
+	if kind == "workflow" && ref.Ref() != strings.ToLower(ref.Ref()) {
+		return unavailableFile(availability.Failed()), nil
+	}
+	commit := strings.ToLower(ref.Ref())
+	record, exists, err := g.cached(ctx, ref, repositoryid.ID{}, commit, filenames)
+	if err != nil && ctx.Err() != nil {
+		return repositoryFile{}, ctx.Err()
+	}
+	if exists {
+		if file, valid := cachedRepositoryFile(ref, record); valid {
+			return file, nil
+		}
+	}
+	file, err := g.fetchSelectedFile(ctx, ref, kind, filenames, repositoryid.ID{}, commit, commit, actions.ObjectRoute(), time.Now().UTC().Format(time.RFC3339Nano))
+	if err != nil || file.Available() || file.missing.Reason() != availability.InaccessibleReason || g.resolver == nil {
+		return file, err
+	}
+	return g.lookupTagObjectFile(ctx, ref, kind, filenames, commit, file)
+}
+
+// raw.githubusercontent.com serves files only at commit IDs, while GitHub runs
+// actions pinned to an annotated tag object ID.
+func (g *GitHub) lookupTagObjectFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, object string, inaccessible repositoryFile) (repositoryFile, error) {
+	listing, missing, err := g.listings.get(ctx, g, ref.Repository())
+	if err != nil || missing != nil {
+		return unavailable(missing, err)
+	}
+	if _, tag := listing.peeled[object]; !tag {
+		return inaccessible, nil
+	}
+	return g.resolveListedFile(context.WithValue(ctx, rawNotFoundKey{}, true), ref, kind, filenames, listing)
+}
+
+func (g *GitHub) lookupNamedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string) (repositoryFile, error) {
+	listing, missing, err := g.listings.get(ctx, g, ref.Repository())
+	if err != nil || missing != nil {
+		return unavailable(missing, err)
+	}
+	return g.resolveListedFile(ctx, ref, kind, filenames, listing)
+}
+
+func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, listing *refListing) (repositoryFile, error) {
+	resolved, err := g.resolver().Resolve(withRefListing(ctx, listing), references.Request{Version: 1, Repository: ref.Repository(), Ref: ref.Ref(), Kind: kind})
+	if err != nil {
+		return unavailableError(err)
+	}
+	commit, object, route, missing := selectResolution(ref, kind, resolved, repositoryid.ID{})
+	if missing != nil {
+		return unavailableFile(*missing), nil
+	}
+	record, exists, err := g.cached(ctx, ref, resolved.RepositoryID, commit, filenames)
+	if err != nil && ctx.Err() != nil {
+		return repositoryFile{}, ctx.Err()
+	}
+	if exists {
+		id := resolved.RepositoryID
+		if id.IsZero() {
+			id = record.RepositoryID
+		}
+		file, valid := selectedFile(ref, ref.Repository(), kind, id, commit, object, route, resolved.ObservedAt)
+		if !valid {
+			return unavailableFile(availability.Failed()), nil
+		}
+		file.filename, file.content = record.Filename, record.Content
+		if err := g.store(ctx, file); err != nil && ctx.Err() != nil {
+			return repositoryFile{}, ctx.Err()
+		}
+		return file, nil
+	}
+	return g.fetchSelectedFile(ctx, ref, kind, filenames, resolved.RepositoryID, commit, object, route, resolved.ObservedAt)
+}
+
+func selectResolution(ref actions.Reference, kind string, resolved references.Result, learned repositoryid.ID) (string, string, actions.Route, *availability.Unavailability) {
+	invalid := availability.InvalidResolverResult()
+	if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID.Conflicts(learned) || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.FetchLog) == 0 {
+		return "", "", actions.Route{}, &invalid
+	}
+	route := actions.ObjectRoute()
+	if kind == "action" {
+		if !fullSHA1(resolved.SelectedObject) {
+			return "", "", actions.Route{}, &invalid
+		}
+		if resolved.SelectedRef != "" || !strings.EqualFold(ref.Ref(), resolved.SelectedObject) {
+			var err error
+			if route, err = actions.RefRoute(resolved.SelectedRef); err != nil {
+				return "", "", actions.Route{}, &invalid
+			}
+		}
+	}
+	return resolved.Commit, resolved.SelectedObject, route, nil
+}
+
+func selectedFile(ref actions.Reference, repository, kind string, id repositoryid.ID, commit, object string, route actions.Route, observed string) (repositoryFile, bool) {
+	identity, err := actions.NewIdentity(ref.Host(), repository, id, commit, ref.Directory())
+	if err == nil && kind != "action" {
+		return repositoryFile{reference: ref, identity: identity, observedAt: observed}, true
+	}
+	if err == nil {
+		if selection, err := actions.NewSelection(ref, identity, object, route, observed); err == nil {
+			return repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: observed}, true
+		}
+	}
+	return repositoryFile{}, false
+}
+
+func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, kind string, filenames []string, id repositoryid.ID, commit, object string, route actions.Route, observed string) (repositoryFile, error) {
+	filename, content, missing, err := g.fetchRawFile(ctx, ref, commit, kind, filenames)
+	if err != nil || missing != nil {
+		return unavailable(missing, err)
+	}
+	file, valid := selectedFile(ref, ref.Repository(), kind, id, commit, object, route, observed)
+	if !valid {
+		return unavailableFile(availability.Failed()), nil
+	}
+	file.filename, file.content = filename, content
+	if err := g.store(ctx, file); err != nil && ctx.Err() != nil {
+		return repositoryFile{}, ctx.Err()
+	}
+	return file, nil
+}
+
+func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind string, filenames []string) (repositoryFile, error) {
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: kind + "-metadata", Priority: accounting.Enrichment, RequestKind: accounting.REST, QuotaPool: "core"})
 	if session := accounting.RequestTrackerFromContext(ctx); session != nil {
 		request, err := g.request(ctx, repositoryURL(ref), false)
@@ -133,11 +284,11 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 		if err := session.LoadGitHubRateLimits(ctx, g.client, request); err != nil {
 			return repositoryFile{}, err
 		}
-		if err := session.CheckBatchQuota(request, 1); err != nil {
-			return unavailableFile(availability.Limit()), nil
+		if missing, err := admitBatch(ctx, session, request, 1); err != nil || missing != nil {
+			return unavailable(missing, err)
 		}
 	}
-	repo, missing, err := g.repository(ctx, ref)
+	repoID, repoName, missing, err := g.repository(ctx, ref)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
@@ -146,42 +297,25 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	route := actions.ObjectRoute()
 	observed := time.Now().UTC().Format(time.RFC3339Nano)
 	if g.resolver != nil {
-		resolved, resolveErr := g.resolver().Resolve(ctx, references.Request{Version: 1, Repository: ref.Repository(), Ref: ref.Ref(), Kind: kind, ExpectedRepositoryID: repo.ID})
+		resolved, resolveErr := g.resolver().Resolve(ctx, references.Request{Version: 1, Repository: ref.Repository(), Ref: ref.Ref(), Kind: kind, ExpectedRepositoryID: repoID})
 		if resolveErr != nil {
 			return unavailableError(resolveErr)
 		}
-		if resolved.Version != 1 || resolved.Error != "" || resolved.RepositoryID != repo.ID || !strings.EqualFold(resolved.Repository, ref.Repository()) || !fullSHA1(resolved.Commit) || resolved.Tree != "" || resolved.ObservedAt == "" || len(resolved.FetchLog) == 0 {
-			return unavailableFile(availability.InvalidResolverResult()), nil
+		var invalid *availability.Unavailability
+		if commit, object, route, invalid = selectResolution(ref, kind, resolved, repoID); invalid != nil {
+			return unavailableFile(*invalid), nil
 		}
-		if kind == "action" {
-			if !fullSHA1(resolved.SelectedObject) {
-				return unavailableFile(availability.InvalidResolverResult()), nil
-			}
-			if resolved.SelectedRef == "" && strings.EqualFold(ref.Ref(), resolved.SelectedObject) {
-				route = actions.ObjectRoute()
-			} else {
-				route, err = actions.RefRoute(resolved.SelectedRef)
-				if err != nil {
-					return unavailableFile(availability.InvalidResolverResult()), nil
-				}
-			}
-		}
-		commit, object, observed = resolved.Commit, resolved.SelectedObject, resolved.ObservedAt
+		observed = resolved.ObservedAt
 	}
-	identity, err := actions.NewIdentity(ref.Host(), repo.Name, repo.ID, commit, ref.Directory())
-	if err != nil {
+	file, valid := selectedFile(ref, repoName, kind, repoID, commit, object, route, observed)
+	if !valid {
 		return unavailableFile(availability.Failed()), nil
 	}
-	var selection actions.Selection
-	if kind == "action" {
-		selection, err = actions.NewSelection(ref, identity, object, route, observed)
-		if err != nil {
-			return unavailableFile(availability.Failed()), nil
-		}
-	}
-	file := repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: observed}
-	if cached, exists, cacheErr := g.cached(ctx, ref, repo.ID, commit, filenames); cacheErr == nil && exists {
+	if cached, exists, cacheErr := g.cached(ctx, ref, repoID, commit, filenames); cacheErr == nil && exists {
 		file.filename, file.content = cached.Filename, cached.Content
+		if err := g.storeTagObject(ctx, file); err != nil && ctx.Err() != nil {
+			return repositoryFile{}, ctx.Err()
+		}
 		return file, nil
 	}
 	if session := accounting.RequestTrackerFromContext(ctx); session != nil {
@@ -189,18 +323,15 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 		if err != nil {
 			return repositoryFile{}, err
 		}
-		if err := session.CheckBatchQuota(request, uint64(2+len(filenames))); err != nil {
-			return unavailableFile(availability.Limit()), nil
+		if missing, err := admitBatch(ctx, session, request, uint64(2+len(filenames))); err != nil || missing != nil {
+			return unavailable(missing, err)
 		}
-	}
-	var objectResponse struct {
-		SHA string `json:"sha"`
 	}
 	objectBytes, missing, err := g.get(ctx, repositoryURL(ref)+"/git/commits/"+commit, false)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
-	if json.Unmarshal(objectBytes, &objectResponse) != nil || !strings.EqualFold(objectResponse.SHA, commit) {
+	if !strings.EqualFold(commitObjectSHA(objectBytes), commit) {
 		return unavailableFile(availability.Failed()), nil
 	}
 	filename := filenames[0]
@@ -217,11 +348,11 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	}
 	// Recheck the repository guard after name-addressed acquisition. This is an
 	// observation, not a proof of uninterrupted ownership or runner execution.
-	after, missing, err := g.repository(ctx, ref)
+	afterID, afterName, missing, err := g.repository(ctx, ref)
 	if err != nil || missing != nil {
 		return unavailable(missing, err)
 	}
-	if after.ID != repo.ID || !strings.EqualFold(after.Name, repo.Name) {
+	if afterID != repoID || !strings.EqualFold(afterName, repoName) {
 		return unavailableFile(availability.Failed()), nil
 	}
 	file.filename, file.content = filename, string(content)
@@ -234,19 +365,49 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	return file, nil
 }
 
-type repositoryIdentity struct {
-	ID   uint64 `json:"id"`
-	Name string `json:"full_name"`
+func admitBatch(ctx context.Context, session *accounting.RequestTracker, request *http.Request, units uint64) (*availability.Unavailability, error) {
+	err := session.CheckBatchQuota(request, units)
+	switch {
+	case err == nil:
+		return nil, nil
+	case ctx.Err() != nil:
+		return nil, ctx.Err()
+	case errors.Is(err, accounting.ErrBudget) || errors.Is(err, accounting.ErrRateLimited):
+		reason := availability.Limit()
+		return &reason, nil
+	}
+	reason := availability.Failed()
+	return &reason, nil
 }
 
-func (g *GitHub) repository(ctx context.Context, ref actions.Reference) (repositoryIdentity, *availability.Unavailability, error) {
-	var repo repositoryIdentity
-	content, missing, err := g.get(ctx, repositoryURL(ref), false)
-	if err == nil && missing == nil && (json.Unmarshal(content, &repo) != nil || repo.ID == 0 || !strings.EqualFold(repo.Name, ref.Repository())) {
-		reason := availability.Failed()
-		missing = &reason
+func commitObjectSHA(content []byte) string {
+	var object struct {
+		SHA string `json:"sha"`
 	}
-	return repo, missing, err
+	if json.Unmarshal(content, &object) == nil {
+		return object.SHA
+	}
+	return ""
+}
+
+func (g *GitHub) repository(ctx context.Context, ref actions.Reference) (repositoryid.ID, string, *availability.Unavailability, error) {
+	content, missing, err := g.get(ctx, repositoryURL(ref), false)
+	if err != nil || missing != nil {
+		return repositoryid.ID{}, "", missing, err
+	}
+	var repo struct {
+		ID      uint64 `json:"id"`
+		Name    string `json:"full_name"`
+		Private *bool  `json:"private"`
+	}
+	if json.Unmarshal(content, &repo) == nil && strings.EqualFold(repo.Name, ref.Repository()) {
+		if id, err := repositoryid.Known(repo.ID); err == nil {
+			g.listings.observeVisibility(repo.Name, repo.Private)
+			return id, repo.Name, nil, nil
+		}
+	}
+	failed := availability.Failed()
+	return repositoryid.ID{}, "", &failed, nil
 }
 
 func repositoryURL(ref actions.Reference) string {
@@ -293,7 +454,7 @@ func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *av
 	if err != nil {
 		return nil, nil, err
 	}
-	response, err := g.client.Do(request)
+	response, err := g.exchange(ctx, request, maxBody)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, ctx.Err()
@@ -304,13 +465,12 @@ func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *av
 		}
 		return nil, &reason, nil
 	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
+	if response.status != http.StatusOK {
 		reason := availability.Failed()
-		switch response.StatusCode {
+		switch response.status {
 		case http.StatusUnauthorized, http.StatusForbidden:
 			reason = availability.Denied()
-			if response.StatusCode == http.StatusForbidden && (response.Header.Get("X-RateLimit-Remaining") == "0" || response.Header.Get("Retry-After") != "") {
+			if response.status == http.StatusForbidden && (response.header.Get("X-RateLimit-Remaining") == "0" || response.header.Get("Retry-After") != "") {
 				reason = availability.Limit()
 			}
 		case http.StatusNotFound:
@@ -320,19 +480,11 @@ func (g *GitHub) get(ctx context.Context, address string, raw bool) ([]byte, *av
 		}
 		return nil, &reason, nil
 	}
-	content, err := io.ReadAll(io.LimitReader(response.Body, maxBody+1))
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, ctx.Err()
-		}
-		reason := availability.Failed()
-		return nil, &reason, nil
-	}
-	if len(content) > maxBody {
+	if len(response.body) > maxBody {
 		reason := availability.Limit()
 		return nil, &reason, nil
 	}
-	return content, nil, nil
+	return response.body, nil, nil
 }
 
 func unavailable(missing *availability.Unavailability, err error) (repositoryFile, error) {
@@ -356,17 +508,23 @@ func unavailableError(err error) (repositoryFile, error) {
 }
 
 type cacheRecord struct {
-	Version      int    `json:"version"`
-	Host         string `json:"host"`
-	Repository   string `json:"repository"`
-	RepositoryID uint64 `json:"repository_id"`
-	Commit       string `json:"commit"`
-	Directory    string `json:"directory"`
-	ObservedAt   string `json:"observed_at"`
-	Filename     string `json:"filename"`
-	Content      string `json:"content"`
-	SHA256       string `json:"sha256"`
+	Version      int             `json:"version"`
+	Host         string          `json:"host"`
+	Repository   string          `json:"repository"`
+	RepositoryID repositoryid.ID `json:"repository_id,omitzero"`
+	Commit       string          `json:"commit"`
+	TagObject    string          `json:"tag_object,omitzero"`
+	Directory    string          `json:"directory"`
+	ObservedAt   string          `json:"observed_at"`
+	Filename     string          `json:"filename"`
+	Content      string          `json:"content"`
+	SHA256       string          `json:"sha256"`
 }
+
+const (
+	cacheVersion  = 2
+	cacheFilename = "metadata.json"
+)
 
 func digest(value string) string {
 	sum := sha256.Sum256([]byte(value))
@@ -377,7 +535,7 @@ func (g *GitHub) bucket(ref actions.Reference, commit string) string {
 	return filepath.Join(g.cacheDir, digest(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+strings.ToLower(commit)+"\x00"+ref.Directory()))
 }
 
-func (g *GitHub) cached(ctx context.Context, ref actions.Reference, id uint64, commit string, filenames []string) (cacheRecord, bool, error) {
+func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repositoryid.ID, object string, filenames []string) (cacheRecord, bool, error) {
 	if g.cacheDir == "" {
 		return cacheRecord{}, false, nil
 	}
@@ -385,7 +543,7 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, id uint64, c
 		return cacheRecord{}, false, err
 	}
 	reader := files.New(ctx, nil, nil)
-	file, err := reader.Open(filepath.Join(g.bucket(ref, commit), strconv.FormatUint(id, 10)+".json"))
+	file, err := reader.Open(filepath.Join(g.bucket(ref, object), cacheFilename))
 	if errors.Is(err, os.ErrNotExist) {
 		return cacheRecord{}, false, nil
 	}
@@ -398,7 +556,7 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, id uint64, c
 		return cacheRecord{}, false, err
 	}
 	var record cacheRecord
-	if len(content) > maxCache || json.Unmarshal(content, &record) != nil || record.Version != 1 || record.Host != ref.Host() || !strings.EqualFold(record.Repository, ref.Repository()) || record.RepositoryID != id || !strings.EqualFold(record.Commit, commit) || record.Directory != ref.Directory() || record.SHA256 != digest(record.Content) || len(record.Content) > maxBody || !slices.Contains(filenames, record.Filename) {
+	if len(content) > maxCache || json.Unmarshal(content, &record) != nil || record.Version != cacheVersion || record.Host != ref.Host() || !strings.EqualFold(record.Repository, ref.Repository()) || record.RepositoryID.Conflicts(learned) || !record.selectedBy(object) || record.Directory != ref.Directory() || record.SHA256 != digest(record.Content) || len(record.Content) > maxBody || !slices.Contains(filenames, record.Filename) {
 		return cacheRecord{}, false, errors.New("invalid repository metadata cache record")
 	}
 	if _, err := time.Parse(time.RFC3339Nano, record.ObservedAt); err != nil {
@@ -410,51 +568,18 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, id uint64, c
 	return record, true, nil
 }
 
+func (r cacheRecord) selectedBy(object string) bool {
+	if r.TagObject == "" {
+		return strings.EqualFold(r.Commit, object)
+	}
+	return strings.EqualFold(r.TagObject, object) && fullSHA1(r.Commit) && !strings.EqualFold(r.Commit, object)
+}
+
 func (g *GitHub) offline(ctx context.Context, ref actions.Reference, filenames []string) (repositoryFile, error) {
 	if g.cacheDir == "" {
 		return unavailableFile(availability.CacheMiss()), nil
 	}
-	reader := files.New(ctx, nil, nil)
-	bucket := g.bucket(ref, ref.Ref())
-	directory, err := reader.Open(bucket)
-	if errors.Is(err, os.ErrNotExist) {
-		return unavailableFile(availability.CacheMiss()), nil
-	}
-	if err != nil {
-		return unavailableFile(availability.Failed()), nil
-	}
-	defer directory.Close()
-	// A bucket contains one repository-ID record. Bound enumeration too;
-	// ambiguous identities or excessive debris must not choose an arbitrary hit.
-	entries, err := directory.ReadDir(3)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return unavailableFile(availability.Failed()), nil
-	}
-	if err := ctx.Err(); err != nil {
-		return repositoryFile{}, err
-	}
-	if len(entries) == 3 {
-		return unavailableFile(availability.Failed()), nil
-	}
-	var id uint64
-	for _, entry := range entries {
-		name, ok := strings.CutSuffix(entry.Name(), ".json")
-		if !ok || entry.IsDir() {
-			continue
-		}
-		parsed, err := strconv.ParseUint(name, 10, 64)
-		if err != nil || parsed == 0 {
-			continue
-		}
-		if id != 0 {
-			return unavailableFile(availability.Failed()), nil
-		}
-		id = parsed
-	}
-	if id == 0 {
-		return unavailableFile(availability.CacheMiss()), nil
-	}
-	record, exists, err := g.cached(ctx, ref, id, ref.Ref(), filenames)
+	record, exists, err := g.cached(ctx, ref, repositoryid.ID{}, ref.Ref(), filenames)
 	if err != nil {
 		if ctx.Err() != nil {
 			return repositoryFile{}, ctx.Err()
@@ -464,21 +589,41 @@ func (g *GitHub) offline(ctx context.Context, ref actions.Reference, filenames [
 	if !exists {
 		return unavailableFile(availability.CacheMiss()), nil
 	}
-	identity, err := actions.NewIdentity(record.Host, record.Repository, id, record.Commit, record.Directory)
-	if err != nil {
+	file, valid := cachedRepositoryFile(ref, record)
+	if !valid {
 		return unavailableFile(availability.Failed()), nil
+	}
+	return file, nil
+}
+
+func cachedRepositoryFile(ref actions.Reference, record cacheRecord) (repositoryFile, bool) {
+	identity, err := actions.NewIdentity(record.Host, record.Repository, record.RepositoryID, record.Commit, record.Directory)
+	if err != nil {
+		return repositoryFile{}, false
 	}
 	var selection actions.Selection
 	if record.Filename != "" {
-		selection, err = actions.NewSelection(ref, identity, strings.ToLower(ref.Ref()), actions.ObjectRoute(), record.ObservedAt)
-		if err != nil {
-			return unavailableFile(availability.Failed()), nil
+		if selection, err = actions.NewSelection(ref, identity, strings.ToLower(ref.Ref()), actions.ObjectRoute(), record.ObservedAt); err != nil {
+			return repositoryFile{}, false
 		}
 	}
-	return repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: record.ObservedAt, filename: record.Filename, content: record.Content}, nil
+	return repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: record.ObservedAt, filename: record.Filename, content: record.Content}, true
 }
 
 func (g *GitHub) store(ctx context.Context, manifest repositoryFile) error {
+	err := g.storeAt(ctx, manifest, "")
+	return errors.Join(err, g.storeTagObject(ctx, manifest))
+}
+
+func (g *GitHub) storeTagObject(ctx context.Context, manifest repositoryFile) error {
+	requested := strings.ToLower(manifest.reference.Ref())
+	if fullSHA1(requested) && requested != manifest.Identity().Commit() {
+		return g.storeAt(ctx, manifest, requested)
+	}
+	return nil
+}
+
+func (g *GitHub) storeAt(ctx context.Context, manifest repositoryFile, tagObject string) error {
 	if g.cacheDir == "" {
 		return nil
 	}
@@ -486,12 +631,16 @@ func (g *GitHub) store(ctx context.Context, manifest repositoryFile) error {
 		return err
 	}
 	i := manifest.Identity()
-	record := cacheRecord{Version: 1, Host: i.Host(), Repository: i.Repository(), RepositoryID: i.RepositoryID(), Commit: i.Commit(), Directory: i.Directory(), ObservedAt: manifest.observedAt, Filename: manifest.Filename(), Content: manifest.Content(), SHA256: digest(manifest.Content())}
+	record := cacheRecord{Version: cacheVersion, Host: i.Host(), Repository: i.Repository(), RepositoryID: i.RepositoryID(), Commit: i.Commit(), TagObject: tagObject, Directory: i.Directory(), ObservedAt: manifest.observedAt, Filename: manifest.Filename(), Content: manifest.Content(), SHA256: digest(manifest.Content())}
 	content, err := json.Marshal(record)
 	if err != nil {
 		return err
 	}
-	bucket := g.bucket(manifest.reference, i.Commit())
+	key := i.Commit()
+	if tagObject != "" {
+		key = tagObject
+	}
+	bucket := g.bucket(manifest.reference, key)
 	if err := os.MkdirAll(bucket, 0700); err != nil {
 		return err
 	}
@@ -507,5 +656,5 @@ func (g *GitHub) store(ctx context.Context, manifest repositoryFile) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return os.Rename(file.Name(), filepath.Join(bucket, strconv.FormatUint(i.RepositoryID(), 10)+".json"))
+	return os.Rename(file.Name(), filepath.Join(bucket, cacheFilename))
 }

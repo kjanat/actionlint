@@ -28,6 +28,49 @@ import (
 
 const shellcheckSchemaPath = "schemas/shellcheck/0.11.0.schema.json"
 
+func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
+	var root any
+	if err := json.Unmarshal(generatedSchema(t), &root); err != nil {
+		t.Fatal(err)
+	}
+	const base = "file:///offline/actionlint.schema.json"
+	compiler := validator.NewCompiler()
+	compiler.UseLoader(validator.SchemeURLLoader{})
+	addToolSchemas(t, compiler, base)
+	if err := compiler.AddResource(base, root); err != nil {
+		t.Fatal(err)
+	}
+	schema, err := compiler.Compile(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		input string
+		valid bool
+	}{
+		{`{}`, true},
+		{`{"services":[]}`, true},
+		{`{"services":["jsdelivr"]}`, true},
+		{`{"services":null}`, true},
+		{`{"allow-unknown-repositories":true}`, true},
+		{`{"services":["typo"]}`, false},
+		{`{"services":"jsdelivr"}`, false},
+		{`{"allow-unknown-repositories":"true"}`, false},
+		{`{"allow-unknown-repository":true}`, false},
+	} {
+		data := []byte(`{"network":{"metadata-mirrors":` + tc.input + `}}`)
+		var value any
+		if err := json.Unmarshal(data, &value); err != nil {
+			t.Fatal(err)
+		}
+		_, parseErr := checking.ConfigurationRules().Parse(data)
+		schemaErr := schema.Validate(value)
+		if (parseErr == nil) != tc.valid || (schemaErr == nil) != tc.valid {
+			t.Errorf("%s: want valid=%t, parser=%v, schema=%v", tc.input, tc.valid, parseErr, schemaErr)
+		}
+	}
+}
+
 func TestPermissionLocationsDoNotSuggestBothAsDefault(t *testing.T) {
 	schema := mapYAMLType(reflect.TypeFor[actionlint.PermissionLocationList](), nil)
 	if schema.Default != nil {
