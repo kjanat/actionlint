@@ -1188,7 +1188,16 @@
           "const": true
         },
         "diagnostics": {
-          "maxItems": 0
+          "items": {
+            "required": [
+              "non_blocking"
+            ],
+            "properties": {
+              "non_blocking": {
+                "const": true
+              }
+            }
+          }
         },
         "exit_code": {
           "const": 0
@@ -1204,7 +1213,18 @@
           "const": true
         },
         "diagnostics": {
-          "minItems": 1
+          "contains": {
+            "not": {
+              "required": [
+                "non_blocking"
+              ],
+              "properties": {
+                "non_blocking": {
+                  "const": true
+                }
+              }
+            }
+          }
         },
         "exit_code": {
           "const": 1

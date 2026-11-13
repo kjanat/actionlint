@@ -11,7 +11,7 @@ func SelectLintRules(value any, rules map[string][]string) any {
 	next := make(map[string]any)
 	for key, child := range object {
 		switch key {
-		case "enabled":
+		case "enabled", "dependencies":
 			next[key] = child
 		case "rules":
 			next[key] = selectRuleNode(child, "", rules)

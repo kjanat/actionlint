@@ -82,6 +82,32 @@ test('persisted results validate completion and preserve diagnostic severity and
 	assert.throws(() => parseResult({ ...result, status: 'success', exit_code: 0 }));
 });
 
+test('dependency advice does not turn a successful native check into an Action failure', async () => {
+	const advice = { ...diagnostic, non_blocking: true };
+	const successful = { ...result, status: 'success', exit_code: 0, diagnostics: [advice] };
+	assert.deepEqual(parseResult(successful), successful);
+	assert.throws(() => parseResult({ ...result, diagnostics: [advice] }));
+	assert.throws(() => parseResult({ ...successful, diagnostics: [advice, diagnostic] }));
+	assert.throws(() => parseResult({ ...successful, diagnostics: [{ ...advice, non_blocking: 'true' }] }));
+	const mixed = { ...result, diagnostics: [advice, diagnostic] };
+	assert.deepEqual(parseResult(mixed), mixed);
+	const directory = await mkdtemp(join(tmpdir(), 'actionlint-advice-'));
+	try {
+		const code = await withReporting(
+			{ RUNNER_TEMP: directory, GITHUB_WORKSPACE: directory, INPUT_SUMMARY: 'false' },
+			async (environment) => {
+				assert.ok(environment.ACTIONLINT_ACTION_RESULT);
+				await writeFile(environment.ACTIONLINT_ACTION_RESULT, JSON.stringify(successful));
+				return 0;
+			},
+			captureReporter(),
+		);
+		assert.equal(code, 0);
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
 test('document outlines preserve parse states, nested steps and compatible additions', () => {
 	for (const parseStatus of ['complete', 'partial', 'failed']) {
 		const documents = [{

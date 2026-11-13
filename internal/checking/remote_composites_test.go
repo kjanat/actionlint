@@ -405,3 +405,34 @@ func TestRemoteCompositeAdviceRemainsVisible(t *testing.T) {
 		})
 	}
 }
+
+func TestLocalActionDependencyFailureSettings(t *testing.T) {
+	t.Parallel()
+	for _, override := range []bool{false, true} {
+		t.Run(strconv.FormatBool(override), func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			provider, _ := remoteCompositeProvider(t, map[string]string{
+				"example/action": "name: example\ndescription: example\nruns: {using: composite, steps: [{shell: bash, run: 'echo ${{ github.workspace }}'}]}\n",
+			})
+			config := "lint: {dependencies: {fail-on-all: true}}\n"
+			if override {
+				config += "overrides: [{includes: ['action.yml'], lint: {dependencies: {fail-on-all: false}}}]\n"
+			}
+			cfg, err := ConfigurationRules().Parse([]byte(config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.Source{{
+				Path: "action.yml", Project: workspace.Identity(root), Config: cfg,
+				Content: []byte("name: local\ndescription: local\nruns: {using: composite, steps: [{uses: example/action@v1}]}\n"),
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-interpolation" || result.Diagnostics[0].NonBlocking != override {
+				t.Fatalf("override=%v: unexpected dependency findings %+v", override, result.Diagnostics)
+			}
+		})
+	}
+}
