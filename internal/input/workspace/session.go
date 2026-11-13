@@ -61,8 +61,9 @@ type Options struct {
 
 // Session shares repository and configuration lookups across input selections.
 type Session struct {
-	rules    repoconfig.RuleSet
-	projects *Projects
+	networkPolicy *repoconfig.NetworkPolicy
+	rules         repoconfig.RuleSet
+	projects      *Projects
 	// defaultConfig comes from Options.Config or Options.ConfigFile and
 	// replaces every project's configuration.
 	defaultConfig           *repoconfig.Config
@@ -84,8 +85,13 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	if opts.Config != nil && opts.ConfigFile != "" {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
+	policy, policyErr := repoconfig.LoadNetworkPolicy(ctx, opts.ConfigConnections)
+	if policyErr != nil {
+		return nil, policyErr
+	}
 	a := &Session{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile, opts.ConfigConnections).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	a.defaultConfigProvenance = opts.ConfigProvenance
+	a.networkPolicy = policy
 	a.noIgnore = opts.NoIgnore
 	if a.log == nil {
 		a.log = func(...any) {}
@@ -258,6 +264,9 @@ func (a *Session) Empty() (*Selection, error) {
 	result := &Selection{Sources: []Source{}}
 	inputs := &Inputs{}
 	inputs.Add(a.defaultConfigPath)
+	for _, path := range a.networkPolicy.Files() {
+		inputs.Add(path)
+	}
 	if project != nil || a.defaultConfig != nil {
 		if _, err := a.ConfigForProject(project); err != nil {
 			return nil, err
@@ -390,6 +399,9 @@ func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Select
 		inputs.Add(path)
 	}
 	inputs.Add(a.defaultConfigPath)
+	for _, path := range a.networkPolicy.Files() {
+		inputs.Add(path)
+	}
 	// Keep provenance on the analysis itself, including cached selections when
 	// a library caller reuses this session. Preserve input order across projects.
 	a.configState.Lock()

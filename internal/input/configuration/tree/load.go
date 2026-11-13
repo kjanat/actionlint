@@ -95,7 +95,7 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 				}
 				return Loaded{}, extendsError{origin: path, cause: cause}
 			}
-			mergeOrigins(result.Origins, inherited.Origins, result.Value, inherited.Value, "")
+			MergeOrigins(result.Origins, inherited.Origins, result.Value, inherited.Value)
 			result.Value = merge(result.Value, inherited.Value)
 		}
 		source := map[string]Input{}
@@ -108,7 +108,7 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 			delete(object, "extends")
 			doc.Value = object
 		}
-		mergeOrigins(result.Origins, source, result.Value, doc.Value, "")
+		MergeOrigins(result.Origins, source, result.Value, doc.Value)
 		result.Value = merge(result.Value, doc.Value)
 		cache[path] = result
 		files = append(files, path)
@@ -119,7 +119,12 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 	return result, err
 }
 
-// mergeOrigins updates source locations for values supplied by the overlay.
+// MergeOrigins updates dst to describe Merge(base, value), removing locations
+// for values replaced by the overlay and retaining locations for inherited values.
+func MergeOrigins(dst, src map[string]Input, base, value any) {
+	mergeOrigins(dst, src, base, value, "")
+}
+
 func mergeOrigins(dst, src map[string]Input, base, value any, path string) {
 	if object, ok := value.(map[string]any); ok {
 		old, existed := dst[path]

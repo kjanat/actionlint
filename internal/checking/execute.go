@@ -430,15 +430,15 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if _, exists := session.remoteActions[mirrors]; !exists {
 			actionProvider := request.RemoteActions
 			if configurable, ok := actionProvider.(interface {
-				WithMetadataMirrors(references.MirrorAccess) actionprovider.Provider
+				WithMetadataMirrors(references.MirrorAccess, []string) actionprovider.Provider
 			}); ok {
-				actionProvider = configurable.WithMetadataMirrors(mirrors)
+				actionProvider = configurable.WithMetadataMirrors(mirrors, source.Config.MetadataMirrorExclusions())
 			}
 			workflowProvider := request.RemoteWorkflows
 			if configurable, ok := workflowProvider.(interface {
-				WithWorkflowMetadataMirrors(references.MirrorAccess) workflowinputs.Provider
+				WithWorkflowMetadataMirrors(references.MirrorAccess, []string) workflowinputs.Provider
 			}); ok {
-				workflowProvider = configurable.WithWorkflowMetadataMirrors(mirrors)
+				workflowProvider = configurable.WithWorkflowMetadataMirrors(mirrors, source.Config.MetadataMirrorExclusions())
 			}
 			session.remoteActions[mirrors] = actionremote.New(actionProvider)
 			remoteWorkflows[mirrors] = workflowinputs.NewRemote(workflowProvider)

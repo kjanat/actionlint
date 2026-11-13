@@ -2384,7 +2384,14 @@
                       "title": "allow-unknown-repositories",
                       "description": "Permits sending repository names, commit hashes and file paths to the selected services without first establishing public visibility. Known private repositories are excluded regardless of this setting.",
                       "markdownDescription": "Permits sending repository names, commit hashes and file paths to the selected services without first establishing public visibility. Known private repositories are excluded regardless of this setting.",
-                      "type": "boolean"
+                      "oneOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "services": {
                       "title": "services",

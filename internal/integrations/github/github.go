@@ -46,13 +46,14 @@ type Options struct {
 }
 
 type GitHub struct {
-	mode            Mode
-	cacheDir, token string
-	resolver        func() references.Resolver
-	client          *http.Client
-	listings        *refListings
-	requests        *semaphore.Weighted
-	mirrors         references.MirrorAccess
+	mode                       Mode
+	cacheDir, token            string
+	resolver                   func() references.Resolver
+	client                     *http.Client
+	listings                   *refListings
+	requests                   *semaphore.Weighted
+	mirrors                    references.MirrorAccess
+	excludedMirrorRepositories []string
 }
 
 const (

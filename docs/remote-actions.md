@@ -113,6 +113,10 @@ endpoint](https://docs.github.com/en/rest/git/commits#get-a-commit-object) and
 
 ## Metadata mirrors
 
+[Shared network policies](config.md#shared-defaults-and-restrictions) can exclude
+repositories or prohibit jsDelivr across projects. Actionlint uses GitHub REST
+when a policy prohibits the mirror request.
+
 By default, actionlint uses jsDelivr only for repositories it has established are
 public during this analysis. It learns this from a successful unauthenticated
 Git or raw-file request, or the `private: false` field in a GitHub REST response.

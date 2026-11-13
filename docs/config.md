@@ -187,6 +187,59 @@ hash and file path to jsDelivr. Known private repositories are always excluded.
 See [metadata mirrors](remote-actions.md#metadata-mirrors) for how actionlint
 determines visibility.
 
+### Shared defaults and restrictions
+
+Use a separate `network-policy.toml` to configure metadata mirrors across projects.
+The native CLI and language server read these files in order:
+
+1. `/etc/actionlint/network-policy.toml` on Linux and macOS, or
+   `%ProgramData%\actionlint\network-policy.toml` on Windows.
+2. The user's configuration directory: `$XDG_CONFIG_HOME/actionlint/network-policy.toml`
+   on Linux, with `$HOME/.config` as the default, `$HOME/Library/Application Support/actionlint/network-policy.toml`
+   on macOS, or `%AppData%\actionlint\network-policy.toml` on Windows.
+3. The file path or HTTPS URL in `ACTIONLINT_NETWORK_POLICY`, when set.
+
+The first two files are optional. A missing or unreadable file selected through
+`ACTIONLINT_NETWORK_POLICY` stops the analysis. Invalid policy files also stop it.
+
+```toml
+#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@master/schemas/policy/network.schema.json
+
+extends = ["https://settings.example.com/actionlint/company.toml"]
+
+[defaults.network.metadata-mirrors]
+services                   = ["jsdelivr"]
+allow-unknown-repositories = false
+
+[restrictions.network.metadata-mirrors]
+require-public       = true
+exclude-repositories = [
+  "github.com/company/private-*",
+  "github.com/company/acquisitions"
+]
+```
+
+Projects can override `defaults`. Later policy files override earlier defaults.
+`extends` accepts local files and HTTPS URLs, with relative references resolved
+against the file that contains them. Policy files support TOML, YAML, JSON and JSONC.
+
+Every restriction applies, including those in inherited files. Repository
+exclusions are case-insensitive globs matching `host/owner/repository`.
+An excluded repository uses GitHub REST when the raw-file host fails.
+`require-public = true` forbids sending requests to a mirror for a repository
+whose visibility is unknown. To prohibit jsDelivr entirely, set
+`exclude-services = ["jsdelivr"]` in the restrictions table.
+
+Empty arrays, `false` and `null` cannot remove an inherited restriction.
+If project settings or command-line options violate a restriction, actionlint
+stops and reports which policy file imposed it. Policy files also apply with
+`--no-config`. Store them outside the project to prevent project changes from
+removing the restrictions.
+
+`actionlint config show --origin` shows the file that supplied each mirror
+setting. These policies govern metadata mirrors for remote actions and reusable
+workflows. Plugin downloads and other network requests have separate settings.
+
 ## File selection
 
 Top-level `files` controls which files are analyzed, independently of lint rule

@@ -58,6 +58,12 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 	if err != nil {
 		return nil, err
 	}
+	resolved.Config = cfg
+	resolved, err = a.networkPolicy.Resolve(a.rules, resolved)
+	if err != nil {
+		return nil, fmt.Errorf("configuration %q: %w", report.File, err)
+	}
+	cfg = resolved.Config
 	report.Inspection = configreport.Inspection{Path: report.File, Config: resolved.Values, Origins: resolved.Origins, Warnings: resolved.Warnings}
 	if s.onLoaded == nil {
 		for _, warning := range resolved.Warnings {

@@ -22,12 +22,12 @@ type mirrorProvider struct {
 	access   references.MirrorAccess
 }
 
-func (p mirrorProvider) WithMetadataMirrors(access references.MirrorAccess) actions.Provider {
+func (p mirrorProvider) WithMetadataMirrors(access references.MirrorAccess, _ []string) actions.Provider {
 	p.access = access
 	return p
 }
 
-func (p mirrorProvider) WithWorkflowMetadataMirrors(access references.MirrorAccess) workflows.Provider {
+func (p mirrorProvider) WithWorkflowMetadataMirrors(access references.MirrorAccess, _ []string) workflows.Provider {
 	p.access = access
 	return p
 }

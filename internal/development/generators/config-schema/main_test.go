@@ -55,6 +55,7 @@ func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
 		{`{"services":["jsdelivr"]}`, true},
 		{`{"services":null}`, true},
 		{`{"allow-unknown-repositories":true}`, true},
+		{`{"allow-unknown-repositories":null}`, true},
 		{`{"services":["typo"]}`, false},
 		{`{"services":"jsdelivr"}`, false},
 		{`{"allow-unknown-repositories":"true"}`, false},
@@ -82,9 +83,11 @@ func TestPermissionLocationsDoNotSuggestBothAsDefault(t *testing.T) {
 }
 
 var (
-	repositoryRoot   string
-	generatedRoot    []byte
-	errGeneratedRoot error
+	repositoryRoot     string
+	generatedRoot      []byte
+	errGeneratedRoot   error
+	generatedPolicy    []byte
+	errGeneratedPolicy error
 )
 
 func TestMain(m *testing.M) {
@@ -97,6 +100,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	generatedRoot, errGeneratedRoot = generate()
+	generatedPolicy, errGeneratedPolicy = generateNetworkPolicy()
 	if err := os.Chdir(packageDirectory); err != nil {
 		panic(err)
 	}

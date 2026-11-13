@@ -465,17 +465,19 @@ actionlint config schema
 
 Select an explicit configuration file or use repository discovery in this order:
 `.github/actionlint.yaml`, `.github/actionlint.yml`, `.github/actionlint.json`, `.github/actionlint.jsonc`, then
-`.github/actionlint.toml`. There is no new global
-configuration search or merge policy. `ACTIONLINT_CONFIG` and
+`.github/actionlint.toml`. `ACTIONLINT_CONFIG` and
 `ACTIONLINT_NO_CONFIG` provide selection defaults; explicit config flags override
-both. `--no-config`, `--no-rc` and `--norc` skip configuration loading.
+both. `--no-config`, `--no-rc` and `--norc` skip project configuration loading.
+They still load [shared network policies](config.md#shared-defaults-and-restrictions).
+`ACTIONLINT_NETWORK_POLICY` selects an additional policy file or HTTPS URL.
+Machine and user policy files apply even when that variable selects another file.
 An explicit `check --config` also avoids parsing an
 unselected repository config.
 
 `config path` prints the selected path, or nothing when none is selected. It can
 identify an invalid file without parsing it. `config show` prints effective YAML;
 `--json` returns a document with `path` and `config`. `--origin` adds an `origins`
-map keyed by JSON Pointer. Sources distinguish `default` from `config`, and
+map keyed by JSON Pointer. Sources include `default`, `config` and `policy`, and
 states distinguish missing keys, explicit `null` and explicit values such as
 `false` and `[]`. Config sources include line and column positions. A default
 value does not imply that the user explicitly set it.

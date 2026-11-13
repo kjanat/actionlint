@@ -68,7 +68,11 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		return inspection, err
 	}
 	reader := configsource.New(ctx, nil, acquisition.Connections)
-	return ConfigurationRules().InspectContextWithRegistrations(ctx, selection, origins, reader.ReadFile, rules...)
+	policy, err := config.LoadNetworkPolicy(ctx, acquisition.Connections)
+	if err != nil {
+		return inspection, err
+	}
+	return ConfigurationRules().InspectContextWithRegistrations(ctx, selection, origins, reader.ReadFile, policy, rules...)
 }
 
 // InstalledProviders returns the tool provider manifests among the plugins
