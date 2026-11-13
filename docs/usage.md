@@ -1361,9 +1361,11 @@ for version selection, overrides and offline behavior.
 
 Online metadata lookup uses the bundled Commitish WebAssembly plugin to resolve
 branches and tags from each repository's Git reference list. Actionlint reads
-cached manifests first. When the raw file host cannot answer, it requests the
-file from jsDelivr. It uses the GitHub REST API only when the Git host cannot
-answer or neither file host returns the file. It includes every request in
+cached manifests first. If the raw file host fails, actionlint can request the
+same file from jsDelivr when the mirror settings allow it. By default, the
+repository must be known to be public. Any raw-host `404` prevents a jsDelivr
+request. GitHub REST handles other failed lookups and verifies object types
+that the Git reference listing cannot establish. Actionlint includes every request in
 `--network-stats`. Use
 `--action-metadata=offline` for cached metadata or `--action-metadata=off` to
 skip it.
