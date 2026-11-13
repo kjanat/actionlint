@@ -42,6 +42,20 @@ func (c *DependencyFindings) DecodeConfig(value any) error {
 	return nil
 }
 
+func (c DependencyFindings) EncodeConfig() (any, error) {
+	value := map[string]any{}
+	if c.FailOnAll != nil {
+		value["fail-on-all"] = c.FailOnAll
+	}
+	if c.FailOnCategories != nil {
+		value["fail-on-categories"] = c.FailOnCategories
+	}
+	if c.FailOnRules != nil {
+		value["fail-on-rules"] = c.FailOnRules
+	}
+	return value, nil
+}
+
 func (ruleSet RuleSet) DependencyFindingFails(config *Config, name, code string, executionFailure bool) bool {
 	if executionFailure {
 		return true

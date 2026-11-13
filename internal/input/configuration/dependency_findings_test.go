@@ -64,3 +64,42 @@ func TestDependencySettingsRejectInvalidSelections(t *testing.T) {
 		}
 	}
 }
+
+func TestProgrammaticDependencyOverrides(t *testing.T) {
+	t.Parallel()
+	rules, err := NewRuleSet([]rule.Declaration{{Name: "example", Category: "security", Recommended: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name       string
+		selection  DependencyFindings
+		categories DependencyCategories
+		rules      DependencyRules
+	}{
+		{"omitted", DependencyFindings{}, DependencyCategories{"security"}, DependencyRules{"example/CODE"}},
+		{"clear categories", DependencyFindings{FailOnCategories: DependencyCategories{}}, DependencyCategories{}, DependencyRules{"example/CODE"}},
+		{"clear rules", DependencyFindings{FailOnRules: DependencyRules{}}, DependencyCategories{"security"}, DependencyRules{}},
+		{"clear both", DependencyFindings{FailOnCategories: DependencyCategories{}, FailOnRules: DependencyRules{}}, DependencyCategories{}, DependencyRules{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			all, overrideAll := true, false
+			tc.selection.FailOnAll = &overrideAll
+			config := &Config{
+				Lint:      LintConfig{Dependencies: DependencyFindings{FailOnAll: &all, FailOnCategories: DependencyCategories{"security"}, FailOnRules: DependencyRules{"example/CODE"}}},
+				Overrides: []Override{{Includes: []string{"release.yml"}, Lint: &LintConfig{Dependencies: tc.selection}}},
+			}
+			for name, resolve := range map[string]func(*Config, string, string) (*Config, error){"workflow": rules.ForFile, "action": rules.ForAction} {
+				selected, err := resolve(config, "release.yml", "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := selected.Lint.Dependencies
+				if got.FailOnAll == nil || *got.FailOnAll || !reflect.DeepEqual(got.FailOnCategories, tc.categories) || !reflect.DeepEqual(got.FailOnRules, tc.rules) {
+					t.Errorf("%s: got %+v, want all=false categories=%v rules=%v", name, got, tc.categories, tc.rules)
+				}
+			}
+		})
+	}
+}
