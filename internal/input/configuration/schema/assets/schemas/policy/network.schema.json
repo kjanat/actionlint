@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "actionlint network policy",
+  "description": "Supplies defaults and restrictions independently of project configuration.",
+  "markdownDescription": "Supplies defaults and restrictions independently of project configuration.",
+  "type": "object",
+  "properties": {
+    "defaults": {
+      "title": "defaults",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "network": {
+              "title": "network",
+              "description": "Supplies settings that projects may override.",
+              "markdownDescription": "Supplies settings that projects may override.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "metadata-mirrors": {
+                      "title": "metadata-mirrors",
+                      "description": "Selects fallback services for remote action and workflow files.",
+                      "markdownDescription": "Selects fallback services for remote action and workflow files.",
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "allow-unknown-repositories": {
+                              "title": "allow-unknown-repositories",
+                              "description": "Permits sending repository names, commit hashes and file paths to the selected services without first establishing public visibility. Known private repositories are excluded regardless of this setting.",
+                              "markdownDescription": "Permits sending repository names, commit hashes and file paths to the selected services without first establishing public visibility. Known private repositories are excluded regardless of this setting.",
+                              "oneOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "services": {
+                              "title": "services",
+                              "description": "Defaults to jsdelivr. An empty array disables metadata mirrors.",
+                              "markdownDescription": "Defaults to jsdelivr. An empty array disables metadata mirrors.",
+                              "oneOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "jsdelivr"
+                                    ]
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "extends": {
+      "title": "extends",
+      "description": "Loads local or HTTPS policy files. Restrictions from every file apply.",
+      "markdownDescription": "Loads local or HTTPS policy files. Restrictions from every file apply.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "restrictions": {
+      "title": "restrictions",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "network": {
+              "title": "network",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "metadata-mirrors": {
+                      "title": "metadata-mirrors",
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "exclude-repositories": {
+                              "title": "exclude-repositories",
+                              "description": "Matches host/owner/repository, such as github.com/company/private-*.",
+                              "markdownDescription": "Matches host/owner/repository, such as github.com/company/private-*.",
+                              "oneOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "exclude-services": {
+                              "title": "exclude-services",
+                              "description": "Prevents requests to these metadata mirrors.",
+                              "markdownDescription": "Prevents requests to these metadata mirrors.",
+                              "oneOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "jsdelivr"
+                                    ]
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "require-public": {
+                              "title": "require-public",
+                              "description": "Prevents requests to mirrors when repository visibility is unknown.",
+                              "markdownDescription": "Prevents requests to mirrors when repository visibility is unknown.",
+                              "oneOf": [
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "patternProperties": {
+    "^\\$schema$": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "x-tombi-toml-version": "v1.1.0",
+  "x-tombi-table-keys-order": {
+    "properties": "schema"
+  }
+}

@@ -220,13 +220,27 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	}
 	if input.Kind == inputmodel.Prepared {
 		request.Sources, request.WorkingDir = slices.Clone(input.Sources), options.WorkingDir
+		policy, err := repoconfig.LoadNetworkPolicy(ctx, options.ConfigConnections)
+		if err != nil {
+			return nil, err
+		}
+		for i := range request.Sources {
+			request.Sources[i].Config, err = policy.Apply(request.Sources[i].Config)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if options.WorkingDir != "" {
 			request.LocalDependencyRoot, err = filepath.Abs(options.WorkingDir)
 			if err != nil {
 				return nil, err
 			}
 		}
-		return analyzePrepared(ctx, request)
+		result, err := analyzePrepared(ctx, request)
+		if result != nil {
+			result.Inputs = append(result.Inputs, policy.Files()...)
+		}
+		return result, err
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
