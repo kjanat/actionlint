@@ -153,12 +153,96 @@ func TestInvalidNetworkPolicyFails(t *testing.T) {
 		`{"restrictions":{"network":{"metadata-mirrors":{"require-public":"yes"}}}}`,
 		`{"restrictions":{"network":{"metadata-mirrors":{"exclude-services":["typo"]}}}}`,
 		`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":["["]}}}}`,
+		`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":["github.com/company/private-repo/.github/**"]}}}}`,
+		`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":["github.com//repo"]}}}}`,
+		`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":["/company/repo"]}}}}`,
+		`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":["github.com/company/"]}}}}`,
 	} {
 		t.Run(text, func(t *testing.T) {
 			t.Parallel()
 			path := writePolicy(t, t.TempDir(), "policy.json", text)
 			if _, err := config.ReadNetworkPolicy([]string{path}, os.ReadFile); err == nil {
 				t.Fatalf("accepted policy %s", text)
+			}
+		})
+	}
+}
+
+func TestNetworkPolicyDefaultOriginsAfterReset(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name         string
+		overlay      string
+		wantServices string
+		wantUnknown  string
+		wantAccess   references.MirrorAccess
+	}{
+		{"all defaults", `{"defaults":null}`, "", "", references.PublicMirrorsOnly},
+		{"network", `{"defaults":{"network":null}}`, "", "", references.PublicMirrorsOnly},
+		{"mirrors", `{"defaults":{"network":{"metadata-mirrors":null}}}`, "", "", references.PublicMirrorsOnly},
+		{"replace one leaf", `{"defaults":{"network":{"metadata-mirrors":{"allow-unknown-repositories":false}}}}`, "base.json", "overlay.json", references.NoMirrors},
+		{"empty object", `{"defaults":{}}`, "base.json", "base.json", references.NoMirrors},
+	} {
+		for _, inherited := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/extends=%t", tc.name, inherited), func(t *testing.T) {
+				t.Parallel()
+				root := t.TempDir()
+				base := writePolicy(t, root, "base.json", `{"defaults":{"network":{"metadata-mirrors":{"services":[],"allow-unknown-repositories":true}}}}`)
+				overlayText := tc.overlay
+				if inherited {
+					overlayText = `{"extends":["base.json"],` + strings.TrimPrefix(overlayText, "{")
+				}
+				overlay := writePolicy(t, root, "overlay.json", overlayText)
+				paths := []string{base, overlay}
+				if inherited {
+					paths = []string{overlay}
+				}
+				policy, err := config.ReadNetworkPolicy(paths, os.ReadFile)
+				if err != nil {
+					t.Fatal(err)
+				}
+				applied, err := policy.Apply(nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := applied.MetadataMirrorAccess(); got != tc.wantAccess {
+					t.Fatalf("mirror access = %v, want %v", got, tc.wantAccess)
+				}
+				inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), config.Selection{Disabled: true}, true, nil, policy)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for name, want := range map[string]string{"services": tc.wantServices, "allow-unknown-repositories": tc.wantUnknown} {
+					origin := inspected.Origins["/network/metadata-mirrors/"+name]
+					if want == "" {
+						if origin.Source == "policy" {
+							t.Errorf("%s retains a reset policy origin: %+v", name, origin)
+						}
+					} else if origin.Source != "policy" || origin.File != filepath.Join(root, want) {
+						t.Errorf("%s origin = %+v, want policy %s", name, origin, want)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestNetworkPolicyRepositoryGlobs(t *testing.T) {
+	t.Parallel()
+	for _, pattern := range []string{"github.com/company/private-*", "github.com/*/repo", "*.example.com/team/[ab]*", "github.com/company/**"} {
+		t.Run(pattern, func(t *testing.T) {
+			t.Parallel()
+			path := writePolicy(t, t.TempDir(), "policy.json", fmt.Sprintf(`{"restrictions":{"network":{"metadata-mirrors":{"exclude-repositories":[%q]}}}}`, pattern))
+			policy, err := config.ReadNetworkPolicy([]string{path}, os.ReadFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			applied, err := policy.Apply(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := applied.MetadataMirrorExclusions(); !slices.Equal(got, []string{pattern}) {
+				t.Fatalf("repository exclusions = %v, want [%s]", got, pattern)
 			}
 		})
 	}

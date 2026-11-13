@@ -135,7 +135,8 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 				}
 			}
 			for i, pattern := range restriction.ExcludeRepositories {
-				if strings.Count(pattern, "/") < 2 || !doublestar.ValidatePattern(pattern) {
+				parts := strings.Split(pattern, "/")
+				if len(parts) != 3 || slices.Contains(parts, "") || !doublestar.ValidatePattern(pattern) {
 					return doc, fmt.Errorf("restrictions.network.metadata-mirrors.exclude-repositories[%d]: expected a host/owner/repository glob, got %q", i, pattern)
 				}
 			}
@@ -146,13 +147,15 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 			return nil, err
 		}
 		root, _ := loaded.Value.(map[string]any)
-		if value := field(root, "defaults"); value != nil {
-			defaults = tree.Merge(defaults, value)
+		if value, present := root["defaults"]; present {
+			origins := map[string]Input{}
 			for key, origin := range loaded.Origins {
-				if strings.HasPrefix(key, "/defaults/network/") {
-					p.defaultOrigins[strings.TrimPrefix(key, "/defaults")] = origin
+				if key == "/defaults" || strings.HasPrefix(key, "/defaults/") {
+					origins[strings.TrimPrefix(key, "/defaults")] = origin
 				}
 			}
+			tree.MergeOrigins(p.defaultOrigins, origins, defaults, value)
+			defaults = tree.Merge(defaults, value)
 		}
 		p.files = append(p.files, loaded.Files...)
 	}

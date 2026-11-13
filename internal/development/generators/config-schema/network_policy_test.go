@@ -37,6 +37,7 @@ func TestNetworkPolicySchema(t *testing.T) {
 		{`{}`, true},
 		{`{"$schema":"https://example.com/network.schema.json"}`, true},
 		{`{"defaults":{"network":{"metadata-mirrors":{"allow-unknown-repositories":true}}}}`, true},
+		{`{"defaults":{"network":{"metadata-mirrors":{"allow-unknown-repositories":null}}}}`, true},
 		{`{"restrictions":{"network":{"metadata-mirrors":{"exclude-services":["jsdelivr"],"exclude-repositories":["github.com/company/*"],"require-public":true}}}}`, true},
 		{`{"restrictions":null}`, true},
 		{`{"restrictions":{"network":{"metadata-mirrors":{"exclude-services":[],"require-public":false}}}}`, true},

@@ -55,6 +55,7 @@ func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
 		{`{"services":["jsdelivr"]}`, true},
 		{`{"services":null}`, true},
 		{`{"allow-unknown-repositories":true}`, true},
+		{`{"allow-unknown-repositories":null}`, true},
 		{`{"services":["typo"]}`, false},
 		{`{"services":"jsdelivr"}`, false},
 		{`{"allow-unknown-repositories":"true"}`, false},

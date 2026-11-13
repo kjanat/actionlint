@@ -21,7 +21,7 @@ type MetadataMirrorsConfig struct {
 	// AllowUnknownRepositories permits sending repository names, commit hashes and
 	// file paths to the selected services without first establishing public visibility.
 	// Known private repositories are excluded regardless of this setting.
-	AllowUnknownRepositories *bool `yaml:"allow-unknown-repositories,omitempty"`
+	AllowUnknownRepositories *bool `yaml:"allow-unknown-repositories,omitempty" jsonschema:"nullable"`
 }
 
 type MetadataMirrorServices []string

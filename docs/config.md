@@ -231,10 +231,10 @@ whose visibility is unknown. To prohibit jsDelivr entirely, set
 `exclude-services = ["jsdelivr"]` in the restrictions table.
 
 Empty arrays, `false` and `null` cannot remove an inherited restriction.
-A project setting or command-line override that enables a forbidden mirror or
-allows unknown repositories against `require-public` produces an error naming
-the policy file. `--no-config` still loads these policies. Set them outside the
-project so changing or deleting its configuration cannot remove the restrictions.
+If project settings or command-line options violate a restriction, actionlint
+stops and reports which policy file imposed it. Policy files also apply with
+`--no-config`. Store them outside the project to prevent project changes from
+removing the restrictions.
 
 `actionlint config show --origin` shows the file that supplied each mirror
 setting. These policies govern metadata mirrors for remote actions and reusable
