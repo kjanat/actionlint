@@ -74,7 +74,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		}
 	}})
 	resolver := workspaceactions.NewResolver(f.cache, nil)
-	f.options = Options{Context: ctx, SourceSnapshots: registry, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{correctness.NewRuleAction(ctx, resolver.Prepared(), nil)}}
+	f.options = Options{Context: ctx, SourceSnapshots: registry, Captures: store, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{correctness.NewRuleAction(ctx, resolver.Prepared(), nil)}}
 	return f
 }
 

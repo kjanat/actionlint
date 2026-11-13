@@ -15,8 +15,14 @@ called from a Windows job. Calls to other remote composites are followed too.
 Repeated calls share downloaded source files but have separate invocation records.
 Diagnostics link to the manifest at the resolved commit.
 
-The same depth and call limits apply to local and remote composites. Unavailable
-or invalid manifests stop expansion at that call. A `./` reference inside a
+Each workflow or standalone action allows up to 10 nested calls and 10,000 call
+occurrences, across local and remote composites. Metadata acquisition also stops
+after 10,000 distinct remote action references, including dependencies fetched
+before their calls are visited. Each distinct reference counts once. Actionlint
+reports an error if this metadata limit is exceeded. It does not prefetch children
+of a composite at the maximum depth.
+
+Unavailable or invalid manifests stop expansion at that call. A `./` reference inside a
 remote composite resolves against the caller's checkout, as it does on the runner.
 `$/` references resolve against the remote action's repository at the same commit.
 Remote action files referenced by scripts are not downloaded with the manifest.
