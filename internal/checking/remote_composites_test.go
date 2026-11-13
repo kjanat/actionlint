@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -370,6 +371,36 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 			}
 			if tc.expected == "remote" && requests()["example/action/nested"] != 1 {
 				t.Fatalf("self reference was not acquired once: %v", requests())
+			}
+		})
+	}
+}
+
+func TestRemoteCompositeAdviceRemainsVisible(t *testing.T) {
+	t.Parallel()
+	for _, failOnAll := range []bool{false, true} {
+		t.Run(strconv.FormatBool(failOnAll), func(t *testing.T) {
+			t.Parallel()
+			provider, _ := remoteCompositeProvider(t, map[string]string{
+				"example/action": "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo \"${{ github.workspace }}\"\n",
+			})
+			cfg, err := ConfigurationRules().Parse([]byte(fmt.Sprintf("lint: {dependencies: {fail-on-all: %t}}", failOnAll)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := runTestAnalysis(t.Context(), analysisRequest{
+				WorkingDir: t.TempDir(), RemoteActions: provider,
+				Sources: []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(result.Diagnostics) != 1 {
+				t.Fatalf("want one interpolation finding, got %+v", result.Diagnostics)
+			}
+			d := result.Diagnostics[0]
+			if d.Rule != "script-interpolation" || d.NonBlocking == failOnAll || !strings.HasPrefix(d.Path, "https://github.com/example/action/") {
+				t.Fatalf("fail-on-all=%v: unexpected dependency finding %+v", failOnAll, d)
 			}
 		})
 	}

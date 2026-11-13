@@ -2,14 +2,16 @@
 package exitcode
 
 import (
+	"slices"
+
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 const (
-	// ExitSuccessNoProblem means the command completed without findings.
+	// ExitSuccessNoProblem means no reported finding requires a failing exit status.
 	ExitSuccessNoProblem = 0
-	// ExitSuccessProblemFound means the command completed with findings.
+	// ExitSuccessProblemFound means at least one reported finding requires a failing exit status.
 	ExitSuccessProblemFound = 1
 	// ExitInvalidCommandOption means argument parsing or validation failed.
 	ExitInvalidCommandOption = 2
@@ -21,7 +23,7 @@ const (
 // with its failure code and attach any partial analysis data separately.
 func AnalysisResult(analysis report.Analysis) report.CheckResult {
 	code := ExitSuccessNoProblem
-	if len(analysis.Diagnostics) > 0 {
+	if slices.ContainsFunc(analysis.Diagnostics, func(d results.Diagnostic) bool { return !d.NonBlocking }) {
 		code = ExitSuccessProblemFound
 	}
 	r := report.FromAnalysis(analysis)

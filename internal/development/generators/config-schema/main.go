@@ -47,6 +47,14 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[actionlint.DependencyCategories]():
+		values := make([]any, 0, len(lintconfig.Categories()))
+		for _, category := range lintconfig.Categories() {
+			values = append(values, category)
+		}
+		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
+	case reflect.TypeFor[actionlint.DependencyRules]():
+		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{definitionRef("rule-name"), {Type: "string", Pattern: `^[^/\s]+/[^/\s]+$`}}}}
 	case reflect.TypeFor[actionlint.MetadataMirrorServices]():
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: []any{"jsdelivr"}}}
 	case reflect.TypeFor[map[string]*string]():

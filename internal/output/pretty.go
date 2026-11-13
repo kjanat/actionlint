@@ -33,6 +33,9 @@ func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool,
 	}
 	writeWrapped(&b, "", label, width, style, hyperlinks)
 	writeWrapped(&b, "  ", d.Message, width, nil, hyperlinks)
+	if d.NonBlocking {
+		writeWrapped(&b, "  = ", "This dependency finding does not affect the exit code. Use lint.dependencies to make it count.", width, nil, hyperlinks)
+	}
 	writeWrapped(&b, "  --> ", fmt.Sprintf("%s:%d:%d", d.Path, d.Start.Line, d.Start.Column), width, nil, hyperlinks)
 	if line, ok := f.line(); ok && d.Start.Line > 0 {
 		gutter := fmt.Sprintf("%d | ", d.Start.Line)

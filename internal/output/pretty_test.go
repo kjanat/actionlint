@@ -59,6 +59,18 @@ func TestPrettyWrappedHyperlinks(t *testing.T) {
 	}
 }
 
+func TestPrettyExplainsNonBlockingDependency(t *testing.T) {
+	t.Parallel()
+	var out strings.Builder
+	finding := FindingOf(results.Diagnostic{Rule: "script-interpolation", Message: "Use an environment variable.", Path: "https://example.test/action.yml", NonBlocking: true}, nil)
+	if err := finding.printPretty(&out, 120, false, false, "lint.rules.correctness.script-interpolation"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "does not affect the exit code.") || !strings.Contains(out.String(), "lint.dependencies") {
+		t.Fatalf("dependency advice has no exit-code explanation:\n%s", out.String())
+	}
+}
+
 func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 	t.Parallel()
 	const message = "Read https://example.com/safe\x1b]8;;https://attacker.example\a and https://example.com/next."
