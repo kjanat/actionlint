@@ -223,7 +223,8 @@ function actionMetadata(value: unknown): value is ActionMetadata {
 		].includes(value.reason);
 	}
 	if (
-		typeof value.host !== 'string' || typeof value.repository !== 'string' || !integer(value.repository_id, 1)
+		typeof value.host !== 'string' || typeof value.repository !== 'string'
+		|| (value.repository_id !== undefined && !integer(value.repository_id, 1))
 		|| typeof value.commit !== 'string' || typeof value.manifest !== 'string'
 		|| typeof value.selected_object !== 'string' || value.reason !== undefined
 		|| !optionalStrings(value, ['directory', 'observed_at', 'selected_ref'])

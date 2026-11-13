@@ -14,16 +14,16 @@ import (
 //
 //	record repository {
 //		host: string,
-//		id: u64,
+//		id: option<u64>,
 //		name: string,
 //		observed-at: string,
 //	}
 type Repository struct {
-	_          cm.HostLayout `json:"-"`
-	Host       string        `json:"host"`
-	ID         uint64        `json:"id"`
-	Name       string        `json:"name"`
-	ObservedAt string        `json:"observed-at"`
+	_          cm.HostLayout     `json:"-"`
+	Host       string            `json:"host"`
+	ID         cm.Option[uint64] `json:"id"`
+	Name       string            `json:"name"`
+	ObservedAt string            `json:"observed-at"`
 }
 
 // Object represents the variant "kjanat:actionlint-resolver/repository-objects@0.1.0#object".

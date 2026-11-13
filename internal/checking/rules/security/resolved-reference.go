@@ -36,7 +36,11 @@ func (*ResolvedReferenceCheck) CheckDocument(ctx context.Context, input checkinp
 			continue
 		}
 		reference := dep.Reference
-		d := results.Diagnostic{Rule: "remote-resolution", Code: "pin-available", Severity: "info", Reference: &reference, Path: input.Path, Start: dep.Start, End: dep.End, Message: fmt.Sprintf("%s resolves to commit %s (repository ID %d, observed %s)", dep.Uses, result.Commit, result.RepositoryID, result.ObservedAt)}
+		message := fmt.Sprintf("%s resolves to commit %s (observed %s)", dep.Uses, result.Commit, result.ObservedAt)
+		if id, known := result.RepositoryID.Value(); known {
+			message = fmt.Sprintf("%s resolves to commit %s (repository ID %d, observed %s)", dep.Uses, result.Commit, id, result.ObservedAt)
+		}
+		d := results.Diagnostic{Rule: "remote-resolution", Code: "pin-available", Severity: "info", Reference: &reference, Path: input.Path, Start: dep.Start, End: dep.End, Message: message}
 		if dep.End != dep.Start {
 			d.Fixes = []results.Fix{{Description: "Pin " + name + " to resolved commit", Applicability: results.FixSuggested, Revisions: map[string]string{input.Path: input.Reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: dep.Start, End: dep.End, Replacement: strconv.Quote(name + "@" + result.Commit)}}}}
 		}

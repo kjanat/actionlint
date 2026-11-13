@@ -47,6 +47,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
+	case reflect.TypeFor[actionlint.MetadataMirrorServices]():
+		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: []any{"jsdelivr"}}}
 	case reflect.TypeFor[map[string]*string]():
 		return &jsonschema.Schema{Type: "object", PropertyNames: definitionRef("non-blank-string"), AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}, Extras: map[string]any{"x-tombi-additional-key-label": "variable_name"}}
 	case reflect.TypeFor[actionlint.LocalActionSources]():
@@ -392,7 +394,7 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	for _, file := range []string{"config.go", "lint.go", "reporting.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
+	for _, file := range []string{"config.go", "lint.go", "reporting.go", "network.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
 		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "input", "configuration", file), jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}

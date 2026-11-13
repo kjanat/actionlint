@@ -10,6 +10,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 type countedMetadataProvider struct {
@@ -28,7 +29,7 @@ func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(reference.Host(), reference.Repository(), 1, commit, "")
+	identity, err := actions.NewIdentity(reference.Host(), reference.Repository(), repositoryid.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -110,7 +110,7 @@ func (Result_StringErr) isResult_String() {}
 // Repository corresponds to the WIT record repository.
 type Repository struct {
 	Host       string
-	ID         uint64
+	ID         OptionU64
 	Name       string
 	ObservedAt string
 }

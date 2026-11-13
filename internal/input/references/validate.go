@@ -16,7 +16,7 @@ func ValidateResult(request Request, result Result) error {
 	if result.Error != "" {
 		return fmt.Errorf("resolution failed: %s", result.Error)
 	}
-	if result.RepositoryID == 0 || !strings.EqualFold(result.Repository, request.Repository) || request.ExpectedRepositoryID != 0 && result.RepositoryID != request.ExpectedRepositoryID || (result.Commit == "") == (result.Tree == "") || result.ObservedAt == "" || len(result.FetchLog) == 0 {
+	if !strings.EqualFold(result.Repository, request.Repository) || result.RepositoryID.Conflicts(request.ExpectedRepositoryID) || (result.Commit == "") == (result.Tree == "") || result.ObservedAt == "" || len(result.FetchLog) == 0 {
 		return errors.New("resolver returned incomplete or inconsistent provenance")
 	}
 	object := result.Commit

@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 func requestActionSource(t *testing.T) string {
@@ -27,14 +28,19 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 	content := requestActionSource(t)
 	const commit = "3d6703deef41a82916a2e5ca87096f93035cef66"
 	for _, test := range []struct {
-		name, host, commit, directory, filename, content string
-		repositoryID                                     uint64
-		additional                                       bool
-		invalid                                          bool
+		name, host, repository, commit, directory, filename, content string
+		repositoryID                                                 uint64
+		unknownID                                                    bool
+		additional                                                   bool
+		invalid                                                      bool
 	}{
 		{name: "reviewed", additional: true},
+		{name: "reviewed under another name", repository: "renamed/request-action", additional: true},
+		{name: "reviewed without repository ID", unknownID: true, additional: true},
+		{name: "reviewed without repository ID in another case", repository: "Octokit/Request-Action", unknownID: true, additional: true},
 		{name: "another host", host: "other.example"},
 		{name: "another repository", repositoryID: 42},
+		{name: "another repository without repository ID", repository: "other/request-action", unknownID: true},
 		{name: "another commit", commit: strings.Repeat("a", 40)},
 		{name: "another directory", directory: "sub"},
 		{name: "another filename", filename: "action.yaml"},
@@ -42,9 +48,12 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 		{name: "invalid manifest", content: "name: [", invalid: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			host, revision, filename, metadata, repositoryID := test.host, test.commit, test.filename, test.content, test.repositoryID
+			host, repository, revision, filename, metadata, repositoryID := test.host, test.repository, test.commit, test.filename, test.content, test.repositoryID
 			if host == "" {
 				host = "github.com"
+			}
+			if repository == "" {
+				repository = "octokit/request-action"
 			}
 			if revision == "" {
 				revision = commit
@@ -58,11 +67,19 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 			if repositoryID == 0 {
 				repositoryID = 213507602
 			}
-			identity, err := actions.NewIdentity(host, "octokit/request-action", repositoryID, revision, test.directory)
+			var id repositoryid.ID
+			if !test.unknownID {
+				known, err := repositoryid.Known(repositoryID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				id = known
+			}
+			identity, err := actions.NewIdentity(host, repository, id, revision, test.directory)
 			if err != nil {
 				t.Fatal(err)
 			}
-			location := "octokit/request-action"
+			location := repository
 			if test.directory != "" {
 				location += "/" + test.directory
 			}

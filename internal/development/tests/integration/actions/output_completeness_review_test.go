@@ -9,6 +9,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
@@ -17,7 +18,7 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), 42, sha, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, sha, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestRemoteCompositeOutputMappingIsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), 43, sha, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, sha, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 // Reference identifies the requested action, before a mutable ref is resolved.
@@ -49,10 +50,10 @@ func (r Reference) Ref() string        { return r.ref }
 // This identifies fetched content; it does not describe how a ref selected it.
 type Identity struct {
 	host, repository, commit, directory string
-	repositoryID                        uint64
+	repositoryID                        repositoryid.ID
 }
 
-func NewIdentity(host, repository string, repositoryID uint64, commit, directory string) (Identity, error) {
+func NewIdentity(host, repository string, repositoryID repositoryid.ID, commit, directory string) (Identity, error) {
 	location := repository
 	if directory != "" {
 		location += "/" + directory
@@ -64,9 +65,6 @@ func NewIdentity(host, repository string, repositoryID uint64, commit, directory
 	if reference.Repository() != repository || reference.Directory() != directory {
 		return Identity{}, errors.New("invalid action repository or directory")
 	}
-	if repositoryID == 0 {
-		return Identity{}, errors.New("action repository ID is missing")
-	}
 	if len(commit) != 40 && len(commit) != 64 {
 		return Identity{}, errors.New("action commit must be a full object ID")
 	}
@@ -76,11 +74,11 @@ func NewIdentity(host, repository string, repositoryID uint64, commit, directory
 	return Identity{host: reference.host, repository: reference.repository, repositoryID: repositoryID, commit: strings.ToLower(commit), directory: reference.directory}, nil
 }
 
-func (i Identity) Host() string         { return i.host }
-func (i Identity) Repository() string   { return i.repository }
-func (i Identity) RepositoryID() uint64 { return i.repositoryID }
-func (i Identity) Commit() string       { return i.commit }
-func (i Identity) Directory() string    { return i.directory }
+func (i Identity) Host() string                  { return i.host }
+func (i Identity) Repository() string            { return i.repository }
+func (i Identity) RepositoryID() repositoryid.ID { return i.repositoryID }
+func (i Identity) Commit() string                { return i.commit }
+func (i Identity) Directory() string             { return i.directory }
 
 // Route records whether selection used a raw object ID or an exact lookup key.
 type Route struct {

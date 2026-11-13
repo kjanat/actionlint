@@ -5,7 +5,7 @@ import wp "github.com/kjanat/wacogo/wasmparser"
 
 const (
 	ReferenceResolverInterface = "kjanat:actionlint-resolver/reference-resolver@0.1.0"
-	referenceResolverWITSHA256 = "2441011944d6a18be6c6f352419025e922a1b7e8db74bc4d6783d3bee8334985"
+	referenceResolverWITSHA256 = "f1b8508c488402edc0592e15f3e158922496f10e8ed0114315b3b4dcdec861e8"
 )
 
 func expectedReferenceResolverInterface() *wp.ComponentType {
@@ -15,7 +15,7 @@ func expectedReferenceResolverInterface() *wp.ComponentType {
 	t2 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "repository", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "reference", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "kind", Type: t0}, {Name: "expected-repository-id", Type: t1}}}})}
 	t3 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindVariant, Variant: &wp.VariantTypeDesc{Cases: []wp.VariantCaseDesc{{Name: "object-id", Type: wp.None[wp.ValTypeDesc]()}, {Name: "reference", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}}}})}
 	t4 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindVariant, Variant: &wp.VariantTypeDesc{Cases: []wp.VariantCaseDesc{{Name: "commit", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}, {Name: "tree", Type: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})}}}})}
-	t5 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "repository-id", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimU64}}, {Name: "repository", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "observed-at", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "selected-object", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "selection", Type: t3}, {Name: "content", Type: t4}}}})}
+	t5 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindRecord, Record: &wp.RecordTypeDesc{Fields: []wp.FieldDesc{{Name: "repository-id", Type: t1}, {Name: "repository", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "observed-at", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "selected-object", Type: wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString}}, {Name: "selection", Type: t3}, {Name: "content", Type: t4}}}})}
 	t6 := wp.ValTypeDesc{TypeID: b.PushDefinedType(wp.DefinedTypeDesc{Kind: wp.DefinedKindResult, ResultOk: wp.Some(t5), ResultErr: wp.Some(wp.ValTypeDesc{IsPrimitive: true, Primitive: wp.PrimString})})}
 	provider := b.PushInstanceType(wp.InstanceTypeDesc{Exports: map[string]wp.ComponentEntityType{
 		"kind":        {Kind: wp.EntityType, TypeRef: wp.ComponentAnyTypeID{Kind: wp.AnyTypeDefined, Index: uint32(t0.TypeID)}},

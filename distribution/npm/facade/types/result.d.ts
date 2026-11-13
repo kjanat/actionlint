@@ -148,7 +148,7 @@ export type ActionMetadataProblem = {
 export type ActionMetadataSelection = {
 	host: string;
 	repository: string;
-	repository_id: number;
+	repository_id?: number;
 	commit: string;
 	directory?: string;
 	observed_at?: string;

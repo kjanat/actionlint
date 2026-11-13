@@ -1,6 +1,10 @@
 package github
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestEnvironmentOptionsModesAndCredentials(t *testing.T) {
 	for _, tc := range []struct {
@@ -21,5 +25,12 @@ func TestEnvironmentOptionsModesAndCredentials(t *testing.T) {
 		if options.Mode != mode || options.Token != tc.wantToken || mode == Off && options.CacheDir != "" {
 			t.Fatalf("mode=%q: mode=%q cache=%q credential matched=%t", tc.mode, options.Mode, options.CacheDir, options.Token == tc.wantToken)
 		}
+	}
+	want := ""
+	if cache, err := os.UserCacheDir(); err == nil {
+		want = filepath.Join(cache, "actionlint", "action-metadata", "v2")
+	}
+	if options := EnvironmentOptions(Online, func(string) string { return "" }); options.CacheDir != want {
+		t.Fatalf("cache directory = %q, want %q", options.CacheDir, want)
 	}
 }

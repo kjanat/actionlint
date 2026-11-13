@@ -2364,6 +2364,63 @@
         }
       ]
     },
+    "network": {
+      "title": "network",
+      "description": "Controls fallback services for remote metadata.",
+      "markdownDescription": "Controls fallback services for remote metadata.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "metadata-mirrors": {
+              "title": "metadata-mirrors",
+              "description": "Selects fallback services for remote action and workflow files.",
+              "markdownDescription": "Selects fallback services for remote action and workflow files.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "allow-unknown-repositories": {
+                      "title": "allow-unknown-repositories",
+                      "description": "Permits sending repository names, commit hashes and file paths to the selected services without first establishing public visibility. Known private repositories are excluded regardless of this setting.",
+                      "markdownDescription": "Permits sending repository names, commit hashes and file paths to the selected services without first establishing public visibility. Known private repositories are excluded regardless of this setting.",
+                      "type": "boolean"
+                    },
+                    "services": {
+                      "title": "services",
+                      "description": "Defaults to jsdelivr. An empty array disables metadata mirrors.",
+                      "markdownDescription": "Defaults to jsdelivr. An empty array disables metadata mirrors.",
+                      "oneOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "jsdelivr"
+                            ]
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "output": {
       "title": "output",
       "description": "Configures defaults for CLI reporting.",

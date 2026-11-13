@@ -4,6 +4,10 @@
 # Use all for all stable rules, or none to select rules individually.
 ---
 plugins: [shellcheck, ruff]
+# network:
+#   metadata-mirrors:
+#     services: [jsdelivr] # Use [] to disable third-party metadata mirrors.
+#     allow-unknown-repositories: false
 lint:
   enabled: true
   # experimental: true # Enable nursery rules.

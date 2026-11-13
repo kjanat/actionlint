@@ -322,6 +322,8 @@ type Config struct {
 	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Output configures defaults for CLI reporting.
 	Output OutputConfig `yaml:"output,omitempty" jsonschema:"nullable"`
+	// Network controls fallback services for remote metadata.
+	Network NetworkConfig `yaml:"network,omitempty" jsonschema:"nullable"`
 	// Lint configures rule selection separately from repository policy.
 	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
 	// Repository supplies overrides for repository knowledge obtained by the host.

@@ -33,7 +33,7 @@ func NewFactory(ctx context.Context, e *wacogo.Engine) (*Factory, error) {
 	f_ := &Factory{engine: e}
 	b_ := e.NewHostBuilder("kjanat_actionlint-resolver_repository-objects")
 
-	typRepository_ := b_.AddType("repository", host.Record{Fields: []host.Field{{Name: "host", Type: host.String}, {Name: "id", Type: host.U64}, {Name: "name", Type: host.String}, {Name: "observed-at", Type: host.String}}})
+	typRepository_ := b_.AddType("repository", host.Record{Fields: []host.Field{{Name: "host", Type: host.String}, {Name: "id", Type: host.Option{Inner: host.U64}}, {Name: "name", Type: host.String}, {Name: "observed-at", Type: host.String}}})
 	_ = typRepository_
 
 	typObject_ := b_.AddType("object", host.Variant{Cases: []host.Case{{Name: "commit", Payload: nil}, {Name: "tree", Payload: nil}, {Name: "peeled-tag", Payload: host.String}, {Name: "peeled-tree-tag", Payload: host.String}}})
@@ -753,13 +753,17 @@ func toGoFlatRepository(ctx context.Context, cc *host.CallContext, h *host.Compo
 	} else {
 		v_.Host = tmp_
 	}
-	v_.ID = stack[2]
-	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[2].Type, stack[3:5]); err_ != nil {
+	if tmp_, err_ := toGoFlatOptionU64(ctx, cc, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
+		return Repository{}, err_
+	} else {
+		v_.ID = tmp_
+	}
+	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[2].Type, stack[4:6]); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.Name = tmp_
 	}
-	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[3].Type, stack[5:7]); err_ != nil {
+	if tmp_, err_ := toGoFlatString(ctx, cc, h, recT_.Fields[3].Type, stack[6:8]); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.ObservedAt = tmp_
@@ -776,17 +780,17 @@ func toGoMemRepository(ctx context.Context, cc *host.CallContext, h *host.Compon
 	} else {
 		v_.Host = tmp_
 	}
-	if tmp_, ok_ := cc.Memory().ReadUint64Le(ptr + 8); !ok_ {
-		return Repository{}, fmt.Errorf("wacogo/witgen: toGoMemRepository: field ID: bad memory read")
+	if tmp_, err_ := toGoMemOptionU64(ctx, cc, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
+		return Repository{}, err_
 	} else {
 		v_.ID = tmp_
 	}
-	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[2].Type, ptr+16); err_ != nil {
+	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[2].Type, ptr+24); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.Name = tmp_
 	}
-	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[3].Type, ptr+24); err_ != nil {
+	if tmp_, err_ := toGoMemString(ctx, cc, h, recT_.Fields[3].Type, ptr+32); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.ObservedAt = tmp_
@@ -798,11 +802,13 @@ func fromGoFlatRepository(ctx context.Context, cc *host.CallContext, h *host.Com
 	if err_ := fromGoFlatString(ctx, cc, h, stack[0:2], v.Host); err_ != nil {
 		return err_
 	}
-	stack[2] = v.ID
-	if err_ := fromGoFlatString(ctx, cc, h, stack[3:5], v.Name); err_ != nil {
+	if err_ := fromGoFlatOptionU64(ctx, cc, h, stack[2:4], v.ID); err_ != nil {
 		return err_
 	}
-	if err_ := fromGoFlatString(ctx, cc, h, stack[5:7], v.ObservedAt); err_ != nil {
+	if err_ := fromGoFlatString(ctx, cc, h, stack[4:6], v.Name); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoFlatString(ctx, cc, h, stack[6:8], v.ObservedAt); err_ != nil {
 		return err_
 	}
 	return nil
@@ -812,13 +818,13 @@ func fromGoMemRepository(ctx context.Context, cc *host.CallContext, h *host.Comp
 	if err_ := fromGoMemString(ctx, cc, h, ptr, v.Host); err_ != nil {
 		return err_
 	}
-	if ok_ := cc.Memory().WriteUint64Le(ptr+8, v.ID); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemRepository: field ID: bad memory write")
-	}
-	if err_ := fromGoMemString(ctx, cc, h, ptr+16, v.Name); err_ != nil {
+	if err_ := fromGoMemOptionU64(ctx, cc, h, ptr+8, v.ID); err_ != nil {
 		return err_
 	}
-	if err_ := fromGoMemString(ctx, cc, h, ptr+24, v.ObservedAt); err_ != nil {
+	if err_ := fromGoMemString(ctx, cc, h, ptr+24, v.Name); err_ != nil {
+		return err_
+	}
+	if err_ := fromGoMemString(ctx, cc, h, ptr+32, v.ObservedAt); err_ != nil {
 		return err_
 	}
 	return nil
@@ -833,13 +839,17 @@ func liftFlatRepository(ctx context.Context, caller, callee *host.CallContext, h
 	} else {
 		v_.Host = tmp_
 	}
-	v_.ID = stack[2]
-	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[3:5]); err_ != nil {
+	if tmp_, err_ := liftFlatOptionU64(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4]); err_ != nil {
+		return Repository{}, err_
+	} else {
+		v_.ID = tmp_
+	}
+	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[4:6]); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.Name = tmp_
 	}
-	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[5:7]); err_ != nil {
+	if tmp_, err_ := liftFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[6:8]); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.ObservedAt = tmp_
@@ -856,17 +866,17 @@ func liftMemRepository(ctx context.Context, caller, callee *host.CallContext, h 
 	} else {
 		v_.Host = tmp_
 	}
-	if tmp_, ok_ := callee.Memory().ReadUint64Le(ptr + 8); !ok_ {
-		return Repository{}, fmt.Errorf("wacogo/witgen: liftMemRepository: field ID: bad memory read")
+	if tmp_, err_ := liftMemOptionU64(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8); err_ != nil {
+		return Repository{}, err_
 	} else {
 		v_.ID = tmp_
 	}
-	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+16); err_ != nil {
+	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+24); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.Name = tmp_
 	}
-	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+24); err_ != nil {
+	if tmp_, err_ := liftMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+32); err_ != nil {
 		return Repository{}, err_
 	} else {
 		v_.ObservedAt = tmp_
@@ -880,11 +890,13 @@ func lowerFlatRepository(ctx context.Context, caller, callee *host.CallContext, 
 	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[0].Type, stack[0:2], v.Host); err_ != nil {
 		return err_
 	}
-	stack[2] = v.ID
-	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[3:5], v.Name); err_ != nil {
+	if err_ := lowerFlatOptionU64(ctx, caller, callee, h, recT_.Fields[1].Type, stack[2:4], v.ID); err_ != nil {
 		return err_
 	}
-	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[5:7], v.ObservedAt); err_ != nil {
+	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[2].Type, stack[4:6], v.Name); err_ != nil {
+		return err_
+	}
+	if err_ := lowerFlatString(ctx, caller, callee, h, recT_.Fields[3].Type, stack[6:8], v.ObservedAt); err_ != nil {
 		return err_
 	}
 	return nil
@@ -896,13 +908,13 @@ func lowerMemRepository(ctx context.Context, caller, callee *host.CallContext, h
 	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[0].Type, ptr, v.Host); err_ != nil {
 		return err_
 	}
-	if ok_ := callee.Memory().WriteUint64Le(ptr+8, v.ID); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemRepository: field ID: bad memory write")
-	}
-	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+16, v.Name); err_ != nil {
+	if err_ := lowerMemOptionU64(ctx, caller, callee, h, recT_.Fields[1].Type, ptr+8, v.ID); err_ != nil {
 		return err_
 	}
-	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+24, v.ObservedAt); err_ != nil {
+	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[2].Type, ptr+24, v.Name); err_ != nil {
+		return err_
+	}
+	if err_ := lowerMemString(ctx, caller, callee, h, recT_.Fields[3].Type, ptr+32, v.ObservedAt); err_ != nil {
 		return err_
 	}
 	return nil
@@ -1284,7 +1296,7 @@ func toGoFlatResultRepositoryString(ctx context.Context, cc *host.CallContext, h
 	disc_ := uint32(stack[0])
 	if disc_ == 0 {
 		var okVal_ Repository
-		if tmp_, err_ := toGoFlatRepository(ctx, cc, h, resT_.Ok, stack[1:8]); err_ != nil {
+		if tmp_, err_ := toGoFlatRepository(ctx, cc, h, resT_.Ok, stack[1:9]); err_ != nil {
 			return nil, err_
 		} else {
 			okVal_ = tmp_
@@ -1331,7 +1343,7 @@ func fromGoFlatResultRepositoryString(ctx context.Context, cc *host.CallContext,
 	switch x := v.(type) {
 	case ResultRepositoryStringOk:
 		stack[0] = 0
-		if err_ := fromGoFlatRepository(ctx, cc, h, stack[1:8], x.Value); err_ != nil {
+		if err_ := fromGoFlatRepository(ctx, cc, h, stack[1:9], x.Value); err_ != nil {
 			return err_
 		}
 	case ResultRepositoryStringErr:
@@ -1344,6 +1356,7 @@ func fromGoFlatResultRepositoryString(ctx context.Context, cc *host.CallContext,
 		stack[5] = 0
 		stack[6] = 0
 		stack[7] = 0
+		stack[8] = 0
 	default:
 		return fmt.Errorf("wacogo/witgen: fromGoFlatResultRepositoryString: unknown result case")
 	}
@@ -1378,7 +1391,7 @@ func liftFlatResultRepositoryString(ctx context.Context, caller, callee *host.Ca
 	disc_ := uint32(stack[0])
 	if disc_ == 0 {
 		var okVal_ Repository
-		if tmp_, err_ := liftFlatRepository(ctx, caller, callee, h, resT_.Ok, stack[1:8]); err_ != nil {
+		if tmp_, err_ := liftFlatRepository(ctx, caller, callee, h, resT_.Ok, stack[1:9]); err_ != nil {
 			return nil, err_
 		} else {
 			okVal_ = tmp_
@@ -1427,7 +1440,7 @@ func lowerFlatResultRepositoryString(ctx context.Context, caller, callee *host.C
 	switch x := v.(type) {
 	case ResultRepositoryStringOk:
 		stack[0] = 0
-		if err_ := lowerFlatRepository(ctx, caller, callee, h, resT_.Ok, stack[1:8], x.Value); err_ != nil {
+		if err_ := lowerFlatRepository(ctx, caller, callee, h, resT_.Ok, stack[1:9], x.Value); err_ != nil {
 			return err_
 		}
 	case ResultRepositoryStringErr:
@@ -1440,6 +1453,7 @@ func lowerFlatResultRepositoryString(ctx context.Context, caller, callee *host.C
 		stack[5] = 0
 		stack[6] = 0
 		stack[7] = 0
+		stack[8] = 0
 	default:
 		return fmt.Errorf("wacogo/witgen: lowerFlatResultRepositoryString: unknown result case")
 	}
@@ -1854,7 +1868,7 @@ func wrapOpen(f *Factory) host.Func {
 		if implErr_ != nil {
 			return fmt.Errorf("wacogo/witgen: open: impl returned error: %w", implErr_)
 		}
-		outPtr_, rerr_ := cc.Realloc(ctx, 0, 0, 8, 40)
+		outPtr_, rerr_ := cc.Realloc(ctx, 0, 0, 8, 48)
 		if rerr_ != nil {
 			return fmt.Errorf("wacogo/witgen: open: realloc failed: %w", rerr_)
 		}

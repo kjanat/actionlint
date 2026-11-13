@@ -2,15 +2,15 @@ package cli
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
@@ -74,73 +74,60 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 			attempts += group.Attempts
 			resolverCalls += group.ResolverCalls
 			unreported += group.UnreportedResolverCalls
-			if group.Attempts != 0 && (group.Host != "api.github.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.REST) {
+			if group.Attempts != 0 && (group.Host != "raw.githubusercontent.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.HTTP || group.Purpose != "action-metadata") {
 				t.Fatalf("wrong accounting: %+v", group)
 			}
 		}
 		want := map[string]int{}
-		switch mode {
-		case "default":
-			want = map[string]int{"/rate_limit": 1, "/repos/example/action": 4, "/repos/example/action/contents?ref=main": 1, "/repos/example/action/git/commits/" + sha: 2, "/repos/example/action/contents/action.yml?ref=" + sha: 1}
-		case "online":
-			want = map[string]int{"/rate_limit": 1, "/repos/example/action": 3, "/repos/example/action/contents?ref=main": 1, "/repos/example/action/git/commits/" + sha: 1}
+		if mode == "default" {
+			want = map[string]int{"raw.githubusercontent.com/example/action/" + sha + "/action.yml": 1}
 		}
 		assertMetadataRequests(t, requests[before:], want)
 		if attempts != uint64(len(requests)-before) {
 			t.Fatalf("%s attempts=%d, actual requests=%d", mode, attempts, len(requests)-before)
 		}
-		wantCalls := uint64(1)
-		if mode == "offline" {
-			wantCalls = 0
-		}
-		if resolverCalls != wantCalls || unreported != 0 {
+		if resolverCalls != 0 || unreported != 0 {
 			t.Fatalf("%s resolver calls=%d, unreported=%d", mode, resolverCalls, unreported)
 		}
 	}
 }
 
-// actionMetadataFixture uses fixed API paths and records every request, including rechecks.
+// actionMetadataFixture serves the Git reference listing and raw files of example/action.
 func actionMetadataFixture(t *testing.T, sha, token string, requests *[]string) actionMetadataTransport {
 	t.Helper()
 	return func(r *http.Request) (*http.Response, error) {
 		t.Helper()
-		if r.URL.Scheme != "https" || r.URL.Host != "api.github.com" {
-			t.Fatalf("unexpected HTTP authority %s", r.URL)
+		if r.URL.Scheme != "https" {
+			t.Fatalf("unexpected HTTP scheme %s", r.URL)
 		}
-		wantAuth := ""
-		if token != "" {
-			wantAuth = "Bearer " + token
-		}
-		if r.Header.Get("Authorization") != wantAuth {
-			t.Fatal("unexpected GitHub authorization header")
-		}
-		*requests = append(*requests, r.URL.RequestURI())
-		status, body := http.StatusOK, ""
-		switch r.URL.Path {
-		case "/rate_limit":
-			body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
-		case "/repos/example/action":
-			body = `{"id":42,"full_name":"example/action","default_branch":"main"}`
-		case "/repos/example/action/contents":
-			if r.URL.Query().Get("ref") != "main" {
-				t.Fatalf("wrong contents guard: %s", r.URL)
+		*requests = append(*requests, r.URL.Host+r.URL.RequestURI())
+		header := http.Header{}
+		switch r.URL.Host {
+		case "github.com":
+			wantAuth := ""
+			if token != "" {
+				wantAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token))
 			}
-			body = `[]`
-		case "/repos/example/action/git/ref/v1":
-			status = http.StatusNotFound
-		case "/repos/example/action/git/ref/tags/v1":
-			body = fmt.Sprintf(`{"ref":"refs/tags/v1","object":{"sha":%q,"type":"commit"}}`, sha)
-		case "/repos/example/action/git/commits/" + sha:
-			body = fmt.Sprintf(`{"sha":%q}`, sha)
-		case "/repos/example/action/contents/action.yml":
-			if r.URL.Query().Get("ref") != sha {
-				t.Fatalf("wrong metadata commit: %s", r.URL)
+			if r.Header.Get("Authorization") != wantAuth || r.URL.Path != "/example/action.git/info/refs" || r.URL.RawQuery != "service=git-upload-pack" {
+				t.Fatalf("unexpected Git request %s", r.URL)
 			}
-			body = "name: test\ndescription: test\ninputs: {known: {description: known}}\nruns: {using: composite, steps: []}\n"
-		default:
-			t.Fatalf("unexpected HTTP path %s", r.URL)
+			header.Set("Content-Type", gitwire.ContentType)
+			body := gitwire.RefAdvertisement(sha, "refs/heads/main", gitwire.Ref{Name: "refs/heads/main", Object: sha}, gitwire.Ref{Name: "refs/tags/v1", Object: sha})
+			return &http.Response{StatusCode: http.StatusOK, Header: header, Body: io.NopCloser(bytes.NewReader(body)), Request: r}, nil
+		case "raw.githubusercontent.com":
+			wantAuth := ""
+			if token != "" {
+				wantAuth = "Bearer " + token
+			}
+			if r.Header.Get("Authorization") != wantAuth || r.URL.Path != "/example/action/"+sha+"/action.yml" {
+				t.Fatalf("unexpected raw file request %s", r.URL)
+			}
+			header.Set("Content-Type", "text/plain; charset=utf-8")
+			body := "name: test\ndescription: test\ninputs: {known: {description: known}}\nruns: {using: composite, steps: []}\n"
+			return &http.Response{StatusCode: http.StatusOK, Header: header, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 		}
-		return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+		t.Fatalf("unexpected HTTP authority %s", r.URL)
+		return nil, nil
 	}
 }
 
@@ -189,7 +176,7 @@ func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
 	if !found {
 		t.Fatalf("named-ref metadata not used: %v", result.Diagnostics)
 	}
-	assertMetadataRequests(t, requests, map[string]int{"/rate_limit": 1, "/repos/example/action": 4, "/repos/example/action/contents?ref=main": 3, "/repos/example/action/git/ref/v1": 2, "/repos/example/action/git/ref/tags/v1": 2, "/repos/example/action/git/commits/" + sha: 2, "/repos/example/action/contents/action.yml?ref=" + sha: 1})
+	assertMetadataRequests(t, requests, map[string]int{"github.com/example/action.git/info/refs?service=git-upload-pack": 1, "raw.githubusercontent.com/example/action/" + sha + "/action.yml": 1})
 	var statistics struct {
 		Network accounting.Statistics `json:"network"`
 	}
@@ -201,13 +188,13 @@ func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
 		if group.Purpose != "resolver" || group.Attempts == 0 {
 			continue
 		}
-		if group.Host != "api.github.com" || group.Credentials != accounting.NoCredentials || group.RequestKind != accounting.REST {
+		if group.Host != "github.com" || group.Credentials != accounting.NoCredentials || group.RequestKind != accounting.Git {
 			t.Fatalf("wrong resolver accounting: %+v", group)
 		}
 		attempts += group.Attempts
 		failures += group.Failures
 	}
-	if attempts != 10 || failures != 2 {
-		t.Fatalf("resolver attempts=%d failures=%d, want 10 attempts and 2 failed 404 responses", attempts, failures)
+	if attempts != 1 || failures != 0 {
+		t.Fatalf("resolver attempts=%d failures=%d, want one reference listing", attempts, failures)
 	}
 }

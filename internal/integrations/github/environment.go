@@ -13,7 +13,7 @@ func EnvironmentOptions(mode Mode, env func(string) string) Options {
 	options := Options{Mode: mode}
 	if mode != Off {
 		if cache, err := os.UserCacheDir(); err == nil {
-			options.CacheDir = filepath.Join(cache, "actionlint", "action-metadata", "v1")
+			options.CacheDir = filepath.Join(cache, "actionlint", "action-metadata", "v2")
 		}
 	}
 	if mode == Online {

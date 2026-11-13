@@ -364,8 +364,12 @@ take precedence, including empty strings and `false`.
 Remote action metadata is fetched in online mode by default. Use
 `--action-metadata=offline` to check cached metadata without network requests,
 or `--action-metadata=off` to skip acquisition. Offline cache misses appear in
-JSON coverage without failing the check. See [remote action metadata](remote-actions.md)
-for the supported references and resolver configuration.
+JSON coverage without failing the check. Online lookups read the cache, then
+`github.com` and `raw.githubusercontent.com`. When `raw.githubusercontent.com`
+fails, they request the file at the same commit from `cdn.jsdelivr.net` without
+credentials. They call `api.github.com` only when these hosts do not return the
+file. See [remote action metadata](remote-actions.md) for the supported
+references and resolver configuration.
 
 ### Network accounting
 
@@ -393,8 +397,13 @@ limits or reservations. A rejected batch counts once, regardless of its size.
 fully reported; these are not presented as HTTP request counts.
 `resolver_reported_attempts` identifies attempts reported by an external resolver.
 
-GitHub metadata acquisition checks `/rate_limit` once per credential scope before
-its request batch and updates estimates from subsequent response headers.
+GitHub metadata acquisition reads Git reference lists from `github.com` (request
+kind `git`) and manifests from `raw.githubusercontent.com` (request kind `http`).
+When `raw.githubusercontent.com` fails, it reads manifests from
+`cdn.jsdelivr.net` (request kind `http`, credentials `absent`). These requests
+do not use the REST API quota. When metadata acquisition falls
+back to the REST API, it checks `/rate_limit` once per credential scope before
+the first REST request and updates estimates from subsequent response headers.
 REST and GraphQL quotas are separate. Primary exhaustion and `Retry-After` stop
 further applicable requests without sleeping through the reset window. A plain
 permission-denied response does not imply rate-limit exhaustion. These controls
@@ -1349,9 +1358,13 @@ for version selection, overrides and offline behavior.
 [local tool provider manifest](plugins.md#local-tool-provider-manifests) that runs a native command.
 
 Online metadata lookup uses the bundled Commitish WebAssembly plugin to resolve
-branches, tags and commit references. Actionlint performs the plugin's requested
-lookups and includes them in `--network-stats`. Use `--action-metadata=offline`
-for cached metadata or `--action-metadata=off` to skip it.
+branches and tags from each repository's Git reference list. Actionlint reads
+cached manifests first. When the raw file host cannot answer, it requests the
+file from jsDelivr. It uses the GitHub REST API only when the Git host cannot
+answer or neither file host returns the file. It includes every request in
+`--network-stats`. Use
+`--action-metadata=offline` for cached metadata or `--action-metadata=off` to
+skip it.
 
 Load a replacement resolver component with `--plugin`. To use a native resolver,
 select it with `--resolve-with EXECUTABLE`; repeat `--resolver-arg VALUE` for

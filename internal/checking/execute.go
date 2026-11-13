@@ -36,7 +36,8 @@ import (
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 
 	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references"
+	actionprovider "actionlint.kjanat.dev/v2/internal/input/references/actions"
 
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -73,7 +74,7 @@ type sourceUnit = workspace.Source
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
-	RemoteActions   actions.Provider
+	RemoteActions   actionprovider.Provider
 	RemoteWorkflows workflowinputs.Provider
 	Repository      func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
@@ -363,7 +364,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	session := &analysisSession{
-		remoteActions: actionremote.New(request.RemoteActions),
+		remoteActions: make(map[references.MirrorAccess]*actionremote.Service),
 		runners:       request.Runners,
 		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
 		captures: captures, snapshots: snapshots, reader: reader,
@@ -384,8 +385,12 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	// Local dependencies use the project root or an explicitly supplied dependency root.
-	workflows := map[string]*workflowinputs.Cache{}
-	remoteWorkflows := workflowinputs.NewRemote(request.RemoteWorkflows)
+	type workflowCacheKey struct {
+		root    string
+		mirrors references.MirrorAccess
+	}
+	workflows := map[workflowCacheKey]*workflowinputs.Cache{}
+	remoteWorkflows := make(map[references.MirrorAccess]*workflowinputs.Remote)
 	session.workingDir = absPath(cwd)
 	session.repositories = make(map[string]repository.Snapshot)
 	for _, source := range request.Sources {
@@ -421,11 +426,29 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {
 		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
-		wc, configured := workflows[root]
+		mirrors := source.Config.MetadataMirrorAccess()
+		if _, exists := session.remoteActions[mirrors]; !exists {
+			actionProvider := request.RemoteActions
+			if configurable, ok := actionProvider.(interface {
+				WithMetadataMirrors(references.MirrorAccess) actionprovider.Provider
+			}); ok {
+				actionProvider = configurable.WithMetadataMirrors(mirrors)
+			}
+			workflowProvider := request.RemoteWorkflows
+			if configurable, ok := workflowProvider.(interface {
+				WithWorkflowMetadataMirrors(references.MirrorAccess) workflowinputs.Provider
+			}); ok {
+				workflowProvider = configurable.WithWorkflowMetadataMirrors(mirrors)
+			}
+			session.remoteActions[mirrors] = actionremote.New(actionProvider)
+			remoteWorkflows[mirrors] = workflowinputs.NewRemote(workflowProvider)
+		}
+		key := workflowCacheKey{root, mirrors}
+		wc, configured := workflows[key]
 		if !configured {
 			wc = workflowinputs.NewCache(root, session.debugWriter())
-			wc.SetRemote(remoteWorkflows)
-			workflows[root] = wc
+			wc.SetRemote(remoteWorkflows[mirrors])
+			workflows[key] = wc
 		}
 		ac := actions.GetCache(lifetime, root)
 		ac.Configure(workspaceactions.Options{
@@ -455,7 +478,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 		inputs.add(path)
 		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
-		ac, wc := actions.GetCache(lifetime, root), workflows[root]
+		ac, wc := actions.GetCache(lifetime, root), workflows[workflowCacheKey{root, source.Config.MetadataMirrorAccess()}]
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
@@ -565,7 +588,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	result.Inputs = inputs.list()
-	result.ActionMetadata = session.remoteActions.Coverage()
+	for _, mirrors := range []references.MirrorAccess{references.PublicMirrorsOnly, references.AllowUnknownMirrors, references.NoMirrors} {
+		result.ActionMetadata = append(result.ActionMetadata, session.remoteActions[mirrors].Coverage()...)
+	}
 	return result, err
 }
 

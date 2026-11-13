@@ -76,6 +76,23 @@ test('persisted action metadata accepts each availability state and zero manifes
 	assert.deepEqual(parseResult(value), value);
 });
 
+test('persisted action metadata accepts a selection without a repository ID', () => {
+	const { repository_id: _, ...unidentified } = selection;
+	const value = {
+		...base,
+		action_metadata: [{ reference: 'owner/action@v1', state: 'available', ...unidentified }],
+	};
+	assert.deepEqual(parseResult(value), value);
+	for (const repository_id of [0, -1, 1.5, '42', null]) {
+		assert.throws(() =>
+			parseResult({
+				...base,
+				action_metadata: [{ reference: 'owner/action@v1', state: 'available', ...unidentified, repository_id }],
+			})
+		);
+	}
+});
+
 test('persisted action metadata rejects malformed state, reason and problem variants', () => {
 	const valid = { reference: 'owner/action@v1', state: 'unavailable', reason: 'offline' };
 	const invalidRecords = [

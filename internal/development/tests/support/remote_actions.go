@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 // WithFixtureKnowledge supplies the corpus's explicit host evidence. Configured
@@ -68,6 +69,18 @@ func (p *fixtureActions) Lookup(ctx context.Context, ref actions.Reference) (act
 	return actions.NewManifestFile(selection, manifest.filename, []byte(manifest.content))
 }
 
+func fixtureRepositoryID(fields map[string]string) (repositoryid.ID, error) {
+	text, present := fields["repository-id"]
+	if !present {
+		return repositoryid.ID{}, nil
+	}
+	value, err := strconv.ParseUint(text, 10, 64)
+	if err != nil {
+		return repositoryid.ID{}, err
+	}
+	return repositoryid.Known(value)
+}
+
 // FixtureActions reads local manifests with their provenance in comment headers.
 func FixtureActions(t *testing.T) actions.Provider {
 	t.Helper()
@@ -108,7 +121,7 @@ func FixtureActions(t *testing.T) actions.Provider {
 		if source.Scheme != "https" || source.Host != "github.com" || len(parts) != 5 || parts[2] != "blob" {
 			t.Fatalf("fixture %s needs a commit-pinned source URL", entry.Name())
 		}
-		id, err := strconv.ParseUint(fields["repository-id"], 10, 64)
+		id, err := fixtureRepositoryID(fields)
 		if err != nil {
 			t.Fatal(err)
 		}

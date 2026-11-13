@@ -3,13 +3,14 @@ package github
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
 type transport func(*http.Request) (*http.Response, error)
@@ -19,6 +20,15 @@ func (f transport) RoundTrip(r *http.Request) (*http.Response, error) { return f
 const actionSource = "name: test\ndescription: test\nruns: {using: composite, steps: []}\n"
 
 var sha = strings.Repeat("a", 40)
+
+func knownRepositoryID(t *testing.T, value uint64) repositoryid.ID {
+	t.Helper()
+	id, err := repositoryid.Known(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
 
 func ref(t *testing.T, spec string) actions.Reference {
 	t.Helper()
@@ -30,36 +40,28 @@ func ref(t *testing.T, spec string) actions.Reference {
 }
 
 func TestDefaultOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
-	requests := 0
 	cache := t.TempDir()
-	client, err := New(Options{CacheDir: cache, Transport: transport(func(r *http.Request) (*http.Response, error) {
-		requests++
-		if r.URL.Host != "api.github.com" {
-			t.Fatalf("foreign host %s", r.URL.Host)
-		}
-		body := ""
-		switch r.URL.Path {
-		case "/repos/example/action":
-			body = `{"id":42,"full_name":"example/action"}`
-		case "/repos/example/action/git/commits/" + sha:
-			body = `{"sha":"` + sha + `"}`
-		case "/repos/example/action/contents/sub/action.yml":
-			if r.URL.Query().Get("ref") != sha {
-				t.Fatal("manifest not pinned")
-			}
-			body = actionSource
-		default:
+	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/action/"+sha+"/sub/action.yml" {
 			t.Fatalf("unexpected request %s", r.URL)
 		}
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
-	})})
+		return respond(r, http.StatusOK, rawText, actionSource), nil
+	}}
+	client, err := New(Options{CacheDir: cache, Transport: hosts})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := ref(t, "example/action/sub@"+sha)
 	manifest, err := client.Lookup(t.Context(), request)
-	if err != nil || !manifest.Available() || manifest.Content() != actionSource || manifest.Identity().RepositoryID() != 42 || requests != 4 {
-		t.Fatalf("manifest=%v error=%v requests=%d", manifest, err, requests)
+	if err != nil || !manifest.Available() || manifest.Content() != actionSource || !manifest.Identity().RepositoryID().IsZero() || len(hosts.recorded()) != 1 {
+		t.Fatalf("manifest=%v error=%v requests=%v", manifest, err, hosts.recorded())
+	}
+	again, err := New(Options{CacheDir: cache, Transport: hosts})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hit, err := again.Lookup(t.Context(), request); err != nil || !hit.Available() || hit.Content() != actionSource || len(hosts.recorded()) != 1 {
+		t.Fatalf("warm online=%v error=%v requests=%v", hit, err, hosts.recorded())
 	}
 	offline, err := New(Options{Mode: Offline, CacheDir: cache, Transport: transport(func(*http.Request) (*http.Response, error) {
 		t.Fatal("offline network")
@@ -69,7 +71,7 @@ func TestDefaultOnlineImmutableMetadataAndWarmOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	warm, err := offline.Lookup(t.Context(), request)
-	if err != nil || !warm.Available() || warm.Content() != actionSource {
+	if err != nil || !warm.Available() || warm.Content() != actionSource || !warm.Identity().RepositoryID().IsZero() {
 		t.Fatalf("warm=%v error=%v", warm, err)
 	}
 	miss, err := offline.Lookup(t.Context(), ref(t, "other/action/sub@"+sha))
@@ -119,16 +121,37 @@ func TestUnsupportedMetadataHostDoesNotUseNetwork(t *testing.T) {
 }
 
 func TestTransportFailuresNeverLeakCredentials(t *testing.T) {
-	for _, status := range []int{302, 403, 404, 429} {
-		client, err := New(Options{Mode: Online, Token: "secret-token", Transport: transport(func(r *http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: status, Header: http.Header{"Location": {"https://foreign.test/?token=secret-token"}}, Body: io.NopCloser(strings.NewReader("secret-token")), Request: r}, nil
-		})})
+	for _, tc := range []struct {
+		status int
+		want   availability.Reason
+		api    bool
+	}{
+		{http.StatusFound, availability.FailedReason, false},
+		{http.StatusNotFound, availability.InaccessibleReason, false},
+		{http.StatusForbidden, availability.DeniedReason, true},
+		{http.StatusTooManyRequests, availability.LimitReason, true},
+	} {
+		hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) {
+			switch r.URL.Host {
+			case "raw.githubusercontent.com", "api.github.com":
+			case "cdn.jsdelivr.net":
+				if r.Header.Get("Authorization") != "" || strings.Contains(r.URL.String(), "secret-token") {
+					t.Fatalf("credentials sent to jsDelivr: %s", r.URL)
+				}
+			default:
+				t.Fatalf("foreign authority %s", r.URL)
+			}
+			response := respond(r, tc.status, "text/html", "secret-token")
+			response.Header.Set("Location", "https://foreign.test/?token=secret-token")
+			return response, nil
+		}}
+		client, err := New(Options{Mode: Online, Token: "secret-token", Transport: hosts, Mirrors: references.AllowUnknownMirrors})
 		if err != nil {
 			t.Fatal(err)
 		}
 		m, err := client.Lookup(t.Context(), ref(t, "example/action@"+sha))
-		if err != nil || m.Available() || strings.Contains(string(m.Reason()), "secret-token") {
-			t.Fatalf("unsafe failure %v, %v", m, err)
+		if err != nil || m.Available() || m.Reason() != tc.want || strings.Contains(string(m.Reason()), "secret-token") || (hosts.count("api.github.com") != 0) != tc.api || (hosts.count("cdn.jsdelivr.net") != 0) != tc.api {
+			t.Fatalf("status %d: unsafe failure %v, %v requests=%v", tc.status, m, err, hosts.recorded())
 		}
 	}
 	ctx, cancel := context.WithCancel(t.Context())

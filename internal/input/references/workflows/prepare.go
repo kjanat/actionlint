@@ -9,7 +9,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	"golang.org/x/sync/errgroup"
 )
+
+const concurrentRemoteLoads = 8
 
 // Prepare acquires metadata for direct workflow calls and nested local calls.
 // Invalid YAML and missing manifests are cached for caller diagnostics.
@@ -39,6 +42,19 @@ func (c *Cache) Prepare(ctx context.Context, snapshot parsing.SourceSnapshot) er
 func (c *Cache) LoadCalls(ctx context.Context, referencesToLoad []string) error {
 	if c == nil {
 		return nil
+	}
+	var prefetch errgroup.Group
+	prefetch.SetLimit(concurrentRemoteLoads)
+	for _, spec := range referencesToLoad {
+		if IsRemoteReference(spec) {
+			prefetch.Go(func() error {
+				_, err := c.remote.Load(ctx, spec)
+				return err
+			})
+		}
+	}
+	if err := prefetch.Wait(); err != nil && ctx.Err() != nil {
+		return ctx.Err()
 	}
 	pending := slices.Clone(referencesToLoad)
 	seen := make(map[string]bool)

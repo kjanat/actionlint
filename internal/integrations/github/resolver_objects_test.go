@@ -39,9 +39,12 @@ func TestResolverRepositoryRechecksReferences(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		session, err := g.Open(t.Context(), references.Request{Version: 1, Repository: "example/action", ExpectedRepositoryID: 42})
+		session, err := g.Open(t.Context(), references.Request{Version: 1, Repository: "example/action", ExpectedRepositoryID: knownRepositoryID(t, 42)})
 		if err != nil {
 			t.Fatal(err)
+		}
+		if session.Repository().ID != knownRepositoryID(t, 42) {
+			t.Fatalf("session repository ID = %+v", session.Repository().ID)
 		}
 		got, found, err := session.Reference(t.Context(), "refs/tags/v1")
 		if err != nil || !found || got != id {
@@ -385,5 +388,29 @@ func TestResolverReadsTreeAfterCommitAndTagMisses(t *testing.T) {
 	}
 	if _, ok := object.(repository.Tree); !ok {
 		t.Fatalf("object = %T, want repository.Tree", object)
+	}
+}
+
+func TestResolverRepositoryComparesKnownExpectedID(t *testing.T) {
+	g, err := New(Options{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		body := `{"id":42,"full_name":"example/action","default_branch":"main"}`
+		switch r.URL.Path {
+		case "/repos/example/action":
+		case "/repos/example/action/contents":
+			body = `[]`
+		default:
+			t.Fatalf("unexpected request %s", r.URL)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := g.Open(t.Context(), references.Request{Version: 1, Repository: "example/action"})
+	if err != nil || session.Repository().ID != knownRepositoryID(t, 42) {
+		t.Fatalf("open without expected ID = %v, %v", session, err)
+	}
+	if _, err := g.Open(t.Context(), references.Request{Version: 1, Repository: "example/action", ExpectedRepositoryID: knownRepositoryID(t, 99)}); err == nil {
+		t.Fatal("opened a repository with a conflicting ID")
 	}
 }

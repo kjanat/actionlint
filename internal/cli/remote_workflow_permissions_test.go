@@ -3,14 +3,12 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
@@ -28,36 +26,16 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 	downloads := 0
 	original := http.DefaultTransport
 	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Scheme != "https" || r.URL.Host != "api.github.com" {
-			t.Fatalf("unexpected HTTP authority %s", r.URL)
+		if r.URL.Scheme != "https" || r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/workflows/"+sha+"/.github/workflows/build.yml" {
+			t.Fatalf("unexpected HTTP request %s", r.URL)
 		}
-		requests = append(requests, r.URL.RequestURI())
+		requests = append(requests, r.URL.Host+r.URL.RequestURI())
 		if r.Header.Get("Authorization") != "Bearer fixture-secret" {
 			t.Fatal("GitHub credential was not forwarded")
 		}
-		body := ""
-		switch r.URL.Path {
-		case "/rate_limit":
-			body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
-		case "/repos/example/workflows":
-			body = `{"id":42,"full_name":"example/workflows","default_branch":"main"}`
-		case "/repos/example/workflows/contents":
-			if r.URL.Query().Get("ref") != "main" {
-				t.Fatalf("wrong contents guard: %s", r.URL)
-			}
-			body = `[]`
-		case "/repos/example/workflows/git/commits/" + sha:
-			body = `{"sha":"` + sha + `"}`
-		case "/repos/example/workflows/contents/.github/workflows/build.yml":
-			downloads++
-			if r.URL.Query().Get("ref") != sha {
-				t.Fatal("workflow request was not pinned to a commit")
-			}
-			body = "on: workflow_call\npermissions: {contents: write}\njobs: {publish: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
-		default:
-			t.Fatalf("unexpected HTTP request %s", r.URL)
-		}
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+		downloads++
+		body := "on: workflow_call\npermissions: {contents: write}\njobs: {publish: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
 	})
 	t.Cleanup(func() { http.DefaultTransport = original })
 	// GitHub rejects a reusable workflow requesting more token permissions than
@@ -86,7 +64,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		}
 		want := map[string]int{}
 		if mode == "online" {
-			want = map[string]int{"/rate_limit": 1, "/repos/example/workflows": 4, "/repos/example/workflows/contents?ref=main": 1, "/repos/example/workflows/git/commits/" + sha: 2, "/repos/example/workflows/contents/.github/workflows/build.yml?ref=" + sha: 1}
+			want = map[string]int{"raw.githubusercontent.com/example/workflows/" + sha + "/.github/workflows/build.yml": 1}
 		}
 		assertMetadataRequests(t, requests[before:], want)
 		var statistics struct {
@@ -98,7 +76,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		var counted uint64
 		for _, group := range statistics.Network.Requests {
 			counted += group.Attempts
-			if group.Attempts != 0 && (group.Host != "api.github.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.REST || (group.Purpose != "workflow-metadata" && group.Purpose != "quota-preflight" && group.Purpose != "resolver")) {
+			if group.Attempts != 0 && (group.Host != "raw.githubusercontent.com" || group.Credentials != accounting.CredentialsProvided || group.RequestKind != accounting.HTTP || group.Purpose != "workflow-metadata") {
 				t.Fatalf("wrong workflow request accounting: %+v", group)
 			}
 		}
@@ -126,25 +104,10 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 	t.Setenv("HOME", cache)
 	original := http.DefaultTransport
 	http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
-		body := ""
-		switch r.URL.Path {
-		case "/rate_limit":
-			body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
-		case "/repos/kjanat/actionlint":
-			body = `{"id":42,"full_name":"kjanat/actionlint","default_branch":"main"}`
-		case "/repos/kjanat/actionlint/contents":
-			if r.URL.Query().Get("ref") != "main" {
-				t.Fatalf("wrong contents guard: %s", r.URL)
-			}
-			body = `[]`
-		case "/repos/kjanat/actionlint/git/commits/" + revision:
-			body = `{"sha":"` + revision + `"}`
-		case "/repos/kjanat/actionlint/contents/.github/workflows/nix.yml":
-			body = string(target)
-		default:
+		if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/kjanat/actionlint/"+revision+"/.github/workflows/nix.yml" {
 			t.Fatalf("unexpected HTTP request %s", r.URL)
 		}
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(string(target))), Request: r}, nil
 	})
 	t.Cleanup(func() { http.DefaultTransport = original })
 	for _, permissions := range []string{"{contents: read}", "{}"} {
@@ -199,25 +162,10 @@ jobs:
 			sha := strings.Repeat("a", 40)
 			original := http.DefaultTransport
 			http.DefaultTransport = actionMetadataTransport(func(r *http.Request) (*http.Response, error) {
-				body := ""
-				switch r.URL.Path {
-				case "/rate_limit":
-					body = fmt.Sprintf(`{"resources":{"core":{"remaining":100,"reset":%d}}}`, time.Now().Add(time.Hour).Unix())
-				case "/repos/example/workflows":
-					body = `{"id":42,"full_name":"example/workflows","default_branch":"main"}`
-				case "/repos/example/workflows/contents":
-					if r.URL.Query().Get("ref") != "main" {
-						t.Fatalf("wrong contents guard: %s", r.URL)
-					}
-					body = `[]`
-				case "/repos/example/workflows/git/commits/" + sha:
-					body = `{"sha":"` + sha + `"}`
-				case "/repos/example/workflows/contents/.github/workflows/build.yml":
-					body = target
-				default:
+				if r.URL.Host != "raw.githubusercontent.com" || r.URL.Path != "/example/workflows/"+sha+"/.github/workflows/build.yml" {
 					t.Fatalf("unexpected HTTP request %s", r.URL)
 				}
-				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"text/plain; charset=utf-8"}}, Body: io.NopCloser(strings.NewReader(target)), Request: r}, nil
 			})
 			t.Cleanup(func() { http.DefaultTransport = original })
 			// No caller permissions are known. Argument and output checking must

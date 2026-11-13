@@ -11,5 +11,6 @@ func (g *GitHub) ResolverEnabled() bool { return g.mode == Online }
 func (g *GitHub) WithResolver(resolver references.Resolver) actions.Provider {
 	configured := *g
 	configured.resolver = func() references.Resolver { return resolver }
+	configured.listings = newRefListings()
 	return &configured
 }
