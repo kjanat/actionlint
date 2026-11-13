@@ -402,8 +402,15 @@ func documentFields(s *jsonschema.Schema) {
 
 func documentedReflector() (*jsonschema.Reflector, error) {
 	r := reflector()
-	for _, file := range []string{"config.go", "lint.go", "reporting.go", "network.go", "network_policy.go", "rule_settings.go", "catalog.go", "file_overrides.go", "repository.go", "knowledge_options.go"} {
-		if err := r.AddGoComments("actionlint.kjanat.dev/v2", filepath.Join("internal", "input", "configuration", file), jsonschema.WithFullComment()); err != nil {
+	files, err := filepath.Glob(filepath.Join("internal", "input", "configuration", "*.go"))
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		if err := r.AddGoComments("actionlint.kjanat.dev/v2", file, jsonschema.WithFullComment()); err != nil {
 			return nil, fmt.Errorf("read config comments: %w", err)
 		}
 	}
