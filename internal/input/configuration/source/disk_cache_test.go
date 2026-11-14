@@ -28,10 +28,14 @@ func TestRemoteConfigCacheWriteFailure(t *testing.T) {
 			ctx, session := network.WithSession(t.Context(), network.Options{CacheDirectory: directory, WarmCache: tc.warm})
 			reader := New(ctx, nil, acquisitionhttp.Connections{})
 			const content = "lint = {}\n"
+			const configURL = "https://example.org/config.toml?token=private-config-token"
 			reader.client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
+				if request.URL.String() != configURL {
+					t.Errorf("request URL = %q, want %q", request.URL.String(), configURL)
+				}
 				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(content)), Request: request}, nil
 			})
-			got, err := reader.ReadFile("https://example.org/config.toml")
+			got, err := reader.ReadFile(configURL)
 			if tc.warm {
 				if pathError, ok := errors.AsType[*os.PathError](err); !ok || pathError.Op != "mkdir" || pathError.Path != directory || got != nil {
 					t.Fatalf("cache warm error=%v, want cache write failure", err)
@@ -41,7 +45,7 @@ func TestRemoteConfigCacheWriteFailure(t *testing.T) {
 			if err != nil || string(got) != content {
 				t.Fatalf("online read=%q error=%v, want downloaded configuration", got, err)
 			}
-			if warnings := session.Warnings(); len(warnings) != 1 || !strings.Contains(warnings[0], "Could not cache configuration") {
+			if warnings := session.Warnings(); len(warnings) != 1 || !strings.Contains(warnings[0], "Could not cache configuration https://example.org/config.toml:") || strings.Contains(warnings[0], "token") {
 				t.Fatalf("cache warning=%v", warnings)
 			}
 		})
