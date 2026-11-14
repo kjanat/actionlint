@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 const MAX_INPUT_BYTES: usize = 8 * 1024 * 1024;
 
-const METADATA: &str = r#"{"metadata_version":1,"abi_version":1,"transport":"wasm-core-json","id":"actionlint-engine-echo","name":"Echo","plugin_version":"0.1.0","engine":{"name":"echo","version":"1.0.0"},"rules":[{"name":"echo","description":"Report undefined fixture identifiers","category":"correctness","maturity":"stable","provider":"actionlint-engine-echo"}],"interfaces":{"check":[{"version":1,"export":"check"}],"validate_config":[{"version":1,"export":"validate_config"}],"metadata":[{"version":1,"export":"metadata"}]},"capabilities":{"script_shells":["python","python3"],"check":true,"validate_config":true,"config_schema":true,"max_input_bytes":8388608,"position_encoding":"unicode"},"config_schema":{}}"#;
+const METADATA: &str = r#"{"metadata_version":1,"abi_version":1,"transport":"wasm-core-json","id":"actionlint-engine-echo","name":"Echo","repository":"https://github.com/kjanat/actionlint","plugin_version":"0.1.0","engine":{"name":"echo","version":"1.0.0"},"rules":[{"name":"echo","description":"Report undefined fixture identifiers","category":"correctness","maturity":"stable","provider":"actionlint-engine-echo"}],"interfaces":{"check":[{"version":1,"export":"check"}],"validate_config":[{"version":1,"export":"validate_config"}],"metadata":[{"version":1,"export":"metadata"}]},"capabilities":{"script_shells":["python","python3"],"check":true,"validate_config":true,"config_schema":true,"max_input_bytes":8388608,"position_encoding":"unicode"},"config_schema":{}}"#;
 
 thread_local! {
     static BUFFERS: RefCell<BTreeMap<u32, Vec<u8>>> = const { RefCell::new(BTreeMap::new()) };

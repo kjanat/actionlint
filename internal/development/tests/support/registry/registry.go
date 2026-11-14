@@ -42,6 +42,8 @@ type PluginPublisher struct {
 	Aliases []string
 	// RepositoryID is the GitHub repository ID that keys the record paths.
 	RepositoryID int
+	// Metadata supplies discovery metadata for fixtures that check it against a runtime export.
+	Metadata json.RawMessage
 }
 
 // PluginRegistry serves the existing registry export format through a transport,
@@ -394,6 +396,9 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 	if format == artifacts.Core {
 		kind, contract = "core", "wasm-core-json/1"
 		metadata = fmt.Sprintf(`{"metadata_version":1,"id":%q,"name":"Test plugin","description":"Registry test","license":"MIT","plugin_version":%q,"repository":%q,"transport":"wasm-core-json","abi_version":1}`, publisher.PluginID, strings.TrimPrefix(tag, "v"), "https://"+publisher.Name)
+	}
+	if len(publisher.Metadata) != 0 {
+		metadata = string(publisher.Metadata)
 	}
 	section := binary.AppendUvarint(nil, uint64(len("actionlint.plugin")))
 	section = append(section, []byte("actionlint.plugin")...)
