@@ -176,7 +176,6 @@ then each repository's Git reference list from `github.com` and manifests from
 whether actionlint tries `cdn.jsdelivr.net` before GitHub REST. By default, only
 repositories known to be public can use that mirror.
 Online requests use `GH_TOKEN`, falling back to `GITHUB_TOKEN`.
-This option does not create project lockfiles.
 
 These options belong to the root and to **check**, unless noted otherwise.
 The root accepts single- and double-dash spellings; **check**

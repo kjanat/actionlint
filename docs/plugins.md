@@ -262,7 +262,7 @@ authorize private network access.
 An explicit `--plugin` source, direct inspect/install URL, public plugin API source,
 or `--registry` endpoint authorizes its selected scheme, host and effective port for
 that invocation, including a private endpoint. Saving the declaration does not save
-that authority. Selecting a configuration or lock file, running install/sync, and
+that authority. Selecting a configuration, running install/sync, and
 `--allow-config-processes` do not grant private network access. Configured script
 engines use the same public-only acquisition policy.
 
