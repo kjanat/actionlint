@@ -62,7 +62,7 @@ func projectConfigPath(directory, selected string) (string, error) {
 		return "", errors.New("no repository found; select configuration with --config")
 	}
 	directory = filepath.Join(repository, ".github")
-	if err := configplugins.ValidateLocalPath(directory); err != nil {
+	if err := configplugins.ValidateLocalPath(filepath.Join(discovery.PhysicalRepositoryRoot(repository), ".github")); err != nil {
 		return "", err
 	}
 	return configplugins.FindOrDefaultPath(directory)

@@ -101,6 +101,7 @@ func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	file := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
 	changed := pin
 	changed.Name, changed.RepositoryID = "github.com/another/plugin", "20"
+	changed.Metadata = strings.Replace(pin.Metadata, "https://"+pin.RepositoryName(), "https://"+changed.RepositoryName(), 1)
 	changed.URL = "https://" + changed.Name + "/releases/download/" + pin.Version + "/" + pin.Asset
 	if err := file.CheckReplacement(changed, ""); err == nil || !strings.Contains(err.Error(), "alias") {
 		t.Fatalf("alias reassignment accepted: %v", err)

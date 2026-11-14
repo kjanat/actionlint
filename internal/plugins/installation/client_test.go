@@ -143,6 +143,15 @@ func TestPinnedSyncVerifiesOfflineArtifacts(t *testing.T) {
 	if len(r.Requests()) != requests {
 		t.Fatal("offline sync contacted network")
 	}
+	changedMetadata := pin
+	changedMetadata.Metadata = strings.Replace(pin.Metadata, "Test plugin", "Changed plugin", 1)
+	if changedMetadata.Metadata == pin.Metadata {
+		t.Fatal("fixture has no plugin name to change")
+	}
+	changed := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{changedMetadata}}
+	if err := changed.Sync(t.Context(), options, statuses); err == nil || !strings.Contains(err.Error(), "artifact metadata disagrees") {
+		t.Fatalf("altered registry metadata was accepted for cached bytes: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(options.CacheDir, pin.SHA256), []byte("tampered"), 0600); err != nil {
 		t.Fatal(err)
 	}

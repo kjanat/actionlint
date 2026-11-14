@@ -66,10 +66,24 @@ func nativeWorkspaceWith(t *testing.T, files map[string]string) string {
 	if _, repository := files[".git"]; !repository {
 		files[".git"] = ""
 	}
-	if _, configured := files[".github/actionlint.yaml"]; !configured {
+	_, yamlConfigured := files[".github/actionlint.yaml"]
+	_, ymlConfigured := files[".github/actionlint.yml"]
+	if !yamlConfigured && !ymlConfigured {
 		files[".github/actionlint.yaml"] = "plugins: []\n"
 	}
 	return workspaceWith(t, files)
+}
+
+func TestNativeWorkspaceWithExistingYML(t *testing.T) {
+	t.Parallel()
+	dir := nativeWorkspaceWith(t, map[string]string{".github/actionlint.yml": "tools: {shellcheck: false}\n"})
+	if _, err := os.Stat(filepath.Join(dir, ".github", "actionlint.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("unexpected actionlint.yaml: %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(dir, ".github", "actionlint.yml"))
+	if err != nil || string(content) != "tools: {shellcheck: false}\n" {
+		t.Fatalf("actionlint.yml = %q, error = %v", content, err)
+	}
 }
 
 func workspaceWith(t *testing.T, files map[string]string) string {

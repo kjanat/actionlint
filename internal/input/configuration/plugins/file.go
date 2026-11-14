@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
@@ -105,6 +106,9 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 		var err error
 		if mode == PluginDeclarationsOnly {
 			doc.Value, err = pluginDependencyNode(doc.Value)
+			if err == nil {
+				doc.Value, err = rules.NormalizeForMerge(doc.Value)
+			}
 		} else {
 			doc.Value, err = rules.NormalizeForMerge(doc.Value)
 		}
@@ -119,6 +123,13 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
+	if mode == PluginDeclarationsOnly && manifest.Declared {
+		root, ok := loaded.Value.(map[string]any)
+		if !ok {
+			return nil, errors.New("config must be a mapping")
+		}
+		manifest.node = selectFields(root, "plugins", "extends")
+	}
 	return manifest, nil
 }
 
@@ -129,13 +140,64 @@ func pluginDependencyNode(value any) (any, error) {
 	if _, _, err := References(value); err != nil {
 		return nil, err
 	}
+	root, ok := value.(map[string]any)
+	if !ok {
+		return nil, errors.New("config must be a mapping")
+	}
 	projected := map[string]any{}
 	for _, key := range []string{"plugins", "extends"} {
-		if v, ok := value.(map[string]any)[key]; ok {
+		if v, ok := root[key]; ok {
 			projected[key] = v
 		}
 	}
+	if tools, ok := root["tools"].(map[string]any); ok {
+		selected := map[string]any{}
+		for _, name := range bundled.Names() {
+			if tool, exists := tools[name]; exists {
+				if fields, ok := tool.(map[string]any); ok {
+					selected[name] = selectFields(fields, "enabled", "backend")
+				} else {
+					selected[name] = tool
+				}
+			}
+		}
+		projected["tools"] = selected
+	} else if value, exists := root["tools"]; exists {
+		projected["tools"] = value
+	}
+	if lint, ok := root["lint"].(map[string]any); ok {
+		selected := selectFields(lint, "enabled", "experimental")
+		if rules, ok := lint["rules"].(map[string]any); ok {
+			selectedRules := selectFields(rules, "preset", "disable")
+			for _, group := range []string{"correctness", "suspicious", "security", "conventions", "style", "policy", "external", "plugins", "nursery"} {
+				if value, exists := rules[group]; exists {
+					if fields, ok := value.(map[string]any); ok {
+						keys := append([]string{"level", "preset"}, bundled.Names()...)
+						selectedRules[group] = selectFields(fields, keys...)
+					} else {
+						selectedRules[group] = value
+					}
+				}
+			}
+			selected["rules"] = selectedRules
+		} else if value, exists := lint["rules"]; exists {
+			selected["rules"] = value
+		}
+		projected["lint"] = selected
+	} else if value, exists := root["lint"]; exists {
+		projected["lint"] = value
+	}
 	return projected, nil
+}
+
+func selectFields(source map[string]any, keys ...string) map[string]any {
+	selected := map[string]any{}
+	for _, key := range keys {
+		if value, ok := source[key]; ok {
+			selected[key] = value
+		}
+	}
+	return selected
 }
 
 // An explicit manifest trusts its containing directory, including checkout

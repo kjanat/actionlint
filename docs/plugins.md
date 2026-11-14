@@ -197,6 +197,9 @@ See [configuration migration](config-migration.md) for preview and explicit migr
 
 Checks also use these registry plugins when no plugin list was configured. The
 user cache records the selected releases. `actionlint cache warm` refreshes them.
+Checks read Ruff's registry metadata first and download and load its core Wasm
+only when a matching script needs it. Bash, PowerShell and JavaScript steps do
+not trigger that download. `cache warm` downloads it in advance for offline use.
 An explicit `--tool` command or native backend selects the native linter.
 
 ### Try an unpublished candidate

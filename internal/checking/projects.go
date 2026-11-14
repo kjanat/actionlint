@@ -12,7 +12,6 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -57,18 +56,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 	if err != nil {
 		return nil, err
 	}
-	var batches []workspace.FileSelection
-	indices := make(map[string]int)
-	for _, file := range found.Files {
-		root := discovery.PhysicalRepositoryRoot(file.Path)
-		index, exists := indices[root]
-		if !exists {
-			index = len(batches)
-			indices[root] = index
-			batches = append(batches, workspace.FileSelection{})
-		}
-		batches[index].Files = append(batches[index].Files, file)
-	}
+	batches := workspace.PartitionFiles(found)
 	if len(batches) == 1 {
 		result, err := check(inputmodel.FromFiles(batches[0]))
 		if result != nil {

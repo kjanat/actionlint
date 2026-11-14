@@ -78,6 +78,9 @@ func TestDefaultWasmPluginSelection(t *testing.T) {
 		{"empty plugins", "plugins: []", nil, false},
 		{"disabled tool", "tools: {shellcheck: false}", nil, false},
 		{"disabled rule", "lint: {rules: {external: {shellcheck: off}}}", nil, false},
+		{"disabled rule with unrelated malformed setting", "lint: {rules: {external: {shellcheck: off}, correctness: {expression: {level: [invalid]}}}}", nil, false},
+		{"disabled lint", "lint: {enabled: false}", nil, false},
+		{"disabled group", "lint: {rules: {external: off}}", nil, false},
 		{"native backend", "tools: {shellcheck: {backend: {process: {executable: custom-shellcheck}}}}", nil, false},
 		{"disabled by invocation", "{}", []string{"shellcheck"}, false},
 	} {
@@ -90,7 +93,7 @@ func TestDefaultWasmPluginSelection(t *testing.T) {
 			}
 			ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true, CacheDirectory: t.TempDir()})
 			selection := installation.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{"shellcheck"}, DisabledTools: tc.disabled, Acquisition: installation.Acquisition{UserCacheDir: t.TempDir()}}
-			selected, err := selection.Resolve(ctx, root, inputmodel.Request{Kind: inputmodel.Repository})
+			selected, err := selection.ResolveForRules(ctx, root)
 			if errors.Is(err, network.ErrOffline) != tc.wantMissing {
 				t.Fatalf("selection error=%v, want missing offline plugin=%t", err, tc.wantMissing)
 			}
@@ -98,5 +101,24 @@ func TestDefaultWasmPluginSelection(t *testing.T) {
 				t.Fatalf("unexpected plugin selection: paths=%v error=%v", selected.Paths, err)
 			}
 		})
+	}
+}
+
+func TestResolveForRulesHonorsInheritedDefaultSelection(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	base := filepath.Join(root, "base.yml")
+	leaf := filepath.Join(root, "actionlint.yml")
+	if err := os.WriteFile(base, []byte("tools: {shellcheck: false}\nlint: {rules: {correctness: {expression: {level: [invalid]}}}}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(leaf, []byte("extends: [base.yml]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true, CacheDirectory: t.TempDir()})
+	selection := installation.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: leaf, DefaultTools: []string{"shellcheck"}, Acquisition: installation.Acquisition{UserCacheDir: t.TempDir()}}
+	selected, err := selection.ResolveForRules(ctx, root)
+	if err != nil || len(selected.Paths) != 0 {
+		t.Fatalf("inherited disabled tool: paths=%v error=%v", selected.Paths, err)
 	}
 }

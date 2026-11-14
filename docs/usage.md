@@ -393,7 +393,7 @@ actionlint cache clean
 
 `cache prune` removes downloads and compiled modules last written more than
 30 days ago by default. `--older-than` accepts durations such as `24h` or `168h`.
-It measures time since a file was written, not since it was last used. Registry
+It uses each file's modification time. Registry
 records remain so cached version selections stay consistent.
 
 `cache clean` removes cached configuration, downloads, remote action metadata,

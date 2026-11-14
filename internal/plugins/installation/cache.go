@@ -242,6 +242,10 @@ func sameCandidate(left, right Pin) bool {
 }
 
 func sameRelease(left, right Pin) bool {
+	if left.Metadata != "" && right.Metadata != "" && !artifacts.SameMetadata([]byte(left.Metadata), []byte(right.Metadata)) {
+		return false
+	}
+	left.Metadata, right.Metadata = "", ""
 	if !SameRegistry(left.Registry, right.Registry) {
 		return false
 	}

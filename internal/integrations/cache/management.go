@@ -100,8 +100,7 @@ func open(directory string) (*os.Root, error) {
 	return root, nil
 }
 
-// Revocation records keep revoked plugins blocked during offline checks.
-// They remain after cleanup, even when its downloaded artifact is removed.
+// Cleanup retains revocation records so offline checks keep revoked plugins blocked.
 func revoked(name string) bool {
 	parts := strings.Split(name, "/")
 	return len(parts) == 4 && parts[0] == "registry" && parts[2] == "revoked"

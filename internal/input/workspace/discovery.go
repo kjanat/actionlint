@@ -4,12 +4,30 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 )
+
+// PartitionFiles groups discovered inputs by repository for configuration and plugin selection.
+func PartitionFiles(found FileSelection) []FileSelection {
+	var batches []FileSelection
+	indices := make(map[string]int)
+	for _, file := range found.Files {
+		root := discovery.PhysicalRepositoryRoot(filepath.Dir(file.Path))
+		index, exists := indices[root]
+		if !exists {
+			index = len(batches)
+			indices[root] = index
+			batches = append(batches, FileSelection{})
+		}
+		batches[index].Files = append(batches[index].Files, file)
+	}
+	return batches
+}
 
 // DirectoryPaths searches workflows and actions across repository boundaries.
 // Each repository supplies its own Git ignore rules.
