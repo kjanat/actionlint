@@ -10,6 +10,23 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
+func TestReportedPhysicalPathIsRelativeToAliasedCheckout(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	checkout := filepath.Join(directory, "checkout-alias")
+	physical := filepath.Join(directory, "captured-checkout")
+	processor := policy.Processor{RuleSet: checking.ConfigurationRules(), CanonicalPaths: map[string]string{checkout: physical}}
+	config, err := checking.ConfigurationRules().Parse([]byte("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := processor.Apply(policy.Policy{Path: "ci.yml", Root: checkout, WorkingDir: checkout, Config: config},
+		[]*finding.Finding{{Rule: "expression-type", Path: filepath.Join(physical, "scripts", "lib.sh"), Start: sourcepos.Position{Line: 1}}}, nil, nil)
+	if err != nil || len(got) != 1 || got[0].Path != filepath.Join("scripts", "lib.sh") {
+		t.Fatalf("reported path=%+v error=%v, want scripts/lib.sh", got, err)
+	}
+}
+
 func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()

@@ -144,7 +144,7 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 		if err.Path == "" {
 			err.Path = path // Populate filename in the error
 		} else {
-			err.Path = RelativePath(p.WorkingDir, err.Path)
+			err.Path = processor.displayPath(p.WorkingDir, err.Path)
 		}
 	}
 
