@@ -241,7 +241,7 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 				if !legacy && descriptor.Category == category {
 					continue
 				}
-				if category != "plugins" && category != "nursery" && ruleSet.LegacyGroup(name) != category {
+				if legacy && category != "plugins" && category != "nursery" && ruleSet.LegacyGroup(name) != category {
 					return nil, false, fmt.Errorf("rule %q belongs in lint.rules.%s, not lint.rules.%s", name, descriptor.Category, category)
 				}
 				if baseline := selections[name]; baseline != nil {

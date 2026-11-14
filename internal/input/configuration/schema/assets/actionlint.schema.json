@@ -1471,6 +1471,16 @@
                                 }
                               ]
                             },
+                            "empty-job": {
+                              "title": "empty-job",
+                              "description": "Report jobs without steps",
+                              "markdownDescription": "Report jobs without steps",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
                             "env-var": {
                               "title": "env-var",
                               "description": "Validate environment variable declarations",
@@ -1819,7 +1829,6 @@
                                 "errexit-status",
                                 "workflow-command-syntax",
                                 "empty-triggers",
-                                "empty-job",
                                 "empty-run",
                                 "unpinned-reference",
                                 "require-commit-hash",
@@ -2210,16 +2219,6 @@
                                 }
                               ]
                             },
-                            "empty-job": {
-                              "title": "empty-job",
-                              "description": "Report jobs without steps",
-                              "markdownDescription": "Report jobs without steps",
-                              "allOf": [
-                                {
-                                  "$ref": "#/$defs/rule-setting"
-                                }
-                              ]
-                            },
                             "empty-run": {
                               "title": "empty-run",
                               "description": "Report steps with an empty run script",
@@ -2381,6 +2380,7 @@
                                 "invalid-output-file",
                                 "if-cond",
                                 "numeric-values",
+                                "empty-job",
                                 "unpinned-reference",
                                 "require-commit-hash",
                                 "job-timeout",
@@ -3219,6 +3219,16 @@
                                           }
                                         ]
                                       },
+                                      "empty-job": {
+                                        "title": "empty-job",
+                                        "description": "Report jobs without steps",
+                                        "markdownDescription": "Report jobs without steps",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
                                       "env-var": {
                                         "title": "env-var",
                                         "description": "Validate environment variable declarations",
@@ -3567,7 +3577,6 @@
                                           "errexit-status",
                                           "workflow-command-syntax",
                                           "empty-triggers",
-                                          "empty-job",
                                           "empty-run",
                                           "unpinned-reference",
                                           "require-commit-hash",
@@ -3958,16 +3967,6 @@
                                           }
                                         ]
                                       },
-                                      "empty-job": {
-                                        "title": "empty-job",
-                                        "description": "Report jobs without steps",
-                                        "markdownDescription": "Report jobs without steps",
-                                        "allOf": [
-                                          {
-                                            "$ref": "#/$defs/rule-setting"
-                                          }
-                                        ]
-                                      },
                                       "empty-run": {
                                         "title": "empty-run",
                                         "description": "Report steps with an empty run script",
@@ -4129,6 +4128,7 @@
                                           "invalid-output-file",
                                           "if-cond",
                                           "numeric-values",
+                                          "empty-job",
                                           "unpinned-reference",
                                           "require-commit-hash",
                                           "job-timeout",

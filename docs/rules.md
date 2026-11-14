@@ -253,16 +253,16 @@ Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off`
 
 ## empty-job
 
-Report jobs that run no steps. GitHub accepts the job, but it does nothing.
+GitHub rejects jobs without steps unless they call a reusable workflow.
 
-Add the steps the job should run, or remove the job.
+Add steps, call a reusable workflow with uses, or remove the job.
 
-- Category: `suspicious/jobs`
+- Category: `correctness/jobs`
 - Provider: `actionlint`
 - Maturity: `stable`
 - Enabled by default: `true`
 
-Configure this rule with `lint.rules.suspicious.empty-job`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+Configure this rule with `lint.rules.correctness.empty-job`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
 Give the job steps to run.
 
