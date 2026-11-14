@@ -24,7 +24,7 @@ func TestResolutionPlanOwnsProviderInputsAndAnswers(t *testing.T) {
 	}
 	candidates := []runnerapi.Candidate{{Name: "queue", OS: runnerapi.Windows, DefaultShell: "pwsh", CaseSensitivity: runnerapi.CaseInsensitive}}
 	answers := []runnerapi.Answer{{Resolution: &runnerapi.Resolved{Candidates: candidates}, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "inventory", Scope: "scope", Freshness: runnerapi.Fresh, Complete: true}}}
-	knowledge, err := plan.Complete(answers)
+	knowledge, err := plan.Complete(runnerapi.Response{Answers: answers})
 	if err != nil {
 		t.Fatal(err)
 	}

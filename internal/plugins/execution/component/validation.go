@@ -26,7 +26,7 @@ func validateSuppressionRuleName(reserved rule.Names, name string) error {
 
 type extensionRoleSet struct {
 	analyzer bool
-	runner   bool
+	runner   string
 	// script is the exported script-engine interface, empty without the role.
 	script            string
 	toolIntegration   bool
@@ -38,6 +38,8 @@ type extensionRoleSet struct {
 
 // scriptEngineInterfaces are the script-engine versions this host accepts.
 var scriptEngineInterfaces = []string{ScriptEngineInterface, ScriptEngine03Interface}
+
+var runnerInterfaces = []string{RunnerInterface, Runner03Interface}
 
 // templateEffectsPairs maps each template-effects version this host accepts
 // to the script-engine version it pairs with: the one whose request and
@@ -55,10 +57,17 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 	supported := []struct {
 		name string
 		role *bool
-	}{{AnalyzerInterface, &roles.analyzer}, {RunnerInterface, &roles.runner}, {ToolIntegrationInterface, &roles.toolIntegration}, {ReferenceResolverInterface, &roles.referenceResolver}}
+	}{{AnalyzerInterface, &roles.analyzer}, {ToolIntegrationInterface, &roles.toolIntegration}, {ReferenceResolverInterface, &roles.referenceResolver}}
 	scriptPrefix, _, _ := strings.Cut(ScriptEngineInterface, "@")
+	runnerPrefix, _, _ := strings.Cut(RunnerInterface, "@")
 	templatePrefix, _, _ := strings.Cut(TemplateEffectsInterface, "@")
 	for _, export := range exports {
+		if strings.HasPrefix(export.Name, runnerPrefix+"@") {
+			if err := negotiateVersion(export, runnerInterfaces, &roles.runner, "runner-provider"); err != nil {
+				return roles, err
+			}
+			continue
+		}
 		if strings.HasPrefix(export.Name, scriptPrefix+"@") {
 			if err := negotiateVersion(export, scriptEngineInterfaces, &roles.script, "script-engine"); err != nil {
 				return roles, err
@@ -85,7 +94,7 @@ func extensionRoles(exports []wacogo.ExportDesc) (extensionRoleSet, error) {
 			*candidate.role = true
 		}
 	}
-	if !roles.analyzer && !roles.runner && roles.script == "" && !roles.referenceResolver {
+	if !roles.analyzer && roles.runner == "" && roles.script == "" && !roles.referenceResolver {
 		return roles, fmt.Errorf("plugin does not export %s, %s, %s or %s", AnalyzerInterface, RunnerInterface, strings.Join(scriptEngineInterfaces, " or "), ReferenceResolverInterface)
 	}
 	if roles.toolIntegration && !roles.analyzer {

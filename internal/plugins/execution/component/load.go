@@ -145,7 +145,8 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 			return err
 		}
 	}
-	if roles.runner {
+	if roles.runner != "" {
+		p.runnerInterface = roles.runner
 		if err := p.loadRunner(ctx); err != nil {
 			return err
 		}

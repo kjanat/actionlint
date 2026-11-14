@@ -17,10 +17,12 @@ type snapshotProvider struct{}
 func SnapshotProvider() runnerapi.Provider { return snapshotProvider{} }
 
 type runnerInventory struct {
-	Runners []inventoryRunner `json:"runners"`
+	Runners []inventoryRunner         `json:"runners"`
+	Support *runnerapi.SupportCatalog `json:"support"`
 }
 
 type inventoryRunner struct {
+	Hosting         runnerapi.Hosting         `json:"hosting"`
 	Name            string                    `json:"name"`
 	Labels          []string                  `json:"labels"`
 	Group           string                    `json:"group"`
@@ -36,17 +38,17 @@ func (snapshotProvider) RunnerDescriptor() runnerapi.Descriptor {
 	return runnerapi.Descriptor{Name: "snapshot", Version: "1", Targets: []string{"github"}}
 }
 
-func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Request) ([]runnerapi.Answer, error) {
+func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Request) (runnerapi.Response, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return runnerapi.Response{}, err
 	}
 	var inventory runnerInventory
 	if request.Target == "github" && request.Snapshot.Content != "" {
 		if err := jsonv2.Unmarshal([]byte(request.Snapshot.Content), &inventory, jsonv2.RejectUnknownMembers(true)); err != nil {
-			return nil, fmt.Errorf("decode runner inventory: %w", err)
+			return runnerapi.Response{}, fmt.Errorf("decode runner inventory: %w", err)
 		}
 		if err := inventory.validate(); err != nil {
-			return nil, err
+			return runnerapi.Response{}, err
 		}
 	}
 	evidence := runnerapi.DatasetStatus{
@@ -60,14 +62,14 @@ func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Re
 	answers := make([]runnerapi.Answer, 0, len(request.Selectors))
 	for _, selector := range request.Selectors {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return runnerapi.Response{}, err
 		}
 		var resolution runnerapi.Resolution
 		switch {
 		case request.Target != "github":
 			resolution = runnerapi.NotApplicable{}
 		case evidence.Scope != request.Scope:
-			return nil, errors.New("runner inventory scope does not match requested scope")
+			return runnerapi.Response{}, errors.New("runner inventory scope does not match requested scope")
 		case evidence.Freshness != runnerapi.Fresh || !evidence.Complete:
 			resolution = runnerapi.Unknown{Reason: "runner inventory is missing, stale or incomplete"}
 		case unresolvedSelector(selector):
@@ -77,7 +79,17 @@ func (snapshotProvider) ResolveRunners(ctx context.Context, request runnerapi.Re
 		}
 		answers = append(answers, runnerapi.Answer{Resolution: resolution, DatasetStatus: evidence})
 	}
-	return answers, nil
+	catalog := builtinSupport(request.Scope)
+	if inventory.Support != nil {
+		catalog = runnerapi.CloneSupportCatalog(*inventory.Support)
+	}
+	if request.Snapshot.Content != "" {
+		if evidence.Freshness != runnerapi.Fresh {
+			catalog.DatasetStatus.Freshness = evidence.Freshness
+		}
+		catalog.DatasetStatus.Complete = catalog.DatasetStatus.Complete && evidence.Complete
+	}
+	return runnerapi.Response{Answers: answers, Support: catalog}, nil
 }
 
 func (inventory runnerInventory) validate() error {
@@ -90,6 +102,9 @@ func (inventory runnerInventory) validate() error {
 			return fmt.Errorf("runner inventory contains an empty or duplicate name %q", r.Name)
 		}
 		names[r.Name] = true
+		if r.Hosting != runnerapi.UnknownHosting && r.Hosting != runnerapi.Hosted && r.Hosting != runnerapi.SelfHosted {
+			return fmt.Errorf("runner %q has invalid hosting", r.Name)
+		}
 		switch r.OS {
 		case "", runnerapi.UnknownOS, runnerapi.Linux, runnerapi.MacOS, runnerapi.Windows:
 		default:
@@ -140,7 +155,7 @@ func (inventory runnerInventory) resolve(selector runnerapi.Selector) runnerapi.
 			caseSensitivity = runnerapi.UnknownCase
 		}
 		candidates = append(candidates, runnerapi.Candidate{
-			Name: r.Name, OS: os, Architecture: r.Architecture, DefaultShell: r.DefaultShell,
+			Name: r.Name, OS: os, Hosting: r.Hosting, Architecture: runnerapi.NormalizeArchitecture(r.Architecture), DefaultShell: r.DefaultShell,
 			CaseSensitivity: caseSensitivity, ShIsDash: r.ShIsDash, Ephemeral: r.Ephemeral,
 		})
 	}

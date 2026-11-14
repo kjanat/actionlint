@@ -28,6 +28,7 @@ import (
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
@@ -55,6 +56,7 @@ type lintRequest struct {
 	files        []string
 	hints        []string
 	acquisition  plugininstall.Acquisition
+	service      services.Service
 }
 
 type lintOutcome struct {
@@ -77,6 +79,11 @@ func (r *lintResult) selectedFileCount() int {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
+	service, err := services.FromGitHubServerURL(env("GITHUB_SERVER_URL"))
+	if err != nil {
+		return inputErrorf("%s", err)
+	}
+	req.service = service
 	options := github.EnvironmentOptions(github.Online, env, req.acquisition.UserCacheDir)
 	options.Transport = req.acquisition.Connections.Transport
 	metadata, err := github.New(options)
@@ -119,6 +126,7 @@ func runLinter(req *lintRequest) *lintResult {
 		workspace = req.workingDir
 	}
 	opts := checking.Options{
+		Service:        req.service,
 		RemoteActions:  req.remoteActions,
 		IgnorePatterns: req.ignore,
 		ConfigFile:     req.configFile,

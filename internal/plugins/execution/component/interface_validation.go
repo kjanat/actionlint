@@ -55,8 +55,12 @@ func validatePluginInterfaces(data []byte, roles extensionRoleSet) error {
 			return fmt.Errorf("incompatible %s contract: %w", roles.templateEffects, err)
 		}
 	}
-	if roles.runner {
-		if err := expectedRunnerInterface().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
+	if roles.runner != "" {
+		expected := expectedRunnerInterface
+		if roles.runner == Runner03Interface {
+			expected = expectedRunner03Interface
+		}
+		if err := expected().CheckInstantiation(map[string]any{"plugin": component.NewInstance()}); err != nil {
 			return fmt.Errorf("incompatible runner contract: %w", err)
 		}
 	}

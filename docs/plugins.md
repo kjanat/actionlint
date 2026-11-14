@@ -19,7 +19,7 @@ resolver plugin replaces Commitish for that analysis. See
 actionlint runs WebAssembly components that implement the `kjanat:actionlint/analyzer@0.2.0` interface, defined in
 [`plugins/protocol/wit/analyzer.wit`](../plugins/protocol/wit/analyzer.wit). A plugin first describes the checks it provides and the data it needs.
 For each analysis call, it receives one document and the requested data, then returns diagnostics. Components may instead implement the independent
-`kjanat:actionlint/runner-provider@0.2.0` interface or the
+`kjanat:actionlint/runner-provider` interface, version 0.2.0 or 0.3.0, or the
 `kjanat:actionlint/script-engine` interface, version
 [0.2.0](../plugins/protocol/wit/script-engine.wit) or
 [0.3.0](../plugins/protocol/wit/deps/actionlint-0.3.0/script-engine.wit). Components can implement multiple
@@ -558,7 +558,7 @@ case-insensitively. An optional `group` matches the requested group exactly. All
 one entry. Include only runners eligible for the supplied repository scope.
 Matrix alternatives resolve separately; ambiguous candidates contribute only facts on which they agree.
 
-Optional facts are `os` (`linux`, `macos`, `windows`, `unknown`), `architecture`, `default_shell`,
+Optional facts are `hosting` (`hosted`, `self-hosted`), `os` (`linux`, `macos`, `windows`, `unknown`), `architecture`, `default_shell`,
 `case_sensitivity` (`sensitive`, `insensitive`, `unknown`), `sh_is_dash` and `ephemeral`.
 Declare each fact explicitly; Windows alone does not establish that PowerShell is installed.
 Unknown JSON fields and invalid enum values are errors. An empty `runners` array asserts no eligible runners
@@ -622,11 +622,64 @@ answer must use the requested scope. A provider cannot report fresher or more
 complete data than the supplied snapshot allows.
 
 The runner-provider WIT contract supplies the request and response types. The host
-records the implementation ID, target, scope, snapshot digest and answers when
-preparing runner knowledge. Its cache key includes those values and the
+records the implementation ID, target, service, assessment date, scope, snapshot digest,
+answers and support catalogue when preparing runner knowledge. Its cache key includes those values and the
 configuration, so a changed catalogue or artifact invalidates cached answers.
 The host chooses which provider to trust. The Wasm sandbox restricts execution
 but does not verify the provider's answers.
+
+### Dated runner support
+
+Runner selection and support are separate facts. A matching runner remains in the
+candidate set even when its provider reports that execution is no longer supported.
+The `runner-support` rule reports established problems as warnings. A selector with
+unknown, stale, incomplete or mixed supported and unsupported candidates does not
+establish a support problem. Reachable matrix alternatives are checked separately.
+
+Declare the service that executes the workflows when the host cannot supply it:
+
+```toml
+[repository]
+service = "github.com"
+```
+
+For GHES, use `service = "ghes"` when its version is unknown, or
+`service = {kind = "ghes", version = "3.19"}`. GitHub Enterprise Cloud with data
+residency uses `service = "github-data-residency"`. An omitted setting inherits the
+host fact. `null` clears it to unknown. The CLI's `--runner-service` and
+`--runner-service-version` take precedence over configuration. Repository clone
+URLs do not determine the execution service.
+
+The built-in catalogue records two different changes:
+
+- GitHub.com and Data Residency no longer support self-hosted ARM32 runners as of
+  [2026-09-23](https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/).
+- GitHub-hosted Linux and Windows runners lose ARM32 job execution and native AArch32
+  userspace support by [2026-12-08](https://github.blog/changelog/2026-11-12-actions-for-arm32-linux-windows-retirement/).
+
+`ubuntu-24.04-arm` and `windows-11-arm` are ARM64 runners. Those labels remain valid.
+Native AArch32 userspace is a separate capability. The model exposes its support
+schedule, but the rule does not assume that an ARM64 workflow executes ARM32 programs.
+The built-in catalogue contains no GHES retirement dates for these changes.
+
+The [runner-provider 0.3.0 interface](../plugins/protocol/wit/deps/actionlint-0.3.0/runner.wit)
+receives the execution service and one assessment date. Its response contains runner
+answers and a separate support catalogue. Each policy identifies a capability,
+service and optional GHES version interval, hosting type, operating systems,
+architectures, initial support state and ordered dated changes. This also permits
+a provider to describe a runner that becomes available later or regains support.
+Providers supply facts and references. actionlint chooses diagnostics and severity.
+
+`job-execution` describes support for running the job. `native-aarch32-userspace`
+describes native 32-bit ARM programs on a runner. Additional capability identifiers
+can be supplied without adding a field to every candidate. Missing policies mean
+unknown support. A custom provider supplies its own catalogue; actionlint does not
+silently add the built-in GitHub policy to it.
+
+The snapshot provider accepts an optional `support` catalogue alongside `runners`.
+An explicit catalogue replaces its built-in policies and remains subject to the
+snapshot's freshness and completeness. Old runner-provider 0.2.0 components remain
+usable for runner facts, with unknown hosting and no support catalogue.
 
 ### Cross-runtime verification
 

@@ -9,6 +9,7 @@ import (
 	"os"
 
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/spf13/pflag"
 )
 
@@ -17,13 +18,30 @@ func (a *commandApp) runnerFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.RunnerProvider, "runner-provider", "", "Select an authoritative runner provider by name")
 	f.StringVar(&a.inv.Check.RunnerSnapshot, "runner-snapshot", "", "Read a runner evidence snapshot from `FILE`")
 	f.StringVar(&a.inv.Check.RunnerScope, "runner-scope", "", "Organization/repository scope of runner evidence")
-	for _, name := range []string{"runner-target", "runner-provider", "runner-snapshot", "runner-scope"} {
+	f.StringVar(&a.inv.Check.RunnerService, "runner-service", "", "Workflow service: github.com, github-data-residency, ghes or unknown")
+	f.StringVar(&a.inv.Check.RunnerServiceVersion, "runner-service-version", "", "GitHub Enterprise Server version, when known")
+	f.StringVar(&a.inv.Check.RunnerAsOf, "runner-as-of", "", "Assess runner support on YYYY-MM-DD instead of today")
+	for _, name := range []string{"runner-target", "runner-provider", "runner-snapshot", "runner-scope", "runner-service", "runner-service-version", "runner-as-of"} {
 		annotateFlag(f, name, "Rule selection")
 	}
 }
 
 func (c checkInvocation) runners() (runner.Options, error) {
 	options := runner.Options{Target: c.RunnerTarget, Provider: c.RunnerProvider, Scope: c.RunnerScope}
+	if c.RunnerService != "" || c.RunnerServiceVersion != "" {
+		service, err := services.Parse(c.RunnerService, c.RunnerServiceVersion)
+		if err != nil {
+			return options, err
+		}
+		options.Service = &service
+	}
+	if c.RunnerAsOf != "" {
+		date, err := runner.ParseDate(c.RunnerAsOf)
+		if err != nil {
+			return options, err
+		}
+		options.AsOf = date
+	}
 	if c.RunnerSnapshot == "" {
 		return options, nil
 	}

@@ -22,7 +22,7 @@ func (p *Plugin) RunnerDescriptor() runner.Descriptor {
 }
 
 func (p *Plugin) loadRunner(ctx context.Context) error {
-	value, err := p.callInterface(ctx, RunnerInterface, "describe")
+	value, err := p.callInterface(ctx, p.runnerInterface, "describe")
 	if err != nil {
 		return err
 	}
@@ -34,46 +34,60 @@ func (p *Plugin) loadRunner(ctx context.Context) error {
 	return nil
 }
 
-func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) ([]runner.Answer, error) {
+func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) (runner.Response, error) {
+	var response runner.Response
 	if !p.HasRunnerProvider() {
-		return nil, errors.New("component does not implement the runner-provider role")
+		return response, errors.New("component does not implement the runner-provider role")
 	}
 	input, err := lowerRunnerRequest(request)
-	if err != nil {
-		return nil, err
+	if err == nil && p.runnerInterface == Runner03Interface {
+		input, err = lowerRunner03Request(request, input)
 	}
-	value, err := p.callInterface(ctx, RunnerInterface, "resolve", input)
 	if err != nil {
-		return nil, err
+		return response, err
+	}
+	value, err := p.callInterface(ctx, p.runnerInterface, "resolve", input)
+	if err != nil {
+		return response, err
 	}
 	result, err := liftRecord(value, "runner outcome")
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 	completion, ok := result.Field("error").(*wacogo.ValOption)
 	if !ok {
-		return nil, liftError{"runner error", result.Field("error")}
+		return response, liftError{"runner error", result.Field("error")}
 	}
 	if !completion.IsNone() {
 		message, ok := completion.Val().(wacogo.ValString)
 		if !ok {
-			return nil, liftError{"runner error message", completion.Val()}
+			return response, liftError{"runner error message", completion.Val()}
 		}
-		return nil, errors.New(string(message))
+		return response, errors.New(string(message))
 	}
 	list, err := liftList(result.Field("answers"), "runner answers")
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 	answers := make([]runner.Answer, 0, list.Len())
 	for i := range list.Len() {
-		answer, err := liftRunnerAnswer(list.Get(i))
+		answer, err := liftRunnerAnswer(list.Get(i), p.runnerInterface)
 		if err != nil {
-			return nil, err
+			return response, err
 		}
 		answers = append(answers, answer)
 	}
-	return answers, nil
+	if p.runnerInterface == Runner03Interface {
+		response.Support, err = liftRunnerSupport(result.Field("support"))
+		if err != nil {
+			return runner.Response{}, err
+		}
+		if err := runner.ValidateSupportCatalog(response.Support, request.Scope); err != nil {
+			return runner.Response{}, fmt.Errorf("runner support catalogue: %w", err)
+		}
+	}
+	response.Answers = answers
+	return response, nil
 }
 
 func liftRunnerDescriptor(value wacogo.Val) (runner.Descriptor, error) {
@@ -185,27 +199,14 @@ func lowerConstraint(c runner.Constraint) (wacogo.Val, error) {
 	return wacogo.NewValRecord(field("value", value), field("position", lowerPosition(c.Position))), nil
 }
 
-func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
+func liftRunnerAnswer(value wacogo.Val, version string) (runner.Answer, error) {
 	r, err := liftRecord(value, "runner answer")
 	if err != nil {
 		return runner.Answer{}, err
 	}
 	var answer runner.Answer
-	e, err := liftRecord(r.Field("dataset-status"), "runner dataset status")
+	answer.DatasetStatus, err = liftRunnerDataset(r.Field("dataset-status"))
 	if err != nil {
-		return answer, err
-	}
-	for name, dest := range map[string]*string{"dataset-id": &answer.DatasetStatus.DatasetID, "scope": &answer.DatasetStatus.Scope, "obtained-at": &answer.DatasetStatus.ObtainedAt} {
-		if *dest, err = liftString(e, name); err != nil {
-			return answer, err
-		}
-	}
-	fresh, err := liftRunnerEnum(e.Field("freshness"), runner_freshness)
-	if err != nil {
-		return answer, err
-	}
-	answer.DatasetStatus.Freshness = runner.Freshness(fresh)
-	if answer.DatasetStatus.Complete, err = liftBool(e, "complete"); err != nil {
 		return answer, err
 	}
 	resolution, ok := r.Field("resolution").(*wacogo.ValVariant)
@@ -220,7 +221,7 @@ func liftRunnerAnswer(value wacogo.Val) (runner.Answer, error) {
 		}
 		var candidates []runner.Candidate
 		for i := range list.Len() {
-			c, err := liftRunnerCandidate(list.Get(i))
+			c, err := liftRunnerCandidate(list.Get(i), version)
 			if err != nil {
 				return answer, err
 			}
@@ -270,12 +271,18 @@ func liftRunnerPosition(value wacogo.Val) (sourcepos.Position, error) {
 	return liftPosition(value)
 }
 
-func liftRunnerCandidate(value wacogo.Val) (runner.Candidate, error) {
+func liftRunnerCandidate(value wacogo.Val, version string) (runner.Candidate, error) {
 	r, err := liftRecord(value, "runner candidate")
 	if err != nil {
 		return runner.Candidate{}, err
 	}
 	var c runner.Candidate
+	if version == Runner03Interface {
+		c.Hosting, err = liftRunnerHosting(r.Field("hosting"))
+		if err != nil {
+			return c, err
+		}
+	}
 	for name, dest := range map[string]*string{"name": &c.Name, "architecture": &c.Architecture, "default-shell": &c.DefaultShell} {
 		if *dest, err = liftString(r, name); err != nil {
 			return c, err

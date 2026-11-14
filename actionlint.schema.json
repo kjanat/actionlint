@@ -448,6 +448,12 @@
           "const": "runner-label"
         },
         {
+          "description": "Report runner selections with deprecated or unsupported execution",
+          "markdownDescription": "Report runner selections with deprecated or unsupported execution",
+          "type": "string",
+          "const": "runner-support"
+        },
+        {
           "description": "Detect untrusted values and secrets interpolated into scripts",
           "markdownDescription": "Detect untrusted values and secrets interpolated into scripts",
           "type": "string",
@@ -591,6 +597,7 @@
         "require-job-timeout",
         "ruff",
         "runner-label",
+        "runner-support",
         "script-injection",
         "script-interpolation",
         "shell-name",
@@ -1376,6 +1383,7 @@
                                 "credentials",
                                 "shell-name",
                                 "runner-label",
+                                "runner-support",
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
@@ -1707,6 +1715,16 @@
                               "title": "runner-label",
                               "description": "Report unknown or incompatible runner labels",
                               "markdownDescription": "Report unknown or incompatible runner labels",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "runner-support": {
+                              "title": "runner-support",
+                              "description": "Report runner selections with deprecated or unsupported execution",
+                              "markdownDescription": "Report runner selections with deprecated or unsupported execution",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -2146,6 +2164,7 @@
                                 "matrix",
                                 "shell-name",
                                 "runner-label",
+                                "runner-support",
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
@@ -2365,6 +2384,7 @@
                                 "credentials",
                                 "shell-name",
                                 "runner-label",
+                                "runner-support",
                                 "events",
                                 "job-needs",
                                 "parallel-steps",
@@ -3124,6 +3144,7 @@
                                           "credentials",
                                           "shell-name",
                                           "runner-label",
+                                          "runner-support",
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
@@ -3455,6 +3476,16 @@
                                         "title": "runner-label",
                                         "description": "Report unknown or incompatible runner labels",
                                         "markdownDescription": "Report unknown or incompatible runner labels",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "runner-support": {
+                                        "title": "runner-support",
+                                        "description": "Report runner selections with deprecated or unsupported execution",
+                                        "markdownDescription": "Report runner selections with deprecated or unsupported execution",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"
@@ -3894,6 +3925,7 @@
                                           "matrix",
                                           "shell-name",
                                           "runner-label",
+                                          "runner-support",
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
@@ -4113,6 +4145,7 @@
                                           "credentials",
                                           "shell-name",
                                           "runner-label",
+                                          "runner-support",
                                           "events",
                                           "job-needs",
                                           "parallel-steps",
@@ -4302,6 +4335,50 @@
                             "items": {
                               "$ref": "#/$defs/non-blank-string"
                             }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "service": {
+                        "title": "service",
+                        "description": "Service that executes workflows. Omission inherits the host fact; null makes it unknown. GHES versions apply only when supplied.",
+                        "markdownDescription": "Service that executes workflows. Omission inherits the host fact; null makes it unknown. GHES versions apply only when supplied.",
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "github.com",
+                              "github-data-residency",
+                              "ghes",
+                              "unknown"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "kind"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "title": "kind",
+                                "description": "Identifies GitHub Enterprise Server.",
+                                "markdownDescription": "Identifies GitHub Enterprise Server.",
+                                "type": "string",
+                                "enum": [
+                                  "ghes"
+                                ]
+                              },
+                              "version": {
+                                "title": "version",
+                                "description": "Installed GHES major.minor or major.minor.patch version. Omit when unknown.",
+                                "markdownDescription": "Installed GHES major.minor or major.minor.patch version. Omit when unknown.",
+                                "type": "string",
+                                "pattern": "^([0-9]+\\.[0-9]+(\\.[0-9]+)?)?$"
+                              }
+                            },
+                            "additionalProperties": false
                           },
                           {
                             "type": "null"
@@ -4957,6 +5034,50 @@
                   "items": {
                     "$ref": "#/$defs/non-blank-string"
                   }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service": {
+              "title": "service",
+              "description": "Service that executes workflows. Omission inherits the host fact; null makes it unknown. GHES versions apply only when supplied.",
+              "markdownDescription": "Service that executes workflows. Omission inherits the host fact; null makes it unknown. GHES versions apply only when supplied.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "github.com",
+                    "github-data-residency",
+                    "ghes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "title": "kind",
+                      "description": "Identifies GitHub Enterprise Server.",
+                      "markdownDescription": "Identifies GitHub Enterprise Server.",
+                      "type": "string",
+                      "enum": [
+                        "ghes"
+                      ]
+                    },
+                    "version": {
+                      "title": "version",
+                      "description": "Installed GHES major.minor or major.minor.patch version. Omit when unknown.",
+                      "markdownDescription": "Installed GHES major.minor or major.minor.patch version. Omit when unknown.",
+                      "type": "string",
+                      "pattern": "^([0-9]+\\.[0-9]+(\\.[0-9]+)?)?$"
+                    }
+                  },
+                  "additionalProperties": false
                 },
                 {
                   "type": "null"

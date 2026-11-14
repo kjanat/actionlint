@@ -115,6 +115,9 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 			}
 			return declarationchecks.New(c.Rules, correctness.RunnerLabelCheck(c.Runners, labels))
 		}},
+		"runner-support": {Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.New(c.Rules, correctness.RunnerSupportCheck(c.Runners))
+		}},
 		"container-runner": {Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.NewContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
 		}},

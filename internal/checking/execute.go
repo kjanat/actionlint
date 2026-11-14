@@ -53,6 +53,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
@@ -77,6 +78,7 @@ type analysisRequest struct {
 	RemoteActions   actionprovider.Provider
 	RemoteWorkflows workflowinputs.Provider
 	Repository      func(context.Context, string) repository.Snapshot
+	Service         services.Service
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
 	Runners            runner.Options
@@ -401,6 +403,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		var facts repository.Snapshot
 		if request.Repository != nil && root != "" {
 			facts = request.Repository(lifetime, root)
+		}
+		if facts.Service.Kind() == services.Unknown {
+			facts.Service = request.Service
 		}
 		session.repositories[root] = facts
 	}

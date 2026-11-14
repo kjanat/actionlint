@@ -44,14 +44,14 @@ func TestRunnerContractShapeAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validatePluginInterfaces(data, extensionRoleSet{runner: true}); err != nil {
+	if err := validatePluginInterfaces(data, extensionRoleSet{runner: RunnerInterface}); err != nil {
 		t.Fatal(err)
 	}
 	altered := bytes.ReplaceAll(data, []byte("case-sensitivity"), []byte("case-sensitivitx"))
 	if bytes.Equal(data, altered) {
 		t.Fatal("fixture contains no candidate field")
 	}
-	if err := validatePluginInterfaces(altered, extensionRoleSet{runner: true}); err == nil {
+	if err := validatePluginInterfaces(altered, extensionRoleSet{runner: RunnerInterface}); err == nil {
 		t.Fatal("changed nested provider contract accepted")
 	}
 }
@@ -83,7 +83,8 @@ func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
 		Snapshot:  runner.Snapshot{Scope: "org/repo", Freshness: runner.Fresh, Complete: true, Content: `{"queues":[{"name":"windows-queue","labels":["windows"],"os":"windows","architecture":"x64","shell":"pwsh"}]}`},
 		Selectors: []runner.Selector{{Labels: []runner.Constraint{{Value: runner.Literal("windows"), Position: sourcepos.Position{Line: 4, Column: 15}}}}},
 	}
-	answers, err := plugin.ResolveRunners(t.Context(), request)
+	response, err := plugin.ResolveRunners(t.Context(), request)
+	answers := response.Answers
 	if err != nil || len(answers) != 1 {
 		t.Fatalf("answers=%+v error=%v", answers, err)
 	}
@@ -91,8 +92,12 @@ func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
 	if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != runner.Windows || resolved.Candidates[0].DefaultShell != "pwsh" {
 		t.Fatalf("queue platform was not supplied through the runner interface: %+v", answers)
 	}
+	if plugin.runnerInterface != RunnerInterface || resolved.Candidates[0].Hosting != runner.UnknownHosting || len(response.Support.Policies) != 0 || response.Support.DatasetStatus.DatasetID != "" {
+		t.Fatalf("legacy provider invented support facts: %+v", response)
+	}
 	request.Snapshot.Scope = "other/repo"
-	answers, err = plugin.ResolveRunners(t.Context(), request)
+	response, err = plugin.ResolveRunners(t.Context(), request)
+	answers = response.Answers
 	if err != nil || len(answers) != 1 {
 		t.Fatalf("answers=%+v error=%v", answers, err)
 	}

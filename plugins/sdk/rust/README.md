@@ -166,13 +166,21 @@ capabilities and license text, then call `write(input, output)`. It writes
 Packaging replaces only the outer discovery section and preserves nested
 components and modules.
 
-For a `runner-provider@0.2.0` component, use `package::RunnerPackage`. Generate
-guest bindings from `wit/runner.wit` with world `runner-plugin`; the analyzer
-`Guest` trait does not implement that role. Supply the provider name, version and
+For a runner-provider component, use `package::RunnerPackage` and set
+`interface_version` to `package::RunnerVersion::V02` or `V03`. Generate guest
+bindings with world `runner-plugin` from `wit/runner.wit` for 0.2.0, or from
+`wit/deps/actionlint-0.3.0` for 0.3.0. The analyzer `Guest` trait does not implement
+that role. Supply the provider name, version and
 targets from the runner's `describe()` result. Package identity, display name and
 release version are separate from those provider fields. The
 [Buildkite example](https://github.com/kjanat/actionlint/tree/master/plugins/examples/buildkite-runners)
 contains native tests, a packaging entry point, snapshot data and a workflow command.
+
+Runner-provider 0.3.0 receives an execution service and a fixed assessment date.
+It returns candidate hosting and an optional support catalogue with dated policies.
+Keep support evidence separate from inventory evidence, and return no catalogue
+when support is unknown. Existing 0.2.0 components remain supported; their results
+leave hosting and dated support unknown.
 
 Set `package::Identity.id` to the stable published package identifier. This is
 the registry and lockfile identity; it can differ from the analyzer's rule name

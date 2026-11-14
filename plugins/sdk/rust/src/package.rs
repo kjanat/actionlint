@@ -12,8 +12,8 @@ use wasm_encoder::{Component, CustomSection, RawSection};
 use wasmparser::{Encoding, Parser, Payload, Validator};
 
 use crate::{
-    ANALYZER_INTERFACE, ANALYZER_WIT_SHA256, Descriptor, InputKind, RUNNER_PROVIDER_INTERFACE,
-    RUNNER_PROVIDER_WIT_SHA256,
+    ANALYZER_INTERFACE, ANALYZER_WIT_SHA256, Descriptor, InputKind, RUNNER_PROVIDER_03_INTERFACE,
+    RUNNER_PROVIDER_03_WIT_SHA256, RUNNER_PROVIDER_INTERFACE, RUNNER_PROVIDER_WIT_SHA256,
 };
 
 /// Discovery section read by actionlint without starting a guest.
@@ -61,6 +61,7 @@ pub struct Package<'a> {
 /// Distribution of a snapshot-based runner provider. Supply the provider fields
 /// from its `describe()` result; package identity and version are independent.
 pub struct RunnerPackage<'a> {
+    pub interface_version: RunnerVersion,
     /// Package release metadata used by registry discovery.
     pub identity: Identity<'a>,
     /// Name returned by `describe()` and selected by `--runner-provider`.
@@ -71,6 +72,13 @@ pub struct RunnerPackage<'a> {
     pub targets: &'a [String],
     /// License file contents; CRLF line endings are converted to LF.
     pub license_text: &'a str,
+}
+
+/// Exact runner-provider contract exported by the component.
+#[derive(Clone, Copy)]
+pub enum RunnerVersion {
+    V02,
+    V03,
 }
 
 /// A static action input that contains code for this engine.
@@ -306,11 +314,11 @@ impl Package<'_> {
 impl RunnerPackage<'_> {
     /// Serialize the provider role and descriptor without starting the component.
     pub fn metadata(&self) -> Result<Vec<u8>> {
-        let mut metadata = component_metadata(
-            &self.identity,
-            RUNNER_PROVIDER_INTERFACE,
-            RUNNER_PROVIDER_WIT_SHA256,
-        )?;
+        let (interface, digest) = match self.interface_version {
+            RunnerVersion::V02 => (RUNNER_PROVIDER_INTERFACE, RUNNER_PROVIDER_WIT_SHA256),
+            RunnerVersion::V03 => (RUNNER_PROVIDER_03_INTERFACE, RUNNER_PROVIDER_03_WIT_SHA256),
+        };
+        let mut metadata = component_metadata(&self.identity, interface, digest)?;
         metadata["descriptor"] = json!({
             "name": self.provider_name,
             "version": self.provider_version,
@@ -532,6 +540,7 @@ mod tests {
         fs::write(&input, Component::new().finish())?;
         let targets = vec!["buildkite".to_string()];
         let package = RunnerPackage {
+            interface_version: RunnerVersion::V02,
             identity: Identity {
                 id: "example/queue-package",
                 name: "Queue package",
@@ -569,6 +578,13 @@ mod tests {
             assert_eq!(checksum, digest(&fs::read(output.join(name))?));
         }
         let mut invalid = package;
+        invalid.interface_version = RunnerVersion::V03;
+        let support_metadata: serde_json::Value = serde_json::from_slice(&invalid.metadata()?)?;
+        assert_eq!(support_metadata["interface"], RUNNER_PROVIDER_03_INTERFACE);
+        assert_eq!(
+            support_metadata["wit_sha256"],
+            RUNNER_PROVIDER_03_WIT_SHA256
+        );
         invalid.identity.id = "invalid package id";
         assert!(invalid.write(&input, &temporary.0.join("invalid")).is_err());
         assert!(!temporary.0.join("invalid").exists());

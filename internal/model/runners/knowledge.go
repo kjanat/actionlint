@@ -106,6 +106,7 @@ func (k *Knowledge) Report() runnerapi.Report {
 	report := k.report
 	report.Provider = detachDescriptor(report.Provider)
 	report.Answers = detachAnswers(report.Answers)
+	report.Support = runnerapi.CloneSupportCatalog(report.Support)
 	return report
 }
 
