@@ -214,6 +214,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 	case reflect.TypeFor[actionlint.RepositoryConfig]():
 		mapping := reflectMapping(struct {
+			Service      any                `yaml:"service"`
 			Permissions  *string            `yaml:"default-workflow-permissions" jsonschema:"nullable,enum=read,enum=write,description=Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown."`
 			Runners      []string           `yaml:"runners" jsonschema:"nullable,description=Additional runner labels or Go path.Match patterns. Empty permits no additional labels."`
 			Variables    map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics."`
@@ -224,6 +225,19 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
 		}{})
 		mapping.Version, mapping.ID = "", ""
+		enterprise := reflectMapping(struct {
+			Kind    string `yaml:"kind" jsonschema:"required,enum=ghes,description=Identifies GitHub Enterprise Server."`
+			Version string `yaml:"version,omitempty" jsonschema:"pattern=^([0-9]+\\.[0-9]+(\\.[0-9]+)?)?$,description=Installed GHES major.minor or major.minor.patch version. Omit when unknown."`
+		}{})
+		enterprise.Version, enterprise.ID = "", ""
+		mapping.Properties.Set("service", &jsonschema.Schema{
+			Description: "Service that executes workflows. Omission inherits the host fact; null makes it unknown. GHES versions apply only when supplied.",
+			OneOf: []*jsonschema.Schema{
+				{Type: "string", Enum: []any{"github.com", "github-data-residency", "ghes", "unknown"}},
+				enterprise,
+				{Type: "null"},
+			},
+		})
 		for _, name := range []string{"runners", "secrets"} {
 			property, _ := mapping.Properties.Get(name)
 			visitSchemaType(property, "array", func(array *jsonschema.Schema) {

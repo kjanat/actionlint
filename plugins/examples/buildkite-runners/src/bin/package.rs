@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::path::Path;
 
-use actionlint_extension_api::package::{Identity, RunnerPackage};
+use actionlint_extension_api::package::{Identity, RunnerPackage, RunnerVersion};
 use buildkite_runners::Plugin;
 use buildkite_runners::exports::kjanat::actionlint0_2_0::runner_provider::Guest;
 
@@ -12,6 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     let descriptor = Plugin::describe();
     RunnerPackage {
+        interface_version: RunnerVersion::V02,
         identity: Identity {
             id: "example/buildkite-runners",
             name: "Buildkite queue runners",

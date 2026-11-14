@@ -1,0 +1,106 @@
+package kjanat:actionlint@0.3.0;
+
+/// Runner knowledge is separate from analyzer identity and diagnostic policy.
+/// One call uses one fixed evidence snapshot. The host grants no networking.
+interface runner-provider {
+    variant term { literal(string), expression(string) }
+    /// Host source coordinates. Rejections echo a supplied constraint position;
+    /// (0, 0) refers to the containing job.
+    record position { line: u32, column: u32 }
+    record constraint { value: term, position: position }
+    record rejection { reason: string, position: position }
+    record selector {
+        /// Partial matrix evidence cannot establish a resolved environment.
+        incomplete: bool,
+        labels: list<constraint>,
+        group: option<constraint>,
+        expression: string,
+    }
+    enum freshness { fresh, stale, missing }
+    record snapshot {
+        content: string,
+        scope: string,
+        obtained-at: string,
+        freshness: freshness,
+        complete: bool,
+    }
+    /// Kind is empty for unknown, github.com, github-data-residency, or ghes.
+    /// Only GHES accepts a version; absence leaves its version unknown.
+    record service { kind: string, version: option<string> }
+    record request {
+        target: string,
+        service: service,
+        /// One host-owned UTC calendar date, encoded as YYYY-MM-DD.
+        as-of: string,
+        scope: string,
+        snapshot: snapshot,
+        selectors: list<selector>,
+    }
+    enum os { unknown, linux, macos, windows }
+    enum case-sensitivity { unknown, sensitive, insensitive }
+    enum hosting { unknown, hosted, self-hosted }
+    record candidate {
+        name: string,
+        os: os,
+        architecture: string,
+        hosting: hosting,
+        default-shell: string,
+        case-sensitivity: case-sensitivity,
+        sh-is-dash: bool,
+        ephemeral: bool,
+    }
+    variant resolution {
+        resolved(list<candidate>),
+        no-match(list<rejection>),
+        unknown(string),
+        not-applicable,
+    }
+    /// Complete means the candidate set is exhaustive within the requested scope,
+    /// as well as permitting absence claims. Dataset identifies the data revision.
+    record dataset-status {
+        dataset-id: string,
+        scope: string,
+        obtained-at: string,
+        freshness: freshness,
+        complete: bool,
+    }
+    record answer { resolution: resolution, dataset-status: dataset-status }
+    record descriptor { name: string, version: string, targets: list<string> }
+    enum support-state { unknown, supported, deprecated, unsupported }
+    /// Empty kind matches any service. Version bounds apply only to GHES;
+    /// minimum is inclusive and before-version is exclusive.
+    record service-scope {
+        kind: string,
+        min-version: option<string>,
+        before-version: option<string>,
+    }
+    /// A real YYYY-MM-DD date. A policy's changes must be strictly increasing.
+    record support-change { on: string, state: support-state }
+    record support-policy {
+        id: string,
+        description: string,
+        url: string,
+        capability: string,
+        service: service-scope,
+        /// Empty constraints match any value; specific constraints require known facts.
+        hosting: list<hosting>,
+        os: list<os>,
+        architectures: list<string>,
+        /// State before the first change. Missing history remains unknown.
+        initial: support-state,
+        changes: list<support-change>,
+    }
+    /// Support evidence is independent of inventory completeness. Missing facts
+    /// do not establish support, and policies never remove matching runners.
+    record support-catalog { dataset-status: dataset-status, policies: list<support-policy> }
+    record outcome { answers: list<answer>, support: option<support-catalog>, error: option<string> }
+
+    describe: func() -> descriptor;
+    /// Exactly one answer per selector, in order. Labels within a selector are
+    /// conjunctive; selectors are alternatives. Unresolved terms must not be
+    /// treated as literal labels. No-match requires fresh, complete evidence
+    /// for the requested scope. Operational errors invalidate this batch.
+    resolve: func(request: request) -> outcome;
+}
+
+world runner-plugin { export runner-provider; }

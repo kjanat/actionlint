@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"time"
 
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
@@ -35,6 +36,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -49,6 +51,8 @@ type Options struct {
 	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
 	// them when it also implements workflows.Provider.
 	RemoteWorkflows workflowinputs.Provider
+	// Service identifies the workflow execution service, including for stdin.
+	Service services.Service
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
 	Runners    runner.Options
@@ -94,6 +98,9 @@ type Result = report.Analysis
 
 // Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input inputmodel.Request) (result *Result, err error) {
+	if options.Runners.AsOf.IsZero() {
+		options.Runners.AsOf = runner.DateOf(time.Now())
+	}
 	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
 		return nil, err
 	}
@@ -203,6 +210,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		request.RemoteWorkflows, _ = options.RemoteActions.(workflowinputs.Provider)
 	}
 	request.Repository = options.Repository
+	request.Service = options.Service
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
 
 	if options.LoadScriptEngine != nil {

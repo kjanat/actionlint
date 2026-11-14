@@ -107,15 +107,19 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	}
 	command("init", "--quiet")
 	command("config", "core.filemode", "false")
-	for _, name := range []string{"bad.sh", "good.sh", "scripts/bad.sh", "scripts/good.sh", "space dir/bad.sh", "{good,bad}.sh"} {
+	names := []string{"bad.sh", "good.sh", "scripts/bad.sh", "scripts/good.sh", "space dir/bad.sh", "{good,bad}.sh"}
+	var executable, nonExecutable []string
+	for _, name := range names {
 		writeFixture(t, root, name, "#!/bin/sh\necho script\n")
-		command("add", "--", name)
-		mode := "-x"
 		if strings.HasSuffix(name, "good.sh") {
-			mode = "+x"
+			executable = append(executable, name)
+		} else {
+			nonExecutable = append(nonExecutable, name)
 		}
-		command("update-index", "--chmod="+mode, "--", name)
 	}
+	command(append([]string{"add", "--"}, names...)...)
+	command(append([]string{"update-index", "--chmod=+x", "--"}, executable...)...)
+	command(append([]string{"update-index", "--chmod=-x", "--"}, nonExecutable...)...)
 	writeFixture(t, root, "untracked.sh", "#!/bin/sh\n")
 	writeFixture(t, root, "intent.sh", "#!/bin/sh\n")
 	command("add", "-N", "intent.sh")

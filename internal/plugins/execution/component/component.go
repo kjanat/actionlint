@@ -39,6 +39,8 @@ type Plugin struct {
 	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
 	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
+	// runnerInterface is the negotiated runner-provider version.
+	runnerInterface string
 	// scriptInterface is the negotiated script-engine version.
 	scriptInterface string
 	// templateInterface is the negotiated template-effects version, empty

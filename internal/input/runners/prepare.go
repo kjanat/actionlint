@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 // Prepare acquires runner answers with an explicitly known custom-label list.
@@ -73,7 +75,14 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 	if selected != nil {
 		selection.Descriptor = selected.RunnerDescriptor()
 	}
-	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot}
+	var service services.Service
+	if options.Service != nil {
+		service = *options.Service
+	}
+	if options.AsOf.IsZero() {
+		options.AsOf = runnerapi.DateOf(time.Now())
+	}
+	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot, Service: service, AsOf: options.AsOf}
 	plan, err := runner.NewResolutionPlan(snapshot, custom, request, selection, hasSnapshot)
 	if err != nil {
 		return unknown, err
@@ -84,9 +93,9 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 	if selected == nil {
 		return unknown, fmt.Errorf("no runner provider %q for target %q", options.Provider, options.Target)
 	}
-	answers, err := selected.ResolveRunners(ctx, plan.Request())
+	response, err := selected.ResolveRunners(ctx, plan.Request())
 	if err != nil {
 		return plan.Unknown(), fmt.Errorf("runner provider %s: %w", selection.Descriptor.Name, err)
 	}
-	return plan.Complete(answers)
+	return plan.Complete(response)
 }

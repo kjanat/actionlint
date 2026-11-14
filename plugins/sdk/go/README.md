@@ -79,6 +79,13 @@ Compare names using each alternative's `LookupComparison`.
 
 ## Update the bindings
 
+Runner-provider guest bindings are available under
+`bindings/kjanat/actionlint/v0.2.0/runner-provider` and
+`bindings/kjanat/actionlint/v0.3.0/runner-provider`. Version 0.3.0 adds the execution
+service, a fixed assessment date, candidate hosting, and an optional catalogue of
+dated support policies. Missing support evidence remains unknown. The host still
+accepts version 0.2.0 components without inventing those facts.
+
 From the repository root, run `mise run protocol:go` after changing
 `plugins/protocol/wit`. This refreshes the SDK's contract source and regenerates
 the bindings with `wit-bindgen-go`. Packaging derives the interface version and

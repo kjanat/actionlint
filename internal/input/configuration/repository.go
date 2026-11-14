@@ -10,12 +10,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 // RepositoryConfig supplies overrides for host knowledge. Omission inherits the
 // host fact; null makes it unknown; an empty collection is a known empty set.
 type RepositoryConfig struct {
 	reset        bool
+	service      *services.Service
 	permissions  *repository.Permissions
 	runners      *repository.Names
 	variables    *repository.Variables
@@ -27,6 +29,9 @@ type RepositoryConfig struct {
 func (r RepositoryConfig) Apply(host repository.Snapshot) repository.Snapshot {
 	if r.reset {
 		host = repository.Snapshot{}
+	}
+	if r.service != nil {
+		host.Service = *r.service
 	}
 	if r.permissions != nil {
 		host.DefaultWorkflowPermissions = *r.permissions
@@ -149,6 +154,8 @@ func (r *RepositoryConfig) DecodeConfig(value any) error {
 	for key, value := range object {
 		var err error
 		switch key {
+		case "service":
+			next.service, err = decodeFact(value, repositoryService)
 		case "default-workflow-permissions":
 			next.permissions, err = decodeFact(value, func(value any) (repository.Permissions, error) {
 				selected, ok := value.(string)
@@ -204,6 +211,16 @@ func (r RepositoryConfig) EncodeConfig() (any, error) {
 		return nil, nil
 	}
 	value := map[string]any{}
+	if r.service != nil {
+		switch {
+		case r.service.Kind() == services.Unknown:
+			value["service"] = nil
+		case r.service.Version() == "":
+			value["service"] = string(r.service.Kind())
+		default:
+			value["service"] = map[string]string{"kind": string(r.service.Kind()), "version": r.service.Version()}
+		}
+	}
 	encodeFact(value, "default-workflow-permissions", r.permissions, repository.Permissions.String)
 	encodeFact(value, "runners", r.runners, repository.Names.Values)
 	encodeFact(value, "variables", r.variables, encodeVariables)
@@ -223,6 +240,26 @@ func (r RepositoryConfig) EncodeConfig() (any, error) {
 		return values
 	})
 	return value, nil
+}
+
+func repositoryService(value any) (services.Service, error) {
+	if kind, ok := value.(string); ok {
+		if kind == "" {
+			return services.Service{}, errors.New("service must not be empty; use null or \"unknown\"")
+		}
+		return services.Parse(kind, "")
+	}
+	var selected struct {
+		Kind    string `yaml:"kind"`
+		Version string `yaml:"version"`
+	}
+	if err := binding.Decode(value, &selected); err != nil {
+		return services.Service{}, err
+	}
+	if selected.Kind != string(services.GitHubEnterpriseServer) {
+		return services.Service{}, errors.New("service mapping requires kind: ghes; use a string for other services")
+	}
+	return services.Parse(selected.Kind, selected.Version)
 }
 
 // RepositoryFacts returns facts independently of the diagnostic preset.

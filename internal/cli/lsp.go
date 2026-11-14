@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 type lspRequest struct{ Check checkInvocation }
@@ -33,6 +34,10 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	service, err := services.FromGitHubServerURL(os.Getenv("GITHUB_SERVER_URL"))
+	if err != nil {
+		return 0, err
+	}
 	var provider references.Resolver
 	if c.ResolverCommand != "" {
 		provider = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
@@ -41,5 +46,7 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return 0, lsp.LanguageServer(ctx, streams.Stdin, streams.Stdout, checking.Options{RemoteActions: metadata, AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, SuggestCommitPins: c.ResolverCommand != "", WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}, plugins)
+	options := checking.Options{RemoteActions: metadata, AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, SuggestCommitPins: c.ResolverCommand != "", WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}
+	options.Service = service
+	return 0, lsp.LanguageServer(ctx, streams.Stdin, streams.Stdout, options, plugins)
 }

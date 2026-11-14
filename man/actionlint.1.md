@@ -277,7 +277,7 @@ supported legacy name.
 
 **--plugin** *PATH*
 : Load a WebAssembly component plugin that implements `kjanat:actionlint/analyzer@0.2.0`
-or `kjanat:actionlint/runner-provider@0.2.0`.
+or `kjanat:actionlint/runner-provider` version 0.2.0 or 0.3.0.
 Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of memory and
 10 seconds; a trap, an exit or an exceeded limit fails that document's analysis.
 *PATH* may also be an `oci://`*HOST*`/`*REPOSITORY*`@sha256:`*HEX* reference to a
@@ -305,6 +305,21 @@ Also available on **lsp**.
 **--runner-scope** *SCOPE*
 : Set the organization/repository scope for runner information. Defaults to the project root.
 The snapshot and provider answers must match this scope. Also available on **lsp**.
+
+**--runner-service** *SERVICE*
+: Select the workflow execution service: `github.com`, `github-data-residency`,
+`ghes`, or `unknown`. This overrides **repository.service** in configuration.
+Without an override, the GitHub execution host supplies **GITHUB_SERVER_URL**;
+an absent host value leaves the service unknown. Also available on **lsp**.
+
+**--runner-service-version** *VERSION*
+: Supply a GHES version with **--runner-service** set to `ghes`, such as `3.19` or `3.19.2`.
+An omitted version remains unknown. Cloud retirement dates do not apply to GHES.
+Also available on **lsp**.
+
+**--runner-as-of** *DATE*
+: Assess runner support on `YYYY-MM-DD`. Defaults to today's UTC date, captured
+once per analysis. Also available on **lsp**.
 
 **--stdin-filename** *PATH*
 : Set the path used for stdin diagnostics and project detection. The default is

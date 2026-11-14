@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 // Term distinguishes literal labels from unresolved expressions.
@@ -78,6 +79,8 @@ func (s Snapshot) Digest() string {
 }
 
 type Request struct {
+	Service   services.Service
+	AsOf      Date
 	Target    string
 	Scope     string
 	Snapshot  Snapshot
@@ -105,6 +108,7 @@ const (
 // Empty shell/architecture and unknown OS convey absent knowledge. False
 // capabilities do not grant the associated execution assumption.
 type Candidate struct {
+	Hosting         Hosting
 	Name            string
 	OS              OS
 	Architecture    string
@@ -130,11 +134,11 @@ func (Unknown) runnerResolution()       {}
 func (NotApplicable) runnerResolution() {}
 
 type DatasetStatus struct {
-	DatasetID  string
-	Scope      string
-	ObtainedAt string
-	Freshness  Freshness
-	Complete   bool
+	DatasetID  string    `json:"dataset_id"`
+	Scope      string    `json:"scope"`
+	ObtainedAt string    `json:"obtained_at"`
+	Freshness  Freshness `json:"freshness"`
+	Complete   bool      `json:"complete"`
 }
 type Answer struct {
 	Resolution    Resolution
@@ -150,7 +154,7 @@ type Descriptor struct {
 // cancellation and support concurrent calls. The host owns its lifetime.
 type Provider interface {
 	RunnerDescriptor() Descriptor
-	ResolveRunners(context.Context, Request) ([]Answer, error)
+	ResolveRunners(context.Context, Request) (Response, error)
 }
 
 type Registration struct {
@@ -162,6 +166,8 @@ type Registration struct {
 // Options selects authority explicitly. Empty target/provider selects the
 // built-in GitHub provider; loading a component never changes that selection.
 type Options struct {
+	Service   *services.Service
+	AsOf      Date
 	Target    string
 	Provider  string
 	Scope     string
@@ -172,6 +178,9 @@ type Options struct {
 // Report binds answers to the selected implementation, configuration and snapshot.
 // Consumers caching dependent findings must include CacheKey in their cache key.
 type Report struct {
+	Service                                         services.Service
+	AsOf                                            Date
+	Support                                         SupportCatalog
 	Path                                            string
 	CacheKey                                        string
 	Provider                                        Descriptor

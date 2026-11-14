@@ -974,6 +974,19 @@ Correct the runner label or declare repository-specific labels in repository.run
 
 Configure this rule with `lint.rules.correctness.runner-label`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
+## runner-support
+
+Report dated support changes established by the selected runner provider for the workflow's execution service. GitHub.com support dates do not apply to GitHub Enterprise Server. Hosted labels such as ubuntu-24.04-arm select ARM64 runners and remain valid. Unknown, stale or incomplete evidence does not establish a support problem.
+
+Select a supported runner architecture or update the runner inventory. Set repository.service to the service that executes the workflow, and supply the GHES version when known.
+
+- Category: `correctness/runners`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.runner-support`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+
 ## script-injection
 
 Detect untrusted values and secrets interpolated into scripts.

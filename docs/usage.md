@@ -559,6 +559,26 @@ a malformed selected configuration returns exit status 3. Help, version and
 completion do not load configuration or create a linter. Rules load selected plugin
 declarations without running analysis.
 
+### Runner support
+
+`runner-support` warns when the selected runner provider establishes that a runner
+selection is deprecated or unsupported. It distinguishes GitHub.com, GitHub Enterprise
+Cloud with data residency and GitHub Enterprise Server. A GitHub.com retirement does
+not establish a retirement for GHES.
+
+In GitHub Actions, actionlint reads the execution service from `GITHUB_SERVER_URL`.
+For local checks, declare `repository.service` in configuration or select it explicitly:
+
+```sh
+actionlint check --runner-service github.com workflow.yml
+actionlint check --runner-service ghes --runner-service-version 3.19 workflow.yml
+```
+
+`--runner-as-of YYYY-MM-DD` evaluates support on a fixed UTC date. Omit it to use
+today's UTC date. Unknown service, architecture or support data does not establish
+a violation. See [dated runner support](plugins.md#dated-runner-support) for provider
+data and the distinction between ARM32 execution and ARM64 runners.
+
 ### Shell completion
 
 `completion <shell>` prints a completion script for the given shell to stdout.

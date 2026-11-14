@@ -13,7 +13,14 @@ import (
 )
 
 func generateRunner() error {
-	return generateRoleContract("runner", "runner-provider", "RunnerInterface", "runnerWITSHA256", "expectedRunnerInterface")
+	if err := generateRoleContract("runner", "runner-provider", "RunnerInterface", "runnerWITSHA256", "expectedRunnerInterface"); err != nil {
+		return err
+	}
+	return generateContract(roleContract{
+		source: "deps/actionlint-0.3.0/runner.wit", role: "runner-provider", interfaceName: "Runner03Interface",
+		digestName: "runner03WITSHA256", functionName: "expectedRunner03Interface",
+		prefix: "runner_03", output: "runner_03.gen.go",
+	})
 }
 
 // generateScriptEngine generates every script-engine version the host accepts.

@@ -26,16 +26,16 @@ func (*orderedEvidenceProvider) RunnerDescriptor() runner.Descriptor {
 	return runner.Descriptor{Name: "order", Version: "1", Targets: []string{"order"}}
 }
 
-func (p *orderedEvidenceProvider) ResolveRunners(ctx context.Context, request runner.Request) ([]runner.Answer, error) {
+func (p *orderedEvidenceProvider) ResolveRunners(ctx context.Context, request runner.Request) (runner.Response, error) {
 	label := fmt.Sprint(request.Selectors[0].Labels[0].Value)
 	if label == p.waitFor && p.release != nil {
 		select {
 		case <-p.release:
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return runner.Response{}, ctx.Err()
 		}
 	}
-	return []runner.Answer{{Resolution: runner.Unknown{Reason: label}, DatasetStatus: runner.DatasetStatus{DatasetID: label, Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}}, nil
+	return runner.Response{Answers: []runner.Answer{{Resolution: runner.Unknown{Reason: label}, DatasetStatus: runner.DatasetStatus{DatasetID: label, Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}}}, nil
 }
 
 type evidenceCompletionObserver struct {
