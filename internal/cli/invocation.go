@@ -207,7 +207,7 @@ func (a *commandApp) prepareInvocation() error {
 func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
 	case operationPluginInspect:
-		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
+		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON, Registry: inv.Plugin.Registry}, nil
 	case operationPluginValidate:
 		path := ""
 		if len(inv.Check.Paths) > 0 {

@@ -3,6 +3,9 @@ package plugincmd
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -10,12 +13,13 @@ import (
 )
 
 type InspectOptions struct {
-	Source string
-	JSON   bool
+	Source   string
+	JSON     bool
+	Registry string
 }
 
 func Inspect(ctx context.Context, streams commandstreams.Streams, r InspectOptions, acquisition plugininstall.Acquisition) (int, error) {
-	info, err := plugininstall.Inspect(ctx, r.Source, acquisition)
+	info, err := inspectSource(ctx, r, acquisition)
 	if err != nil {
 		return 0, err
 	}
@@ -41,4 +45,17 @@ func Inspect(ctx context.Context, streams commandstreams.Streams, r InspectOptio
 		return 0, err
 	}
 	return 0, commandstreams.WriteJSON(streams.Stdout, info.Metadata)
+}
+
+func inspectSource(ctx context.Context, r InspectOptions, acquisition plugininstall.Acquisition) (pluginartifact.Info, error) {
+	_, statErr := os.Stat(r.Source)
+	local := statErr == nil || filepath.IsAbs(r.Source) || strings.HasPrefix(r.Source, ".") || strings.Contains(r.Source, `\`) || strings.HasSuffix(r.Source, ".wasm") || strings.HasSuffix(r.Source, ".json") || strings.HasSuffix(r.Source, ".gz")
+	if local || strings.Contains(r.Source, "://") {
+		return plugininstall.Inspect(ctx, r.Source, acquisition)
+	}
+	ref, err := RequestedPlugin(r.Source, RegistryOptions{Registry: r.Registry}, nil)
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	return plugininstall.InspectRelease(ctx, ref, acquisition)
 }

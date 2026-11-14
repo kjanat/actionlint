@@ -7,7 +7,33 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
+
+// InspectRelease resolves a registry reference and verifies its downloaded metadata.
+func InspectRelease(ctx context.Context, ref pluginref.Reference, acquisition Acquisition) (pluginartifact.Info, error) {
+	client, err := New(ref.Registry(), acquisition)
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	pin, err := client.Resolve(ctx, ref.Name(), ref.Version())
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	if pin.Origin == "candidate" {
+		if err := pin.importCandidate(ctx, acquisition.ArtifactOptions()); err != nil {
+			return pluginartifact.Info{}, err
+		}
+	}
+	info, err := Inspect(ctx, pin.Source(), acquisition)
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	if err := pin.Verify(info); err != nil {
+		return pluginartifact.Info{}, err
+	}
+	return info, nil
+}
 
 // PinSource resolves an OCI tag or an unpinned HTTPS artifact to its checksum.
 // Installation saves that checksum so later checks use the same plugin bytes.
