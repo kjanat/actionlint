@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -44,7 +45,7 @@ func probeBundledVersion(t *testing.T, name, executable string) error {
 	return err
 }
 
-func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
+func TestNativeRuffDefaultAndPyflakesSelection(t *testing.T) {
 	ruff, err := exec.LookPath("ruff")
 	if err != nil {
 		t.Skip("Ruff is not installed")
@@ -61,6 +62,10 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 	}
 	if err := probeBundledVersion(t, "ruff", ruff); err != nil {
 		t.Skipf("Ruff integration requires a compatible executable (%s): %v", ruff, err)
+	}
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	if err := os.WriteFile(config, []byte("plugins: []\n"), 0600); err != nil {
+		t.Fatal(err)
 	}
 	script := "x = 1\nimport os\nif x == None:\n    print(missing)\n"
 	nativeCodes := func(selection ...string) []string {
@@ -109,7 +114,7 @@ func TestRuffDefaultAndPyflakesSelection(t *testing.T) {
 			}
 			t.Run(strings.Join(prefix, " ")+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
-				args := append([]string{"actionlint", "--no-color", "--summary=false", "--no-config", "--shellcheck=", "--json"}, prefix...)
+				args := append([]string{"actionlint", "--no-color", "--summary=false", "--config", config, "--shellcheck=", "--json"}, prefix...)
 				args = append(args, tc.flags...)
 				var stdout, stderr bytes.Buffer
 				command := cli.Command{Stdin: strings.NewReader(workflow), Stdout: &stdout, Stderr: &stderr}

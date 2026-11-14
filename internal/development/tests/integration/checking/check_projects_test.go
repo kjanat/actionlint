@@ -67,6 +67,27 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 			t.Fatalf("plugins missing or ran in other repositories: %v", counts)
 		}
 	}
+	for _, name := range []string{"first", "second"} {
+		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Repository, Directory: name}, plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.FileCount != 1 || len(result.Configurations) != 1 {
+			t.Fatalf("repository %s: files=%d configurations=%d", name, result.FileCount, len(result.Configurations))
+		}
+		found := false
+		for _, finding := range result.Diagnostics {
+			if strings.HasPrefix(finding.Rule, "document-") {
+				if finding.Rule != "document-"+name {
+					t.Fatalf("repository %s ran %s", name, finding.Rule)
+				}
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("repository %s did not run its plugin", name)
+		}
+	}
 }
 
 func registryAcquisition(registry *fixtureregistry.PluginRegistry) plugininstall.Acquisition {

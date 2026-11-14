@@ -138,10 +138,8 @@ func pluginDependencyNode(value any) (any, error) {
 	return projected, nil
 }
 
-// Like an explicitly selected lock, an explicit manifest trusts its containing
-// directory, including checkout aliases and macOS /var. Resolve that directory
-// once, never the file itself. Automatic project selection has already checked
-// its .github directory through OpenProjectLock before choosing the manifest.
+// An explicit manifest trusts its containing directory, including checkout
+// aliases and macOS /var. Resolve that directory, never the file itself.
 func physicalPluginManifestPath(absolute string) (string, error) {
 	base := filepath.Dir(absolute)
 	for {

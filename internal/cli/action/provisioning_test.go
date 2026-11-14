@@ -70,6 +70,16 @@ func TestActionNativeBackendRequirements(t *testing.T) {
 			t.Parallel()
 			files := map[string]string{".git": "", ".github/workflows/clean.yml": cleanWorkflow}
 			maps.Copy(files, tc.files)
+			_, yaml := files[".github/actionlint.yaml"]
+			_, yml := files[".github/actionlint.yml"]
+			if !yaml && !yml {
+				files[".github/actionlint.yaml"] = ""
+			}
+			for path, content := range files {
+				if strings.Contains(path, "/actionlint.") || path == "sub/custom.yml" {
+					files[path] = "plugins: []\n" + content
+				}
+			}
 			env := map[string]string{"GITHUB_WORKSPACE": workspaceWith(t, files)}
 			maps.Copy(env, tc.inputs)
 			req, err := provisioningRequest(func(key string) string { return env[key] }, plugininstall.Acquisition{})

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 
@@ -31,7 +32,9 @@ func provisioningRequest(env func(string) string, acquisition plugininstall.Acqu
 }
 
 func (req *lintRequest) pluginSelection() plugininstall.Selection {
-	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition}, req.disabledTools, req.disabledTools)
+	defaults := req.requestedTools()
+	defaults = slices.DeleteFunc(defaults, func(id string) bool { return req.processes[id] != nil })
+	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() inputmodel.Request {

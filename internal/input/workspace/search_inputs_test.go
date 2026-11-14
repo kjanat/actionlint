@@ -10,6 +10,47 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
+func TestRepositorySelectionIncludesActionsAndRespectsGitIgnore(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeToolRepository(t, root)
+	workflow := writeToolFixture(t, root, ".github/workflows/ci.yml", toolWorkflow)
+	action := writeToolFixture(t, root, "action.yml", "name: local\nruns: {using: composite, steps: [{shell: bash, run: echo ok}]}\n")
+	ignored := writeToolFixture(t, root, "generated/action.yml", "[invalid YAML\n")
+	ignoreFile := writeToolFixture(t, root, ".gitignore", "generated/\n")
+	for _, tc := range []struct {
+		name     string
+		noIgnore bool
+	}{{"respect Git ignore", false}, {"include Git ignored files", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			selected, err := workspace.FindRepositoryFiles(t.Context(), root, tc.noIgnore)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{workflow, action}
+			if tc.noIgnore {
+				want = append(want, ignored)
+			}
+			var got []string
+			for _, file := range selected.Files {
+				if file.Explicit {
+					t.Errorf("discovered file %s was marked explicit", file.Path)
+				}
+				got = append(got, file.Path)
+			}
+			slices.Sort(got)
+			slices.Sort(want)
+			if !slices.Equal(got, want) {
+				t.Errorf("selected files=%v, want %v", got, want)
+			}
+			if !tc.noIgnore && !slices.Contains(selected.Inputs, ignoreFile) {
+				t.Errorf("discovery did not record %s: %v", ignoreFile, selected.Inputs)
+			}
+		})
+	}
+}
+
 func TestSearchAcrossRepositoriesUsesLocalIgnoresAndConfiguration(t *testing.T) {
 	parent := t.TempDir()
 	t.Chdir(parent)

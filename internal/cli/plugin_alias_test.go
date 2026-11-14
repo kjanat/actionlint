@@ -32,12 +32,12 @@ func TestRegistryAliasCommandScope(t *testing.T) {
 		testReference(t, "check", "latest", pluginref.DefaultRegistry),
 		testReference(t, "check", "v1.0.0", fixtureregistry.FixtureRegistryURL),
 	}
-	project := &plugininstall.Project{Lock: &plugininstall.LockFile{Lock: plugininstall.Lock{
+	project := &plugininstall.Project{Releases: plugininstall.ResolvedPlugins{
 		Plugins: []plugininstall.Pin{
 			{Name: "github.com/first/plugin", Alias: "check", Registry: pluginref.DefaultRegistry},
 			{Name: "github.com/second/plugin", Alias: "check", Registry: fixtureregistry.FixtureRegistryURL},
 		},
-	}}}
+	}}
 	if _, err := plugincmd.DeclaredPlugin(t.Context(), project, refs, "check", ""); err == nil {
 		t.Fatal("ambiguous registry alias accepted")
 	}
@@ -84,7 +84,7 @@ func TestRegistryAliasInstallOfflineAndIdentity(t *testing.T) {
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "community-check@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	configPath := filepath.Join(".github", "actionlint.yaml")
-	lockPath := filepath.Join(".github", plugininstall.LockName)
+	lockPath := filepath.Join(".github", "actionlint.plugins.lock.json")
 	cfg, err := checking.ConfigurationRules().Load(configPath)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName {
 		t.Fatalf("canonical declaration lost: %+v %v", cfg, err)

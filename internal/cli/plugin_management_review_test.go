@@ -53,32 +53,8 @@ func TestPluginMutationsWithoutDependenciesPreserveProject(t *testing.T) {
 	}
 }
 
-func TestPluginMutationsPreserveEmptyLock(t *testing.T) {
-	t.Chdir(t.TempDir())
-	t.Setenv("ACTIONLINT_CONFIG", "")
-	t.Setenv("ACTIONLINT_NO_CONFIG", "")
-	if err := os.Mkdir(".git", 0o700); err != nil {
-		t.Fatal(err)
-	}
-	const lock = "custom.lock.json"
-	content := []byte("{ \"schema_version\": 1, \"plugins\": [] }\n")
-	if err := os.WriteFile(lock, content, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", "update", "--plugin-lock", lock)
-	pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", "install", "--plugin-lock", lock)
-	got, err := os.ReadFile(lock)
-	if err != nil || !bytes.Equal(got, content) {
-		t.Fatalf("empty plugin management rewrote lock: %q, %v", got, err)
-	}
-	entries, err := os.ReadDir(".")
-	if err != nil || len(entries) != 2 {
-		t.Fatalf("empty plugin management created files: %v, %v", entries, err)
-	}
-}
-
 func TestPluginInstallMissingExplicitPathsPreservesProject(t *testing.T) {
-	for _, flag := range []string{"--config", "--plugin-lock"} {
+	for _, flag := range []string{"--config"} {
 		t.Run(flag, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			t.Setenv("ACTIONLINT_CONFIG", "")
@@ -89,5 +65,28 @@ func TestPluginInstallMissingExplicitPathsPreservesProject(t *testing.T) {
 				t.Fatalf("empty install created files: %v, %v", entries, err)
 			}
 		})
+	}
+}
+
+func TestPluginManagementIgnoresUnrelatedProjectJSON(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("ACTIONLINT_CONFIG", "")
+	t.Setenv("ACTIONLINT_NO_CONFIG", "")
+	for _, directory := range []string{".git", ".github"} {
+		if err := os.Mkdir(directory, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	path := filepath.Join(".github", "actionlint.plugins.lock.json")
+	content := []byte("this file is not configuration\n")
+	if err := os.WriteFile(path, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, operation := range []string{"install", "update", "list", "sync"} {
+		pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", operation)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(after, content) {
+		t.Fatalf("plugin management changed an unrelated file: %q, %v", after, err)
 	}
 }

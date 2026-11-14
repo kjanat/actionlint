@@ -146,7 +146,7 @@ func (f ociCandidateFixture) resolve(t *testing.T) plugininstall.Pin {
 
 func (f ociCandidateFixture) syncCandidate(t *testing.T, pin plugininstall.Pin, options artifacts.Options) error {
 	t.Helper()
-	return (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{pin}}).Sync(t.Context(), options, f.client.StatusOptions)
+	return (plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}).Sync(t.Context(), options, f.client.StatusOptions)
 }
 
 func (f ociCandidateFixture) cachedOptions() artifacts.Options {

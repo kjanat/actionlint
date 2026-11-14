@@ -94,7 +94,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{pin}}
+	lock := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
 	artifacts := pluginartifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
 	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(registry)}
 	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {

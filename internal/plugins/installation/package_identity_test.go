@@ -93,10 +93,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	file, err := OpenLock(t.Context(), filepath.Join(t.TempDir(), LockName))
-	if err != nil {
-		t.Fatal(err)
-	}
+	var selectedPlugins ResolvedPlugins
 	for _, selected := range []struct{ name, version string }{{fixtureregistry.FixturePluginName, "v1.0.0"}, {first.Name, "v1.0.0"}, {second.Name, "v2.0.0"}} {
 		pin, err := client.Resolve(t.Context(), selected.name, "latest")
 		if err != nil || pin.Name != selected.name || pin.Version != selected.version || pin.RepositoryName() != fixtureregistry.FixturePluginName {
@@ -106,7 +103,8 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 		if err != nil || !pin.Matches(ref) {
 			t.Fatalf("reference binding: %v", err)
 		}
-		if err := file.Set(pin); err != nil {
+		selectedPlugins.Plugins = append(selectedPlugins.Plugins, pin)
+		if err := selectedPlugins.Validate(); err != nil {
 			t.Fatal(err)
 		}
 		lookup, err := client.Lookup(t.Context(), selected.name, selected.version)
@@ -114,14 +112,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 			t.Fatalf("package cache: %+v, %v", lookup, err)
 		}
 	}
-	if err := file.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	reloaded, err := OpenLock(t.Context(), file.Path)
-	if err != nil || len(reloaded.Lock.Plugins) != 3 {
-		t.Fatalf("lock: %+v, %v", reloaded, err)
-	}
-	if err := reloaded.Lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir(), Connections: network.Connections()}, client.StatusOptions); err != nil {
+	if err := selectedPlugins.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir(), Connections: network.Connections()}, client.StatusOptions); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []CatalogPlugin{first, second} {
@@ -182,22 +173,16 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 	}
 }
 
-func TestPackageLockRejectsRepositoryBoundaryChange(t *testing.T) {
+func TestPackageReplacementRejectsRepositoryBoundaryChange(t *testing.T) {
 	t.Parallel()
 	pin := Pin{Registry: DefaultURL, Name: "gitlab.com/publisher/group/repo/package", Repository: "gitlab.com/publisher/group/repo", RepositoryID: "10", OwnerID: "5", PluginID: "gitlab.com/publisher/group/repo/package", Selector: "v1.0.0", Version: "v1.0.0", Kind: artifacts.Component, Asset: "plugin.wasm", URL: "https://gitlab.com/api/v4/projects/10/packages/generic/actionlint-plugin/v1.0.0/plugin.wasm", SHA256: strings.Repeat("a", 64), Contract: "future/1"}
-	file, err := OpenLock(t.Context(), filepath.Join(t.TempDir(), LockName))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Set(pin); err != nil {
-		t.Fatal(err)
-	}
+	file := ResolvedPlugins{Plugins: []Pin{pin}}
 	changed := pin
 	changed.Repository = "gitlab.com/publisher/group"
 	if err := changed.Validate(); err != nil {
 		t.Fatal("test must isolate replacement binding", err)
 	}
-	if err := file.Set(changed); err == nil {
+	if err := file.CheckReplacement(changed, ""); err == nil {
 		t.Fatal("package's publishing repository boundary changed")
 	}
 }
@@ -241,7 +226,7 @@ func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
 			if err != nil || pin.PluginID != tc.id || !strings.EqualFold(pin.RepositoryName(), fixtureregistry.FixturePluginName) {
 				t.Fatalf("candidate case binding: %+v, %v", pin, err)
 			}
-			lock := Lock{SchemaVersion: 1, Plugins: []Pin{pin}}
+			lock := ResolvedPlugins{Plugins: []Pin{pin}}
 			if err := lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir()}, client.StatusOptions); err != nil {
 				t.Fatal(err)
 			}

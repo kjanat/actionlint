@@ -2,14 +2,15 @@ package installation
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -17,13 +18,13 @@ import (
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
-// Project edits exact declarations and reads old project locks for migration.
+// Project edits exact plugin declarations in configuration.
 // Resolved registry metadata is stored only in the user cache.
 type Project struct {
-	Manifest      *configplugins.File
-	Lock          *LockFile
-	StatusOptions StatusOptions
-	original      LockFile
+	Manifest       *configplugins.File
+	Releases       ResolvedPlugins
+	StatusOptions  StatusOptions
+	defaultPlugins bool
 }
 
 // DirectSources lists artifacts whose URL and digest are pinned in configuration.
@@ -52,101 +53,68 @@ func (p *Project) SyncDirect(ctx context.Context) error {
 	return nil
 }
 
-func OpenProject(ctx context.Context, rules config.RuleSet, acquisition Acquisition, directory, lockPath, configPath string) (*Project, error) {
-	lock, err := OpenSelectedLock(ctx, directory, lockPath, configPath)
+func projectConfigPath(directory, selected string) (string, error) {
+	if selected != "" {
+		return selected, nil
+	}
+	repository := discovery.RepositoryRoot(directory)
+	if repository == "" {
+		return "", errors.New("no repository found; select configuration with --config")
+	}
+	directory = filepath.Join(repository, ".github")
+	if err := configplugins.ValidateLocalPath(directory); err != nil {
+		return "", err
+	}
+	return configplugins.FindOrDefaultPath(directory)
+}
+
+func OpenProject(ctx context.Context, rules config.RuleSet, acquisition Acquisition, directory, configPath string) (*Project, error) {
+	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err
 	}
-	if configPath == "" {
-		configPath, err = configplugins.FindOrDefaultPath(filepath.Dir(lock.Path))
-		if err != nil {
-			return nil, err
-		}
-	}
-	manifest, err := configplugins.Open(ctx, rules, configPath, acquisition.Connections)
+	manifest, err := configplugins.Open(ctx, rules, path, acquisition.Connections)
 	if err != nil {
 		return nil, err
 	}
-	original := *lock
-	original.Lock.Plugins = slices.Clone(lock.Lock.Plugins)
-	return &Project{Manifest: manifest, Lock: lock, StatusOptions: StatusOptions{Acquisition: acquisition}, original: original}, nil
+	return &Project{Manifest: manifest, Releases: ResolvedPlugins{Plugins: []Pin{}}, StatusOptions: StatusOptions{Acquisition: acquisition}}, nil
 }
 
-// Dependencies migrates lock-only installations only during an explicit mutation.
-// Read-only checking never lets an undeclared lock entry activate a plugin.
-func (p *Project) Dependencies(migrate bool) ([]pluginref.Reference, error) {
-	if p.Manifest.Declared {
-		return slices.Clone(p.Manifest.References), nil
-	}
-	if len(p.Lock.Lock.Plugins) != 0 && !migrate {
-		return nil, fmt.Errorf("plugins are locked but not declared in %s; run actionlint plugin install to migrate", p.Manifest.Path)
-	}
-	refs := make([]pluginref.Reference, 0, len(p.Lock.Lock.Plugins))
-	for _, pin := range p.Lock.Lock.Plugins {
-		ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
-		if err != nil {
-			return nil, err
-		}
-		refs = append(refs, ref)
-	}
-	return refs, nil
+// SelectedPlugins resolves declared releases without changing configuration.
+func (p *Project) SelectedPlugins(ctx context.Context) (ResolvedPlugins, error) {
+	return p.selectedPins(ctx, p.Manifest.References)
 }
 
-// SelectedPlugins resolves only configured exact releases; old lock entries never
-// activate undeclared plugins. It never writes project files.
-func (p *Project) SelectedPlugins(ctx context.Context) (Lock, error) {
-	refs, err := p.Dependencies(false)
-	if err != nil {
-		return Lock{}, err
-	}
-	return p.selectedPins(ctx, refs)
-}
-
-func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) (Lock, error) {
-	selected := Lock{SchemaVersion: LockSchemaVersion, Plugins: []Pin{}}
+func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) (ResolvedPlugins, error) {
+	selected := ResolvedPlugins{Plugins: []Pin{}}
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
-			// A direct oci:// source runs without its lock entry, which
-			// only lists its blobs ahead of the pull.
-			if pin, ok := p.Lock.Lock.SourcePin(source); ok {
-				selected.Sources = append(selected.Sources, pin)
-			}
 			continue
 		}
 		if digest := ref.CandidateDigest(); digest != "" {
 			client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
 			if err != nil {
-				return Lock{}, err
+				return ResolvedPlugins{}, err
 			}
 			pin, err := client.LookupCandidate(ctx, ref.Name(), ref.Version(), digest)
 			if err != nil {
-				return Lock{}, err
+				return ResolvedPlugins{}, err
 			}
 			selected.Plugins = append(selected.Plugins, pin)
 			continue
 		}
-		if p.Lock.Exists() {
-			// Existing projects may still declare an alias/latest alongside their
-			// old exact lock. Honor those bytes read-only until explicit migration.
-			var legacy *Pin
-			for _, old := range p.Lock.Lock.Plugins {
-				if old.Matches(ref) && (ref.Version() == old.Selector || ref.Version() == old.Version) {
-					legacy = new(old)
-					break
-				}
-			}
-			if legacy != nil {
-				selected.Plugins = append(selected.Plugins, *legacy)
-				continue
-			}
-		}
 		client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
 		if err != nil {
-			return Lock{}, err
+			return ResolvedPlugins{}, err
 		}
-		pin, err := client.Lookup(ctx, ref.Name(), ref.Version())
+		var pin Pin
+		if p.defaultPlugins {
+			pin, err = client.ResolveCached(ctx, ref.Name(), ref.Version())
+		} else {
+			pin, err = client.Lookup(ctx, ref.Name(), ref.Version())
+		}
 		if err != nil {
-			return Lock{}, err
+			return ResolvedPlugins{}, err
 		}
 		selected.Plugins = append(selected.Plugins, pin)
 	}
@@ -188,30 +156,15 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 			return err
 		}
 		var pin Pin
-		var previous *Pin
-		for _, old := range p.original.Lock.Plugins {
-			if old.Matches(ref) && (ref.Version() == old.Version || ref.Version() == old.Selector) {
-				previous = new(old)
-				break
-			}
-		}
 		candidate := strings.HasPrefix(ref.Registry(), "file:")
 		updating := slices.Contains(update, ref)
 		switch {
 		case candidate && !updating && ref.CandidateDigest() != "":
 			pin, err = client.LookupCandidate(ctx, ref.Name(), ref.Version(), ref.CandidateDigest())
-		case candidate && !updating && previous != nil && previous.Origin == "candidate":
-			pin, err = client.LookupCandidate(ctx, previous.Name, previous.Version, previous.SHA256)
 		case candidate:
 			// Explicit install resolves the current staging bytes. Only update can
 			// replace an existing bound digest.
 			pin, err = client.Resolve(ctx, ref.Name(), ref.Version())
-		case previous != nil && !updating:
-			// Migration freezes the recorded release, including old latest selectors.
-			pin, err = client.Lookup(ctx, previous.Name, previous.Version)
-			if err == nil && !pin.SameRelease(*previous) {
-				return fmt.Errorf("registry release disagrees with legacy lock for %s@%s", previous.Name, previous.Version)
-			}
 		case ref.Version() != "latest" && !ref.IsAlias() && !updating:
 			pin, err = client.Lookup(ctx, ref.Name(), ref.Version())
 		default:
@@ -224,10 +177,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 		if ref.IsAlias() {
 			pin.Alias = ref.Name()
 		}
-		if err := p.original.CheckResolved(pin, ref); err != nil {
-			return err
-		}
-		if err := p.Lock.CheckResolved(pin, ref); err != nil {
+		if err := p.Releases.CheckResolved(pin, ref); err != nil {
 			return err
 		}
 		if err := p.checkConfiguredRelease(ctx, pin, ref); err != nil {
@@ -235,8 +185,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 		}
 		selected = append(selected, pin)
 	}
-	next := p.Lock.Lock
-	next.Plugins, next.Sources = selected, nil
+	next := ResolvedPlugins{Plugins: selected}
 	if err := next.Validate(); err != nil {
 		return err
 	}
@@ -276,13 +225,12 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginref.Referenc
 			return err
 		}
 	}
-	p.Lock.Lock = next
+	p.Releases = next
 	return nil
 }
 
-// Configured releases retain publisher, immutable-version and downgrade checks
-// after project locks are retired. Their authority evidence comes from the cache
-// or the same registry lookup used by normal exact declarations.
+// Configured releases retain publisher, immutable-version and downgrade checks.
+// Authority evidence comes from cached or acquired registry records.
 func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref pluginref.Reference) error {
 	for _, configured := range p.Manifest.References {
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
@@ -306,7 +254,7 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref plugi
 		if err != nil {
 			return err
 		}
-		baseline := LockFile{Lock: Lock{Plugins: []Pin{previous}}}
+		baseline := ResolvedPlugins{Plugins: []Pin{previous}}
 		if err := baseline.CheckResolved(pin, ref); err != nil {
 			return err
 		}
@@ -324,7 +272,7 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginref.Ref
 			continue
 		}
 		var selected *Pin
-		for _, pin := range p.Lock.Lock.Plugins {
+		for _, pin := range p.Releases.Plugins {
 			if pin.Matches(ref) && (ref.Version() == "latest" || ref.Version() == pin.Version || ref.Version() == pin.Selector) {
 				selected = new(pin)
 				break
@@ -367,65 +315,13 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginref.Ref
 	return resolved, nil
 }
 
-// Save writes one exact plugin declaration list. An old lock is removed only
-// after config is safely written and the lock still matches the input snapshot.
-func (p *Project) Save(ctx context.Context, refs []pluginref.Reference) (err error) {
+// Save writes the exact plugin declarations after checking configuration for concurrent edits.
+func (p *Project) Save(ctx context.Context, refs []pluginref.Reference) error {
 	resolved, err := p.ResolvedDeclarations(ctx, refs)
 	if err != nil {
 		return err
 	}
-	if err := p.Lock.CheckUnchanged(ctx); err != nil {
-		return err
-	}
-	if err := p.Manifest.Save(ctx, resolved); err != nil {
-		return err
-	}
-	return p.RemoveLegacyLock(ctx)
-}
-
-func (p *Project) RemoveLegacyLock(ctx context.Context) error {
-	if !p.Lock.Exists() {
-		return nil
-	}
-	if err := p.Lock.CheckUnchanged(ctx); err != nil {
-		return err
-	}
-	if err := os.Remove(p.Lock.Path); err != nil {
-		return fmt.Errorf("configuration migrated but legacy plugin lock could not be removed: %w", err)
-	}
-	lock, err := OpenLock(ctx, p.Lock.Path)
-	if err == nil {
-		lock.Lock = p.Lock.Lock
-		p.Lock = lock
-		p.original = *lock
-	}
-	return err
-}
-
-// MigrationDeclarations uses old pins only to preserve the release already
-// selected by a matching declaration. Apply verifies these against the registry.
-func (p *Project) MigrationDeclarations(refs []pluginref.Reference) ([]pluginref.Reference, error) {
-	resolved := slices.Clone(refs)
-	for index, ref := range refs {
-		if ref.DirectSource() != "" {
-			continue
-		}
-		for _, pin := range p.original.Lock.Plugins {
-			if !pin.Matches(ref) {
-				continue
-			}
-			if ref.Version() != pin.Version && ref.Version() != pin.Selector {
-				return nil, fmt.Errorf("plugin %s disagrees with legacy locked version %s; use plugin install to select a replacement", ref.String(), pin.Version)
-			}
-			declaration, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
-			if err != nil {
-				return nil, err
-			}
-			resolved[index] = declaration
-			break
-		}
-	}
-	return resolved, nil
+	return p.Manifest.Save(ctx, resolved)
 }
 
 func (p *Project) artifactOptions() artifacts.Options {

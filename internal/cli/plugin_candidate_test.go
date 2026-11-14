@@ -101,7 +101,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	if got := candidateDigest(t, configPath); got != digest {
 		t.Fatalf("candidate config digest = %q, want %q", got, digest)
 	}
-	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("candidate install created a project lock: %v", err)
 	}
 	if _, err := os.Stat(configPath); err != nil {
@@ -226,7 +226,7 @@ func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 	if err != nil || !bytes.Equal(after, config) {
 		t.Fatalf("OCI checks modified configuration: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("OCI candidate created a project lock: %v", err)
 	}
 }
@@ -419,7 +419,7 @@ func TestCandidateCLIRejectsArtifactSymlinkEscape(t *testing.T) {
 	}
 	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, acquisition, 3, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
-	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("escaping candidate wrote lock: %v", err)
 	}
 }
@@ -456,7 +456,7 @@ func TestCandidateCLIRejectsInvalidInputs(t *testing.T) {
 			}
 			t.Chdir(candidateProject(t))
 			pluginCommandTest(t, acquisition, 3, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
-			for _, name := range []string{plugininstall.LockName, "actionlint.yaml"} {
+			for _, name := range []string{"actionlint.plugins.lock.json", "actionlint.yaml"} {
 				if _, err := os.Stat(filepath.Join(".github", name)); !os.IsNotExist(err) {
 					t.Fatalf("failed candidate wrote %s: %v", name, err)
 				}

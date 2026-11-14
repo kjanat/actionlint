@@ -2,7 +2,6 @@ package installation_test
 
 import (
 	"bytes"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -29,39 +28,27 @@ func TestRegistryTransportMigration(t *testing.T) {
 	if old.Kind != artifacts.Core || old.Asset != "plugin.wasm" || next.Kind != artifacts.Component || next.Asset != "plugin.component.wasm" {
 		t.Fatalf("release selection lost: old=%+v next=%+v", old, next)
 	}
-	file, err := plugininstall.OpenLock(t.Context(), filepath.Join(t.TempDir(), plugininstall.LockName))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Set(old); err != nil {
-		t.Fatal(err)
-	}
+	file := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{old}}
 	options := artifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
 	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(registry)}
-	if err := file.Lock.Sync(t.Context(), options, statuses); err != nil {
+	if err := file.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
-	if err := file.Lock.Sync(t.Context(), options, statuses); err != nil {
+	if err := file.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
-	if file.Lock.Plugins[0] != old || len(registry.Requests()) != requests {
+	if file.Plugins[0] != old || len(registry.Requests()) != requests {
 		t.Fatal("sync upgraded or resolved the pinned core release")
 	}
 	registry.SetOffline(false)
-	if err := file.Set(next); err != nil {
+	if err := file.CheckReplacement(next, ""); err != nil {
 		t.Fatalf("new version transport migration rejected: %v", err)
 	}
-	if err := file.Lock.Sync(t.Context(), options, statuses); err != nil {
+	file.Plugins = []plugininstall.Pin{next}
+	if err := file.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
-	}
-	if err := file.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	reopened, err := plugininstall.OpenLock(t.Context(), file.Path)
-	if err != nil || len(reopened.Lock.Plugins) != 1 || reopened.Lock.Plugins[0] != next {
-		t.Fatalf("migrated pin not preserved: %v %v", reopened, err)
 	}
 }
 
@@ -87,7 +74,7 @@ func TestRegistryVersionedIdentityStillChecksReleaseEvidence(t *testing.T) {
 	}
 }
 
-func TestLockMigrationPreservesIdentityAndImmutability(t *testing.T) {
+func TestReleaseReplacementPreservesIdentityAndImmutability(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
@@ -118,14 +105,14 @@ func TestLockMigrationPreservesIdentityAndImmutability(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			file := plugininstall.LockFile{Lock: plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{old}}}
+			file := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{old}}
 			next := old
 			test.edit(&next)
-			if err := file.Set(next); err == nil {
+			if err := file.CheckReplacement(next, ""); err == nil {
 				t.Fatal("accepted forbidden replacement")
 			}
-			if file.Lock.Plugins[0] != old {
-				t.Fatal("failed migration changed existing pin")
+			if file.Plugins[0] != old {
+				t.Fatal("rejected replacement changed existing pin")
 			}
 		})
 	}

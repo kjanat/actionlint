@@ -13,7 +13,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 )
 
-func TestRuffAutomaticVersionCompatibility(t *testing.T) {
+func TestNativeRuffVersionCompatibility(t *testing.T) {
 	t.Chdir(t.TempDir())
 	executable, err := os.Executable()
 	if err != nil {
@@ -77,15 +77,11 @@ permissions: {}
 					t.Setenv("ACTIONLINT_TOOL_RUFF_FLAGS", `["--select", "F"]`)
 				}
 				args := append([]string{"actionlint", "--no-color", "--no-tool=shellcheck"}, prefix...)
-				if tc.config == "" {
-					args = append(args, "--no-config")
-				} else {
-					config := filepath.Join(t.TempDir(), "config.yaml")
-					if err := os.WriteFile(config, []byte(tc.config), 0o600); err != nil {
-						t.Fatal(err)
-					}
-					args = append(args, "--config-file", config)
+				config := filepath.Join(t.TempDir(), "config.yaml")
+				if err := os.WriteFile(config, []byte("plugins: []\n"+tc.config), 0o600); err != nil {
+					t.Fatal(err)
 				}
+				args = append(args, "--config-file", config)
 				if tc.explicit {
 					args = append(args, "--tool=ruff="+tool)
 				}

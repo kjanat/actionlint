@@ -61,7 +61,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, configPath, "plugins: []\n")
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", configPath)
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, configPath)
 	if err != nil {
 		t.Fatal(err)
 	}

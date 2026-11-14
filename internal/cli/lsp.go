@@ -2,11 +2,9 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	lsp "actionlint.kjanat.dev/v2/internal/lsp"
 
@@ -26,9 +24,6 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 	c := r.Check
 	for _, warning := range c.Deprecations {
 		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+warning)
-	}
-	if len(c.Plugins) != 0 && c.PluginLock != "" {
-		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
 	}
 	plugins, err := c.pluginSelection(streams.Acquisition).Resolve(ctx, cwd, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {

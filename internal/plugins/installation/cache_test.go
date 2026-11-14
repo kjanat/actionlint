@@ -25,7 +25,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	}
 	options := artifacts.Options{CacheDir: filepath.Join(acquisition.UserCacheDir, "actionlint", "artifacts"), Connections: acquisition.Connections}
 	statuses := plugininstall.StatusOptions{Acquisition: acquisition}
-	if err := (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{first}}).Sync(t.Context(), options, statuses); err != nil {
+	if err := (plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{first}}).Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.RememberCandidate(t.Context(), first, options); err != nil {
@@ -57,7 +57,7 @@ func TestCandidateDigestCacheKeepsSameVersionBuilds(t *testing.T) {
 	if err != nil || second.SHA256 != secondDigest {
 		t.Fatalf("second candidate resolution = %+v, %v", second, err)
 	}
-	if err := (plugininstall.Lock{SchemaVersion: plugininstall.LockSchemaVersion, Plugins: []plugininstall.Pin{second}}).Sync(t.Context(), options, statuses); err != nil {
+	if err := (plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{second}}).Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.RememberCandidate(t.Context(), second, options); err != nil {

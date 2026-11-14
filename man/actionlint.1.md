@@ -22,7 +22,8 @@ Checks include workflow syntax, expression types and context availability, actio
 outputs, local action metadata and composite steps, reusable workflow inputs and permissions,
 job dependencies, parallel steps, runner labels, event filters, schedules, and YAML anchors.
 Security checks report potentially unsafe expression interpolation in scripts and hard-coded
-credentials. Optional ShellCheck integration checks scripts in `run:` steps.
+credentials. ShellCheck and Ruff check shell and Python scripts through registry
+Wasm plugins by default.
 
 Repository policy checks can require immutable action references and job timeouts.
 These checks are enabled explicitly in the configuration file. Cache safety policies
@@ -64,6 +65,25 @@ also accepts.
 **lsp**
 : Serve versioned editor buffers, diagnostics and quick fixes over stdin/stdout.
 
+**cache warm** [*FILES...*]
+: Download configuration, plugins and remote action metadata for offline checks.
+Refresh the default plugin selections. Lint findings do not affect the exit status.
+
+**cache dir**, **cache list**
+: Print the cache location, or list cached files with their sizes and modification
+times. Both commands support **--json** and do not create a missing cache.
+
+**cache prune** [**--older-than** *DURATION*] [**--dry-run**]
+: Remove cached downloads and compiled modules last written more than 30 days ago.
+Accept durations such as `24h` and `168h`. Retain registry records so selected
+versions keep their matching release metadata.
+
+**cache clean** [**--dry-run**]
+: Remove cached configuration, downloads, remote metadata, registry selections
+and compiled modules. Retain plugin revocation records. Project configuration
+is unchanged. Both removal commands support **--json**, work offline and stay
+within the cache directory. Warm the cache again before checking offline.
+
 **plugin search** [*QUERY*], **plugin versions** *PLUGIN*
 : Discover canonical repository names and exact published tags from the registry.
 Use **--registry** to select a compatible HTTPS catalogue. **--json** includes
@@ -74,7 +94,7 @@ details about compatibility with this host when listing versions.
 without executing it. Accepts `owner/repo@tag` and forge-qualified names.
 Save the canonical package and exact version in configuration; verified release
 metadata and artifact bytes live in the shared user cache. Without a name, install
-declared dependencies, preserving matching pins; migrate older lock-only projects.
+declared dependencies, preserving matching pins.
 The default selector for new dependencies is the highest stable full semantic version;
 prereleases and arbitrary tags require exact selection. A registry listing does not prove
 that a plugin will run with this host. Runner targets still require explicit selection.
@@ -85,8 +105,7 @@ remove a declaration; or acquire declared exact releases into the shared cache.
 Update accepts **--version** for one named plugin. Exact selectors stay exact;
 latest cannot downgrade unless an exact tag is explicitly selected. Failed updates
 preserve configuration. Checks restore missing pinned artifacts and reuse verified
-cached bytes offline. Only declared plugins load automatically. Missing or mismatched
-legacy pins require **plugin install** to migrate. Removal leaves the shared cache intact. Use **--config**
+cached bytes offline. Configuration selects plugin releases. Removal leaves the shared cache intact. Use **--config**
 for a custom config or outside a repository. Management rejects **--no-config**.
 
 **plugin inspect** *PATH-OR-URI*
@@ -157,7 +176,6 @@ then each repository's Git reference list from `github.com` and manifests from
 whether actionlint tries `cdn.jsdelivr.net` before GitHub REST. By default, only
 repositories known to be public can use that mirror.
 Online requests use `GH_TOKEN`, falling back to `GITHUB_TOKEN`.
-This option does not create project lockfiles.
 
 These options belong to the root and to **check**, unless noted otherwise.
 The root accepts single- and double-dash spellings; **check**
@@ -266,16 +284,6 @@ Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of me
 WebAssembly module or a tool provider published to an OCI registry; see
 [Plugins](../docs/plugins.md#pull-from-an-oci-registry).
 
-**--plugin-lock** *FILE*
-: Explicitly load every pin from this lock, bypassing config declarations.
-Available on check, fix, rules, lsp and
-plugin management commands. Cannot accompany **--plugin**. Explicit **--plugin**
-sources replace automatic plugin selection; **--no-config** disables automatic
-selection. Explicit **--config** selects its declarations and any legacy lock. On
-management commands, **--plugin-lock** places a default config beside that lock
-unless **--config** selects another file. LSP snapshots selection
-until restart. See the **plugin** commands.
-
 **--registry** *URL*
 : Select an HTTPS static catalogue for **plugin search**, **plugin versions** or
 **plugin install**. Default: `https://plugins.actionlint.kjanat.dev/`.
@@ -351,8 +359,21 @@ Unknown ids are rejected with the list of valid ids once plugins load.
 
 **--no-tool** *ID*
 : Disable the tool *ID* and override its environment settings. Plugins
-providing the tool are not loaded: a locked plugin whose name or alias is *ID* is
+providing the tool are not loaded: a selected plugin whose name or alias is *ID* is
 not downloaded. Repeatable.
+
+**--no-tools**
+: Disable all external linter checks, including native executables and Wasm tool
+plugins. Override individual **--tool** flags and configured backends. Built-in
+workflow checks still run.
+
+**--dry-run**
+: Show the files **cache prune** or **cache clean** would remove without changing
+the cache.
+
+**--older-than** *DURATION*
+: Select the minimum time since a cache file was written for **cache prune**.
+The default is `720h`, or 30 days. This does not measure when a file was last used.
 
 **--shellcheck** *COMMAND*
 : Deprecated option from actionlint v1, declared by the bundled ShellCheck tool.

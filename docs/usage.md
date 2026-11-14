@@ -379,6 +379,29 @@ plugins, and fetches metadata for remote actions and reusable workflows.
 It prints the cache directory to save in CI. It fails if selected action metadata
 cannot be cached. Lint findings do not affect this command's exit status.
 
+Use `cache dir` to locate the cache and `cache list` to inspect its files, sizes
+and modification times. Both commands also accept `--json`.
+
+```sh
+actionlint cache dir
+actionlint cache list --json
+actionlint cache prune --older-than 168h --dry-run
+actionlint cache prune --older-than 168h
+actionlint cache clean --dry-run
+actionlint cache clean
+```
+
+`cache prune` removes downloads and compiled modules last written more than
+30 days ago by default. `--older-than` accepts durations such as `24h` or `168h`.
+It measures time since a file was written, not since it was last used. Registry
+records remain so cached version selections stay consistent.
+
+`cache clean` removes cached configuration, downloads, remote action metadata,
+registry selections and compiled modules. It retains plugin revocation records
+and leaves project configuration unchanged. Both removal commands accept
+`--dry-run` and `--json`, work offline and never follow links outside the cache.
+After removing dependencies, run `cache warm` before checking offline again.
+
 Offline checks use cached configuration, verified plugin artifacts and remote
 metadata. Tags and branches use their last cached resolution. Run online again
 to refresh them. Missing dependencies produce warnings. If a required config or
@@ -647,14 +670,23 @@ fails when that command cannot run. `--tool ID=COMMAND` accepts a command name, 
 or command line with arguments. `--no-tool ID`, `--tool ID=false` and
 `--tool ID=` disable the tool, including plugins that provide it.
 
+`--no-tools` disables all external linter checks, including native executables
+and Wasm tool plugins. It takes precedence over individual `--tool` flags and
+configured backends. Built-in workflow checks still run.
+
 ```sh
 actionlint --no-tool shellcheck
+actionlint --no-tools
 actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 
-Ruff checks Python `run:` steps when `ruff` is installed on `PATH`.
-No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
-Both flags are repeatable; the last `--tool` or `--no-tool` for an id wins and
+ShellCheck and Ruff use their registry Wasm plugins by default. The first online
+check downloads them into the user cache. Later checks reuse that selection and
+the verified artifacts, including with `--offline`. Run `actionlint cache warm`
+to refresh and cache the current registry releases before an offline check.
+Use `--tool shellcheck` or `--tool ruff` to select an installed native executable.
+See [Ruff configuration](config.md#ruff) for Python checks.
+The last `--tool` or `--no-tool` for an id wins and
 replaces the tool's environment settings. Legacy single-dash spellings follow the
 same rules at the root and after subcommands. A plugin's ids are its lock entry's
 name and alias and the engine and rule names in its metadata. An id that names no
@@ -1386,7 +1418,7 @@ an I/O failure during a multi-file application reports how many files were writt
 adds the canonical package and exact version to the config's root `plugins` list;
 commit that file. Registry evidence and verified resolutions stay in the user cache.
 Check, fix, rules and LSP load declared plugins using their pins. `plugin install`
-without a name resolves manually edited declarations or migrates older lock-only projects.
+without a name resolves manually edited declarations.
 `plugin sync` restores exact pins; `plugin update` explicitly refreshes declared versions.
 See [plugin installation](plugins.md#install-from-the-registry)
 for version selection, overrides and offline behavior.

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
@@ -141,7 +142,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 	cacheDirectory := cmd.Acquisition.UserCacheDir
 	if cacheDirectory == "" {
 		cacheDirectory, err = os.UserCacheDir()
-		if err != nil && app.inv.Check.WarmCache {
+		if err != nil && (app.inv.Check.WarmCache || strings.HasPrefix(string(app.inv.Operation), "cache ")) {
 			return app.reportError(err)
 		}
 	}

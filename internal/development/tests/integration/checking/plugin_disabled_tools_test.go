@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// TestDisabledToolIsNotResolved checks that a locked plugin whose alias is
+// TestDisabledToolIsNotResolved checks that a configured plugin whose alias is
 // a disabled tool id is neither downloaded nor loaded, and that the id
 // counts as known.
 func TestDisabledToolIsNotResolved(t *testing.T) {
@@ -29,28 +29,24 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	registry.SetAliases("no-sudo")
 	registry.Add(t, "v1.0.0", module)
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	pin, err := client.Resolve(t.Context(), "no-sudo", "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
-	pin.Alias = "no-sudo"
-	lock, err := plugininstall.OpenLock(t.Context(), filepath.Join(t.TempDir(), plugininstall.LockName))
-	if err != nil {
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	content := "plugins: [{name: '" + pin.Name + "', version: '" + pin.Version + "', registry: '" + pin.Registry + "'}]\n"
+	if err := os.WriteFile(config, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := lock.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+
 	registry.ResetRequests()
-	selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
+	selection := plugininstall.WithTools(plugininstall.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
 	sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +77,7 @@ func TestUnknownToolIDIsRejected(t *testing.T) {
 }
 
 // TestNamedPluginToolIsAccepted checks that --tool accepts the same plugin
-// ids as --no-tool, here a lock pin's name and alias, and that naming a
+// ids as --no-tool, here a selected release's name and alias, and that naming a
 // plugin keeps it running.
 func TestNamedPluginToolIsAccepted(t *testing.T) {
 	t.Parallel()
@@ -91,30 +87,26 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	registry.SetAliases("sudo-check")
 	registry.Add(t, "v1.0.0", module)
 	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	pin, err := client.Resolve(t.Context(), "sudo-check", "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
-	pin.Alias = "sudo-check"
-	lock, err := plugininstall.OpenLock(t.Context(), filepath.Join(t.TempDir(), plugininstall.LockName))
-	if err != nil {
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	content := "plugins: [{name: '" + pin.Name + "', version: '" + pin.Version + "', registry: '" + pin.Registry + "'}]\n"
+	if err := os.WriteFile(config, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := lock.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+
 	for _, id := range []string{fixtureregistry.FixturePluginName, "sudo-check"} {
 		t.Run(id, func(t *testing.T) {
 			t.Parallel()
-			selection := plugininstall.WithTools(plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
+			selection := plugininstall.WithTools(plugininstall.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
 			sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 			if err != nil {
 				t.Fatal(err)
