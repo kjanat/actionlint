@@ -34,6 +34,7 @@ import (
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	"actionlint.kjanat.dev/v2/internal/model/services"
@@ -65,7 +66,12 @@ type Options struct {
 	ConfigFile        string
 	ConfigConnections acquisitionhttp.Connections
 	ConfigOverlays    []repoconfig.Overlay
-	SkipProjectConfig bool
+	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
+	EnforcePolicies []string
+	// EnforcedLifecycle supplies trusted, compiled lifecycle policies.
+	EnforcedLifecycle    []lifecycle.Policy
+	enforcedPolicyInputs []string
+	SkipProjectConfig    bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
 	Analyzers []checkinputs.Registration
@@ -98,6 +104,15 @@ type Result = report.Analysis
 
 // Check manages the analysis runtime and returns findings collected before any error.
 func Check(ctx context.Context, options Options, input inputmodel.Request) (result *Result, err error) {
+	options, err = prepareEnforcedLifecycle(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if result != nil {
+			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, options.enforcedPolicyInputs...))))
+		}
+	}()
 	if options.Runners.AsOf.IsZero() {
 		options.Runners.AsOf = runner.DateOf(time.Now())
 	}
@@ -211,6 +226,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	}
 	request.Repository = options.Repository
 	request.Service = options.Service
+	request.EnforcedLifecycle = options.EnforcedLifecycle
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
 
 	if options.LoadScriptEngine != nil {

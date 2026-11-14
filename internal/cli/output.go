@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
@@ -73,7 +74,7 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 }
 
 func (a *commandApp) reportError(err error) int {
-	if network.OnlyOffline(err) {
+	if _, required := errors.AsType[*checking.RequiredPolicyError](err); !required && network.OnlyOffline(err) {
 		a.reportWarning("Could not complete this command: " + err.Error() + ". Run actionlint cache warm while online, then retry.")
 		return 0
 	}

@@ -52,6 +52,7 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 
@@ -75,10 +76,11 @@ type sourceUnit = workspace.Source
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
-	RemoteActions   actionprovider.Provider
-	RemoteWorkflows workflowinputs.Provider
-	Repository      func(context.Context, string) repository.Snapshot
-	Service         services.Service
+	RemoteActions     actionprovider.Provider
+	RemoteWorkflows   workflowinputs.Provider
+	Repository        func(context.Context, string) repository.Snapshot
+	Service           services.Service
+	EnforcedLifecycle []lifecycle.Policy
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
 	Runners            runner.Options
@@ -366,9 +368,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	session := &analysisSession{
-		remoteActions: make(map[references.MirrorAccess]*actionremote.Service),
-		runners:       request.Runners,
-		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
+		remoteActions:     make(map[references.MirrorAccess]*actionremote.Service),
+		runners:           request.Runners,
+		enforcedLifecycle: request.EnforcedLifecycle,
+		analyzers:         request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
 		captures: captures, snapshots: snapshots, reader: reader,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,

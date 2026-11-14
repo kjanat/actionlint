@@ -574,10 +574,119 @@ actionlint check --runner-service github.com workflow.yml
 actionlint check --runner-service ghes --runner-service-version 3.19 workflow.yml
 ```
 
-`--runner-as-of YYYY-MM-DD` evaluates support on a fixed UTC date. Omit it to use
+`--as-of YYYY-MM-DD` evaluates lifecycle events on a fixed UTC date.
+`--runner-as-of` accepts the same date. Omit both to use
 today's UTC date. Unknown service, architecture or support data does not establish
 a violation. See [dated runner support](plugins.md#dated-runner-support) for provider
 data and the distinction between ARM32 execution and ARM64 runners.
+
+### Lifecycle notification policies
+
+Use named policies to decide when a known support deadline produces information,
+a warning or an error. A policy applies to the selected subject and event. Runner
+support, an action's JavaScript runtime and a Node.js version installed by
+`actions/setup-node` have separate support data.
+
+```toml
+[repository]
+service = "github.com"
+
+[[lint.lifecycle.policies]]
+id          = "prepare-for-support-removal"
+description = "Give teams time to migrate before support ends."
+
+[lint.lifecycle.policies.match]
+subjects = ["runners", "action-runtimes", "language-runtimes"]
+events   = ["support-ends"]
+services = ["github.com", "github-data-residency"]
+
+[[lint.lifecycle.policies.notifications]]
+starts   = { before = "180d" }
+severity = "info"
+
+[[lint.lifecycle.policies.notifications]]
+starts   = { before = "90d" }
+severity = "warning"
+
+[[lint.lifecycle.policies.notifications]]
+starts   = { on = "effective-date" }
+severity = "error"
+```
+
+With this policy, a deadline more than 180 days away produces no scheduled
+notification. The first notification starts 180 UTC calendar days before the
+deadline. It becomes a warning 90 days before and an error on the date itself.
+Boundaries are inclusive. A known announcement date prevents a notification from
+starting before that announcement. If the effective date is unknown, existing
+factual diagnostics remain available without an invented countdown.
+
+The event names are `support-ends`, `support-starts` and `runtime-replaced`.
+`before` accepts a nonnegative whole number of days followed by `d`.
+`on` accepts `effective-date`. Each notification must specify exactly one start.
+The highest active severity wins when multiple policies match. A notification
+ends when the affected selection changes or the evidence establishes restored
+support. A future introduction does not make a currently unavailable runtime valid.
+
+The `runtime-lifecycle` rule checks resolved static Node.js versions selected by
+`actions/setup-node` against the [Node.js Release schedule](https://github.com/nodejs/Release/blob/main/schedule.json).
+Dynamic or ambiguous selections, release aliases, prereleases and
+`node-version-file` remain unresolved by this check. The generated action-runtime
+catalogue separately determines accepted `runs.using` values.
+
+Policies with different IDs accumulate through `extends`. A policy with the same
+ID replaces that entire policy, including its match conditions and notifications.
+Use the existing file overrides to require an earlier migration for release jobs:
+
+```toml
+[[overrides]]
+includes = [".github/workflows/release.yml"]
+
+[[overrides.lint.lifecycle.policies]]
+id          = "release-workflows-must-migrate-early"
+description = "Require release workflows to migrate at least 30 days early."
+
+[overrides.lint.lifecycle.policies.match]
+subjects = ["runners", "action-runtimes", "language-runtimes"]
+events   = ["support-ends"]
+
+[[overrides.lint.lifecycle.policies.notifications]]
+starts   = { before = "30d" }
+severity = "error"
+```
+
+An explicitly selected rule severity still applies to optional notifications.
+For example, `runner-support = "error"` makes every emitted optional notification
+from that rule an error. `on` or `default` uses the notification's calculated
+severity. `off` disables optional findings from the rule.
+
+### Required lifecycle policies in CI
+
+A CI administrator can supply required policies independently of project settings:
+
+```sh
+actionlint check --enforce-policy https://example.org/actionlint/required.toml
+```
+
+The required file uses the same `lint.lifecycle.policies` structure and may use
+`extends`. It accepts lifecycle policies only. Other lint settings, tools and
+plugins are rejected. Repeat `--enforce-policy` to require multiple policy files.
+Each file's policies remain required even when another file or the project uses
+the same policy ID.
+
+An active required policy cannot be disabled by project rule settings, `lint.enabled`,
+inline suppressions, ignore flags or dependency reporting settings. A project may
+raise its severity. It cannot lower the required minimum. The finding identifies
+the required policy and its source in terminal, JSON and SARIF output.
+
+Download required policy files before an offline check:
+
+```sh
+actionlint cache warm --enforce-policy https://example.org/actionlint/required.toml
+actionlint check --offline --enforce-policy https://example.org/actionlint/required.toml
+```
+
+Policy loading uses the configuration cache. Missing or invalid required policy
+is an error, including when an offline check cannot find a cached copy.
 
 ### Shell completion
 

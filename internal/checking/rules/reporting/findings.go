@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -13,7 +14,8 @@ import (
 // Finding associates a diagnostic with its owning step.
 type Finding struct {
 	results.Diagnostic
-	Step declaration.StepView
+	LifecycleEvidence *lifecycle.Evidence
+	Step              declaration.StepView
 }
 
 // Collector attaches a rule name and step to each reported message.

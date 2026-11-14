@@ -28,15 +28,20 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 	}
 	seen := make(map[location][]int)
 	var retained []*findingmodel.Finding
-	mergeBlocking := func(index int, diagnostic diagmodel.Diagnostic) {
+	mergeFinding := func(index int, diagnostic diagmodel.Diagnostic, finding *findingmodel.Finding) {
 		diagnostics[index].NonBlocking = diagnostics[index].NonBlocking && diagnostic.NonBlocking
 		retained[index].NonBlocking = diagnostics[index].NonBlocking
+		retained[index].RequiredLifecycle = retained[index].RequiredLifecycle || finding.RequiredLifecycle
+		if retained[index].RequiredLifecycle {
+			retained[index].SuppressionTarget = nil
+			sources[index].Suppression = nil
+		}
 	}
 	type metadataLocation struct {
 		project, kind, severity string
 		finding                 findingmodel.MetadataKey
 	}
-	seenMetadata := make(map[metadataLocation]int)
+	seenMetadata := make(map[metadataLocation][]int)
 	type declarationLocation struct {
 		project string
 		finding findingmodel.MetadataKey
@@ -77,11 +82,18 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
 			if identity := finding.MetadataIdentity; isMetadata {
 				metadataKey = metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
-				if !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
+				if !finding.RequiredLifecycle && !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
 					continue
 				}
-				if index, exists := seenMetadata[metadataKey]; exists {
-					mergeBlocking(index, diagnostic)
+				duplicate := slices.IndexFunc(seenMetadata[metadataKey], func(index int) bool {
+					previous := retained[index]
+					if previous.RequiredLifecycle || finding.RequiredLifecycle {
+						return previous.RequiredLifecycle == finding.RequiredLifecycle && reflect.DeepEqual(diagnostics[index].Lifecycle, diagnostic.Lifecycle)
+					}
+					return true
+				})
+				if duplicate >= 0 {
+					mergeFinding(seenMetadata[metadataKey][duplicate], diagnostic, finding)
 					continue
 				}
 			}
@@ -93,20 +105,20 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 			})
 			if duplicate >= 0 {
 				index := seen[key][duplicate]
-				mergeBlocking(index, diagnostic)
+				mergeFinding(index, diagnostic, finding)
 				if isMetadata {
-					seenMetadata[metadataKey] = index
+					seenMetadata[metadataKey] = append(seenMetadata[metadataKey], index)
 				}
 				continue
 			}
 			if isMetadata {
-				seenMetadata[metadataKey] = len(diagnostics)
+				seenMetadata[metadataKey] = append(seenMetadata[metadataKey], len(diagnostics))
 			}
 			seen[key] = append(seen[key], len(diagnostics))
 			retained = append(retained, finding)
 			diagnostics = append(diagnostics, diagnostic)
 			var target *report.SuppressionTarget
-			if suppression := finding.SuppressionTarget; suppression != nil {
+			if suppression := finding.SuppressionTarget; suppression != nil && !finding.RequiredLifecycle {
 				path := suppression.Path
 				if path == "" {
 					path = file.InputPath

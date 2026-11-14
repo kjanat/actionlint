@@ -261,6 +261,7 @@ func (a *commandApp) hyperlinkFlag(c *cobra.Command, f *pflag.FlagSet) {
 
 func (a *commandApp) configFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.Config.Path, "config", "", "Read configuration from `PATH`")
+	f.StringArrayVar(&a.inv.Check.EnforcePolicies, "enforce-policy", nil, "Require lifecycle policies from `FILE` or HTTPS URL (repeatable)")
 	f.BoolVar(&a.inv.Check.Config.Disabled, "no-config", false, "Disable configuration loading")
 	for _, name := range []string{"no-rc", "norc"} {
 		f.BoolVar(&a.inv.Check.Config.Disabled, name, false, "Alias for --no-config")
@@ -268,7 +269,7 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 	}
 	f.StringVar(&a.inv.Check.Config.Path, "config-file", "", "Alias for --config")
 	_ = f.MarkHidden("config-file")
-	for _, name := range []string{"config", "config-file", "no-config", "no-rc", "norc"} {
+	for _, name := range []string{"config", "config-file", "no-config", "no-rc", "norc", "enforce-policy"} {
 		annotateFlag(f, name, "Configuration")
 	}
 }

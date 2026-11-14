@@ -173,6 +173,10 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	if err != nil {
 		return nil, err
 	}
+	policyOrigins := map[string]string{}
+	for _, p := range config.Lint.Lifecycle.Policies {
+		policyOrigins[p.ID] = p.origin
+	}
 	tools := config.Tools
 	repository, err := binding.Encode(config.Repository)
 	if err != nil {
@@ -209,6 +213,11 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 				return nil, err
 			}
 		}
+		if override.Lint != nil {
+			for _, p := range override.Lint.Lifecycle.Policies {
+				policyOrigins[p.ID] = p.origin
+			}
+		}
 		overlay := override.lintNode
 		if !override.lintSet {
 			if override.Lint == nil {
@@ -223,7 +232,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 		if err != nil {
 			return nil, err
 		}
-		value = configtree.Merge(ruleSet.expandLintShorthands(value), overlay)
+		value = mergeLifecycleLint(ruleSet.expandLintShorthands(value), overlay)
 	}
 	next := *config
 	if err := binding.Decode(rawValue(repository), &next.Repository); err != nil {
@@ -233,6 +242,9 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	next.Lint = LintConfig{}
 	if err := binding.Decode(value, &next.Lint); err != nil {
 		return nil, err
+	}
+	for i := range next.Lint.Lifecycle.Policies {
+		next.Lint.Lifecycle.Policies[i].origin = policyOrigins[next.Lint.Lifecycle.Policies[i].ID]
 	}
 	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
 	next.Paths, next.Policy = nil, Policy{}

@@ -3,6 +3,7 @@ package runner
 import (
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -59,10 +60,21 @@ type SupportProblem struct {
 	Effective runnerapi.Date
 	Next      *runnerapi.SupportChange
 	Selector  runnerapi.Selector
+	Evidence  *lifecycle.Evidence
 }
 
 // Support reports policy effects established for every candidate of a selector.
 func (k *Knowledge) Support(job workflowdecl.JobView, capability runnerapi.Capability) []SupportProblem {
+	return k.supportProblems(job, capability, false)
+}
+
+// UpcomingSupport reports future events that one policy establishes for every candidate.
+// These observations do not establish a current support problem.
+func (k *Knowledge) UpcomingSupport(job workflowdecl.JobView, capability runnerapi.Capability) []SupportProblem {
+	return k.supportProblems(job, capability, true)
+}
+
+func (k *Knowledge) supportProblems(job workflowdecl.JobView, capability runnerapi.Capability, upcoming bool) []SupportProblem {
 	if k == nil || k.report.AsOf.IsZero() {
 		return nil
 	}
@@ -96,26 +108,125 @@ func (k *Knowledge) Support(job workflowdecl.JobView, capability runnerapi.Capab
 				continue
 			}
 			state, effective, next := policyState(p, k.report.AsOf)
-			if state != runnerapi.Deprecated && state != runnerapi.Unsupported {
+			current := state == runnerapi.Deprecated || state == runnerapi.Unsupported
+			if current == upcoming {
 				continue
 			}
-			found := false
-			for j, candidate := range resolved.Candidates {
-				if candidateMatches(p, candidate) {
-					covered[j] = true
-					found = true
+			if upcoming {
+				next = upcomingChange(p, k.report.AsOf, state)
+				if next == nil {
+					continue
 				}
 			}
-			if found {
+			found := false
+			all := true
+			for j, candidate := range resolved.Candidates {
+				if candidateMatches(p, candidate) {
+					if !upcoming {
+						covered[j] = true
+					}
+					found = true
+				} else {
+					all = false
+				}
+			}
+			if found && (!upcoming || all) {
 				cloned := runnerapi.CloneSupportCatalog(runnerapi.SupportCatalog{Policies: []runnerapi.SupportPolicy{p}})
-				matched = append(matched, SupportProblem{Policy: cloned.Policies[0], State: state, Effective: effective, Next: next, Selector: cloneSelector(alternative.Selector)})
+				problem := SupportProblem{Policy: cloned.Policies[0], State: state, Effective: effective, Next: next, Selector: cloneSelector(alternative.Selector)}
+				if all {
+					problem.Evidence = supportEvidence(problem, k.report.Service, k.report.AsOf, current)
+				}
+				matched = append(matched, problem)
 			}
 		}
-		if !slices.Contains(covered, false) {
+		if upcoming || !slices.Contains(covered, false) {
+			if !upcoming {
+				proof := currentSupportProof(matched, resolved.Candidates, k.report.Service, k.report.AsOf)
+				for j := range matched {
+					if matched[j].Evidence == nil {
+						matched[j].Evidence = supportEvidence(matched[j], k.report.Service, k.report.AsOf, true)
+						matched[j].Evidence.AllOf = proof
+					}
+				}
+			}
 			out = append(out, matched...)
 		}
 	}
 	return out
+}
+
+// Each candidate needs an established policy; overlapping policies are alternatives
+// for that candidate. Keeping their dates separate lets notification policy require
+// every candidate to reach a stage without inventing an aggregate deadline.
+func currentSupportProof(problems []SupportProblem, candidates []runnerapi.Candidate, service services.Service, asOf runnerapi.Date) []lifecycle.Evidence {
+	proof := make([]lifecycle.Evidence, 0, len(candidates))
+	for _, candidate := range candidates {
+		var alternatives []lifecycle.Evidence
+		for _, problem := range problems {
+			if candidateMatches(problem.Policy, candidate) {
+				alternatives = append(alternatives, *supportEvidence(problem, service, asOf, true))
+			}
+		}
+		evidence := alternatives[0]
+		if len(alternatives) > 1 {
+			evidence.AnyOf = alternatives
+		}
+		proof = append(proof, evidence)
+	}
+	return proof
+}
+
+func upcomingChange(policy runnerapi.SupportPolicy, asOf runnerapi.Date, state runnerapi.SupportState) *runnerapi.SupportChange {
+	for _, change := range policy.Changes {
+		if change.On.Compare(asOf) <= 0 {
+			continue
+		}
+		switch change.State {
+		case runnerapi.Unsupported:
+			return &change
+		case runnerapi.Supported:
+			if state == runnerapi.SupportUnknown {
+				return &change
+			}
+			return nil
+		case runnerapi.SupportUnknown:
+			return nil
+		case runnerapi.Deprecated:
+		}
+	}
+	return nil
+}
+
+func supportEvidence(problem SupportProblem, service services.Service, asOf runnerapi.Date, current bool) *lifecycle.Evidence {
+	e := &lifecycle.Evidence{Subject: lifecycle.Runners, Name: problem.Policy.ID, Kind: lifecycle.SupportEnds, Service: service, AsOf: asOf, Source: problem.Policy.URL, Current: current}
+	switch {
+	case current && problem.State == runnerapi.Unsupported:
+		e.Effective = problem.Effective
+		if e.Effective.IsZero() && problem.Next != nil && problem.Next.State == runnerapi.Supported {
+			e.Kind, e.Effective = lifecycle.SupportStarts, problem.Next.On
+		}
+	case current && problem.State == runnerapi.Deprecated:
+		if next := upcomingChange(problem.Policy, asOf, problem.State); next != nil && next.State == runnerapi.Unsupported {
+			e.Effective = next.On
+		}
+	case problem.Next != nil:
+		switch problem.Next.State {
+		case runnerapi.Unsupported:
+			e.Effective = problem.Next.On
+		case runnerapi.Supported:
+			if !current {
+				e.Kind, e.Effective = lifecycle.SupportStarts, problem.Next.On
+			}
+		case runnerapi.SupportUnknown, runnerapi.Deprecated:
+		}
+	}
+	switch {
+	case problem.Policy.URL == nodeRetirementURL && (problem.Policy.ID == "github-self-hosted-arm32" || problem.Policy.ID == "data-residency-self-hosted-arm32"):
+		e.Announced = supportDate("2026-08-25")
+	case problem.Policy.URL == armRetirementURL && (problem.Policy.ID == "github-hosted-arm32" || problem.Policy.ID == "github-hosted-aarch32-userspace"):
+		e.Announced = supportDate("2026-11-12")
+	}
+	return e
 }
 
 func candidateMatches(p runnerapi.SupportPolicy, c runnerapi.Candidate) bool {

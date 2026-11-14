@@ -190,6 +190,8 @@ func (a *commandApp) rootHelp(out io.Writer, width int, colored, links bool) {
 		{"Flags", []flagHelp{
 			{"directory", "Run from `DIR` (repeatable, like git -C)"},
 			{"config", "Read configuration from `PATH`"},
+			{"enforce-policy", "Require lifecycle policies from `FILE` or HTTPS URL (repeatable)"},
+			{"as-of", "Assess lifecycle events on `YYYY-MM-DD`"},
 			{"no-ignore", "Disable Git ignore rules and configured file filters"},
 			{"ignore-regex", "Ignore findings matching `RE` (repeatable)"},
 			{"ignore", "Ignore a `RULE`, diagnostic code or rule/code (repeatable)"},

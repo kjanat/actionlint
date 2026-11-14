@@ -39,6 +39,7 @@ lint:
 | `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                                 |
 | `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                                        |
 | `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to regular expressions matching messages or `CODE: message`.                                                       |
+| `lint.lifecycle.policies`                 | Named policies that select lifecycle events and set notification dates and severities. See [lifecycle notification policies](usage.md#lifecycle-notification-policies).   |
 
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.

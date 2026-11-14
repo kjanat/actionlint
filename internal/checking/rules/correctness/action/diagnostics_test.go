@@ -67,7 +67,7 @@ func TestMetadataCoercionProblemsUseTheirOwnRule(t *testing.T) {
 			if findings := actioncheck.Standalone(meta, actionmeta.ReferencedFiles{}); len(findings) != 0 {
 				t.Fatalf("supported coercion became an action error: %+v", findings)
 			}
-			findings := actioncheck.StandaloneWithAdvisories(meta, actionmeta.ReferencedFiles{})
+			findings := actioncheck.StandaloneWithAdvisories(meta, actionmeta.ReferencedFiles{}, actionmeta.LifecycleContext{})
 			if len(findings) != 1 || findings[0].Rule != "coercion" || findings[0].Code != "coercion" || findings[0].Start.Line == 0 || findings[0].Start.Column == 0 {
 				t.Fatalf("coercion problem lost its rule or source range: %+v", findings)
 			}

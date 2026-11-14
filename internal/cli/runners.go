@@ -21,7 +21,8 @@ func (a *commandApp) runnerFlags(f *pflag.FlagSet) {
 	f.StringVar(&a.inv.Check.RunnerService, "runner-service", "", "Workflow service: github.com, github-data-residency, ghes or unknown")
 	f.StringVar(&a.inv.Check.RunnerServiceVersion, "runner-service-version", "", "GitHub Enterprise Server version, when known")
 	f.StringVar(&a.inv.Check.RunnerAsOf, "runner-as-of", "", "Assess runner support on YYYY-MM-DD instead of today")
-	for _, name := range []string{"runner-target", "runner-provider", "runner-snapshot", "runner-scope", "runner-service", "runner-service-version", "runner-as-of"} {
+	f.StringVar(&a.inv.Check.AsOf, "as-of", "", "Assess lifecycle events on YYYY-MM-DD instead of today")
+	for _, name := range []string{"runner-target", "runner-provider", "runner-snapshot", "runner-scope", "runner-service", "runner-service-version", "runner-as-of", "as-of"} {
 		annotateFlag(f, name, "Rule selection")
 	}
 }
@@ -35,8 +36,15 @@ func (c checkInvocation) runners() (runner.Options, error) {
 		}
 		options.Service = &service
 	}
-	if c.RunnerAsOf != "" {
-		date, err := runner.ParseDate(c.RunnerAsOf)
+	if c.AsOf != "" && c.RunnerAsOf != "" && c.AsOf != c.RunnerAsOf {
+		return options, errors.New("--as-of and --runner-as-of must specify the same date")
+	}
+	asOf := c.AsOf
+	if asOf == "" {
+		asOf = c.RunnerAsOf
+	}
+	if asOf != "" {
+		date, err := runner.ParseDate(asOf)
 		if err != nil {
 			return options, err
 		}

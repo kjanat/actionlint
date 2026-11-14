@@ -33,6 +33,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -51,11 +53,12 @@ const concurrentMetadataLookups = 8
 // analysisSession holds invocation resources assembled by the application.
 // The workflow engine receives only prepared passes from the composition service.
 type analysisSession struct {
-	suppressionUses suppressionUses
-	checkCompletion checkCompletion
-	runnerReportsMu sync.Mutex
-	runnerReports   []runner.Report
-	runners         runner.Options
+	suppressionUses   suppressionUses
+	checkCompletion   checkCompletion
+	runnerReportsMu   sync.Mutex
+	runnerReports     []runner.Report
+	runners           runner.Options
+	enforcedLifecycle []lifecycle.Policy
 
 	ruleRegistrations    []repoconfig.RuleRegistration
 	rules                repoconfig.RuleSet
@@ -243,6 +246,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 	}
 	policy := resultpolicy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Config: cfg, SourceConfigurations: settings.sources, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	policy.EnforcedLifecycle = s.enforcedLifecycle
 	policy.IgnoreSelectors = s.ignoreSelectors
 	policy.UsedSuppression = func(path string, position sourcepos.Position, rule string) {
 		if index, ok := references[path]; ok {
@@ -324,6 +328,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	resolvedActions.SetRunners(runners)
 	context := ruleexec.Inputs{SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
+	context.Lifecycle = actionmeta.LifecycleContext{Service: *runnerOptions.Service, AsOf: runnerOptions.AsOf}
 	context.Debug = s.debugWriter()
 	context.Repository = host
 	remoteActions := s.remoteActions[cfg.MetadataMirrorAccess()]

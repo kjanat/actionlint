@@ -7,6 +7,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -18,10 +19,14 @@ func RunnerSupportCheck(runners *runnerlang.Knowledge) checkinputs.DeclarationCh
 		Declaration: RunnerSupportDeclaration(),
 		Job: func(job workflowdecl.JobView) []reporting.Finding {
 			var findings []reporting.Finding
-			for _, problem := range runners.Support(job, runnerapi.JobExecution) {
+			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
+			for _, problem := range problems {
 				position := supportPosition(job, problem.Selector)
 				message := supportMessage(problem)
-				finding := reporting.Finding{Rule: "runner-support", Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL}
+				finding := reporting.Finding{Rule: "runner-support", Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
+				if problem.Evidence != nil && !problem.Evidence.Current {
+					finding.Code = string(problem.Evidence.Kind)
+				}
 				if !slices.ContainsFunc(findings, func(existing reporting.Finding) bool {
 					return existing.Start == finding.Start && existing.Message == finding.Message
 				}) {
@@ -47,6 +52,12 @@ func supportPosition(job workflowdecl.JobView, selector runnerapi.Selector) sour
 }
 
 func supportMessage(problem runnerlang.SupportProblem) string {
+	if problem.Evidence != nil && !problem.Evidence.Current {
+		if problem.Evidence.Kind == lifecycle.SupportStarts {
+			return fmt.Sprintf("Support for %s is scheduled to start on %s.", problem.Policy.Description, problem.Evidence.Effective)
+		}
+		return fmt.Sprintf("Support for %s will end by %s.", problem.Policy.Description, problem.Evidence.Effective)
+	}
 	if problem.State == runnerapi.Deprecated {
 		if problem.Next != nil && problem.Next.State == runnerapi.Unsupported {
 			return fmt.Sprintf("Support for %s will end by %s.", problem.Policy.Description, problem.Next.On)

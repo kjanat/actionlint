@@ -41,6 +41,7 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
+	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -53,6 +54,7 @@ import (
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
 	RequiredPermissionLocations []repoconfig.PermissionLocation
+	Lifecycle                   actionmeta.LifecycleContext
 
 	Debug                         io.Writer
 	Rules                         repoconfig.RuleSet
@@ -126,7 +128,10 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"job-needs":      declarationImplementation(correctness.JobNeedsCheck()),
 		"parallel-steps": declarationImplementation(correctness.ParallelStepsCheck()),
 		"action": {Build: func(c Inputs) workflowvisit.Rule {
-			return correctness.NewRuleAction(c.Context, c.Actions.Prepared(), c.RemoteActions)
+			return correctness.NewRuleAction(c.Context, c.Actions.Prepared(), c.RemoteActions).WithLifecycle(c.Lifecycle)
+		}},
+		"runtime-lifecycle": {Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.NewRuntimeLifecycle(c.Rules, c.Lifecycle)
 		}},
 		"executable-bit": {Prepare: prepareExecutableIndex, Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleExecutableBit(correctness.ExecutableContext{

@@ -52,6 +52,7 @@ var builtins = []rule.Declaration{
 	correctness.JobNeedsCheck().Declaration,
 	correctness.ParallelStepsCheck().Declaration,
 	correctness.ActionDeclaration(),
+	correctness.RuntimeLifecycleDeclaration(),
 	correctness.ExecutableBitDeclaration(),
 	correctness.EnvVarCheck().Declaration,
 	correctness.IdCheck().Declaration,

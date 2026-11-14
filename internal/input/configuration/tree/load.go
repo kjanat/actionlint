@@ -95,7 +95,7 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 				}
 				return Loaded{}, extendsError{origin: path, cause: cause}
 			}
-			MergeOrigins(result.Origins, inherited.Origins, result.Value, inherited.Value)
+			mergeLifecycleOrigins(result.Origins, inherited.Origins, result.Value, inherited.Value)
 			result.Value = merge(result.Value, inherited.Value)
 		}
 		source := map[string]Input{}
@@ -108,7 +108,7 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 			delete(object, "extends")
 			doc.Value = object
 		}
-		MergeOrigins(result.Origins, source, result.Value, doc.Value)
+		mergeLifecycleOrigins(result.Origins, source, result.Value, doc.Value)
 		result.Value = merge(result.Value, doc.Value)
 		cache[path] = result
 		files = append(files, path)

@@ -454,6 +454,12 @@
           "const": "runner-support"
         },
         {
+          "description": "Report language runtimes outside their supported lifetime",
+          "markdownDescription": "Report language runtimes outside their supported lifetime",
+          "type": "string",
+          "const": "runtime-lifecycle"
+        },
+        {
           "description": "Detect untrusted values and secrets interpolated into scripts",
           "markdownDescription": "Detect untrusted values and secrets interpolated into scripts",
           "type": "string",
@@ -598,6 +604,7 @@
         "ruff",
         "runner-label",
         "runner-support",
+        "runtime-lifecycle",
         "script-injection",
         "script-interpolation",
         "shell-name",
@@ -1006,6 +1013,183 @@
                 }
               ]
             },
+            "lifecycle": {
+              "title": "lifecycle",
+              "description": "Configures dated support notifications.",
+              "markdownDescription": "Configures dated support notifications.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "policies": {
+                      "title": "policies",
+                      "description": "Named lifecycle notification policies.",
+                      "markdownDescription": "Named lifecycle notification policies.",
+                      "oneOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "description",
+                              "id",
+                              "match",
+                              "notifications"
+                            ],
+                            "properties": {
+                              "description": {
+                                "title": "description",
+                                "description": "Explains the policy purpose.",
+                                "markdownDescription": "Explains the policy purpose.",
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "id": {
+                                "title": "id",
+                                "description": "Stable policy identifier.",
+                                "markdownDescription": "Stable policy identifier.",
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "match": {
+                                "title": "match",
+                                "description": "Selects events covered by the policy.",
+                                "markdownDescription": "Selects events covered by the policy.",
+                                "type": "object",
+                                "required": [
+                                  "events",
+                                  "subjects"
+                                ],
+                                "properties": {
+                                  "events": {
+                                    "title": "events",
+                                    "description": "Event kinds matched by this policy.",
+                                    "markdownDescription": "Event kinds matched by this policy.",
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "support-ends",
+                                        "support-starts",
+                                        "runtime-replaced"
+                                      ]
+                                    }
+                                  },
+                                  "services": {
+                                    "title": "services",
+                                    "description": "Services matched by this policy. Omit to match all services.",
+                                    "markdownDescription": "Services matched by this policy. Omit to match all services.",
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "github.com",
+                                        "github-data-residency",
+                                        "ghes"
+                                      ]
+                                    }
+                                  },
+                                  "subjects": {
+                                    "title": "subjects",
+                                    "description": "Subject kinds matched by this policy.",
+                                    "markdownDescription": "Subject kinds matched by this policy.",
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "runners",
+                                        "action-runtimes",
+                                        "language-runtimes"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "notifications": {
+                                "title": "notifications",
+                                "description": "Notification stages for matching events.",
+                                "markdownDescription": "Notification stages for matching events.",
+                                "type": "array",
+                                "minItems": 1,
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "severity",
+                                    "starts"
+                                  ],
+                                  "properties": {
+                                    "severity": {
+                                      "title": "severity",
+                                      "description": "Severity of this notification stage.",
+                                      "markdownDescription": "Severity of this notification stage.",
+                                      "type": "string",
+                                      "enum": [
+                                        "info",
+                                        "warning",
+                                        "error"
+                                      ]
+                                    },
+                                    "starts": {
+                                      "title": "starts",
+                                      "description": "Date at which this notification begins.",
+                                      "markdownDescription": "Date at which this notification begins.",
+                                      "type": "object",
+                                      "properties": {
+                                        "before": {
+                                          "title": "before",
+                                          "description": "Calendar days before the effective date.",
+                                          "markdownDescription": "Calendar days before the effective date.",
+                                          "type": "string",
+                                          "pattern": "^[0-9]+d$"
+                                        },
+                                        "on": {
+                                          "title": "on",
+                                          "description": "Start on the effective date.",
+                                          "markdownDescription": "Start on the effective date.",
+                                          "type": "string",
+                                          "enum": [
+                                            "effective-date"
+                                          ]
+                                        }
+                                      },
+                                      "additionalProperties": false,
+                                      "oneOf": [
+                                        {
+                                          "required": [
+                                            "before"
+                                          ]
+                                        },
+                                        {
+                                          "required": [
+                                            "on"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "message-ignores": {
               "title": "message-ignores",
               "description": "Maps repository-relative globs to diagnostic message regular expressions. All matching paths apply; arrays replace inherited patterns.",
@@ -1388,6 +1572,7 @@
                                 "job-needs",
                                 "parallel-steps",
                                 "action",
+                                "runtime-lifecycle",
                                 "executable-bit",
                                 "env-var",
                                 "id",
@@ -1725,6 +1910,16 @@
                               "title": "runner-support",
                               "description": "Report runner selections with deprecated or unsupported execution",
                               "markdownDescription": "Report runner selections with deprecated or unsupported execution",
+                              "allOf": [
+                                {
+                                  "$ref": "#/$defs/rule-setting"
+                                }
+                              ]
+                            },
+                            "runtime-lifecycle": {
+                              "title": "runtime-lifecycle",
+                              "description": "Report language runtimes outside their supported lifetime",
+                              "markdownDescription": "Report language runtimes outside their supported lifetime",
                               "allOf": [
                                 {
                                   "$ref": "#/$defs/rule-setting"
@@ -2169,6 +2364,7 @@
                                 "job-needs",
                                 "parallel-steps",
                                 "action",
+                                "runtime-lifecycle",
                                 "executable-bit",
                                 "env-var",
                                 "id",
@@ -2389,6 +2585,7 @@
                                 "job-needs",
                                 "parallel-steps",
                                 "action",
+                                "runtime-lifecycle",
                                 "executable-bit",
                                 "env-var",
                                 "id",
@@ -2761,6 +2958,183 @@
                         "oneOf": [
                           {
                             "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "lifecycle": {
+                        "title": "lifecycle",
+                        "description": "Configures dated support notifications.",
+                        "markdownDescription": "Configures dated support notifications.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "policies": {
+                                "title": "policies",
+                                "description": "Named lifecycle notification policies.",
+                                "markdownDescription": "Named lifecycle notification policies.",
+                                "oneOf": [
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "description",
+                                        "id",
+                                        "match",
+                                        "notifications"
+                                      ],
+                                      "properties": {
+                                        "description": {
+                                          "title": "description",
+                                          "description": "Explains the policy purpose.",
+                                          "markdownDescription": "Explains the policy purpose.",
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "id": {
+                                          "title": "id",
+                                          "description": "Stable policy identifier.",
+                                          "markdownDescription": "Stable policy identifier.",
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "match": {
+                                          "title": "match",
+                                          "description": "Selects events covered by the policy.",
+                                          "markdownDescription": "Selects events covered by the policy.",
+                                          "type": "object",
+                                          "required": [
+                                            "events",
+                                            "subjects"
+                                          ],
+                                          "properties": {
+                                            "events": {
+                                              "title": "events",
+                                              "description": "Event kinds matched by this policy.",
+                                              "markdownDescription": "Event kinds matched by this policy.",
+                                              "type": "array",
+                                              "minItems": 1,
+                                              "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "support-ends",
+                                                  "support-starts",
+                                                  "runtime-replaced"
+                                                ]
+                                              }
+                                            },
+                                            "services": {
+                                              "title": "services",
+                                              "description": "Services matched by this policy. Omit to match all services.",
+                                              "markdownDescription": "Services matched by this policy. Omit to match all services.",
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "github.com",
+                                                  "github-data-residency",
+                                                  "ghes"
+                                                ]
+                                              }
+                                            },
+                                            "subjects": {
+                                              "title": "subjects",
+                                              "description": "Subject kinds matched by this policy.",
+                                              "markdownDescription": "Subject kinds matched by this policy.",
+                                              "type": "array",
+                                              "minItems": 1,
+                                              "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "runners",
+                                                  "action-runtimes",
+                                                  "language-runtimes"
+                                                ]
+                                              }
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
+                                        "notifications": {
+                                          "title": "notifications",
+                                          "description": "Notification stages for matching events.",
+                                          "markdownDescription": "Notification stages for matching events.",
+                                          "type": "array",
+                                          "minItems": 1,
+                                          "items": {
+                                            "type": "object",
+                                            "required": [
+                                              "severity",
+                                              "starts"
+                                            ],
+                                            "properties": {
+                                              "severity": {
+                                                "title": "severity",
+                                                "description": "Severity of this notification stage.",
+                                                "markdownDescription": "Severity of this notification stage.",
+                                                "type": "string",
+                                                "enum": [
+                                                  "info",
+                                                  "warning",
+                                                  "error"
+                                                ]
+                                              },
+                                              "starts": {
+                                                "title": "starts",
+                                                "description": "Date at which this notification begins.",
+                                                "markdownDescription": "Date at which this notification begins.",
+                                                "type": "object",
+                                                "properties": {
+                                                  "before": {
+                                                    "title": "before",
+                                                    "description": "Calendar days before the effective date.",
+                                                    "markdownDescription": "Calendar days before the effective date.",
+                                                    "type": "string",
+                                                    "pattern": "^[0-9]+d$"
+                                                  },
+                                                  "on": {
+                                                    "title": "on",
+                                                    "description": "Start on the effective date.",
+                                                    "markdownDescription": "Start on the effective date.",
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "effective-date"
+                                                    ]
+                                                  }
+                                                },
+                                                "additionalProperties": false,
+                                                "oneOf": [
+                                                  {
+                                                    "required": [
+                                                      "before"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "required": [
+                                                      "on"
+                                                    ]
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        }
+                                      },
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "additionalProperties": false
                           },
                           {
                             "type": "null"
@@ -3149,6 +3523,7 @@
                                           "job-needs",
                                           "parallel-steps",
                                           "action",
+                                          "runtime-lifecycle",
                                           "executable-bit",
                                           "env-var",
                                           "id",
@@ -3486,6 +3861,16 @@
                                         "title": "runner-support",
                                         "description": "Report runner selections with deprecated or unsupported execution",
                                         "markdownDescription": "Report runner selections with deprecated or unsupported execution",
+                                        "allOf": [
+                                          {
+                                            "$ref": "#/$defs/rule-setting"
+                                          }
+                                        ]
+                                      },
+                                      "runtime-lifecycle": {
+                                        "title": "runtime-lifecycle",
+                                        "description": "Report language runtimes outside their supported lifetime",
+                                        "markdownDescription": "Report language runtimes outside their supported lifetime",
                                         "allOf": [
                                           {
                                             "$ref": "#/$defs/rule-setting"
@@ -3930,6 +4315,7 @@
                                           "job-needs",
                                           "parallel-steps",
                                           "action",
+                                          "runtime-lifecycle",
                                           "executable-bit",
                                           "env-var",
                                           "id",
@@ -4150,6 +4536,7 @@
                                           "job-needs",
                                           "parallel-steps",
                                           "action",
+                                          "runtime-lifecycle",
                                           "executable-bit",
                                           "env-var",
                                           "id",

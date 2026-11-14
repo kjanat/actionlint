@@ -19,7 +19,7 @@ func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
 	}
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: pos}}
-	findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta))
+	findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
 	var deprecated, missingScript bool
 	for _, err := range findings {
 		deprecated = deprecated || strings.Contains(err.Message, "deprecated")
@@ -38,8 +38,8 @@ func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
 		code    actionmeta.ProblemCode
 		message string
 	}{
-		{"node20", actionmeta.CodeRuntimeDeprecated, "is deprecated; GitHub.com"},
-		{"NODE20", actionmeta.CodeRuntimeDeprecated, "is deprecated; GitHub.com"},
+		{"node20", actionmeta.CodeRuntimeDeprecated, `use "node24" instead`},
+		{"NODE20", actionmeta.CodeRuntimeDeprecated, `use "node24" instead`},
 		{"node16", actionmeta.CodeRuntimeDeprecated, `use "node24" instead`},
 		{"node24", "", ""},
 		{"node999", "", ""},
@@ -52,7 +52,7 @@ func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
 				t.Fatal(err)
 			}
 			exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 1, Col: 1}}}
-			findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta))
+			findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
 			if tc.code == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected lifecycle findings: %+v", findings)

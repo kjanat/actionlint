@@ -1,0 +1,36 @@
+name: Release
+on: { release: { types: [published] } }
+
+concurrency:
+  group: actionlint-release
+  cancel-in-progress: false
+  queue: max
+
+permissions: { contents: read }
+defaults: { run: { shell: "bash --noprofile --norc -eo pipefail {0}" } }
+env: { TAG: "${{ github.event.release.tag_name }}" }
+
+jobs:
+  verify:
+    if: ${{ !github.event.release.prerelease }}
+    name: Verify published candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read, actions: read, id-token: write, attestations: write }
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      candidate: ${{ steps.release.outputs.candidate }}
+      is-latest: ${{ steps.tags.outputs.is-latest }}
+      is-major-latest: ${{ steps.tags.outputs.is-major-latest }}
+      is-minor-latest: ${{ steps.tags.outputs.is-minor-latest }}
+    steps:
+      - uses: &Checkout actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: &SetupNode actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: &Node24 { node-version: "24", package-manager-cache: false }
+  retained-aliases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: *Checkout
+      - uses: *SetupNode
+        with: *Node24

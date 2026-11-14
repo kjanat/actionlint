@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"time"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -24,6 +26,20 @@ import (
 func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection plugininstall.Selection) (*Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if options.ConfigConnections.Transport == nil {
+		options.ConfigConnections.Transport = selection.Acquisition.Connections.Transport
+	}
+	if options.ConfigConnections.Resolver == nil {
+		options.ConfigConnections.Resolver = selection.Acquisition.Connections.Resolver
+	}
+	var err error
+	options, err = prepareEnforcedLifecycle(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	if options.Runners.AsOf.IsZero() {
+		options.Runners.AsOf = runner.DateOf(time.Now())
 	}
 	if input.Kind == inputmodel.Repository && input.Selection == nil {
 		directory := input.Directory

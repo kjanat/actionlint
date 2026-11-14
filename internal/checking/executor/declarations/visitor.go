@@ -11,6 +11,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -81,6 +82,7 @@ func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) *declarat
 func (r *declarationRule) collect(input []reporting.Finding, job string) {
 	for _, d := range input {
 		finding := findingmodel.FromDiagnostic(d.Diagnostic)
+		finding.LifecycleEvidence = d.LifecycleEvidence
 		if descriptor, known := r.rules.FindRule(finding.Rule); known {
 			finding.Rule = descriptor.Name
 		}
@@ -121,6 +123,11 @@ func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 func NewVendorLockIn(rules repoconfig.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
 	r := New(rules, correctness.VendorLockInCheck(runners.Target()))
 	return &invocationDeclarationRule{declarationRule: r}
+}
+
+// NewRuntimeLifecycle checks language selections in workflows and composite bodies.
+func NewRuntimeLifecycle(rules repoconfig.RuleSet, context actionmeta.LifecycleContext) workflowvisit.Rule {
+	return &invocationDeclarationRule{declarationRule: New(rules, correctness.RuntimeLifecycleCheck(context))}
 }
 
 func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTimeoutPolicy) workflowvisit.Rule {
