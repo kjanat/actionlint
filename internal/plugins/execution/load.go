@@ -8,6 +8,7 @@ import (
 	"io"
 	"path/filepath"
 	"slices"
+	"time"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -207,6 +208,17 @@ func (l *Loaded) RunnerProviders() []runner.Registration {
 		}
 	}
 	return registrations
+}
+
+// BeginAnalysis releases expired deferred-engine failures before a new analysis.
+func (l *Loaded) BeginAnalysis(ctx context.Context) error {
+	now := time.Now()
+	for _, engine := range l.deferred {
+		if err := engine.beginAnalysis(ctx, now); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (l *Loaded) Close(ctx context.Context) error {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
@@ -15,6 +16,8 @@ import (
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
+
+const deferredRetryDelay = 5 * time.Second
 
 type deferredBackend interface {
 	checkinputs.DescribedScriptBackend
@@ -29,6 +32,7 @@ type deferredScriptEngine struct {
 	acquisition plugininstall.Acquisition
 	backend     deferredBackend
 	failure     error
+	retryAfter  time.Time
 	reserved    rule.Names
 	closed      bool
 }
@@ -77,6 +81,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	defer func() {
 		if err != nil && ctx.Err() == nil {
 			b.failure = err
+			b.retryAfter = time.Now().Add(deferredRetryDelay)
 		}
 	}()
 	releases := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{b.pin}}
@@ -99,6 +104,24 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	}
 	b.backend = engine
 	return engine, nil
+}
+
+// beginAnalysis allows a later analysis to retry an expired failure.
+func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time) error {
+	select {
+	case b.gate <- struct{}{}:
+		defer func() { <-b.gate }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if b.failure != nil && !now.Before(b.retryAfter) {
+		b.failure = nil
+		b.retryAfter = time.Time{}
+	}
+	return nil
 }
 
 func (b *deferredScriptEngine) load(ctx context.Context, artifact *pluginartifact.Artifact) (deferredBackend, error) {
