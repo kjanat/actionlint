@@ -5,9 +5,35 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
+
+func TestInspectCachedReleaseOffline(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", emptyComponent)
+	ref, err := pluginref.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acquisition := fixtureAcquisition(registry)
+	want, err := plugininstall.InspectRelease(t.Context(), ref, acquisition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry.SetOffline(true)
+	registry.ResetRequests()
+	ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true})
+	got, err := plugininstall.InspectRelease(ctx, ref, acquisition)
+	if err != nil || got.SHA256 != want.SHA256 {
+		t.Fatalf("offline info=%+v error=%v, want digest=%s", got, err, want.SHA256)
+	}
+	if requests := registry.Requests(); len(requests) != 0 {
+		t.Fatalf("offline requests=%v", requests)
+	}
+}
 
 func TestInspectReleaseRejectsWithdrawnAndRevoked(t *testing.T) {
 	t.Parallel()

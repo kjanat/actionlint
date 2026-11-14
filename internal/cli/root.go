@@ -94,6 +94,12 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.root.PersistentFlags().VarP(&a.directory, "directory", "C", "Run from `DIR`; repeated relative directories build on the previous one")
 	annotateFlag(a.root.PersistentFlags(), "directory", "Input")
 	a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup("directory"))
+	a.root.PersistentFlags().BoolVar(&a.inv.Check.Offline, "offline", false, "Disable network access and use cached dependencies")
+	a.root.PersistentFlags().BoolVar(&a.opts.online, "online", true, "Allow network access for missing dependencies")
+	for _, name := range []string{"offline", "online"} {
+		annotateFlag(a.root.PersistentFlags(), name, "Network")
+		a.root.Flags().AddFlag(a.root.PersistentFlags().Lookup(name))
+	}
 	a.checkFlags(a.root, false)
 	a.root.Flags().SetInterspersed(true)
 	check := &cobra.Command{
@@ -226,7 +232,17 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly plugin from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
 	a.pluginLockFlag(lsp.Flags())
-	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init)
+	cache := &cobra.Command{Use: "cache", Short: "Download dependencies for offline checks"}
+	warm := &cobra.Command{
+		Use: "warm [flags] [files...]", Short: "Cache configuration, plugins and remote actions for the selected files", Args: cobra.ArbitraryArgs,
+		RunE: func(c *cobra.Command, args []string) error {
+			a.inv.Check.WarmCache = true
+			return a.capture(operationCheck)(c, args)
+		},
+	}
+	a.checkFlags(warm, true)
+	cache.AddCommand(warm)
+	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init, cache)
 	return a
 }
 
@@ -269,10 +285,6 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
-	f.BoolVar(&a.inv.Check.Offline, "offline", false, "Use cached metadata for remote actions and workflows without fetching it")
-	f.BoolVar(&a.opts.online, "online", true, "Fetch missing metadata for remote actions and workflows")
-	annotateFlag(f, "offline", "Remote dependencies")
-	annotateFlag(f, "online", "Remote dependencies")
 	f.StringVar(&a.inv.Check.ResolverCommand, "resolve-with", "", "Resolve remote dependencies using this executable")
 	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")
 	annotateFlag(f, "resolve-with", "Remote dependencies")
@@ -391,7 +403,7 @@ func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error 
 		if !a.inv.Check.PreCommit {
 			a.inv.Check.Paths = args
 		}
-		check := c.Name() == "check" || c.Name() == "fix" || a.inv.Check.PreCommit
+		check := op == operationCheck
 		c.Flags().Visit(func(f *pflag.Flag) { a.set[f.Name] = true })
 		if check && c.Flags().Changed("ignore-regex") {
 			a.inv.Check.IgnoreRegex = append(a.prefixIgnore, a.inv.Check.IgnoreRegex...)

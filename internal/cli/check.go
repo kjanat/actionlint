@@ -19,6 +19,8 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/availability"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
@@ -139,6 +141,27 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	if result.FileCount == 0 && !c.PreCommit {
 		return 0, errors.New("no workflow or action files were selected; check files.includes and files.excludes")
+	}
+	for _, item := range result.ActionMetadata {
+		reason := item.Availability.Reason()
+		if c.Offline && (reason == availability.OfflineReason || reason == availability.CacheMissReason) {
+			network.Warn(ctx, "Skipping unavailable metadata for "+item.Reference+" because it is not cached. Run actionlint cache warm while online.")
+		}
+		if c.WarmCache && item.Availability.State() != "available" {
+			return 0, &checkAnalysisError{result: result, err: fmt.Errorf("could not load metadata for %s: %s", item.Reference, reason)}
+		}
+	}
+	if c.WarmCache {
+		if err := network.CacheError(ctx); err != nil {
+			return 0, &checkAnalysisError{result: result, err: err}
+		}
+		if inv.JSON {
+			return 0, commandstreams.WriteJSON(out, struct {
+				CacheDirectory string `json:"cache_directory"`
+			}{network.Settings(ctx).CacheDirectory})
+		}
+		_, err := fmt.Fprintln(out, "Dependencies cached in "+network.Settings(ctx).CacheDirectory)
+		return 0, err
 	}
 	if c.Fix {
 		if input.Kind == inputmodel.Stdin {

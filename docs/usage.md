@@ -363,11 +363,35 @@ CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
 take precedence, including empty strings and `false`.
 
-Remote action and reusable-workflow metadata is fetched online by default. Use
-`--offline` to check cached metadata without fetching missing dependencies,
-or `--online` to select the default explicitly. These flags cannot be combined.
-Offline cache misses appear in
-JSON coverage without failing the check. Online lookups read the cache, then
+Actionlint allows network requests by default. `--offline` blocks them for every
+command, including plugin downloads, registry lookups and remote configuration.
+Use `--online` to select the default explicitly. These flags cannot be combined.
+
+Before disconnecting, download the dependencies for the files you will check:
+
+```sh
+actionlint cache warm .github/workflows
+actionlint check --offline .github/workflows
+```
+
+`cache warm` reads the selected configuration and its `extends`, downloads its
+plugins, and fetches metadata for remote actions and reusable workflows.
+It prints the cache directory to save in CI. It fails if selected action metadata
+cannot be cached. Lint findings do not affect this command's exit status.
+
+Offline checks use cached configuration, verified plugin artifacts and remote
+metadata. Tags and branches use their last cached resolution. Run online again
+to refresh them. Missing dependencies produce warnings. If a required config or
+plugin is missing, actionlint warns that the check could not complete and returns
+zero. Missing action metadata appears in JSON coverage, and checks that have the
+data they need still run. Invalid configuration and damaged plugin artifacts
+remain errors.
+
+Native tools and resolver processes can make their own network requests, so
+offline mode skips them. Each skipped native tool produces one warning per
+invocation. Cached WebAssembly plugins can still run.
+
+Online metadata lookups read the cache, then
 `github.com` and `raw.githubusercontent.com`. If the raw host fails, the mirror
 settings determine whether actionlint tries `cdn.jsdelivr.net` before GitHub REST.
 By default, only repositories known to be public can use that mirror.

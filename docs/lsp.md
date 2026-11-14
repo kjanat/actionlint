@@ -50,8 +50,8 @@ The native server can receive a [`resolver.Resolver`](../internal/input/referenc
 through [`checking.Check`](../internal/checking/session.go). A resolver that
 implements `resolver.SessionFactory` gets a new session for each analysis. The
 resolver supports reference diagnostics and pin proposals. CLI checks use
-`--online` by default; `--offline` reads cached manifests without fetching missing
-dependencies. The checker
+`--online` by default. `--offline` blocks network requests and reads cached
+configuration, plugins and manifests. The checker
 can use acquired action inputs and outputs in diagnostics, but this metadata does
 not supply editor completion or navigation targets.
 

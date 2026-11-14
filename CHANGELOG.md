@@ -4,6 +4,8 @@
 
 *See the [v2 release and migration notes](docs/releases/v2.0.0.md) before upgrading.*
 
+- Make `--offline` block all network requests, including plugin and configuration downloads. Use cached remote configuration, plugin artifacts and tag resolutions. Missing dependencies produce warnings. Skip native tools and resolver processes offline. Add `actionlint cache warm` to download dependencies for selected workflows before disconnecting.
+
 - Remove the retired GitHub-hosted `macos-14`, `macos-14-large`, and `macos-14-xlarge` labels. Custom self-hosted labels can still be configured explicitly. (kjanat/actionlint#216)
 
 - **Breaking:** Remove the `required-actions` rule and configuration. Remove its entries before migrating configuration.

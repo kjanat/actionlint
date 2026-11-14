@@ -142,12 +142,15 @@ Missing optional tools are reported; malformed selected config returns status 3.
 : Pass a literal argument to the resolver. Repeat for multiple arguments.
 
 **--offline**
-: Check cached metadata for remote actions and reusable workflows without fetching
-missing dependencies. Cache misses are reported in coverage and do not fail the check.
+: Block network requests and use cached configuration, plugins and remote metadata.
+Missing dependencies produce warnings. A missing required config or plugin stops
+the check with a warning and exit status zero. Native tools and resolver processes
+are skipped. Cached WebAssembly plugins can run. Use **actionlint cache warm** with
+the files to check before disconnecting.
 
 **--online**
-: Fetch missing metadata for remote actions and reusable workflows. This is the
-default. Cannot be combined with **--offline**. Online mode reads the cache first,
+: Allow network requests. This is the default and cannot be combined with
+**--offline**. Remote metadata lookups read the cache first,
 then each repository's Git reference list from `github.com` and manifests from
 `raw.githubusercontent.com`. If the raw host fails, the mirror settings determine
 whether actionlint tries `cdn.jsdelivr.net` before GitHub REST. By default, only

@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 // Local metadata queries must finish without waiting for network services or
@@ -28,6 +30,7 @@ func Command(ctx context.Context, git, root string, args ...string) *exec.Cmd {
 		}
 		command.Env = append(command.Env, entry)
 	}
+	command.Env = offlineEnvironment(ctx, command.Env)
 	return command
 }
 
@@ -46,7 +49,7 @@ func Query(ctx context.Context, git, root string, environment []string, args ...
 	defer cancel()
 	command := Command(ctx, git, root, args...)
 	if environment != nil {
-		command.Env = environment
+		command.Env = offlineEnvironment(ctx, environment)
 	}
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
@@ -55,4 +58,19 @@ func Query(ctx context.Context, git, root string, environment []string, args ...
 		err = ctx.Err()
 	}
 	return Output{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}, err
+}
+
+func offlineEnvironment(ctx context.Context, environment []string) []string {
+	if !network.Settings(ctx).Offline {
+		return environment
+	}
+	result := make([]string, 0, len(environment)+2)
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		if strings.EqualFold(name, "GIT_NO_LAZY_FETCH") || strings.EqualFold(name, "GIT_TERMINAL_PROMPT") {
+			continue
+		}
+		result = append(result, entry)
+	}
+	return append(result, "GIT_NO_LAZY_FETCH=1", "GIT_TERMINAL_PROMPT=0")
 }

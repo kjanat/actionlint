@@ -49,7 +49,7 @@ func TestRemoteConfigUsesCommandConnections(t *testing.T) {
 				args := []string{"config", operation, "--json", "--config", config}
 				status := 0
 				if operation == "check" {
-					args = []string{"check", "--config", config, "--no-tool=shellcheck", "--no-tool=ruff", "--offline", workflow}
+					args = []string{"check", "--config", config, "--no-tool=shellcheck", "--no-tool=ruff", "--online", workflow}
 					status = 1
 				}
 				if explicit {

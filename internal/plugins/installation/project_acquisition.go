@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
@@ -15,6 +16,9 @@ func OpenSelectedLock(ctx context.Context, directory, explicit, config string) (
 		return OpenLock(ctx, explicit)
 	}
 	if config != "" {
+		if address.Remote(config) {
+			return &LockFile{Lock: Lock{SchemaVersion: LockSchemaVersion}}, nil
+		}
 		return OpenLock(ctx, filepath.Join(filepath.Dir(config), LockName))
 	}
 	root := discovery.RepositoryRoot(directory)

@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -237,6 +239,16 @@ func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
 // available probes the engine version once. A failed probe is an error for
 // a required provider and a skipped check, after one warning, otherwise.
 func (b *Backend) available(ctx context.Context) (bool, error) {
+	settings := network.Settings(ctx)
+	if settings.Offline || settings.WarmCache {
+		if settings.Offline {
+			network.Warn(ctx, "Skipping native tool "+b.name+" because --offline cannot restrict its network access. Use a cached WebAssembly plugin to run it offline.")
+		}
+		if b.options.Skipped != nil {
+			b.options.Skipped()
+		}
+		return false, nil
+	}
 	if b.version == nil {
 		return true, nil
 	}
@@ -264,6 +276,9 @@ func (b *Backend) available(ctx context.Context) (bool, error) {
 // ProbeVersion runs the manifest's version probe now and checks the
 // minimum version. A manifest without a probe reports "".
 func (b *Backend) ProbeVersion(ctx context.Context) (string, error) {
+	if err := network.RequireOnline(ctx); err != nil {
+		return "", err
+	}
 	if b.version == nil {
 		return "", nil
 	}

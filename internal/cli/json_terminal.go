@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"golang.org/x/sys/execabs"
@@ -40,7 +41,7 @@ func writePrettyJSON(ctx context.Context, out io.Writer, mode render.Color, data
 		data = append(formatted.Bytes(), '\n')
 	}
 	file, terminal := terminalFile(out)
-	if terminal {
+	if terminal && !network.Settings(ctx).Offline {
 		if jq, err := execabs.LookPath("jq"); err == nil {
 			colored := mode == render.ColorAlways || (mode == render.ColorAuto && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb")
 			// Formatting is optional; external startup must not block output.
