@@ -14,6 +14,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -451,6 +452,16 @@ func TestShellCheckUserShellDropsDialect(t *testing.T) {
 // The bundled manifests run the real tools when they are installed.
 func TestBundledToolsEndToEnd(t *testing.T) {
 	t.Parallel()
+	testBundledToolsEndToEnd(t, false)
+}
+
+func TestBundledToolsOfflineEndToEnd(t *testing.T) {
+	t.Parallel()
+	testBundledToolsEndToEnd(t, true)
+}
+
+func testBundledToolsEndToEnd(t *testing.T, offline bool) {
+	t.Helper()
 	for _, tc := range []struct {
 		tool, filename, source, config string
 		vars                           map[string]string
@@ -476,7 +487,8 @@ func TestBundledToolsEndToEnd(t *testing.T) {
 			if tc.config != "" {
 				request.Config = json.RawMessage(tc.config)
 			}
-			result, err := backend.Run(t.Context(), request, tc.vars)
+			ctx, _ := network.WithSession(t.Context(), network.Options{Offline: offline})
+			result, err := backend.Run(ctx, request, tc.vars)
 			if err != nil {
 				t.Fatal(err)
 			}

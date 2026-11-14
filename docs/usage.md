@@ -387,9 +387,10 @@ zero. Missing action metadata appears in JSON coverage, and checks that have the
 data they need still run. Invalid configuration and damaged plugin artifacts
 remain errors.
 
-Native tools and resolver processes can make their own network requests, so
-offline mode skips them. Each skipped native tool produces one warning per
-invocation. Cached WebAssembly plugins can still run.
+Installed native linters, including ShellCheck and Ruff, still run offline.
+Actionlint blocks its downloads and does not start remote resolver processes.
+It does not sandbox network access inside native tools. Cached WebAssembly
+plugins can still run.
 
 Online metadata lookups read the cache, then
 `github.com` and `raw.githubusercontent.com`. If the raw host fails, the mirror

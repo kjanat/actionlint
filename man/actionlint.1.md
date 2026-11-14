@@ -144,8 +144,9 @@ Missing optional tools are reported; malformed selected config returns status 3.
 **--offline**
 : Block network requests and use cached configuration, plugins and remote metadata.
 Missing dependencies produce warnings. A missing required config or plugin stops
-the check with a warning and exit status zero. Native tools and resolver processes
-are skipped. Cached WebAssembly plugins can run. Use **actionlint cache warm** with
+the check with a warning and exit status zero. Installed native linters and cached
+WebAssembly plugins can run. Remote resolver processes are skipped. Actionlint does
+not sandbox network access inside native tools. Use **actionlint cache warm** with
 the files to check before disconnecting.
 
 **--online**

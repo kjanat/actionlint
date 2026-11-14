@@ -1,18 +1,22 @@
 package process
 
 import (
-	"errors"
+	"os"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
-func TestOfflineRejectsProcessBeforeExecutableLookup(t *testing.T) {
+func TestOfflineRunsLocalProcess(t *testing.T) {
 	t.Parallel()
 	ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true})
-	execution := Execution{Cmd: "actionlint-nonexistent-executable"}
-	_, _, err := execution.RunStatus(ctx)
-	if !errors.Is(err, network.ErrOffline) {
-		t.Fatalf("expected offline rejection before executable lookup, got %v", err)
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	execution := Execution{Cmd: executable, Args: []string{"-test.run=^TestProcessStdinHelper$"}, Env: []string{"ACTIONLINT_TEST_STDIN_HELPER=1"}, Stdin: "offline tool output"}
+	output, status, err := execution.RunStatus(ctx)
+	if err != nil || status != 0 || string(output) != execution.Stdin {
+		t.Fatalf("output=%q status=%d error=%v", output, status, err)
 	}
 }

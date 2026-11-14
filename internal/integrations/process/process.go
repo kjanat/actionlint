@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/network"
-
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
@@ -49,9 +47,6 @@ func (e *Execution) Run(ctx context.Context) ([]byte, error) {
 
 // RunStatus runs the execution and also returns the accepted exit status.
 func (e *Execution) RunStatus(ctx context.Context) ([]byte, int, error) {
-	if err := network.RequireOnline(ctx); err != nil {
-		return nil, 0, err
-	}
 	runContext, cancel := context.WithCancel(ctx)
 	defer cancel()
 	// The child command and the status checks work on detached copies, so the
