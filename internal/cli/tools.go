@@ -24,7 +24,7 @@ type deprecatedToolFlag struct {
 	value string
 }
 
-// externalToolFlags registers --tool, --no-tool and --allow-config-processes.
+// externalToolFlags registers tool selection and native execution flags.
 // It also registers, hidden, each flag listed in the deprecated_flags field
 // of a bundled provider manifest. Using one of those records a deprecation
 // warning.
@@ -32,8 +32,9 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	c := &a.inv.Check
 	f.Var(toolListValue{&c.ToolFlags}, "tool", "Run the tool `ID[=COMMAND]` with its default command or COMMAND; ID=false disables it (repeatable)")
 	f.Var(noToolValue{&c.ToolFlags}, "no-tool", "Disable the tool `ID`, like --tool ID=false (repeatable)")
+	f.BoolVar(&c.NoTools, "no-tools", false, "Disable all external linters, including Wasm tool plugins")
 	f.BoolVar(&c.AllowConfigProcesses, "allow-config-processes", false, "Allow trusted repository configuration to select native executables")
-	for _, name := range []string{"tool", "no-tool", "allow-config-processes"} {
+	for _, name := range []string{"tool", "no-tool", "no-tools", "allow-config-processes"} {
 		annotateFlag(f, name, "External linters")
 	}
 	manifests, err := pluginmanifests.Bundled()
@@ -144,13 +145,9 @@ func disablesTool(value string) bool {
 	return value == "" || strings.EqualFold(value, "false")
 }
 
-// resolveTools selects every bundled tool from --tool, --no-tool, the
-// deprecated flags bundled manifests declare and the ACTIONLINT_TOOL_<ID>_*
-// environment variables. The last --tool, --no-tool or deprecated command
-// flag given for a tool decides; without one, the environment variables do;
-// without those, the tool runs its default command, which is skipped with a
-// warning when it cannot run. A deprecated flag whose value is ignored
-// changes only that default.
+// resolveTools applies command-line and environment selections to bundled tools.
+// The last per-tool flag wins. Unselected tools remain eligible for registry
+// Wasm defaults. --no-tools disables every tool regardless of its selections.
 func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
@@ -160,6 +157,14 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 		return slices.ContainsFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == id })
 	}
 	var resolved resolvedTools
+	if c.NoTools {
+		resolved.tools = make(registry.Selections, len(manifests))
+		for _, manifest := range manifests {
+			resolved.tools[manifest.Rule.Name] = scripts.Selection{}
+			resolved.disabled = append(resolved.disabled, manifest.Rule.Name)
+		}
+		return resolved, nil
+	}
 	commands := map[string]string{}
 	for _, value := range c.ToolFlags {
 		id, command, explicit := strings.Cut(value, "=")

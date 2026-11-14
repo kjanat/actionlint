@@ -22,7 +22,8 @@ Checks include workflow syntax, expression types and context availability, actio
 outputs, local action metadata and composite steps, reusable workflow inputs and permissions,
 job dependencies, parallel steps, runner labels, event filters, schedules, and YAML anchors.
 Security checks report potentially unsafe expression interpolation in scripts and hard-coded
-credentials. Optional ShellCheck integration checks scripts in `run:` steps.
+credentials. ShellCheck and Ruff check shell and Python scripts through registry
+Wasm plugins by default.
 
 Repository policy checks can require immutable action references and job timeouts.
 These checks are enabled explicitly in the configuration file. Cache safety policies
@@ -63,6 +64,25 @@ also accepts.
 
 **lsp**
 : Serve versioned editor buffers, diagnostics and quick fixes over stdin/stdout.
+
+**cache warm** [*FILES...*]
+: Download configuration, plugins and remote action metadata for offline checks.
+Refresh the default plugin selections. Lint findings do not affect the exit status.
+
+**cache dir**, **cache list**
+: Print the cache location, or list cached files with their sizes and modification
+times. Both commands support **--json** and do not create a missing cache.
+
+**cache prune** [**--older-than** *DURATION*] [**--dry-run**]
+: Remove cached downloads and compiled modules last written more than 30 days ago.
+Accept durations such as `24h` and `168h`. Retain registry records so selected
+versions keep their matching release metadata.
+
+**cache clean** [**--dry-run**]
+: Remove cached configuration, downloads, remote metadata, registry selections
+and compiled modules. Retain plugin revocation records. Project configuration
+is unchanged. Both removal commands support **--json**, work offline and stay
+within the cache directory. Warm the cache again before checking offline.
 
 **plugin search** [*QUERY*], **plugin versions** *PLUGIN*
 : Discover canonical repository names and exact published tags from the registry.
@@ -353,6 +373,19 @@ Unknown ids are rejected with the list of valid ids once plugins load.
 : Disable the tool *ID* and override its environment settings. Plugins
 providing the tool are not loaded: a locked plugin whose name or alias is *ID* is
 not downloaded. Repeatable.
+
+**--no-tools**
+: Disable all external linter checks, including native executables and Wasm tool
+plugins. Override individual **--tool** flags and configured backends. Built-in
+workflow checks still run.
+
+**--dry-run**
+: Show the files **cache prune** or **cache clean** would remove without changing
+the cache.
+
+**--older-than** *DURATION*
+: Select the minimum time since a cache file was written for **cache prune**.
+The default is `720h`, or 30 days. This does not measure when a file was last used.
 
 **--shellcheck** *COMMAND*
 : Deprecated option from actionlint v1, declared by the bundled ShellCheck tool.

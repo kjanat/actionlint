@@ -39,8 +39,9 @@ type Loaded struct {
 	SkippedTools []string
 	// ToolIDs lists names that --no-tool can disable: lock pin names and aliases,
 	// and engine and rule names from loaded plugin metadata.
-	ToolIDs     []string
-	Acquisition plugininstall.Acquisition
+	ToolIDs      []string
+	Acquisition  plugininstall.Acquisition
+	DisableTools bool
 }
 
 // SelectedProvider records the files and execution authority of one selected process plugin.
@@ -55,7 +56,7 @@ type ScriptEngineRegistration struct {
 }
 
 func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
-	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition}
+	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition, DisableTools: sources.DisableTools}
 	if sources.Releases != nil {
 		for _, pin := range sources.Releases.Plugins {
 			loaded.ToolIDs = append(loaded.ToolIDs, pin.Name)
@@ -67,6 +68,9 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 	for _, path := range sources.Paths {
 		network := sources.NetworkGrants[path]
 		if manifests.IsLocalManifest(path) {
+			if sources.DisableTools {
+				continue
+			}
 			// A local manifest names a command found on PATH; nothing is fetched.
 			manifest, programs, err := manifests.ReadLocal(files.New(ctx, nil, nil), path)
 			if err != nil {
@@ -91,6 +95,9 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 			}
 		}
 		path = artifact.Info.Source
+		if sources.DisableTools && (artifact.Info.Kind == pluginartifact.Core || artifact.Info.Kind == pluginartifact.ProviderManifest) {
+			continue
+		}
 		if artifact.Info.Kind == pluginartifact.ProviderManifest {
 			manifest, err := plugininstall.ReadProviderArtifact(artifact)
 			if err != nil {
@@ -107,7 +114,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 		}
 		// Metadata is read only when --tool or --no-tool named an id, so
 		// unusual metadata cannot fail a run that names none.
-		if len(sources.DisabledTools) != 0 || len(sources.NamedTools) != 0 {
+		if !sources.DisableTools && (len(sources.DisabledTools) != 0 || len(sources.NamedTools) != 0) {
 			ids, err := MetadataTools(artifact.Info.Metadata)
 			if err != nil {
 				return nil, &LoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.Close(context.WithoutCancel(ctx)))}
@@ -143,7 +150,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 			_, _ = fmt.Fprintf(log, "[Linter] Loaded component from %s (%s)\n", path, plugin.Limits())
 		}
 		loaded.Components = append(loaded.Components, plugin)
-		if plugin.HasScriptEngine() {
+		if plugin.HasScriptEngine() && !sources.DisableTools {
 			loaded.ScriptEngines = append(loaded.ScriptEngines, ScriptEngineRegistration{plugin, plugin.ScriptDescriptor()})
 		}
 	}
@@ -152,6 +159,9 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 
 func (l *Loaded) Registrations() []checkinputs.Registration {
 	registrations := make([]checkinputs.Registration, 0, len(l.Components))
+	if l.DisableTools {
+		return registrations
+	}
 	for _, plugin := range l.Components {
 		if !plugin.HasAnalyzer() {
 			continue

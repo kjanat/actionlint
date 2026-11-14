@@ -9,6 +9,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 )
 
 // Contents supplies file bytes. Providers such as analysis.Options.ReadFile
@@ -24,6 +26,7 @@ func ProbeDir(path string) ([]fs.DirEntry, error) {
 }
 
 type Reader struct {
+	root     *os.Root
 	ctx      context.Context
 	contents Contents
 	exists   func(string) error
@@ -51,7 +54,19 @@ func New(ctx context.Context, contents Contents, record func(path string)) *Read
 }
 
 func (r *Reader) Mapped(name func(path string) string) *Reader {
-	return &Reader{ctx: r.ctx, contents: r.contents, exists: r.exists, record: func(path string) { r.record(name(path)) }}
+	return &Reader{root: r.root, ctx: r.ctx, contents: r.contents, exists: r.exists, record: func(path string) { r.record(name(path)) }}
+}
+
+// NewRooted reads paths relative to root and rejects paths outside it. The caller
+// owns root and must keep it open while the reader is in use.
+func NewRooted(ctx context.Context, root *os.Root, record func(string)) *Reader {
+	reader := New(ctx, root.ReadFile, record)
+	reader.root = root
+	reader.exists = func(name string) error {
+		_, err := root.Stat(name)
+		return err
+	}
+	return reader
 }
 
 // PathExists checks the configured provider and records both present and missing
@@ -90,7 +105,11 @@ func (r *Reader) Open(path string) (*os.File, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(path)
+	open := os.Open
+	if r.root != nil {
+		open = r.root.Open
+	}
+	file, err := open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +121,19 @@ func (r *Reader) ReadDir(path string) ([]fs.DirEntry, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(path)
+	var entries []fs.DirEntry
+	var err error
+	if r.root == nil {
+		entries, err = os.ReadDir(path)
+	} else {
+		var directory *os.File
+		directory, err = r.root.Open(path)
+		if err == nil {
+			entries, err = directory.ReadDir(-1)
+			err = errors.Join(err, directory.Close())
+			slices.SortFunc(entries, func(a, b fs.DirEntry) int { return strings.Compare(a.Name(), b.Name()) })
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +145,11 @@ func (r *Reader) WalkDir(root string, fn fs.WalkDirFunc) error {
 	if err := r.ctx.Err(); err != nil {
 		return err
 	}
-	info, err := os.Lstat(root)
+	lstat := os.Lstat
+	if r.root != nil {
+		lstat = r.root.Lstat
+	}
+	info, err := lstat(root)
 	if err != nil {
 		err = fn(root, nil, err)
 	} else {

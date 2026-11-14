@@ -232,16 +232,7 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly plugin from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
 	a.pluginLockFlag(lsp.Flags())
-	cache := &cobra.Command{Use: "cache", Short: "Download dependencies for offline checks"}
-	warm := &cobra.Command{
-		Use: "warm [flags] [files...]", Short: "Cache configuration, plugins and remote actions for the selected files", Args: cobra.ArbitraryArgs,
-		RunE: func(c *cobra.Command, args []string) error {
-			a.inv.Check.WarmCache = true
-			return a.capture(operationCheck)(c, args)
-		},
-	}
-	a.checkFlags(warm, true)
-	cache.AddCommand(warm)
+	cache := a.cacheCommand()
 	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init, cache)
 	return a
 }

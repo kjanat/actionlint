@@ -32,6 +32,7 @@ type Selection struct {
 	Overlays   []config.Overlay
 	// DefaultTools lists bundled linters that use registry plugins when configuration omits plugins.
 	DefaultTools []string
+	DisableTools bool
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
 	Acquisition               Acquisition
@@ -67,6 +68,7 @@ type Sources struct {
 	DisabledTools, NamedTools []string
 	// SkippedTools lists disabled tool ids that matched a selected plugin.
 	SkippedTools []string
+	DisableTools bool
 	// Configured identifies configuration-selected providers that require process opt-in.
 	Configured  bool
 	Acquisition Acquisition
@@ -109,6 +111,9 @@ func (s Selection) SelectForCache(ctx context.Context, directory string, input i
 }
 
 func (s Selection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+	if s.DisableTools {
+		s.DefaultTools = nil
+	}
 	selected, err := s.selectDeclared(ctx, directory, input, mode)
 	if err != nil {
 		return Sources{}, err
@@ -122,6 +127,7 @@ func (s Selection) selectSources(ctx context.Context, directory string, input in
 	}
 	selected.DisabledTools, selected.NamedTools = slices.Clone(s.DisabledTools), slices.Clone(s.NamedTools)
 	selected.Acquisition = s.Acquisition
+	selected.DisableTools = s.DisableTools
 	selected.dropDisabledPins()
 	return selected, nil
 }
@@ -340,13 +346,16 @@ func sourcesFromPins(path string, lock Lock, root string) (Sources, error) {
 // dropDisabledPins removes locked plugins whose name or alias is a disabled
 // tool id, before Hydrate or loading could fetch them.
 func (s *Sources) dropDisabledPins() {
-	if s.Releases == nil || len(s.DisabledTools) == 0 {
+	if s.Releases == nil || len(s.DisabledTools) == 0 && !s.DisableTools {
 		return
 	}
 	lock := *s.Releases
 	lock.Plugins = []Pin{}
 	for _, pin := range s.Releases.Plugins {
 		id := disabledPinTool(pin, s.DisabledTools)
+		if s.DisableTools && (pin.Kind == pluginartifact.Core || pin.Kind == pluginartifact.ProviderManifest) {
+			id = pin.Name
+		}
 		if id == "" {
 			lock.Plugins = append(lock.Plugins, pin)
 			continue

@@ -19,6 +19,7 @@ type invocation struct {
 	Operation      operation
 	Check          checkInvocation
 	Plugin         pluginInvocation
+	Cache          cacheInvocation
 	Render         renderOptions
 	Yes            bool
 	JSON           bool
@@ -53,6 +54,7 @@ type checkInvocation struct {
 	// order. --no-tool ID and the deprecated command flags, such as
 	// --shellcheck=COMMAND, add their values here too.
 	ToolFlags []string
+	NoTools   bool
 	// DeprecatedToolFlags lists uses of deprecated flags whose value is
 	// ignored, such as --pyflakes.
 	DeprecatedToolFlags []deprecatedToolFlag
@@ -126,6 +128,10 @@ const (
 	operationConfigMigrate  operation = "config migrate"
 	operationConfigInit     operation = "config init"
 	operationCompletion     operation = "completion"
+	operationCacheDir       operation = "cache dir"
+	operationCacheList      operation = "cache list"
+	operationCachePrune     operation = "cache prune"
+	operationCacheClean     operation = "cache clean"
 )
 
 func (a *commandApp) prepareInvocation() error {
@@ -210,6 +216,11 @@ func (a *commandApp) prepareInvocation() error {
 
 func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
+	case operationCacheDir, operationCacheList, operationCachePrune, operationCacheClean:
+		if inv.Operation == operationCachePrune && inv.Cache.OlderThan <= 0 {
+			return nil, commandargs.UsageError{Cause: errors.New("cache prune --older-than must be positive")}
+		}
+		return cacheRequest{Operation: inv.Operation, cacheInvocation: inv.Cache, JSON: inv.JSON}, nil
 	case operationPluginInspect:
 		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON, Registry: inv.Plugin.Registry}, nil
 	case operationPluginValidate:

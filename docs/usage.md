@@ -379,6 +379,29 @@ plugins, and fetches metadata for remote actions and reusable workflows.
 It prints the cache directory to save in CI. It fails if selected action metadata
 cannot be cached. Lint findings do not affect this command's exit status.
 
+Use `cache dir` to locate the cache and `cache list` to inspect its files, sizes
+and modification times. Both commands also accept `--json`.
+
+```sh
+actionlint cache dir
+actionlint cache list --json
+actionlint cache prune --older-than 168h --dry-run
+actionlint cache prune --older-than 168h
+actionlint cache clean --dry-run
+actionlint cache clean
+```
+
+`cache prune` removes downloads and compiled modules last written more than
+30 days ago by default. `--older-than` accepts durations such as `24h` or `168h`.
+It measures time since a file was written, not since it was last used. Registry
+records remain so cached version selections stay consistent.
+
+`cache clean` removes cached configuration, downloads, remote action metadata,
+registry selections and compiled modules. It retains plugin revocation records
+and leaves project configuration unchanged. Both removal commands accept
+`--dry-run` and `--json`, work offline and never follow links outside the cache.
+After removing dependencies, run `cache warm` before checking offline again.
+
 Offline checks use cached configuration, verified plugin artifacts and remote
 metadata. Tags and branches use their last cached resolution. Run online again
 to refresh them. Missing dependencies produce warnings. If a required config or
@@ -647,8 +670,13 @@ fails when that command cannot run. `--tool ID=COMMAND` accepts a command name, 
 or command line with arguments. `--no-tool ID`, `--tool ID=false` and
 `--tool ID=` disable the tool, including plugins that provide it.
 
+`--no-tools` disables all external linter checks, including native executables
+and Wasm tool plugins. It takes precedence over individual `--tool` flags and
+configured backends. Built-in workflow checks still run.
+
 ```sh
 actionlint --no-tool shellcheck
+actionlint --no-tools
 actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 

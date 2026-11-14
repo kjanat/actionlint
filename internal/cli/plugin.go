@@ -71,6 +71,7 @@ func (c checkInvocation) pluginSelection(acquisition plugininstall.Acquisition) 
 		Paths:   c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
 		Acquisition:  acquisition,
 		DefaultTools: c.defaultPlugins(nil).Tools,
+		DisableTools: c.NoTools,
 	}, c.DisabledTools, c.NamedTools)
 }
 
