@@ -671,6 +671,8 @@ func TestSchemaValidation(t *testing.T) {
 		{"workflow knowledge", `repository: {default-workflow-permissions: write}`, true, true},
 		{"cloud execution service", `repository: {service: github.com}`, true, true},
 		{"unknown execution service", `repository: {service: null}`, true, true},
+		{"explicit unknown execution service", `repository: {service: unknown}`, true, true},
+		{"empty execution service", `repository: {service: ""}`, false, false},
 		{"enterprise execution service", `repository: {service: {kind: ghes, version: '3.19'}}`, true, true},
 		{"unknown enterprise version", `repository: {service: {kind: ghes}}`, true, true},
 		{"invalid execution service", `repository: {service: github}`, false, false},

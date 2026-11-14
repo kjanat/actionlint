@@ -1,6 +1,7 @@
 package plugins_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -234,7 +235,9 @@ func TestRunnerProviderWasmtimeParity(t *testing.T) {
 		t.Fatalf("Wasmtime: %v\n%s", err, data)
 	}
 	var got parityOutput
-	if err := json.Unmarshal(data, &got); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&got); err != nil {
 		t.Fatalf("%v: %s", err, data)
 	}
 	if diff := cmp.Diff(want, got, cmpopts.EquateEmpty()); diff != "" {

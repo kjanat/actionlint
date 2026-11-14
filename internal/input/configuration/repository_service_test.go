@@ -21,6 +21,7 @@ func TestRepositoryServiceOverridesHostFact(t *testing.T) {
 	}{
 		{"inherit", map[string]any{}, services.GitHubCom, ""},
 		{"clear service", map[string]any{"service": nil}, services.Unknown, ""},
+		{"explicit unknown service", map[string]any{"service": "unknown"}, services.Unknown, ""},
 		{"clear repository", nil, services.Unknown, ""},
 		{"enterprise", map[string]any{"service": "ghes"}, services.GitHubEnterpriseServer, ""},
 		{"enterprise version", map[string]any{"service": map[string]any{"kind": "ghes", "version": "3.19"}}, services.GitHubEnterpriseServer, "3.19"},
@@ -54,7 +55,7 @@ func TestRepositoryServiceOverridesHostFact(t *testing.T) {
 func TestRepositoryServiceRejectsInvalidValues(t *testing.T) {
 	t.Parallel()
 	for _, input := range []any{
-		42, "github",
+		42, "github", "",
 		[]any{"github.com"},
 		map[string]any{},
 		map[string]any{"kind": "ghes", "version": "latest"},

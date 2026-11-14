@@ -244,6 +244,9 @@ func (r RepositoryConfig) EncodeConfig() (any, error) {
 
 func repositoryService(value any) (services.Service, error) {
 	if kind, ok := value.(string); ok {
+		if kind == "" {
+			return services.Service{}, errors.New("service must not be empty; use null or \"unknown\"")
+		}
 		return services.Parse(kind, "")
 	}
 	var selected struct {
