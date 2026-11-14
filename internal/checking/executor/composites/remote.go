@@ -2,6 +2,7 @@ package composites
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
@@ -20,9 +21,54 @@ type remoteDocument struct {
 	valid    bool
 }
 
+var errRemoteMetadataLookupLimit = errors.New("remote action metadata lookup limit exceeded")
+
 func (d remoteDocument) Provenance() parsing.Provenance { return d.document.Provenance }
 
+func (analysis *compositeAnalyzer) reserveRemoteLookup(spec string) (bool, error) {
+	reference, err := actions.ParseReference("github.com", spec)
+	if err != nil {
+		return false, analysis.cancelled()
+	}
+	if _, reserved := analysis.remoteLookups[reference]; reserved {
+		return false, nil
+	}
+	if len(analysis.remoteLookups) >= analysis.budget.MaxCalls {
+		return false, fmt.Errorf("%w (maximum %d per entry)", errRemoteMetadataLookupLimit, analysis.budget.MaxCalls)
+	}
+	analysis.remoteLookups[reference] = struct{}{}
+	return true, nil
+}
+
+func (analysis *compositeAnalyzer) prepareDependencies(snapshot parsing.SourceSnapshot, depth int) error {
+	if analysis.prepareSource == nil {
+		return nil
+	}
+	var references []string
+	var limitErr error
+	if depth < analysis.budget.MaxDepth {
+		_, dependencies := snapshot.Declarations()
+		for _, dependency := range dependencies {
+			if dependency.Kind != "action" {
+				continue
+			}
+			reserved, err := analysis.reserveRemoteLookup(dependency.Uses)
+			if err != nil {
+				limitErr = err
+				break
+			}
+			if reserved {
+				references = append(references, dependency.Uses)
+			}
+		}
+	}
+	return errors.Join(analysis.prepareSource(snapshot, references), limitErr)
+}
+
 func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta.Metadata, string, invocation.Outcome, error) {
+	if _, err := analysis.reserveRemoteLookup(spec); err != nil {
+		return nil, "", invocation.Outcome{}, err
+	}
 	result, err := analysis.remoteActions.Inspect(analysis.ctx, spec)
 	if err != nil {
 		return nil, "", invocation.Outcome{}, err

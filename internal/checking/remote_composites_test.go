@@ -14,6 +14,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
@@ -25,6 +26,11 @@ import (
 )
 
 func remoteCompositeProvider(t *testing.T, manifests map[string]string) (manifestProvider, func() map[string]int) {
+	t.Helper()
+	return remoteCompositeProviderAtCommits(t, manifests, nil)
+}
+
+func remoteCompositeProviderAtCommits(t *testing.T, manifests, commits map[string]string) (manifestProvider, func() map[string]int) {
 	t.Helper()
 	var mu sync.Mutex
 	requests := map[string]int{}
@@ -40,7 +46,11 @@ func remoteCompositeProvider(t *testing.T, manifests map[string]string) (manifes
 		if !found {
 			return actions.UnavailableManifest(availability.NotFetched()), nil
 		}
-		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, strings.Repeat("a", 40), ref.Directory())
+		commit := commits[ref.Repository()]
+		if commit == "" {
+			commit = strings.Repeat("a", 40)
+		}
+		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, commit, ref.Directory())
 		if err != nil {
 			return actions.Manifest{}, err
 		}
@@ -243,7 +253,7 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !checked || len(requests()) > limit+1 {
+	if !checked || len(requests()) != limit {
 		t.Fatalf("depth limit did not stop acquisition: checked=%t, requests=%v", checked, requests())
 	}
 }
@@ -371,6 +381,65 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 			}
 			if tc.expected == "remote" && requests()["example/action/nested"] != 1 {
 				t.Fatalf("self reference was not acquired once: %v", requests())
+			}
+		})
+	}
+}
+
+func TestRemoteCompositeRepositorySwitches(t *testing.T) {
+	t.Parallel()
+	for _, middle := range []string{"./middle", "example/second@v2"} {
+		t.Run(middle, func(t *testing.T) {
+			t.Parallel()
+			root := tempdir.Physical(t)
+			leaf := "name: leaf\ndescription: leaf\nruns: {using: composite, steps: [{shell: bash, run: echo leaf}]}\n"
+			intermediate := "name: middle\ndescription: middle\nruns: {using: composite, steps: [{uses: '$/nested'}]}\n"
+			for name, body := range map[string]string{"middle": intermediate, "nested": leaf} {
+				directory := filepath.Join(root, name)
+				if err := os.Mkdir(directory, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(directory, "action.yml"), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			secondCommit := strings.Repeat("b", 40)
+			provider, requests := remoteCompositeProviderAtCommits(t, map[string]string{
+				"example/outer":  "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: '" + middle + "'}]}\n",
+				"example/second": intermediate, "example/second/nested": leaf,
+			}, map[string]string{"example/second": secondCommit})
+			pinned := manifestProvider(func(ctx context.Context, ref actions.Reference) (actions.Manifest, error) {
+				if ref.Directory() != "" && (ref.Repository() != "example/second" || ref.Ref() != secondCommit) {
+					t.Errorf("nested action requested from %s/%s@%s, want example/second/nested@%s", ref.Repository(), ref.Directory(), ref.Ref(), secondCommit)
+				}
+				return provider.Lookup(ctx, ref)
+			})
+			checked := false
+			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
+				checked = true
+				if len(input.Invoked) != 1 || input.CallGraph.CallCount() != 3 {
+					return fmt.Errorf("want one script across three calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Export())
+				}
+				want := filepath.ToSlash(filepath.Join(root, "nested", "action.yml"))
+				if middle == "example/second@v2" {
+					want = "https://github.com/example/second/blob/" + secondCommit + "/nested/action.yml"
+				}
+				if got := filepath.ToSlash(input.Invoked[0].Reference.Document); got != want {
+					return fmt.Errorf("script source = %s, want %s", got, want)
+				}
+				return nil
+			}}
+			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/outer@v1}]}}\n"
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: pinned, Analyzers: []checkinputs.Registration{{Checker: checker}}}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantRequests := map[string]int{"example/outer": 1}
+			if middle == "example/second@v2" {
+				wantRequests["example/second"], wantRequests["example/second/nested"] = 1, 1
+			}
+			if !checked || !maps.Equal(requests(), wantRequests) {
+				t.Fatalf("checked=%t, manifest requests=%v, want %v", checked, requests(), wantRequests)
 			}
 		})
 	}

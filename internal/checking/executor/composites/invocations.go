@@ -36,10 +36,7 @@ func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapsho
 		return err
 	}
 	analysis.invocations, analysis.context, analysis.sourceSnapshot = graph, graph.RootContext(), snapshot
-	if analysis.prepareSource != nil {
-		return analysis.prepareSource(snapshot)
-	}
-	return nil
+	return analysis.prepareDependencies(snapshot, 0)
 }
 
 func (analysis *compositeAnalyzer) interrupt(err error) error {

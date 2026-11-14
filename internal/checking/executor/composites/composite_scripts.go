@@ -77,6 +77,9 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 		return err
 	}
 	prepared, _ := analysis.actions.Prepared().LookupMetadata(actionView.Uses().Value())
+	if errors.Is(prepared.Err(), errRemoteMetadataLookupLimit) {
+		return prepared.Err()
+	}
 	if document, found := analysis.actions.SourceDocument(prepared); found {
 		revision := document.Capture().Revision()
 		analysis.recordUncheckedFiles(prepared.Metadata(), document.ReferencedFiles(), source.Reference{Document: revision.Document(), Revision: revision.Digest()}, callContext)
@@ -160,10 +163,8 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	if !available {
 		return fmt.Errorf("action %q has no indexed declarations", meta.Path())
 	}
-	if analysis.prepareSource != nil {
-		if err := analysis.prepareSource(snapshot); err != nil {
-			return err
-		}
+	if err := analysis.prepareDependencies(snapshot, callContext.Depth()); err != nil {
+		return err
 	}
 	actions, err := analysis.actions.ForkComposite(callContext)
 	if err != nil {
