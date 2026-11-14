@@ -309,7 +309,11 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if known, available := facts.RunnerLabels.Value(); available {
 		customLabels = runnerlang.KnownLabels(known.Values())
 	}
-	runners, runnerErr := runnerinput.PrepareWithLabels(s.ctx, snapshot, customLabels, s.runners, root)
+	runnerOptions := s.runners
+	if runnerOptions.Service == nil {
+		runnerOptions.Service = &facts.Service
+	}
+	runners, runnerErr := runnerinput.PrepareWithLabels(s.ctx, snapshot, customLabels, runnerOptions, root)
 	if report := runners.Report(); report.CacheKey != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()

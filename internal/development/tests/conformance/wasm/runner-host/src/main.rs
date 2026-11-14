@@ -40,8 +40,8 @@ fn normalize(answer: Answer) -> Value {
     };
     let status = answer.dataset_status;
     json!({ "Kind": kind, "Candidates": candidates, "Rejections": rejections, "Reason": reason,
-        "DatasetStatus": { "DatasetID": status.dataset_id, "Scope": status.scope, "ObtainedAt": status.obtained_at,
-            "Freshness": match status.freshness { Freshness::Fresh => "fresh", Freshness::Stale => "stale", Freshness::Missing => "missing" }, "Complete": status.complete } })
+        "DatasetStatus": { "dataset_id": status.dataset_id, "scope": status.scope, "obtained_at": status.obtained_at,
+            "freshness": match status.freshness { Freshness::Fresh => "fresh", Freshness::Stale => "stale", Freshness::Missing => "missing" }, "complete": status.complete } })
 }
 
 fn main() -> wasmtime::Result<()> {

@@ -9,6 +9,8 @@ run         = [
   "go tool wit-bindgen-go generate --versioned --world plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
   "go tool wit-bindgen-go generate --versioned --world environment-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
   "go tool wit-bindgen-go generate --versioned --world reference-resolver-plugin --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --versioned --world kjanat:actionlint/runner-plugin@0.2.0 --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
+  "go tool wit-bindgen-go generate --versioned --world kjanat:actionlint/runner-plugin@0.3.0 --out plugins/sdk/go/bindings --package-root actionlint.kjanat.dev/v2/plugins/sdk/go/bindings plugins/protocol/wit",
   "kprint fmt plugins/sdk/go/bindings"
 ]
 
@@ -339,6 +341,11 @@ vars    = { fixture = "pinned-actions", package = "actionlint-example-pinned-act
 extends = "rust-plugin"
 alias   = ["internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm"]
 vars    = { fixture = "buildkite-runners", package = "actionlint-example-buildkite-runners", artifact = "buildkite_runners", packager = "package-buildkite-runners" }
+
+["plugin:fixture:runner-support-0.3.0"]
+extends = "rust-plugin"
+alias   = ["internal/plugins/execution/component/testdata/plugins/runner-support-0.3.0.wasm"]
+vars    = { fixture = "runner-support-0.3.0", package = "actionlint-fixture-runner-support-0-3-0", artifact = "actionlint_fixture_runner_support_0_3_0" }
 
 ["plugin:fixture:script-engine"]
 extends = "rust-plugin"

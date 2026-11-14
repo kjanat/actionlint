@@ -38,6 +38,9 @@ type checkInvocation struct {
 	RunnerProvider        string
 	RunnerSnapshot        string
 	RunnerScope           string
+	RunnerService         string
+	RunnerServiceVersion  string
+	RunnerAsOf            string
 	ResolverCommand       string
 	ResolverArguments     []string
 	Offline               bool

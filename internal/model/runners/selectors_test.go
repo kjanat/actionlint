@@ -26,7 +26,7 @@ func TestIncompleteMatrixFallbackOmitsDefinitelyExcludedLabels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			record, err := joinAnswers(w.Views["test"], answers)
+			record, err := joinAnswers(w.Views["test"], answers.Answers)
 			if err != nil {
 				t.Fatal(err)
 			}

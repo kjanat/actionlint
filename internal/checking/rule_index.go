@@ -47,6 +47,7 @@ var builtins = []rule.Declaration{
 	security.CredentialsCheck().Declaration,
 	correctness.ShellNameDeclaration(),
 	correctness.RunnerLabelDeclaration(),
+	correctness.RunnerSupportDeclaration(),
 	correctness.EventsCheck().Declaration,
 	correctness.JobNeedsCheck().Declaration,
 	correctness.ParallelStepsCheck().Declaration,

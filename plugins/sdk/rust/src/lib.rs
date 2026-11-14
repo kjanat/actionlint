@@ -217,6 +217,11 @@ pub const RUNNER_PROVIDER_WIT: &str = include_str!("../wit/runner.wit");
 /// SHA-256 of the runner-provider WIT source with LF line endings.
 pub const RUNNER_PROVIDER_WIT_SHA256: &str = env!("ACTIONLINT_RUNNER_WIT_SHA256");
 
+/// Runner-provider interface with service context and dated support policies.
+pub const RUNNER_PROVIDER_03_INTERFACE: &str = "kjanat:actionlint/runner-provider@0.3.0";
+pub const RUNNER_PROVIDER_03_WIT: &str = include_str!("../wit/deps/actionlint-0.3.0/runner.wit");
+pub const RUNNER_PROVIDER_03_WIT_SHA256: &str = env!("ACTIONLINT_RUNNER_03_WIT_SHA256");
+
 /// script-engine 0.2.0 WIT source.
 pub const SCRIPT_ENGINE_02_WIT: &str = include_str!("../wit/script-engine.wit");
 /// SHA-256 of the script-engine 0.2.0 WIT source with LF line endings.

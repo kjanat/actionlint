@@ -21,6 +21,7 @@ import (
 	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
@@ -89,6 +90,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
+	service, err := services.FromGitHubServerURL(os.Getenv("GITHUB_SERVER_URL"))
+	if err != nil {
+		return 0, err
+	}
+	options.Service = service
 	if c.ExperimentalSet {
 		options.Presets.Experimental = &c.Experimental
 	}

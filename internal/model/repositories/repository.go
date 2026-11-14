@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 // Permissions is the repository's default workflow token setting.
@@ -179,6 +180,8 @@ func UnavailableEnvironments(reason availability.Unavailability) Environments {
 // Snapshot is host knowledge for one repository. Each field is independently
 // available, so a denied lookup cannot erase facts obtained by other lookups.
 type Snapshot struct {
+	// Service identifies the service that executes this repository's workflows.
+	Service                    services.Service
 	DefaultWorkflowPermissions Permissions
 	RunnerLabels               Names
 	Variables                  Variables

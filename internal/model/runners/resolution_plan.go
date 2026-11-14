@@ -92,13 +92,30 @@ func (plan *ResolutionPlan) Request() runnerapi.Request {
 func (plan *ResolutionPlan) Unknown() *Knowledge {
 	return &Knowledge{target: plan.request.Target, report: runnerapi.Report{
 		CacheKey: fmt.Sprintf("%x", sha256.Sum256(plan.dependency)), Provider: plan.selection.Descriptor,
-		ImplementationID: plan.selection.ImplementationID, Target: plan.request.Target, Scope: plan.request.Scope, SnapshotDigest: plan.request.Snapshot.Digest(),
+		ImplementationID: plan.selection.ImplementationID, Target: plan.request.Target, Scope: plan.request.Scope, SnapshotDigest: plan.request.Snapshot.Digest(), Service: plan.request.Service, AsOf: plan.request.AsOf,
 	}}
 }
 
 // Complete validates and copies provider-owned answers before building knowledge.
-func (plan *ResolutionPlan) Complete(supplied []runnerapi.Answer) (*Knowledge, error) {
+func (plan *ResolutionPlan) Complete(response runnerapi.Response) (*Knowledge, error) {
 	k := plan.Unknown()
+	catalog := runnerapi.CloneSupportCatalog(response.Support)
+	for i := range catalog.Policies {
+		for j, architecture := range catalog.Policies[i].Architectures {
+			catalog.Policies[i].Architectures[j] = runnerapi.NormalizeArchitecture(architecture)
+		}
+	}
+	if err := runnerapi.ValidateSupportCatalog(catalog, plan.request.Scope); err != nil {
+		return k, err
+	}
+	if plan.hasSnapshot && catalog.DatasetStatus.DatasetID != "" {
+		if plan.request.Snapshot.Freshness != runnerapi.Fresh {
+			catalog.DatasetStatus.Freshness = plan.request.Snapshot.Freshness
+		}
+		catalog.DatasetStatus.Complete = catalog.DatasetStatus.Complete && plan.request.Snapshot.Complete
+	}
+	k.report.Support = catalog
+	supplied := response.Answers
 	if len(supplied) != len(plan.request.Selectors) {
 		return k, fmt.Errorf("runner provider returned %d answers for %d selectors", len(supplied), len(plan.request.Selectors))
 	}
@@ -107,6 +124,30 @@ func (plan *ResolutionPlan) Complete(supplied []runnerapi.Answer) (*Knowledge, e
 		resolution, err := resolutionValue(answer.Resolution)
 		if err != nil {
 			return k, err
+		}
+		if resolved, ok := resolution.(runnerapi.Resolved); ok {
+			resolved.Candidates = slices.Clone(resolved.Candidates)
+			for j := range resolved.Candidates {
+				c := &resolved.Candidates[j]
+				if c.Hosting != runnerapi.UnknownHosting && c.Hosting != runnerapi.Hosted && c.Hosting != runnerapi.SelfHosted {
+					return k, errors.New("invalid runner hosting")
+				}
+				switch c.OS {
+				case "", runnerapi.UnknownOS, runnerapi.Linux, runnerapi.MacOS, runnerapi.Windows:
+				default:
+					return k, errors.New("invalid runner OS")
+				}
+				switch c.CaseSensitivity {
+				case "", runnerapi.UnknownCase, runnerapi.CaseSensitive, runnerapi.CaseInsensitive:
+				default:
+					return k, errors.New("invalid runner case sensitivity")
+				}
+				c.Architecture = runnerapi.NormalizeArchitecture(c.Architecture)
+				if len(c.Architecture) > 128 {
+					return k, errors.New("runner architecture exceeds limit")
+				}
+			}
+			resolution = resolved
 		}
 		answers[i] = runnerapi.Answer{Resolution: detachResolution(resolution), DatasetStatus: answer.DatasetStatus}
 	}
@@ -117,6 +158,11 @@ func (plan *ResolutionPlan) Complete(supplied []runnerapi.Answer) (*Knowledge, e
 		}
 		if a.DatasetStatus.DatasetID == "" {
 			return k, errors.New("runner answer has no dataset identity")
+		}
+		switch a.DatasetStatus.Freshness {
+		case runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing:
+		default:
+			return k, errors.New("invalid runner answer freshness")
 		}
 		if plan.hasSnapshot {
 			freshness := plan.request.Snapshot.Freshness
@@ -146,7 +192,7 @@ func (plan *ResolutionPlan) Complete(supplied []runnerapi.Answer) (*Knowledge, e
 		}
 	}
 	k.report.Answers = answers
-	encodedAnswers, err := json.Marshal(answers)
+	encodedAnswers, err := json.Marshal(runnerapi.Response{Answers: answers, Support: catalog})
 	if err != nil {
 		return k, err
 	}

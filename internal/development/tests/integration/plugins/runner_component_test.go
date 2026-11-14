@@ -1,6 +1,7 @@
 package plugins_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -58,37 +59,37 @@ func TestRunnerProviderComponent(t *testing.T) {
 	t.Parallel()
 	p := loadRunnerFixture(t)
 	request := runnerFixtureRequest(t)
-	answers, err := p.ResolveRunners(t.Context(), request)
+	response, err := p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(answers) != 3 {
-		t.Fatal(answers)
+	if len(response.Answers) != 3 {
+		t.Fatal(response.Answers)
 	}
-	resolved, ok := answers[0].Resolution.(runner.Resolved)
+	resolved, ok := response.Answers[0].Resolution.(runner.Resolved)
 	if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != runner.Windows || resolved.Candidates[0].DefaultShell != "pwsh" {
-		t.Fatalf("%#v", answers[0])
+		t.Fatalf("%#v", response.Answers[0])
 	}
-	if _, ok := answers[1].Resolution.(runner.NoMatch); !ok {
-		t.Fatalf("%#v", answers[1])
+	if _, ok := response.Answers[1].Resolution.(runner.NoMatch); !ok {
+		t.Fatalf("%#v", response.Answers[1])
 	}
-	if _, ok := answers[2].Resolution.(runner.Unknown); !ok {
-		t.Fatalf("%#v", answers[2])
+	if _, ok := response.Answers[2].Resolution.(runner.Unknown); !ok {
+		t.Fatalf("%#v", response.Answers[2])
 	}
 	request.Snapshot.Freshness = runner.Stale
-	answers, err = p.ResolveRunners(t.Context(), request)
+	response, err = p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := answers[0].Resolution.(runner.Unknown); !ok {
+	if _, ok := response.Answers[0].Resolution.(runner.Unknown); !ok {
 		t.Fatal("stale evidence resolved a runner")
 	}
 	request.Target = "github"
-	answers, err = p.ResolveRunners(t.Context(), request)
+	response, err = p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := answers[0].Resolution.(runner.NotApplicable); !ok {
+	if _, ok := response.Answers[0].Resolution.(runner.NotApplicable); !ok {
 		t.Fatal("provider took authority over another target")
 	}
 	request.Snapshot.Content = "{"
@@ -201,13 +202,13 @@ func TestRunnerProviderWasmtimeParity(t *testing.T) {
 	}
 	p := loadRunnerFixture(t)
 	request := runnerFixtureRequest(t)
-	answers, err := p.ResolveRunners(t.Context(), request)
+	response, err := p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	d := p.RunnerDescriptor()
 	want := parityOutput{Digest: p.ArtifactDigest(), Name: d.Name, Version: d.Version, Targets: d.Targets}
-	for _, a := range answers {
+	for _, a := range response.Answers {
 		v := parityAnswer{DatasetStatus: a.DatasetStatus}
 		switch r := a.Resolution.(type) {
 		case runner.Resolved:
@@ -234,7 +235,9 @@ func TestRunnerProviderWasmtimeParity(t *testing.T) {
 		t.Fatalf("Wasmtime: %v\n%s", err, data)
 	}
 	var got parityOutput
-	if err := json.Unmarshal(data, &got); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&got); err != nil {
 		t.Fatalf("%v: %s", err, data)
 	}
 	if diff := cmp.Diff(want, got, cmpopts.EquateEmpty()); diff != "" {

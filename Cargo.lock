@@ -60,6 +60,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "actionlint-fixture-runner-support-0-3-0"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen",
+]
+
+[[package]]
 name = "actionlint-fixture-script-engine"
 version = "0.1.0"
 dependencies = [

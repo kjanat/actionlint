@@ -15,6 +15,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         ("wit/analyzer.wit", "ACTIONLINT_ANALYZER_WIT_SHA256"),
         ("wit/runner.wit", "ACTIONLINT_RUNNER_WIT_SHA256"),
         (
+            "wit/deps/actionlint-0.3.0/runner.wit",
+            "ACTIONLINT_RUNNER_03_WIT_SHA256",
+        ),
+        (
             "wit/script-engine.wit",
             "ACTIONLINT_SCRIPT_ENGINE_02_WIT_SHA256",
         ),

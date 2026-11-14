@@ -25,9 +25,10 @@ func (*testProvider) RunnerDescriptor() runnerapi.Descriptor {
 	return runnerapi.Descriptor{Name: "queues", Version: "1", Targets: []string{"buildkite", "github"}}
 }
 
-func (p *testProvider) ResolveRunners(_ context.Context, r runnerapi.Request) ([]runnerapi.Answer, error) {
+func (p *testProvider) ResolveRunners(_ context.Context, r runnerapi.Request) (runnerapi.Response, error) {
 	p.request = r
-	return p.resolve(r)
+	answers, err := p.resolve(r)
+	return runnerapi.Response{Answers: answers}, err
 }
 
 type runnerFixture struct {

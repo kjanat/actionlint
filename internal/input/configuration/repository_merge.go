@@ -27,7 +27,7 @@ func mergeRepositoryNodes(base, overlay any) any {
 	next := cloneMapping(base)
 	if base != nil && isNull(base) {
 		next = mapping()
-		for _, key := range []string{"default-workflow-permissions", "runners", "variables", "secrets", "environments"} {
+		for _, key := range []string{"service", "default-workflow-permissions", "runners", "variables", "secrets", "environments"} {
 			setField(next, key, nil)
 		}
 	}

@@ -19,25 +19,25 @@ func TestRunnerProviderConjunctionAndRefresh(t *testing.T) {
 		{Labels: []runner.Constraint{{Value: runner.Literal("buildkite-windows")}}, Group: &runner.Constraint{Value: runner.Literal("wrong")}},
 		{Labels: []runner.Constraint{{Value: runner.Literal("new-label")}}},
 	}
-	answers, err := p.ResolveRunners(t.Context(), request)
+	response, err := p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, answer := range answers {
+	for _, answer := range response.Answers {
 		if _, ok := answer.Resolution.(runner.NoMatch); !ok {
 			t.Fatalf("independent label recognition weakened conjunction/group: %#v", answer)
 		}
 	}
-	originalDataset := answers[2].DatasetStatus.DatasetID
+	originalDataset := response.Answers[2].DatasetStatus.DatasetID
 	request.Snapshot.Content = strings.ReplaceAll(request.Snapshot.Content, "buildkite-windows", "new-label")
-	answers, err = p.ResolveRunners(t.Context(), request)
+	response, err = p.ResolveRunners(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := answers[2].Resolution.(runner.Resolved); !ok {
+	if _, ok := response.Answers[2].Resolution.(runner.Resolved); !ok {
 		t.Fatal("snapshot update required rebuilding provider or host")
 	}
-	if answers[2].DatasetStatus.DatasetID == originalDataset {
+	if response.Answers[2].DatasetStatus.DatasetID == originalDataset {
 		t.Fatal("updated catalogue reused the old dataset identity")
 	}
 }
@@ -48,20 +48,20 @@ func TestRunnerProviderMissingAndEmptyCatalogue(t *testing.T) {
 	request := runnerFixtureRequest(t)
 	request.Selectors = request.Selectors[:1]
 	request.Snapshot.Content = ""
-	answers, err := p.ResolveRunners(t.Context(), request)
-	if err != nil || len(answers) != 1 {
-		t.Fatalf("missing catalogue: %v %#v", err, answers)
+	response, err := p.ResolveRunners(t.Context(), request)
+	if err != nil || len(response.Answers) != 1 {
+		t.Fatalf("missing catalogue: %v %#v", err, response.Answers)
 	}
-	if _, unknown := answers[0].Resolution.(runner.Unknown); !unknown || answers[0].DatasetStatus.Freshness != runner.Missing || answers[0].DatasetStatus.Complete {
-		t.Fatalf("missing catalogue claimed knowledge: %#v", answers[0])
+	if _, unknown := response.Answers[0].Resolution.(runner.Unknown); !unknown || response.Answers[0].DatasetStatus.Freshness != runner.Missing || response.Answers[0].DatasetStatus.Complete {
+		t.Fatalf("missing catalogue claimed knowledge: %#v", response.Answers[0])
 	}
 	request.Snapshot.Content = `{"queues":[]}`
-	answers, err = p.ResolveRunners(t.Context(), request)
-	if err != nil || len(answers) != 1 {
-		t.Fatalf("empty catalogue: %v %#v", err, answers)
+	response, err = p.ResolveRunners(t.Context(), request)
+	if err != nil || len(response.Answers) != 1 {
+		t.Fatalf("empty catalogue: %v %#v", err, response.Answers)
 	}
-	if _, absent := answers[0].Resolution.(runner.NoMatch); !absent || !answers[0].DatasetStatus.Complete {
-		t.Fatalf("exhaustive empty catalogue did not establish absence: %#v", answers[0])
+	if _, absent := response.Answers[0].Resolution.(runner.NoMatch); !absent || !response.Answers[0].DatasetStatus.Complete {
+		t.Fatalf("exhaustive empty catalogue did not establish absence: %#v", response.Answers[0])
 	}
 }
 

@@ -15,7 +15,7 @@ func (expressionShellProvider) RunnerDescriptor() runner.Descriptor {
 	return runner.Descriptor{Name: "expression-shell", Version: "1", Targets: []string{"github"}}
 }
 
-func (p expressionShellProvider) ResolveRunners(_ context.Context, request runner.Request) ([]runner.Answer, error) {
+func (p expressionShellProvider) ResolveRunners(_ context.Context, request runner.Request) (runner.Response, error) {
 	answers := make([]runner.Answer, len(request.Selectors))
 	for i := range answers {
 		var resolution runner.Resolution = runner.Unknown{Reason: "shell unavailable"}
@@ -24,7 +24,7 @@ func (p expressionShellProvider) ResolveRunners(_ context.Context, request runne
 		}
 		answers[i] = runner.Answer{Resolution: resolution, DatasetStatus: runner.DatasetStatus{DatasetID: "test", Scope: request.Scope, Freshness: runner.Fresh, Complete: true}}
 	}
-	return answers, nil
+	return runner.Response{Answers: answers}, nil
 }
 
 func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
