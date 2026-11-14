@@ -57,9 +57,39 @@ func TestMovedRuleMigrationInOverride(t *testing.T) {
 
 func TestMovedRuleMigrationRejectsConflictingSettings(t *testing.T) {
 	t.Parallel()
-	source := "lint: {rules: {suspicious: {empty-job: off}, correctness: {empty-job: error}}}"
-	_, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", []byte(source))
-	if err == nil || !strings.Contains(err.Error(), "conflict") {
-		t.Fatalf("conflicting settings were not reported: %v", err)
+	for _, source := range []string{
+		"lint: {rules: {suspicious: {empty-job: off}, correctness: {empty-job: error}}}",
+		"lint: {rules: {style: {empty-job: off}, suspicious: {empty-job: error}}}",
+		"overrides: [{includes: ['ci.yml'], lint: {rules: {style: {empty-job: off}, suspicious: {empty-job: error}}}}]",
+	} {
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			_, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", []byte(source))
+			if err == nil || !strings.Contains(err.Error(), "conflict") {
+				t.Fatalf("conflicting settings were not reported: %v", err)
+			}
+		})
+	}
+}
+
+func TestMovedRuleMigrationAcceptsMatchingSettings(t *testing.T) {
+	t.Parallel()
+	for _, style := range []string{"empty-job: off", "level: warn"} {
+		t.Run(style, func(t *testing.T) {
+			t.Parallel()
+			source := "lint: {rules: {style: {" + style + "}, suspicious: {empty-job: off}}}"
+			result, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", []byte(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := checking.ConfigurationRules().Parse(result.Content)
+			if err != nil {
+				t.Fatal(err)
+			}
+			setting, exists := cfg.Lint.Rules.Correctness.Rule("empty-job")
+			if !exists || setting.Level() != "off" {
+				t.Fatalf("explicit setting changed: %s", result.Content)
+			}
+		})
 	}
 }

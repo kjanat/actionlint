@@ -173,7 +173,11 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 		if err != nil {
 			return err
 		}
-		if previous := field(field(originalRules, category), name); previous != nil {
+		previous := field(field(originalRules, category), name)
+		if explicitSelections[name] {
+			previous = field(group, name)
+		}
+		if previous != nil {
 			setting, err = mergeMigration(previous, setting, "lint.rules."+category+"."+name, origin)
 			if err != nil {
 				return err
@@ -281,7 +285,6 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 					continue
 				}
 			}
-			explicitSelections[name] = isExplicit
 			if !legacy {
 				old := cloneMapping(field(rules, category))
 				removeField(old, name)
@@ -290,6 +293,7 @@ func (ruleSet RuleSet) migrateRuleCategories(root any, registrations []rule.Desc
 			if err := install(descriptor.Category, name, selections[name], "lint.rules."+category+"."+name); err != nil {
 				return nil, false, err
 			}
+			explicitSelections[name] = isExplicit
 			changed = true
 		}
 	}

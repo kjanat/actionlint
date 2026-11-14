@@ -1,14 +1,64 @@
 package installation
 
 import (
+	"context"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
+	"errors"
+	"net"
+	"net/http"
 	"strings"
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
+
+func TestRegistryInspectionCannotGrantPrivateArtifactAccess(t *testing.T) {
+	t.Parallel()
+	registry := fixtureregistry.NewPluginRegistry(t)
+	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
+	url := registry.RecordURL("v1.0.0")
+	var published record
+	if err := jsonv2.Unmarshal(registry.File(url), &published); err != nil {
+		t.Fatal(err)
+	}
+	submission := published.Submission
+	source := "oci://127.0.0.1:8443/private/plugin@sha256:" + submission.SHA256
+	submission.SchemaVersion = 2
+	submission.Artifact = distribution{typeName: "oci", digest: submission.SHA256, reference: source}
+	submission.Asset, submission.SHA256 = "", ""
+	published.Submission, published.Receipt.Submission, published.URL = submission, submission, source
+	data, err := json.Marshal(published)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry.SetFile(url, data)
+	ref, err := pluginref.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acquisition := Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	if _, err := InspectRelease(t.Context(), ref, acquisition); !errors.Is(err, acquisitionhttp.ErrPrivateDestination) {
+		t.Fatalf("registry-selected private artifact error=%v, want private destination rejection", err)
+	}
+	for _, request := range registry.Requests() {
+		if strings.Contains(request, "127.0.0.1") {
+			t.Fatalf("registry caused a private network request: %s", request)
+		}
+	}
+	dials := 0
+	stopped := errors.New("test stopped the authorized connection")
+	acquisition.Connections = acquisitionhttp.Connections{Transport: &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) {
+		dials++
+		return nil, stopped
+	}}}
+	if _, err := Inspect(t.Context(), source, acquisition); !errors.Is(err, stopped) || dials == 0 {
+		t.Fatalf("explicit artifact did not reach the selected endpoint: error=%v dials=%d", err, dials)
+	}
+}
 
 func TestRegistryV2PublicationSources(t *testing.T) {
 	t.Parallel()

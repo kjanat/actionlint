@@ -25,7 +25,7 @@ func InspectRelease(ctx context.Context, ref pluginref.Reference, acquisition Ac
 			return pluginartifact.Info{}, err
 		}
 	}
-	info, err := Inspect(ctx, pin.Source(), acquisition)
+	info, err := inspect(ctx, pin.Source(), acquisition.ArtifactOptions())
 	if err != nil {
 		return pluginartifact.Info{}, err
 	}
@@ -61,17 +61,21 @@ func PinSource(ctx context.Context, source string, acquisition Acquisition) (str
 
 // Inspect resolves and reads metadata without creating a runtime.
 func Inspect(ctx context.Context, source string, acquisition Acquisition) (pluginartifact.Info, error) {
-	if manifests.IsLocalManifest(source) {
-		if err := ValidateLocalProvider(ctx, source); err != nil {
-			return pluginartifact.Info{}, err
-		}
-	}
 	grant, err := pluginartifact.ExplicitSource(source)
 	if err != nil {
 		return pluginartifact.Info{}, err
 	}
 	options := acquisition.ArtifactOptions()
 	options.Network = grant
+	return inspect(ctx, source, options)
+}
+
+func inspect(ctx context.Context, source string, options pluginartifact.Options) (pluginartifact.Info, error) {
+	if manifests.IsLocalManifest(source) {
+		if err := ValidateLocalProvider(ctx, source); err != nil {
+			return pluginartifact.Info{}, err
+		}
+	}
 	artifact, err := pluginartifact.Resolve(ctx, source, options)
 	if err != nil {
 		return pluginartifact.Info{}, err
