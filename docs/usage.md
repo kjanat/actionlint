@@ -132,7 +132,9 @@ Normal help and completion recommend the modern names. `--help-legacy` lists the
 supported old names without deprecation warnings. `--format` selects a Go template.
 `-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
 Use `--log-level=info` or legacy `-v` for progress logging.
-`-V` is the short form of `--version` and preserves its three-line output.
+`--version` (or `-V`) prints actionlint's version and build information. It also
+works after `check`, `fix` and `pre-commit`, including through wrappers that add
+one of those commands.
 Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
 
 The root's `-color=false` means not forcing color on. If both `-color` and
@@ -562,6 +564,8 @@ Every registered diagnostic rule supports [inline exceptions](config.md#inline-d
 with a rule name and an optional reason. Place the comment on the reported line, or use
 `actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
 Trailing comments also accept `# actionlint-ignore RULE`, `# ignore RULE` and `# ignore[RULE]`.
+The bare `# ignore RULE` form requires a known first rule name. Comments such as
+`# ignore docs as they are built elsewhere` are ordinary comments.
 Separate multiple rule IDs with commas, spaces, or both. The preceding-line form
 also accepts `# actionlint-ignore-next-line RULE` and `# ignore-next-line RULE`.
 

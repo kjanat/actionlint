@@ -334,9 +334,9 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	for _, name := range []string{"output", "format", "oneline", "verbose", "debug", "no-color"} {
 		_ = f.MarkHidden(name)
 	}
+	f.BoolVarP(&a.opts.version, "version", "V", false, "Show version and build information")
+	annotateFlag(f, "version", "Information")
 	if !modern {
-		f.BoolVarP(&a.opts.version, "version", "V", false, "Show version and build information")
-		annotateFlag(f, "version", "Information")
 		f.BoolVar(&a.opts.initConfig, "init-config", false, "Create the repository config")
 		f.BoolVar(&a.opts.initConfig, "init", false, "Alias for --init-config")
 		f.Var(&a.opts.completion, "completion", "Print generated completions for a shell")
@@ -381,6 +381,9 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 func (a *commandApp) capture(op operation) func(*cobra.Command, []string) error {
 	return func(c *cobra.Command, args []string) error {
 		a.inv.Operation = op
+		if a.opts.version {
+			a.inv.Operation = operationVersion
+		}
 		a.inv.Check.PreCommit = c.Name() == "pre-commit"
 		if !a.inv.Check.PreCommit {
 			a.inv.Check.Paths = args
