@@ -35,7 +35,7 @@ jobs:
 			t.Parallel()
 			args := []string{
 				"actionlint", "check", "--output-format=pretty", "--color=never", "--hyperlinks=never",
-				"--action-metadata=off", "--no-tool=shellcheck", "--no-tool=ruff", "--quiet",
+				"--offline", "--no-tool=shellcheck", "--no-tool=ruff", "--quiet",
 			}
 			if tc.level == "" {
 				args = append(args, "--no-config")

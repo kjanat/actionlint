@@ -17,11 +17,11 @@ import (
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
+func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
 	t.Parallel()
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
-	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--action-metadata=off", "--output-format=json", "--summary=false", "-"})
+	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--offline", "--output-format=json", "--summary=false", "-"})
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
 	}
@@ -29,15 +29,8 @@ func TestActionMetadataCLIReportsDisabledCoverage(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != availability.LookupDisabledReason {
+	if len(result.ActionMetadata) != 1 || result.ActionMetadata[0].Reason != availability.OfflineReason {
 		t.Fatalf("coverage=%v", result.ActionMetadata)
-	}
-}
-
-func TestActionMetadataModeRejectsUnknownValue(t *testing.T) {
-	t.Parallel()
-	if _, err := (checkInvocation{ActionMetadata: "sometimes"}).actionMetadata(plugininstall.Acquisition{}); err == nil {
-		t.Fatal("unknown network policy accepted")
 	}
 }
 
@@ -57,13 +50,12 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 	}{
 		{"offline", "v1", availability.OfflineReason},
 		{"offline", strings.Repeat("a", 40), availability.CacheMissReason},
-		{"off", "v1", availability.LookupDisabledReason},
 	} {
 		t.Run(tc.mode+"/"+tc.ref, func(t *testing.T) {
 			t.Parallel()
 			var out, log bytes.Buffer
 			command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + tc.ref + "}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", path, "--action-metadata=" + tc.mode, "--output=json", "--summary=false", "-"})
+			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", path, "--" + tc.mode, "--resolve-with", filepath.Join(t.TempDir(), "missing-resolver"), "--output=json", "--summary=false", "-"})
 			if code != 0 {
 				t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
 			}
@@ -106,7 +98,7 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 			}
 			var out, log bytes.Buffer
 			command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--strict", "--config", config, "--action-metadata=online", "--output=json", "--summary=false", "-"})
+			code := command.MainContext(t.Context(), []string{"actionlint", "check", "--strict", "--config", config, "--online", "--output=json", "--summary=false", "-"})
 			if code != 1 {
 				t.Fatalf("status=%d stderr=%s output=%s", code, &log, &out)
 			}

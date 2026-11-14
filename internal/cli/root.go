@@ -19,6 +19,7 @@ type commandOptions struct {
 	color, noColor, initConfig, version, helpLegacy bool
 	completion                                      completionShell
 	networkStats                                    bool
+	online                                          bool
 }
 
 // outputModes is shared by all output aliases and command flag sets so every
@@ -268,12 +269,14 @@ func (a *commandApp) configFlags(f *pflag.FlagSet) {
 }
 
 func (a *commandApp) toolFlags(f *pflag.FlagSet) {
-	f.StringVar(&a.inv.Check.ActionMetadata, "action-metadata", "online", "Remote action metadata: off, offline cache only, or online GitHub acquisition")
-	annotateFlag(f, "action-metadata", "Dependency resolution")
+	f.BoolVar(&a.inv.Check.Offline, "offline", false, "Use cached metadata for remote actions and workflows without fetching it")
+	f.BoolVar(&a.opts.online, "online", true, "Fetch missing metadata for remote actions and workflows")
+	annotateFlag(f, "offline", "Remote dependencies")
+	annotateFlag(f, "online", "Remote dependencies")
 	f.StringVar(&a.inv.Check.ResolverCommand, "resolve-with", "", "Resolve remote dependencies using this executable")
 	f.StringArrayVar(&a.inv.Check.ResolverArguments, "resolver-arg", nil, "Pass an argument to the remote resolver (repeatable)")
-	annotateFlag(f, "resolve-with", "Dependency resolution")
-	annotateFlag(f, "resolver-arg", "Dependency resolution")
+	annotateFlag(f, "resolve-with", "Remote dependencies")
+	annotateFlag(f, "resolver-arg", "Remote dependencies")
 	a.externalToolFlags(f)
 }
 

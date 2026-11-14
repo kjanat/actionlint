@@ -1,12 +1,13 @@
 # Remote action metadata
 
 actionlint can acquire remote action manifests to check their declared inputs,
-outputs, runtime and composite steps. It downloads metadata by default. Use `--action-metadata=offline` to use cached
-metadata without network requests, or `--action-metadata=off` to skip acquisition.
+outputs, runtime and composite steps. Online checking is the default. Use
+`--offline` to check cached metadata without fetching missing dependencies.
+Use `--online` to select online checking explicitly. These flags cannot be combined.
 
 ```console
-actionlint check --action-metadata=online .github/workflows/build.yml
-actionlint check --action-metadata=offline .github/workflows/build.yml
+actionlint check --online .github/workflows/build.yml
+actionlint check --offline .github/workflows/build.yml
 ```
 
 Composite steps are checked in the calling job's context. For example, a remote
@@ -222,7 +223,7 @@ must supply their network counts for inclusion in `--network-stats`.
 
 ## Reusable workflows
 
-The same `--action-metadata` setting controls downloads for remote reusable
+The same `--online` and `--offline` flags control downloads for remote reusable
 workflows. actionlint reads the referenced workflow file at its resolved commit,
 in the same acquisition order as action manifests.
 The `workflow-call` rule checks required and unknown inputs and secrets, then

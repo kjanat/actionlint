@@ -196,7 +196,7 @@ Remote action metadata gives the checker declared inputs, outputs, and runtimes.
 The bundled Commitish WebAssembly plugin resolves branches, tags and commit IDs. Actionlint fetches the metadata at the selected commit. Use cached metadata to work offline:
 
 ```sh
-actionlint check --action-metadata=offline
+actionlint check --offline
 ```
 
 Metadata reports distinguish unavailable data from invalid declarations. An optional resolver can also propose immutable commit pins for review. Read [remote dependency checks](docs/remote-actions.md) for resolution, caching, and authentication.

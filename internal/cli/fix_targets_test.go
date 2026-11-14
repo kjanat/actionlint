@@ -36,7 +36,7 @@ func TestFixInputThroughAnotherSpelling(t *testing.T) {
 			if err := os.Symlink(destination, link); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			args := []string{"actionlint", "fix", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--action-metadata=off", "--include-suggested", path}
+			args := []string{"actionlint", "fix", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--offline", "--include-suggested", path}
 			var out, log bytes.Buffer
 			if status := (&Command{Stdout: &out, Stderr: &log}).MainContext(t.Context(), args); status != 0 {
 				t.Fatalf("preview status=%d stderr=%s stdout=%s", status, &log, &out)

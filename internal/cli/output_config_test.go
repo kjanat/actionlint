@@ -29,7 +29,7 @@ func runConfiguredOutput(t *testing.T, config, workflow string, flags ...string)
 	t.Helper()
 	var stdout, stderr bytes.Buffer
 	command := Command{Stdout: &stdout, Stderr: &stderr}
-	args := []string{"actionlint", "check", "--config", config, "--no-tool=shellcheck", "--no-tool=ruff", "--action-metadata=off"}
+	args := []string{"actionlint", "check", "--config", config, "--no-tool=shellcheck", "--no-tool=ruff", "--offline"}
 	args = append(args, flags...)
 	args = append(args, workflow)
 	status := command.MainContext(t.Context(), args)
@@ -91,7 +91,7 @@ func TestConfiguredOutputNoConfigAndStdin(t *testing.T) {
 	for _, disabled := range []bool{false, true} {
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {}\n"), Stdout: &out, Stderr: &log}
-		args := []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--action-metadata=off", "-"}
+		args := []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--offline", "-"}
 		if disabled {
 			args = append(args, "--no-config", "--summary=false")
 		}
@@ -154,7 +154,7 @@ func TestConfiguredOutputUsesInvokingRepository(t *testing.T) {
 	t.Chdir(invoker)
 	var out, log bytes.Buffer
 	command := Command{Stdout: &out, Stderr: &log}
-	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--action-metadata=off", filepath.Join(first, "workflow.yml"), filepath.Join(second, "workflow.yml")})
+	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--offline", filepath.Join(first, "workflow.yml"), filepath.Join(second, "workflow.yml")})
 	if status != 1 || strings.Count(out.String(), "empty-run") != 2 || strings.Contains(out.String(), "::warning") || log.Len() != 0 {
 		t.Fatalf("status=%d out=%s log=%s", status, &out, &log)
 	}

@@ -13,7 +13,11 @@ import (
 )
 
 func (c checkInvocation) actionMetadata(acquisition plugininstall.Acquisition) (actions.Provider, error) {
-	options := github.EnvironmentOptions(github.Mode(c.ActionMetadata), os.Getenv, acquisition.UserCacheDir)
+	mode := github.Online
+	if c.Offline {
+		mode = github.Offline
+	}
+	options := github.EnvironmentOptions(mode, os.Getenv, acquisition.UserCacheDir)
 	options.Transport = acquisition.Connections.Transport
 	if options.Mode == github.Online {
 		if c.ResolverCommand != "" {

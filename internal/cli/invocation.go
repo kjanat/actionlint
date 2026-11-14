@@ -39,7 +39,7 @@ type checkInvocation struct {
 	RunnerScope           string
 	ResolverCommand       string
 	ResolverArguments     []string
-	ActionMetadata        string
+	Offline               bool
 	Fix                   bool
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool
@@ -145,6 +145,12 @@ func (a *commandApp) prepareInvocation() error {
 	}
 	if i.Operation == "version" || i.Operation == "completion" {
 		return nil
+	}
+	if a.set["online"] && a.set["offline"] {
+		return commandargs.UsageError{Cause: errors.New("--online and --offline cannot be combined")}
+	}
+	if a.set["online"] {
+		i.Check.Offline = !o.online
 	}
 	if i.Check.Config.Disabled && i.Check.Config.Path != "" {
 		return commandargs.UsageError{Cause: errors.New("--config cannot be combined with --no-config")}

@@ -49,9 +49,9 @@ that completion, hover, and navigation do not yet provide.
 The native server can receive a [`resolver.Resolver`](../internal/input/references/resolver.go)
 through [`checking.Check`](../internal/checking/session.go). A resolver that
 implements `resolver.SessionFactory` gets a new session for each analysis. The
-resolver supports reference diagnostics and pin proposals. The `--action-metadata`
-option separately controls remote action manifest acquisition. Its default is
-`online`; `offline` reads cached manifests without network requests. The checker
+resolver supports reference diagnostics and pin proposals. CLI checks use
+`--online` by default; `--offline` reads cached manifests without fetching missing
+dependencies. The checker
 can use acquired action inputs and outputs in diagnostics, but this metadata does
 not supply editor completion or navigation targets.
 

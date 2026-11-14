@@ -141,13 +141,17 @@ Missing optional tools are reported; malformed selected config returns status 3.
 **--resolver-arg** *VALUE*
 : Pass a literal argument to the resolver. Repeat for multiple arguments.
 
-**--action-metadata** *MODE*
-: Select remote action metadata acquisition: `online` (default), `offline` (cached
-manifests only), or `off` (no acquisition). Online mode reads the cache first,
+**--offline**
+: Check cached metadata for remote actions and reusable workflows without fetching
+missing dependencies. Cache misses are reported in coverage and do not fail the check.
+
+**--online**
+: Fetch missing metadata for remote actions and reusable workflows. This is the
+default. Cannot be combined with **--offline**. Online mode reads the cache first,
 then each repository's Git reference list from `github.com` and manifests from
-`raw.githubusercontent.com`. When `raw.githubusercontent.com` fails, it requests
-the manifest at the same commit from `cdn.jsdelivr.net` without credentials. It
-uses the GitHub REST API only when these hosts do not return the manifest.
+`raw.githubusercontent.com`. If the raw host fails, the mirror settings determine
+whether actionlint tries `cdn.jsdelivr.net` before GitHub REST. By default, only
+repositories known to be public can use that mirror.
 Online requests use `GH_TOKEN`, falling back to `GITHUB_TOKEN`.
 This option does not create project lockfiles.
 

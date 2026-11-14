@@ -75,7 +75,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		Debug:           c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
 		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
 	}
-	if c.ResolverCommand != "" {
+	if c.ResolverCommand != "" && !c.Offline {
 		options.Resolver = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 		options.SuggestCommitPins = true
 	}

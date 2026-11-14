@@ -363,14 +363,15 @@ CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
 take precedence, including empty strings and `false`.
 
-Remote action metadata is fetched in online mode by default. Use
-`--action-metadata=offline` to check cached metadata without network requests,
-or `--action-metadata=off` to skip acquisition. Offline cache misses appear in
+Remote action and reusable-workflow metadata is fetched online by default. Use
+`--offline` to check cached metadata without fetching missing dependencies,
+or `--online` to select the default explicitly. These flags cannot be combined.
+Offline cache misses appear in
 JSON coverage without failing the check. Online lookups read the cache, then
-`github.com` and `raw.githubusercontent.com`. When `raw.githubusercontent.com`
-fails, they request the file at the same commit from `cdn.jsdelivr.net` without
-credentials. They call `api.github.com` only when these hosts do not return the
-file. See [remote action metadata](remote-actions.md) for the supported
+`github.com` and `raw.githubusercontent.com`. If the raw host fails, the mirror
+settings determine whether actionlint tries `cdn.jsdelivr.net` before GitHub REST.
+By default, only repositories known to be public can use that mirror.
+See [remote action metadata](remote-actions.md) for the supported
 references and resolver configuration.
 
 ### Network accounting
@@ -1376,8 +1377,7 @@ repository must be known to be public. Any raw-host `404` prevents a jsDelivr
 request. GitHub REST handles other failed lookups and verifies object types
 that the Git reference listing cannot establish. Actionlint includes every request in
 `--network-stats`. Use
-`--action-metadata=offline` for cached metadata or `--action-metadata=off` to
-skip it.
+`--offline` for cached metadata or `--online` for the default behavior.
 
 Load a replacement resolver component with `--plugin`. To use a native resolver,
 select it with `--resolve-with EXECUTABLE`; repeat `--resolver-arg VALUE` for
