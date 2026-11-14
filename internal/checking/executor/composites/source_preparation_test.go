@@ -61,7 +61,7 @@ func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	}
 	prepared := map[string]bool{}
 	observer := &preparationObserver{Base: workflowvisit.NewBase("preparation-observer", ""), t: t, prepared: prepared}
-	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot) error {
+	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot, _ []string) error {
 		prepared[snapshot.Reference().Document] = true
 		return nil
 	}}
@@ -81,7 +81,7 @@ func TestSourcePreparationPrecedesWorkflowAndCompositeChecks(t *testing.T) {
 	}, nil)
 	prepared := map[string]bool{}
 	observer := &preparationObserver{Base: workflowvisit.NewBase("preparation-observer", ""), t: t, prepared: prepared, entryDocument: fixture.root.Reference().Document}
-	fixture.options.PrepareSource = func(snapshot parsing.SourceSnapshot) error {
+	fixture.options.PrepareSource = func(snapshot parsing.SourceSnapshot, _ []string) error {
 		prepared[snapshot.Reference().Document] = true
 		return nil
 	}
@@ -98,7 +98,7 @@ func TestSourcePreparationFailureStopsChecks(t *testing.T) {
 	t.Parallel()
 	fixture := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", nil, nil)
 	failure := errors.New("dependency acquisition failed")
-	fixture.options.PrepareSource = func(parsing.SourceSnapshot) error { return failure }
+	fixture.options.PrepareSource = func(parsing.SourceSnapshot, []string) error { return failure }
 	fixture.options.Rules = []workflowvisit.Rule{&preparationObserver{Base: workflowvisit.NewBase("preparation-observer", ""), t: t, prepared: map[string]bool{}}}
 	if _, err := Workflow(fixture.options, fixture.root); !errors.Is(err, failure) {
 		t.Fatalf("source preparation failure was lost: %v", err)
