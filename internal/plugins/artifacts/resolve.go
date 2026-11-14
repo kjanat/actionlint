@@ -281,7 +281,7 @@ func readBounded(r io.Reader, limit int64) ([]byte, error) {
 }
 
 func readFile(ctx context.Context, path string, limit int64) ([]byte, error) {
-	f, err := files.New(ctx, nil, nil).Open(path)
+	f, err := files.OpenShared(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -393,14 +393,19 @@ func cacheFile(ctx context.Context, path string, data []byte) error {
 	if err := errors.Join(writeErr, f.Close()); err != nil {
 		return err
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := os.Rename(f.Name(), path); err != nil {
-		// Another process may have published the same pinned artifact on a platform
-		// where rename cannot replace an existing file. Accept only identical bytes.
+		// Concurrent writers can publish the same artifact. Accept identical bytes.
 		existing, readErr := readFile(ctx, path, int64(len(data)))
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
 		if readErr == nil && bytes.Equal(existing, data) {
 			return nil
 		}
-		return err
+		return errors.Join(err, readErr)
 	}
 	return nil
 }
