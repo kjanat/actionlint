@@ -316,8 +316,8 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 	}
 	if cached, exists, cacheErr := g.cached(ctx, ref, repoID, commit, filenames); cacheErr == nil && exists {
 		file.filename, file.content = cached.Filename, cached.Content
-		if err := g.storeTagObject(ctx, file); err != nil && ctx.Err() != nil {
-			return repositoryFile{}, ctx.Err()
+		if err := errors.Join(g.storeTagObject(ctx, file), g.storeNamed(ctx, file)); err != nil && (ctx.Err() != nil || network.Settings(ctx).WarmCache) {
+			return repositoryFile{}, err
 		}
 		return file, nil
 	}

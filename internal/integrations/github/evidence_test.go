@@ -362,6 +362,38 @@ func TestResolverWithoutRepositoryIDUsesLearnedID(t *testing.T) {
 	}
 }
 
+func TestRESTCacheHitStoresNamedReferenceForOffline(t *testing.T) {
+	t.Parallel()
+	cache := t.TempDir()
+	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) { return restFallback(t, r) }}
+	client, err := New(Options{CacheDir: cache, Transport: hosts, Resolver: func() references.Resolver {
+		return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
+			return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
+		})
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest, err := client.Lookup(t.Context(), ref(t, "example/action@"+sha)); err != nil || !manifest.Available() {
+		t.Fatalf("populate commit cache: manifest=%v error=%v", manifest, err)
+	}
+	before := len(hosts.recorded())
+	request := ref(t, "example/action@v1")
+	if manifest, err := client.Lookup(t.Context(), request); err != nil || !manifest.Available() {
+		t.Fatalf("resolve name with cached commit: manifest=%v error=%v", manifest, err)
+	}
+	if requests := hosts.recorded()[before:]; len(requests) != 2 {
+		t.Fatalf("want ref listing and repository lookup only, got %v", requests)
+	}
+	offline, err := New(Options{Mode: Offline, CacheDir: cache})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest, err := offline.Lookup(t.Context(), request); err != nil || !manifest.Available() || manifest.Content() != actionSource || manifest.Identity().Commit() != sha {
+		t.Fatalf("offline named lookup: manifest=%v error=%v", manifest, err)
+	}
+}
+
 func TestRESTFallbackValidatesRepositoryCommitAndManifest(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
