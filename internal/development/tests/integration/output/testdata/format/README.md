@@ -1,12 +1,9 @@
 These files test actionlint output formats in `workflow_render_test.go`.
 
-How to generate `test.sarif`:
+The SARIF test validates output against the OASIS schema and checks the findings
+and source locations from `test.yaml`.
 
-```sh
-go test ./internal/development/tests/integration/output -run '^TestWorkflowDiagnosticSARIF$' -args -update-sarif
-```
-
-To generate the other files, run these commands from
+To generate the template output files, run these commands from
 `internal/development/tests/integration/output` with an `actionlint` binary
 available on `PATH`. Run the template tests afterward to check the results.
 

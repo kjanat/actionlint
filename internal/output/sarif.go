@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -59,7 +60,7 @@ type sarifResult struct {
 	Level            string                 `json:"level"`
 	Properties       *sarifResultProperties `json:"properties,omitempty"`
 	Fixes            []sarifFix             `json:"fixes,omitempty"`
-	Locations        []sarifLocation        `json:"locations"`
+	Locations        []sarifLocation        `json:"locations,omitempty"`
 	RelatedLocations []sarifRelatedLocation `json:"relatedLocations,omitempty"`
 }
 
@@ -72,14 +73,14 @@ type sarifLocation struct {
 }
 
 type sarifRelatedLocation struct {
-	ID               int                   `json:"id"`
-	Message          sarifText             `json:"message"`
-	PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
+	ID               int                    `json:"id"`
+	Message          sarifText              `json:"message"`
+	PhysicalLocation *sarifPhysicalLocation `json:"physicalLocation,omitempty"`
 }
 
 type sarifPhysicalLocation struct {
 	ArtifactLocation sarifArtifactLocation `json:"artifactLocation"`
-	Region           sarifRegion           `json:"region"`
+	Region           *sarifRegion          `json:"region,omitempty"`
 }
 
 type sarifText struct {
@@ -88,9 +89,9 @@ type sarifText struct {
 
 type sarifRegion struct {
 	StartLine   int        `json:"startLine"`
-	StartColumn int        `json:"startColumn"`
-	EndLine     int        `json:"endLine"`
-	EndColumn   int        `json:"endColumn"`
+	StartColumn int        `json:"startColumn,omitempty"`
+	EndLine     int        `json:"endLine,omitempty"`
+	EndColumn   int        `json:"endColumn,omitempty"`
 	Snippet     *sarifText `json:"snippet,omitempty"`
 }
 
@@ -127,6 +128,17 @@ func sarifArtifact(path string) sarifArtifactLocation {
 		return sarifArtifactLocation{URI: (&url.URL{Scheme: "file", Path: slash}).String()}
 	}
 	return sarifArtifactLocation{URI: (&url.URL{Path: slash}).String(), URIBaseID: "%SRCROOT%"}
+}
+
+func sarifSourceLocation(path string, start, end sourcepos.Position) *sarifPhysicalLocation {
+	if path == "" {
+		return nil
+	}
+	location := &sarifPhysicalLocation{ArtifactLocation: sarifArtifact(path)}
+	if start.Line > 0 {
+		location.Region = &sarifRegion{StartLine: start.Line, StartColumn: start.Column, EndLine: end.Line, EndColumn: end.Column}
+	}
+	return location
 }
 
 func sarifSeverityLevel(severity string) string {
@@ -198,18 +210,19 @@ func sarifRules(rules []*Rule) []sarifRule {
 func WriteSARIF(out io.Writer, version string, rules []*Rule, diagnostics []results.Diagnostic) error {
 	results := make([]sarifResult, 0, len(diagnostics))
 	for _, d := range diagnostics {
-		artifact := sarifArtifact(d.Path)
 		result := sarifResult{
 			RuleID: d.Rule, Message: sarifText{d.Message}, Level: sarifSeverityLevel(d.Severity), Fixes: sarifFixes(d.Fixes),
-			Locations: []sarifLocation{{PhysicalLocation: sarifPhysicalLocation{
-				ArtifactLocation: artifact,
-				Region:           sarifRegion{StartLine: d.Start.Line, StartColumn: d.Start.Column, EndLine: d.End.Line, EndColumn: d.End.Column, Snippet: &sarifText{d.Snippet}},
-			}}},
+		}
+		if location := sarifSourceLocation(d.Path, d.Start, d.End); location != nil {
+			if location.Region != nil && d.Snippet != "" {
+				location.Region.Snippet = &sarifText{d.Snippet}
+			}
+			result.Locations = []sarifLocation{{PhysicalLocation: *location}}
 		}
 		for i, related := range d.Related {
 			result.RelatedLocations = append(result.RelatedLocations, sarifRelatedLocation{
 				ID: i, Message: sarifText{related.Message},
-				PhysicalLocation: sarifPhysicalLocation{ArtifactLocation: sarifArtifact(related.Path), Region: sarifRegion{StartLine: related.Start.Line, StartColumn: related.Start.Column, EndLine: related.End.Line, EndColumn: related.End.Column}},
+				PhysicalLocation: sarifSourceLocation(related.Path, related.Start, related.End),
 			})
 		}
 		if d.Code != "" {
