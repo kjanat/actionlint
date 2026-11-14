@@ -17,6 +17,7 @@ import (
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 	"golang.org/x/mod/semver"
 )
@@ -279,6 +280,27 @@ func selectVersion(versions []Version, selector string) (Version, error) {
 func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error) {
 	if c.base.Scheme == "file" {
 		return c.resolveCandidate(ctx, name, selector)
+	}
+	if network.Settings(ctx).Offline {
+		if !pluginref.ValidName(name) || !pluginref.ValidVersion(selector) || selector == "latest" {
+			return Pin{}, network.Missing(name + "@" + selector)
+		}
+		pin, err := c.Lookup(ctx, name, selector)
+		if err != nil {
+			return Pin{}, err
+		}
+		directory, err := statusDirectory(pin.Registry, c.StatusOptions)
+		if err != nil {
+			return Pin{}, err
+		}
+		statuses, err := readStatusSnapshot(ctx, directory)
+		if err != nil {
+			return Pin{}, err
+		}
+		if err := checkStatus(ctx, pin, statuses, c.StatusOptions, true); err != nil {
+			return Pin{}, err
+		}
+		return pin, nil
 	}
 	statuses, err := c.RefreshStatuses(ctx)
 	if err != nil {

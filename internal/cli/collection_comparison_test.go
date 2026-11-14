@@ -105,7 +105,7 @@ func TestCollectionComparisonAcceptsAutofixWorkflow(t *testing.T) {
 	}
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader(""), Stdout: &out, Stderr: &log}
-	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--action-metadata=off", "--output-format=json", "--summary=false", path})
+	status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--offline", "--output-format=json", "--summary=false", path})
 	if status != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", status, log.String(), out.String())
 	}

@@ -7,7 +7,33 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
+
+// InspectRelease resolves a registry reference and verifies its downloaded metadata.
+func InspectRelease(ctx context.Context, ref pluginref.Reference, acquisition Acquisition) (pluginartifact.Info, error) {
+	client, err := New(ref.Registry(), acquisition)
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	pin, err := client.Resolve(ctx, ref.Name(), ref.Version())
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	if pin.Origin == "candidate" {
+		if err := pin.importCandidate(ctx, acquisition.ArtifactOptions()); err != nil {
+			return pluginartifact.Info{}, err
+		}
+	}
+	info, err := inspect(ctx, pin.Source(), acquisition.ArtifactOptions())
+	if err != nil {
+		return pluginartifact.Info{}, err
+	}
+	if err := pin.Verify(info); err != nil {
+		return pluginartifact.Info{}, err
+	}
+	return info, nil
+}
 
 // PinSource resolves an OCI tag or an unpinned HTTPS artifact to its checksum.
 // Installation saves that checksum so later checks use the same plugin bytes.
@@ -35,17 +61,21 @@ func PinSource(ctx context.Context, source string, acquisition Acquisition) (str
 
 // Inspect resolves and reads metadata without creating a runtime.
 func Inspect(ctx context.Context, source string, acquisition Acquisition) (pluginartifact.Info, error) {
-	if manifests.IsLocalManifest(source) {
-		if err := ValidateLocalProvider(ctx, source); err != nil {
-			return pluginartifact.Info{}, err
-		}
-	}
 	grant, err := pluginartifact.ExplicitSource(source)
 	if err != nil {
 		return pluginartifact.Info{}, err
 	}
 	options := acquisition.ArtifactOptions()
 	options.Network = grant
+	return inspect(ctx, source, options)
+}
+
+func inspect(ctx context.Context, source string, options pluginartifact.Options) (pluginartifact.Info, error) {
+	if manifests.IsLocalManifest(source) {
+		if err := ValidateLocalProvider(ctx, source); err != nil {
+			return pluginartifact.Info{}, err
+		}
+	}
 	artifact, err := pluginartifact.Resolve(ctx, source, options)
 	if err != nil {
 		return pluginartifact.Info{}, err

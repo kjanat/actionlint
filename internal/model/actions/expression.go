@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/results/messages"
+
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
@@ -119,7 +121,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 						suggestion = exprlang.ContextPropertySuggestion(name, avail.contexts, contextspec.BuiltinGlobalVariableTypes)
 					}
 					if suggestion == "" {
-						suggestion = exprlang.CloseName(name, avail.contexts)
+						suggestion = messages.CloseName(name, avail.contexts)
 					}
 					if suggestion != "" {
 						v.Code = CodeExpressionReference
@@ -161,7 +163,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 								candidates = append(candidates, signatures[0].Name)
 							}
 						}
-						if suggestion := exprlang.CloseName(name, candidates); suggestion != "" {
+						if suggestion := messages.CloseName(name, candidates); suggestion != "" {
 							v.Message += fmt.Sprintf("; did you mean %q?", suggestion)
 						}
 					} else if !actionFunctionArityMatches(signatures, len(n.Args)) {

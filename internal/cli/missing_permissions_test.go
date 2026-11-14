@@ -52,7 +52,7 @@ func TestMissingPermissionsRequiredLocationsThroughCLI(t *testing.T) {
 				source.WriteString("    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
 			}
 			var out, log bytes.Buffer
-			status := (&Command{Stdin: strings.NewReader(source.String()), Stdout: &out, Stderr: &log}).MainContext(t.Context(), []string{"actionlint", "check", "--action-metadata=off", "--config", config, "--json", "--summary=false", "-"})
+			status := (&Command{Stdin: strings.NewReader(source.String()), Stdout: &out, Stderr: &log}).MainContext(t.Context(), []string{"actionlint", "check", "--offline", "--config", config, "--json", "--summary=false", "-"})
 			wantStatus := 0
 			if len(tc.wantLines) != 0 {
 				wantStatus = 1

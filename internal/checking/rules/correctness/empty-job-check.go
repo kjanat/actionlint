@@ -1,6 +1,8 @@
-package suspicious
+package correctness
 
 import (
+	"fmt"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -13,5 +15,5 @@ func EmptyJob(job declaration.JobView) []reporting.Finding {
 	for range job.Steps() {
 		return nil
 	}
-	return []reporting.Finding{reporting.Warning("empty-job", "", reporting.ViewPosition(job.Pos()), "job %q has no steps, so it does nothing", job.ID().Value())}
+	return []reporting.Finding{{Rule: "empty-job", Severity: "error", Start: reporting.Position(reporting.ViewPosition(job.Pos())), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID().Value())}}
 }

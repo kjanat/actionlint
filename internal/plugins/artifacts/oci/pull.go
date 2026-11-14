@@ -19,6 +19,7 @@ import (
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3/content"
@@ -105,14 +106,19 @@ func withTimeout(ctx context.Context, options artifacts.Options) (context.Contex
 	return context.WithTimeout(ctx, timeout)
 }
 
-// cached returns the stored blob digest. A missing or corrupt blob is not an
-// error: the caller fetches it again.
+// cached verifies stored bytes. Online callers fetch missing or corrupt blobs again.
 func (p *puller) cached(ctx context.Context, digest string, limit int64) ([]byte, bool, error) {
 	data, err := p.store.Read(ctx, digest, limit)
 	switch {
 	case err == nil:
 		return data, true, nil
 	case errors.Is(err, os.ErrNotExist), errors.Is(err, artifacts.ErrCorrupt):
+		if network.Settings(ctx).Offline {
+			if errors.Is(err, artifacts.ErrCorrupt) {
+				return nil, false, err
+			}
+			return nil, false, fmt.Errorf("layer sha256:%s: %w", digest, network.Missing(p.ref.String()))
+		}
 		if p.repo == nil {
 			return nil, false, err
 		}

@@ -38,19 +38,16 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 	// GitHub rejects a reusable workflow requesting more token permissions than
 	// its caller grants. https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations
 	source := "on: push\npermissions: {}\njobs:\n  allowed:\n    permissions: {contents: write}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  denied:\n    permissions: {contents: read}\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n  inherited:\n    uses: example/workflows/.github/workflows/build.yml@" + sha + "\n"
-	for _, mode := range []string{"online", "offline", "off"} {
+	for _, mode := range []string{"online", "offline"} {
 		before := len(requests)
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--action-metadata=" + mode, "-"})
+		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--" + mode, "-"})
 		var result resultreport.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatalf("%s: status=%d error=%v stderr=%s stdout=%s", mode, status, err, &log, &out)
 		}
 		wantStatus, wantFindings := 1, 2
-		if mode == "off" {
-			wantStatus, wantFindings = 0, 0
-		}
 		if status != wantStatus || len(result.Diagnostics) != wantFindings {
 			t.Fatalf("%s: status=%d findings=%+v stderr=%s", mode, status, result.Diagnostics, &log)
 		}

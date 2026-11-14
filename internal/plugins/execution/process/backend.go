@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -237,6 +239,13 @@ func (b *Backend) ValidateTemplates(ctx context.Context) (bool, error) {
 // available probes the engine version once. A failed probe is an error for
 // a required provider and a skipped check, after one warning, otherwise.
 func (b *Backend) available(ctx context.Context) (bool, error) {
+	settings := network.Settings(ctx)
+	if settings.WarmCache {
+		if b.options.Skipped != nil {
+			b.options.Skipped()
+		}
+		return false, nil
+	}
 	if b.version == nil {
 		return true, nil
 	}

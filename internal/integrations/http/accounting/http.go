@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 type (
@@ -47,6 +49,9 @@ func validRequest(request *http.Request) error {
 // before a security transport rewrites the connection address to a pinned IP.
 func TrackHTTPAttempt(request *http.Request, send func(*http.Request) (*http.Response, error)) (*http.Response, error) {
 	if err := validRequest(request); err != nil {
+		return nil, err
+	}
+	if err := network.RequireOnline(request.Context()); err != nil {
 		return nil, err
 	}
 	session := RequestTrackerFromContext(request.Context())

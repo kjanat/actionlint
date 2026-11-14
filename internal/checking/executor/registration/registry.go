@@ -154,7 +154,7 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 		"uncancellable-condition": declarationImplementation(suspicious.UncancellableConditionCheck()),
 		"numeric-values":          declarationImplementation(correctness.NumericValuesCheck()),
 		"empty-triggers":          declarationImplementation(suspicious.EmptyTriggersCheck()),
-		"empty-job":               declarationImplementation(suspicious.EmptyJobCheck()),
+		"empty-job":               declarationImplementation(correctness.EmptyJobCheck()),
 		"empty-run":               declarationImplementation(suspicious.EmptyRunCheck()),
 		"unpinned-reference": {Build: func(c Inputs) workflowvisit.Rule {
 			options := new(lintconfig.CommitHashOptions)

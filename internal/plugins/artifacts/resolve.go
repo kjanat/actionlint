@@ -21,6 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.
@@ -315,6 +316,9 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
+	}
+	if network.Settings(ctx).Offline {
+		return nil, network.Missing(u.String())
 	}
 	transport, err := acquisitionhttp.Transport(u, options.Network, options.Connections)
 	if err != nil {

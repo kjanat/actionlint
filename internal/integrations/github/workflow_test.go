@@ -66,7 +66,7 @@ func TestWorkflowMetadataUsesWorkflowResolverAndImmutableCache(t *testing.T) {
 		}
 	}
 	named, err := offline.LookupWorkflow(t.Context(), "example/workflows/.github/workflows/build.yaml@v1")
-	if err != nil || named.Available() || named.Reason() != availability.OfflineReason {
+	if err != nil || !named.Available() || named.Commit() != sha || named.Content() != source {
 		t.Fatalf("offline named ref=%+v %v", named, err)
 	}
 }

@@ -10,7 +10,10 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"strings"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -105,13 +108,13 @@ func (r *Reader) readFile(name string) ([]byte, error) {
 // retained request or a custom reader's writable error. Filesystem and context
 // classifications remain available through errors.Is and errors.As.
 type readError struct {
-	message                                                          string
-	canceled, deadline, notExist, permission, invalid, exist, closed bool
+	message                                                                   string
+	canceled, deadline, notExist, permission, invalid, exist, closed, offline bool
 }
 
 func (e readError) Error() string { return e.message }
 func (e readError) Is(target error) bool {
-	return e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded ||
+	return e.offline && target == network.ErrOffline || e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded ||
 		e.notExist && target == fs.ErrNotExist || e.permission && target == fs.ErrPermission ||
 		e.invalid && target == fs.ErrInvalid || e.exist && target == fs.ErrExist || e.closed && target == fs.ErrClosed
 }
@@ -125,13 +128,16 @@ func detachedReadError(err error) error {
 
 func readErrorOf(err error) readError {
 	return readError{
-		message: err.Error(), canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded),
+		message: err.Error(), offline: network.OnlyOffline(err), canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded),
 		notExist: errors.Is(err, fs.ErrNotExist), permission: errors.Is(err, fs.ErrPermission), invalid: errors.Is(err, fs.ErrInvalid),
 		exist: errors.Is(err, fs.ErrExist), closed: errors.Is(err, fs.ErrClosed),
 	}
 }
 
 func (r *Reader) readHTTPS(ctx context.Context, name string) ([]byte, error) {
+	if network.Settings(ctx).Offline {
+		return readCachedConfig(ctx, name)
+	}
 	ctx = accounting.WithRequestOptions(ctx, accounting.RequestOptions{Purpose: "remote-config", Priority: accounting.Required})
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, name, nil)
 	if err != nil {
@@ -151,6 +157,13 @@ func (r *Reader) readHTTPS(ctx context.Context, name string) ([]byte, error) {
 	}
 	if len(content) > MaxBytes {
 		return nil, fmt.Errorf("HTTPS config %q exceeds %d bytes", name, MaxBytes)
+	}
+	if err := cacheConfig(ctx, name, content); err != nil {
+		if network.Settings(ctx).WarmCache {
+			return nil, fmt.Errorf("cache remote configuration: %w", err)
+		}
+		displayURL, _, _ := strings.Cut(name, "?")
+		network.Warn(ctx, fmt.Sprintf("Could not cache configuration %s: %v", displayURL, err))
 	}
 	return content, nil
 }

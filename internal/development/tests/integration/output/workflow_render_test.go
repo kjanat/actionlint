@@ -2,7 +2,6 @@ package output_test
 
 import (
 	"encoding/json"
-	"flag"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,14 +11,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/google/go-cmp/cmp"
 )
-
-var updateSARIF = flag.Bool("update-sarif", false, "Update the expected SARIF output")
 
 func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 	t.Parallel()
@@ -46,6 +44,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
 		t.Fatal(err)
 	}
+	sarifcheck.RequireValid(t, []byte(output.String()))
 	var doc struct {
 		Runs []struct {
 			Tool struct {
@@ -193,36 +192,79 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 	if err := renderer.Render(&b, render.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
-	out := b.String()
-	// Fix path separators on Windows
-	if runtime.GOOS == "windows" {
-		slash := filepath.ToSlash(file)
-		escaped := strings.ReplaceAll(file, `\`, `\\`)
-		out = strings.ReplaceAll(out, escaped, slash)
-	}
-
-	var have any
-	if err := json.Unmarshal([]byte(out), &have); err != nil {
-		t.Fatalf("output is not JSON: %v: %q", err, out)
-	}
-
-	fixture := filepath.Join(fixtureRoot, dir, "test.sarif")
-	if *updateSARIF {
-		if err := os.WriteFile(fixture, []byte(out), 0o644); err != nil {
-			t.Fatal(err)
+	sarifcheck.RequireValid(t, []byte(b.String()))
+	var document struct {
+		Runs []struct {
+			ColumnKind string
+			Tool       struct {
+				Driver struct {
+					Name  string
+					Rules []struct{ ID string }
+				}
+			}
+			Results []struct {
+				RuleID, Level string
+				Message       struct{ Text string }
+				Properties    struct{ DiagnosticCode string }
+				Locations     []struct {
+					PhysicalLocation struct {
+						ArtifactLocation struct{ URI, URIBaseID string }
+						Region           struct {
+							StartLine, StartColumn, EndLine, EndColumn int
+							Snippet                                    struct{ Text string }
+						}
+					}
+				}
+			}
 		}
 	}
-	bytes, err := os.ReadFile(fixture)
-	if err != nil {
-		panic(err)
+	if err := json.Unmarshal([]byte(b.String()), &document); err != nil {
+		t.Fatal(err)
 	}
-	var want any
-	if err := json.Unmarshal(bytes, &want); err != nil {
-		panic(err)
+	if len(document.Runs) != 1 {
+		t.Fatalf("got %d SARIF runs, want one", len(document.Runs))
 	}
-
-	if diff := cmp.Diff(want, have); diff != "" {
-		t.Logf("have: %s", have)
-		t.Fatal(diff)
+	run := document.Runs[0]
+	if run.ColumnKind != "unicodeCodePoints" || run.Tool.Driver.Name != "GitHub Actions lint" {
+		t.Fatalf("columnKind=%q tool=%q", run.ColumnKind, run.Tool.Driver.Name)
+	}
+	want := []struct {
+		rule, code, message     string
+		line, column, endColumn int
+	}{
+		{"syntax-check", "", `unexpected key "branch"`, 3, 5, 12},
+		{"expression-reference", "unknown-property", `property "msg" is not defined in matrix`, 9, 23, 33},
+		{"syntax-check", "", `unexpected key "with"`, 10, 9, 14},
+	}
+	if len(run.Results) != len(want) {
+		t.Fatalf("got %d findings, want %d: %+v", len(run.Results), len(want), run.Results)
+	}
+	lines := strings.Split(string(content), "\n")
+	for i, expected := range want {
+		got := run.Results[i]
+		if got.RuleID != expected.rule || got.Properties.DiagnosticCode != expected.code || got.Level != "error" || !strings.Contains(got.Message.Text, expected.message) {
+			t.Errorf("finding %d: rule=%q code=%q level=%q message=%q, want %q/%q error containing %q", i, got.RuleID, got.Properties.DiagnosticCode, got.Level, got.Message.Text, expected.rule, expected.code, expected.message)
+		}
+		if len(got.Locations) != 1 {
+			t.Fatalf("finding %d has %d locations, want one", i, len(got.Locations))
+		}
+		location := got.Locations[0].PhysicalLocation
+		if location.ArtifactLocation.URI != "testdata/format/test.yaml" || location.ArtifactLocation.URIBaseID != "%SRCROOT%" {
+			t.Errorf("finding %d points to %+v", i, location.ArtifactLocation)
+		}
+		region := location.Region
+		if region.StartLine != expected.line || region.EndLine != expected.line || region.StartColumn != expected.column || region.EndColumn != expected.endColumn || region.Snippet.Text != strings.TrimSuffix(lines[expected.line-1], "\r") {
+			t.Errorf("finding %d region=%+v, want line %d columns %d-%d and its source text", i, region, expected.line, expected.column, expected.endColumn)
+		}
+		declared := false
+		for _, rule := range run.Tool.Driver.Rules {
+			if rule.ID == got.RuleID {
+				declared = true
+				break
+			}
+		}
+		if !declared {
+			t.Errorf("finding %d references undeclared rule %q", i, got.RuleID)
+		}
 	}
 }

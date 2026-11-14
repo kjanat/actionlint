@@ -34,7 +34,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + sha + ", with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
 		args := []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "-"}
 		if mode != "default" {
-			args = append(args, "--action-metadata="+mode)
+			args = append(args, "--"+mode)
 		}
 		code := command.MainContext(t.Context(), args)
 		if code != 1 {

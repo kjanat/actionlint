@@ -1,12 +1,14 @@
 # Remote action metadata
 
 actionlint can acquire remote action manifests to check their declared inputs,
-outputs, runtime and composite steps. It downloads metadata by default. Use `--action-metadata=offline` to use cached
-metadata without network requests, or `--action-metadata=off` to skip acquisition.
+outputs, runtime and composite steps. Online checking is the default. Use
+`--offline` to use cached metadata and block all network requests, including
+plugin and configuration downloads.
+Use `--online` to select online checking explicitly. These flags cannot be combined.
 
 ```console
-actionlint check --action-metadata=online .github/workflows/build.yml
-actionlint check --action-metadata=offline .github/workflows/build.yml
+actionlint check --online .github/workflows/build.yml
+actionlint check --offline .github/workflows/build.yml
 ```
 
 Composite steps are checked in the calling job's context. For example, a remote
@@ -28,10 +30,9 @@ remote composite resolves against the caller's checkout, as it does on the runne
 Remote action files referenced by scripts are not downloaded with the manifest.
 
 - `off` acquires no metadata. Coverage records `lookup-disabled`.
-- `offline` reads previously acquired manifests for exact commits. It makes no
-  HTTP requests and runs no resolver process. A missing full-SHA cache entry
-  records `cache-miss`; named references record `offline` because resolving them
-  requires a new observation.
+- `offline` reads cached manifests. Tags and branches use their last cached
+  resolution. Missing full-SHA entries record `cache-miss`. Named references
+  without a saved resolution record `offline`.
 - `online` uses the bundled Commitish WebAssembly plugin to resolve branches
   and tags, then downloads metadata at the selected commit. Annotated tags are
   followed to their commit. Actionlint performs the requests and records them in
@@ -160,7 +161,7 @@ To disable third-party metadata mirrors, set `services = []`. These settings
 apply to remote actions and reusable workflows. They support `extends` with the
 same project overrides as other configuration settings.
 
-## Cache and offline evidence
+## Cache and offline checks
 
 The cache lives under the operating system user cache directory at
 `actionlint/action-metadata/v2`. Analysis does not create project lockfiles or
@@ -168,15 +169,17 @@ configuration. Each cache record contains the repository host and name; the
 full commit hash; the action directory; the manifest filename and bytes; its
 SHA-256; and the observation time. A record also contains GitHub's numeric
 repository ID when the REST API fallback learned it. Manifests acquired from the
-raw file host or jsDelivr have no repository ID. The cache does not save mappings from
-mutable references, such as tags or branches, to commits. A reference that is
+raw file host or jsDelivr have no repository ID unless the resolver supplied one.
+The cache saves the selected commit and Git reference for each tag or branch.
+Offline checks reuse that selection. Online checks resolve the name again.
+A reference that is
 the full ID of an annotated tag object is immutable, so the cache saves a second
 record under that ID with the tag's commit. Later lookups of the same tag
 object ID, online or offline, read that record and send no requests.
 
-To use a cached manifest offline, specify its full SHA-1 commit hash. An online
-lookup of a named reference can cache the resolved commit's manifest for a later
-request using that hash. A cache entry can be reused only for the same host,
+Run `actionlint cache warm .github/workflows` before disconnecting. This also
+caches remote configuration and plugins needed by those workflows.
+A cached manifest can be reused only for the same host,
 repository name, commit and action directory. When both the record and the
 lookup know the repository ID, the IDs must match. If they differ, or the record
 is corrupt or fails its digest check, the metadata is unavailable. Without an ID,
@@ -222,7 +225,7 @@ must supply their network counts for inclusion in `--network-stats`.
 
 ## Reusable workflows
 
-The same `--action-metadata` setting controls downloads for remote reusable
+The same `--online` and `--offline` flags control downloads for remote reusable
 workflows. actionlint reads the referenced workflow file at its resolved commit,
 in the same acquisition order as action manifests.
 The `workflow-call` rule checks required and unknown inputs and secrets, then
@@ -234,8 +237,8 @@ workflows triggered only by `workflow_call`. Its `require-at` option can instead
 require declarations at the workflow level or on every job, including reusable calls.
 
 The bundled resolver handles named workflow references as well as commit IDs.
-Offline mode accepts full SHA-1 references already cached online. Off mode
-downloads nothing.
+Offline mode uses cached full SHA-1 references and saved resolutions of tags and
+branches. Off mode downloads nothing.
 
 These checks inspect the directly referenced workflow. They do not follow remote
 workflow call chains. Unavailable metadata supplies no input, output or permission

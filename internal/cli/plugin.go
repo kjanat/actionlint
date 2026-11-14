@@ -29,7 +29,10 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	}
 	a.commonFlags(parent, parent.PersistentFlags())
 	a.configFlags(parent.PersistentFlags())
-	parent.AddCommand(&cobra.Command{Use: "inspect <path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)})
+	inspect := &cobra.Command{Use: "inspect <plugin-or-path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)}
+	inspect.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+plugininstall.DefaultURL+")")
+	annotateFlag(inspect.Flags(), "registry", "Registry")
+	parent.AddCommand(inspect)
 	parent.AddCommand(a.pluginAuthoringCommands()...)
 	for _, item := range []struct {
 		use, description string

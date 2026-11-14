@@ -88,6 +88,37 @@ func TestInlineSuppressionSpellingIsolation(t *testing.T) {
 	}
 }
 
+func TestIgnoreProse(t *testing.T) {
+	t.Parallel()
+	for _, text := range []string{"ignore", "ignore docs as they are built elsewhere.", "ignore unknown files"} {
+		for _, next := range []string{"next: value", "next: ["} {
+			source := "paths-ignore: # " + text + "\n  - '**/*.md'\n" + next + "\n"
+			directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
+			if len(directives) != 0 || len(findings) != 0 {
+				t.Fatalf("prose %q produced directives=%v findings=%v", text, directives, findings)
+			}
+		}
+	}
+}
+
+func TestUnknownSuppressionRuleMessage(t *testing.T) {
+	t.Parallel()
+	_, findings := Parse([]byte("run: echo ok # actionlint:ignore unknown\n"), []string{"expression", "shellcheck"}, rule.Names{})
+	const want = "unknown inline suppression rule \"unknown\". Run actionlint rules to list available rules."
+	if len(findings) != 1 || findings[0].Message != want {
+		t.Fatalf("findings=%v, want one finding with message %q", findings, want)
+	}
+}
+
+func TestMisspelledSuppressionRuleMessage(t *testing.T) {
+	t.Parallel()
+	_, findings := Parse([]byte("run: echo ok # actionlint:ignore shellchekc\n"), []string{"expression", "shellcheck"}, rule.Names{})
+	const want = "unknown inline suppression rule \"shellchekc\". Did you mean \"shellcheck\"? Run actionlint rules to list available rules."
+	if len(findings) != 1 || findings[0].Message != want {
+		t.Fatalf("findings=%v, want one finding with message %q", findings, want)
+	}
+}
+
 func TestPlainIgnoreNextLineRecovery(t *testing.T) {
 	t.Parallel()
 	for _, next := range []string{"next: value", "next: ["} {
@@ -115,8 +146,6 @@ func TestInlineSuppressionMalformedSpellings(t *testing.T) {
 		"actionlint-ignore",
 		"actionlint-ignore unknown",
 		"actionlint-ignore-next-line expression",
-		"ignore",
-		"ignore unknown",
 		"ignore expression,,shellcheck",
 		"ignore-next-line expression",
 		"ignore[]",

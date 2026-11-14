@@ -60,26 +60,6 @@ func workingDirectoryPath(t *testing.T, path string) string {
 	return path
 }
 
-func physicalWorkingDirectoryPath(t *testing.T, path string) string {
-	t.Helper()
-	directory, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	physicalDirectory, err := filepath.EvalSymlinks(directory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	physicalPath, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if relative, err := filepath.Rel(physicalDirectory, physicalPath); err == nil {
-		return relative
-	}
-	return filepath.ToSlash(physicalPath)
-}
-
 const commandGoodWorkflow = `on: push
 jobs:
   test:

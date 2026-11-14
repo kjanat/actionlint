@@ -110,6 +110,10 @@ Verified true unless noted. Format: **item → decision → change (stage)**.
 
 ## Part B: Workflow acceptance and diagnostics
 
+The empty-job proposal below was superseded by [#388](https://github.com/kjanat/actionlint/issues/388).
+GitHub rejects a job without steps or a reusable workflow call, although Runny's
+workflow parser accepts it. `empty-job` now reports a correctness error.
+
 ### B.1 Model
 
 Two concepts, two mechanisms, one catalog vocabulary:

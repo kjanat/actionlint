@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
@@ -15,6 +16,19 @@ import (
 // first rename. Renames are atomic per file, not across a multi-file transaction.
 // The returned paths identify completed writes even when a later write fails.
 func ApplyEdits(ctx context.Context, p edits.Plan, reader *files.Reader) (written []string, err error) {
+	p.Changes = slices.Clone(p.Changes)
+	seen := map[string]bool{}
+	for i := range p.Changes {
+		path, err := filepath.EvalSymlinks(p.Changes[i].Path)
+		if err != nil {
+			return nil, err
+		}
+		if seen[path] {
+			return nil, fmt.Errorf("multiple fix plans target %s", path)
+		}
+		seen[path] = true
+		p.Changes[i].Path = path
+	}
 	temps := make([]string, len(p.Changes))
 	defer func() {
 		for _, path := range temps {
