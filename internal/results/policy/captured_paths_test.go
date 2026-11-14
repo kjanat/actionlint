@@ -38,8 +38,8 @@ func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 			if len(got) != 0 {
 				t.Fatalf("ignore did not use the captured project path: %+v", got)
 			}
-		} else if len(got) != 1 || got[0].Path != "ci.yml" {
-			t.Fatalf("display did not use the captured working-directory path: %+v", got)
+		} else if len(got) != 1 || got[0].Path != filepath.Join("..", "source-alias.yml") {
+			t.Fatalf("display did not retain the supplied source path: %+v", got)
 		}
 	}
 }

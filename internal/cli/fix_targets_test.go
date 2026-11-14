@@ -48,6 +48,9 @@ func TestFixInputThroughAnotherSpelling(t *testing.T) {
 			if len(plan.Changes) != 1 || plan.Changes[0].After != after {
 				t.Fatalf("plan=%+v", plan)
 			}
+			if filepath.Clean(plan.Changes[0].Path) != filepath.Clean(path) {
+				t.Fatalf("preview path = %q, want supplied path %q", plan.Changes[0].Path, path)
+			}
 			out.Reset()
 			log.Reset()
 			if status := (&Command{Stdout: &out, Stderr: &log}).MainContext(t.Context(), append(args, "--apply", "--quiet")); status != 0 {
