@@ -94,7 +94,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{pin}}
+	lock := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
 	artifacts := pluginartifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
 	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(registry)}
 	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {
@@ -138,6 +138,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 	}
 	otherTag := pin
 	otherTag.Version = "v2.0.0"
+	otherTag.Metadata = strings.Replace(pin.Metadata, `"plugin_version":"1.0.0"`, `"plugin_version":"2.0.0"`, 1)
 	otherTag.URL = strings.Replace(pin.URL, "/v1.0.0/", "/v2.0.0/", 1)
 	lock.Plugins = []plugininstall.Pin{otherTag}
 	if err := lock.CheckStatuses(t.Context(), options); err == nil || !strings.Contains(err.Error(), "revoked") {

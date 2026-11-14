@@ -12,15 +12,9 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 type pluginInvocation plugincmd.RegistryOptions
-
-func (a *commandApp) pluginLockFlag(f *pflag.FlagSet) {
-	f.StringVar(&a.inv.Check.PluginLock, "plugin-lock", "", "Read a legacy plugin lock `FILE`")
-	annotateFlag(f, "plugin-lock", "Rule selection")
-}
 
 func (a *commandApp) pluginCommand() *cobra.Command {
 	parent := &cobra.Command{
@@ -52,9 +46,6 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 			c.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+plugininstall.DefaultURL+")")
 			annotateFlag(c.Flags(), "registry", "Registry")
 		}
-		if item.op != operationPluginSearch && item.op != operationPluginVersions {
-			a.pluginLockFlag(c.Flags())
-		}
 		if item.op == operationPluginInstall || item.op == operationPluginUpdate {
 			c.Flags().StringVar(&a.inv.Plugin.Version, "version", "", "Exact release tag or latest stable (install default: latest)")
 			annotateFlag(c.Flags(), "version", "Registry")
@@ -68,8 +59,10 @@ func (c checkInvocation) pluginSelection(acquisition plugininstall.Acquisition) 
 	// A tool disabled by --no-tool is not run by plugins either.
 	return plugininstall.WithTools(plugininstall.Selection{
 		RuleSet: checking.ConfigurationRules(),
-		Paths:   c.Plugins, LockFile: c.PluginLock, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
-		Acquisition: acquisition,
+		Paths:   c.Plugins, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
+		Acquisition:  acquisition,
+		DefaultTools: c.defaultPlugins(nil).Tools,
+		DisableTools: c.NoTools,
 	}, c.DisabledTools, c.NamedTools)
 }
 

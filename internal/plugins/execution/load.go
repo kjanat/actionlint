@@ -8,6 +8,7 @@ import (
 	"io"
 	"path/filepath"
 	"slices"
+	"time"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -15,6 +16,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	networkpolicy "actionlint.kjanat.dev/v2/internal/integrations/network"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
@@ -31,16 +33,17 @@ type Loaded struct {
 	Components    []*component.Plugin
 	ScriptEngines []ScriptEngineRegistration
 	Modules       []*corewasm.Engine
+	deferred      []*deferredScriptEngine
 	// Providers contains process tool manifests read from local paths or OCI sources.
 	Providers []SelectedProvider
 	// NamedTools lists tool IDs selected by the invocation. configure checks each ID.
 	NamedTools []string
 	// SkippedTools lists disabled tool IDs that matched plugins that were not loaded.
 	SkippedTools []string
-	// ToolIDs lists names that --no-tool can disable: lock pin names and aliases,
-	// and engine and rule names from loaded plugin metadata.
-	ToolIDs     []string
-	Acquisition plugininstall.Acquisition
+	// ToolIDs lists selected release names and aliases, plus engine and rule names from plugin metadata.
+	ToolIDs      []string
+	Acquisition  plugininstall.Acquisition
+	DisableTools bool
 }
 
 // SelectedProvider records the files and execution authority of one selected process plugin.
@@ -55,7 +58,7 @@ type ScriptEngineRegistration struct {
 }
 
 func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
-	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition}
+	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition, DisableTools: sources.DisableTools}
 	if sources.Releases != nil {
 		for _, pin := range sources.Releases.Plugins {
 			loaded.ToolIDs = append(loaded.ToolIDs, pin.Name)
@@ -65,8 +68,29 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 		}
 	}
 	for _, path := range sources.Paths {
+		if pin, lazy := sources.LazySources[path]; lazy && !sources.DisableTools {
+			ids, err := MetadataTools([]byte(pin.Metadata))
+			if err != nil {
+				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
+			}
+			loaded.ToolIDs = append(loaded.ToolIDs, ids...)
+			if index := slices.IndexFunc(ids, func(id string) bool { return slices.Contains(sources.DisabledTools, id) }); index >= 0 {
+				loaded.SkippedTools = append(loaded.SkippedTools, ids[index])
+				continue
+			}
+			engine, err := newDeferredScriptEngine(pin, sources.Acquisition, reserved)
+			if err != nil {
+				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
+			}
+			loaded.deferred = append(loaded.deferred, engine)
+			loaded.ScriptEngines = append(loaded.ScriptEngines, ScriptEngineRegistration{engine, engine.ScriptDescriptor()})
+			continue
+		}
 		network := sources.NetworkGrants[path]
 		if manifests.IsLocalManifest(path) {
+			if sources.DisableTools {
+				continue
+			}
 			// A local manifest names a command found on PATH; nothing is fetched.
 			manifest, programs, err := manifests.ReadLocal(files.New(ctx, nil, nil), path)
 			if err != nil {
@@ -85,12 +109,24 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 		artifact := sources.Artifacts[path]
 		if artifact == nil {
 			var err error
-			artifact, err = pluginartifact.Resolve(ctx, path, sources.ArtifactOptions(path))
+			resolveCtx := ctx
+			if sources.DisableTools {
+				options := networkpolicy.Settings(ctx)
+				options.Offline, options.WarmCache = true, false
+				resolveCtx, _ = networkpolicy.WithSession(ctx, options)
+			}
+			artifact, err = pluginartifact.Resolve(resolveCtx, path, sources.ArtifactOptions(path))
 			if err != nil {
+				if sources.DisableTools && networkpolicy.OnlyOffline(err) {
+					continue
+				}
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
 		}
 		path = artifact.Info.Source
+		if sources.DisableTools && (artifact.Info.Kind == pluginartifact.Core || artifact.Info.Kind == pluginartifact.ProviderManifest) {
+			continue
+		}
 		if artifact.Info.Kind == pluginartifact.ProviderManifest {
 			manifest, err := plugininstall.ReadProviderArtifact(artifact)
 			if err != nil {
@@ -107,7 +143,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 		}
 		// Metadata is read only when --tool or --no-tool named an id, so
 		// unusual metadata cannot fail a run that names none.
-		if len(sources.DisabledTools) != 0 || len(sources.NamedTools) != 0 {
+		if !sources.DisableTools && (len(sources.DisabledTools) != 0 || len(sources.NamedTools) != 0) {
 			ids, err := MetadataTools(artifact.Info.Metadata)
 			if err != nil {
 				return nil, &LoadError{errors.Join(fmt.Errorf("plugin %s: %w", path, err), loaded.Close(context.WithoutCancel(ctx)))}
@@ -143,7 +179,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 			_, _ = fmt.Fprintf(log, "[Linter] Loaded component from %s (%s)\n", path, plugin.Limits())
 		}
 		loaded.Components = append(loaded.Components, plugin)
-		if plugin.HasScriptEngine() {
+		if plugin.HasScriptEngine() && !sources.DisableTools {
 			loaded.ScriptEngines = append(loaded.ScriptEngines, ScriptEngineRegistration{plugin, plugin.ScriptDescriptor()})
 		}
 	}
@@ -152,6 +188,9 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 
 func (l *Loaded) Registrations() []checkinputs.Registration {
 	registrations := make([]checkinputs.Registration, 0, len(l.Components))
+	if l.DisableTools {
+		return registrations
+	}
 	for _, plugin := range l.Components {
 		if !plugin.HasAnalyzer() {
 			continue
@@ -171,6 +210,17 @@ func (l *Loaded) RunnerProviders() []runner.Registration {
 	return registrations
 }
 
+// BeginAnalysis releases expired deferred-engine failures before a new analysis.
+func (l *Loaded) BeginAnalysis(ctx context.Context) error {
+	now := time.Now()
+	for _, engine := range l.deferred {
+		if err := engine.beginAnalysis(ctx, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (l *Loaded) Close(ctx context.Context) error {
 	ctx = context.WithoutCancel(ctx)
 	var err error
@@ -183,6 +233,10 @@ func (l *Loaded) Close(ctx context.Context) error {
 	for _, engine := range l.Modules {
 		err = errors.Join(err, engine.Close(ctx))
 	}
+	for _, engine := range l.deferred {
+		err = errors.Join(err, engine.Close(ctx))
+	}
+	l.deferred = nil
 	l.Modules = nil
 	l.ScriptEngines = nil
 	l.Components = nil

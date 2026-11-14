@@ -14,12 +14,10 @@ value, including `[]` or `null`, prevents default plugin insertion. Native backe
 are selected for explicit process configuration and ShellCheck source or rc-file settings.
 
 When you apply the migration, actionlint resolves and verifies plugin dependencies
-before saving exact canonical registry versions in the configuration. An existing project lock is retired only
-after its recorded versions and digests agree with registry evidence and config is saved.
-A failed resolution or download leaves config and the old lock unchanged. New locks are not created.
+before saving exact canonical registry versions in the configuration.
+A failed resolution or download leaves configuration unchanged.
 Preview and `--check` do not download artifacts. Already canonical configs are
-not automatically enrolled in default plugins. A legacy lock's `latest` selector
-becomes its recorded exact version; migration never upgrades it implicitly.
+not automatically enrolled in default plugins.
 
 The parser accepts old documents through the same conversion, including
 inherited files and inline configuration. Parsing alone never writes files.

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -36,7 +35,7 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	configPath := filepath.Join(".github", "actionlint.yaml")
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", fixtureregistry.FixtureRegistryURL)
 	installed := pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin", "--registry", mirror, "--json")
-	var selected plugininstall.Lock
+	var selected plugininstall.ResolvedPlugins
 	if err := json.Unmarshal([]byte(installed), &selected); err != nil || len(selected.Plugins) != 1 {
 		t.Fatalf("invalid installed lock selection: %s: %v", installed, err)
 	}
@@ -52,28 +51,6 @@ func TestRegistryInstallExplicitRegistryOverride(t *testing.T) {
 	pluginCommandTest(t, acquisition, 0, "plugin", "install")
 	if len(r.Requests()) != requests {
 		t.Fatal("repeated installation contacted network")
-	}
-	r.SetOffline(false)
-	lockPath := filepath.Join(".github", plugininstall.LockName)
-	legacyLock := bytes.ReplaceAll([]byte(installed), []byte(`"owner_id":"5"`), []byte(`"owner_id":"6"`))
-	if bytes.Equal(legacyLock, []byte(installed)) {
-		t.Fatal("installed selection has no publisher identity to vary")
-	}
-	if err := os.WriteFile(lockPath, legacyLock, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	configBefore, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pluginCommandTest(t, acquisition, 3, "plugin", "install", "publisher/plugin", "--registry", fixtureregistry.FixtureRegistryURL, "--plugin-lock", lockPath)
-	lockAfter, err := os.ReadFile(lockPath)
-	if err != nil || !bytes.Equal(legacyLock, lockAfter) {
-		t.Fatalf("rejected publisher changed legacy lock: %v", err)
-	}
-	configAfter, err := os.ReadFile(configPath)
-	if err != nil || !bytes.Equal(configBefore, configAfter) {
-		t.Fatalf("rejected publisher changed declaration: %v", err)
 	}
 }
 

@@ -10,7 +10,96 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"golang.org/x/sync/errgroup"
 )
+
+func TestConcurrentArtifactPublicationAndReads(t *testing.T) {
+	t.Parallel()
+	for _, cold := range []bool{false, true} {
+		t.Run(fmt.Sprintf("cold=%t", cold), func(t *testing.T) {
+			t.Parallel()
+			store := Store{Dir: t.TempDir()}
+			data := bytes.Repeat([]byte("verified artifact\n"), 256)
+			digest := digestOf(data)
+			if !cold {
+				if err := store.Publish(t.Context(), digest, data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			group, ctx := errgroup.WithContext(t.Context())
+			start := make(chan struct{})
+			for worker := range 8 {
+				group.Go(func() error {
+					<-start
+					for range 100 {
+						if worker%2 == 0 {
+							if err := cacheFile(ctx, filepath.Join(store.Dir, digest), data); err != nil {
+								return err
+							}
+						} else {
+							actual, err := store.Read(ctx, digest, int64(len(data)))
+							if cold && errors.Is(err, os.ErrNotExist) {
+								continue
+							}
+							if err != nil {
+								return err
+							}
+							if !bytes.Equal(actual, data) {
+								return errors.New("concurrent artifact read returned different bytes")
+							}
+						}
+					}
+					return nil
+				})
+			}
+			close(start)
+			if err := group.Wait(); err != nil {
+				t.Fatal(err)
+			}
+			actual, err := store.Read(t.Context(), digest, int64(len(data)))
+			if err != nil || !bytes.Equal(actual, data) {
+				t.Fatalf("published artifact=%q error=%v", actual, err)
+			}
+		})
+	}
+}
+
+func TestPublishRepairsCorruptArtifacts(t *testing.T) {
+	t.Parallel()
+	for _, corrupt := range []string{"bad", "invalid", "this corrupt file exceeds the expected artifact size"} {
+		t.Run(corrupt, func(t *testing.T) {
+			t.Parallel()
+			store := Store{Dir: t.TempDir()}
+			data := []byte("correct")
+			digest := digestOf(data)
+			if err := os.WriteFile(filepath.Join(store.Dir, digest), []byte(corrupt), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Publish(t.Context(), digest, data); err != nil {
+				t.Fatal(err)
+			}
+			actual, err := store.Read(t.Context(), digest, int64(len(data)))
+			if err != nil || !bytes.Equal(actual, data) {
+				t.Fatalf("repaired artifact=%q error=%v", actual, err)
+			}
+		})
+	}
+}
+
+func TestPublishArtifactInLongCachePath(t *testing.T) {
+	t.Parallel()
+	store := Store{Dir: filepath.Join(t.TempDir(), strings.Repeat("a", 150), strings.Repeat("b", 150))}
+	data := []byte("long cache path")
+	digest := digestOf(data)
+	if err := store.Publish(t.Context(), digest, data); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := store.Read(t.Context(), digest, int64(len(data)))
+	if err != nil || !bytes.Equal(actual, data) {
+		t.Fatalf("long cache path artifact=%q error=%v", actual, err)
+	}
+}
 
 func TestOCIReferenceRequiresDigest(t *testing.T) {
 	t.Parallel()

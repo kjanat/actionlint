@@ -45,7 +45,7 @@ func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
 	}
 	for _, name := range []string{"", "<stdin>", "missing.yml", filepath.Join(root, "missing.yml")} {
 		selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Stdin, Name: name})
-		if err != nil || len(selected.Paths) != 0 || selected.LockFile != "" {
+		if err != nil || len(selected.Paths) != 0 {
 			t.Fatalf("stdin %q without a project selected plugins: %+v, %v", name, selected, err)
 		}
 	}
@@ -71,20 +71,16 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(other, ".github", plugininstall.LockName)
-	f, err := plugininstall.OpenLock(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Save(t.Context()); err != nil {
+	path := filepath.Join(other, ".github")
+	if err := os.Mkdir(path, 0700); err != nil {
 		t.Fatal(err)
 	}
 	foreign := filepath.Join(other, "workflow.yml")
 	if err := empty.ValidateScope(t.Context(), checking.ConfigurationRules(), []string{foreign}); err != nil {
-		t.Fatalf("empty foreign lock restricted scope: %v", err)
+		t.Fatalf("plugin-free repository restricted scope: %v", err)
 	}
 	selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), other, input)
-	if err != nil || selected.LockFile != "" {
+	if err != nil {
 		t.Fatalf("selection: %+v %v", selected, err)
 	}
 	if err := selected.ValidateScope(t.Context(), checking.ConfigurationRules(), []string{filepath.Join(root, "workflow.yml")}); err != nil {
@@ -94,27 +90,24 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, mixed); err != nil {
 		t.Fatalf("plugin-free repositories rejected: %v", err)
 	}
-	for _, s := range []plugininstall.Selection{{Disabled: true}, {Paths: []string{"explicit.wasm"}}, {ConfigFile: filepath.Join(root, "config.yaml")}} {
+	configPath := filepath.Join(root, "config.yaml")
+	if err := os.WriteFile(configPath, []byte("{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []plugininstall.Selection{{Disabled: true}, {Paths: []string{"explicit.wasm"}}, {ConfigFile: configPath}} {
 		got, err := s.Resolve(t.Context(), other, mixed)
-		if err != nil || got.LockFile != "" {
+		if err != nil {
 			t.Fatalf("override: %+v %v", got, err)
 		}
-	}
-	got, err := (plugininstall.Selection{Disabled: true, LockFile: path, RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, mixed)
-	if err != nil || got.LockFile == "" {
-		t.Fatalf("explicit lock: %+v %v", got, err)
-	}
-	if _, err := (plugininstall.Selection{Paths: []string{"explicit.wasm"}, LockFile: path, RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input); err == nil {
-		t.Fatal("ambiguous selection accepted")
 	}
 	alias := filepath.Join(t.TempDir(), "alias")
 	if err := os.Symlink(root, alias); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), alias, input); err != nil {
-		t.Fatalf("checkout alias without lock: %v", err)
+		t.Fatalf("checkout alias: %v", err)
 	}
-	if err := os.Symlink(filepath.Dir(path), filepath.Join(root, ".github")); err != nil {
+	if err := os.Symlink(path, filepath.Join(root, ".github")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input); err == nil {
@@ -125,7 +118,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if err := os.Symlink(other, filepath.Join(third, ".github")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plugininstall.OpenSelectedLock(t.Context(), third, "", ""); err == nil {
+	if _, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, third, ""); err == nil {
 		t.Fatal("installation followed .github into another repository")
 	}
 	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), third, input); err == nil {
@@ -151,21 +144,11 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	f, err := plugininstall.OpenLock(t.Context(), filepath.Join(root, ".github", plugininstall.LockName))
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ref, err := pluginref.New(pin.Name, pin.Selector, pin.Registry)
+	ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
 	}

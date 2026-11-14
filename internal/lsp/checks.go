@@ -39,6 +39,9 @@ func (s *editorSession) analyze(ctx context.Context, documents map[string]Docume
 	if err := s.sources.ValidateScope(ctx, checking.ConfigurationRules(), slices.Collect(maps.Keys(documents))); err != nil {
 		return Analysis{}, err
 	}
+	if err := s.plugins.BeginAnalysis(ctx); err != nil {
+		return Analysis{}, err
+	}
 	return analyzeDocuments(ctx, s.options, documents)
 }
 

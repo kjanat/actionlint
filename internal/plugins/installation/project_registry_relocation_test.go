@@ -17,7 +17,7 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 		t.Run(map[int]string{11: "same publisher", 99: "changed publisher"}[repositoryID], func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "", "")
+			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -28,7 +28,7 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 			if err := project.Resolve(t.Context(), []pluginref.Reference{ref}, nil); err != nil {
 				t.Fatal(err)
 			}
-			original := project.Lock.Lock.Plugins[0]
+			original := project.Releases.Plugins[0]
 			const mirror = "https://mirror.example/"
 			registry.AddPlugin(t, fixtureregistry.PluginPublisher{
 				BaseURL: mirror, Name: original.Name, Aliases: []string{"ruff"}, RepositoryID: repositoryID, PluginID: "ruff",
@@ -42,7 +42,7 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 				if err == nil {
 					t.Fatal("registry relocation accepted a changed publisher")
 				}
-				if len(project.Lock.Lock.Plugins) != 1 || project.Lock.Lock.Plugins[0] != original {
+				if len(project.Releases.Plugins) != 1 || project.Releases.Plugins[0] != original {
 					t.Fatal("rejected relocation discarded original pin")
 				}
 				return
@@ -52,8 +52,8 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 			}
 			want := original
 			want.Registry = mirror
-			if len(project.Lock.Lock.Plugins) != 1 || project.Lock.Lock.Plugins[0] != want {
-				t.Fatalf("relocated pin: %+v", project.Lock.Lock)
+			if len(project.Releases.Plugins) != 1 || project.Releases.Plugins[0] != want {
+				t.Fatalf("relocated pin: %+v", project.Releases)
 			}
 		})
 	}

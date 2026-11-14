@@ -10,8 +10,8 @@ import (
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
-// DefaultPluginOptions preserves invocation-level native selections during migration.
-// Configured backends and explicit configuration disables take precedence.
+// DefaultPluginOptions selects registry defaults for tools without an explicit
+// native command. Configured backends and disabled tools take precedence.
 type DefaultPluginOptions struct {
 	RuleSet config.RuleSet
 	// Tools lists the bundled tool ids that run their default command in
@@ -42,8 +42,17 @@ func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]plug
 	}
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
-		tool := cfg.Tools[id]
-		if !slices.Contains(options.Tools, id) || tool.Backend != nil || tool.Enabled != nil && !*tool.Enabled || options.RuleSet.DiagnosticLevel(cfg, id) == "off" {
+		if !slices.Contains(options.Tools, id) {
+			continue
+		}
+		candidates, err := config.ConfigCandidates(id, cfg)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.ContainsFunc(candidates, func(candidate *config.Config) bool {
+			tool := candidate.Tools[id]
+			return tool.Backend == nil && (tool.Enabled == nil || *tool.Enabled) && options.RuleSet.DiagnosticLevel(candidate, id) != "off"
+		}) {
 			continue
 		}
 		ref, err := pluginref.Parse(id)

@@ -51,7 +51,7 @@ type StatusSnapshot struct {
 }
 
 type StatusOptions struct {
-	// Network comes from invocation endpoint selection, never lock contents.
+	// Network comes from invocation endpoint selection, never project configuration.
 	Network acquisitionhttp.Grant
 	// CacheDir defaults to the user's actionlint/registry cache.
 	CacheDir    string
@@ -115,11 +115,11 @@ func statusDirectory(registry string, options StatusOptions) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return physicalLockPath(absolute)
+	return physicalCachePath(absolute)
 }
 
 func readStatusSnapshot(ctx context.Context, directory string) (StatusSnapshot, error) {
-	data, err := readLockBytes(ctx, filepath.Join(directory, "statuses.json"))
+	data, err := readCacheBytes(ctx, filepath.Join(directory, "statuses.json"))
 	if err != nil || data == nil {
 		return StatusSnapshot{SchemaVersion: 1, Releases: []ReleaseStatus{}}, err
 	}
@@ -131,7 +131,7 @@ func readStatusSnapshot(ctx context.Context, directory string) (StatusSnapshot, 
 }
 
 func readRevocation(ctx context.Context, directory, digest string) (*ReleaseStatus, error) {
-	data, err := readLockBytes(ctx, filepath.Join(directory, "revoked", digest+".json"))
+	data, err := readCacheBytes(ctx, filepath.Join(directory, "revoked", digest+".json"))
 	if err != nil || data == nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func readRevocation(ctx context.Context, directory, digest string) (*ReleaseStat
 }
 
 func writeCacheFile(path string, value any, immutable bool) (err error) {
-	if err := safePath(path); err != nil {
+	if err := safeCachePath(path); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -261,8 +261,8 @@ func checkStatus(ctx context.Context, pin Pin, snapshot StatusSnapshot, options 
 }
 
 // CheckStatuses never contacts the registry. Known revocations block cached
-// bytes; withdrawal does not invalidate an existing lock.
-func (l Lock) CheckStatuses(ctx context.Context, options StatusOptions) error {
+// bytes; withdrawal does not invalidate a previously selected release.
+func (l ResolvedPlugins) CheckStatuses(ctx context.Context, options StatusOptions) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -290,7 +290,7 @@ func (l Lock) CheckStatuses(ctx context.Context, options StatusOptions) error {
 
 // RefreshStatuses updates cached policy during explicit install/update/sync
 // operations. An unavailable registry produces a warning and uses cached policy.
-func (l Lock) RefreshStatuses(ctx context.Context, options StatusOptions) error {
+func (l ResolvedPlugins) RefreshStatuses(ctx context.Context, options StatusOptions) error {
 	if err := l.Validate(); err != nil {
 		return err
 	}

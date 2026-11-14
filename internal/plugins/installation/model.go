@@ -134,6 +134,7 @@ type Pin struct {
 	URL          string         `json:"url"`
 	SHA256       string         `json:"sha256"`
 	Contract     string         `json:"contract"`
+	Metadata     string         `json:"metadata,omitempty"`
 }
 
 // SameRelease compares immutable release evidence, ignoring alias spelling and
@@ -151,7 +152,7 @@ func (p Pin) Source() string {
 }
 
 // Matches binds declaration intent to the recorded registry and repository.
-// An alias is accepted only when the lock explicitly records that lookup.
+// An alias matches only when the selected release records that lookup.
 func (p Pin) Matches(ref pluginref.Reference) bool {
 	if !SameRegistry(p.Registry, ref.Registry()) {
 		return false
@@ -217,6 +218,11 @@ func (p Pin) Validate() error {
 		(p.Kind != artifacts.Core && p.Kind != artifacts.Component && p.Kind != artifacts.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return fmt.Errorf("invalid registry pin for %q", p.Name)
 	}
+	if p.Metadata != "" {
+		if err := p.verifyMetadata([]byte(p.Metadata)); err != nil {
+			return err
+		}
+	}
 	if artifacts.IsOCI(p.URL) {
 		ref, err := artifacts.ParseOCI(p.URL)
 		if err != nil || ref.String() != p.URL || ref.Digest() != p.SHA256 || p.Asset != "" {
@@ -242,6 +248,9 @@ func (p Pin) Validate() error {
 func (p Pin) Verify(info artifacts.Info) error {
 	if info.Kind != p.Kind || info.SHA256 != p.SHA256 {
 		return errors.New("artifact kind or digest disagrees with registry pin")
+	}
+	if p.Metadata != "" && !artifacts.SameMetadata([]byte(p.Metadata), info.Metadata) {
+		return errors.New("artifact metadata disagrees with registry release metadata")
 	}
 	return p.verifyMetadata(info.Metadata)
 }

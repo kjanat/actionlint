@@ -93,18 +93,10 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 	return plan, nil
 }
 
-// ociDigests accepts old explicit lock evidence or derives the closure from the
-// configured digest and its manifests. No new project metadata is needed.
+// ociDigests derives required blobs from the configured digest and OCI manifests.
 func (s *Sources) ociDigests(ctx context.Context, source string) ([]string, error) {
 	if err := pluginartifact.RequireRemotePin(source); err != nil {
 		return nil, err
-	}
-	if s.Releases != nil {
-		if pin, ok := s.Releases.SourcePin(source); ok {
-			if digests, ok := pin.Digests(pluginartifact.HostPlatform()); ok {
-				return digests, nil
-			}
-		}
 	}
 	return oci.Digests(ctx, source, s.ArtifactOptions(source))
 }

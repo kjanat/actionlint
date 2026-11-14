@@ -16,7 +16,8 @@ func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{"ci.yml": brokenWorkflow})
 	other := workspaceWith(t, map[string]string{
 		"ci.yml": brokenWorkflow,
-		"actionlint.yml": `self-hosted-runner: {labels: [unknown-runner]}
+		"actionlint.yml": `plugins: []
+self-hosted-runner: {labels: [unknown-runner]}
 tools: {shellcheck: false}
 `,
 	})
@@ -144,7 +145,7 @@ permissions: {}
 		for _, contained := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: "/outside", true: "/inside"}[contained], func(t *testing.T) {
 				t.Parallel()
-				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": tc.caller})
+				workspace := nativeWorkspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": tc.caller})
 				targetDir := t.TempDir()
 				if contained {
 					targetDir = filepath.Join(workspace, "fixtures")
@@ -177,7 +178,8 @@ func TestActionConfigSymlinks(t *testing.T) {
 				t.Parallel()
 				workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/ci.yml": brokenWorkflow})
 				targetDir := t.TempDir()
-				content := `self-hosted-runner: {labels: [unknown-runner]}
+				content := `plugins: []
+self-hosted-runner: {labels: [unknown-runner]}
 tools: {shellcheck: false}
 `
 				if contained {

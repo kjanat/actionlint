@@ -3,7 +3,6 @@ package checking_test
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -13,34 +12,6 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
-
-func TestPluginSelectionRetainsObservedLocksAcrossRepositories(t *testing.T) {
-	t.Parallel()
-	roots := []string{repositoryfixture.Directory(t), repositoryfixture.Directory(t)}
-	var paths, locks []string
-	for _, root := range roots {
-		path := filepath.Join(root, ".github", plugininstall.LockName)
-		lock, err := plugininstall.OpenLock(t.Context(), path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := lock.Save(t.Context()); err != nil {
-			t.Fatal(err)
-		}
-		locks = append(locks, lock.Path)
-		paths = append(paths, filepath.Join(root, "workflow.yml"))
-	}
-	selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), roots[0], inputmodel.Request{Kind: inputmodel.Files, Paths: paths})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(selected.Paths) != 0 || selected.LockFile != "" || !slices.Equal(selected.Inputs, locks) {
-		t.Fatalf("observed empty locks changed activation: %+v, want inputs %v", selected, locks)
-	}
-	if err := selected.ValidateScope(t.Context(), checking.ConfigurationRules(), paths); err != nil {
-		t.Fatalf("empty lock restricted scope: %v", err)
-	}
-}
 
 func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 	t.Parallel()
@@ -52,16 +23,9 @@ func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, filepath.Join(root, ".github", "actionlint.yaml"), declaration)
-			lock, err := plugininstall.OpenLock(t.Context(), filepath.Join(root, ".github", plugininstall.LockName))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := lock.Save(t.Context()); err != nil {
-				t.Fatal(err)
-			}
 			input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "a.yml"), filepath.Join(other, "b.yml")}}
 			selected, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
-			if err != nil || len(selected.Paths) != 0 || selected.LockFile != "" {
+			if err != nil || len(selected.Paths) != 0 {
 				t.Fatalf("empty selection: %+v, %v", selected, err)
 			}
 			if err := selected.ValidateScope(t.Context(), checking.ConfigurationRules(), input.Paths); err != nil {
@@ -98,7 +62,7 @@ func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
 					t.Fatalf("plugin-free linked config: %+v, %v", selected, err)
 				}
 			}
-			if _, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", ""); err == nil {
+			if _, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, ""); err == nil {
 				t.Fatal("mutation accepted linked configuration")
 			}
 			fixturefiles.WriteText(t, target, "plugins: [publisher/plugin]\n")

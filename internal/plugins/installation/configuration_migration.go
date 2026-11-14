@@ -19,7 +19,7 @@ import (
 )
 
 // ConfigurationMigration previews the syntax conversion and default plugin declarations.
-// Applying it verifies dependencies before writing exact config and retiring an old lock.
+// Applying it verifies dependencies before writing exact plugin declarations.
 type ConfigurationMigration struct {
 	*config.FileMigration
 	project       *Project
@@ -39,7 +39,7 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 	if err != nil {
 		return nil, err
 	}
-	project, err := OpenProject(ctx, options.RuleSet, options.Acquisition, filepath.Dir(migration.Path), "", migration.Path)
+	project, err := OpenProject(ctx, options.RuleSet, options.Acquisition, filepath.Dir(migration.Path), migration.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -69,28 +69,12 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 		// the leaf would freeze future changes made by the shared base.
 		refs = slices.Clone(project.Manifest.References)
 		updatePlugins = false
-	case !declaredLocally && len(project.Lock.Lock.Plugins) != 0:
-		if resolved.Config.Plugins != nil {
-			// An invocation overlay explicitly selected plugins for this migration.
-			refs = slices.Clone(resolved.Config.Plugins)
-		} else {
-			// Import lockfile pins for projects without a plugin manifest.
-			refs, err = project.Dependencies(true)
-		}
 	default:
 		refs, err = DefaultReferences(resolved.Config, options)
 	}
 	if err != nil {
 		return nil, err
 	}
-	canonical, err := project.MigrationDeclarations(refs)
-	if err != nil {
-		return nil, err
-	}
-	if !slices.Equal(refs, canonical) {
-		updatePlugins = true
-	}
-	refs = canonical
 	content := migration.Content
 	if updatePlugins {
 		content, err = configplugins.EditManifest(migration.Path, migration.Content, refs)
@@ -100,10 +84,6 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 	}
 	if err := migration.SetContent(content); err != nil {
 		return nil, err
-	}
-	if project.Lock.Exists() {
-		migration.Changed = true
-		migration.Notes = append(migration.Notes, "Migrate exact plugin versions into configuration and remove the legacy project lock after verification.")
 	}
 	if !project.Manifest.Declared {
 		notes, err := SourceFollowingNotes(refs)
@@ -117,17 +97,16 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 }
 
 func (m *ConfigurationMigration) Apply(ctx context.Context) error {
-	legacy := m.project.Lock.Exists()
 	if err := m.SetContent(m.Content); err != nil {
 		return err
 	}
-	if !m.Changed && !legacy {
+	if !m.Changed {
 		return nil
 	}
 	if err := m.CheckUnchanged(ctx); err != nil {
 		return err
 	}
-	if !m.updatePlugins && !legacy {
+	if !m.updatePlugins {
 		return m.FileMigration.Apply(ctx)
 	}
 	if err := m.project.Resolve(ctx, m.refs, nil); err != nil {
@@ -140,10 +119,6 @@ func (m *ConfigurationMigration) Apply(ctx context.Context) error {
 		if err := m.FileMigration.Apply(ctx); err != nil {
 			return err
 		}
-		if err := m.project.RemoveLegacyLock(ctx); err != nil {
-			return err
-		}
-		m.Changed = m.Changed || legacy
 		return nil
 	}
 	resolved, err := m.project.ResolvedDeclarations(ctx, m.refs)
@@ -164,7 +139,6 @@ func (m *ConfigurationMigration) Apply(ctx context.Context) error {
 		return err
 	}
 	m.refs = resolved
-	m.Changed = m.Changed || legacy
 	return nil
 }
 
@@ -257,7 +231,7 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 
 // Migrate upgrades selected local configs before runtime plugin selection.
 func (s Selection) Migrate(ctx context.Context, directory string, input inputmodel.Request, options DefaultPluginOptions) error {
-	if s.Disabled || len(s.Paths) != 0 || s.LockFile != "" {
+	if s.Disabled || len(s.Paths) != 0 {
 		return nil
 	}
 	options.Overlays, options.Acquisition = s.Overlays, s.Acquisition
@@ -337,7 +311,7 @@ func (s Selection) Migrate(ctx context.Context, directory string, input inputmod
 	if len(seen) > 1 && slices.ContainsFunc(plans, func(plan *ConfigurationMigration) bool {
 		return len(plan.refs) != 0
 	}) {
-		return errors.New("inputs span repositories with plugin configuration; check them separately or select --plugin-lock explicitly")
+		return errors.New("inputs span repositories with plugin configuration; check them separately or select --config explicitly")
 	}
 	for _, plan := range plans {
 		if err := plan.Apply(ctx); err != nil {
@@ -353,14 +327,10 @@ func (s Selection) Migrate(ctx context.Context, directory string, input inputmod
 	return nil
 }
 
-// InitializeConfiguration verifies default plugin artifacts before creating the config
-// and lockfile. A failed resolution leaves both project files untouched.
+// InitializeConfiguration verifies default plugin artifacts before creating configuration.
+// A failed resolution leaves the project unchanged.
 func InitializeConfiguration(ctx context.Context, rules config.RuleSet, acquisition Acquisition, root, version string, format config.FileFormat) (string, error) {
-	lock, err := OpenSelectedLock(ctx, root, "", "")
-	if err != nil {
-		return "", err
-	}
-	path, err := configplugins.FindOrDefaultPath(filepath.Dir(lock.Path))
+	path, err := projectConfigPath(root, "")
 	if err != nil {
 		return "", err
 	}
@@ -370,7 +340,7 @@ func InitializeConfiguration(ctx context.Context, rules config.RuleSet, acquisit
 		return "", err
 	}
 	path = filepath.Join(filepath.Dir(path), format.Filename())
-	project, err := OpenProject(ctx, rules, acquisition, root, "", path)
+	project, err := OpenProject(ctx, rules, acquisition, root, path)
 	if err != nil {
 		return "", err
 	}
@@ -389,13 +359,7 @@ func InitializeConfiguration(ctx context.Context, rules config.RuleSet, acquisit
 	if err != nil {
 		return "", err
 	}
-	refs, err := project.Dependencies(true)
-	if err != nil {
-		return "", err
-	}
-	if len(refs) == 0 {
-		refs = defaults
-	}
+	refs := defaults
 	if err := project.Resolve(ctx, refs, nil); err != nil {
 		return "", err
 	}

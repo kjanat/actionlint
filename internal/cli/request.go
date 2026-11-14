@@ -47,9 +47,6 @@ type rulesRequest struct {
 
 func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 	selection := r.Check.pluginSelection(streams.Acquisition)
-	if len(selection.Paths) > 0 && selection.LockFile != "" {
-		return 0, commandargs.UsageError{Cause: errors.New("--plugin and --plugin-lock cannot be combined")}
-	}
 	sources, err := selectedRulePlugins(ctx, selection)
 	if err != nil {
 		return 0, err

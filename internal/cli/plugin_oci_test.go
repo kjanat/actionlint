@@ -37,7 +37,7 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	if err != nil || !strings.Contains(string(config), reference) {
 		t.Fatalf("configuration does not declare the digest %s: %q, %v", reference, config, err)
 	}
-	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("OCI install created a project lock: %v", err)
 	}
 	output := pluginCommandTest(t, acquisition, 0, "plugin", "inspect", reference)
@@ -170,7 +170,7 @@ func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("failed install changed config: %s, %v", actual, err)
 	}
-	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("failed install wrote a lock: %v", err)
 	}
 }

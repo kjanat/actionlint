@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -16,20 +17,26 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
 // Selection chooses plugins from explicit arguments or repository configuration.
 // Explicit sources replace automatic selection. Explicit configs are
 // invocation-wide; automatic declarations belong to their nearest repository.
 type Selection struct {
-	RuleSet    config.RuleSet
-	Paths      []string
-	LockFile   string
+	RuleSet config.RuleSet
+	Paths   []string
+
 	ConfigFile string
 	Disabled   bool
 	Overlays   []config.Overlay
+	// DefaultTools lists bundled linters that use registry plugins when configuration omits plugins.
+	DefaultTools []string
+	lazyDefaults bool
+	DisableTools bool
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
 	Acquisition               Acquisition
@@ -37,7 +44,7 @@ type Selection struct {
 
 // WithTools returns a copy of selection that stores the tool ids
 // disabled by --no-tool or the GitHub Action's disable-tools input, and the
-// tool ids named by --tool, --no-tool or that input. A locked plugin whose
+// tool ids named by --tool, --no-tool or that input. A selected plugin whose
 // name or alias is a disabled id is never downloaded. Any other plugin is
 // skipped before it runs when its metadata names a disabled id as its engine
 // or one of its rules. After plugins load, each named id must name a bundled
@@ -49,13 +56,12 @@ func WithTools(selection Selection, disabled, named []string) Selection {
 
 // Sources records selected plugin references, release data and acquisition authority.
 type Sources struct {
-	Paths    []string
-	LockFile string
-	// Inputs lists observed lockfiles, including those for inactive plugins.
-	Inputs           []string
+	Paths       []string
+	LazySources map[string]Pin
+
 	RepositoryRoot   string
 	RepositoryScoped bool
-	Releases         *Lock
+	Releases         *ResolvedPlugins
 	Configurations   []*config.Config
 	Artifacts        map[string]*pluginartifact.Artifact
 	// NetworkGrants come only from explicit source arguments, never project files.
@@ -65,12 +71,14 @@ type Sources struct {
 	DisabledTools, NamedTools []string
 	// SkippedTools lists disabled tool ids that matched a selected plugin.
 	SkippedTools []string
+	DisableTools bool
 	// Configured identifies configuration-selected providers that require process opt-in.
 	Configured  bool
 	Acquisition Acquisition
 }
 
 func (s Selection) Resolve(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
+	s.lazyDefaults = !network.Settings(ctx).WarmCache
 	selected, err := s.Select(ctx, directory, input)
 	if err != nil {
 		return Sources{}, err
@@ -107,52 +115,56 @@ func (s Selection) SelectForCache(ctx context.Context, directory string, input i
 }
 
 func (s Selection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+	if s.DisableTools {
+		s.DefaultTools = nil
+	}
 	selected, err := s.selectDeclared(ctx, directory, input, mode)
 	if err != nil {
 		return Sources{}, err
 	}
+	if len(s.DefaultTools) != 0 && len(s.Paths) == 0 && len(selected.Configurations) == 0 {
+		project := &Project{Manifest: &configplugins.File{}, StatusOptions: StatusOptions{Acquisition: s.Acquisition}}
+		selected, err = s.sourcesFromProject(ctx, project, "")
+		if err != nil {
+			return Sources{}, err
+		}
+	}
 	selected.DisabledTools, selected.NamedTools = slices.Clone(s.DisabledTools), slices.Clone(s.NamedTools)
 	selected.Acquisition = s.Acquisition
+	selected.DisableTools = s.DisableTools
 	selected.dropDisabledPins()
 	return selected, nil
 }
 
 func (s Selection) selectDeclared(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
 	if len(s.Paths) > 0 {
-		if s.LockFile != "" {
-			return Sources{}, errors.New("--plugin and --plugin-lock cannot be combined")
-		}
 		return SourcesFromArguments(s.Paths, s.Acquisition)
 	}
-	if s.Disabled && s.LockFile == "" {
+	if s.Disabled {
 		return Sources{}, nil
-	}
-	if s.LockFile != "" {
-		f, err := OpenSelectedLock(ctx, directory, s.LockFile, s.ConfigFile)
-		if err != nil {
-			return Sources{}, err
-		}
-		if !f.Exists() {
-			return Sources{}, fmt.Errorf("plugin lock does not exist: %s", f.Path)
-		}
-		selected, err := sourcesFromPins(f.Path, f.Lock, "")
-		if err == nil {
-			selected.Inputs = []string{f.Path}
-		}
-		return selected, err
 	}
 	if s.ConfigFile != "" {
 		project, err := OpenForSelection(ctx, s.RuleSet, s.Acquisition, directory, s.ConfigFile, mode)
 		if err != nil {
 			return Sources{}, err
 		}
-		if mode == configplugins.PluginDeclarationsOnly && !project.Manifest.Exists {
-			return Sources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
+		if !project.Manifest.Exists {
+			if mode == configplugins.PluginDeclarationsOnly {
+				return Sources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
+			}
+			return Sources{}, fmt.Errorf("could not read config file %q: %w", project.Manifest.Path, os.ErrNotExist)
 		}
 		return s.sourcesFromProject(ctx, project, "")
 	}
 	starts := []string{directory}
-	if input.Kind == inputmodel.Files && len(input.Paths) > 0 {
+	switch {
+	case input.Kind == inputmodel.Repository && input.Directory != "":
+		start := input.Directory
+		if !filepath.IsAbs(start) {
+			start = filepath.Join(directory, start)
+		}
+		starts = []string{start}
+	case input.Kind == inputmodel.Files && len(input.Paths) > 0:
 		starts = nil
 		for _, path := range input.Paths {
 			if !filepath.IsAbs(path) {
@@ -160,7 +172,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 			}
 			starts = append(starts, pluginSelectionStart(path))
 		}
-	} else if input.Kind == inputmodel.Stdin {
+	case input.Kind == inputmodel.Stdin:
 		// Match workspace.Session.Content by discovering project plugins for named, existing stdin paths.
 		if input.Name == "" || input.Name == "<stdin>" {
 			return Sources{}, nil
@@ -177,7 +189,6 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 	roots := map[string]bool{}
 	var selected Sources
 	var selectedProject *Project
-	var inputs []string
 	var configs []*config.Config
 	for _, start := range starts {
 		root := discovery.PhysicalRepositoryRoot(start)
@@ -197,33 +208,35 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 			return Sources{}, err
 		}
 		configs = append(configs, prepared)
-		pins, err := project.SelectedPlugins(ctx)
+		pins, skipped, err := s.selectedPlugins(ctx, project)
 		if err != nil {
 			return Sources{}, err
 		}
-		if project.Lock.Exists() {
-			inputs = append(inputs, project.Lock.Path)
-		}
+		selected.SkippedTools = append(selected.SkippedTools, skipped...)
 		if len(pins.Plugins) != 0 || len(project.DirectSources()) != 0 {
-			selected = Sources{RepositoryRoot: root, RepositoryScoped: true}
+			selected.RepositoryRoot, selected.RepositoryScoped = root, true
 			selectedProject = project
 		}
 	}
 	if selectedProject == nil {
 		if len(configs) != 0 {
-			return Sources{Inputs: inputs, RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: configs, Overlays: slices.Clone(s.Overlays)}, nil
+			return Sources{RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: configs, Overlays: slices.Clone(s.Overlays), SkippedTools: selected.SkippedTools}, nil
 		}
 		resolved, err := s.RuleSet.ResolveBeforePlugins(nil, s.Overlays)
 		if err != nil {
 			return Sources{}, err
 		}
-		selected := Sources{Inputs: inputs, RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: []*config.Config{resolved.Config}, Overlays: slices.Clone(s.Overlays), Configured: true}
+		selected := Sources{RepositoryRoot: discovery.PhysicalRepositoryRoot(directory), RepositoryScoped: true, Configurations: []*config.Config{resolved.Config}, Overlays: slices.Clone(s.Overlays), Configured: true}
 		for _, ref := range resolved.Config.Plugins {
 			source := ref.DirectSource()
 			if source == "" {
 				return Sources{}, errors.New("registry plugin declarations require a repository or explicit config file")
 			}
 			selected.Paths = append(selected.Paths, source)
+		}
+		if resolved.Config.Plugins == nil && len(s.DefaultTools) != 0 {
+			project := &Project{Manifest: &configplugins.File{}, StatusOptions: StatusOptions{Acquisition: s.Acquisition}}
+			return s.sourcesFromProject(ctx, project, "")
 		}
 		return selected, nil
 	}
@@ -248,7 +261,17 @@ func (s Selection) prepareProject(project *Project) (*config.Config, error) {
 	}
 	project.Manifest.References = resolved.Config.Plugins
 	project.Manifest.Declared = resolved.Config.Plugins != nil
-	if len(project.Manifest.References) != 0 {
+	if !project.Manifest.Declared && len(s.DefaultTools) != 0 {
+		tools := slices.DeleteFunc(slices.Clone(s.DefaultTools), func(id string) bool { return slices.Contains(s.DisabledTools, id) })
+		refs, err := DefaultReferences(resolved.Config, DefaultPluginOptions{Tools: tools, RuleSet: s.RuleSet})
+		if err != nil {
+			return nil, err
+		}
+		project.Manifest.References = refs
+		project.Manifest.Declared = true
+		project.defaultPlugins = true
+	}
+	if len(project.Manifest.References) != 0 && !project.defaultPlugins {
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.SourceContents() {
@@ -268,20 +291,26 @@ func (s Selection) sourcesFromProject(ctx context.Context, project *Project, roo
 	if err != nil {
 		return Sources{}, err
 	}
-	lock, err := project.SelectedPlugins(ctx)
+	releases, skipped, err := s.selectedPlugins(ctx, project)
 	if err != nil {
 		return Sources{}, err
 	}
-	selected, err := sourcesFromPins("", lock, root)
+	selected, err := sourcesFromPins(releases, root)
 	if err != nil {
 		return Sources{}, err
 	}
-	if project.Lock.Exists() {
-		selected.Inputs = []string{project.Lock.Path}
-	}
+	selected.SkippedTools = skipped
 	selected.Configurations = []*config.Config{prepared}
 	selected.Overlays = slices.Clone(s.Overlays)
 	selected.Configured = true
+	if s.lazyDefaults && project.defaultPlugins {
+		selected.LazySources = map[string]Pin{}
+		for _, pin := range releases.Plugins {
+			if pin.Metadata != "" && (pin.Kind == pluginartifact.Core || pin.Kind == pluginartifact.Component && strings.HasPrefix(pin.Contract, "kjanat:actionlint/script-engine@")) {
+				selected.LazySources[pin.Source()] = pin
+			}
+		}
+	}
 	for _, ref := range project.Manifest.References {
 		if source := ref.DirectSource(); source != "" {
 			selected.Paths = append(selected.Paths, source)
@@ -290,35 +319,69 @@ func (s Selection) sourcesFromProject(ctx context.Context, project *Project, roo
 	return selected, nil
 }
 
-func sourcesFromPins(path string, lock Lock, root string) (Sources, error) {
-	if err := lock.Validate(); err != nil {
+// selectedPlugins filters named declarations before registry lookup. When all
+// tools are disabled, cached components may still provide non-tool roles.
+func (s Selection) selectedPlugins(ctx context.Context, project *Project) (ResolvedPlugins, []string, error) {
+	selected := ResolvedPlugins{Plugins: []Pin{}}
+	var skipped []string
+	if s.DisableTools {
+		options := network.Settings(ctx)
+		options.Offline, options.WarmCache = true, false
+		ctx, _ = network.WithSession(ctx, options)
+	}
+	for _, ref := range project.Manifest.References {
+		if ref.DirectSource() != "" {
+			continue
+		}
+		if slices.Contains(s.DisabledTools, ref.Name()) {
+			skipped = append(skipped, ref.Name())
+			continue
+		}
+		pins, err := project.selectedPins(ctx, []pluginref.Reference{ref})
+		if err != nil {
+			if s.DisableTools && network.OnlyOffline(err) {
+				skipped = append(skipped, ref.Name())
+				continue
+			}
+			return ResolvedPlugins{}, nil, err
+		}
+		selected.Plugins = append(selected.Plugins, pins.Plugins...)
+	}
+	return selected, skipped, selected.Validate()
+}
+
+func sourcesFromPins(releases ResolvedPlugins, root string) (Sources, error) {
+	if err := releases.Validate(); err != nil {
 		return Sources{}, err
 	}
-	selected := Sources{LockFile: path, RepositoryRoot: root, RepositoryScoped: root != "", Releases: &lock}
-	for _, p := range lock.Plugins {
+	selected := Sources{RepositoryRoot: root, RepositoryScoped: root != "", Releases: &releases}
+	for _, p := range releases.Plugins {
 		selected.Paths = append(selected.Paths, p.Source())
 	}
 	return selected, nil
 }
 
-// dropDisabledPins removes locked plugins whose name or alias is a disabled
+// dropDisabledPins removes selected plugins whose name or alias is a disabled
 // tool id, before Hydrate or loading could fetch them.
 func (s *Sources) dropDisabledPins() {
-	if s.Releases == nil || len(s.DisabledTools) == 0 {
+	if s.Releases == nil || len(s.DisabledTools) == 0 && !s.DisableTools {
 		return
 	}
-	lock := *s.Releases
-	lock.Plugins = []Pin{}
+	releases := *s.Releases
+	releases.Plugins = []Pin{}
 	for _, pin := range s.Releases.Plugins {
 		id := disabledPinTool(pin, s.DisabledTools)
+		if s.DisableTools && (pin.Kind == pluginartifact.Core || pin.Kind == pluginartifact.ProviderManifest) {
+			id = pin.Name
+		}
 		if id == "" {
-			lock.Plugins = append(lock.Plugins, pin)
+			releases.Plugins = append(releases.Plugins, pin)
 			continue
 		}
 		s.SkippedTools = append(s.SkippedTools, id)
 		s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })
 	}
-	s.Releases = &lock
+	s.Releases = &releases
 }
 
 // disabledPinTool returns the disabled tool id a pin's name or alias
@@ -334,6 +397,11 @@ func disabledPinTool(pin Pin, disabled []string) string {
 
 // Hydrate verifies pinned cached artifacts and downloads missing bytes.
 func (s *Sources) Hydrate(ctx context.Context) error {
+	if s.DisableTools {
+		options := network.Settings(ctx)
+		options.Offline, options.WarmCache = true, false
+		ctx, _ = network.WithSession(ctx, options)
+	}
 	if s.Releases == nil {
 		return nil
 	}
@@ -342,25 +410,19 @@ func (s *Sources) Hydrate(ctx context.Context) error {
 	}
 	artifacts := make(map[string]*pluginartifact.Artifact, len(s.Releases.Plugins))
 	for _, pin := range s.Releases.Plugins {
-		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), s.ArtifactOptions(pin.Source()))
-		if err != nil {
-			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
-		}
-		if err := pin.Verify(artifact.Info); err != nil {
-			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
-		}
-		artifacts[pin.Source()] = artifact
-	}
-	for _, pin := range s.Releases.Sources {
-		if !slices.Contains(s.Paths, pin.Source()) {
+		if _, lazy := s.LazySources[pin.Source()]; lazy {
 			continue
 		}
 		artifact, err := pluginartifact.Resolve(ctx, pin.Source(), s.ArtifactOptions(pin.Source()))
 		if err != nil {
-			return err
+			if s.DisableTools && network.OnlyOffline(err) {
+				s.Paths = slices.DeleteFunc(s.Paths, func(path string) bool { return path == pin.Source() })
+				continue
+			}
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 		if err := pin.Verify(artifact.Info); err != nil {
-			return err
+			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 		artifacts[pin.Source()] = artifact
 	}

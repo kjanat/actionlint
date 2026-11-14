@@ -30,33 +30,25 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Lock.Set(pin); err != nil {
+	ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Lock.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := project.SelectedPlugins(t.Context()); err == nil || !strings.Contains(err.Error(), "migrate") {
-		t.Fatalf("legacy lock silently activated: %v", err)
-	}
-	refs, err := project.Dependencies(true)
-	if err != nil || len(refs) != 1 || refs[0].Name() != pin.Name {
-		t.Fatalf("migration: %v %v", refs, err)
-	}
+	refs := []pluginref.Reference{ref}
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	selected, err := project.SelectedPlugins(t.Context())
 	if err != nil || len(selected.Plugins) != 1 || !selected.Plugins[0].SameRelease(pin) {
-		t.Fatalf("migration changed pin: %+v %v", selected, err)
+		t.Fatalf("configured release changed: %+v %v", selected, err)
 	}
 	declared := project.Manifest.References[0]
 	project.Manifest.References[0], err = pluginref.New(declared.Name(), "v2.0.0", declared.Registry())
@@ -80,7 +72,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +83,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), plugininstall.Acquisition{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +94,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if got := project.DirectSources(); len(got) != 1 || got[0] != ref.DirectSource() {
 		t.Fatalf("direct source lost: %v", got)
 	}
-	if project.Lock.Exists() {
+	if _, err := os.Stat(filepath.Join(filepath.Dir(project.Manifest.Path), "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatal("created an unnecessary lockfile for an already pinned URL")
 	}
 }

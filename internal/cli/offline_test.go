@@ -104,7 +104,7 @@ func TestCacheWarmThenOfflineNamedAction(t *testing.T) {
 	var requests []string
 	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 	input := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1, with: {unknown: value}}]}}\n"
-	status, out, log := runOfflineCommand(t, acquisition, input, "cache", "warm", "--no-config", "--json", "-")
+	status, out, log := runOfflineCommand(t, acquisition, input, "cache", "warm", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "-")
 	if status != 0 {
 		t.Fatalf("warm status=%d stdout=%s stderr=%s", status, out, log)
 	}
@@ -116,7 +116,7 @@ func TestCacheWarmThenOfflineNamedAction(t *testing.T) {
 	if err != nil || len(refs) != 1 {
 		t.Fatalf("warm saved references=%v err=%v stdout=%s stderr=%s requests=%v", refs, err, out, log, requests)
 	}
-	status, out, log = runOfflineCommand(t, acquisition, input, "check", "--offline", "--no-config", "--json", "--summary=false", "-")
+	status, out, log = runOfflineCommand(t, acquisition, input, "check", "--offline", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "--summary=false", "-")
 	var result resultreport.CheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("status=%d stdout=%s stderr=%s: %v", status, out, log, err)
@@ -161,7 +161,7 @@ func TestCacheWarmDoesNotReportSuccessForMissingWorkflow(t *testing.T) {
 	registry.SetOffline(true)
 	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	input := "on: push\npermissions: {}\njobs: {call: {uses: example/workflows/.github/workflows/build.yml@" + strings.Repeat("a", 40) + "}}\n"
-	status, out, log := runOfflineCommand(t, acquisition, input, "cache", "warm", "--no-config", "--json", "-")
+	status, out, log := runOfflineCommand(t, acquisition, input, "cache", "warm", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "-")
 	if status != 3 || strings.Contains(out, "cache_directory") || !strings.Contains(log, "could not cache") {
 		t.Fatalf("warm status=%d stdout=%s stderr=%s", status, out, log)
 	}

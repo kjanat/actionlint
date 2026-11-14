@@ -29,15 +29,15 @@ lint:
       - "SC2086:"
 ```
 
-| Key                                       | Purpose                                                                                                                                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `plugins`                                 | Exact registry releases, such as `owner/repo@v1.2.3`, or digest-pinned direct artifacts. No project lockfile is required. See [Plugins](plugins.md#install-from-the-registry). |
-| `repository.runners`                      | Additional runner labels; supports [`path.Match` patterns][pat].                                                                                                               |
-| `repository.variables`                    | Available variable names mapped to optional string values. A null value keeps its name known. An empty mapping permits none.                                                   |
-| `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                                                            |
-| `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                                                      |
-| `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                                                             |
-| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to regular expressions matching messages or `CODE: message`.                                                            |
+| Key                                       | Purpose                                                                                                                                       |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins`                                 | Exact registry releases, such as `owner/repo@v1.2.3`, or digest-pinned direct artifacts. See [Plugins](plugins.md#install-from-the-registry). |
+| `repository.runners`                      | Additional runner labels; supports [`path.Match` patterns][pat].                                                                              |
+| `repository.variables`                    | Available variable names mapped to optional string values. A null value keeps its name known. An empty mapping permits none.                  |
+| `repository.secrets`                      | Available secret names, case-insensitive. An empty list permits only built-in and declared `workflow_call` secrets.                           |
+| `repository.default-workflow-permissions` | Repository token default: `read` or `write`. Omission does not assume either value. Neither implicitly grants `id-token`.                     |
+| `repository.environments`                 | Known deployment environments and their variable and secret names.                                                                            |
+| `lint.message-ignores`                    | Repository-relative [glob patterns][doublestar] mapped to regular expressions matching messages or `CODE: message`.                           |
 
 Older root settings are converted at the parsing boundary. Use
 [`actionlint config migrate`](config-migration.md) to preview or write the current syntax.

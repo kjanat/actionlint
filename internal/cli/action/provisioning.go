@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -31,7 +34,9 @@ func provisioningRequest(env func(string) string, acquisition plugininstall.Acqu
 }
 
 func (req *lintRequest) pluginSelection() plugininstall.Selection {
-	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition}, req.disabledTools, req.disabledTools)
+	defaults := req.requestedTools()
+	defaults = slices.DeleteFunc(defaults, func(id string) bool { return req.processes[id] != nil })
+	return plugininstall.WithTools(plugininstall.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() inputmodel.Request {
@@ -51,14 +56,10 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 		}
 	}
 	if err == nil {
-		var selected plugininstall.Sources
-		selected, err = req.pluginSelection().SelectForCache(ctx, req.workingDir, req.pluginInput())
+		var plan plugininstall.CachePlan
+		plan, err = req.pluginPlan(ctx)
 		if err == nil {
-			var plan plugininstall.CachePlan
-			plan, err = selected.CachePlan(ctx)
-			if err == nil {
-				err = json.NewEncoder(stdout).Encode(plan)
-			}
+			err = json.NewEncoder(stdout).Encode(plan)
 		}
 	}
 	if err == nil {
@@ -72,4 +73,47 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 		return commandstatus.ExitInvalidCommandOption
 	}
 	return commandstatus.ExitFailure
+}
+
+func (req *lintRequest) pluginPlan(ctx context.Context) (plugininstall.CachePlan, error) {
+	inputs := []inputmodel.Request{req.pluginInput()}
+	if len(req.files) != 0 {
+		paths := slices.Clone(req.files)
+		for i, path := range paths {
+			if !filepath.IsAbs(path) {
+				paths[i] = filepath.Join(req.workingDir, path)
+			}
+		}
+		found, err := workspace.FindFiles(ctx, paths, false)
+		if err != nil {
+			return plugininstall.CachePlan{}, err
+		}
+		inputs = nil
+		for _, batch := range workspace.PartitionFiles(found) {
+			inputs = append(inputs, inputmodel.FromFiles(batch))
+		}
+	}
+	var combined plugininstall.CachePlan
+	if len(inputs) == 0 {
+		inputs = []inputmodel.Request{{Kind: inputmodel.Stdin}}
+	}
+	for _, input := range inputs {
+		selection := req.pluginSelection()
+		selected, err := selection.SelectForCache(ctx, req.workingDir, input)
+		if err != nil {
+			return plugininstall.CachePlan{}, err
+		}
+		plan, err := selected.CachePlan(ctx)
+		if err != nil {
+			return plugininstall.CachePlan{}, err
+		}
+		combined.Directory = plan.Directory
+		combined.Artifacts = append(combined.Artifacts, plan.Artifacts...)
+	}
+	slices.Sort(combined.Artifacts)
+	combined.Artifacts = slices.Compact(combined.Artifacts)
+	if combined.Artifacts == nil {
+		combined.Artifacts = []string{}
+	}
+	return combined, nil
 }
