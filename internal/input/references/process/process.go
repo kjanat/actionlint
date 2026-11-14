@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
+
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 )
@@ -108,6 +110,9 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 }
 
 func (p *Process) resolve(ctx context.Context, request references.Request) (references.Result, error) {
+	if err := network.RequireOnline(ctx); err != nil {
+		return references.Result{}, err
+	}
 	var receipt *references.RequestReport
 	defer func() { accounting.RecordResolverCall(ctx, receipt, false) }()
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {

@@ -162,7 +162,9 @@ test.yaml:2:6: "jobs" section should not be empty. please remove this section if
 [Playground](https://kjanat.github.io/actionlint/#eNrKz7NSKCgtzuDKyk8qtuIqSC3KzSwuzszPK7ZSqK4FDACmMgsC)
 
 Some mappings and sequences, such as `jobs:`, must not be empty. The parser reports these errors.
-GitHub accepts an empty `steps:` list, but actionlint's `empty-job` rule warns that the job does nothing.
+GitHub rejects jobs without steps unless they call a reusable workflow.
+The `empty-job` rule reports these jobs as errors. A step with `run: null` is valid;
+`empty-run` warns that its script is empty.
 
 <a id="check-mapping-values"></a>
 

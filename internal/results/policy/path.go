@@ -32,6 +32,17 @@ func (processor Processor) relativePath(directory, path string) string {
 	return RelativePath(directory, path)
 }
 
+func (processor Processor) displayPath(directory, path string) string {
+	relative := RelativePath(directory, path)
+	if _, supplied := processor.CanonicalPaths[path]; supplied || !filepath.IsAbs(path) || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return relative
+	}
+	if canonicalDirectory, known := processor.CanonicalPaths[directory]; known {
+		return RelativePath(canonicalDirectory, path)
+	}
+	return relative
+}
+
 func (processor Processor) projectRelativePath(root, path string) string {
 	if !filepath.IsAbs(path) || root == "" {
 		return path

@@ -233,8 +233,15 @@ func TestCommandJSONHelpAndVersion(t *testing.T) {
 		if err := json.Unmarshal([]byte(got.Stdout), &help); err != nil {
 			t.Fatalf("%+v: %v", got, err)
 		}
-		if got.Status != 0 || got.Stderr != "" || help.Name != "actionlint" || len(help.Commands) != 9 {
+		var commands []string
+		for _, command := range help.Commands {
+			commands = append(commands, command.Name)
+		}
+		if got.Status != 0 || got.Stderr != "" || help.Name != "actionlint" {
 			t.Fatalf("%+v", got)
+		}
+		if want := []string{"cache", "check", "completion", "config", "doctor", "fix", "lsp", "plugin", "rules", "version"}; !slices.Equal(commands, want) {
+			t.Fatalf("help commands=%q, want %q", commands, want)
 		}
 		for _, flag := range help.Flags {
 			if flag.Description == "" || flag.Group == "" || flag.Name == "" {

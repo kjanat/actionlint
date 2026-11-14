@@ -1800,7 +1800,7 @@ func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 // ParseSteps parses a sequence of workflow steps.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
 func (p *Parser) ParseSteps(n *syntax.Node) []*workflowlang.Step {
-	// GitHub accepts an empty steps list; the empty-job rule reports it.
+	// The empty-job rule reports jobs without steps or a reusable workflow call.
 	if ok := p.checkSequence("steps", n, true); !ok {
 		return nil
 	}

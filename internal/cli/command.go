@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
@@ -14,6 +15,7 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"github.com/spf13/cobra"
@@ -133,6 +135,28 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 	if err := app.applyEnvironment(); err != nil {
 		return app.reportError(err)
 	}
+	if err := app.prepareNetwork(); err != nil {
+		return app.reportError(err)
+	}
+	cacheDirectory := cmd.Acquisition.UserCacheDir
+	if cacheDirectory == "" {
+		cacheDirectory, err = os.UserCacheDir()
+		if err != nil && app.inv.Check.WarmCache {
+			return app.reportError(err)
+		}
+	}
+	if cacheDirectory != "" {
+		cacheDirectory = filepath.Join(cacheDirectory, "actionlint")
+	}
+	ctx, networkSession := network.WithSession(ctx, network.Options{
+		Offline: app.inv.Check.Offline, CacheDirectory: cacheDirectory, WarmCache: app.inv.Check.WarmCache,
+	})
+	app.ctx = ctx
+	defer func() {
+		for _, warning := range networkSession.Warnings() {
+			app.reportWarning(warning)
+		}
+	}()
 	if app.inv.Operation == operationCheck {
 		ctx = configsource.WithReadCache(ctx)
 		app.ctx = ctx

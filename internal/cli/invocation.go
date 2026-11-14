@@ -39,7 +39,8 @@ type checkInvocation struct {
 	RunnerScope           string
 	ResolverCommand       string
 	ResolverArguments     []string
-	ActionMetadata        string
+	Offline               bool
+	WarmCache             bool
 	Fix                   bool
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool
@@ -146,6 +147,9 @@ func (a *commandApp) prepareInvocation() error {
 	if i.Operation == "version" || i.Operation == "completion" {
 		return nil
 	}
+	if err := a.prepareNetwork(); err != nil {
+		return err
+	}
 	if i.Check.Config.Disabled && i.Check.Config.Path != "" {
 		return commandargs.UsageError{Cause: errors.New("--config cannot be combined with --no-config")}
 	}
@@ -207,7 +211,7 @@ func (a *commandApp) prepareInvocation() error {
 func (inv invocation) request() (commandRequest, error) {
 	switch inv.Operation {
 	case operationPluginInspect:
-		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON}, nil
+		return pluginInspectRequest{Source: inv.Check.Paths[0], JSON: inv.JSON, Registry: inv.Plugin.Registry}, nil
 	case operationPluginValidate:
 		path := ""
 		if len(inv.Check.Paths) > 0 {

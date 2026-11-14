@@ -40,7 +40,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 			t.Parallel()
 			var out, log bytes.Buffer
 			args := append([]string{"actionlint"}, tc.args...)
-			args = append(args, "--action-metadata=off", "--config", config, "--json", "-")
+			args = append(args, "--offline", "--config", config, "--json", "-")
 			status := (&Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}).MainContext(t.Context(), args)
 			wantStatus := 0
 			if len(tc.want) != 0 {
@@ -76,7 +76,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 		t.Run("format/"+format, func(t *testing.T) {
 			t.Parallel()
 			var out, log bytes.Buffer
-			args := []string{"actionlint", "check", "--config", config, "--action-metadata=off", "--ignore", "missing-permissions", "--ignore", "unknown-property", "--output-format", format, "-"}
+			args := []string{"actionlint", "check", "--config", config, "--offline", "--ignore", "missing-permissions", "--ignore", "unknown-property", "--output-format", format, "-"}
 			status := (&Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log}).MainContext(t.Context(), args)
 			wantSummary := "All clear!"
 			if format == "json" || format == "jsonl" {
@@ -126,7 +126,7 @@ func TestCLIIgnoreExcludesFixes(t *testing.T) {
 	}
 	for _, ignored := range []bool{true, false} {
 		var out, log bytes.Buffer
-		args := []string{"actionlint", "fix", "--apply", "--action-metadata=off", "--config", config, path}
+		args := []string{"actionlint", "fix", "--apply", "--offline", "--config", config, path}
 		if ignored {
 			args = append(args, "--ignore", "unused-suppression")
 		}

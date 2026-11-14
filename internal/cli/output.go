@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
+
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
@@ -71,6 +73,10 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 }
 
 func (a *commandApp) reportError(err error) int {
+	if network.OnlyOffline(err) {
+		a.reportWarning("Could not complete this command: " + err.Error() + ". Run actionlint cache warm while online, then retry.")
+		return 0
+	}
 	status := commandstatus.ExitFailure
 	if _, ok := errors.AsType[commandargs.UsageError](err); ok {
 		status = commandstatus.ExitInvalidCommandOption

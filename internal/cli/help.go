@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var commandHelpGroups = []string{"Input", "Configuration", "Registry", "Rule selection", "Filtering", "Output", "External linters", "Information"}
+var commandHelpGroups = []string{"Input", "Configuration", "Registry", "Rule selection", "Network", "Remote dependencies", "Filtering", "Output", "External linters", "Information"}
 
 var helpFlagPattern = regexp.MustCompile(`(?m)(^|[ \t])--?(?:\[no-\])?[a-zA-Z][a-zA-Z0-9-]*`)
 

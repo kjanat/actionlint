@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -41,10 +42,16 @@ func (g *GitHub) LookupWorkflow(ctx context.Context, spec string) (workflows.Rem
 		client.cacheDir = filepath.Join(client.cacheDir, "workflows")
 	}
 	file, err := client.lookupFile(ctx, ref, "workflow", []string{""})
+	if err != nil || !file.Available() {
+		network.CacheFailed(ctx, spec)
+	}
 	if err != nil {
 		return workflows.RemoteFile{}, err
 	}
 	if !file.Available() {
+		if network.Settings(ctx).Offline && (file.missing.Reason() == availability.OfflineReason || file.missing.Reason() == availability.CacheMissReason) {
+			network.Warn(ctx, "Skipping unavailable metadata for "+spec+" because it is not cached. Run actionlint cache warm while online.")
+		}
 		return workflows.UnavailableRemoteFile(file.missing), nil
 	}
 	return workflows.NewRemoteFile(spec, file.Identity().Commit(), []byte(file.Content()))

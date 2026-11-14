@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -12,6 +13,31 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
+
+func TestApplyRejectsTwoAliasesForOneFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	path, alias := filepath.Join(root, "workflow.yml"), filepath.Join(root, "alias.yml")
+	const before = "before"
+	if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(path, alias); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	plan := edits.Plan{Changes: []edits.Change{
+		{Path: path, Before: before, After: "first", Revision: sourceid.Digest([]byte(before))},
+		{Path: alias, Before: before, After: "second", Revision: sourceid.Digest([]byte(before))},
+	}}
+	written, err := ApplyEdits(t.Context(), plan, files.New(t.Context(), nil, nil))
+	if err == nil || !strings.Contains(err.Error(), "multiple fix plans") || len(written) != 0 {
+		t.Fatalf("conflicting alias edits: written=%v error=%v", written, err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != before || plan.Changes[1].Path != alias {
+		t.Fatalf("rejected edits changed the file or plan: data=%q error=%v plan=%+v", data, err, plan)
+	}
+}
 
 func TestPlanAndApply(t *testing.T) {
 	t.Parallel()

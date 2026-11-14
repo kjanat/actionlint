@@ -8,6 +8,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 // Directive is a validated inline exception over a physical source range.
@@ -25,6 +26,14 @@ func Parse(source []byte, rules []string, names rule.Names) ([]Directive, []resu
 	var directives []Directive
 	var findings []results.Diagnostic
 	for _, comment := range collectInlineSuppressionComments(source) {
+		if words := strings.Fields(comment.text); len(words) > 0 && words[0] == "ignore" {
+			if len(words) == 1 || !slices.ContainsFunc(rules, func(candidate string) bool {
+				first, _, _ := strings.Cut(words[1], ",")
+				return names.ResolveAlias(candidate) == names.ResolveAlias(first)
+			}) {
+				continue
+			}
+		}
 		directive, err := parseInlineSuppression(comment, rules, names)
 		if err != nil {
 			findings = append(findings, *err)
@@ -85,11 +94,11 @@ func parseInlineSuppression(comment inlineSuppressionComment, allowed []string, 
 		}
 		for _, name := range names {
 			if !slices.ContainsFunc(allowed, func(candidate string) bool { return index.ResolveAlias(candidate) == index.ResolveAlias(name) }) {
-				allowed := slices.Clone(allowed)
-				for i, rule := range allowed {
-					allowed[i] = strconv.Quote(rule)
+				message := "unknown inline suppression rule " + strconv.Quote(name) + "."
+				if suggestion := messages.CloseName(name, allowed); suggestion != "" {
+					message += " Did you mean " + strconv.Quote(suggestion) + "?"
 				}
-				return Directive{}, invalid("unknown inline suppression rule " + strconv.Quote(name) + ". expected " + strings.Join(allowed, ", "))
+				return Directive{}, invalid(message + " Run actionlint rules to list available rules.")
 			}
 			if !slices.Contains(rules, name) {
 				rules = append(rules, name)

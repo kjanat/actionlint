@@ -177,7 +177,7 @@ func TestCategoryFileMigrationChecksInheritedSelection(t *testing.T) {
 	root := parsed.Value.(map[string]any)
 	lint := root["lint"].(map[string]any)
 	rules := lint["rules"].(map[string]any)
-	group, ok := rules["suspicious"].(map[string]any)
+	group, ok := rules["correctness"].(map[string]any)
 	if !ok || group["empty-job"] != "off" {
 		t.Fatalf("wrong migration: %s", prepared.Content)
 	}

@@ -52,6 +52,23 @@ func TestRootUsesCommandFlagDefinitions(t *testing.T) {
 	}
 }
 
+func TestCheckVersionFlags(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, command := range []string{"check", "fix", "pre-commit"} {
+		for _, flag := range []string{"--version", "-V", "-version"} {
+			t.Run(command+"/"+flag, func(t *testing.T) {
+				t.Parallel()
+				var stdout, stderr bytes.Buffer
+				cmd := Command{Stdout: &stdout, Stderr: &stderr}
+				status := cmd.Main([]string{"actionlint", command, flag})
+				if status != 0 || !strings.Contains(stdout.String(), "Build: ") || stderr.Len() != 0 {
+					t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
+				}
+			})
+		}
+	}
+}
+
 func TestSubcommandLegacyFlagBoundaries(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

@@ -26,7 +26,7 @@ function checkExample(root, source) {
 				'--diagnostic-width=90',
 				'--hyperlinks=never',
 				'--quiet',
-				'--action-metadata=off',
+				'--offline',
 				'--no-tool=shellcheck',
 				'--no-tool=ruff',
 				'--stdin-filename=.github/workflows/ci.yml',

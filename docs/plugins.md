@@ -985,6 +985,19 @@ decompressed bytes. Redirects are bounded and cannot downgrade HTTPS to HTTP.
 HTTP is supported explicitly, including local development servers. URI userinfo is rejected; query strings are
 omitted from reported artifact locations.
 
+To inspect a registry plugin, use its alias or package name, with an optional
+version:
+
+```sh
+actionlint plugin inspect shellcheck
+actionlint plugin inspect github.com/kjanat/actionlint-plugin-shellcheck@v0.3.1 --json
+```
+
+Without a version, actionlint selects the registry's latest release. Use
+`--registry URL` to select another registry. Inspection downloads and verifies
+the plugin, then displays its metadata without executing it or changing your
+configuration.
+
 The `actionlint.plugin` custom section stores JSON metadata inside the Wasm file.
 `actionlint plugin inspect` reads this section and the binary header without
 compiling or running the plugin. It reports the binary kind, checksum, downloaded

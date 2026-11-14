@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -45,6 +46,7 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 					}
 				}
 			}
+			sarifcheck.RequireValid(t, out.Bytes())
 			if err := json.Unmarshal(out.Bytes(), &document); err != nil {
 				t.Fatal(err)
 			}
@@ -82,6 +84,7 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 				}
 			}
 		}
+		sarifcheck.RequireValid(t, out.Bytes())
 		if err := json.Unmarshal(out.Bytes(), &document); err != nil {
 			t.Fatal(err)
 		}
@@ -128,6 +131,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 					}
 				}
 			}
+			sarifcheck.RequireValid(t, out.Bytes())
 			if err := json.Unmarshal(out.Bytes(), &document); err != nil {
 				t.Fatal(err)
 			}
@@ -158,6 +162,69 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 
 func testVersion() string { return "test" }
 
+func TestSARIFUnknownSourcePositions(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, path string
+		start      sourcepos.Position
+		want       string
+	}{
+		{"no file", "", sourcepos.Position{}, ""},
+		{"file only", "workflow.yml", sourcepos.Position{}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"}}`},
+		{"line only", "workflow.yml", sourcepos.Position{Line: 7}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"},"region":{"startLine":7}}`},
+		{"start only", "workflow.yml", sourcepos.Position{Line: 7, Column: 3}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"},"region":{"startLine":7,"startColumn":3}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var output bytes.Buffer
+			finding := results.Diagnostic{
+				Rule: "example", Message: "finding", Path: tc.path, Start: tc.start,
+				Related: []results.Related{{Message: "related finding", Path: tc.path, Start: tc.start}},
+			}
+			if err := WriteSARIF(&output, "test", nil, []results.Diagnostic{finding}); err != nil {
+				t.Fatal(err)
+			}
+			sarifcheck.RequireValid(t, output.Bytes())
+			var document struct {
+				Runs []struct {
+					Results []struct {
+						Locations        []struct{ PhysicalLocation json.RawMessage }
+						RelatedLocations []struct {
+							Message          sarifText
+							PhysicalLocation json.RawMessage
+						}
+					}
+				}
+			}
+			if err := json.Unmarshal(output.Bytes(), &document); err != nil {
+				t.Fatal(err)
+			}
+			got := document.Runs[0].Results[0]
+			if len(got.RelatedLocations) != 1 || got.RelatedLocations[0].Message.Text != "related finding" {
+				t.Fatalf("related finding missing: %s", output.Bytes())
+			}
+			if tc.path == "" {
+				if len(got.Locations) != 0 || len(got.RelatedLocations[0].PhysicalLocation) != 0 {
+					t.Fatalf("reported a source location without a file: %s", output.Bytes())
+				}
+				return
+			}
+			if len(got.Locations) != 1 {
+				t.Fatalf("got %d locations, want one: %s", len(got.Locations), output.Bytes())
+			}
+			for _, location := range []json.RawMessage{got.Locations[0].PhysicalLocation, got.RelatedLocations[0].PhysicalLocation} {
+				var compact bytes.Buffer
+				if err := json.Compact(&compact, location); err != nil {
+					t.Fatal(err)
+				}
+				if compact.String() != tc.want {
+					t.Errorf("source location = %s, want %s", compact.String(), tc.want)
+				}
+			}
+		})
+	}
+}
+
 func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -174,6 +241,7 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 				t.Fatal(err)
 			}
 			var document sarifDocument
+			sarifcheck.RequireValid(t, output.Bytes())
 			if err := json.Unmarshal(output.Bytes(), &document); err != nil {
 				t.Fatal(err)
 			}
@@ -206,6 +274,7 @@ func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	var document sarifDocument
+	sarifcheck.RequireValid(t, output.Bytes())
 	if err := json.Unmarshal(output.Bytes(), &document); err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
@@ -13,6 +14,61 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
+
+func TestCommandSymlinkSourcePaths(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir("real", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("real", "link"); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	files := map[string]string{
+		"workflow.yml": commandBadWorkflow,
+		"action.yml":   "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join("real", name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{filepath.Join("link", "action.yml"), filepath.Join("link", "workflow.yml")}
+	got := testRunCommand("", "check", "--json", "--summary", "--no-config", want[0], want[1])
+	var result resultreport.CheckResult
+	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil || got.Status != 1 {
+		t.Fatalf("check: %+v, %v", got, err)
+	}
+	var paths []string
+	for _, diagnostic := range result.Diagnostics {
+		paths = append(paths, diagnostic.Path)
+	}
+	slices.Sort(paths)
+	if !slices.Equal(paths, want) {
+		t.Fatalf("diagnostic paths = %q, want %q", paths, want)
+	}
+	paths = nil
+	for _, document := range result.Documents {
+		paths = append(paths, document.DocumentPath())
+	}
+	slices.Sort(paths)
+	if !slices.Equal(paths, want) {
+		t.Fatalf("document paths = %q, want %q", paths, want)
+	}
+	var summary struct {
+		Summary resultreport.CheckSummary `json:"summary"`
+	}
+	if err := json.Unmarshal([]byte(got.Stderr), &summary); err != nil {
+		t.Fatal(err)
+	}
+	paths = nil
+	for _, file := range summary.Summary.ByFile {
+		paths = append(paths, file.Path)
+	}
+	slices.Sort(paths)
+	if !slices.Equal(paths, want) {
+		t.Fatalf("summary paths = %q, want %q", paths, want)
+	}
+}
 
 func TestCommandActionInputs(t *testing.T) {
 	t.Parallel()
@@ -31,7 +87,7 @@ func TestCommandActionInputs(t *testing.T) {
 				args = append(args, "--stdin-filename=action.yml", "-")
 			} else {
 				args = append(args, filepath.Join(dir, "workflow.yml"), filepath.Join(dir, "action.yml"))
-				wantPath = physicalWorkingDirectoryPath(t, filepath.Join(dir, "action.yml"))
+				wantPath = workingDirectoryPath(t, filepath.Join(dir, "action.yml"))
 			}
 			if modern {
 				args = append([]string{"check"}, args...)

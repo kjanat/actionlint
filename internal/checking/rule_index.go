@@ -65,7 +65,7 @@ var builtins = []rule.Declaration{
 	correctness.IfCondCheck().Declaration,
 	correctness.NumericValuesCheck().Declaration,
 	suspicious.EmptyTriggersCheck().Declaration,
-	suspicious.EmptyJobCheck().Declaration,
+	correctness.EmptyJobCheck().Declaration,
 	suspicious.EmptyRunCheck().Declaration,
 	security.UnpinnedReferenceDeclaration(),
 	conventions.JobTimeoutDeclaration(),

@@ -19,7 +19,7 @@ func shapeFindings(t *testing.T, src string) []reporting.Finding {
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
 	out := suspicious.EmptyTriggers(w)
 	for _, job := range w.Jobs() {
-		out = append(out, suspicious.EmptyJob(job)...)
+		out = append(out, correctness.EmptyJob(job)...)
 		out = append(out, correctness.NumericValues(job)...)
 		for step := range job.Steps() {
 			out = append(out, suspicious.EmptyRun(step)...)
@@ -55,8 +55,12 @@ func TestShapeChecks(t *testing.T) {
 			t.Parallel()
 			var got []string
 			for _, finding := range shapeFindings(t, tc.src) {
-				if finding.Severity != "warning" {
-					t.Errorf("%s is not a warning", finding.Rule)
+				severity := "warning"
+				if finding.Rule == "empty-job" {
+					severity = "error"
+				}
+				if finding.Severity != severity {
+					t.Errorf("%s severity = %q, want %q", finding.Rule, finding.Severity, severity)
 				}
 				got = append(got, finding.Rule+"/"+finding.Code)
 			}

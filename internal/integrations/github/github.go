@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
+
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
@@ -121,9 +123,9 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	if ref.Host() != "github.com" {
 		return unavailableFile(availability.UnsupportedHost()), nil
 	}
-	if g.mode == Offline {
+	if g.mode == Offline || network.Settings(ctx).Offline {
 		if !fullSHA1(ref.Ref()) {
-			return unavailableFile(availability.Offline()), nil
+			return g.offlineNamed(ctx, ref, kind, filenames)
 		}
 		return g.offline(ctx, ref, filenames)
 	}
@@ -218,8 +220,8 @@ func (g *GitHub) resolveListedFile(ctx context.Context, ref actions.Reference, k
 			return unavailableFile(availability.Failed()), nil
 		}
 		file.filename, file.content = record.Filename, record.Content
-		if err := g.store(ctx, file); err != nil && ctx.Err() != nil {
-			return repositoryFile{}, ctx.Err()
+		if err := g.store(ctx, file); err != nil && (ctx.Err() != nil || network.Settings(ctx).WarmCache) {
+			return repositoryFile{}, err
 		}
 		return file, nil
 	}
@@ -269,8 +271,8 @@ func (g *GitHub) fetchSelectedFile(ctx context.Context, ref actions.Reference, k
 		return unavailableFile(availability.Failed()), nil
 	}
 	file.filename, file.content = filename, content
-	if err := g.store(ctx, file); err != nil && ctx.Err() != nil {
-		return repositoryFile{}, ctx.Err()
+	if err := g.store(ctx, file); err != nil && (ctx.Err() != nil || network.Settings(ctx).WarmCache) {
+		return repositoryFile{}, err
 	}
 	return file, nil
 }
@@ -314,8 +316,8 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 	}
 	if cached, exists, cacheErr := g.cached(ctx, ref, repoID, commit, filenames); cacheErr == nil && exists {
 		file.filename, file.content = cached.Filename, cached.Content
-		if err := g.storeTagObject(ctx, file); err != nil && ctx.Err() != nil {
-			return repositoryFile{}, ctx.Err()
+		if err := errors.Join(g.storeTagObject(ctx, file), g.storeNamed(ctx, file)); err != nil && (ctx.Err() != nil || network.Settings(ctx).WarmCache) {
+			return repositoryFile{}, err
 		}
 		return file, nil
 	}
@@ -358,8 +360,8 @@ func (g *GitHub) lookupFileREST(ctx context.Context, ref actions.Reference, kind
 	}
 	file.filename, file.content = filename, string(content)
 	if err := g.store(ctx, file); err != nil {
-		if ctx.Err() != nil {
-			return repositoryFile{}, ctx.Err()
+		if ctx.Err() != nil || network.Settings(ctx).WarmCache {
+			return repositoryFile{}, err
 		}
 		// The network observation is usable even when the user's cache cannot be written.
 	}
@@ -613,7 +615,7 @@ func cachedRepositoryFile(ref actions.Reference, record cacheRecord) (repository
 
 func (g *GitHub) store(ctx context.Context, manifest repositoryFile) error {
 	err := g.storeAt(ctx, manifest, "")
-	return errors.Join(err, g.storeTagObject(ctx, manifest))
+	return errors.Join(err, g.storeTagObject(ctx, manifest), g.storeNamed(ctx, manifest))
 }
 
 func (g *GitHub) storeTagObject(ctx context.Context, manifest repositoryFile) error {

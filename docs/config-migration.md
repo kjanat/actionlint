@@ -74,6 +74,12 @@ legacy `plugins` group-level selection needs dynamic plugin metadata that is not
 available, explicit migration fails with an error. Ordinary config loading binds
 those rules after plugin registration.
 
+`empty-job` moved from `suspicious` to `correctness` and now reports errors by
+default because GitHub rejects jobs without steps or a reusable workflow call.
+Run `actionlint config migrate` to move existing settings to
+`lint.rules.correctness.empty-job`. Explicit severity settings, including `off`,
+are retained, also in overrides.
+
 The `required-actions` rule has been removed. Delete its configuration entries
 before migrating; migration rejects remaining entries.
 

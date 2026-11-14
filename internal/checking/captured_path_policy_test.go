@@ -88,7 +88,11 @@ func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliase
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("diagnostics=%v", result.Diagnostics)
 	}
-	if got := result.Diagnostics[0]; got.Path != "ci.yml" || got.Reference == nil || filepath.FromSlash(got.Reference.Document) != physicalFirst {
+	display, err := filepath.Rel(root, alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := result.Diagnostics[0]; got.Path != display || got.Reference == nil || filepath.FromSlash(got.Reference.Document) != physicalFirst {
 		t.Fatalf("result followed the retargeted filesystem path: %+v", got)
 	}
 }

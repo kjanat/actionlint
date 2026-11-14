@@ -36,7 +36,7 @@ func TestFixInputThroughAnotherSpelling(t *testing.T) {
 			if err := os.Symlink(destination, link); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			args := []string{"actionlint", "fix", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--action-metadata=off", "--include-suggested", path}
+			args := []string{"actionlint", "fix", "--no-config", "--no-tool=shellcheck", "--no-tool=ruff", "--offline", "--include-suggested", path}
 			var out, log bytes.Buffer
 			if status := (&Command{Stdout: &out, Stderr: &log}).MainContext(t.Context(), args); status != 0 {
 				t.Fatalf("preview status=%d stderr=%s stdout=%s", status, &log, &out)
@@ -47,6 +47,9 @@ func TestFixInputThroughAnotherSpelling(t *testing.T) {
 			}
 			if len(plan.Changes) != 1 || plan.Changes[0].After != after {
 				t.Fatalf("plan=%+v", plan)
+			}
+			if filepath.Clean(plan.Changes[0].Path) != filepath.Clean(path) {
+				t.Fatalf("preview path = %q, want supplied path %q", plan.Changes[0].Path, path)
 			}
 			out.Reset()
 			log.Reset()

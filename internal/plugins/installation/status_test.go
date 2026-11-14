@@ -7,6 +7,7 @@ import (
 	"time"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	pluginartifacts "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
@@ -48,6 +49,14 @@ func TestFreshSelectionExcludesWithdrawnAndRevoked(t *testing.T) {
 			publishStatuses(t, registry, releaseStatus(pin, state))
 			if _, err := client.Resolve(t.Context(), pin.Name, pin.Version); err == nil || !strings.Contains(err.Error(), string(state)) {
 				t.Fatalf("exact selection: %v", err)
+			}
+			ctx, _ := network.WithSession(t.Context(), network.Options{Offline: true})
+			requests := len(registry.Requests())
+			if _, err := client.Resolve(ctx, pin.Name, pin.Version); err == nil || !strings.Contains(err.Error(), string(state)) {
+				t.Fatalf("cached exact selection: %v", err)
+			}
+			if len(registry.Requests()) != requests {
+				t.Fatal("offline selection contacted the registry")
 			}
 			selected, err := client.Resolve(t.Context(), pin.Name, "latest")
 			if err != nil || selected.Version != "v1.0.0" {

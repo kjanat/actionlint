@@ -132,7 +132,9 @@ Normal help and completion recommend the modern names. `--help-legacy` lists the
 supported old names without deprecation warnings. `--format` selects a Go template.
 `-o`, `-f`, `-q` and `-h` mean output format, template, quiet and help.
 Use `--log-level=info` or legacy `-v` for progress logging.
-`-V` is the short form of `--version` and preserves its three-line output.
+`--version` (or `-V`) prints actionlint's version and build information. It also
+works after `check`, `fix` and `pre-commit`, including through wrappers that add
+one of those commands.
 Attached short-option values such as `-ojson` belong to `check`'s modern grammar.
 
 The root's `-color=false` means not forcing color on. If both `-color` and
@@ -361,14 +363,40 @@ CLI defaults can also come from [environment variables](env.md), including
 configuration selection, output, logging and external linters. Explicit flags
 take precedence, including empty strings and `false`.
 
-Remote action metadata is fetched in online mode by default. Use
-`--action-metadata=offline` to check cached metadata without network requests,
-or `--action-metadata=off` to skip acquisition. Offline cache misses appear in
-JSON coverage without failing the check. Online lookups read the cache, then
-`github.com` and `raw.githubusercontent.com`. When `raw.githubusercontent.com`
-fails, they request the file at the same commit from `cdn.jsdelivr.net` without
-credentials. They call `api.github.com` only when these hosts do not return the
-file. See [remote action metadata](remote-actions.md) for the supported
+Actionlint allows network requests by default. `--offline` blocks them for every
+command, including plugin downloads, registry lookups and remote configuration.
+Use `--online` to select the default explicitly. These flags cannot be combined.
+
+Before disconnecting, download the dependencies for the files you will check:
+
+```sh
+actionlint cache warm .github/workflows
+actionlint check --offline .github/workflows
+```
+
+`cache warm` reads the selected configuration and its `extends`, downloads its
+plugins, and fetches metadata for remote actions and reusable workflows.
+It prints the cache directory to save in CI. It fails if selected action metadata
+cannot be cached. Lint findings do not affect this command's exit status.
+
+Offline checks use cached configuration, verified plugin artifacts and remote
+metadata. Tags and branches use their last cached resolution. Run online again
+to refresh them. Missing dependencies produce warnings. If a required config or
+plugin is missing, actionlint warns that the check could not complete and returns
+zero. Missing action metadata appears in JSON coverage, and checks that have the
+data they need still run. Invalid configuration and damaged plugin artifacts
+remain errors.
+
+Installed native linters, including ShellCheck and Ruff, still run offline.
+Actionlint blocks its downloads and does not start remote resolver processes.
+It does not sandbox network access inside native tools. Cached WebAssembly
+plugins can still run.
+
+Online metadata lookups read the cache, then
+`github.com` and `raw.githubusercontent.com`. If the raw host fails, the mirror
+settings determine whether actionlint tries `cdn.jsdelivr.net` before GitHub REST.
+By default, only repositories known to be public can use that mirror.
+See [remote action metadata](remote-actions.md) for the supported
 references and resolver configuration.
 
 ### Network accounting
@@ -562,6 +590,8 @@ Every registered diagnostic rule supports [inline exceptions](config.md#inline-d
 with a rule name and an optional reason. Place the comment on the reported line, or use
 `actionlint:ignore-next-line` immediately before it. A directive on a YAML block scalar header covers its body.
 Trailing comments also accept `# actionlint-ignore RULE`, `# ignore RULE` and `# ignore[RULE]`.
+The bare `# ignore RULE` form requires a known first rule name. Comments such as
+`# ignore docs as they are built elsewhere` are ordinary comments.
 Separate multiple rule IDs with commas, spaces, or both. The preceding-line form
 also accepts `# actionlint-ignore-next-line RULE` and `# ignore-next-line RULE`.
 
@@ -1372,8 +1402,7 @@ repository must be known to be public. Any raw-host `404` prevents a jsDelivr
 request. GitHub REST handles other failed lookups and verifies object types
 that the Git reference listing cannot establish. Actionlint includes every request in
 `--network-stats`. Use
-`--action-metadata=offline` for cached metadata or `--action-metadata=off` to
-skip it.
+`--offline` for cached metadata or `--online` for the default behavior.
 
 Load a replacement resolver component with `--plugin`. To use a native resolver,
 select it with `--resolve-with EXECUTABLE`; repeat `--resolver-arg VALUE` for

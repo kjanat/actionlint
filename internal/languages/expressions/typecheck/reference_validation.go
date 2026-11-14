@@ -76,7 +76,7 @@ func (sema *Checker) validateContextReference(n *exprsyntax.VariableNode) {
 				available = append(available, name)
 			}
 		}
-		if suggestion := CloseName(n.Name, available); suggestion != "" {
+		if suggestion := messages.CloseName(n.Name, available); suggestion != "" {
 			sema.errorf(unknownVariable, n, "undefined variable %q; did you mean %q?", n.Token().Value, suggestion)
 			return
 		}
@@ -145,7 +145,7 @@ func (sema *Checker) resolveFunction(n *exprsyntax.FuncCallNode) []*exprfunction
 				candidates = append(candidates, signatures[0].Name)
 			}
 		}
-		if suggestion := CloseName(callee, candidates); suggestion != "" {
+		if suggestion := messages.CloseName(callee, candidates); suggestion != "" {
 			sema.calleeErrorf(unknownFunction, n, "undefined function %q; did you mean %q?", n.Callee, suggestion)
 			return nil
 		}

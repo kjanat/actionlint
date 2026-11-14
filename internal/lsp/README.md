@@ -62,8 +62,8 @@ These are implementation requirements, not advertised features:
       permissions. Explicit offline mode must prevent network requests and report
       unavailable metadata when the cache cannot satisfy a request; provider
       failure must not silently disable validation. The native server currently
-      passes the `RemoteActions` provider to checking, with
-      `--action-metadata=online` as the default. Its `offline` and `online` modes
+      passes the `RemoteActions` provider to checking and fetches metadata by default.
+      Its `offline` and `online` modes
       supply available action declarations to diagnostic checks. They do not yet
       provide the editor features or complete reusable-workflow metadata described
       here. [`references.Resolver`](../input/references/resolver.go) resolves repository

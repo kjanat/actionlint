@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
@@ -32,6 +33,9 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 	if exists {
 		return pin, nil
 	}
+	if network.Settings(ctx).Offline {
+		return Pin{}, network.Missing(name + "@" + version)
+	}
 	pin, err = c.Resolve(ctx, name, version)
 	return pin, ownedLookupError(err)
 }
@@ -39,20 +43,20 @@ func (c *Client) Lookup(ctx context.Context, name, version string) (Pin, error) 
 // A lookup reports immutable failure data rather than exposing an HTTP
 // transport's retained request/error objects. Preserve domain classifications.
 type releaseLookupError struct {
-	message                         string
-	canceled, deadline, unavailable bool
+	message                                  string
+	canceled, deadline, unavailable, offline bool
 }
 
 func (e releaseLookupError) Error() string { return e.message }
 func (e releaseLookupError) Is(target error) bool {
-	return e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded || e.unavailable && target == errReleaseUnavailable
+	return e.offline && target == network.ErrOffline || e.canceled && target == context.Canceled || e.deadline && target == context.DeadlineExceeded || e.unavailable && target == errReleaseUnavailable
 }
 
 func ownedLookupError(err error) error {
 	if err == nil {
 		return nil
 	}
-	return releaseLookupError{message: err.Error(), canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded), unavailable: errors.Is(err, errReleaseUnavailable)}
+	return releaseLookupError{message: err.Error(), offline: network.OnlyOffline(err), canceled: errors.Is(err, context.Canceled), deadline: errors.Is(err, context.DeadlineExceeded), unavailable: errors.Is(err, errReleaseUnavailable)}
 }
 
 func (c *Client) releasePath(name, version string) (string, error) {
