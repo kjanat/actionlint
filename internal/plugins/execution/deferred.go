@@ -28,6 +28,7 @@ type deferredScriptEngine struct {
 	pin         plugininstall.Pin
 	acquisition plugininstall.Acquisition
 	backend     deferredBackend
+	failure     error
 	reserved    rule.Names
 	closed      bool
 }
@@ -57,7 +58,7 @@ func newDeferredScriptEngine(pin plugininstall.Pin, acquisition plugininstall.Ac
 	return &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition, reserved: reserved}, nil
 }
 
-func (b *deferredScriptEngine) get(ctx context.Context) (deferredBackend, error) {
+func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend, err error) {
 	select {
 	case b.gate <- struct{}{}:
 		defer func() { <-b.gate }()
@@ -70,9 +71,14 @@ func (b *deferredScriptEngine) get(ctx context.Context) (deferredBackend, error)
 	if b.closed {
 		return nil, errors.New("default script engine is closed")
 	}
-	if b.backend != nil {
-		return b.backend, nil
+	if b.backend != nil || b.failure != nil {
+		return b.backend, b.failure
 	}
+	defer func() {
+		if err != nil && ctx.Err() == nil {
+			b.failure = err
+		}
+	}()
 	releases := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{b.pin}}
 	if err := releases.CheckStatuses(ctx, plugininstall.StatusOptions{Acquisition: b.acquisition}); err != nil {
 		return nil, err

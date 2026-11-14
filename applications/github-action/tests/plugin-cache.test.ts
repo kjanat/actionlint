@@ -180,19 +180,94 @@ test('restore and save outages remain nonfatal', async (t) => {
 	assert.match(warnings[1] ?? '', /save failed/);
 });
 
-test('failed hydration never publishes an incomplete artifact set', async () => {
+test('a failed download still saves other verified artifacts under a partial cache key', async () => {
 	await fixture(async (plan) => {
 		const incomplete = { ...plan, artifacts: [digest, 'f'.repeat(64)] };
+		const saved: string[] = [];
 		await assert.rejects(
 			cachePlugins(incomplete, async () => {
 				await writeFile(join(plan.directory, digest), bytes);
 				throw new Error('second download failed');
 			}, {
 				restore: async () => undefined,
-				save: async () => assert.fail('incomplete cache must not be saved'),
+				save: async (paths, key) => {
+					assert.deepEqual(paths, incomplete.artifacts.map((artifact) => join(plan.directory, artifact)));
+					saved.push(key);
+				},
 			}),
 			/second download failed/,
 		);
+		assert.deepEqual(saved, [`${pluginCacheKey(incomplete)}-${pluginCacheKey(plan)}`]);
+	});
+});
+
+test('unused lazy engines do not prevent caching and restoring the engine that ran', async () => {
+	await fixture(async (plan) => {
+		const otherBytes = Buffer.from('unused Python engine');
+		const otherDigest = createHash('sha256').update(otherBytes).digest('hex');
+		const full = { ...plan, artifacts: [digest, otherDigest].sort() };
+		const archives = new Map<string, Map<string, Buffer>>();
+		const saved: string[] = [];
+		const fullKey = pluginCacheKey(full);
+		const client: PluginCache = {
+			restore: async (paths, key, restoreKeys) => {
+				assert.deepEqual(paths, full.artifacts.map((artifact) => join(full.directory, artifact)));
+				assert.equal(key, fullKey);
+				assert.deepEqual(restoreKeys, [`${fullKey}-`]);
+				const match = archives.has(key)
+					? key
+					: [...archives.keys()].find((candidate) => candidate.startsWith(`${key}-`));
+				if (!match) return undefined;
+				for (const [path, data] of archives.get(match) ?? []) await writeFile(path, data);
+				return match;
+			},
+			save: async (paths, key) => {
+				assert.deepEqual(paths, full.artifacts.map((artifact) => join(full.directory, artifact)));
+				const archive = new Map<string, Buffer>();
+				for (const path of paths) {
+					try {
+						archive.set(path, await readFile(path));
+					} catch (error) {
+						if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
+					}
+				}
+				archives.set(key, archive);
+				saved.push(key);
+			},
+		};
+		await cachePlugins(
+			full,
+			async () => {
+				await writeFile(join(plan.directory, digest), bytes);
+				return 0;
+			},
+			client,
+			async () => full,
+		);
+		const partialKey = `${fullKey}-${pluginCacheKey(plan)}`;
+		assert.deepEqual(saved, [partialKey]);
+		assert.deepEqual([...archives.get(partialKey)?.keys() ?? []], [join(plan.directory, digest)]);
+		await rm(join(plan.directory, digest));
+		await cachePlugins(full, async () => {
+			assert.deepEqual(await readFile(join(plan.directory, digest)), bytes);
+			await assert.rejects(readFile(join(plan.directory, otherDigest)), { code: 'ENOENT' });
+			return 0;
+		}, client);
+		assert.deepEqual(saved, [partialKey]);
+		await rm(join(plan.directory, digest));
+		await cachePlugins(full, async () => {
+			assert.deepEqual(await readFile(join(plan.directory, digest)), bytes);
+			await writeFile(join(plan.directory, otherDigest), otherBytes);
+			return 0;
+		}, client);
+		assert.deepEqual(saved, [partialKey, fullKey]);
+		for (const artifact of full.artifacts) await rm(join(plan.directory, artifact));
+		await cachePlugins(full, async () => {
+			assert.deepEqual(await readFile(join(plan.directory, digest)), bytes);
+			assert.deepEqual(await readFile(join(plan.directory, otherDigest)), otherBytes);
+			return 0;
+		}, client);
+		assert.deepEqual(saved, [partialKey, fullKey]);
 	});
 });
 

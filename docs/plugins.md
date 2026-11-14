@@ -358,7 +358,9 @@ Its `plugin-cache` input defaults to `true`. Before downloading or starting plug
 only the selected digest-named artifact files from GitHub Actions cache. The key contains the
 operating system and exact set of digests. Every restored file is rehashed before use.
 
-Verified artifacts are saved even when linting reports findings. Cache service failures produce
+Verified artifacts are saved even when linting reports findings or an unused engine has not been downloaded.
+Partial archives can be restored by later runs, and a run that downloads the remaining engines saves
+a complete archive under the same selection's primary key. Cache service failures produce
 warnings and leave ordinary downloads available. Set `plugin-cache: false` to disable this
 optimization; compiled runtime state is never stored in this cache.
 
