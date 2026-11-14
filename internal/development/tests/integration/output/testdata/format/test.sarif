@@ -231,11 +231,11 @@
                 "queryURI": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-job"
               },
               "fullDescription": {
-                "text": "Report jobs that run no steps. GitHub accepts the job, but it does nothing."
+                "text": "GitHub rejects jobs without steps unless they call a reusable workflow."
               },
               "helpUri": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#empty-job",
               "help": {
-                "text": "Add the steps the job should run, or remove the job."
+                "text": "Add steps, call a reusable workflow with uses, or remove the job."
               }
             },
             {
