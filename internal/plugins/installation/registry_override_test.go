@@ -15,7 +15,7 @@ import (
 // of them before the Reference is built.
 type declaration struct{ name, version, registry string }
 
-func TestLockResolvedRegistryOverride(t *testing.T) {
+func TestResolvedRegistryOverride(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
@@ -44,7 +44,7 @@ func TestLockResolvedRegistryOverride(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			file := plugininstall.LockFile{Lock: plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{original}}}
+			file := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{original}}
 			pin := original
 			pin.Registry = "https://mirror.example/"
 			declared := declaration{name: pin.Name, version: pin.Selector, registry: pin.Registry}
@@ -55,13 +55,13 @@ func TestLockResolvedRegistryOverride(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = file.SetResolved(pin, ref)
+			err = file.CheckResolved(pin, ref)
 			if test.change == nil {
-				if err != nil || !reflect.DeepEqual(file.Lock.Plugins, []plugininstall.Pin{pin}) {
-					t.Fatalf("selected mirror: %#v, %v", file.Lock, err)
+				if err != nil {
+					t.Fatalf("selected mirror: %#v, %v", file, err)
 				}
-			} else if err == nil || !reflect.DeepEqual(file.Lock.Plugins, []plugininstall.Pin{original}) {
-				t.Fatalf("rejected replacement changed lock: %#v, %v", file.Lock, err)
+			} else if err == nil || !reflect.DeepEqual(file.Plugins, []plugininstall.Pin{original}) {
+				t.Fatalf("rejected replacement changed releases: %#v, %v", file, err)
 			}
 		})
 	}

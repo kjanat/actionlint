@@ -1418,7 +1418,7 @@ an I/O failure during a multi-file application reports how many files were writt
 adds the canonical package and exact version to the config's root `plugins` list;
 commit that file. Registry evidence and verified resolutions stay in the user cache.
 Check, fix, rules and LSP load declared plugins using their pins. `plugin install`
-without a name resolves manually edited declarations or migrates older lock-only projects.
+without a name resolves manually edited declarations.
 `plugin sync` restores exact pins; `plugin update` explicitly refreshes declared versions.
 See [plugin installation](plugins.md#install-from-the-registry)
 for version selection, overrides and offline behavior.

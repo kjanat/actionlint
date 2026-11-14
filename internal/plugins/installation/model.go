@@ -151,7 +151,7 @@ func (p Pin) Source() string {
 }
 
 // Matches binds declaration intent to the recorded registry and repository.
-// An alias is accepted only when the lock explicitly records that lookup.
+// An alias matches only when the selected release records that lookup.
 func (p Pin) Matches(ref pluginref.Reference) bool {
 	if !SameRegistry(p.Registry, ref.Registry()) {
 		return false

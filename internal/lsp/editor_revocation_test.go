@@ -33,7 +33,7 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{pin}}
+	lock := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
 	sources := plugininstall.Sources{Paths: []string{pin.Source()}, Releases: &lock, Acquisition: acquisition}
 	root := t.TempDir()
 	options := checking.Options{WorkingDir: root, SkipProjectConfig: true}

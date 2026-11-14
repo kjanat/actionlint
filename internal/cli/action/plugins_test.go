@@ -23,13 +23,11 @@ func pluginCacheDirectory(userCacheDir string) string {
 func TestActionExactRegistryPlugins(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
-		name                 string
-		explicit, legacyLock bool
+		name     string
+		explicit bool
 	}{
 		{name: "discovered"},
 		{name: "explicit", explicit: true},
-		{name: "discovered-legacy-lock", legacyLock: true},
-		{name: "explicit-legacy-lock", explicit: true, legacyLock: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -54,19 +52,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 				".github/base.yaml":       "plugins:\n  - name: " + fixtureregistry.FixturePluginName + "\n    version: v1.0.0\n    registry: " + fixtureregistry.FixtureRegistryURL + "\n",
 				".github/actionlint.yaml": "extends: [base.yaml]\n",
 			})
-			lockPath := filepath.Join(workspace, ".github", plugininstall.LockName)
-			if test.legacyLock {
-				lock, err := plugininstall.OpenLock(t.Context(), lockPath)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := lock.Set(pin); err != nil {
-					t.Fatal(err)
-				}
-				if err := lock.Save(t.Context()); err != nil {
-					t.Fatal(err)
-				}
-			}
+			lockPath := filepath.Join(workspace, ".github", "actionlint.plugins.lock.json")
 			env := map[string]string{
 				"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck,ruff",
 				"INPUT_CONFIG": "lint: {rules: {plugins: {no-sudo: warn}}}",
@@ -104,15 +90,13 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 			registry.SetOffline(true)
 			result := runLinter(req)
 			if result.code != 1 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Rule != "no-sudo" {
-				t.Fatalf("locked component result: %+v, %s", result.report.Diagnostics, result.stderr)
+				t.Fatalf("cached component result: %+v, %s", result.report.Diagnostics, result.stderr)
 			}
 			if len(registry.Requests()) != 0 {
 				t.Fatalf("cached Action fetched artifacts: %v", registry.Requests())
 			}
-			if !test.legacyLock {
-				if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
-					t.Fatalf("checking created a lockfile: %v", err)
-				}
+			if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+				t.Fatalf("checking created a project lockfile: %v", err)
 			}
 			env["INPUT_CONFIG"] = "plugins: []"
 			req, err = provisioningRequest(lookup, acquisition)
@@ -251,161 +235,6 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	}
 	if plan.Directory != directory || len(plan.Artifacts) != 1 || plan.Artifacts[0] != digest {
 		t.Fatalf("configured digest missing: %+v", plan)
-	}
-}
-
-func TestActionRejectsUndeclaredLegacyLock(t *testing.T) {
-	t.Parallel()
-	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
-	if err != nil {
-		t.Fatal(err)
-	}
-	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	registry.Add(t, "v1.0.0", wasm)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	workspace := workspaceWith(t, map[string]string{
-		".git":                    "",
-		".github/actionlint.yaml": "policy: {require-job-timeout: false}\n",
-		"ci.yml":                  "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n",
-	})
-	lockPath := filepath.Join(workspace, ".github", plugininstall.LockName)
-	lock, err := plugininstall.OpenLock(t.Context(), lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	configPath := filepath.Join(workspace, ".github", "actionlint.yaml")
-	configBefore, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lockBefore, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	registry.ResetRequests()
-	env := map[string]string{
-		"GITHUB_WORKSPACE":    workspace,
-		"INPUT_FILES":         "ci.yml",
-		"INPUT_DISABLE-TOOLS": "ruff,shellcheck",
-	}
-	lookup := func(key string) string { return env[key] }
-	var stdout, stderr bytes.Buffer
-	if code := PluginPlan(lookup, &stdout, &stderr, acquisition); code != 3 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "not declared") {
-		t.Fatalf("cache plan accepted undeclared lock: %d %s", code, &stderr)
-	}
-	if len(registry.Requests()) != 0 {
-		t.Fatalf("cache preview fetched artifacts: %v", registry.Requests())
-	}
-	configAfter, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lockAfter, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(configBefore, configAfter) || !bytes.Equal(lockBefore, lockAfter) {
-		t.Fatal("cache preview modified legacy configuration or lock")
-	}
-
-	req, err := provisioningRequest(lookup, acquisition)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result := runLinter(req)
-	if result.code != 3 || len(result.report.Diagnostics) != 0 || !strings.Contains(result.stderr, "not declared") {
-		t.Fatalf("checking accepted undeclared lock: %+v %s", result.report.Diagnostics, result.stderr)
-	}
-	if len(registry.Requests()) != 0 {
-		t.Fatalf("checking fetched undeclared plugin bytes: %v", registry.Requests())
-	}
-	configAfter, err = os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lockAfter, err = os.ReadFile(lockPath)
-	if err != nil || !bytes.Equal(configBefore, configAfter) || !bytes.Equal(lockBefore, lockAfter) {
-		t.Fatal("checking rewrote legacy config or lock")
-	}
-}
-
-func TestActionPluginPlanRejectsInvalidLegacyPluginState(t *testing.T) {
-	t.Parallel()
-	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
-	if err != nil {
-		t.Fatal(err)
-	}
-	registry := fixtureregistry.NewPluginRegistry(t)
-	registry.Add(t, "v1.0.0", wasm)
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct {
-		name   string
-		config string
-		lock   string
-	}{
-		{name: "corrupt lock", config: "policy: {require-job-timeout: false}\n", lock: "not a lock\n"},
-		{
-			name: "stale lock",
-			config: "policy: {require-job-timeout: false}\nplugins:\n" +
-				"  - name: " + fixtureregistry.FixturePluginName + "\n    version: v2.0.0\n    registry: " + fixtureregistry.FixtureRegistryURL + "\n",
-			lock: "valid",
-		},
-		{name: "canonical undeclared lock", config: "lint: {}\n", lock: "valid"},
-		{name: "malformed config", config: "policy: [\n"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
-			workspace := workspaceWith(t, map[string]string{
-				".git": "", ".github/actionlint.yaml": tc.config,
-			})
-			if tc.lock != "" {
-				lockPath := filepath.Join(workspace, ".github", plugininstall.LockName)
-				if tc.lock == "valid" {
-					lock, err := plugininstall.OpenLock(t.Context(), lockPath)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if err := lock.Set(pin); err != nil {
-						t.Fatal(err)
-					}
-					if err := lock.Save(t.Context()); err != nil {
-						t.Fatal(err)
-					}
-				} else if err := os.WriteFile(lockPath, []byte(tc.lock), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "shellcheck,ruff"}
-			var stdout, stderr bytes.Buffer
-			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 3 {
-				t.Fatalf("got status %d, want failure: %s", code, &stderr)
-			}
-			if stdout.Len() != 0 || stderr.Len() == 0 {
-				t.Fatalf("got stdout=%q stderr=%q", stdout.String(), stderr.String())
-			}
-		})
 	}
 }
 

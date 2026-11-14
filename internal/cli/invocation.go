@@ -66,9 +66,9 @@ type checkInvocation struct {
 	// NamedTools lists the tool ids --tool and --no-tool named.
 	NamedTools []string
 	// Deprecations holds a warning for each deprecated flag used.
-	Deprecations         []string
-	Plugins              []string
-	PluginLock           string
+	Deprecations []string
+	Plugins      []string
+
 	Verbose              bool
 	Debug                bool
 	Strict               bool
@@ -232,7 +232,7 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationPluginTest:
 		return pluginTestRequest{Paths: inv.Check.Paths, JSON: inv.JSON}, nil
 	case operationPluginSearch, operationPluginVersions, operationPluginInstall, operationPluginList, operationPluginUpdate, operationPluginRemove, operationPluginSync:
-		return pluginRegistryRequest{Operation: plugincmd.Operation(inv.Operation), Options: plugincmd.RegistryOptions(inv.Plugin), Paths: inv.Check.Paths, LockFile: inv.Check.PluginLock, Config: inv.Check.Config, JSON: inv.JSON}, nil
+		return pluginRegistryRequest{Operation: plugincmd.Operation(inv.Operation), Options: plugincmd.RegistryOptions(inv.Plugin), Paths: inv.Check.Paths, Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case "lsp":
 		return lspRequest{inv.Check}, nil
 	case operationVersion:

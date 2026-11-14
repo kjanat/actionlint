@@ -47,9 +47,8 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err != nil || config.VariableNames(cfg.Facts()) == nil || cfg.Plugins == nil || len(cfg.Plugins) != 0 {
 					t.Fatalf("migration ignored opt-out: %+v, %v", cfg, err)
 				}
-				lock, err := plugininstall.OpenLock(t.Context(), filepath.Join(filepath.Dir(path), plugininstall.LockName))
-				if err != nil || len(lock.Lock.Plugins) != 0 {
-					t.Fatalf("disabled default pins: %+v, %v", lock, err)
+				if _, err := os.Stat(filepath.Join(filepath.Dir(path), "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
+					t.Fatalf("migration created a project lock: %v", err)
 				}
 			})
 		}

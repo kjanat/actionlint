@@ -53,7 +53,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("read-only commands rewrote config")
 	}
-	if _, err := os.Stat(filepath.Join(".github", plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(".github", "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("project lockfile created: %v", err)
 	}
 	registry.SetOffline(false)

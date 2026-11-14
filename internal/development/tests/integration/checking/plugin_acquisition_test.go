@@ -50,7 +50,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 			t.Fatalf("project private source acquired: %v", err)
 		}
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

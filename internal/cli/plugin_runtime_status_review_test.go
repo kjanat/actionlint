@@ -26,13 +26,9 @@ func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--json")
-	var lock plugininstall.Lock
+	var lock plugininstall.ResolvedPlugins
 	if err := json.Unmarshal([]byte(installed), &lock); err != nil || len(lock.Plugins) != 1 {
 		t.Fatalf("invalid installed lock: %s: %v", installed, err)
-	}
-	lockPath := filepath.Join(root, ".github", plugininstall.LockName)
-	if err := os.WriteFile(lockPath, []byte(installed), 0o600); err != nil {
-		t.Fatal(err)
 	}
 	for _, scenario := range []struct {
 		name   string
@@ -40,7 +36,6 @@ func TestCheckPluginRuntimeFailureExitStatus(t *testing.T) {
 		status int
 	}{
 		{"automatic", nil, 3},
-		{"lock", []string{"--plugin-lock", lockPath}, 3},
 		{"config", []string{"--config", filepath.Join(root, ".github", "actionlint.yaml")}, 3},
 		{"explicit", []string{"--plugin", lock.Plugins[0].Source()}, 2},
 	} {

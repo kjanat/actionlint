@@ -30,7 +30,7 @@ func pluginCommandTest(t *testing.T, acquisition plugininstall.Acquisition, want
 
 func TestRegistryCLI(t *testing.T) {
 	help := pluginCommandTest(t, plugininstall.Acquisition{}, 0, "plugin", "install", "--help")
-	for _, flag := range []string{"--version", "--registry", "--plugin-lock", "--config"} {
+	for _, flag := range []string{"--version", "--registry", "--config"} {
 		if !strings.Contains(help, flag) {
 			t.Fatalf("help lacks %s: %s", flag, help)
 		}
@@ -59,7 +59,7 @@ func TestRegistryCLI(t *testing.T) {
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "versions", "publisher/plugin", "--registry", fixtureregistry.FixtureRegistryURL)
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.9.0", "--registry", fixtureregistry.FixtureRegistryURL)
-	lockPath := filepath.Join(root, ".github", plugininstall.LockName)
+	lockPath := filepath.Join(root, ".github", "actionlint.plugins.lock.json")
 	configPath := filepath.Join(root, ".github", "actionlint.yaml")
 	readDeclarations := func() repoconfig.PluginDeclarations {
 		t.Helper()
@@ -266,11 +266,11 @@ func TestRegistryInstallDoesNotExecutePlugin(t *testing.T) {
 	// loading must fail; installation must succeed without starting a guest.
 	r.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	t.Chdir(t.TempDir())
-	lock := filepath.Join(t.TempDir(), plugininstall.LockName)
-	output := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--plugin-lock", lock, "--json")
-	var saved plugininstall.Lock
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	output := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--config", config, "--json")
+	var saved plugininstall.ResolvedPlugins
 	if err := json.Unmarshal([]byte(output), &saved); err != nil || len(saved.Plugins) != 1 {
 		t.Fatalf("%s: %v", output, err)
 	}
-	pluginCommandTest(t, acquisition, 3, "rules", "--plugin-lock", lock)
+	pluginCommandTest(t, acquisition, 3, "rules", "--config", config)
 }

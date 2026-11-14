@@ -25,7 +25,7 @@ func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin,
 	}
 	path := filepath.Join(directory, "selections", hash(name+"\n"+selector)+".json")
 	if !network.Settings(ctx).WarmCache || network.Settings(ctx).Offline {
-		data, err := readLockBytes(ctx, path)
+		data, err := readCacheBytes(ctx, path)
 		if err != nil {
 			return Pin{}, err
 		}
@@ -125,7 +125,7 @@ func (c *Client) cachedRelease(ctx context.Context, name, version string) (Pin, 
 	if err != nil {
 		return Pin{}, false, err
 	}
-	data, err := readLockBytes(ctx, path)
+	data, err := readCacheBytes(ctx, path)
 	if err != nil || data == nil {
 		return Pin{}, false, err
 	}
@@ -211,7 +211,7 @@ func (c *Client) cachedCandidate(ctx context.Context, name, version, digest stri
 	if err != nil {
 		return Pin{}, false, err
 	}
-	data, err := readLockBytes(ctx, path)
+	data, err := readCacheBytes(ctx, path)
 	if err != nil || data == nil {
 		return Pin{}, false, err
 	}

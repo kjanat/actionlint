@@ -48,9 +48,6 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 			return nil, err
 		}
 		result, err := CheckWithPlugins(ctx, options, input, sources)
-		if result != nil {
-			result.Inputs = append(result.Inputs, sources.Inputs...)
-		}
 		return result, err
 	}
 	if input.Kind != inputmodel.Files || len(input.Paths) == 0 {

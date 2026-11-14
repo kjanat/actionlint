@@ -121,69 +121,37 @@ func TestRegistryLegacyAndUnknownContract(t *testing.T) {
 	}
 }
 
-func TestPinnedSyncAndLockTransactions(t *testing.T) {
+func TestPinnedSyncVerifiesOfflineArtifacts(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
-	p, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
+	pin, err := registryClient(t, r).Resolve(t.Context(), fixtureregistry.FixturePluginName, "latest")
 	if err != nil {
 		t.Fatal(err)
 	}
-	file := filepath.Join(t.TempDir(), plugininstall.LockName)
-	f, err := plugininstall.OpenLock(t.Context(), file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Set(p); err != nil {
-		t.Fatal(err)
-	}
+	selected := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
 	options := artifacts.Options{CacheDir: t.TempDir(), Connections: r.Connections()}
 	statuses := plugininstall.StatusOptions{Acquisition: fixtureAcquisition(r)}
-	if err := f.Lock.Sync(t.Context(), options, statuses); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	stale, err := plugininstall.OpenLock(t.Context(), file)
-	if err != nil {
+	if err := selected.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	r.SetOffline(true)
 	requests := len(r.Requests())
-	if err := stale.Lock.Sync(t.Context(), options, statuses); err != nil {
+	if err := selected.Sync(t.Context(), options, statuses); err != nil {
 		t.Fatal(err)
 	}
 	if len(r.Requests()) != requests {
 		t.Fatal("offline sync contacted network")
 	}
-	changed := p
-	changed.SHA256 = strings.Repeat("0", 64)
-	if err := f.Set(changed); err == nil {
-		t.Fatal("accepted replacement digest for immutable version")
-	}
-	if err := f.Remove(p.Name); err != nil {
+	if err := os.WriteFile(filepath.Join(options.CacheDir, pin.SHA256), []byte("tampered"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if err := stale.Save(t.Context()); err == nil {
-		t.Fatal("overwrote concurrent lock edit")
-	}
-	if err := os.WriteFile(filepath.Join(options.CacheDir, p.SHA256), []byte("tampered"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := stale.Lock.Sync(t.Context(), options, statuses); err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
+	if err := selected.Sync(t.Context(), options, statuses); err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
 		t.Fatalf("corrupt cache: %v", err)
-	}
-	entries, err := os.ReadDir(filepath.Dir(file))
-	if err != nil || len(entries) != 1 {
-		t.Fatalf("transaction debris: %v %v", entries, err)
 	}
 }
 
-func TestLockValidation(t *testing.T) {
+func TestResolvedPluginValidation(t *testing.T) {
 	t.Parallel()
 	r := fixtureregistry.NewPluginRegistry(t)
 	r.Add(t, "v1.0.0", emptyComponent)
@@ -209,32 +177,9 @@ func TestLockValidation(t *testing.T) {
 			}
 		})
 	}
-	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{p, p}}
+	lock := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{p, p}}
 	if err := lock.Validate(); err == nil {
 		t.Fatal("duplicate accepted")
-	}
-	file := filepath.Join(t.TempDir(), plugininstall.LockName)
-	for _, data := range []string{`null`, `{"schema_version":1,"plugins":null}`, `{"schema_version":1,"plugins":[],"typo":true}`, `{"schema_version":1,"plugins":[]} {}`} {
-		if err := os.WriteFile(file, []byte(data), 0600); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := plugininstall.OpenLock(t.Context(), file); err == nil {
-			t.Fatalf("accepted %s", data)
-		}
-	}
-	data, err := json.Marshal(plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{p}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(file, data, 0600); err != nil {
-		t.Fatal(err)
-	}
-	link := filepath.Join(filepath.Dir(file), "link.json")
-	if err := os.Symlink(file, link); err != nil {
-		t.Skipf("symlink unavailable: %v", err)
-	}
-	if _, err := plugininstall.OpenLock(t.Context(), link); err == nil {
-		t.Fatal("symlink lock accepted")
 	}
 }
 
@@ -266,7 +211,7 @@ func TestCompressedRegistryArtifact(t *testing.T) {
 	if p.SHA256 != newHash {
 		t.Fatal("digest must cover distributed bytes")
 	}
-	lock := plugininstall.Lock{SchemaVersion: 1, Plugins: []plugininstall.Pin{p}}
+	lock := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{p}}
 	if err := lock.Sync(t.Context(), artifacts.Options{CacheDir: t.TempDir(), Connections: r.Connections()}, plugininstall.StatusOptions{Acquisition: fixtureAcquisition(r)}); err != nil {
 		t.Fatal(err)
 	}

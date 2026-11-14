@@ -2,7 +2,6 @@ package installation_test
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -99,17 +98,11 @@ func TestAliasPinIdentityAndRegistryScope(t *testing.T) {
 	if pin.Matches(ref) {
 		t.Fatal("custom registry alias escaped its registry")
 	}
-	file, err := plugininstall.OpenLock(t.Context(), filepath.Join(t.TempDir(), plugininstall.LockName))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Set(pin); err != nil {
-		t.Fatal(err)
-	}
+	file := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
 	changed := pin
 	changed.Name, changed.RepositoryID = "github.com/another/plugin", "20"
 	changed.URL = "https://" + changed.Name + "/releases/download/" + pin.Version + "/" + pin.Asset
-	if err := file.Set(changed); err == nil || !strings.Contains(err.Error(), "alias") {
+	if err := file.CheckReplacement(changed, ""); err == nil || !strings.Contains(err.Error(), "alias") {
 		t.Fatalf("alias reassignment accepted: %v", err)
 	}
 }

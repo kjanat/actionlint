@@ -191,7 +191,6 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	rules.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Include rules from a WebAssembly plugin")
 	annotateFlag(rules.Flags(), "plugin", "Rule selection")
 	a.configFlags(rules.Flags())
-	a.pluginLockFlag(rules.Flags())
 	plugins := a.pluginCommand()
 	doctor := &cobra.Command{Use: "doctor", Short: "Inspect configuration and external tool availability", Args: cobra.NoArgs, RunE: a.capture("doctor")}
 	a.commonFlags(doctor, doctor.Flags())
@@ -231,7 +230,6 @@ func newCommandApp(ctx context.Context, streams *Command) *commandApp {
 	a.runnerFlags(lsp.Flags())
 	lsp.Flags().StringArrayVar(&a.inv.Check.Plugins, "plugin", nil, "Load a WebAssembly plugin from a path or URI")
 	annotateFlag(lsp.Flags(), "plugin", "Rule selection")
-	a.pluginLockFlag(lsp.Flags())
 	cache := a.cacheCommand()
 	a.root.AddCommand(plugins, lsp, check, fix, preCommit, config, rules, doctor, completion, version, init, cache)
 	return a
@@ -299,7 +297,6 @@ func (a *commandApp) checkFlags(c *cobra.Command, modern bool) {
 	annotateFlag(f, "strict", "Rule selection")
 	annotateFlag(f, "experimental", "Rule selection")
 	f.StringVar(&a.inv.Check.StdinFilename, "stdin-filename", "<stdin>", "Use `FILE` as the stdin filename")
-	a.pluginLockFlag(f)
 	a.runnerFlags(f)
 	f.StringArrayVar(&a.inv.Check.IgnoreRegex, "ignore-regex", nil, "Ignore messages matching `REGEX` (repeatable)")
 	f.BoolVar(&a.inv.Check.NoIgnore, "no-ignore", false, "Disable Git ignore rules and configured file filters")

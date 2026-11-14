@@ -94,7 +94,7 @@ details about compatibility with this host when listing versions.
 without executing it. Accepts `owner/repo@tag` and forge-qualified names.
 Save the canonical package and exact version in configuration; verified release
 metadata and artifact bytes live in the shared user cache. Without a name, install
-declared dependencies, preserving matching pins; migrate older lock-only projects.
+declared dependencies, preserving matching pins.
 The default selector for new dependencies is the highest stable full semantic version;
 prereleases and arbitrary tags require exact selection. A registry listing does not prove
 that a plugin will run with this host. Runner targets still require explicit selection.
@@ -105,8 +105,7 @@ remove a declaration; or acquire declared exact releases into the shared cache.
 Update accepts **--version** for one named plugin. Exact selectors stay exact;
 latest cannot downgrade unless an exact tag is explicitly selected. Failed updates
 preserve configuration. Checks restore missing pinned artifacts and reuse verified
-cached bytes offline. Only declared plugins load automatically. Missing or mismatched
-legacy pins require **plugin install** to migrate. Removal leaves the shared cache intact. Use **--config**
+cached bytes offline. Configuration selects plugin releases. Removal leaves the shared cache intact. Use **--config**
 for a custom config or outside a repository. Management rejects **--no-config**.
 
 **plugin inspect** *PATH-OR-URI*
@@ -286,16 +285,6 @@ Repeat to load several. Each analysis runs in a fresh instance with 64 MiB of me
 WebAssembly module or a tool provider published to an OCI registry; see
 [Plugins](../docs/plugins.md#pull-from-an-oci-registry).
 
-**--plugin-lock** *FILE*
-: Explicitly load every pin from this lock, bypassing config declarations.
-Available on check, fix, rules, lsp and
-plugin management commands. Cannot accompany **--plugin**. Explicit **--plugin**
-sources replace automatic plugin selection; **--no-config** disables automatic
-selection. Explicit **--config** selects its declarations and any legacy lock. On
-management commands, **--plugin-lock** places a default config beside that lock
-unless **--config** selects another file. LSP snapshots selection
-until restart. See the **plugin** commands.
-
 **--registry** *URL*
 : Select an HTTPS static catalogue for **plugin search**, **plugin versions** or
 **plugin install**. Default: `https://plugins.actionlint.kjanat.dev/`.
@@ -371,7 +360,7 @@ Unknown ids are rejected with the list of valid ids once plugins load.
 
 **--no-tool** *ID*
 : Disable the tool *ID* and override its environment settings. Plugins
-providing the tool are not loaded: a locked plugin whose name or alias is *ID* is
+providing the tool are not loaded: a selected plugin whose name or alias is *ID* is
 not downloaded. Repeatable.
 
 **--no-tools**

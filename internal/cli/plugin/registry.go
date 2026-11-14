@@ -44,9 +44,9 @@ type RegistryRequest struct {
 	Operation Operation
 	Options   RegistryOptions
 	Paths     []string
-	LockFile  string
-	Config    repoconfig.Selection
-	JSON      bool
+
+	Config repoconfig.Selection
+	JSON   bool
 }
 
 func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryRequest, acquisition plugininstall.Acquisition) (int, error) {
@@ -71,7 +71,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 	if err != nil {
 		return 0, err
 	}
-	project, err := plugininstall.OpenProject(ctx, checking.ConfigurationRules(), acquisition, cwd, r.LockFile, r.Config.Path)
+	project, err := plugininstall.OpenProject(ctx, checking.ConfigurationRules(), acquisition, cwd, r.Config.Path)
 	if err != nil {
 		return 0, err
 	}
@@ -79,7 +79,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 		_, _ = fmt.Fprintln(streams.Stderr, "warning: "+message)
 	}
 	// Only an endpoint supplied in this invocation grants private-network
-	// authority. Selecting configuration, locks or an operation grants none.
+	// authority. Selecting configuration or an operation grants none.
 	explicitEndpoint := r.Options.Registry
 	if strings.Contains(name, "://") {
 		explicitEndpoint = name
@@ -91,23 +91,23 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 		}
 		project.StatusOptions.Network = grant
 	}
-	var selected plugininstall.Lock
+	var selected plugininstall.ResolvedPlugins
 	switch r.Operation {
 	case Install:
 		if err := r.install(ctx, project, name); err != nil {
 			return 0, err
 		}
-		selected = project.Lock.Lock
+		selected = project.Releases
 	case Update:
 		if err := r.update(ctx, project, name); err != nil {
 			return 0, err
 		}
-		selected = project.Lock.Lock
+		selected = project.Releases
 	case Remove:
 		if err := removePlugin(ctx, project, name, r.Options.Registry); err != nil {
 			return 0, err
 		}
-		selected = project.Lock.Lock
+		selected = project.Releases
 	case Sync:
 		selected, err = project.SelectedPlugins(ctx)
 		if err != nil {
@@ -134,7 +134,7 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 	}
 	if r.JSON {
 		return 0, commandstreams.WriteJSON(streams.Stdout, struct {
-			plugininstall.Lock
+			plugininstall.ResolvedPlugins
 			Direct []string `json:"direct,omitempty"`
 		}{selected, project.DirectSources()})
 	}
@@ -222,10 +222,8 @@ func RequestedPluginIndex(ref pluginref.Reference, registry string, existing []p
 }
 
 func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Project, name string) error {
-	refs, err := project.Dependencies(name == "")
-	if err != nil {
-		return err
-	}
+	refs := slices.Clone(project.Manifest.References)
+	var err error
 	if name != "" {
 		// The declaration records the digest an oci:// tag names now.
 		name, err = plugininstall.PinSource(ctx, name, project.StatusOptions.Acquisition)
@@ -264,7 +262,7 @@ func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Pro
 			refs[index] = ref
 		}
 	}
-	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 && len(project.Lock.Lock.Sources) == 0 {
+	if len(refs) == 0 {
 		return nil
 	}
 	if err := project.Resolve(ctx, refs, nil); err != nil {
@@ -274,10 +272,7 @@ func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Pro
 }
 
 func (r RegistryRequest) update(ctx context.Context, project *plugininstall.Project, name string) error {
-	refs, err := project.Dependencies(false)
-	if err != nil {
-		return err
-	}
+	refs := slices.Clone(project.Manifest.References)
 	update := refs
 	if name != "" {
 		index, err := DeclaredPlugin(ctx, project, refs, name, r.Options.Registry)
@@ -299,7 +294,7 @@ func (r RegistryRequest) update(ctx context.Context, project *plugininstall.Proj
 		refs[index] = ref
 		update = []pluginref.Reference{ref}
 	}
-	if len(refs) == 0 && len(project.Lock.Lock.Plugins) == 0 && len(project.Lock.Lock.Sources) == 0 {
+	if len(refs) == 0 {
 		return nil
 	}
 	if err := project.Resolve(ctx, refs, update); err != nil {
@@ -309,10 +304,7 @@ func (r RegistryRequest) update(ctx context.Context, project *plugininstall.Proj
 }
 
 func removePlugin(ctx context.Context, project *plugininstall.Project, name, registry string) error {
-	refs, err := project.Dependencies(false)
-	if err != nil {
-		return err
-	}
+	refs := slices.Clone(project.Manifest.References)
 	index, err := DeclaredPlugin(ctx, project, refs, name, registry)
 	if err != nil {
 		return err
@@ -323,7 +315,7 @@ func removePlugin(ctx context.Context, project *plugininstall.Project, name, reg
 	if err != nil {
 		return err
 	}
-	project.Lock.Lock = selected
+	project.Releases = selected
 	return project.Save(ctx, refs)
 }
 
@@ -340,7 +332,7 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 			continue
 		}
 		matches := requested.Name() == ref.Name()
-		for _, pin := range project.Lock.Lock.Plugins {
+		for _, pin := range project.Releases.Plugins {
 			if pin.Matches(ref) && (strings.EqualFold(pin.Name, requested.Name()) || pin.Alias != "" && pin.Alias == requested.Name()) {
 				matches = true
 			}
