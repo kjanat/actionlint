@@ -29,18 +29,13 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock, err := plugininstall.OpenLock(t.Context(), filepath.Join(t.TempDir(), plugininstall.LockName))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Save(t.Context()); err != nil {
+	config := filepath.Join(t.TempDir(), "actionlint.yaml")
+	content := "plugins: [{name: '" + pin.Name + "', version: '" + pin.Version + "', registry: '" + pin.Registry + "'}]\n"
+	if err := os.WriteFile(config, []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
 	registry.ResetRequests()
-	sources, err := (plugininstall.Selection{LockFile: lock.Path, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (plugininstall.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

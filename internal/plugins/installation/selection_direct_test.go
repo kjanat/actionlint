@@ -25,7 +25,7 @@ func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
 	input := inputmodel.Request{Kind: inputmodel.Repository}
 	selected, err := (Selection{RuleSet: (config.RuleSet{})}).Select(t.Context(), root, input)
-	if err != nil || len(selected.Paths) != 1 || selected.Paths[0] != source || selected.LockFile != "" {
+	if err != nil || len(selected.Paths) != 1 || selected.Paths[0] != source {
 		t.Fatalf("direct selection: %+v, %v", selected, err)
 	}
 	foreign := []string{filepath.Join(other, "workflow.yml")}

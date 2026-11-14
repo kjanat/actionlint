@@ -28,6 +28,10 @@ func TestPreCommitCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			for _, path := range tc.layout {
+				if path == ".git" {
+					gitRepository(t, ".")
+					continue
+				}
 				if err := os.MkdirAll(path, 0o700); err != nil {
 					t.Fatal(err)
 				}
@@ -80,7 +84,7 @@ func TestPreCommitCommandReportsUnreadableWorkflows(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(".github/workflows", 0o700) })
-	if got := testRunCommand("", "pre-commit"); got.Status != 3 || got.Stdout != "" || !strings.Contains(got.Stderr, "permission denied") {
+	if got := testRunCommand("", "pre-commit"); got.Status != 3 || got.Stdout != "" || !strings.Contains(strings.ToLower(got.Stderr), "permission denied") {
 		t.Fatalf("got %+v", got)
 	}
 }

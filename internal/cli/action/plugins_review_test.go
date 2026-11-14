@@ -67,8 +67,8 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			oldEngine := []byte(`"engine":{"name":"echo"`)
 			newEngine := []byte(`"engine":{"name":"ruff"`)
 			if tc.name == "shellcheck" {
-				oldEngine = []byte(`"name":"Echo","plugin_version":"0.1.0","engine":{"name":"echo","version":"1.0.0"},`)
-				newEngine = []byte(`"name":"E","plugin_version":"0","engine":{"name":"shellcheck","version":"1.0.0"} ,`)
+				oldEngine = []byte(`"name":"Echo","repository":"https://github.com/kjanat/actionlint","plugin_version":"0.1.0","engine":{"name":"echo","version":"1.0.0"},`)
+				newEngine = []byte(`"name":"E","repository":"https://github.com/kjanat/actionlint","plugin_version":"0","engine":{"name":"shellcheck","version":"1.0.0"} ,`)
 			}
 			artifact, err := testutil.ReplaceWasmDataString(module, oldEngine, newEngine)
 			if err != nil {

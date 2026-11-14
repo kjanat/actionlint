@@ -93,13 +93,13 @@ func TestCommandStreamsAndContext(t *testing.T) {
 	t.Parallel()
 	var out, errout bytes.Buffer
 	cmd := cli.Command{Stdin: commandFailingIO{}, Stdout: &out, Stderr: &errout}
-	if code := cmd.Main([]string{"actionlint", "--json", "-"}); code != 3 || !strings.Contains(errout.String(), "read failed") {
+	if code := cmd.Main([]string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff", "--json", "-"}); code != 3 || !strings.Contains(errout.String(), "read failed") {
 		t.Fatalf("%d %s", code, &errout)
 	}
 	for _, args := range [][]string{{"--json", "-"}, {"--json", "--help"}, {"--version"}, {"--completion", "bash"}} {
 		errout.Reset()
 		cmd = cli.Command{Stdin: strings.NewReader(commandGoodWorkflow), Stdout: commandFailingIO{}, Stderr: &errout}
-		if code := cmd.Main(append([]string{"actionlint"}, args...)); code != 3 || !strings.Contains(errout.String(), "write failed") {
+		if code := cmd.Main(append([]string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff"}, args...)); code != 3 || !strings.Contains(errout.String(), "write failed") {
 			t.Fatalf("%q: %d %s", args, code, &errout)
 		}
 	}
@@ -116,7 +116,7 @@ func TestCommandStreamsAndContext(t *testing.T) {
 			t.Fatalf("nil streams: %q -> %d", args, code)
 		}
 	}
-	if code := cmd.Main([]string{"actionlint", "--json", "-"}); code != 1 {
+	if code := cmd.Main([]string{"actionlint", "--no-tool=shellcheck", "--no-tool=ruff", "--json", "-"}); code != 1 {
 		t.Fatalf("empty stdin should report a syntax finding: %d", code)
 	}
 }

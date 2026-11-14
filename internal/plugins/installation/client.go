@@ -403,6 +403,7 @@ func (c *Client) resolveVersion(ctx context.Context, p CatalogPlugin, m manifest
 		return Pin{}, errors.New("registry OCI location disagrees with publication source")
 	}
 	pin := Pin{Registry: c.base.String(), Name: p.Name, RepositoryID: i.RepositoryID, OwnerID: i.OwnerID, PluginID: i.PluginID, Selector: selector, Version: v.Version, Kind: s.Kind, Asset: s.assetName(), URL: r.URL, SHA256: s.sourceDigest(), Contract: d.Contract}
+	pin.Metadata = string(d.Metadata)
 	if i.SchemaVersion == 2 {
 		pin.Repository = i.Provider + ".com/" + i.Repository
 	}

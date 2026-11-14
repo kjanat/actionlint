@@ -80,7 +80,7 @@ should use the [CLI, LSP or plugin interfaces](api.md).
 
 The last `--tool`, `--no-tool` or `-shellcheck` option for an ID takes precedence, so
 `--no-tool shellcheck -shellcheck=COMMAND` runs `COMMAND`. A disabled tool also
-turns off plugins that provide it: a locked plugin whose name or alias is the id is
+turns off plugins that provide it: a selected plugin whose name or alias is the id is
 not downloaded, and any other plugin whose metadata names the id as its engine or a
 rule is not loaded. Unreleased v2 builds skipped plugins by a `languages` metadata
 key instead.

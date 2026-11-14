@@ -302,28 +302,29 @@ func typeNames(types []api.ValueType) string {
 	return "[" + strings.Join(names, ", ") + "]"
 }
 
-func (e *Engine) negotiate(raw []byte) error {
+// ReadMetadata validates script routing before a core engine is downloaded.
+func ReadMetadata(raw []byte) (Metadata, error) {
 	var metadata Metadata
 	if err := jsonv2.Unmarshal(raw, &metadata); err != nil {
-		return fmt.Errorf("metadata: %w", err)
+		return Metadata{}, fmt.Errorf("metadata: %w", err)
 	}
 	if metadata.MetadataVersion != 0 && metadata.MetadataVersion != 1 {
-		return fmt.Errorf("metadata reports document version %d; this host supports version 1 and legacy unversioned metadata", metadata.MetadataVersion)
+		return Metadata{}, fmt.Errorf("metadata reports document version %d; this host supports version 1 and legacy unversioned metadata", metadata.MetadataVersion)
 	}
 	if metadata.ABIVersion != int(ABIVersion) {
-		return fmt.Errorf("metadata reports ABI version %d; this host implements %d", metadata.ABIVersion, ABIVersion)
+		return Metadata{}, fmt.Errorf("metadata reports ABI version %d; this host implements %d", metadata.ABIVersion, ABIVersion)
 	}
 	if metadata.Transport != "" && metadata.Transport != transport {
-		return fmt.Errorf("metadata reports transport %q; this host implements %q", metadata.Transport, transport)
+		return Metadata{}, fmt.Errorf("metadata reports transport %q; this host implements %q", metadata.Transport, transport)
 	}
 	if encoding := metadata.Capabilities.PositionEncoding; encoding != "" && encoding != "unicode" {
-		return fmt.Errorf("metadata reports unsupported position encoding %q; this host requires unicode scalar columns", encoding)
+		return Metadata{}, fmt.Errorf("metadata reports unsupported position encoding %q; this host requires unicode scalar columns", encoding)
 	}
 	if err := checkinputs.ValidateScriptInputs(metadata.Capabilities.ScriptInputs); err != nil {
-		return fmt.Errorf("metadata input selectors: %w", err)
+		return Metadata{}, fmt.Errorf("metadata input selectors: %w", err)
 	}
 	if metadata.TemplateContract != "" && len(metadata.Capabilities.ScriptShells)+len(metadata.Capabilities.ScriptInputs) == 0 {
-		return errors.New("template-aware engines must declare shell or action-input routes")
+		return Metadata{}, errors.New("template-aware engines must declare shell or action-input routes")
 	}
 	for i, shell := range metadata.Capabilities.ScriptShells {
 		// Legacy core metadata accepted executable casing and Windows suffixes.
@@ -333,12 +334,20 @@ func (e *Engine) negotiate(raw []byte) error {
 		metadata.Interfaces = map[string][]Interface{"check": {{1, "check"}}, "validate_config": {{1, "validate_config"}}, "metadata": {{1, "metadata"}}}
 	}
 	if metadata.TemplateContract != "" && metadata.TemplateContract != checkinputs.TemplateEffectsContract {
-		return errors.New("unsupported template effects contract")
+		return Metadata{}, errors.New("unsupported template effects contract")
 	}
 	for _, resource := range metadata.Capabilities.Resources {
 		if resource != checkinputs.ToolDirectory {
-			return fmt.Errorf("metadata requests unsupported resource %q; core engines may request %q", resource, checkinputs.ToolDirectory)
+			return Metadata{}, fmt.Errorf("metadata requests unsupported resource %q; core engines may request %q", resource, checkinputs.ToolDirectory)
 		}
+	}
+	return metadata, nil
+}
+
+func (e *Engine) negotiate(raw []byte) error {
+	metadata, err := ReadMetadata(raw)
+	if err != nil {
+		return err
 	}
 	exports := e.compiled.ExportedFunctions()
 	// resolve returns the export of the first supported version in the

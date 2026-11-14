@@ -26,12 +26,12 @@ function unsupportedPluginFlag(stderr: string): boolean {
 }
 
 export type PluginCache = {
-	restore: (paths: string[], key: string) => Promise<string | undefined>;
+	restore: (paths: string[], key: string, restoreKeys?: string[]) => Promise<string | undefined>;
 	save: (paths: string[], key: string) => Promise<unknown>;
 };
 
 const service: PluginCache = {
-	restore: (paths, key) => cache.restoreCache(paths, key),
+	restore: (paths, key, restoreKeys) => cache.restoreCache(paths, key, restoreKeys),
 	save: (paths, key) => cache.saveCache(paths, key),
 };
 
@@ -90,21 +90,21 @@ function warning(operation: string, error: unknown): void {
 	console.log(`::warning::${commandEscape(`Plugin cache ${operation} failed: ${message}`)}`);
 }
 
-async function verifiedArtifacts(plan: PluginPlan): Promise<boolean> {
+async function verifiedArtifacts(plan: PluginPlan): Promise<PluginPlan> {
 	await checkDirectory(plan.directory);
-	let complete = true;
+	const artifacts: string[] = [];
 	for (const digest of plan.artifacts) {
 		const path = join(plan.directory, digest);
 		try {
 			const info = await lstat(path);
 			if (!info.isFile()) throw new Error(`Plugin cache artifact is not a regular file: ${digest}`);
 			if (await sha256File(path) !== digest) throw new Error(`Plugin cache SHA256 mismatch: ${digest}`);
+			artifacts.push(digest);
 		} catch (error) {
-			if (error instanceof Error && 'code' in error && error.code === 'ENOENT') complete = false;
-			else throw error;
+			if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
 		}
 	}
-	return complete;
+	return { ...plan, artifacts };
 }
 
 async function checkDirectory(directory: string): Promise<void> {
@@ -128,7 +128,7 @@ export async function cachePlugins(
 	if (paths.length > 0) {
 		await checkDirectory(plan.directory);
 		try {
-			hit = await client.restore(paths, key);
+			hit = await client.restore(paths, key, [`${key}-`]);
 		} catch (error) {
 			warning('restore', error);
 		}
@@ -150,15 +150,20 @@ export async function cachePlugins(
 				warning('plan refresh', error);
 			}
 		}
-		const currentKey = pluginCacheKey(current);
-		if (
-			canSave && cacheable(current) && current.artifacts.length > 0
-			&& hit !== currentKey && await verifiedArtifacts(current)
-		) {
-			try {
-				await client.save(current.artifacts.map((digest) => join(current.directory, digest)), currentKey);
-			} catch (error) {
-				warning('save', error);
+		if (canSave && cacheable(current) && current.artifacts.length > 0) {
+			const available = await verifiedArtifacts(current);
+			const currentKey = pluginCacheKey(current);
+			// Separate partial archives so a later run can save the complete set.
+			const saveKey = available.artifacts.length === current.artifacts.length
+				? currentKey
+				: `${currentKey}-${pluginCacheKey(available)}`;
+			if (available.artifacts.length > 0 && hit !== saveKey) {
+				try {
+					// The toolkit versions archives by requested paths and omits missing files.
+					await client.save(current.artifacts.map((digest) => join(current.directory, digest)), saveKey);
+				} catch (error) {
+					warning('save', error);
+				}
 			}
 		}
 	}

@@ -44,7 +44,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if actual, err := os.ReadFile(path); err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("failed migration changed config: %s %v", actual, err)
 	}
-	lockPath := filepath.Join(filepath.Dir(path), plugininstall.LockName)
+	lockPath := filepath.Join(filepath.Dir(path), "actionlint.plugins.lock.json")
 	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
 		t.Fatalf("failed migration wrote lock: %v", err)
 	}
@@ -74,57 +74,6 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	}
 }
 
-func TestConfigMigrationPreservesLockOnlyPlugins(t *testing.T) {
-	t.Parallel()
-	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := registryAcquisition(registry)
-	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pin, err := client.Resolve(t.Context(), fixtureregistry.FixturePluginName, "v1.0.0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := repositoryfixture.Directory(t)
-	path := filepath.Join(root, ".github", "actionlint.yaml")
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte("config-variables: []\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := project.Lock.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, acquisition); err != nil {
-		t.Fatal(err)
-	}
-	if err := project.Lock.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	registry.SetOffline(true)
-
-	if err := plugininstall.MigrateConfiguration(t.Context(), path, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}); err != nil {
-		t.Fatal(err)
-	}
-	migrated, err := checking.ConfigurationRules().Load(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(migrated.Plugins) != 1 || migrated.Plugins[0].Name() != pin.Name || migrated.Plugins[0].Version() != pin.Selector || migrated.Plugins[0].Registry() != pin.Registry {
-		t.Fatalf("lock-only plugin selection changed: %+v, %v", migrated.Plugins, err)
-	}
-	if _, err := os.Stat(filepath.Join(filepath.Dir(path), plugininstall.LockName)); !os.IsNotExist(err) {
-		t.Fatalf("migrated legacy lock retained: %v", err)
-	}
-}
-
 func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
@@ -146,7 +95,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err := plan.Apply(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(root, plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("migration wrote lock for inherited declaration: %v", err)
 	}
 	if err := os.WriteFile(base, []byte("plugins: [publisher/base, publisher/next]\n"), 0600); err != nil {
@@ -187,7 +136,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	if err != nil || !bytes.Equal(actual, original) {
 		t.Fatalf("automatic migration changed config outside repository: %q, %v", actual, err)
 	}
-	if _, err := os.Stat(filepath.Join(shared, plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(shared, "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("automatic migration wrote lock outside repository: %v", err)
 	}
 	invalid := []byte("config-variables: [\n")
@@ -262,7 +211,7 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 			} else if !bytes.Equal(actual, original) {
 				t.Fatalf("unused stdin selection migrated project config: %q", actual)
 			}
-			if _, err := os.Stat(filepath.Join(configDir, plugininstall.LockName)); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(configDir, "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 				t.Fatalf("stdin migration unexpectedly wrote lock: %v", err)
 			}
 		})
@@ -331,13 +280,6 @@ func TestConfigMigrationRejectsChangedCandidate(t *testing.T) {
 			if err != nil || !bytes.Equal(actual, original) {
 				t.Fatalf("invalid candidate changed config: %q, %v", actual, err)
 			}
-			lock, err := plugininstall.OpenSelectedLock(t.Context(), root, "", path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := os.Stat(lock.Path); !os.IsNotExist(err) {
-				t.Fatalf("invalid candidate wrote lock: %v", err)
-			}
 		})
 	}
 }
@@ -376,13 +318,6 @@ func TestConfigMigrationRejectsConcurrentSourceEdits(t *testing.T) {
 			if err != nil || !bytes.Equal(actual, userEdit) {
 				t.Fatalf("user edit lost: %q, %v", actual, err)
 			}
-			lock, err := plugininstall.OpenSelectedLock(t.Context(), root, "", path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := os.Stat(lock.Path); !os.IsNotExist(err) {
-				t.Fatalf("stale migration wrote lock: %v", err)
-			}
 			if editBase {
 				actual, err := os.ReadFile(path)
 				if err != nil || !bytes.Equal(actual, original) {
@@ -409,55 +344,5 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	registry.SetOffline(true)
 	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
-	}
-}
-
-func TestInitializeConfigPreservesLockOnlySelection(t *testing.T) {
-	t.Parallel()
-	for _, name := range []string{fixtureregistry.FixturePluginName, "ruff"} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			acquisition := registryAcquisition(registry)
-			registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-			url := fixtureregistry.FixtureRegistryURL
-			if name == "ruff" {
-				url = plugininstall.DefaultURL
-			}
-			client, err := plugininstall.New(url, acquisition)
-			if err != nil {
-				t.Fatal(err)
-			}
-			pin, err := client.Resolve(t.Context(), name, "v1.0.0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			root := repositoryfixture.Directory(t)
-			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := project.Lock.Set(pin); err != nil {
-				t.Fatal(err)
-			}
-			if err := project.Lock.Save(t.Context()); err != nil {
-				t.Fatal(err)
-			}
-			path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cfg, err := checking.ConfigurationRules().Load(path)
-			if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != pin.Name || cfg.Plugins[0].Version() != pin.Version || cfg.Plugins[0].Registry() != pin.Registry {
-				t.Fatalf("locked selection changed: %+v, %v", cfg, err)
-			}
-			if _, err := os.Stat(project.Lock.Path); !os.IsNotExist(err) {
-				t.Fatalf("legacy lock was not retired: %v", err)
-			}
-			resolved, err := client.Lookup(t.Context(), pin.Name, pin.Version)
-			if err != nil || !resolved.SameRelease(pin) {
-				t.Fatalf("recorded release changed: %+v, %v", resolved, err)
-			}
-		})
 	}
 }

@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"reflect"
 	"slices"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -22,15 +22,31 @@ import (
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
 func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection plugininstall.Selection) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if input.Kind == inputmodel.Repository && input.Selection == nil {
+		directory := input.Directory
+		if directory == "" {
+			directory = options.WorkingDir
+		} else if !filepath.IsAbs(directory) {
+			directory = filepath.Join(options.WorkingDir, directory)
+		}
+		found, err := workspace.FindRepositoryFiles(ctx, directory, options.NoIgnore)
+		if err != nil {
+			return nil, err
+		}
+		input.Selection = &found
+		if len(found.Files) == 0 {
+			selection.DefaultTools = nil
+		}
+	}
 	check := func(input inputmodel.Request) (*Result, error) {
 		sources, err := selection.Resolve(ctx, options.WorkingDir, input)
 		if err != nil {
 			return nil, err
 		}
 		result, err := CheckWithPlugins(ctx, options, input, sources)
-		if result != nil {
-			result.Inputs = append(result.Inputs, sources.Inputs...)
-		}
 		return result, err
 	}
 	if input.Kind != inputmodel.Files || len(input.Paths) == 0 {
@@ -40,18 +56,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 	if err != nil {
 		return nil, err
 	}
-	var batches []workspace.FileSelection
-	indices := make(map[string]int)
-	for _, file := range found.Files {
-		root := discovery.PhysicalRepositoryRoot(file.Path)
-		index, exists := indices[root]
-		if !exists {
-			index = len(batches)
-			indices[root] = index
-			batches = append(batches, workspace.FileSelection{})
-		}
-		batches[index].Files = append(batches[index].Files, file)
-	}
+	batches := workspace.PartitionFiles(found)
 	if len(batches) == 1 {
 		result, err := check(inputmodel.FromFiles(batches[0]))
 		if result != nil {

@@ -1,8 +1,6 @@
 package installation_test
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -36,7 +34,7 @@ func TestSameRegistry(t *testing.T) {
 	}
 }
 
-func TestLockSetAcceptsRegistryHostCase(t *testing.T) {
+func TestReleaseReplacementAcceptsRegistryHostCase(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
@@ -46,70 +44,19 @@ func TestLockSetAcceptsRegistryHostCase(t *testing.T) {
 	}
 	legacy := pin
 	legacy.Registry = "https://CATALOGUE.example/"
-	file, err := plugininstall.OpenLock(t.Context(), filepath.Join(t.TempDir(), plugininstall.LockName))
-	if err != nil {
+	file := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{legacy}}
+	if err := file.CheckReplacement(pin, ""); err != nil {
 		t.Fatal(err)
-	}
-	if err := file.Set(legacy); err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Set(pin); err != nil {
-		t.Fatalf("equivalent registry rejected: %v", err)
 	}
 	changed := pin
 	changed.Registry = "https://other.example/"
-	if err := file.Set(changed); err == nil {
+	if err := file.CheckReplacement(changed, ""); err == nil {
 		t.Fatal("different registry accepted")
 	}
 	changed = pin
 	changed.Registry = legacy.Registry
 	changed.SHA256 = strings.Repeat("0", 64)
-	if err := file.Set(changed); err == nil {
+	if err := file.CheckReplacement(changed, ""); err == nil {
 		t.Fatal("host case bypassed immutable artifact validation")
-	}
-}
-
-func TestLockCheckUnchanged(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), plugininstall.LockName)
-	file, err := plugininstall.OpenLock(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := file.CheckUnchanged(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(`{"schema_version":1,"plugins":[]}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := file.CheckUnchanged(t.Context()); err == nil {
-		t.Fatal("concurrent creation accepted")
-	}
-}
-
-func TestLockCheckUnchangedRejectsNewAncestorSymlink(t *testing.T) {
-	t.Parallel()
-	directory := t.TempDir()
-	parent := filepath.Join(directory, "config")
-	target := filepath.Join(directory, "other")
-	file, err := plugininstall.OpenLock(t.Context(), filepath.Join(parent, plugininstall.LockName))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(target, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, parent); err != nil {
-		t.Skipf("symlink unavailable: %v", err)
-	}
-	if err := file.CheckUnchanged(t.Context()); err == nil {
-		t.Fatal("new ancestor symlink accepted")
-	}
-	entries, err := os.ReadDir(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 0 {
-		t.Fatal("prevalidation wrote into redirected directory")
 	}
 }

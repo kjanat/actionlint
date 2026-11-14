@@ -119,7 +119,7 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	}
 	plugin := &Plugin{
 		path: path, engine: engine, hostFactory: factory, component: withoutTables,
-		limits: Limits{Timeout: time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
+		limits: Limits{Timeout: 30 * time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
 		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {},
 	}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })

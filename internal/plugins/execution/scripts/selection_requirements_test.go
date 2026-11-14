@@ -21,7 +21,7 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			candidates, err := ConfigCandidates(name, cfg)
+			candidates, err := config.ConfigCandidates(name, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}

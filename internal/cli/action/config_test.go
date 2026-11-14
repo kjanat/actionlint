@@ -192,7 +192,7 @@ config-variable: [TYPO]
 
 func TestDisableToolsRejectsUnknownTool(t *testing.T) {
 	t.Parallel()
-	workspace := workspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yml": cleanWorkflow})
+	workspace := nativeWorkspaceWith(t, map[string]string{".git": "", ".github/workflows/test.yml": cleanWorkflow})
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "ruff\nmissing"}
 	var out strings.Builder
 	if code := Main(func(key string) string { return env[key] }, &out, plugininstall.Acquisition{}); code != 2 || !strings.Contains(out.String(), "unknown tool missing") {

@@ -284,6 +284,10 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		}
 		selection, err = session.ReadStdin(input.Reader, input.NormalizePath)
 	case inputmodel.Repository:
+		if input.Selection != nil && len(input.Selection.Files) != 0 {
+			selection, err = session.SelectedFiles(*input.Selection, nil)
+			break
+		}
 		var listed []string
 		empty := false
 		if input.AllowEmptyRepository {

@@ -76,7 +76,8 @@ func (a *commandApp) applyEnvironment() error {
 				return err
 			}
 		}
-	case operationVersion, operationPluginInspect, operationPluginValidate, operationPluginTest, operationPluginSearch, operationPluginVersions, operationConfigInit, operationCompletion:
+	case operationVersion, operationPluginInspect, operationPluginValidate, operationPluginTest, operationPluginSearch, operationPluginVersions, operationConfigInit, operationCompletion,
+		operationCacheDir, operationCacheList, operationCachePrune, operationCacheClean:
 		// These operations never read repository configuration.
 	}
 	if i.Operation == operationConfigShow {

@@ -4,12 +4,30 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 )
+
+// PartitionFiles groups discovered inputs by repository for configuration and plugin selection.
+func PartitionFiles(found FileSelection) []FileSelection {
+	var batches []FileSelection
+	indices := make(map[string]int)
+	for _, file := range found.Files {
+		root := discovery.PhysicalRepositoryRoot(filepath.Dir(file.Path))
+		index, exists := indices[root]
+		if !exists {
+			index = len(batches)
+			indices[root] = index
+			batches = append(batches, FileSelection{})
+		}
+		batches[index].Files = append(batches[index].Files, file)
+	}
+	return batches
+}
 
 // DirectoryPaths searches workflows and actions across repository boundaries.
 // Each repository supplies its own Git ignore rules.
@@ -19,6 +37,26 @@ func DirectoryPaths(ctx context.Context, dir string, reader *files.Reader) ([]st
 
 func RepositoryPaths(ctx context.Context, project *Project, reader *files.Reader) ([]string, error) {
 	return discovery.Documents(ctx, project.RootDir(), reader, discovery.Discovery{})
+}
+
+// FindRepositoryFiles discovers workflow and action paths before plugins are loaded.
+func FindRepositoryFiles(ctx context.Context, directory string, noIgnore bool) (FileSelection, error) {
+	root := discovery.RepositoryRoot(directory)
+	if root == "" {
+		return FileSelection{}, nil
+	}
+	observed := &Inputs{}
+	paths, err := discovery.Documents(ctx, root, files.New(ctx, nil, observed.Add), discovery.Discovery{NoIgnore: noIgnore})
+	if err != nil {
+		return FileSelection{}, err
+	}
+	selected := FileSelection{Files: make([]File, 0, len(paths))}
+	for _, path := range paths {
+		selected.Files = append(selected.Files, File{Path: path})
+		observed.Add(path)
+	}
+	selected.Inputs = observed.List()
+	return selected, nil
 }
 
 func WorkflowPaths(reader *files.Reader, dir string) ([]string, error) {

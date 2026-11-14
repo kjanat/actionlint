@@ -51,7 +51,7 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	if err != nil || !bytes.Equal(original, after) {
 		t.Fatal("checking rewrote configuration")
 	}
-	if _, err := os.Stat(filepath.Join(filepath.Dir(path), plugininstall.LockName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(filepath.Dir(path), "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("checking created a lockfile: %v", err)
 	}
 }
@@ -66,7 +66,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.Add(t, "v1.0.0", module)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, repositoryfixture.Directory(t), "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 	if len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("installation saved unresolved intent: %+v", cfg.Plugins)
 	}
-	if _, err := os.Stat(project.Lock.Path); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(filepath.Dir(project.Manifest.Path), "actionlint.plugins.lock.json")); !os.IsNotExist(err) {
 		t.Fatalf("installation created a project lockfile: %v", err)
 	}
 }
@@ -98,7 +98,7 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 	acquisition := registryAcquisition(registry)
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestRegistryUpdateWithoutLockPreservesPublisherIdentity(t *testing.T) {
 	}
 	registry.SetRepository(fixtureregistry.FixturePluginName, 99)
 	registry.Add(t, "v2.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
+	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

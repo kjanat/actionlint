@@ -32,21 +32,19 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "", "")
+	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Lock.Set(pin); err != nil {
-		t.Fatal(err)
-	}
-	if err := project.Lock.Save(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if err := plugininstall.Sync(t.Context(), project.Lock.Lock, acquisition); err != nil {
+	project.Releases = plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{pin}}
+	if err := plugininstall.Sync(t.Context(), project.Releases, acquisition); err != nil {
 		t.Fatal(err)
 	}
 	base := filepath.Join(filepath.Dir(project.Manifest.Path), "base.yml")
-	fixturefiles.WriteText(t, base, "dependency: &plugin\n  name: "+fixtureregistry.FixturePluginName+"\n  registry: "+fixtureregistry.FixtureRegistryURL+"\nplugins: [*plugin]\npolicy: {bad: true}\n")
+	if err := os.MkdirAll(filepath.Dir(base), 0700); err != nil {
+		t.Fatal(err)
+	}
+	fixturefiles.WriteText(t, base, "dependency: &plugin\n  name: "+fixtureregistry.FixturePluginName+"\n  version: v1.0.0\n  registry: "+fixtureregistry.FixtureRegistryURL+"\nplugins: [*plugin]\npolicy: {bad: true}\n")
 	fixturefiles.WriteText(t, project.Manifest.Path, "extends: [base.yml]\ntools: {shellcheck: {enabled: wrong}}\n")
 	registry.ResetRequests()
 	registry.SetOffline(true)

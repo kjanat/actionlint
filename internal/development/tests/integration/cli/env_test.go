@@ -42,10 +42,14 @@ func TestEnvironmentDefaults(t *testing.T) {
 func TestExplicitRuffMissingExecutable(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("PATH", t.TempDir())
+	config := filepath.Join(t.TempDir(), "native.yaml")
+	if err := os.WriteFile(config, []byte("plugins: []\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	run := func(input string, args ...string) commandTranscript {
 		var out, stderr bytes.Buffer
 		command := cli.Command{Stdin: strings.NewReader(input), Stdout: &out, Stderr: &stderr}
-		status := command.Main(append([]string{"actionlint", "--summary=false", "--no-color"}, args...))
+		status := command.Main(append([]string{"actionlint", "--summary=false", "--no-color", "--config", config}, args...))
 		return commandTranscript{status, out.String(), stderr.String()}
 	}
 	for _, prefix := range [][]string{nil, {"check"}} {

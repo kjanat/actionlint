@@ -59,12 +59,8 @@ func (s Store) Publish(ctx context.Context, digest string, data []byte) error {
 		return nil
 	}
 	path := filepath.Join(s.Dir, digest)
-	if _, err := s.Read(ctx, digest, int64(len(data))); errors.Is(err, ErrCorrupt) {
-		// cacheFile accepts an existing file only when it already holds
-		// these bytes, so remove the corrupt one first.
-		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
+	if _, err := s.Read(ctx, digest, int64(len(data))); err == nil {
+		return nil
 	}
 	return cacheFile(ctx, path, data)
 }
