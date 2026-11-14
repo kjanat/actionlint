@@ -2,13 +2,51 @@ package source
 
 import (
 	"errors"
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
+
+func TestRemoteConfigCacheWriteFailure(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		warm bool
+	}{{"online check", false}, {"cache warm", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			directory := filepath.Join(t.TempDir(), "not-a-directory")
+			if err := os.WriteFile(directory, []byte("blocks cache directory creation"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, session := network.WithSession(t.Context(), network.Options{CacheDirectory: directory, WarmCache: tc.warm})
+			reader := New(ctx, nil, acquisitionhttp.Connections{})
+			const content = "lint = {}\n"
+			reader.client.Transport = transportFunc(func(request *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(content)), Request: request}, nil
+			})
+			got, err := reader.ReadFile("https://example.org/config.toml")
+			if tc.warm {
+				if pathError, ok := errors.AsType[*os.PathError](err); !ok || pathError.Op != "mkdir" || pathError.Path != directory || got != nil {
+					t.Fatalf("cache warm error=%v, want cache write failure", err)
+				}
+				return
+			}
+			if err != nil || string(got) != content {
+				t.Fatalf("online read=%q error=%v, want downloaded configuration", got, err)
+			}
+			if warnings := session.Warnings(); len(warnings) != 1 || !strings.Contains(warnings[0], "Could not cache configuration") {
+				t.Fatalf("cache warning=%v", warnings)
+			}
+		})
+	}
+}
 
 func TestOfflineConfigCacheLimits(t *testing.T) {
 	t.Parallel()

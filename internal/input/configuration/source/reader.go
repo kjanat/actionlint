@@ -158,7 +158,10 @@ func (r *Reader) readHTTPS(ctx context.Context, name string) ([]byte, error) {
 		return nil, fmt.Errorf("HTTPS config %q exceeds %d bytes", name, MaxBytes)
 	}
 	if err := cacheConfig(ctx, name, content); err != nil {
-		return nil, fmt.Errorf("cache remote configuration: %w", err)
+		if network.Settings(ctx).WarmCache {
+			return nil, fmt.Errorf("cache remote configuration: %w", err)
+		}
+		network.Warn(ctx, fmt.Sprintf("Could not cache configuration %s: %v", name, err))
 	}
 	return content, nil
 }

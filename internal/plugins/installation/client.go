@@ -289,8 +289,15 @@ func (c *Client) Resolve(ctx context.Context, name, selector string) (Pin, error
 		if err != nil {
 			return Pin{}, err
 		}
-		lock := Lock{SchemaVersion: LockSchemaVersion, Plugins: []Pin{pin}}
-		if err := lock.CheckStatuses(ctx, c.StatusOptions); err != nil {
+		directory, err := statusDirectory(pin.Registry, c.StatusOptions)
+		if err != nil {
+			return Pin{}, err
+		}
+		statuses, err := readStatusSnapshot(ctx, directory)
+		if err != nil {
+			return Pin{}, err
+		}
+		if err := checkStatus(ctx, pin, statuses, c.StatusOptions, true); err != nil {
 			return Pin{}, err
 		}
 		return pin, nil
