@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -77,7 +78,7 @@ type Sources struct {
 }
 
 func (s Selection) Resolve(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
-	s.lazyDefaults = true
+	s.lazyDefaults = !network.Settings(ctx).WarmCache
 	selected, err := s.Select(ctx, directory, input)
 	if err != nil {
 		return Sources{}, err
@@ -305,7 +306,7 @@ func (s Selection) sourcesFromProject(ctx context.Context, project *Project, roo
 	if s.lazyDefaults && project.defaultPlugins {
 		selected.LazySources = map[string]Pin{}
 		for _, pin := range releases.Plugins {
-			if pin.Kind == pluginartifact.Core && pin.Metadata != "" {
+			if pin.Metadata != "" && (pin.Kind == pluginartifact.Core || pin.Kind == pluginartifact.Component && strings.HasPrefix(pin.Contract, "kjanat:actionlint/script-engine@")) {
 				selected.LazySources[pin.Source()] = pin
 			}
 		}

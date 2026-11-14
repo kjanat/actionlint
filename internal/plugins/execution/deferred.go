@@ -9,37 +9,55 @@ import (
 	"slices"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
-type deferredCoreEngine struct {
+type deferredBackend interface {
+	checkinputs.DescribedScriptBackend
+	checkinputs.ScriptConfigValidator
+	Close(context.Context) error
+}
+
+type deferredScriptEngine struct {
 	gate        chan struct{}
 	descriptor  checkinputs.ScriptEngineDescriptor
 	pin         plugininstall.Pin
 	acquisition plugininstall.Acquisition
-	backend     *corewasm.Engine
+	backend     deferredBackend
+	reserved    rule.Names
 	closed      bool
 }
 
-func newDeferredCoreEngine(pin plugininstall.Pin, acquisition plugininstall.Acquisition) (*deferredCoreEngine, error) {
-	metadata, err := corewasm.ReadMetadata([]byte(pin.Metadata))
-	if err != nil {
-		return nil, err
-	}
-	descriptor := metadata.ScriptDescriptor()
-	for _, operation := range metadata.Interfaces["check"] {
-		if operation.Version == 3 {
-			descriptor.Fixes, descriptor.ReportedSources = metadata.Capabilities.Fixes, metadata.Capabilities.ReportedSources
-			descriptor.Resources = slices.Clone(metadata.Capabilities.Resources)
-			break
+func newDeferredScriptEngine(pin plugininstall.Pin, acquisition plugininstall.Acquisition, reserved rule.Names) (*deferredScriptEngine, error) {
+	var descriptor checkinputs.ScriptEngineDescriptor
+	if pin.Kind == pluginartifact.Component {
+		var err error
+		descriptor, err = component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		metadata, err := corewasm.ReadMetadata([]byte(pin.Metadata))
+		if err != nil {
+			return nil, err
+		}
+		descriptor = metadata.ScriptDescriptor()
+		for _, operation := range metadata.Interfaces["check"] {
+			if operation.Version == 3 {
+				descriptor.Fixes, descriptor.ReportedSources = metadata.Capabilities.Fixes, metadata.Capabilities.ReportedSources
+				descriptor.Resources = slices.Clone(metadata.Capabilities.Resources)
+				break
+			}
 		}
 	}
-	return &deferredCoreEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition}, nil
+	return &deferredScriptEngine{gate: make(chan struct{}, 1), descriptor: descriptor, pin: pin, acquisition: acquisition, reserved: reserved}, nil
 }
 
-func (b *deferredCoreEngine) get(ctx context.Context) (*corewasm.Engine, error) {
+func (b *deferredScriptEngine) get(ctx context.Context) (deferredBackend, error) {
 	select {
 	case b.gate <- struct{}{}:
 		defer func() { <-b.gate }()
@@ -50,7 +68,7 @@ func (b *deferredCoreEngine) get(ctx context.Context) (*corewasm.Engine, error) 
 		return nil, err
 	}
 	if b.closed {
-		return nil, errors.New("default core engine is closed")
+		return nil, errors.New("default script engine is closed")
 	}
 	if b.backend != nil {
 		return b.backend, nil
@@ -66,22 +84,48 @@ func (b *deferredCoreEngine) get(ctx context.Context) (*corewasm.Engine, error) 
 	if err := b.pin.Verify(artifact.Info); err != nil {
 		return nil, err
 	}
-	engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: b.acquisition.CompiledModuleCacheDir()})
+	engine, err := b.load(ctx, artifact)
 	if err != nil {
 		return nil, err
 	}
-	if !reflect.DeepEqual(b.descriptor, engine.ScriptDescriptor()) {
+	if !sameScriptDescriptor(b.descriptor, engine.ScriptDescriptor()) {
 		return nil, errors.Join(fmt.Errorf("default engine %s runtime routing disagrees with registry metadata", b.pin.Name), engine.Close(context.WithoutCancel(ctx)))
 	}
 	b.backend = engine
 	return engine, nil
 }
 
-func (b *deferredCoreEngine) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b *deferredScriptEngine) load(ctx context.Context, artifact *pluginartifact.Artifact) (deferredBackend, error) {
+	if b.pin.Kind == pluginartifact.Core {
+		return corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: b.acquisition.CompiledModuleCacheDir()})
+	}
+	engine, err := component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
+	if err != nil {
+		return nil, err
+	}
+	if !engine.HasScriptEngine() || engine.HasAnalyzer() || engine.HasRunnerProvider() || engine.HasReferenceResolver() {
+		return nil, errors.Join(errors.New("default script component exports roles not declared by its script-only metadata; configure the plugin explicitly to use all roles"), engine.Close(context.WithoutCancel(ctx)))
+	}
+	return engine, nil
+}
+
+func sameScriptDescriptor(left, right checkinputs.ScriptEngineDescriptor) bool {
+	leftSchema, rightSchema := left.Rule.OptionsSchema, right.Rule.OptionsSchema
+	left.Rule.OptionsSchema, right.Rule.OptionsSchema = nil, nil
+	if len(left.Rule.Examples) == 0 {
+		left.Rule.Examples = nil
+	}
+	if len(right.Rule.Examples) == 0 {
+		right.Rule.Examples = nil
+	}
+	return reflect.DeepEqual(left, right) && (len(leftSchema) == 0 && len(rightSchema) == 0 || pluginartifact.SameMetadata(leftSchema, rightSchema))
+}
+
+func (b *deferredScriptEngine) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 	return b.descriptor.Clone()
 }
 
-func (b *deferredCoreEngine) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *deferredScriptEngine) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	engine, err := b.get(ctx)
 	if err != nil {
 		return nil, err
@@ -89,7 +133,7 @@ func (b *deferredCoreEngine) Check(ctx context.Context, request checkinputs.Scri
 	return engine.Check(ctx, request)
 }
 
-func (b *deferredCoreEngine) ValidateConfig(ctx context.Context, config json.RawMessage) error {
+func (b *deferredScriptEngine) ValidateConfig(ctx context.Context, config json.RawMessage) error {
 	engine, err := b.get(ctx)
 	if err != nil {
 		return err
@@ -97,7 +141,7 @@ func (b *deferredCoreEngine) ValidateConfig(ctx context.Context, config json.Raw
 	return engine.ValidateConfig(ctx, config)
 }
 
-func (b *deferredCoreEngine) Close(ctx context.Context) error {
+func (b *deferredScriptEngine) Close(ctx context.Context) error {
 	b.gate <- struct{}{}
 	defer func() { <-b.gate }()
 	if b.closed {

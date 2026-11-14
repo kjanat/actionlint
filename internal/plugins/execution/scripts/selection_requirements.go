@@ -1,9 +1,7 @@
 package scripts
 
 import (
-	"path"
 	"slices"
-	"strings"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
@@ -24,7 +22,7 @@ func ProjectMayNeedProcess(name string, config, projectConfig *repoconfig.Config
 // ProjectMayNeedProcessFor resolves a host's process choice for each enabled candidate.
 func ProjectMayNeedProcessFor(name string, config, projectConfig *repoconfig.Config, needsProcess func(*repoconfig.Config) bool) (bool, error) {
 	return projectMayMatch(config, projectConfig, func(config *repoconfig.Config) (bool, error) {
-		candidates, err := ConfigCandidates(name, config)
+		candidates, err := repoconfig.ConfigCandidates(name, config)
 		if err != nil {
 			return false, err
 		}
@@ -55,7 +53,7 @@ func projectMayMatch(config, projectConfig *repoconfig.Config, match func(*repoc
 // Tool planning intentionally avoids reading workflows, so preserve a checker
 // when an override could enable it. Disabling-only overrides do not turn it on.
 func mayEnable(name string, config *repoconfig.Config) (bool, error) {
-	candidates, err := ConfigCandidates(name, config)
+	candidates, err := repoconfig.ConfigCandidates(name, config)
 	if err != nil {
 		return false, err
 	}
@@ -68,116 +66,4 @@ func configEnabled(name string, config *repoconfig.Config) bool {
 	}
 	enabled := config.Tools[name].Enabled
 	return config.RuleSet().DiagnosticLevel(config, name) != "off" && (enabled == nil || *enabled)
-}
-
-// ConfigCandidates enumerates tool-selection states across configuration overrides.
-func ConfigCandidates(name string, config *repoconfig.Config) ([]*repoconfig.Config, error) {
-	return ConfigVariants(config, func(config *repoconfig.Config) (toolGateState, error) {
-		return toolGateConfig(name, config), nil
-	})
-}
-
-// ConfigVariants enumerates the configurations a referenced action.yml can
-// resolve to under config's overrides, keeping one variant per distinct key.
-// The key decides which differences matter to the caller: tool selection
-// compares gate state, a document analyzer compares what it negotiates.
-func ConfigVariants[K comparable](config *repoconfig.Config, key func(*repoconfig.Config) (K, error)) ([]*repoconfig.Config, error) {
-	if config == nil {
-		return []*repoconfig.Config{nil}, nil
-	}
-	// Keep baseline and possible overlay configurations without discovering files.
-	// Apply catch-all overrides to every candidate in order.
-	candidates := []*repoconfig.Config{config}
-	for _, override := range config.Overrides {
-		universal := len(override.Excludes) == 0 && slices.ContainsFunc(override.Includes, func(pattern string) bool {
-			pattern = path.Clean(pattern)
-			return pattern == "**" || pattern == "**/*"
-		}) &&
-			!slices.ContainsFunc(override.Includes, func(pattern string) bool { return strings.HasPrefix(pattern, "!") })
-		override.Includes, override.Excludes = []string{"**"}, nil
-		start := 0
-		if !universal {
-			start = len(candidates)
-			candidates = append(candidates, candidates...)
-		}
-		for i := start; i < len(candidates); i++ {
-			candidate := *candidates[i]
-			candidate.Overrides = []repoconfig.Override{override}
-			resolved, err := candidate.RuleSet().ForFile(&candidate, "action.yml", "")
-			if err != nil {
-				return nil, err
-			}
-			candidates[i] = resolved
-		}
-		seen := make(map[K]bool, len(candidates))
-		unique := candidates[:0]
-		for _, candidate := range candidates {
-			k, err := key(candidate)
-			if err != nil {
-				return nil, err
-			}
-			if !seen[k] {
-				seen[k] = true
-				unique = append(unique, candidate)
-			}
-		}
-		candidates = unique
-	}
-	return candidates, nil
-}
-
-type backendKind uint8
-
-const (
-	backendDefault backendKind = iota
-	backendProcess
-	backendWasm
-)
-
-type toolGateState struct {
-	tool, lint, disabled, resolved bool
-	toolSet, lintSet               bool
-	backend                        backendKind
-	preset                         repoconfig.Preset
-	current, legacy                ruleGroupGate
-	resolution                     repoconfig.Level
-}
-
-type ruleGroupGate struct {
-	preset      repoconfig.Preset
-	group, rule repoconfig.Level
-	explicit    bool
-}
-
-func groupGate(group repoconfig.Group, name string) ruleGroupGate {
-	setting, explicit := group.Rule(name)
-	return ruleGroupGate{preset: group.Preset(), group: group.Level(), rule: setting.Level(), explicit: explicit}
-}
-
-func toolGateConfig(name string, config *repoconfig.Config) toolGateState {
-	enabled, backend := config.Tools[name].Enabled, config.Tools[name].Backend
-	kind := backendDefault
-	if _, ok := backend.Process(); ok {
-		kind = backendProcess
-	} else if _, ok := backend.Wasm(); ok {
-		kind = backendWasm
-	}
-	rules := config.Lint.Rules
-	ruleSet := config.RuleSet()
-	descriptor, _ := ruleSet.FindRule(name)
-	legacyCategory := ruleSet.LegacyGroup(name)
-	legacy, found := rules.LegacyGroups()[legacyCategory]
-	if !found {
-		legacy = rules.Groups()[legacyCategory]
-	}
-	resolution, resolved := rules.ResolvedLevel(name)
-	return toolGateState{
-		tool:    enabled == nil || *enabled,
-		lint:    config.Lint.Enabled == nil || *config.Lint.Enabled,
-		toolSet: enabled != nil, lintSet: config.Lint.Enabled != nil,
-		backend:  kind,
-		disabled: slices.Contains(rules.Disable, name), resolved: resolved,
-		preset:  rules.Preset,
-		current: groupGate(rules.Groups()[descriptor.Category], name), legacy: groupGate(legacy, name), resolution: resolution,
-	}
 }

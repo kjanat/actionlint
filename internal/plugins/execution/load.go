@@ -32,7 +32,7 @@ type Loaded struct {
 	Components    []*component.Plugin
 	ScriptEngines []ScriptEngineRegistration
 	Modules       []*corewasm.Engine
-	deferred      []*deferredCoreEngine
+	deferred      []*deferredScriptEngine
 	// Providers contains process tool manifests read from local paths or OCI sources.
 	Providers []SelectedProvider
 	// NamedTools lists tool IDs selected by the invocation. configure checks each ID.
@@ -77,7 +77,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 				loaded.SkippedTools = append(loaded.SkippedTools, ids[index])
 				continue
 			}
-			engine, err := newDeferredCoreEngine(pin, sources.Acquisition)
+			engine, err := newDeferredScriptEngine(pin, sources.Acquisition, reserved)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}

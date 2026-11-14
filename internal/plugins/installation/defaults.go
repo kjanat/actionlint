@@ -42,8 +42,17 @@ func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]plug
 	}
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
-		tool := cfg.Tools[id]
-		if !slices.Contains(options.Tools, id) || tool.Backend != nil || tool.Enabled != nil && !*tool.Enabled || options.RuleSet.DiagnosticLevel(cfg, id) == "off" {
+		if !slices.Contains(options.Tools, id) {
+			continue
+		}
+		candidates, err := config.ConfigCandidates(id, cfg)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.ContainsFunc(candidates, func(candidate *config.Config) bool {
+			tool := candidate.Tools[id]
+			return tool.Backend == nil && (tool.Enabled == nil || *tool.Enabled) && options.RuleSet.DiagnosticLevel(candidate, id) != "off"
+		}) {
 			continue
 		}
 		ref, err := pluginref.Parse(id)

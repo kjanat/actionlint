@@ -111,9 +111,8 @@ type Cleanup struct {
 	DryRun bool `json:"dry_run"`
 }
 
-// Clean removes downloaded and compiled files. A nonzero cutoff prunes files
-// last written before that time and keeps registry records intact, so cached
-// version selections never lose their matching release records.
+// Clean removes downloaded and compiled files. A nonzero cutoff selects files
+// whose modification time precedes it. Pruning retains registry records.
 func Clean(ctx context.Context, directory string, cutoff time.Time, dryRun bool) (Cleanup, error) {
 	inventory, err := Inspect(ctx, directory)
 	result := Cleanup{Directory: directory, Exists: inventory.Exists, Entries: []Entry{}, DryRun: dryRun}

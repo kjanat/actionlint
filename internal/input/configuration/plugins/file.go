@@ -187,6 +187,34 @@ func pluginDependencyNode(value any) (any, error) {
 	} else if value, exists := root["lint"]; exists {
 		projected["lint"] = value
 	}
+	if overrides, ok := root["overrides"].([]any); ok {
+		entries := make([]any, 0, len(overrides))
+		for _, entry := range overrides {
+			fields, ok := entry.(map[string]any)
+			if !ok {
+				entries = append(entries, entry)
+				continue
+			}
+			selection := selectFields(fields, "tools", "lint")
+			projectedEntry, err := pluginDependencyNode(selection)
+			if err != nil {
+				return nil, err
+			}
+			selected, ok := projectedEntry.(map[string]any)
+			if !ok {
+				return nil, errors.New("override must be a mapping")
+			}
+			for _, key := range []string{"includes", "excludes"} {
+				if value, exists := fields[key]; exists {
+					selected[key] = value
+				}
+			}
+			entries = append(entries, selected)
+		}
+		projected["overrides"] = entries
+	} else if value, exists := root["overrides"]; exists {
+		projected["overrides"] = value
+	}
 	return projected, nil
 }
 

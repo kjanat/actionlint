@@ -84,7 +84,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 		// provider's transport. Variants differ by what the guest negotiates,
 		// not only by tool gates as in backend.ConfigCandidates.
 		if declined == nil && project != nil && len(project.Overrides) != 0 {
-			candidates, err := scripts.ConfigVariants(project, func(candidate *config.Config) (string, error) {
+			candidates, err := config.ConfigVariants(project, func(candidate *config.Config) (string, error) {
 				return route.negotiationKey(ctx, candidate, base.Enabled(tools.Context{Config: candidate}))
 			})
 			if err != nil {

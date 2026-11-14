@@ -399,6 +399,22 @@ func writeArtifact(t *testing.T, files map[string][]byte, publisher PluginPublis
 	}
 	if len(publisher.Metadata) != 0 {
 		metadata = string(publisher.Metadata)
+		if format == artifacts.Component {
+			var declared struct {
+				Interface       string `json:"interface"`
+				WITSHA256       string `json:"wit_sha256"`
+				LegacyWITSHA256 string `json:"contract_sha256"`
+			}
+			if json.Unmarshal(publisher.Metadata, &declared) == nil {
+				digest := declared.WITSHA256
+				if digest == "" {
+					digest = declared.LegacyWITSHA256
+				}
+				if declared.Interface != "" && digest != "" {
+					contract = declared.Interface + "#sha256=" + digest
+				}
+			}
+		}
 	}
 	section := binary.AppendUvarint(nil, uint64(len("actionlint.plugin")))
 	section = append(section, []byte("actionlint.plugin")...)

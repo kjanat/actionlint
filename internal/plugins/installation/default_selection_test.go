@@ -77,6 +77,7 @@ func TestDefaultWasmPluginSelection(t *testing.T) {
 		{"omitted plugins", "{}", nil, true},
 		{"empty plugins", "plugins: []", nil, false},
 		{"disabled tool", "tools: {shellcheck: false}", nil, false},
+		{"override re-enables tool", "tools: {shellcheck: false}\noverrides: [{includes: [python.yml], tools: {shellcheck: true}}]", nil, true},
 		{"disabled rule", "lint: {rules: {external: {shellcheck: off}}}", nil, false},
 		{"disabled rule with unrelated malformed setting", "lint: {rules: {external: {shellcheck: off}, correctness: {expression: {level: [invalid]}}}}", nil, false},
 		{"disabled lint", "lint: {enabled: false}", nil, false},
