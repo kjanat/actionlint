@@ -3,6 +3,7 @@ package githubaction
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,12 +20,12 @@ import (
 	"github.com/kjanat/go-yaml/v4"
 )
 
-func TestDefaultShellcheckWithoutExecutable(t *testing.T) {
-	workspace := workspaceWith(t, map[string]string{".git": "", "ci.yml": cleanWorkflow, ".github/actionlint.yaml": "plugins: []\n"})
+func TestOptionalNativeShellcheckWithoutExecutable(t *testing.T) {
+	workspace := nativeWorkspaceWith(t, map[string]string{".git": "", "ci.yml": cleanWorkflow, ".github/actionlint.yaml": "plugins: []\n"})
 	t.Setenv("PATH", t.TempDir())
 	req := &lintRequest{workingDir: workspace, files: []string{"ci.yml"}, format: formatJSON}
 	if result := runLinter(req); result.code != 0 {
-		t.Fatalf("default requires native ShellCheck: %s", result.stderr)
+		t.Fatalf("optional native ShellCheck was required: %s", result.stderr)
 	}
 	req.processes = map[string]*processconfig.Options{"shellcheck": {Executable: new("missing-explicit-shellcheck")}}
 	if result := runLinter(req); result.code != commandstatus.ExitFailure || !strings.Contains(result.stderr, "missing-explicit-shellcheck") {
@@ -59,6 +60,18 @@ func knownRunnerOverlay(t *testing.T) repoconfig.Overlay {
 	return overlay
 }
 
+func nativeWorkspaceWith(t *testing.T, files map[string]string) string {
+	t.Helper()
+	files = maps.Clone(files)
+	if _, repository := files[".git"]; !repository {
+		files[".git"] = ""
+	}
+	if _, configured := files[".github/actionlint.yaml"]; !configured {
+		files[".github/actionlint.yaml"] = "plugins: []\n"
+	}
+	return workspaceWith(t, files)
+}
+
 func workspaceWith(t *testing.T, files map[string]string) string {
 	t.Helper()
 	dir := resolved(t, t.TempDir())
@@ -88,7 +101,7 @@ func workspaceWith(t *testing.T, files map[string]string) string {
 
 func TestBuildRequestFilePaths(t *testing.T) {
 	t.Parallel()
-	workspace := workspaceWith(t, map[string]string{
+	workspace := nativeWorkspaceWith(t, map[string]string{
 		"workflow.yaml":     cleanWorkflow,
 		"sub/workflow.yaml": cleanWorkflow,
 	})
@@ -125,7 +138,7 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 		for _, contained := range []bool{true, false} {
 			t.Run(fmt.Sprintf("%s/contained=%t", mode, contained), func(t *testing.T) {
 				t.Parallel()
-				workspace := workspaceWith(t, map[string]string{
+				workspace := nativeWorkspaceWith(t, map[string]string{
 					".git":                         "",
 					"fixtures/clean.yaml":          cleanWorkflow,
 					".github/workflows/readme.txt": "",
@@ -133,7 +146,7 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 				})
 				target := filepath.Join(workspace, "fixtures", "clean.yaml")
 				if !contained {
-					target = filepath.Join(workspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow}), "clean.yaml")
+					target = filepath.Join(nativeWorkspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow}), "clean.yaml")
 				}
 				link := filepath.Join(workspace, ".github", "workflows", "linked.yaml")
 				rel, err := filepath.Rel(filepath.Dir(link), target)
@@ -163,7 +176,7 @@ func TestRunLinterWorkflowSymlinks(t *testing.T) {
 }
 
 func TestRunLinterFindsNoProblem(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow})
+	dir := nativeWorkspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow})
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"clean.yaml"}})
@@ -180,7 +193,7 @@ func TestRunLinterFindsNoProblem(t *testing.T) {
 
 func TestRunLinterDistinguishesEmptyDiscovery(t *testing.T) {
 	t.Parallel()
-	dir := workspaceWith(t, map[string]string{
+	dir := nativeWorkspaceWith(t, map[string]string{
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
 	})
@@ -208,10 +221,10 @@ func TestRunLinterCountsIncludedFiles(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			dir := workspaceWith(t, map[string]string{
+			dir := nativeWorkspaceWith(t, map[string]string{
 				".github/workflows/skip.yaml": brokenWorkflow,
 				".github/workflows/keep.yaml": cleanWorkflow,
-				"config.yml":                  "files: {excludes: ['" + tc.excluded + "']}\n",
+				"config.yml":                  "plugins: []\nfiles: {excludes: ['" + tc.excluded + "']}\n",
 			})
 			got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: tc.files, configFile: filepath.Join(dir, "config.yml")})
 			if got.code != commandstatus.ExitSuccessNoProblem || got.report.FileCount == nil || got.selectedFileCount() != tc.count || len(got.report.Diagnostics) != 0 {
@@ -222,7 +235,7 @@ func TestRunLinterCountsIncludedFiles(t *testing.T) {
 }
 
 func TestRunLinterFindsProblems(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
+	dir := nativeWorkspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
@@ -246,7 +259,7 @@ func TestRunLinterFindsProblems(t *testing.T) {
 }
 
 func TestRunLinterRendersSARIF(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
+	dir := nativeWorkspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
@@ -268,7 +281,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 }
 
 func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
+	dir := nativeWorkspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
 	got := runLinter(&lintRequest{
@@ -284,7 +297,7 @@ func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
 }
 
 func TestRunLinterReportsFatalErrors(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow})
+	dir := nativeWorkspaceWith(t, map[string]string{"clean.yaml": cleanWorkflow})
 	t.Chdir(dir)
 
 	for _, tc := range []struct {
@@ -317,7 +330,7 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 		},
 		{
 			"no repository",
-			&lintRequest{workingDir: dir, format: formatJSON},
+			&lintRequest{workingDir: t.TempDir(), format: formatJSON},
 			"no project was found",
 			0,
 			false,
@@ -337,7 +350,7 @@ func TestRunLinterReportsFatalErrors(t *testing.T) {
 }
 
 func TestRunLinterLintsWholeRepository(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{
+	dir := nativeWorkspaceWith(t, map[string]string{
 		".git":                          "",
 		".github/workflows/broken.yaml": brokenWorkflow,
 		".github/workflows/clean.yaml":  cleanWorkflow,
@@ -361,9 +374,10 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 }
 
 func TestRunLinterReadsConfigFile(t *testing.T) {
-	dir := workspaceWith(t, map[string]string{
+	dir := nativeWorkspaceWith(t, map[string]string{
 		"broken.yaml": brokenWorkflow,
-		"conf.yaml": `self-hosted-runner:
+		"conf.yaml": `plugins: []
+self-hosted-runner:
   labels:
     - unknown-runner
 `,
@@ -383,7 +397,7 @@ func TestRunLinterReadsConfigFile(t *testing.T) {
 
 func TestActionLintsWorkflowEndToEnd(t *testing.T) {
 	t.Parallel()
-	workspace := workspaceWith(t, map[string]string{"workflows/broken.yaml": brokenWorkflow})
+	workspace := nativeWorkspaceWith(t, map[string]string{"workflows/broken.yaml": brokenWorkflow})
 	outputPath := filepath.Join(t.TempDir(), "output")
 	env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck", "INPUT_CONFIG": "repository: {runners: []}"}
 	var out strings.Builder
@@ -435,7 +449,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workspace := workspaceWith(t, map[string]string{
+			workspace := nativeWorkspaceWith(t, map[string]string{
 				".git": "", ".github/workflows/broken.yaml": brokenWorkflow, "sub/broken.yaml": brokenWorkflow,
 			})
 			outputPath := filepath.Join(t.TempDir(), "output")
@@ -510,7 +524,7 @@ func TestActionIgnoreAndAutomaticConfigEndToEnd(t *testing.T) {
 			if tc.configName != "" {
 				files[".github/"+tc.configName] = "repository: {runners: [ubuntu-24.04-custom]}\n"
 			}
-			workspace := workspaceWith(t, files)
+			workspace := nativeWorkspaceWith(t, files)
 			outputPath := filepath.Join(t.TempDir(), "output")
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "GITHUB_OUTPUT": outputPath, "INPUT_DISABLE-TOOLS": "ruff,shellcheck"}
 			if tc.configName == "" {
@@ -545,7 +559,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workspace := workspaceWith(t, map[string]string{"sub/broken.yaml": brokenWorkflow})
+	workspace := nativeWorkspaceWith(t, map[string]string{"sub/broken.yaml": brokenWorkflow})
 	sub := filepath.Join(workspace, "sub")
 
 	var seen string
@@ -631,7 +645,7 @@ func TestActionRunLintReportsUnusableWorkingDirectory(t *testing.T) {
 		t.Error("actionlint must not run when the working directory is unusable")
 		return nil
 	}}
-	workspace := workspaceWith(t, map[string]string{"file": "not a directory"})
+	workspace := nativeWorkspaceWith(t, map[string]string{"file": "not a directory"})
 	for _, path := range []string{"missing", "file"} {
 		got := a.runLint(&lintRequest{workingDir: filepath.Join(workspace, path)})
 		if got.code != commandstatus.ExitFailure || got.stderr == "" {

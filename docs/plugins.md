@@ -165,8 +165,8 @@ actionlint plugin sync
 actionlint plugin remove github.com/owner/plugin
 ```
 
-Only install/update resolve floating selectors against the catalogue, then save exact versions.
-Checking requires exact canonical declarations; unresolved aliases or `latest` require `plugin install`.
+Declarations in `plugins` must name exact canonical releases. Run `actionlint plugin install`
+to resolve an alias or `latest` and save the selected version.
 An uncached exact declaration obtains its registry record once. `sync` restores the configured artifacts into
 the shared user cache and refreshes registry withdrawal information, useful after cloning or in CI.
 Checks also restore missing pinned artifacts; populated
@@ -201,6 +201,10 @@ including inherited ones. An inherited list is replaced as a whole; install/remo
 adds these defaults when `plugins` was omitted, respecting disabled checks and explicit native backends.
 All downloads must verify before the migrated config is saved and an old lock is removed.
 See [configuration migration](config-migration.md) for preview and explicit migration behavior.
+
+Checks also use these registry plugins when no plugin list was configured. The
+user cache records the selected releases. `actionlint cache warm` refreshes them.
+An explicit `--tool` command or native backend selects the native linter.
 
 ### Try an unpublished candidate
 

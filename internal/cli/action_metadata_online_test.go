@@ -32,7 +32,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		before := len(requests)
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@" + sha + ", with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-		args := []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "-"}
+		args := []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "-"}
 		if mode != "default" {
 			args = append(args, "--"+mode)
 		}
@@ -146,7 +146,7 @@ func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
 	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: actionMetadataFixture(t, sha, "", &requests)}}
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1, with: {unknown: value}}]}}\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output=json", "--summary=false", "--network-stats", "-"})
+	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output=json", "--summary=false", "--network-stats", "-"})
 	if code != 1 {
 		t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
 	}

@@ -13,6 +13,56 @@ import (
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
+// ResolveCached reuses the last verified release selected by a name and version
+// selector. Cache warming refreshes the selection from the registry.
+func (c *Client) ResolveCached(ctx context.Context, name, selector string) (Pin, error) {
+	if !pluginref.ValidName(name) && !pluginref.ValidAlias(name) || !pluginref.ValidVersion(selector) {
+		return Pin{}, errors.New("invalid plugin name or version selector")
+	}
+	directory, err := statusDirectory(c.base.String(), c.StatusOptions)
+	if err != nil {
+		return Pin{}, err
+	}
+	path := filepath.Join(directory, "selections", hash(name+"\n"+selector)+".json")
+	if !network.Settings(ctx).WarmCache || network.Settings(ctx).Offline {
+		data, err := readLockBytes(ctx, path)
+		if err != nil {
+			return Pin{}, err
+		}
+		if data != nil {
+			var selected Pin
+			if err := jsonv2.Unmarshal(data, &selected, jsonv2.RejectUnknownMembers(true)); err != nil {
+				return Pin{}, err
+			}
+			if err := selected.Validate(); err != nil {
+				return Pin{}, err
+			}
+			if !SameRegistry(selected.Registry, c.base.String()) || selected.Name != name && selected.Alias != name || selected.Selector != selector {
+				return Pin{}, errors.New("cached plugin selection disagrees with requested registry, name or selector")
+			}
+			pin, exists, err := c.cachedRelease(ctx, selected.Name, selected.Version)
+			if err != nil {
+				return Pin{}, err
+			}
+			if !exists || !sameRelease(pin, selected) {
+				return Pin{}, errors.New("cached plugin selection has no matching verified release")
+			}
+			return selected, nil
+		}
+	}
+	if network.Settings(ctx).Offline {
+		return Pin{}, network.Missing(name + "@" + selector)
+	}
+	pin, err := c.Resolve(ctx, name, selector)
+	if err != nil {
+		return Pin{}, err
+	}
+	if err := writeCacheFile(path, pin, false); err != nil {
+		return Pin{}, err
+	}
+	return pin, nil
+}
+
 // Lookup resolves a canonical exact release, reusing a previously verified
 // registry resolution without network access. Floating requests belong to
 // explicit install/update, which call Resolve before writing configuration.

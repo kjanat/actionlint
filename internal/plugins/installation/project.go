@@ -20,10 +20,11 @@ import (
 // Project edits exact declarations and reads old project locks for migration.
 // Resolved registry metadata is stored only in the user cache.
 type Project struct {
-	Manifest      *configplugins.File
-	Lock          *LockFile
-	StatusOptions StatusOptions
-	original      LockFile
+	Manifest       *configplugins.File
+	Lock           *LockFile
+	StatusOptions  StatusOptions
+	original       LockFile
+	defaultPlugins bool
 }
 
 // DirectSources lists artifacts whose URL and digest are pinned in configuration.
@@ -144,7 +145,12 @@ func (p *Project) selectedPins(ctx context.Context, refs []pluginref.Reference) 
 		if err != nil {
 			return Lock{}, err
 		}
-		pin, err := client.Lookup(ctx, ref.Name(), ref.Version())
+		var pin Pin
+		if p.defaultPlugins {
+			pin, err = client.ResolveCached(ctx, ref.Name(), ref.Version())
+		} else {
+			pin, err = client.Lookup(ctx, ref.Name(), ref.Version())
+		}
 		if err != nil {
 			return Lock{}, err
 		}

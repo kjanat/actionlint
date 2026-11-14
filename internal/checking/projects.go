@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"reflect"
 	"slices"
 
@@ -22,6 +23,25 @@ import (
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
 func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection plugininstall.Selection) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if input.Kind == inputmodel.Repository && input.Selection == nil {
+		directory := input.Directory
+		if directory == "" {
+			directory = options.WorkingDir
+		} else if !filepath.IsAbs(directory) {
+			directory = filepath.Join(options.WorkingDir, directory)
+		}
+		found, err := workspace.FindRepositoryFiles(ctx, directory, options.NoIgnore)
+		if err != nil {
+			return nil, err
+		}
+		input.Selection = &found
+		if len(found.Files) == 0 {
+			selection.DefaultTools = nil
+		}
+	}
 	check := func(input inputmodel.Request) (*Result, error) {
 		sources, err := selection.Resolve(ctx, options.WorkingDir, input)
 		if err != nil {

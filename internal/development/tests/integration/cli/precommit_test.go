@@ -28,6 +28,10 @@ func TestPreCommitCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			for _, path := range tc.layout {
+				if path == ".git" {
+					gitRepository(t, ".")
+					continue
+				}
 				if err := os.MkdirAll(path, 0o700); err != nil {
 					t.Fatal(err)
 				}

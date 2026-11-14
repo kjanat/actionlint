@@ -94,7 +94,11 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if _, err := (plugininstall.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, mixed); err != nil {
 		t.Fatalf("plugin-free repositories rejected: %v", err)
 	}
-	for _, s := range []plugininstall.Selection{{Disabled: true}, {Paths: []string{"explicit.wasm"}}, {ConfigFile: filepath.Join(root, "config.yaml")}} {
+	configPath := filepath.Join(root, "config.yaml")
+	if err := os.WriteFile(configPath, []byte("{}"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []plugininstall.Selection{{Disabled: true}, {Paths: []string{"explicit.wasm"}}, {ConfigFile: configPath}} {
 		got, err := s.Resolve(t.Context(), other, mixed)
 		if err != nil || got.LockFile != "" {
 			t.Fatalf("override: %+v %v", got, err)

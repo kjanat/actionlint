@@ -30,6 +30,8 @@ type Selection struct {
 	ConfigFile string
 	Disabled   bool
 	Overlays   []config.Overlay
+	// DefaultTools lists bundled linters that use registry plugins when configuration omits plugins.
+	DefaultTools []string
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
 	Acquisition               Acquisition
@@ -111,6 +113,13 @@ func (s Selection) selectSources(ctx context.Context, directory string, input in
 	if err != nil {
 		return Sources{}, err
 	}
+	if len(s.DefaultTools) != 0 && len(s.Paths) == 0 && s.LockFile == "" && len(selected.Configurations) == 0 {
+		project := &Project{Manifest: &configplugins.File{}, Lock: &LockFile{}, StatusOptions: StatusOptions{Acquisition: s.Acquisition}}
+		selected, err = s.sourcesFromProject(ctx, project, "")
+		if err != nil {
+			return Sources{}, err
+		}
+	}
 	selected.DisabledTools, selected.NamedTools = slices.Clone(s.DisabledTools), slices.Clone(s.NamedTools)
 	selected.Acquisition = s.Acquisition
 	selected.dropDisabledPins()
@@ -146,13 +155,23 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		if err != nil {
 			return Sources{}, err
 		}
-		if mode == configplugins.PluginDeclarationsOnly && !project.Manifest.Exists {
-			return Sources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
+		if !project.Manifest.Exists {
+			if mode == configplugins.PluginDeclarationsOnly {
+				return Sources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
+			}
+			return Sources{}, fmt.Errorf("could not read config file %q: %w", project.Manifest.Path, os.ErrNotExist)
 		}
 		return s.sourcesFromProject(ctx, project, "")
 	}
 	starts := []string{directory}
-	if input.Kind == inputmodel.Files && len(input.Paths) > 0 {
+	switch {
+	case input.Kind == inputmodel.Repository && input.Directory != "":
+		start := input.Directory
+		if !filepath.IsAbs(start) {
+			start = filepath.Join(directory, start)
+		}
+		starts = []string{start}
+	case input.Kind == inputmodel.Files && len(input.Paths) > 0:
 		starts = nil
 		for _, path := range input.Paths {
 			if !filepath.IsAbs(path) {
@@ -160,7 +179,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 			}
 			starts = append(starts, pluginSelectionStart(path))
 		}
-	} else if input.Kind == inputmodel.Stdin {
+	case input.Kind == inputmodel.Stdin:
 		// Match workspace.Session.Content by discovering project plugins for named, existing stdin paths.
 		if input.Name == "" || input.Name == "<stdin>" {
 			return Sources{}, nil
@@ -225,6 +244,10 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 			}
 			selected.Paths = append(selected.Paths, source)
 		}
+		if resolved.Config.Plugins == nil && len(s.DefaultTools) != 0 {
+			project := &Project{Manifest: &configplugins.File{}, Lock: &LockFile{}, StatusOptions: StatusOptions{Acquisition: s.Acquisition}}
+			return s.sourcesFromProject(ctx, project, "")
+		}
 		return selected, nil
 	}
 	if len(roots) != 1 {
@@ -248,7 +271,20 @@ func (s Selection) prepareProject(project *Project) (*config.Config, error) {
 	}
 	project.Manifest.References = resolved.Config.Plugins
 	project.Manifest.Declared = resolved.Config.Plugins != nil
-	if len(project.Manifest.References) != 0 {
+	if !project.Manifest.Declared && len(s.DefaultTools) != 0 {
+		if _, err := project.Dependencies(false); err != nil {
+			return nil, err
+		}
+		tools := slices.DeleteFunc(slices.Clone(s.DefaultTools), func(id string) bool { return slices.Contains(s.DisabledTools, id) })
+		refs, err := DefaultReferences(resolved.Config, DefaultPluginOptions{Tools: tools, RuleSet: s.RuleSet})
+		if err != nil {
+			return nil, err
+		}
+		project.Manifest.References = refs
+		project.Manifest.Declared = true
+		project.defaultPlugins = true
+	}
+	if len(project.Manifest.References) != 0 && !project.defaultPlugins {
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.SourceContents() {

@@ -154,12 +154,7 @@ func runLinter(req *lintRequest) *lintResult {
 		input = inputmodel.Request{Kind: inputmodel.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
-	selected, selectionErr := selection.Resolve(ctx, req.workingDir, input)
-	if selectionErr != nil {
-		err = selectionErr
-	} else {
-		analysis, err = checking.CheckWithPlugins(ctx, opts, input, selected)
-	}
+	analysis, err = checking.CheckProjects(ctx, opts, input, selection)
 	if analysis != nil {
 		restorePath := func(path string) string {
 			if original, ok := inputNames[filepath.Clean(path)]; ok {

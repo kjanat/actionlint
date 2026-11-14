@@ -196,9 +196,27 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 				files[".github/actionlint.yaml"] = "tools: {ruff: {backend: {process: {executable: missing-ruff}}}}\n"
 			}
 			workspace := workspaceWith(t, files)
+			registry := fixtureregistry.NewPluginRegistry(t)
+			module, err := os.ReadFile("../../plugins/execution/module/testdata/engines/echo.wasm")
+			if err != nil {
+				t.Fatal(err)
+			}
+			module, err = testutil.ReplaceWasmDataString(module, []byte(`"engine":{"name":"echo"`), []byte(`"engine":{"name":"ruff"`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			start := bytes.Index(module, []byte(`{"metadata_version":1`))
+			if start < 0 {
+				t.Fatal("echo fixture has no runtime metadata")
+			}
+			var metadata json.RawMessage
+			if err := json.NewDecoder(bytes.NewReader(module[start:])).Decode(&metadata); err != nil {
+				t.Fatal(err)
+			}
+			registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "actionlint-engine-echo", BaseURL: plugininstall.DefaultURL, Name: "github.com/kjanat/actionlint", Aliases: []string{"ruff"}, RepositoryID: 99, Metadata: metadata}, "v0.1.0", module)
 			t.Setenv("PATH", t.TempDir())
 			env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_FILES": "ci.yml", "INPUT_DISABLE-TOOLS": "shellcheck"}
-			req, err := provisioningRequest(func(key string) string { return env[key] }, plugininstall.Acquisition{})
+			req, err := provisioningRequest(func(key string) string { return env[key] }, plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -207,8 +225,8 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 				if result.code != 3 || !strings.Contains(result.stderr, "tools.ruff.backend.process requires host opt-in") {
 					t.Fatalf("repository process was not rejected before execution: %+v", result.lintOutcome)
 				}
-			} else if result.code != 0 {
-				t.Fatalf("enabled Ruff required a native executable: %+v", result.lintOutcome)
+			} else if result.code != 1 || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != "F821" {
+				t.Fatalf("default Ruff Wasm diagnostic missing: %+v", result.lintOutcome)
 			}
 		})
 	}
@@ -222,7 +240,7 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 	workspace := workspaceWith(t, map[string]string{
 		".git": "", ".github/actionlint.yaml": "tools:\n  ruff:\n    backend:\n      wasm:\n        path: https://example.invalid/ruff.wasm#sha256=" + digest + "\n",
 	})
-	env := map[string]string{"GITHUB_WORKSPACE": workspace}
+	env := map[string]string{"GITHUB_WORKSPACE": workspace, "INPUT_DISABLE-TOOLS": "shellcheck"}
 	var stdout, stderr bytes.Buffer
 	if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 0 {
 		t.Fatalf("plan failed: %d %s", code, &stderr)

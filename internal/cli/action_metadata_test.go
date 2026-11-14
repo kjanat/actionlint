@@ -21,7 +21,7 @@ func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
 	t.Parallel()
 	var out, log bytes.Buffer
 	command := Command{Stdin: strings.NewReader("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\npermissions: {}\n"), Stdout: &out, Stderr: &log}
-	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--offline", "--output-format=json", "--summary=false", "-"})
+	code := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--offline", "--output-format=json", "--summary=false", "-"})
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
 	}
@@ -41,7 +41,7 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 		return nil, errors.New("unexpected network request")
 	})}}
 	path := filepath.Join(t.TempDir(), "actionlint.yml")
-	if err := os.WriteFile(path, []byte("lint:\n  rules:\n    conventions:\n      missing-action-metadata: error\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("plugins: []\nlint:\n  rules:\n    conventions:\n      missing-action-metadata: error\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {

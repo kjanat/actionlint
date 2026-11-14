@@ -652,9 +652,13 @@ actionlint --no-tool shellcheck
 actionlint --tool shellcheck='shellcheck -e SC2086'
 ```
 
-Ruff checks Python `run:` steps when `ruff` is installed on `PATH`.
-No Python interpreter or Pyflakes installation is needed. See [Ruff configuration](config.md#ruff).
-Both flags are repeatable; the last `--tool` or `--no-tool` for an id wins and
+ShellCheck and Ruff use their registry Wasm plugins by default. The first online
+check downloads them into the user cache. Later checks reuse that selection and
+the verified artifacts, including with `--offline`. Run `actionlint cache warm`
+to refresh and cache the current registry releases before an offline check.
+Use `--tool shellcheck` or `--tool ruff` to select an installed native executable.
+See [Ruff configuration](config.md#ruff) for Python checks.
+The last `--tool` or `--no-tool` for an id wins and
 replaces the tool's environment settings. Legacy single-dash spellings follow the
 same rules at the root and after subcommands. A plugin's ids are its lock entry's
 name and alias and the engine and rule names in its metadata. An id that names no

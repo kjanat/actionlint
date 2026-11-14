@@ -10,8 +10,8 @@ import (
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 
-// DefaultPluginOptions preserves invocation-level native selections during migration.
-// Configured backends and explicit configuration disables take precedence.
+// DefaultPluginOptions selects registry defaults for tools without an explicit
+// native command. Configured backends and disabled tools take precedence.
 type DefaultPluginOptions struct {
 	RuleSet config.RuleSet
 	// Tools lists the bundled tool ids that run their default command in

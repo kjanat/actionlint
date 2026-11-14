@@ -42,7 +42,7 @@ func TestRemoteWorkflowPermissionsCLIOnlineAndOffline(t *testing.T) {
 		before := len(requests)
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--" + mode, "-"})
+		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output-format=json", "--summary=false", "--network-stats", "--" + mode, "-"})
 		var result resultreport.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatalf("%s: status=%d error=%v stderr=%s stdout=%s", mode, status, err, &log, &out)
@@ -102,7 +102,7 @@ func TestRemoteWorkflowPermissionsRealWorkflow(t *testing.T) {
 	for _, permissions := range []string{"{contents: read}", "{}"} {
 		var out, log bytes.Buffer
 		command := Command{Stdin: strings.NewReader("on: push\npermissions: " + permissions + "\njobs:\n  nix:\n    uses: kjanat/actionlint/.github/workflows/nix.yml@" + revision + "\n"), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-config", "--output-format=json", "--summary=false", "-"})
+		status := command.MainContext(t.Context(), []string{"actionlint", "check", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--output-format=json", "--summary=false", "-"})
 		var result resultreport.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatalf("status=%d error=%v stderr=%s stdout=%s", status, err, &log, &out)
@@ -162,7 +162,7 @@ jobs:
 			}
 			var out, log bytes.Buffer
 			command := Command{Stdin: strings.NewReader(source), Stdout: &out, Stderr: &log, Acquisition: acquisition}
-			status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--output-format=json", "--summary=false", "--tool=shellcheck=", "-"})
+			status := command.MainContext(t.Context(), []string{"actionlint", "check", "--config", config, "--output-format=json", "--summary=false", "--tool=shellcheck=", "--no-tool=ruff", "-"})
 			var result resultreport.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatalf("status=%d error=%v stderr=%s stdout=%s", status, err, &log, &out)

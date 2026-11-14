@@ -81,7 +81,7 @@ permissions: {}
 		} {
 			t.Run(format+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
-				workspace := workspaceWith(t, map[string]string{
+				workspace := nativeWorkspaceWith(t, map[string]string{
 					".git": "", "my workflow.yml": workflow, "work/my workflow.yml": workflow, ".github/workflows/my workflow.yml": workflow,
 				})
 				file := tc.file
@@ -180,7 +180,7 @@ func TestActionSARIFOutputRetainsStructuredDiagnostics(t *testing.T) {
 		t.Skipf("ShellCheck required: %s", err)
 	}
 	t.Setenv("SHELLCHECK_OPTS", "")
-	workspace := workspaceWith(t, map[string]string{
+	workspace := nativeWorkspaceWith(t, map[string]string{
 		"my workflow.yml": `on: push
 jobs:
   test:
@@ -368,7 +368,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workspace := workspaceWith(t, map[string]string{"ci.yml": cleanWorkflow})
+			workspace := nativeWorkspaceWith(t, map[string]string{"ci.yml": cleanWorkflow})
 			resultPath := filepath.Join(t.TempDir(), "result.json")
 			outputPath := filepath.Join(t.TempDir(), "outputs")
 			env := map[string]string{
