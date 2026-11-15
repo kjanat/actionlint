@@ -128,7 +128,11 @@ func shareListBindings(data []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("share list codec %s: %w", name, err)
 		}
-		function.Body = parsed.Decls[0].(*ast.FuncDecl).Body
+		replacement, ok := parsed.Decls[0].(*ast.FuncDecl)
+		if !ok {
+			return nil, fmt.Errorf("share list codec %s: replacement body did not parse as a function", name)
+		}
+		function.Body = replacement.Body
 		changed = true
 	}
 	if !changed {

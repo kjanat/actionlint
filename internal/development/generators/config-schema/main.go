@@ -531,9 +531,6 @@ func main() {
 			err = genfile.Write(context.Background(), "schemas/policy/network.schema.json", policy, false)
 		}
 	}
-	if err == nil {
-		err = writeEmbeddedSchemas()
-	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -551,28 +548,6 @@ func generateNetworkPolicy() ([]byte, error) {
 	s.PatternProperties = map[string]*jsonschema.Schema{`^\$schema$`: {Type: "string"}}
 	s.Extras = map[string]any{"x-tombi-toml-version": "v1.1.0", "x-tombi-table-keys-order": map[string]string{"properties": "schema"}}
 	return encodeSchema(s)
-}
-
-func writeEmbeddedSchemas() error {
-	paths, err := filepath.Glob("schemas/*/*.schema.json")
-	if err != nil {
-		return err
-	}
-	paths = append(paths, "actionlint.schema.json")
-	for _, name := range paths {
-		content, err := os.ReadFile(name)
-		if err != nil {
-			return err
-		}
-		destination := filepath.Join("internal/input/configuration/schema/assets", name)
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return err
-		}
-		if err := os.WriteFile(destination, content, 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func ruleNames() []string {

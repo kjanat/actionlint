@@ -421,9 +421,11 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings objec
 		config["anyOf"] = values
 		for _, key := range slices.Sorted(maps.Keys(manifest.ConfigShorthands)) {
 			var ref strings.Builder
-			ref.WriteString("#/$defs/" + toolSettingsDefinition(manifest.Rule.Name, 0))
+			ref.WriteString("#/$defs/")
+			ref.WriteString(toolSettingsDefinition(manifest.Rule.Name, 0))
 			for _, property := range manifest.ConfigShorthands[key].Path {
-				ref.WriteString("/properties/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(property))
+				ref.WriteString("/properties/")
+				ref.WriteString(strings.NewReplacer("~", "~0", "/", "~1").Replace(property))
 			}
 			properties[key] = object{"$ref": ref.String()}
 			conditions, _ := mapping["allOf"].([]any)
