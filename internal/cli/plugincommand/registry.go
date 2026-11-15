@@ -1,4 +1,4 @@
-package plugincmd
+package plugincommand
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 type RegistryOptions struct {
@@ -154,23 +154,23 @@ func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryReque
 	return 0, err
 }
 
-func RequestedPlugin(name string, options RegistryOptions, existing []pluginref.Reference) (pluginref.Reference, error) {
-	ref, err := pluginref.Parse(name)
+func RequestedPlugin(name string, options RegistryOptions, existing []pluginreference.Reference) (pluginreference.Reference, error) {
+	ref, err := pluginreference.Parse(name)
 	if err != nil {
-		return pluginref.Reference{}, commandargs.UsageError{Cause: err}
+		return pluginreference.Reference{}, commandargs.UsageError{Cause: err}
 	}
 	if ref.DirectSource() != "" {
 		if options.Version != "" || options.Registry != "" {
-			return pluginref.Reference{}, commandargs.UsageError{Cause: errors.New("direct plugin URLs cannot use --version or --registry; change the URL and SHA256 pin instead")}
+			return pluginreference.Reference{}, commandargs.UsageError{Cause: errors.New("direct plugin URLs cannot use --version or --registry; change the URL and SHA256 pin instead")}
 		}
 		return ref, nil
 	}
 	if strings.Contains(name, "@") && options.Version != "" && ref.Version() != options.Version {
-		return pluginref.Reference{}, commandargs.UsageError{Cause: errors.New("plugin @version conflicts with --version")}
+		return pluginreference.Reference{}, commandargs.UsageError{Cause: errors.New("plugin @version conflicts with --version")}
 	}
 	index, err := RequestedPluginIndex(ref, options.Registry, existing)
 	if err != nil {
-		return pluginref.Reference{}, err
+		return pluginreference.Reference{}, err
 	}
 	if index >= 0 && !strings.Contains(name, "@") && options.Version == "" && options.Registry == "" {
 		return existing[index], nil
@@ -188,16 +188,16 @@ func RequestedPlugin(name string, options RegistryOptions, existing []pluginref.
 	if options.Registry != "" {
 		registry = options.Registry
 	}
-	ref, err = pluginref.New(ref.Name(), version, registry)
+	ref, err = pluginreference.New(ref.Name(), version, registry)
 	if err != nil {
-		return pluginref.Reference{}, commandargs.UsageError{Cause: err}
+		return pluginreference.Reference{}, commandargs.UsageError{Cause: err}
 	}
 	return ref, nil
 }
 
 // RequestedPluginIndex finds the existing declaration for this repository.
 // Aliases stay scoped to the registry that assigns them.
-func RequestedPluginIndex(ref pluginref.Reference, registry string, existing []pluginref.Reference) (int, error) {
+func RequestedPluginIndex(ref pluginreference.Reference, registry string, existing []pluginreference.Reference) (int, error) {
 	index, named, count := -1, -1, 0
 	for i, old := range existing {
 		if old.Name() != ref.Name() {
@@ -286,13 +286,13 @@ func (r RegistryRequest) update(ctx context.Context, project *plugininstall.Proj
 		ref := refs[index]
 		// A direct URL pins its artifact and has no version to replace.
 		if ref.DirectSource() == "" && (r.Options.Version != "" || strings.Contains(name, "@")) {
-			ref, err = pluginref.New(ref.Name(), requested.Version(), ref.Registry())
+			ref, err = pluginreference.New(ref.Name(), requested.Version(), ref.Registry())
 			if err != nil {
 				return commandargs.UsageError{Cause: err}
 			}
 		}
 		refs[index] = ref
-		update = []pluginref.Reference{ref}
+		update = []pluginreference.Reference{ref}
 	}
 	if len(refs) == 0 {
 		return nil
@@ -321,8 +321,8 @@ func removePlugin(ctx context.Context, project *plugininstall.Project, name, reg
 
 // DeclaredPlugin resolves command spelling against declarations and recorded
 // pins only. A shorthand from another registry never selects this declaration.
-func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []pluginref.Reference, name, registry string) (int, error) {
-	requested, err := pluginref.Parse(name)
+func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []pluginreference.Reference, name, registry string) (int, error) {
+	requested, err := pluginreference.Parse(name)
 	if err != nil {
 		return -1, commandargs.UsageError{Cause: err}
 	}
@@ -398,7 +398,7 @@ func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.St
 		}
 		return err
 	}
-	ref, err := pluginref.Parse(name)
+	ref, err := pluginreference.Parse(name)
 	if err != nil {
 		return commandargs.UsageError{Cause: err}
 	}

@@ -8,18 +8,18 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
-// testReference builds a declaration through pluginref.New and fails the test
+// testReference builds a declaration through pluginreference.New and fails the test
 // when name, version or registry is invalid.
-func testReference(t *testing.T, name, version, registry string) pluginref.Reference {
+func testReference(t *testing.T, name, version, registry string) pluginreference.Reference {
 	t.Helper()
-	ref, err := pluginref.New(name, version, registry)
+	ref, err := pluginreference.New(name, version, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,36 +28,36 @@ func testReference(t *testing.T, name, version, registry string) pluginref.Refer
 
 func TestRegistryAliasCommandScope(t *testing.T) {
 	t.Parallel()
-	refs := []pluginref.Reference{
-		testReference(t, "check", "latest", pluginref.DefaultRegistry),
+	refs := []pluginreference.Reference{
+		testReference(t, "check", "latest", pluginreference.DefaultRegistry),
 		testReference(t, "check", "v1.0.0", fixtureregistry.FixtureRegistryURL),
 	}
 	project := &plugininstall.Project{Releases: plugininstall.ResolvedPlugins{
 		Plugins: []plugininstall.Pin{
-			{Name: "github.com/first/plugin", Alias: "check", Registry: pluginref.DefaultRegistry},
+			{Name: "github.com/first/plugin", Alias: "check", Registry: pluginreference.DefaultRegistry},
 			{Name: "github.com/second/plugin", Alias: "check", Registry: fixtureregistry.FixtureRegistryURL},
 		},
 	}}
-	if _, err := plugincmd.DeclaredPlugin(t.Context(), project, refs, "check", ""); err == nil {
+	if _, err := plugincommand.DeclaredPlugin(t.Context(), project, refs, "check", ""); err == nil {
 		t.Fatal("ambiguous registry alias accepted")
 	}
 	for _, tc := range []struct {
 		name, registry string
 		index          int
 	}{
-		{"check", pluginref.DefaultRegistry, 0},
+		{"check", pluginreference.DefaultRegistry, 0},
 		{"check", fixtureregistry.FixtureRegistryURL, 1},
 		{"github.com/second/plugin", "", 1},
 	} {
-		index, err := plugincmd.DeclaredPlugin(t.Context(), project, refs, tc.name, tc.registry)
+		index, err := plugincommand.DeclaredPlugin(t.Context(), project, refs, tc.name, tc.registry)
 		if err != nil || index != tc.index {
 			t.Fatalf("%+v: index=%d error=%v", tc, index, err)
 		}
 	}
-	if _, err := plugincmd.RequestedPlugin("check", plugincmd.RegistryOptions{}, refs); err == nil {
+	if _, err := plugincommand.RequestedPlugin("check", plugincommand.RegistryOptions{}, refs); err == nil {
 		t.Fatal("install selected ambiguous alias registry")
 	}
-	ref, err := plugincmd.RequestedPlugin("check", plugincmd.RegistryOptions{Registry: fixtureregistry.FixtureRegistryURL}, refs)
+	ref, err := plugincommand.RequestedPlugin("check", plugincommand.RegistryOptions{Registry: fixtureregistry.FixtureRegistryURL}, refs)
 	if err != nil || ref.Registry() != fixtureregistry.FixtureRegistryURL || ref.Version() != "v1.0.0" {
 		t.Fatalf("scoped install: %+v %v", ref, err)
 	}

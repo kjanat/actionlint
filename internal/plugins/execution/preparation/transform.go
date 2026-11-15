@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-// ScriptContext supplies source, interpreter facts and integration settings to
+// TransformInput supplies source, interpreter facts and integration settings to
 // a preparation transform. EnvironmentStartup declares names without values.
-type ScriptContext struct {
+type TransformInput struct {
 	Source             string                     `json:"source"`
 	Language           string                     `json:"language"`
 	Startup            string                     `json:"startup"`
@@ -58,7 +58,7 @@ func NewSourceTransform(spec *manifests.Transform, programs manifests.Programs) 
 
 // Apply returns an integration's preparation plan. Without a program it inserts
 // the supplied comments and startup text, and passes the supplied options on.
-func (t *SourceTransform) Apply(ctx context.Context, input ScriptContext) (SourcePlan, error) {
+func (t *SourceTransform) Apply(ctx context.Context, input TransformInput) (SourcePlan, error) {
 	if err := ctx.Err(); err != nil {
 		return SourcePlan{}, err
 	}

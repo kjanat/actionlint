@@ -13,7 +13,7 @@ import (
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry, id, tag string, process bool) (CatalogPlugin, string) {
@@ -99,7 +99,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 		if err != nil || pin.Name != selected.name || pin.Version != selected.version || pin.RepositoryName() != fixtureregistry.FixturePluginName {
 			t.Fatalf("resolve: %+v, %v", pin, err)
 		}
-		ref, err := pluginref.New(selected.name, selected.version, fixtureregistry.FixtureRegistryURL)
+		ref, err := pluginreference.New(selected.name, selected.version, fixtureregistry.FixtureRegistryURL)
 		if err != nil || !pin.Matches(ref) {
 			t.Fatalf("reference binding: %v", err)
 		}

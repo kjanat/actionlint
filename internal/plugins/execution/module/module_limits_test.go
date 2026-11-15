@@ -37,7 +37,7 @@ func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
 
 func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 	t.Parallel()
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.Info{Source: "in-memory"}}
+	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Source: "in-memory"}}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("in-memory artifact bypassed memory option validation: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestLoadArtifactRejectsUnsupportedMetadataBeforeCompilation(t *testing.T) {
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 0)
 	data = binary.AppendUvarint(data, uint64(len(payload)))
 	data = append(data, payload...)
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.Info{Source: "in-memory"}, Bytes: data}
+	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Source: "in-memory"}, Bytes: data}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{}); err == nil || !strings.Contains(err.Error(), "custom metadata reports unsupported document version") {
 		t.Fatalf("unsupported discovery metadata reached compilation: %v", err)
 	}

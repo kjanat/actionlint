@@ -7,14 +7,14 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestInspectCachedReleaseOffline(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.Add(t, "v1.0.0", emptyComponent)
-	ref, err := pluginref.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
+	ref, err := pluginreference.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestInspectReleaseRejectsWithdrawnAndRevoked(t *testing.T) {
 				t.Fatal(err)
 			}
 			publishStatuses(t, registry, releaseStatus(pin, state))
-			ref, err := pluginref.New(pin.Name, pin.Version, fixtureregistry.FixtureRegistryURL)
+			ref, err := pluginreference.New(pin.Name, pin.Version, fixtureregistry.FixtureRegistryURL)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestInspectReleaseRejectsCorruptDownload(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.SetFile(pin.URL, []byte("tampered"))
-	ref, err := pluginref.New(pin.Name, pin.Version, fixtureregistry.FixtureRegistryURL)
+	ref, err := pluginreference.New(pin.Name, pin.Version, fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -237,7 +237,7 @@ func (inv invocation) request() (commandRequest, error) {
 	case operationPluginTest:
 		return pluginTestRequest{Paths: inv.Check.Paths, JSON: inv.JSON}, nil
 	case operationPluginSearch, operationPluginVersions, operationPluginInstall, operationPluginList, operationPluginUpdate, operationPluginRemove, operationPluginSync:
-		return pluginRegistryRequest{Operation: plugincmd.Operation(inv.Operation), Options: plugincmd.RegistryOptions(inv.Plugin), Paths: inv.Check.Paths, Config: inv.Check.Config, JSON: inv.JSON}, nil
+		return pluginRegistryRequest{Operation: plugincommand.Operation(inv.Operation), Options: plugincommand.RegistryOptions(inv.Plugin), Paths: inv.Check.Paths, Config: inv.Check.Config, JSON: inv.JSON}, nil
 	case "lsp":
 		return lspRequest{inv.Check}, nil
 	case operationVersion:

@@ -186,7 +186,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorSession(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, plugininstall.Acquisition{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []string{path}, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	session, err := newEditorSession(t.Context(), checking.Options{}, nil, plugininstall.Acquisition{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestEditorEngineCancelledLoadCanRetry(t *testing.T) {
 	t.Parallel()
 	backend := &editorTestBackend{}
 	loads := 0
-	session, err := newEditorSession(t.Context(), checking.Options{
+	session, err := newEditorPluginHost(t.Context(), checking.Options{
 		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 			loads++
 			if loads == 1 {
@@ -292,7 +292,7 @@ func TestEditorEngineAdmissionHonorsCancellation(t *testing.T) {
 	started, release := make(chan struct{}), make(chan struct{})
 	unblock := sync.OnceFunc(func() { close(release) })
 	defer unblock()
-	session, err := newEditorSession(t.Context(), checking.Options{
+	session, err := newEditorPluginHost(t.Context(), checking.Options{
 		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 			close(started)
 			<-release
@@ -387,7 +387,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorSession(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, plugininstall.Acquisition{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, plugininstall.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}

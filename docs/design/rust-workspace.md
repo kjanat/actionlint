@@ -29,7 +29,7 @@ flowchart LR
 Release, CI, toolchain, matcher, action verification and schema-generation programs
 live under `tools/`, with their tests. The Docker action wrapper and container tests
 belong to `distribution/docker`. Comment Cop's helper belongs to its GitHub action.
-`internal/cli/action` contains the Go action runtime.
+`internal/cli/githubaction` contains the Go action runtime.
 
 ## Consequences
 

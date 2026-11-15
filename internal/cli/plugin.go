@@ -7,14 +7,14 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"github.com/spf13/cobra"
 )
 
-type pluginInvocation plugincmd.RegistryOptions
+type pluginInvocation plugincommand.RegistryOptions
 
 func (a *commandApp) pluginCommand() *cobra.Command {
 	parent := &cobra.Command{
@@ -96,14 +96,14 @@ func selectedRulePlugins(ctx context.Context, selection plugininstall.Selection)
 }
 
 type (
-	pluginRegistryRequest plugincmd.RegistryRequest
-	pluginInspectRequest  plugincmd.InspectOptions
+	pluginRegistryRequest plugincommand.RegistryRequest
+	pluginInspectRequest  plugincommand.InspectOptions
 )
 
 func (r pluginRegistryRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Manage(ctx, streams.commandStreams(), plugincmd.RegistryRequest(r), streams.Acquisition)
+	return plugincommand.Manage(ctx, streams.commandStreams(), plugincommand.RegistryRequest(r), streams.Acquisition)
 }
 
 func (r pluginInspectRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Inspect(ctx, streams.commandStreams(), plugincmd.InspectOptions(r), streams.Acquisition)
+	return plugincommand.Inspect(ctx, streams.commandStreams(), plugincommand.InspectOptions(r), streams.Acquisition)
 }

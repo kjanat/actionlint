@@ -1,4 +1,4 @@
-package plugincmd
+package plugincommand
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 type InspectOptions struct {
@@ -48,19 +48,19 @@ func Inspect(ctx context.Context, streams commandstreams.Streams, r InspectOptio
 	return 0, commandstreams.WriteJSON(streams.Stdout, info.Metadata)
 }
 
-func inspectSource(ctx context.Context, r InspectOptions, acquisition plugininstall.Acquisition) (pluginartifact.Info, error) {
+func inspectSource(ctx context.Context, r InspectOptions, acquisition plugininstall.Acquisition) (pluginartifact.ArtifactProvenance, error) {
 	_, statErr := os.Stat(r.Source)
 	local := statErr == nil || filepath.IsAbs(r.Source) || strings.HasPrefix(r.Source, ".") || strings.Contains(r.Source, `\`)
 	if local || strings.Contains(r.Source, "://") {
 		return plugininstall.Inspect(ctx, r.Source, acquisition)
 	}
-	_, parseErr := pluginref.Parse(r.Source)
+	_, parseErr := pluginreference.Parse(r.Source)
 	if parseErr != nil && (strings.HasSuffix(r.Source, ".wasm") || strings.HasSuffix(r.Source, ".json") || strings.HasSuffix(r.Source, ".gz")) {
 		return plugininstall.Inspect(ctx, r.Source, acquisition)
 	}
 	ref, err := RequestedPlugin(r.Source, RegistryOptions{Registry: r.Registry}, nil)
 	if err != nil {
-		return pluginartifact.Info{}, err
+		return pluginartifact.ArtifactProvenance{}, err
 	}
 	return plugininstall.InspectRelease(ctx, ref, acquisition)
 }

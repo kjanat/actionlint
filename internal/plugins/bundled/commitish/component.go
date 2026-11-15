@@ -16,7 +16,7 @@ var component []byte
 func Artifact() *artifacts.Artifact {
 	digest := sha256.Sum256(component)
 	return &artifacts.Artifact{
-		Info: artifacts.Info{
+		Info: artifacts.ArtifactProvenance{
 			Source: "builtin:commitish", Kind: artifacts.Component,
 			SHA256: hex.EncodeToString(digest[:]), Size: len(component), ModuleSize: len(component),
 		},

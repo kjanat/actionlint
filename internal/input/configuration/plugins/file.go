@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // ReadMode selects which configuration fields are normalized during plugin discovery.
@@ -38,7 +38,7 @@ const MaxFileBytes = 4 << 20
 // concurrent changes before saving.
 type File struct {
 	Path       string
-	References []pluginref.Reference
+	References []pluginreference.Reference
 	Declared   bool
 	Exists     bool
 	original   []byte
@@ -347,7 +347,7 @@ func (m *File) OriginalBytes() []byte {
 
 // Save writes an explicit leaf-level list, including [] when removing the last
 // plugin.
-func (m *File) Save(ctx context.Context, refs []pluginref.Reference) (err error) {
+func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err error) {
 	if address.Remote(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
 	}

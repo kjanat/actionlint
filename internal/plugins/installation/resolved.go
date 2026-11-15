@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"golang.org/x/mod/semver"
 )
 
@@ -40,8 +40,8 @@ func (l ResolvedPlugins) Validate() error {
 	return nil
 }
 
-func (l ResolvedPlugins) CheckResolved(pin Pin, ref pluginref.Reference) error {
-	declaration, err := pluginref.New(ref.Name(), ref.Version(), ref.Registry())
+func (l ResolvedPlugins) CheckResolved(pin Pin, ref pluginreference.Reference) error {
+	declaration, err := pluginreference.New(ref.Name(), ref.Version(), ref.Registry())
 	if err != nil {
 		return err
 	}

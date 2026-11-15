@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 type candidateManifest struct {
@@ -23,7 +23,7 @@ type candidateManifest struct {
 	Versions []Version `json:"versions"`
 }
 
-type candidateRecord struct {
+type registryCandidate struct {
 	Source   string      `json:"source"`
 	Artifact declaration `json:"artifact"`
 	URL      string      `json:"url"`
@@ -33,14 +33,14 @@ func candidatePath(name string) bool {
 	return fs.ValidPath(name) && name != "." && !strings.ContainsAny(name, "\\:%?#")
 }
 
-func readCandidate[T *Catalog | *candidateManifest | *candidateRecord](ctx context.Context, c *Client, name string, target T) error {
+func readCandidate[T *Catalog | *candidateManifest | *registryCandidate](ctx context.Context, c *Client, name string, target T) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if !candidatePath(name) {
 		return errors.New("candidate path must stay within its catalogue")
 	}
-	directory, err := pluginref.LocalRegistryDirectory(c.base.String())
+	directory, err := pluginreference.LocalRegistryDirectory(c.base.String())
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (c *Client) candidateManifest(ctx context.Context, name string) (CatalogPlu
 		}
 		seen := map[string]bool{}
 		for _, v := range m.Versions {
-			if !pluginref.ValidVersion(v.Version) || seen[v.Version] || !candidatePath(v.Record) || !strings.HasPrefix(v.Record, "versions/") || !strings.HasSuffix(v.Record, ".json") || len(v.Compatibility) != 0 {
+			if !pluginreference.ValidVersion(v.Version) || seen[v.Version] || !candidatePath(v.Record) || !strings.HasPrefix(v.Record, "versions/") || !strings.HasSuffix(v.Record, ".json") || len(v.Compatibility) != 0 {
 				return p, m, errors.New("invalid or duplicate candidate version")
 			}
 			seen[v.Version] = true
@@ -136,13 +136,13 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (P
 	if err != nil {
 		return Pin{}, err
 	}
-	var r candidateRecord
+	var r registryCandidate
 	if err := readCandidate(ctx, c, path.Join(path.Dir(p.Manifest), v.Record), &r); err != nil {
 		return Pin{}, err
 	}
 	d := r.Artifact
 	repository := strings.ToLower(strings.TrimPrefix(d.Repository, "https://"))
-	if r.Source != "candidate" || d.PluginID != p.PluginID || !pluginref.ValidRepository(repository) || (!strings.EqualFold(p.Name, repository) && (p.Name != strings.ToLower(p.PluginID) || !strings.HasPrefix(p.Name, repository+"/"))) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
+	if r.Source != "candidate" || d.PluginID != p.PluginID || !pluginreference.ValidRepository(repository) || (!strings.EqualFold(p.Name, repository) && (p.Name != strings.ToLower(p.PluginID) || !strings.HasPrefix(p.Name, repository+"/"))) || strings.TrimPrefix(d.PluginVersion, "v") != strings.TrimPrefix(v.Version, "v") {
 		return Pin{}, errors.New("candidate declaration disagrees with catalogue")
 	}
 	pin := Pin{Origin: "candidate", Registry: c.base.String(), Name: p.Name, PluginID: p.PluginID, Selector: selector, Version: v.Version, Kind: d.Kind, Asset: path.Base(r.URL), URL: r.URL, SHA256: d.SHA256, Contract: d.Contract}
@@ -162,10 +162,10 @@ func (c *Client) resolveCandidate(ctx context.Context, name, selector string) (P
 }
 
 func (p Pin) validateCandidate() error {
-	if _, err := pluginref.LocalRegistryDirectory(p.Registry); err != nil {
+	if _, err := pluginreference.LocalRegistryDirectory(p.Registry); err != nil {
 		return err
 	}
-	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !p.validIdentity() || !idPattern.MatchString(p.PluginID) || !pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || (p.Kind != artifacts.Core && p.Kind != artifacts.Component && p.Kind != artifacts.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
+	if p.RepositoryID != "" || p.OwnerID != "" || p.Alias != "" || !canonicalName(p.Name) || !p.validIdentity() || !idPattern.MatchString(p.PluginID) || !pluginreference.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) || (p.Kind != artifacts.Core && p.Kind != artifacts.Component && p.Kind != artifacts.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return errors.New("invalid local candidate pin")
 	}
 	if artifacts.IsOCI(p.URL) {
@@ -188,7 +188,7 @@ func (p Pin) importCandidate(ctx context.Context, options artifacts.Options) err
 	} else if artifacts.IsOCI(p.URL) || !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	directory, err := pluginref.LocalRegistryDirectory(p.Registry)
+	directory, err := pluginreference.LocalRegistryDirectory(p.Registry)
 	if err != nil {
 		return err
 	}

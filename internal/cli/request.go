@@ -7,7 +7,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	configcmd "actionlint.kjanat.dev/v2/internal/cli/config"
+	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
@@ -84,30 +84,30 @@ func (r doctorRequest) run(ctx context.Context, streams Command) (int, error) {
 	return 0, writeDoctor(ctx, streams.Stdout, r, streams.Acquisition)
 }
 
-type configPathRequest configcmd.PathOptions
+type configPathRequest configcommand.PathOptions
 
 func (r configPathRequest) run(_ context.Context, streams Command) (int, error) {
-	return 0, configcmd.WritePath(streams.Stdout, configcmd.PathOptions(r))
+	return 0, configcommand.WritePath(streams.Stdout, configcommand.PathOptions(r))
 }
 
-type configShowRequest configcmd.ShowOptions
+type configShowRequest configcommand.ShowOptions
 
 func (r configShowRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, configcmd.WriteShow(ctx, streams.Stdout, configcmd.ShowOptions(r), streams.Acquisition)
+	return 0, configcommand.WriteShow(ctx, streams.Stdout, configcommand.ShowOptions(r), streams.Acquisition)
 }
 
-type configValidateRequest configcmd.ValidateOptions
+type configValidateRequest configcommand.ValidateOptions
 
 func (r configValidateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, configcmd.WriteValidation(ctx, streams.Stdout, configcmd.ValidateOptions(r), streams.Acquisition)
+	return 0, configcommand.WriteValidation(ctx, streams.Stdout, configcommand.ValidateOptions(r), streams.Acquisition)
 }
 
 // configSchemaRequest prints the configuration JSON schema with the tool
 // providers that the --plugin flags or the selected configuration install.
-type configSchemaRequest configcmd.SchemaOptions
+type configSchemaRequest configcommand.SchemaOptions
 
 func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, error) {
-	return 0, configcmd.WriteSchema(ctx, streams.Stdout, configcmd.SchemaOptions(r), streams.Acquisition)
+	return 0, configcommand.WriteSchema(ctx, streams.Stdout, configcommand.SchemaOptions(r), streams.Acquisition)
 }
 
 type configInitRequest struct {
@@ -116,10 +116,10 @@ type configInitRequest struct {
 	Format     repoconfig.FileFormat
 }
 
-type configMigrateRequest configcmd.MigrateOptions
+type configMigrateRequest configcommand.MigrateOptions
 
 func (r configMigrateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return configcmd.Migrate(ctx, streams.commandStreams(), configcmd.MigrateOptions(r), streams.Acquisition)
+	return configcommand.Migrate(ctx, streams.commandStreams(), configcommand.MigrateOptions(r), streams.Acquisition)
 }
 
 func (r configInitRequest) run(ctx context.Context, streams Command) (int, error) {

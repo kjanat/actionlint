@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	githubaction "actionlint.kjanat.dev/v2/internal/cli/action"
+	"actionlint.kjanat.dev/v2/internal/cli/githubaction"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	_ "time/tzdata"

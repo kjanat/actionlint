@@ -10,7 +10,7 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
@@ -20,14 +20,14 @@ func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{}); err != nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{}); err != nil {
 		t.Fatal(err)
 	}
 	concurrent := []byte("# user edit\nplugins: []\n")
 	if err := os.WriteFile(project.Manifest.Path, concurrent, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{}); err == nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{}); err == nil {
 		t.Fatal("overwrote concurrent config edit")
 	}
 	config, err := os.ReadFile(project.Manifest.Path)
@@ -57,11 +57,11 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 	if err := plugininstall.Sync(t.Context(), project.Releases, fixtureAcquisition(registry)); err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New(pin.Name, pin.Version, pin.Registry)
+	ref, err := pluginreference.New(pin.Name, pin.Version, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	refs := []pluginref.Reference{ref}
+	refs := []pluginreference.Reference{ref}
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
 	if err := project.Resolve(t.Context(), refs, nil); err != nil {
@@ -81,7 +81,7 @@ func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	if err := os.MkdirAll(project.Manifest.Path+".writing", 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{}); err == nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{}); err == nil {
 		t.Fatal("busy config accepted")
 	}
 	if _, err := os.Stat(project.Manifest.Path); !os.IsNotExist(err) {
@@ -109,11 +109,11 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	old.Name = "github.com/publisher/previous"
 	old.URL = strings.Replace(pin.URL, "/plugin/", "/previous/", 1)
 	project.Releases = plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{old}}
-	ref, err := pluginref.New(pin.Name, pin.Selector, pin.Registry)
+	ref, err := pluginreference.New(pin.Name, pin.Selector, pin.Registry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Resolve(t.Context(), []pluginref.Reference{ref}, nil); err != nil {
+	if err := project.Resolve(t.Context(), []pluginreference.Reference{ref}, nil); err != nil {
 		t.Fatalf("removed package blocked its replacement: %v", err)
 	}
 	if len(project.Releases.Plugins) != 1 || project.Releases.Plugins[0] != pin {
@@ -132,11 +132,11 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New(fixtureregistry.FixturePluginName, "latest", fixtureregistry.FixtureRegistryURL)
+	ref, err := pluginreference.New(fixtureregistry.FixturePluginName, "latest", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	refs := []pluginref.Reference{ref}
+	refs := []pluginreference.Reference{ref}
 	if err := project.Resolve(t.Context(), refs, nil); err != nil {
 		t.Fatal(err)
 	}

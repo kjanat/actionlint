@@ -1,4 +1,4 @@
-package configcmd
+package configcommand
 
 import (
 	"context"

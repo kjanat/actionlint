@@ -36,7 +36,7 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(data) }))
 	defer server.Close()
 	got := testRunCommandWithAcquisition(acquisition, "", "plugin", "inspect", server.URL, "--json")
-	var info pluginartifact.Info
+	var info pluginartifact.ArtifactProvenance
 	if err := json.Unmarshal([]byte(got.Stdout), &info); err != nil || got.Status != 0 || string(info.Metadata) != metadata || info.Kind != pluginartifact.Core {
 		t.Fatalf("inspection=%+v error=%v info=%+v", got, err, info)
 	}

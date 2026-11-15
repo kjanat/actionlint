@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	plugincmd "actionlint.kjanat.dev/v2/internal/cli/plugin"
+	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 	"github.com/spf13/cobra"
 )
 
 type (
-	pluginValidateRequest plugincmd.ValidateOptions
-	pluginTestRequest     plugincmd.TestOptions
+	pluginValidateRequest plugincommand.ValidateOptions
+	pluginTestRequest     plugincommand.TestOptions
 )
 
 func (a *commandApp) pluginAuthoringCommands() []*cobra.Command {
@@ -35,9 +35,9 @@ func (a *commandApp) pluginAuthoringCommands() []*cobra.Command {
 }
 
 func (r pluginValidateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Validate(ctx, streams.commandStreams(), plugincmd.ValidateOptions(r))
+	return plugincommand.Validate(ctx, streams.commandStreams(), plugincommand.ValidateOptions(r))
 }
 
 func (r pluginTestRequest) run(ctx context.Context, streams Command) (int, error) {
-	return plugincmd.Test(ctx, streams.commandStreams(), plugincmd.TestOptions(r))
+	return plugincommand.Test(ctx, streams.commandStreams(), plugincommand.TestOptions(r))
 }

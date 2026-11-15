@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"
@@ -153,7 +153,7 @@ func (p Pin) Source() string {
 
 // Matches binds declaration intent to the recorded registry and repository.
 // An alias matches only when the selected release records that lookup.
-func (p Pin) Matches(ref pluginref.Reference) bool {
+func (p Pin) Matches(ref pluginreference.Reference) bool {
 	if !SameRegistry(p.Registry, ref.Registry()) {
 		return false
 	}
@@ -183,7 +183,7 @@ func numericID(value string) bool {
 }
 
 func canonicalName(name string) bool {
-	return pluginref.ValidName(name)
+	return pluginreference.ValidName(name)
 }
 
 // RepositoryName returns the publishing repository, independently of a package
@@ -197,7 +197,7 @@ func (p Pin) RepositoryName() string {
 
 func (p Pin) validIdentity() bool {
 	repository := p.RepositoryName()
-	if !pluginref.ValidRepository(repository) {
+	if !pluginreference.ValidRepository(repository) {
 		return false
 	}
 	return p.Repository == "" || p.Name == strings.ToLower(p.PluginID) && strings.HasPrefix(p.Name, repository+"/")
@@ -213,8 +213,8 @@ func (p Pin) Validate() error {
 	if _, err := registryURL(p.Registry); err != nil {
 		return err
 	}
-	if !canonicalName(p.Name) || !p.validIdentity() || p.Alias != "" && !pluginref.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
-		!pluginref.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
+	if !canonicalName(p.Name) || !p.validIdentity() || p.Alias != "" && !pluginreference.ValidAlias(p.Alias) || !numericID(p.RepositoryID) || !numericID(p.OwnerID) || !idPattern.MatchString(p.PluginID) ||
+		!pluginreference.ValidVersion(p.Version) || (p.Selector != "latest" && p.Selector != p.Version) ||
 		(p.Kind != artifacts.Core && p.Kind != artifacts.Component && p.Kind != artifacts.ProviderManifest) || !digestPattern.MatchString(p.SHA256) || p.Contract == "" {
 		return fmt.Errorf("invalid registry pin for %q", p.Name)
 	}
@@ -245,7 +245,7 @@ func (p Pin) Validate() error {
 	return nil
 }
 
-func (p Pin) Verify(info artifacts.Info) error {
+func (p Pin) Verify(info artifacts.ArtifactProvenance) error {
 	if info.Kind != p.Kind || info.SHA256 != p.SHA256 {
 		return errors.New("artifact kind or digest disagrees with registry pin")
 	}

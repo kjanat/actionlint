@@ -73,7 +73,7 @@ func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs 
 
 // Evaluate applies the compiled pipeline to one fixture. The per-case
 // context bounds jq evaluation; no child process runs.
-func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.ScriptContext) (AuthoringResult, error) {
+func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.TransformInput) (AuthoringResult, error) {
 	if err := ctx.Err(); err != nil {
 		return AuthoringResult{}, err
 	}
@@ -102,7 +102,7 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 		if manifest.PreparationTransform != nil && facts == nil {
 			return AuthoringResult{}, errors.New("fixture needs preparation facts for the preparation transform")
 		}
-		context := preparation.ScriptContext{}
+		context := preparation.TransformInput{}
 		if facts != nil {
 			context = *facts
 		}

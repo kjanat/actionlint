@@ -45,7 +45,7 @@ func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, 
 		return preparation.Prepared{}, ErrNoSourceAccess
 	}
 	declarations, known := EnvironmentStartup("", r.Environment)
-	plan, err := r.Transform.Apply(ctx, preparation.ScriptContext{
+	plan, err := r.Transform.Apply(ctx, preparation.TransformInput{
 		Source: text, Language: language, Startup: setup,
 		EnvironmentStartup: declarations, EnvironmentKnown: known,
 		Settings: settings, ConfigFile: r.ConfigFile,

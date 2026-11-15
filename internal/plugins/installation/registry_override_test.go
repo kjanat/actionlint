@@ -8,10 +8,10 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
-// declaration holds the inputs to pluginref.New so a test case can change one
+// declaration holds the inputs to pluginreference.New so a test case can change one
 // of them before the Reference is built.
 type declaration struct{ name, version, registry string }
 
@@ -51,7 +51,7 @@ func TestResolvedRegistryOverride(t *testing.T) {
 			if test.change != nil {
 				test.change(&pin, &declared)
 			}
-			ref, err := pluginref.New(declared.name, declared.version, declared.registry)
+			ref, err := pluginreference.New(declared.name, declared.version, declared.registry)
 			if err != nil {
 				t.Fatal(err)
 			}

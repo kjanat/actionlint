@@ -6,11 +6,11 @@ import (
 	"fmt"
 )
 
-type hostImplementation struct {
+type hostLogger struct {
 	output *lineWriter
 }
 
-func (h hostImplementation) Log(_ context.Context, message string) error {
+func (h hostLogger) Log(_ context.Context, message string) error {
 	// Preserve log-call boundaries without joining a partial stdio line.
 	h.output.flush()
 	_, err := h.output.Write([]byte(message))

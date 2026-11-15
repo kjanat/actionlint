@@ -8,7 +8,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -48,7 +48,7 @@ func TestPluginDeclarations(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := [][3]string{
-		{"github.com/kjanat/shellcheck", "v1", pluginref.DefaultRegistry},
+		{"github.com/kjanat/shellcheck", "v1", pluginreference.DefaultRegistry},
 		{"gitlab.com/group/subgroup/plugin", "latest", "https://example.com/catalog/"},
 	}
 	if diff := cmp.Diff(want, declarationFields(cfg.Plugins)); diff != "" {

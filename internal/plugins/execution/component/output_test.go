@@ -10,7 +10,7 @@ func TestHostLogSharesOutputBudget(t *testing.T) {
 	t.Parallel()
 	var lines []string
 	w := &lineWriter{log: func(line string) { lines = append(lines, line) }}
-	h := hostImplementation{output: w}
+	h := hostLogger{output: w}
 	if _, err := w.Write([]byte(strings.Repeat("x", maxPluginOutput-4))); err != nil {
 		t.Fatal(err)
 	}
