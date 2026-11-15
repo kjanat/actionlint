@@ -7,21 +7,14 @@ import "strings"
 type RepositoryTarget struct{ Owner, Repo, Subpath, Ref string }
 
 // ParseRepositoryUses accepts the default-host owner/repo[/path]@ref form.
-// Workspace, self-repository, container and URL references use other forms.
+// Workspace, self-repository, container, builtin, self-host and URL references
+// use other forms.
 func ParseRepositoryUses(raw string) (RepositoryTarget, bool) {
-	if raw == "" || strings.TrimSpace(raw) != raw || strings.Contains(raw, "${{") || strings.HasPrefix(raw, "./") || strings.HasPrefix(raw, "$/") || strings.HasPrefix(raw, "self:") {
+	reference, ok := Classify(raw).(RepositoryReference)
+	if !ok || reference.HostSource != HostSourceDefault {
 		return RepositoryTarget{}, false
 	}
-	at := strings.LastIndexByte(raw, '@')
-	if at < 0 || at == len(raw)-1 {
-		return RepositoryTarget{}, false
-	}
-	target, ok := ParseRepositoryPath(raw[:at])
-	if !ok {
-		return RepositoryTarget{}, false
-	}
-	target.Ref = raw[at+1:]
-	return target, true
+	return RepositoryTarget{Owner: reference.Owner, Repo: reference.Repo, Subpath: reference.Subpath, Ref: reference.Ref}, true
 }
 
 // ParseRepositoryPath validates owner/repo[/path] without interpreting its host.

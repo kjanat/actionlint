@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -74,7 +75,7 @@ jobs:
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
-	if !reflect.DeepEqual(deploy.Reference(), documentmodel.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+	if !reflect.DeepEqual(deploy.Reference(), callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
 		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference())
 	}
 	if partial.DocumentPath() != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {

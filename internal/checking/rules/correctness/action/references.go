@@ -25,7 +25,7 @@ func Repository(exec workflowdecl.ExecActionView, metadata actionmeta.Definition
 
 // Docker checks the URI and optional tag of a Docker action reference.
 func Docker(exec workflowdecl.ExecActionView) []*findingmodel.Finding {
-	if !exec.Present() || !exec.Uses().Present() || !strings.HasPrefix(exec.Uses().Value(), "docker://") {
+	if !exec.Present() || !exec.Uses().Present() || references.FormOf(exec.Uses().Value()) != references.FormContainer {
 		return nil
 	}
 	return DockerReference(exec.Uses().Value(), positionPointer(exec.Uses().Pos()))
@@ -38,7 +38,7 @@ func DockerReference(spec string, pos *workflowlang.Pos) []*findingmodel.Finding
 
 // DockerReferenceValue validates a Docker reference from an owned scalar value and position.
 func DockerReferenceValue(spec string, pos workflowlang.Pos, hasPosition bool) []*findingmodel.Finding {
-	if !strings.HasPrefix(spec, "docker://") {
+	if references.FormOf(spec) != references.FormContainer {
 		return nil
 	}
 	rule := validator{}
@@ -60,17 +60,17 @@ func RepositoryReferenceValue(spec string, pos workflowlang.Pos, hasPosition boo
 
 // InvalidActionReference uses the same syntax checks as Repository and Docker validation.
 func InvalidActionReference(spec string, pos workflowlang.Pos, hasPosition bool) bool {
-	switch {
-	case strings.HasPrefix(spec, "./"):
+	switch references.FormOf(spec) {
+	case references.FormWorkspace:
 		return false
-	case strings.HasPrefix(spec, "$/"):
+	case references.FormSelfRepository:
 		_, valid := references.SelfRepositoryLocal(spec)
 		return !valid
-	case strings.HasPrefix(spec, "docker://"):
+	case references.FormContainer:
 		return len(DockerReferenceValue(spec, pos, hasPosition)) != 0
-	default:
-		return len(RepositoryReferenceValue(spec, pos, hasPosition)) != 0
+	case references.FormRepository, references.FormBuiltin:
 	}
+	return len(RepositoryReferenceValue(spec, pos, hasPosition)) != 0
 }
 
 func positionValue(pos *workflowlang.Pos) workflowlang.Pos {

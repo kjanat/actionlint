@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 )
 
 // Workflow describes selected workflow declarations recovered by a parser.
@@ -28,18 +29,18 @@ type Job struct {
 	Steps []Step
 }
 
-// Reference classifies Uses with ParseWorkflowReference; it is nil when the job
+// Reference classifies Uses with callrefs.ClassifyWorkflow; it is nil when the job
 // calls no workflow.
-func (j Job) Reference() UsesReference { return ParseWorkflowReference(j.Uses) }
+func (j Job) Reference() callrefs.UsesReference { return callrefs.ClassifyWorkflow(j.Uses) }
 
 type jobWire struct {
-	ID        string              `json:"id"`
-	Name      string              `json:"name,omitempty"`
-	Start     *sourcepos.Position `json:"start,omitempty"`
-	Needs     []string            `json:"needs"`
-	Uses      string              `json:"uses,omitempty"`
-	Reference UsesReference       `json:"reference,omitempty"`
-	Steps     []Step              `json:"steps"`
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name,omitempty"`
+	Start     *sourcepos.Position    `json:"start,omitempty"`
+	Needs     []string               `json:"needs"`
+	Uses      string                 `json:"uses,omitempty"`
+	Reference callrefs.UsesReference `json:"reference,omitempty"`
+	Steps     []Step                 `json:"steps"`
 }
 
 // MarshalJSON encodes the job's declarations.
@@ -60,7 +61,7 @@ func (j *Job) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	if _, err := decodeUsesReference(wire.Reference); err != nil {
+	if _, err := callrefs.DecodeUsesReference(wire.Reference); err != nil {
 		return err
 	}
 	*j = Job{ID: value.ID, Name: value.Name, Uses: value.Uses, Start: value.Start, Needs: value.Needs, Steps: value.Steps}
@@ -79,18 +80,18 @@ type Step struct {
 	Steps []Step
 }
 
-// Reference classifies Uses with ParseReference; it is nil when the step uses
+// Reference classifies Uses with callrefs.Classify; it is nil when the step uses
 // no action.
-func (s Step) Reference() UsesReference { return ParseReference(s.Uses) }
+func (s Step) Reference() callrefs.UsesReference { return callrefs.Classify(s.Uses) }
 
 type stepWire struct {
-	ID        string              `json:"id,omitempty"`
-	Name      string              `json:"name,omitempty"`
-	Start     *sourcepos.Position `json:"start,omitempty"`
-	Kind      string              `json:"kind"`
-	Uses      string              `json:"uses,omitempty"`
-	Reference UsesReference       `json:"reference,omitempty"`
-	Steps     []Step              `json:"steps,omitempty"`
+	ID        string                 `json:"id,omitempty"`
+	Name      string                 `json:"name,omitempty"`
+	Start     *sourcepos.Position    `json:"start,omitempty"`
+	Kind      string                 `json:"kind"`
+	Uses      string                 `json:"uses,omitempty"`
+	Reference callrefs.UsesReference `json:"reference,omitempty"`
+	Steps     []Step                 `json:"steps,omitempty"`
 }
 
 // MarshalJSON encodes the step's declarations.
@@ -112,7 +113,7 @@ func (s *Step) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	if _, err := decodeUsesReference(wire.Reference); err != nil {
+	if _, err := callrefs.DecodeUsesReference(wire.Reference); err != nil {
 		return err
 	}
 	*s = Step{ID: value.ID, Name: value.Name, Kind: value.Kind, Uses: value.Uses, Start: value.Start, Steps: value.Steps}

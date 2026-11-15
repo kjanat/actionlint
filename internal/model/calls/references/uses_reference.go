@@ -1,19 +1,75 @@
-package outline
+package references
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
-
-	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 )
+
+// Spelling prefixes that select the form of a uses value.
+const (
+	workspacePrefix      = "./"
+	selfRepositoryPrefix = "$/"
+	containerPrefix      = "docker://"
+	builtinPrefix        = "builtin:"
+	selfHostPrefix       = "self:"
+)
+
+// Form is the family a uses value belongs to, chosen by its spelling alone.
+// It does not check that the rest of the value is well formed; Classify does.
+type Form uint8
+
+const (
+	// FormRepository is any value without a prefix of another form: owner/repo[/path]@ref
+	// and URL spellings, valid or not.
+	FormRepository Form = iota
+	// FormWorkspace is "./path", relative to the runner workspace.
+	FormWorkspace
+	// FormSelfRepository is "$/path", relative to the declaring repository revision.
+	FormSelfRepository
+	// FormContainer is "docker://image".
+	FormContainer
+	// FormBuiltin is "builtin:name", an action supplied by the runner.
+	FormBuiltin
+)
+
+// FormOf returns the form spelled by the prefix of a uses value.
+func FormOf(spec string) Form {
+	switch {
+	case strings.HasPrefix(spec, workspacePrefix):
+		return FormWorkspace
+	case strings.HasPrefix(spec, selfRepositoryPrefix):
+		return FormSelfRepository
+	case strings.HasPrefix(spec, containerPrefix):
+		return FormContainer
+	case strings.HasPrefix(spec, builtinPrefix):
+		return FormBuiltin
+	}
+	return FormRepository
+}
+
+// ContainerImage returns the image of a "docker://" value. It reports false
+// for any other form.
+func ContainerImage(spec string) (string, bool) {
+	return strings.CutPrefix(spec, containerPrefix)
+}
 
 // UsesReference identifies the declared source of an action or reusable workflow.
 // Host resolution and release metadata are separate from parsing.
 type UsesReference interface {
 	usesReference()
 }
+
+// Sources of the host a RepositoryReference is read from.
+const (
+	// HostSourceDefault names the platform's default host.
+	HostSourceDefault = "default"
+	// HostSourceSelf names the host of the declaring repository.
+	HostSourceSelf = "self"
+	// HostSourceExplicit names the host written in the reference.
+	HostSourceExplicit = "explicit"
+)
 
 // RepositoryReference identifies an action or workflow at a repository revision.
 // HostSource is default, explicit or self. Default and self require platform context.
@@ -92,40 +148,47 @@ func (r BuiltinReference) MarshalJSON() ([]byte, error) {
 		Name string `json:"name"`
 	}{"builtin", r.Name})
 }
+
 func (UnknownReference) MarshalJSON() ([]byte, error) { return []byte(`{"kind":"unknown"}`), nil }
 
-// ParseReference classifies a declaration without fetching its target.
-// Classification does not establish support in the selected workflow dialect.
-func ParseReference(raw string) UsesReference {
+// Classify parses a uses value without fetching its target. An empty value has
+// no reference. Classification does not establish support in the selected
+// workflow dialect.
+func Classify(raw string) UsesReference {
 	if raw == "" {
 		return nil
 	}
 	if strings.Contains(raw, "${{") || strings.TrimSpace(raw) != raw {
 		return UnknownReference{}
 	}
-	switch {
-	case strings.HasPrefix(raw, "./"):
-		return WorkspaceReference{Path: strings.TrimPrefix(raw, "./")}
-	case strings.HasPrefix(raw, "$/"):
+	switch FormOf(raw) {
+	case FormWorkspace:
+		return WorkspaceReference{Path: strings.TrimPrefix(raw, workspacePrefix)}
+	case FormSelfRepository:
 		if strings.Contains(raw, "@") {
 			return UnknownReference{}
 		}
-		return SelfRepositoryReference{Path: strings.TrimLeft(strings.TrimPrefix(raw, "$/"), "/")}
-	case strings.HasPrefix(raw, "docker://"):
-		if image := strings.TrimPrefix(raw, "docker://"); image != "" {
+		return SelfRepositoryReference{Path: strings.TrimLeft(strings.TrimPrefix(raw, selfRepositoryPrefix), "/")}
+	case FormContainer:
+		if image, _ := ContainerImage(raw); image != "" {
 			return ContainerReference{Image: image}
 		}
 		return UnknownReference{}
-	case strings.HasPrefix(raw, "builtin:"):
-		if name := strings.TrimPrefix(raw, "builtin:"); name != "" {
+	case FormBuiltin:
+		if name := strings.TrimPrefix(raw, builtinPrefix); name != "" {
 			return BuiltinReference{Name: name}
 		}
 		return UnknownReference{}
+	case FormRepository:
 	}
-	r := RepositoryReference{HostSource: "default"}
+	return classifyRepository(raw)
+}
+
+func classifyRepository(raw string) UsesReference {
+	r := RepositoryReference{HostSource: HostSourceDefault}
 	location := raw
-	if rest, self := strings.CutPrefix(location, "self:"); self {
-		r.HostSource, location = "self", rest
+	if rest, self := strings.CutPrefix(location, selfHostPrefix); self {
+		r.HostSource, location = HostSourceSelf, rest
 	}
 	if at := strings.LastIndexByte(location, '@'); at >= 0 {
 		location, r.Ref = location[:at], location[at+1:]
@@ -135,15 +198,15 @@ func ParseReference(raw string) UsesReference {
 	}
 	if strings.Contains(location, "://") {
 		u, err := url.Parse(location)
-		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || r.HostSource == "self" {
+		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || r.HostSource == HostSourceSelf {
 			return UnknownReference{}
 		}
-		r.Host, r.Scheme, r.HostSource = u.Host, u.Scheme, "explicit"
+		r.Host, r.Scheme, r.HostSource = u.Host, u.Scheme, HostSourceExplicit
 		location = strings.TrimPrefix(u.Path, "/")
 	} else if r.Ref == "" {
 		return UnknownReference{}
 	}
-	target, known := callrefs.ParseRepositoryPath(location)
+	target, known := ParseRepositoryPath(location)
 	if !known {
 		return UnknownReference{}
 	}
@@ -151,16 +214,18 @@ func ParseReference(raw string) UsesReference {
 	return r
 }
 
-// ParseWorkflowReference classifies a job-level uses declaration.
+// ClassifyWorkflow parses a job-level uses value.
 // GitHub resolves a local reusable workflow from the caller's commit, so ./ and $/ calls are both self-repository references.
-func ParseWorkflowReference(raw string) UsesReference {
-	if path, local := strings.CutPrefix(raw, "./"); local {
-		return ParseReference("$/" + path)
+func ClassifyWorkflow(raw string) UsesReference {
+	if path, local := strings.CutPrefix(raw, workspacePrefix); local {
+		return Classify(selfRepositoryPrefix + path)
 	}
-	return ParseReference(raw)
+	return Classify(raw)
 }
 
-func decodeUsesReference(data json.RawMessage) (UsesReference, error) {
+// DecodeUsesReference reads a reference written by json.Marshal. Null and empty
+// input decode to no reference.
+func DecodeUsesReference(data json.RawMessage) (UsesReference, error) {
 	if len(data) == 0 || string(data) == "null" {
 		return nil, nil
 	}
