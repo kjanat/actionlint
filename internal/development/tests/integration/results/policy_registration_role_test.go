@@ -32,10 +32,19 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			policy := resultpolicy.Policy{Path: "workflow.yml", Root: ".", SourceConfigurations: map[string]*repoconfig.Config{"action.yml": cfg}}
-			if _, err := (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(policy, nil, map[string][]byte{"action.yml": []byte("name: action\n")}, nil); err != nil {
+			policy := resultpolicy.Policy{Path: "workflow.yml", Root: "."}
+			if _, err := publishFindings(t, policy, nil, nil, map[string][]byte{"action.yml": []byte("name: action\n")}, map[string]*repoconfig.Config{"action.yml": cfg}); err != nil {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestPublicationRejectsUnpreparedForeignSource(t *testing.T) {
+	t.Parallel()
+	batch := preparePublicationBatch(t, resultpolicy.Batch{InputPath: "workflow.yml", Sources: map[string][]byte{"action.yml": []byte("name: action\n")}}, nil, nil)
+	_, err := resultpolicy.Publish([]resultpolicy.Batch{batch}, nil)
+	if err == nil || !strings.Contains(err.Error(), "rule configuration was not prepared for source") {
+		t.Fatalf("missing source binding was accepted: %v", err)
 	}
 }

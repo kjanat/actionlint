@@ -26,8 +26,10 @@ type does not disappear because one call fails during evaluation.
 Each built-in rule owns its declaration and implementation under
 `internal/checking/rules/<category>`. Its declaration supplies its name, aliases,
 deprecation status, category, defaults, options and configuration scope.
-`internal/checking/rule_index.go` assembles those declarations. Bundled external
-tools supply their declarations through manifests.
+`internal/checking/executor/registration` pairs native declarations with their
+implementations in one ordered catalogue. The public rule index and execution
+registrations derive from that catalogue. Bundled external tools supply their
+declarations through manifests.
 
 `checking.ConfigurationRules` collects rule declarations for the CLI and editor
 integrations. Configuration loading receives these declarations as a
@@ -38,6 +40,16 @@ generator and option validator use these declarations too.
 configuration. `internal/checking/executor` adapts models to checks and coordinates
 nested calls. `internal/checking/passes` runs synchronous workflow passes through
 the contract in `internal/checking/traversal`.
+
+Configuration overlays keep values and source locations in one located document.
+Merge behavior belongs to the configuration field declaration, including lists
+merged by an identifier. Inheritance and matching file overrides use the same
+overlay operation. Selecting action rules preserves the other lint settings.
+
+`internal/checking/binding` prepares each rule's caller, source or composite
+configuration once for an occurrence. Execution and publication use that prepared
+decision. Two calls to the same remote action can therefore retain different
+settings. The execution environment captures the assessment date once per check.
 
 ## Shared checker inputs
 
@@ -56,6 +68,11 @@ grant. Read-only filesystems are supplied separately for one call.
 `internal/plugins/execution/preparation` owns masking, shell preparation, language
 settings and mappings to the original source. Preparation does not launch tools.
 `internal/integrations/process` owns process limits and completion.
+
+Analyzer inputs, descriptors and returned diagnostics have owned copies at the
+extension boundary. Tool callbacks receive detached configuration, so changing
+their input cannot alter another tool or the policy used for publication.
+Immutable invocation handles and explicit execution capabilities remain shared.
 
 ## Plugin contracts
 
@@ -82,6 +99,16 @@ and duplicate selection. Its `Processor` receives the same rule declarations use
 for configuration. `internal/results/suppression` parses directives and accounts
 for their use across invocations of the same source.
 
+`policy.Publish` runs after source captures have closed and been validated. It
+evaluates the raw batches together, reconciles suppression use and incomplete
+checks, and chooses the retained findings. Required policy decisions are private
+to that evaluation. A producer cannot make its diagnostic mandatory by setting
+public report fields.
+
+Native adapters forward the complete internal finding. For example, another
+language runtime check can emit lifecycle evidence through its declaration check;
+the existing policy evaluator and JSON, SARIF and terminal renderers consume it.
+
 `internal/results/edits` plans changes and checks conflicts and source revisions.
 `internal/output` renders reports and writes approved edit plans. The LSP returns
 workspace edits for the editor to apply. Both paths must reject edits against a
@@ -101,6 +128,12 @@ Go generators that read host types or rule declarations live under
 `internal/development/generators`. WIT binding tools are declared in the root
 Go module and invoked through mise tasks. The guest SDK has its own runtime-only
 module. Release and maintenance scripts live under `tools`.
+
+Ownership copies are generated from the owning Go types. Explicit shared-field
+contracts identify immutable handles or execution capabilities; unsupported
+mutable fields stop generation. The analysis report declares how each field
+combines across projects, and its generated merge rejects unclassified fields.
+The lint tasks check both sets of generated files for freshness.
 
 See [CLI and editor responsibilities](application-boundary.md) for request and
 resource ownership, and the [Go dependency graph](../go-forks.md) for fork origins

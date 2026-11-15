@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/results/policy"
+
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
 
@@ -60,10 +62,16 @@ permissions: {}
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, _, err := session.check(workflow, workflow, captured, project, nil, repoconfig.Provenance{}, process, actions, workflows, &rules)
+		findings, _, batch, err := session.check(workflow, workflow, captured, project, nil, repoconfig.Provenance{}, process, actions, workflows, &rules)
 		if err != nil {
 			t.Fatal(err)
 		}
+		batch.Findings, batch.InputPath = findings, workflow
+		published, err := policy.Publish([]policy.Batch{*batch}, session.checkCompletion.incompleteChecks())
+		if err != nil {
+			t.Fatal(err)
+		}
+		findings = published.Findings[0]
 		if workflow == unused {
 			if len(findings) != 0 {
 				t.Fatalf("unreferenced metadata leaked into workflow: %+v", findings)

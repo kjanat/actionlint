@@ -31,7 +31,7 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte(tc.source), AdditionalRules: []string{"plugin-rule"}}, tc.findings, map[string][]byte{}, nil)
+			findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte(tc.source), AdditionalRules: []string{"plugin-rule"}}, nil, tc.findings, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +74,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Config: cfg, Content: source}, []*findingmodel.Finding{{Rule: tc.canonical, Start: sourcepos.Position{Line: 1}}}, map[string][]byte{}, nil)
+				findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*findingmodel.Finding{{Rule: tc.canonical, Start: sourcepos.Position{Line: 1}}}, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -92,11 +92,8 @@ func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
 		t.Run(selector, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("run: echo ok # ignore[" + selector + "]\n")
-			findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(
-				policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source},
-				[]*findingmodel.Finding{{Rule: "missing-permissions", Start: sourcepos.Position{Line: 1}}},
-				map[string][]byte{}, nil,
-			)
+			findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, nil,
+				[]*findingmodel.Finding{{Rule: "missing-permissions", Start: sourcepos.Position{Line: 1}}}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -119,12 +116,15 @@ func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
 	for _, selector := range []string{"require-job-timeout", "job-timeout"} {
 		t.Run(selector, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]"))
+			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]\nlint: {rules: {conventions: {job-timeout: on}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			finding := &findingmodel.Finding{Rule: "job-timeout", Path: path, Start: sourcepos.Position{Line: 1}}
-			got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterConfigured(path, root, nil, []*findingmodel.Finding{finding}, cfg, false, func(string) repoconfig.Level { return "error" })
+			got, err := publishFindings(t, policy.Policy{Path: path, ConfigPath: path, Root: root}, cfg, []*findingmodel.Finding{finding}, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if len(got) != 0 {
 				t.Fatalf("configured selector %q did not suppress canonical finding: %+v", selector, got)
 			}
@@ -153,7 +153,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Config: cfg, Content: []byte("run: echo hi # ignore expression-reference\n")}, nil, map[string][]byte{}, nil)
+		findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: []byte("run: echo hi # ignore expression-reference\n")}, cfg, nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

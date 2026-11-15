@@ -1,20 +1,14 @@
 package checking
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"maps"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"time"
 
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -38,9 +32,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 	if err != nil {
 		return nil, err
 	}
-	if options.Runners.AsOf.IsZero() {
-		options.Runners.AsOf = runner.DateOf(time.Now())
-	}
+	options.ExecutionEnvironment = options.captureDate(time.Now)
 	if input.Kind == inputmodel.Repository && input.Selection == nil {
 		directory := input.Directory
 		if directory == "" {
@@ -91,48 +83,13 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 			failures = append(failures, err)
 		}
 		if result != nil {
-			if err := combineProjectResult(combined, result); err != nil {
-				return combined, errors.Join(append(failures, err)...)
+			merged, mergeErr := report.Merge(*combined, *result)
+			if mergeErr != nil {
+				return combined, errors.Join(append(failures, mergeErr)...)
 			}
+			*combined = merged
 		}
 	}
 	combined.Inputs = slices.Compact(slices.Sorted(slices.Values(combined.Inputs)))
 	return combined, errors.Join(failures...)
-}
-
-// combineProjectResult rejects conflicting source captures and rule metadata
-// before combining results from different repositories.
-func combineProjectResult(combined, result *Result) error {
-	for path, captured := range result.CapturedSources {
-		if previous, exists := combined.CapturedSources[path]; exists &&
-			(previous.Revision != captured.Revision || previous.Coordinates != captured.Coordinates ||
-				previous.CoordinatesAvailable != captured.CoordinatesAvailable || !bytes.Equal(previous.Content, captured.Content)) {
-			return fmt.Errorf("source %q changed between repository analyses", path)
-		}
-	}
-	for _, descriptor := range result.Rules {
-		for _, previous := range combined.Rules {
-			if previous.Name == descriptor.Name && !reflect.DeepEqual(previous, descriptor) {
-				return fmt.Errorf("repositories provide conflicting metadata for rule %q; check them separately", descriptor.Name)
-			}
-		}
-	}
-	if combined.CapturedSources == nil {
-		combined.CapturedSources = make(map[string]report.CapturedSource)
-	}
-	maps.Copy(combined.CapturedSources, result.CapturedSources)
-	for _, descriptor := range result.Rules {
-		if !slices.ContainsFunc(combined.Rules, func(previous rule.Descriptor) bool { return previous.Name == descriptor.Name }) {
-			combined.Rules = append(combined.Rules, descriptor)
-		}
-	}
-	combined.FileCount += result.FileCount
-	combined.Diagnostics = append(combined.Diagnostics, result.Diagnostics...)
-	combined.Sources = append(combined.Sources, result.Sources...)
-	combined.ActionMetadata = append(combined.ActionMetadata, result.ActionMetadata...)
-	combined.RunnerResults = append(combined.RunnerResults, result.RunnerResults...)
-	combined.Documents = append(combined.Documents, result.Documents...)
-	combined.Configurations = append(combined.Configurations, result.Configurations...)
-	combined.Inputs = append(combined.Inputs, result.Inputs...)
-	return nil
 }

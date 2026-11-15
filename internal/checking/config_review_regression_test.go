@@ -172,7 +172,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	if err := result.revalidateCaptures(cache.captures, rows, root, nil); err != nil {
 		return result, err
 	}
-	result.collectDiagnostics()
+	publishTestDiagnostics(t, result)
 	for _, diagnostic := range result.Diagnostics {
 		if !strings.HasSuffix(filepath.ToSlash(diagnostic.Path), dependency) {
 			t.Fatalf("synthetic finding reported at %q, not dependency %q", diagnostic.Path, dependency)

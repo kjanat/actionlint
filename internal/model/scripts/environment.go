@@ -66,10 +66,11 @@ type EnvironmentVariableName struct {
 }
 
 // EnvironmentNames records merged names and lookup rules for one operating system.
+// Its private names are immutable after construction and accessors return copies.
 type EnvironmentNames struct {
 	operatingSystem runnerapi.OS
 	merge, lookup   NameComparison
-	names           []EnvironmentVariableName
+	names           []EnvironmentVariableName `clone:"shared"`
 	unknownNames    bool
 }
 

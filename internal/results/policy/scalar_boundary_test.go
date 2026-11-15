@@ -4,11 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
@@ -69,14 +67,14 @@ func TestInlineSuppressionCompactScalarBoundary(t *testing.T) {
 				}
 				sibling := &findingmodel.Finding{Start: sourcepos.Position{Line: siblingLine}, Rule: "expression-reference"}
 				findings = append(findings, sibling)
-				got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil)
-				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
+				got := fixtureInline(t, source, findings, nil)
+				if len(got) != 2 || got[0].Rule != sibling.Rule || got[0].Start != sibling.Start || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
 					t.Fatalf("block suppression crossed its scalar boundary: %+v", got)
 				}
 				// A later parse error must preserve the same comment boundaries.
 				source = append(source, []byte("invalid: [")...)
-				got = (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil)
-				if len(got) != 2 || got[0] != sibling || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
+				got = fixtureInline(t, source, findings, nil)
+				if len(got) != 2 || got[0].Rule != sibling.Rule || got[0].Start != sibling.Start || got[1].Rule != "inline-suppression" || got[1].Start.Line != outsideLine {
 					t.Fatalf("recovery crossed its scalar boundary: %+v", got)
 				}
 			})

@@ -59,7 +59,11 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 			if r.NeedsProcess == nil {
 				continue
 			}
-			needed, err := r.NeedsProcess(ctx, cfg, project)
+			owned, err := (tools.Context{Config: cfg, ProjectConfig: project}).Detached()
+			if err != nil {
+				return nil, err
+			}
+			needed, err := r.NeedsProcess(ctx, owned.Config, owned.ProjectConfig)
 			if err != nil {
 				return nil, err
 			}

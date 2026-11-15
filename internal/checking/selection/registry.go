@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
@@ -32,12 +33,13 @@ func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool
 		if descriptor.Build == nil && descriptor.Script == nil || action && !descriptor.SupportsActions {
 			continue
 		}
-		if descriptor.Enabled != nil && !descriptor.Enabled(inputs) {
+		prepared := inputs
+		prepared.Config = inputs.Bindings.Rule(descriptor.Name).Config()
+		if descriptor.Enabled != nil && !descriptor.Enabled(prepared) {
 			continue
 		}
-		prepared := inputs
 		if descriptor.Prepare != nil {
-			outcome, err := descriptor.Prepare(inputs)
+			outcome, err := descriptor.Prepare(prepared)
 			if err != nil {
 				return selected, fmt.Errorf("prepare %s inputs: %w", descriptor.Name, err)
 			}
@@ -67,9 +69,12 @@ func CreateRules(ruleSet repoconfig.RuleSet, inputs ruleexec.Inputs, action bool
 }
 
 // ConfigureRules binds invocation configuration and debug output after rule interception.
-func ConfigureRules(rules []workflowvisit.Rule, config *repoconfig.Config, debug io.Writer) {
+func ConfigureRules(rules []workflowvisit.Rule, scope *binding.Scope, debug io.Writer) {
 	for _, r := range rules {
-		if configured, ok := r.(interface{ SetConfig(*repoconfig.Config) }); ok && config != nil {
+		config := scope.Rule(r.Name()).Config()
+		if configured, ok := r.(interface{ SetBindings(*binding.Scope) }); ok {
+			configured.SetBindings(scope)
+		} else if configured, ok := r.(interface{ SetConfig(*repoconfig.Config) }); ok && config != nil {
 			configured.SetConfig(config)
 		}
 		if logged, ok := r.(interface{ EnableDebug(io.Writer) }); ok && debug != nil {

@@ -2,10 +2,10 @@ package finding
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -15,9 +15,8 @@ import (
 // producers and plugins share Diagnostic; policy changes it in place.
 type Finding struct {
 	results.Diagnostic
+	Binding           bindingmodel.ID `clone:"shared"`
 	LifecycleEvidence *lifecycle.Evidence
-	// RequiredLifecycle is set only by the host after evaluating required policy.
-	RequiredLifecycle bool
 	// inferredReference is traversal provenance, not a distinct analyzer finding.
 	InferredReference bool
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
@@ -26,7 +25,7 @@ type Finding struct {
 	EndPosition *workflowlang.Pos
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
-	Source []byte
+	Source []byte `clone:"intern"`
 	// RawScriptSource selects LF-only line splitting for external checker positions.
 	RawScriptSource   bool
 	UnavailableSource UnavailableSource
@@ -106,15 +105,4 @@ func Compare(lhs, rhs *Finding) int {
 		return lhs.EndColumn - rhs.EndColumn
 	}
 	return strings.Compare(lhs.Severity, rhs.Severity)
-}
-
-// Equal compares diagnostic identity while ignoring traversal-inferred reference differences.
-func Equal(lhs, rhs *Finding) bool {
-	left, right := lhs.Diagnostic, rhs.Diagnostic
-	// Aliases can reach one declaration through different invocation owners.
-	if lhs.InferredReference && rhs.InferredReference {
-		left.Reference, right.Reference = nil, nil
-	}
-	return reflect.DeepEqual(left, right) &&
-		lhs.EndColumn == rhs.EndColumn && reflect.DeepEqual(lhs.EndPosition, rhs.EndPosition)
 }

@@ -1,7 +1,10 @@
 package results_test
 
 import (
+	"fmt"
 	"testing"
+
+	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -17,8 +20,24 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 			for _, severity := range []string{"error", "warning", "info"} {
 				source := []byte("name: demo # actionlint:ignore " + rule.Name + " -- reviewed\n")
 				findings := []*findingmodel.Finding{{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: rule.Name, Severity: severity}}
-				if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil); len(got) != 0 {
-					t.Fatal(got)
+				disabled := "disable: [unused-suppression], "
+				if rule.Name == "unused-suppression" {
+					disabled = ""
+				}
+				cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {%s%s: {%s: on}}}", disabled, rule.Category, rule.Name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := publishFindings(t, policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Content: source}, cfg, findings, nil, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rule.Name == "forbidden-suppression" {
+					if len(got) != 2 || got[0].Rule != "forbidden-suppression" || got[1].Rule != "forbidden-suppression" {
+						t.Fatalf("forbidden suppression was not reported: %+v", got)
+					}
+				} else if len(got) != 0 {
+					t.Fatalf("findings=%+v", got)
 				}
 			}
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {disable: [" + rule.Name + "]}}"))
@@ -33,11 +52,18 @@ func TestForeignInlineSuppressionSource(t *testing.T) {
 	t.Parallel()
 	source := []byte("name: demo # actionlint:ignore shellcheck -- reviewed\n")
 	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: source}
-	if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, []*findingmodel.Finding{finding}, nil); len(got) != 1 {
-		t.Fatal("caller suppressed foreign finding")
+	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {disable: [unused-suppression], correctness: {shellcheck: on}}}"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterForeignInline(finding.Path, source, []*findingmodel.Finding{finding}, nil); len(got) != 0 {
-		t.Fatal(got)
+	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Content: source}
+	got, err := publishFindings(t, p, cfg, []*findingmodel.Finding{finding}, nil, nil)
+	if err != nil || len(got) != 1 || got[0].Rule != "shellcheck" {
+		t.Fatalf("caller suppressed foreign finding: %+v %v", got, err)
+	}
+	got, err = publishFindings(t, p, cfg, []*findingmodel.Finding{finding}, map[string][]byte{finding.Path: source}, map[string]*config.Config{finding.Path: cfg})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("foreign suppression: %+v %v", got, err)
 	}
 	if finding.Source == nil {
 		t.Fatal("modified original finding")

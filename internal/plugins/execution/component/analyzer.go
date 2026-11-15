@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/model/commands"
-
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
@@ -34,10 +32,7 @@ func (p *Plugin) Descriptor() checkinputs.Descriptor {
 	if p.analyzerDescriptor == nil {
 		return checkinputs.Descriptor{}
 	}
-	descriptor := *p.analyzerDescriptor
-	descriptor.Descriptor = descriptor.Clone()
-	descriptor.InvocationDefinitions = commands.CloneDefinitions(descriptor.InvocationDefinitions)
-	return descriptor
+	return p.analyzerDescriptor.Detached()
 }
 
 // CheckDocument runs the plugin on one document in a fresh instance. A trap, an

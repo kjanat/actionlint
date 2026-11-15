@@ -15,6 +15,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -66,6 +67,30 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 	}
 	if input.Scripts[0].Text != "echo ok" || input.Mappings[0].Scope != "original" || input.Mappings[0].Entries[0].Name != "original" || input.Dependencies[0].Uses != "original" || input.Files[0].Path != "/original" || input.Files[0].FS == nil || input.SourceRoots[0].Guest != "/original" {
 		t.Fatal("RunOne shared mutable input collections")
+	}
+}
+
+func TestRunOneDetachesAnalyzerDiagnostics(t *testing.T) {
+	t.Parallel()
+	retained := []results.Diagnostic{{
+		Message: "original", Reference: &source.Reference{Document: "original"},
+		Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
+		Fixes:     []results.Fix{{Revisions: map[string]string{"file": "original"}, Edits: []results.Edit{{Replacement: "original"}}}},
+	}}
+	registration := checkinputs.Registration{Checker: testAnalyzer{
+		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "example"}},
+		run:        func(context.Context, checkinputs.Input) ([]results.Diagnostic, error) { return retained, nil },
+	}}
+	got, err := RunOne(t.Context(), checkinputs.Input{}, prepareOne(t, registration, nil))
+	if err != nil || len(got) != 1 {
+		t.Fatalf("findings=%+v error=%v", got, err)
+	}
+	got[0].Reference.Document = "changed"
+	got[0].Lifecycle.Policies[0].ID = "changed"
+	got[0].Fixes[0].Revisions["file"] = "changed"
+	got[0].Fixes[0].Edits[0].Replacement = "changed"
+	if retained[0].Reference.Document != "original" || retained[0].Lifecycle.Policies[0].ID != "original" || retained[0].Fixes[0].Revisions["file"] != "original" || retained[0].Fixes[0].Edits[0].Replacement != "original" {
+		t.Fatalf("published diagnostic mutated analyzer-owned data: %+v", retained[0])
 	}
 }
 
@@ -224,7 +249,7 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 	options := json.RawMessage(`{"mode":"safe"}`)
 	available := []rulemeta.InputKind{rulemeta.Source, rulemeta.Mappings}
 	calls := 0
-	a := &descriptorCountingAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "original", OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`), RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}}, run: func(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+	a := &descriptorCountingAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "original", OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`), RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}, InvocationDefinitions: []commands.Definition{{ID: "shell", Options: []commands.Option{{Long: "mode", Choices: []string{"original"}}}}}}, run: func(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
 		calls++
 		if string(input.Options) != `{"mode":"safe"}` {
 			t.Fatalf("prepared options changed: %s", input.Options)
@@ -238,6 +263,10 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 	a.descriptor.Name = "changed"
 	a.descriptor.RequiredInputs[0] = "future"
 	a.descriptor.OptionsSchema[0] = '!'
+	a.descriptor.InvocationDefinitions[0].Options[0].Choices[0] = "changed"
+	if got := prepared.data.descriptor.InvocationDefinitions[0].Options[0].Choices[0]; got != "original" {
+		t.Fatalf("prepared invocation definition changed: %q", got)
+	}
 	for range 2 {
 		findings, err := RunOne(t.Context(), checkinputs.Input{AvailableInputs: []rulemeta.InputKind{rulemeta.Mappings, rulemeta.Source}}, prepared)
 		if err != nil || len(findings) != 1 || findings[0].Rule != "original" {

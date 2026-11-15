@@ -7,9 +7,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
-// UnusedSuppressionFix removes selectors after invocation-wide usage is known.
+// unusedSuppressionFix removes selectors after invocation-wide usage is known.
 // The edit is range-checked and bound to the exact admitted document revision.
-func (processor Processor) UnusedSuppressionFix(content []byte, path string, ref sourcepos.Reference, position sourcepos.Position, rules, allowed []string) (results.Fix, bool) {
+func (processor Processor) unusedSuppressionFix(content []byte, path string, ref sourcepos.Reference, position sourcepos.Position, rules, allowed []string) (results.Fix, bool) {
 	if path == "" || ref.Document == "" || ref.Revision != sourceid.Digest(content) {
 		return results.Fix{}, false
 	}

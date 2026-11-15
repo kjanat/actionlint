@@ -23,7 +23,7 @@ func TestAliasedScriptsKeepDeclarationReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 	}
 	cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root, ExplicitDocuments: map[string]struct{}{actionCapture.Revision().Document(): {}}})
 	resolver := workspaceactions.NewResolver(cache, map[string]string{"./generated": "./source"})
-	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: resolver, CollectScripts: true}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: resolver, CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)
@@ -113,14 +113,14 @@ func TestScriptCollectionRejectsForeignDeclaration(t *testing.T) {
 	foreign := parsing.Workflow(content)
 	analysis := compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, sourceSnapshot: workflowSnapshot(t, content, indexed)}
 	foreignStep := workflowStepViews(t, workflowView(t, workflowSnapshot(t, content, foreign)), "test")[0]
-	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
+	if err := analysis.collectScript(foreignStep, nil, nil); err == nil {
 		t.Fatal("accepted independently decoded declaration")
 	}
 	if len(analysis.scripts) != 0 {
 		t.Fatal("foreign declaration produced a script fact")
 	}
 	analysis.sourceSnapshot = parsing.SourceSnapshot{}
-	if err := analysis.collectScript(foreignStep, nil, nil, nil); err == nil {
+	if err := analysis.collectScript(foreignStep, nil, nil); err == nil {
 		t.Fatal("accepted a script without a source snapshot")
 	}
 }

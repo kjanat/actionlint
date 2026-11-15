@@ -1,8 +1,8 @@
 package calls
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -13,12 +13,13 @@ import (
 // Invocation supplies the already-resolved caller and action scope.
 // Participants own analyzer-specific configuration and state adaptation.
 type Invocation struct {
+	Bindings   *binding.Scope
 	Context    invocation.Context
 	ActionPath string
-	Config     *repoconfig.Config
-	Path       string
-	Source     parsing.SourceSnapshot
-	Actions    workspaceactions.MetadataLookup
+
+	Path    string
+	Source  parsing.SourceSnapshot
+	Actions workspaceactions.MetadataLookup
 }
 
 // InvocationParticipant observes resolved action execution without producing child rules.
@@ -47,6 +48,6 @@ type (
 	MetadataParticipant interface {
 		workflowvisit.Rule
 		CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot, actionmeta.ReferencedFiles) error
-		ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule
+		ForMetadata(*workspaceactions.Resolver) MetadataParticipant
 	}
 )

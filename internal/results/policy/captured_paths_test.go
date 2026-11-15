@@ -20,8 +20,9 @@ func TestReportedPhysicalPathIsRelativeToAliasedCheckout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := processor.Apply(policy.Policy{Path: "ci.yml", Root: checkout, WorkingDir: checkout, Config: config},
-		[]*finding.Finding{{Rule: "expression-type", Path: filepath.Join(physical, "scripts", "lib.sh"), Start: sourcepos.Position{Line: 1}}}, nil, nil)
+	findings := []*finding.Finding{{Rule: "expression-type", Path: filepath.Join(physical, "scripts", "lib.sh"), Start: sourcepos.Position{Line: 1}}}
+	p := preparePolicy(processor.RuleSet, config, policy.Policy{Path: "ci.yml", Root: checkout, WorkingDir: checkout}, nil, findings)
+	got, err := publishFindings(processor, p, findings, nil)
 	if err != nil || len(got) != 1 || got[0].Path != filepath.Join("scripts", "lib.sh") {
 		t.Fatalf("reported path=%+v error=%v, want scripts/lib.sh", got, err)
 	}
@@ -46,8 +47,9 @@ func TestPolicyUsesPreparedPathsWithoutFilesystemSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got, err := processor.Apply(policy.Policy{Path: path, ConfigPath: path, Root: checkout, ProjectRoot: checkout, WorkingDir: checkout, Config: config},
-			[]*finding.Finding{{Rule: "expression-type", Path: path, Start: sourcepos.Position{Line: 1}}}, nil, nil)
+		findings := []*finding.Finding{{Rule: "expression-type", Path: path, Start: sourcepos.Position{Line: 1}}}
+		p := preparePolicy(processor.RuleSet, config, policy.Policy{Path: path, ConfigPath: path, Root: checkout, ProjectRoot: checkout, WorkingDir: checkout}, nil, findings)
+		got, err := publishFindings(processor, p, findings, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

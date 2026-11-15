@@ -46,7 +46,7 @@ run:
 			if len(findings) != 1 || findings[0].Rule != "syntax-check" {
 				t.Fatalf("malformed fixture findings: %+v", findings)
 			}
-			if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil); len(got) != 0 {
+			if got := fixtureInline(t, source, findings, nil); len(got) != 0 {
 				t.Fatalf("syntax finding was not suppressed: %+v", got)
 			}
 		}
@@ -115,7 +115,7 @@ jobs: [`,
 	}
 	source := []byte("jobs: [ # actionlint:ignore syntax-check --")
 	_, findings := parseSuppressionSource(source)
-	got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil)
+	got := fixtureInline(t, source, findings, nil)
 	if len(got) != 2 || got[1].Rule != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
 		t.Fatalf("explicit empty reason was accepted: %+v", got)
 	}
@@ -125,12 +125,12 @@ jobs: [`,
 	}
 	source = []byte("jobs: [ # actionlint:ignore syntax-check -- reviewed")
 	_, findings = parseSuppressionSource(source)
-	if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "forbidden-suppression" {
+	if got := fixtureInline(t, source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != "forbidden-suppression" {
 		t.Fatalf("malformed YAML bypassed suppression policy: %+v", got)
 	}
 	source = []byte("name: test # actionlint:ignore syntax-check -- reviewed\njobs: [")
 	_, findings = parseSuppressionSource(source)
-	if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
+	if got := fixtureInline(t, source, findings, nil); len(got) != 1 || got[0].Rule != findings[0].Rule || got[0].Start != findings[0].Start {
 		t.Fatalf("unrelated declaration suppressed syntax error: %+v", got)
 	}
 }
@@ -171,7 +171,7 @@ jobs: [`,
 			if len(findings) != 1 || findings[0].Rule != "syntax-check" {
 				t.Fatalf("invalid boundary fixture: %+v", findings)
 			}
-			if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, nil); len(got) != 1 || got[0] != findings[0] {
+			if got := fixtureInline(t, source, findings, nil); len(got) != 1 || got[0].Rule != findings[0].Rule || got[0].Start != findings[0].Start {
 				t.Fatalf("unrelated comment suppressed malformed header: %+v", got)
 			}
 		}
@@ -186,7 +186,7 @@ jobs: [`,
 			if reason == " --" {
 				want = "inline-suppression"
 			}
-			if got := (policy.Processor{RuleSet: checking.ConfigurationRules()}).FilterInline(source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != want {
+			if got := fixtureInline(t, source, findings, cfg.Policy.DisallowSuppressions); len(got) != 2 || got[1].Rule != want {
 				t.Fatalf("recovered prefix bypassed reason or policy: %+v", got)
 			}
 		}

@@ -6,75 +6,13 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
-var builtins = []rule.Declaration{
-	correctness.VendorLockInDeclaration(),
-	correctness.ContainerRunnerDeclaration(),
-	suspicious.UncancellableConditionCheck().Declaration,
-	security.MissingPermissionsDeclaration(),
-	conventions.MissingActionMetadataDeclaration(),
-	correctness.ExpressionSyntaxDeclaration(),
-	correctness.ExpressionReferenceDeclaration(),
-	correctness.ContextAvailabilityDeclaration(),
-	correctness.ExpressionTypeDeclaration(),
-	correctness.ExpressionCallDeclaration(),
-	correctness.EventPayloadDeclaration(),
-	security.ScriptInjectionDeclaration(),
-	correctness.ScriptInterpolationDeclaration(),
-	correctness.WorkflowRunNamesDeclaration(),
-	correctness.UnsoundTernaryDeclaration(),
-	correctness.SyntaxCheckDeclaration(),
-	correctness.InlineSuppressionDeclaration(),
-	correctness.UnusedSuppressionDeclaration(),
-	correctness.MissingLocalActionDeclaration(),
-	suspicious.StringConditionsDeclaration(),
-	suspicious.JoinLiteralDeclaration(),
-	suspicious.CollectionComparisonDeclaration(),
-	suspicious.CoercionDeclaration(),
-	suspicious.MixedTypeComparisonsDeclaration(),
-	suspicious.CaseInsensitiveConditionsDeclaration(),
-	suspicious.MixedTypeMatrixFiltersDeclaration(),
-	conventions.ForbiddenSuppressionDeclaration(),
-	correctness.MatrixDeclaration(),
-	security.CredentialsCheck().Declaration,
-	correctness.ShellNameDeclaration(),
-	correctness.RunnerLabelDeclaration(),
-	correctness.RunnerSupportDeclaration(),
-	correctness.EventsCheck().Declaration,
-	correctness.JobNeedsCheck().Declaration,
-	correctness.ParallelStepsCheck().Declaration,
-	correctness.ActionDeclaration(),
-	correctness.RuntimeLifecycleDeclaration(),
-	correctness.ExecutableBitDeclaration(),
-	correctness.EnvVarCheck().Declaration,
-	correctness.IdCheck().Declaration,
-	correctness.GlobCheck().Declaration,
-	correctness.PermissionsCheck().Declaration,
-	correctness.WorkflowCallDeclaration(),
-	correctness.ExpressionDeclaration(),
-	correctness.DeprecatedCommandsDeclaration(),
-	suspicious.ErrexitStatusDeclaration(),
-	suspicious.WorkflowCommandSyntaxDeclaration(),
-	correctness.InvalidOutputFileDeclaration(),
-	correctness.IfCondCheck().Declaration,
-	correctness.NumericValuesCheck().Declaration,
-	suspicious.EmptyTriggersCheck().Declaration,
-	correctness.EmptyJobCheck().Declaration,
-	suspicious.EmptyRunCheck().Declaration,
-	security.UnpinnedReferenceDeclaration(),
-	conventions.JobTimeoutDeclaration(),
-	security.CacheWriteUntrustedDeclaration(),
-	security.CacheCallUnrestrictedDeclaration(),
-	correctness.CacheOperationDeclaration(),
-}
+var builtins = registration.Declarations()
 
 // providerRules reads rule descriptors from the bundled provider manifests.
 // Invalid embedded metadata causes a panic. This package reads only the rule

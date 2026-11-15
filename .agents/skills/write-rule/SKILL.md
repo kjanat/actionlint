@@ -36,8 +36,10 @@ use them before adding new analysis.
 Read the matching section of [implementation.md](references/implementation.md):
 
 - **Native semantic check:** define the rule's name, category, severity and
-  required data in a `rule.Declaration`. Add it to `internal/checking/rule_index.go`
-  and register the implementation in `internal/checking/executor/registration`.
+  required data in a `rule.Declaration`. Register the declaration and implementation
+  together in `nativeRuleCatalog` under `internal/checking/executor/registration`.
+  Declare `SupportsActions` when the check applies to actions; declaration checks
+  then receive composite invocation support from the common adapter.
   Report findings through the host. If several rules need the same analysis,
   implement it once in the semantic model.
 - **External linter:** author a plugin using the manifest format and SDK interfaces. Test its

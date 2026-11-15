@@ -7,6 +7,7 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
 func TestRegisteredRuleConfigurationScopes(t *testing.T) {
@@ -194,5 +195,51 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	}
 	if got := ConfigurationRules().DiagnosticLevel(source, "action"); got == "warn" {
 		t.Fatal("caller-scoped action setting leaked into the source scope")
+	}
+}
+
+func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
+	t.Parallel()
+	registration := repoconfig.RuleRegistration{
+		Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true},
+		Scope:      rule.SourceConfiguration, SupportsActions: true,
+		ToolSettings: &configschema.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
+	}
+	rules, err := ConfigurationRules().WithRegisteredRules(registration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project, err := rules.Parse([]byte(`tools:
+  custom-script:
+    backend: {wasm: {path: workflow.wasm}}
+lint: {rules: {correctness: {action: warn}}}
+overrides:
+  - includes: ['inner/**']
+    tools:
+      custom-script:
+        backend: {wasm: {path: action.wasm}}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, rules, []repoconfig.RuleRegistration{registration})
+	entry, err := settings.workflow("ci.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.bindEntry("ci.yml", entry)
+	scope, err := settings.bindSource("inner/action.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared := scope.Rule("custom-script")
+	for _, cfg := range []*repoconfig.Config{prepared.Config(), prepared.Policy()} {
+		module, ok := cfg.Tools["custom-script"].Backend.Wasm()
+		if !ok || module.Path() != "action.wasm" {
+			t.Fatalf("source tool lost its backend override: module=%+v selected=%v", module, ok)
+		}
+		if rules.DiagnosticLevel(cfg, "action") == "warn" {
+			t.Fatal("source projection retained caller-only rule settings")
+		}
 	}
 }

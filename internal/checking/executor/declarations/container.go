@@ -19,8 +19,6 @@ import (
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type containerFrame struct {
@@ -56,7 +54,7 @@ func (r *containerAdapter) VisitJobPre(job workflowdecl.JobView) error {
 
 func (r *containerAdapter) reportUses(uses []runnerlang.ContainerUse) {
 	for _, finding := range correctness.ContainerRunnerFindings(uses) {
-		r.Report(findingmodel.FromDiagnostic(finding.Diagnostic))
+		r.Report(new(finding.Finding))
 	}
 }
 

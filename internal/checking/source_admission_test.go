@@ -106,7 +106,7 @@ func TestUnavailableReportedSourceIgnoresAnotherCapturedRevision(t *testing.T) {
 			if err := result.revalidateCaptures(store, rows, root, nil); err != nil {
 				t.Fatal(err)
 			}
-			result.collectDiagnostics()
+			publishTestDiagnostics(t, &result)
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || len(result.Diagnostics[0].Fixes) != 0 || result.Diagnostics[0].End != finding.Start {
 				t.Fatalf("unavailable source promoted another consumer's capture: %+v", result.Diagnostics)
 			}
@@ -271,7 +271,7 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			}
 			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 			err = result.revalidateCaptures(store, rows, root, admissionErr)
-			result.collectDiagnostics()
+			publishTestDiagnostics(t, &result)
 			if state == "captured" {
 				if err != nil || len(result.Diagnostics) != 2 || result.Diagnostics[0].Message != parse.Message {
 					t.Fatalf("valid parse finding was lost: diagnostics=%+v error=%v", result.Diagnostics, err)

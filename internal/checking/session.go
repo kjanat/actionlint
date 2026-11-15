@@ -34,10 +34,7 @@ import (
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
-	"actionlint.kjanat.dev/v2/internal/model/services"
 	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -45,6 +42,7 @@ import (
 
 // Options selects configuration and analysis backends for one application session.
 type Options struct {
+	ExecutionEnvironment
 	// Processes shares the invocation's process budget with native analyzers.
 	// Nil creates an application-owned pool.
 	Processes     *process.ProcessPool
@@ -52,11 +50,8 @@ type Options struct {
 	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
 	// them when it also implements workflows.Provider.
 	RemoteWorkflows workflowinputs.Provider
-	// Service identifies the workflow execution service, including for stdin.
-	Service services.Service
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
-	Runners    runner.Options
 	Tools      []tools.Registration
 	Resolver   references.Resolver
 	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.
@@ -67,9 +62,7 @@ type Options struct {
 	ConfigConnections acquisitionhttp.Connections
 	ConfigOverlays    []repoconfig.Overlay
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
-	EnforcePolicies []string
-	// EnforcedLifecycle supplies trusted, compiled lifecycle policies.
-	EnforcedLifecycle    []lifecycle.Policy
+	EnforcePolicies      []string
 	enforcedPolicyInputs []string
 	SkipProjectConfig    bool
 	// NoIgnore disables Git ignore rules and configured file filters.
@@ -113,9 +106,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 			result.Inputs = slices.Compact(slices.Sorted(slices.Values(append(result.Inputs, options.enforcedPolicyInputs...))))
 		}
 	}()
-	if options.Runners.AsOf.IsZero() {
-		options.Runners.AsOf = runner.DateOf(time.Now())
-	}
+	options.ExecutionEnvironment = options.captureDate(time.Now)
 	if err := validateAnalyzerRegistrations(options.Analyzers); err != nil {
 		return nil, err
 	}
@@ -216,7 +207,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	}
 	engines := scriptengines.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
-	request := analysisRequest{Processes: processes, Runners: options.Runners, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
+	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
 	request.NoIgnore = options.NoIgnore
 	request.RemoteActions = options.RemoteActions
@@ -225,8 +216,6 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		request.RemoteWorkflows, _ = options.RemoteActions.(workflowinputs.Provider)
 	}
 	request.Repository = options.Repository
-	request.Service = options.Service
-	request.EnforcedLifecycle = options.EnforcedLifecycle
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
 
 	if options.LoadScriptEngine != nil {

@@ -58,8 +58,7 @@ func Prepare(registration checkinputs.Registration, available []rulemeta.InputKi
 	if validation.IsNil(registration.Checker) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
-	descriptor := registration.Checker.Descriptor()
-	descriptor.Descriptor = descriptor.Clone()
+	descriptor := registration.Checker.Descriptor().Detached()
 	options := slices.Clone(registration.Options)
 	if descriptor.Name == "" {
 		return PreparedRegistration{}, errors.New("analyzer name must not be empty")
@@ -138,23 +137,9 @@ func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedR
 	}
 	descriptor := registration.data.descriptor
 	supplied := input
-	supplied.AvailableInputs = slices.Clone(input.AvailableInputs)
-	supplied.SelectedScripts = slices.Clone(input.SelectedScripts)
+	supplied.Options = nil
+	supplied = supplied.Detached()
 	supplied.Options = slices.Clone(registration.data.options)
-	supplied.Scripts = cloneScripts(input.Scripts)
-	supplied.Invoked = cloneScripts(input.Invoked)
-	supplied.ActionInputs = slices.Clone(input.ActionInputs)
-	for i, input := range supplied.ActionInputs {
-		supplied.ActionInputs[i].Script = cloneScripts([]checkinputs.Script{input.Script})[0]
-	}
-	supplied.Dependencies = slices.Clone(input.Dependencies)
-	supplied.ResolvedDependencies = slices.Clone(input.ResolvedDependencies)
-	supplied.Files = slices.Clone(input.Files)
-	supplied.SourceRoots = slices.Clone(input.SourceRoots)
-	supplied.Mappings = slices.Clone(input.Mappings)
-	for i := range supplied.Mappings {
-		supplied.Mappings[i].Entries = slices.Clone(supplied.Mappings[i].Entries)
-	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -167,6 +152,9 @@ func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedR
 	}
 	findings, err := registration.data.analyzer.CheckDocument(ctx, supplied)
 	findings = slices.Clone(findings)
+	for i := range findings {
+		findings[i] = findings[i].Clone()
+	}
 	err = errors.Join(preparationErr, err, related.BindDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
 	if canceled := ctx.Err(); canceled != nil && !errors.Is(err, canceled) {
 		err = errors.Join(err, canceled)
@@ -192,23 +180,4 @@ func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedR
 		return findings, fmt.Errorf("analyzer %q: %w", descriptor.Name, err)
 	}
 	return findings, err
-}
-
-func cloneScripts(scripts []checkinputs.Script) []checkinputs.Script {
-	if scripts == nil {
-		return nil
-	}
-	cloned := make([]checkinputs.Script, len(scripts))
-	for i, script := range scripts {
-		script.Occurrence.Ancestry = slices.Clone(script.Occurrence.Ancestry)
-		script.Spans = slices.Clone(script.Spans)
-		script.Comments = slices.Clone(script.Comments)
-		script.Environment = slices.Clone(script.Environment)
-		if script.Runtime != nil {
-			runtime := *script.Runtime
-			script.Runtime = &runtime
-		}
-		cloned[i] = script
-	}
-	return cloned
 }

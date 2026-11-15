@@ -11,6 +11,7 @@ import (
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
@@ -53,20 +54,16 @@ var configurationRules = sync.OnceValue(func() repoconfig.RuleSet {
 		}
 		var manifest struct {
 			Rule  rulemeta.Descriptor `json:"rule"`
-			Scope string              `json:"scope"`
+			Scope manifests.Scope     `json:"scope"`
 		}
 		if err := json.Unmarshal(data, &manifest); err != nil {
 			panic(fmt.Errorf("bundled provider %s: %w", name, err))
 		}
-		declaration := rulemeta.Declaration{Descriptor: manifest.Rule, SupportsActions: true}
-		switch manifest.Scope {
-		case "source":
-			declaration.Scope = rulemeta.SourceConfiguration
-		case "composite":
-			declaration.Scope = rulemeta.CompositeConfiguration
-		default:
-			panic(fmt.Sprintf("bundled provider %s declares unknown configuration scope %q", name, manifest.Scope))
+		scope, err := manifest.Scope.ConfigurationScope()
+		if err != nil {
+			panic(fmt.Errorf("bundled provider %s: %w", name, err))
 		}
+		declaration := rulemeta.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true}
 		declarations = append(declarations, declaration)
 	}
 	rules, err := repoconfig.NewRuleSet(declarations)

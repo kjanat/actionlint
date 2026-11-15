@@ -1,106 +1,24 @@
 package finding
 
-import (
-	"bytes"
-	"slices"
-
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/results"
-)
+//go:generate go run ../../development/generators/owned-copies -root ../../..
 
 // Clone returns a deep copy of the finding. Annotating the copy, including its
 // origins, fixes and foreign source, leaves the original unchanged.
 func (e *Finding) Clone() *Finding {
-	clone := e.detached()
+	clone := copyOwnedFinding(*e)
 	return &clone
 }
 
-// detached copies the value fields and gives every reference field fresh
-// storage. A new reference field must be detached here as well.
-func (e *Finding) detached() Finding {
-	out := *e
-	out.Diagnostic = detachedDiagnostic(e.Diagnostic)
-	out.EndPosition = clonePos(e.EndPosition)
-	out.Source = bytes.Clone(e.Source)
-	out.SuppressionOrigin = cloneSuppressionOrigin(e.SuppressionOrigin)
-	out.SuppressionTarget = cloneSuppressionOrigin(e.SuppressionTarget)
-	out.IgnoreOrigin = cloneIgnoreOrigin(e.IgnoreOrigin)
-	out.Owner = cloneOwner(e.Owner)
-	out.MetadataIdentity = cloneMetadataIdentity(e.MetadataIdentity)
-	return out
-}
+// Copier detaches findings while sharing copies of identical source buffers.
+// Findings copied by one Copier must treat their Source bytes as immutable.
+// A Copier must not be used concurrently.
+type Copier struct{ context ownedCopyContext }
 
-func detachedDiagnostic(d results.Diagnostic) results.Diagnostic {
-	d.Reference = cloneReference(d.Reference)
-	d.Related = slices.Clone(d.Related)
-	d.Fixes = cloneFixes(d.Fixes)
-	return d
-}
+// NewCopier creates an ownership boundary for a group of findings.
+func NewCopier() *Copier { return &Copier{} }
 
-func cloneFixes(fixes []results.Fix) []results.Fix {
-	if fixes == nil {
-		return nil
-	}
-	out := make([]results.Fix, 0, len(fixes))
-	for _, fix := range fixes {
-		out = append(out, fix.Clone())
-	}
-	return out
-}
-
-func detachedOwner(owner Owner) Owner {
-	owner.Step = clonePos(owner.Step)
-	return owner
-}
-
-func cloneOwner(owner *Owner) *Owner {
-	if owner == nil {
-		return nil
-	}
-	clone := detachedOwner(*owner)
+// Clone returns a distinct finding with independently owned mutable metadata.
+func (c *Copier) Clone(finding *Finding) *Finding {
+	clone := c.context.copyOwnedFinding(*finding)
 	return &clone
-}
-
-func detachedIgnoreOrigin(origin IgnoreOrigin) IgnoreOrigin {
-	origin.StepPosition = clonePos(origin.StepPosition)
-	return origin
-}
-
-func cloneIgnoreOrigin(origin *IgnoreOrigin) *IgnoreOrigin {
-	if origin == nil {
-		return nil
-	}
-	clone := detachedIgnoreOrigin(*origin)
-	return &clone
-}
-
-// The following types hold only plain values, so a value copy detaches them.
-
-func clonePos(pos *workflowlang.Pos) *workflowlang.Pos {
-	if pos == nil {
-		return nil
-	}
-	return new(*pos)
-}
-
-func cloneReference(reference *source.Reference) *source.Reference {
-	if reference == nil {
-		return nil
-	}
-	return new(*reference)
-}
-
-func cloneSuppressionOrigin(origin *SuppressionOrigin) *SuppressionOrigin {
-	if origin == nil {
-		return nil
-	}
-	return new(*origin)
-}
-
-func cloneMetadataIdentity(identity *MetadataIdentity) *MetadataIdentity {
-	if identity == nil {
-		return nil
-	}
-	return new(*identity)
 }

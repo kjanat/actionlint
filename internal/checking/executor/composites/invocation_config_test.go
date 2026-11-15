@@ -3,10 +3,11 @@ package composites
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 
@@ -16,95 +17,15 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func TestManifestConfigCacheKeepsLogicalPaths(t *testing.T) {
-	t.Parallel()
-	directory := t.TempDir()
-	first := filepath.Join(directory, "action.yml")
-	second := directory + string(os.PathSeparator) + "." + string(os.PathSeparator) + "action.yml"
-	if err := os.WriteFile(first, []byte("name: shared\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	firstInfo, err := os.Stat(first)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondInfo, err := os.Stat(second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !os.SameFile(firstInfo, secondInfo) {
-		t.Fatal("logical aliases must address the same physical manifest")
-	}
-	for _, paths := range [][]string{{first, second, first}, {second, first, second}} {
-		configs := map[string]*repoconfig.Config{first: {}, second: {}}
-		loads := map[string]int{}
-		options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), ConfigForFile: func(path string) (*repoconfig.Config, error) {
-			loads[path]++
-			return configs[path], nil
-		}}
-		result, err := analyze(options, func(analysis *compositeAnalyzer) error {
-			for _, path := range paths {
-				got, err := analysis.configForFile(path)
-				if err != nil {
-					return err
-				}
-				if got != configs[path] {
-					t.Fatalf("logical path %q inherited another alias's config", path)
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(result.Configs) != 2 || loads[first] != 1 || loads[second] != 1 || result.Configs[first] != configs[first] || result.Configs[second] != configs[second] {
-			t.Fatalf("logical config cache: loads=%v configs=%v", loads, result.Configs)
-		}
-	}
-}
-
 type configVisitProbe struct {
 	workflowvisit.Base
 	steps    []string
 	finished bool
-}
-
-func TestManifestConfigCacheRetriesFailuresAndCachesNil(t *testing.T) {
-	t.Parallel()
-	failure := errors.New("configuration unavailable")
-	loads := 0
-	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), ConfigForFile: func(string) (*repoconfig.Config, error) {
-		loads++
-		if loads == 1 {
-			return nil, failure
-		}
-		return nil, nil
-	}}
-	result, err := analyze(options, func(analysis *compositeAnalyzer) error {
-		if _, err := analysis.configForFile("action.yml"); !errors.Is(err, failure) {
-			t.Fatalf("configuration failure lost its cause: %v", err)
-		}
-		for range 2 {
-			config, err := analysis.configForFile("action.yml")
-			if config != nil || err != nil {
-				t.Fatalf("absent configuration: config=%v error=%v", config, err)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	config, exists := result.Configs["action.yml"]
-	if loads != 2 || !exists || config != nil {
-		t.Fatalf("nil configuration cache: loads=%d config=%v exists=%v", loads, config, exists)
-	}
 }
 
 func (probe *configVisitProbe) VisitStep(step workflowdecl.StepView) error {
@@ -129,10 +50,10 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			failure := errors.New("invalid action configuration")
 			loads := 0
 			f.options.CollectScripts = collect
-			f.options.ConfigForFile = func(string) (*repoconfig.Config, error) {
+			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) {
 				loads++
 				return nil, failure
-			}
+			})
 			result, err := Workflow(f.options, f.root)
 			want := fmt.Sprintf("load configuration for action %q: %s", filepath.Join(f.options.Paths.Workspace, "outer", "action.yml"), failure)
 			if !errors.Is(err, failure) || err.Error() != want || loads != 1 || !result.Batch.Invocations().Incomplete() || len(result.Sources) != 1 {
@@ -161,19 +82,17 @@ func TestRepeatedCompositeConfigIsResolvedOnceWithoutScripts(t *testing.T) {
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}, {uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
 	childConfig := &repoconfig.Config{}
 	loads := 0
-	var loadedPath string
 	f.options.CollectScripts = false
-	f.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
+	f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
 		loads++
-		loadedPath = path
 		return childConfig, nil
-	}
+	})
 	result, err := Workflow(f.options, f.root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loads != 1 || len(result.Configs) != 1 || result.Configs[loadedPath] != childConfig || len(result.Batch.Scopes()) != 3 {
-		t.Fatalf("repeated no-script invocation reloaded/lost config: loads=%d configs=%v scopes=%d", loads, result.Configs, len(result.Batch.Scopes()))
+	if loads != 1 || len(result.Batch.Scopes()) != 3 {
+		t.Fatalf("repeated no-script invocation reloaded/lost config: loads=%d scopes=%d", loads, len(result.Batch.Scopes()))
 	}
 }
 
@@ -183,11 +102,12 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 	action := "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: owner/child@v1\n      with: {script: 'child()'}\n    - uses: owner/shared@v1\n      with: {script: 'shared()'}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": action}, nil)
 	rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
-	f.options.Config = rootConfig
-	f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
+	f.options.Bindings = testBindings(rootConfig)
+	f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return childConfig, nil })
 	f.options.ScriptInputs = []checkinputs.ScriptInput{{Action: "owner/shared", Input: "script", Language: "javascript"}}
 	loads := map[*repoconfig.Config]int{}
-	f.options.ScriptInputsForConfig = func(config *repoconfig.Config) ([]checkinputs.ScriptInput, error) {
+	f.options.ScriptInputsForScope = func(scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
+		config := scope.Composite()
 		loads[config]++
 		name := "owner/root"
 		if config == childConfig {
@@ -218,11 +138,12 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(1)'}\n      - uses: $/outer\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(3)'}\n"
 			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with: {script: 'console.log(2)'}\n"}, nil)
 			rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
-			f.options.Config = rootConfig
+			f.options.Bindings = testBindings(rootConfig)
 			f.options.CollectScripts = collect
-			f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
+			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return childConfig, nil })
 			var seen []*repoconfig.Config
-			f.options.ScriptInputsForConfig = func(config *repoconfig.Config) ([]checkinputs.ScriptInput, error) {
+			f.options.ScriptInputsForScope = func(scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
+				config := scope.Composite()
 				seen = append(seen, config)
 				return nil, nil
 			}
@@ -242,7 +163,7 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 			}
 			for index, config := range want {
 				unit := result.Batch.Scripts()[index]
-				if unit.Config != config || unit.Scope.Config != config {
+				if unit.Scope.Config != config {
 					t.Fatalf("script %d uses a foreign configuration", index)
 				}
 			}
@@ -297,8 +218,8 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 					if ignores.child {
 						childConfig.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "nested"}}
 					}
-					f.options.Config = rootConfig
-					f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return childConfig, nil }
+					f.options.Bindings = testBindings(rootConfig)
+					f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return childConfig, nil })
 					f.options.CollectScripts = collect
 					f.options.Rules = append(f.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
 					result, err := Workflow(f.options, f.root)
@@ -341,12 +262,12 @@ func TestRootOpaqueCallUsesEntryConfig(t *testing.T) {
 				if ignores {
 					config.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "remote"}}
 				}
-				f.options.Config = config
+				f.options.Bindings = testBindings(config)
 				f.options.CollectScripts = collect
-				f.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
+				f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
 					t.Errorf("opaque call loaded an action config: %s", path)
 					return &repoconfig.Config{}, nil
-				}
+				})
 				f.options.Rules = append(f.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
 				result, err := Workflow(f.options, f.root)
 				if err != nil {
@@ -365,7 +286,7 @@ func TestRootOpaqueCallUsesEntryConfig(t *testing.T) {
 						t.Fatalf("root opaque call has foreign selectors: %+v", origin)
 					}
 				}
-				if found != 1 || len(result.Batch.Scopes()) != 1 || result.Batch.Scopes()[0].Config != config || len(result.Configs) != 0 {
+				if found != 1 || len(result.Batch.Scopes()) != 1 || result.Batch.Scopes()[0].Config != config {
 					t.Fatalf("opaque call created a child scope/config or lost its finding: %+v", result)
 				}
 			})

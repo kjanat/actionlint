@@ -68,7 +68,7 @@ func TestWorkflowRejectsDifferentSnapshotRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: firstRegistry, Actions: workspaceactions.NewResolver(nil, nil)}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: firstRegistry, Actions: workspaceactions.NewResolver(nil, nil)}
 	if _, err := Workflow(options, secondSnapshot); err == nil || !strings.Contains(err.Error(), "different registry") {
 		t.Fatalf("different source registry was accepted: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+			options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
 			result, err := Workflow(options, snapshot)
 			if err != nil {
 				t.Fatal(err)
@@ -126,12 +126,12 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	outerConfig, innerConfig := &repoconfig.Config{}, &repoconfig.Config{}
 	outerPath := filepath.Join(f.options.Paths.Workspace, "outer", "action.yml")
 	innerPath := filepath.Join(f.options.Paths.Workspace, "inner", "action.yml")
-	f.options.ConfigForFile = func(path string) (*repoconfig.Config, error) {
+	f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
 		if path == outerPath {
 			return outerConfig, nil
 		}
 		return innerConfig, nil
-	}
+	})
 	lookup, _ := f.cache.LookupMetadata("$/inner")
 	metadata := lookup.Metadata()
 	if metadata == nil {
@@ -155,12 +155,12 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 			t.Fatalf("script %d lost source-derived original job ID: unit=%+v fact=%+v", i, unit, fact)
 		}
 		wantJobs[unit.Origin.Job] = true
-		if unit.Path != metadata.Path() || unit.Path != innerPath || string(result.Sources[unit.Path]) != innerSource || result.Configs[unit.Path] != innerConfig || unit.Config != innerConfig || unit.Scope.Config != innerConfig {
-			t.Fatalf("script %d lost deployment display path, source, or config: path=%q metadata=%q sources=%v configs=%v", i, unit.Path, metadata.Path(), result.Sources, result.Configs)
+		if unit.Path != metadata.Path() || unit.Path != innerPath || string(result.Sources[unit.Path]) != innerSource || unit.Scope.Config != innerConfig {
+			t.Fatalf("script %d lost deployment display path, source, or config: path=%q metadata=%q sources=%v", i, unit.Path, metadata.Path(), result.Sources)
 		}
 	}
-	if result.Configs[outerPath] != outerConfig {
-		t.Fatalf("outer invocation config changed: %+v", result.Configs)
+	if result.Batch.Scopes()[1].Bindings.Composite() != outerConfig {
+		t.Fatalf("outer invocation config changed: %+v", result.Batch.Scopes())
 	}
 	if !wantJobs["Release"] || !wantJobs["Verify"] {
 		t.Fatalf("prepared jobs did not preserve both original identifiers: %+v", wantJobs)
@@ -319,7 +319,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 		t.Fatal(err)
 	}
 	analysis.jobID = "corrupted collector value"
-	if err := analysis.collectScript(workflowStepViews(t, workflow, "build")[0], nil, nil, nil); err != nil {
+	if err := analysis.collectScript(workflowStepViews(t, workflow, "build")[0], nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	batch := prepareCollectedScripts(t, analysis)
@@ -346,7 +346,7 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := Options{Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), SourceSnapshots: registry, Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}
 	result, err := Workflow(options, snapshot)
 	if err != nil {
 		t.Fatal(err)

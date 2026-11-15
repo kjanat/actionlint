@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -42,9 +43,10 @@ import (
 
 // compositionSession owns the graph and accumulated results shared by invocations.
 type compositionSession struct {
+	bindSource             func(*binding.Scope, string) (*binding.Scope, error)
 	scriptInputs           []checkinputs.ScriptInput
-	scriptInputsForConfig  func(*repoconfig.Config) ([]checkinputs.ScriptInput, error)
-	scriptCatalogues       map[*repoconfig.Config][]checkinputs.ScriptInput
+	scriptInputsForScope   func(*binding.Scope) ([]checkinputs.ScriptInput, error)
+	scriptCatalogues       map[*binding.Scope][]checkinputs.ScriptInput
 	runners                *runnerlang.Knowledge
 	resolveScriptExecution bool
 	scripts                []scriptexecution.ScriptRequest
@@ -55,24 +57,26 @@ type compositionSession struct {
 	ctx                    context.Context
 	passes                 []workflowvisit.Pass
 	metadataFindings       []*findingmodel.Finding
+	metadataCopies         *findingmodel.Copier
 	incompleteChecks       []report.IncompleteCheck
-	configForFile          func(string) (*repoconfig.Config, error)
-	configProvenance       repoconfig.Provenance
-	sourceSnapshots        *parsing.SourceSnapshots
-	captures               *capture.Store
-	remoteActions          *remote.Service
-	remoteDocuments        map[string]remoteDocument
-	remoteLookups          map[actions.Reference]struct{}
-	prepareSource          func(parsing.SourceSnapshot, []string) error
-	invocations            *invocation.Builder
-	budget                 invocation.Budget
-	interrupted            bool
+
+	configProvenance repoconfig.Provenance
+	sourceSnapshots  *parsing.SourceSnapshots
+	captures         *capture.Store
+	remoteActions    *remote.Service
+	remoteDocuments  map[string]remoteDocument
+	remoteLookups    map[actions.Reference]struct{}
+	prepareSource    func(parsing.SourceSnapshot, []string) error
+	invocations      *invocation.Builder
+	budget           invocation.Budget
+	interrupted      bool
 }
 
 // compositeAnalyzer is one traversal frame. Child calls share session results,
 // but cannot replace their caller's source, configuration or invocation context.
 type compositeAnalyzer struct {
 	*compositionSession
+	bindings                          *binding.Scope
 	actions                           *workspaceactions.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
@@ -128,7 +132,8 @@ func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deploy
 
 func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.Deployment) {
 	analysis.scriptScope = &scriptexecution.Scope{
-		Paths: analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig, ConfigProvenance: analysis.configProvenance,
+		Bindings: analysis.bindings,
+		Paths:    analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig, ConfigProvenance: analysis.configProvenance,
 		Deployment: deployment, Context: analysis.context,
 	}
 	execution.ActionOrigin(&analysis.scriptScope.Paths, analysis.context, deployment.ActionPath())
@@ -181,7 +186,7 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
 	declaration := step
 	analysis.actions.ObserveExecution(declaration)
 	analysis.actions.ObserveCheckout(declaration)
-	if err := analysis.collectScript(step, analysis.scriptConfig, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
+	if err := analysis.collectScript(step, analysis.jobScriptShell, analysis.workflowScriptShell); err != nil {
 		return err
 	}
 	if _, action := declaration.Action(); !action {

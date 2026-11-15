@@ -47,7 +47,7 @@ jobs:
 			t.Fatal(err)
 		}
 		for step := range job.Steps() {
-			if err := collector.collectScript(step, nil, collector.jobScriptShell, collector.workflowScriptShell); err != nil {
+			if err := collector.collectScript(step, collector.jobScriptShell, collector.workflowScriptShell); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -91,7 +91,7 @@ jobs:
 	if len(actionSteps) != 1 {
 		t.Fatal("composite declarations unavailable")
 	}
-	if err := actionCollector.collectScript(actionSteps[0], nil, nil, nil); err != nil {
+	if err := actionCollector.collectScript(actionSteps[0], nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	actionBatch := prepareCollectedScripts(t, actionCollector)

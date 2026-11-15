@@ -166,7 +166,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 	return nil
 }
 
-func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflowvisit.Rule {
+func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) checkcalls.MetadataParticipant {
 	child := NewRuleAction(rule.context, actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
 	child.validation = rule.validation
 	return child

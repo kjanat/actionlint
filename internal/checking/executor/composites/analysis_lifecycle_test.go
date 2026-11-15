@@ -128,7 +128,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := standaloneActionForTest(t, Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}, meta)
+			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), CollectScripts: true}, meta)
 			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes()) != 1 || len(result.Batch.Scripts()) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
@@ -168,7 +168,8 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			}
 			script := &phaseScriptAnalyzer{t: t, visited: &visited, failure: scriptFailure}
 			options := Options{
-				Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
+				Bindings: testBindings(nil),
+				Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
 				CollectScripts: true, Scripts: scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}, Join: func() error {
 					joined = true
 					pass.Error(&workflowlang.Pos{Line: 1, Col: 1}, "joined finding")

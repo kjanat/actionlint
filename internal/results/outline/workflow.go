@@ -232,29 +232,9 @@ func clonePosition(position *sourcepos.Position) *sourcepos.Position {
 }
 
 func cloneJobs(jobs []Job) []Job {
-	if jobs == nil {
-		return nil
-	}
-	out := make([]Job, len(jobs))
-	for i, job := range jobs {
-		out[i] = Job{
-			id: job.id, name: job.name, uses: job.uses, start: clonePosition(job.start),
-			needs: slices.Clone(job.needs), steps: cloneSteps(job.steps),
-		}
-	}
-	return out
+	return copyOwnedWorkflow(Workflow{jobs: jobs}).jobs
 }
 
 func cloneSteps(steps []Step) []Step {
-	if steps == nil {
-		return nil
-	}
-	out := make([]Step, len(steps))
-	for i, step := range steps {
-		out[i] = Step{
-			id: step.id, name: step.name, kind: step.kind, uses: step.uses,
-			start: clonePosition(step.start), steps: cloneSteps(step.steps),
-		}
-	}
-	return out
+	return copyOwnedCompositeRuns(CompositeRuns{steps: steps}).steps
 }

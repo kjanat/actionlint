@@ -40,7 +40,7 @@ jobs:
 		if err := collector.beginJob(job); err != nil {
 			t.Fatal(err)
 		}
-		if err := collector.collectScript(slices.Collect(job.Steps())[0], nil, nil, nil); err != nil {
+		if err := collector.collectScript(slices.Collect(job.Steps())[0], nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := collector.scripts[len(collector.scripts)-1].Execution.Shell.Name; got != id {

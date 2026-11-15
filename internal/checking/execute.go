@@ -52,7 +52,6 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 
@@ -76,14 +75,12 @@ type sourceUnit = workspace.Source
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
-	RemoteActions     actionprovider.Provider
-	RemoteWorkflows   workflowinputs.Provider
-	Repository        func(context.Context, string) repository.Snapshot
-	Service           services.Service
-	EnforcedLifecycle []lifecycle.Policy
+	ExecutionEnvironment
+	RemoteActions   actionprovider.Provider
+	RemoteWorkflows workflowinputs.Provider
+	Repository      func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
-	Runners            runner.Options
 	Sources            []sourceUnit
 	SourceOverlays     []SourceOverlay
 	DiskSources        bool
@@ -113,11 +110,12 @@ type analysisResult struct {
 }
 
 type analyzedFile struct {
-	captured capture.Snapshot
-	source   sourceUnit
-	errors   []*findingmodel.Finding
-	rules    []rule.Descriptor
-	outline  documentmodel.Outline
+	captured    capture.Snapshot
+	source      sourceUnit
+	errors      []*findingmodel.Finding
+	publication *policy.Batch
+	rules       []rule.Descriptor
+	outline     documentmodel.Outline
 }
 
 type inputFiles struct{ workspace.Inputs }
@@ -191,6 +189,7 @@ func run(ctx context.Context, request analysisRequest, log io.Writer, level LogL
 }
 
 func runWithSourceCaptureConstructor(ctx context.Context, request analysisRequest, log io.Writer, level LogLevel, newCaptures sourceCaptureConstructor) (result *analysisResult, resultErr error) {
+	request.ExecutionEnvironment = request.captureDate(time.Now)
 	if request.Processes == nil {
 		return nil, errors.New("analysis requires an application-owned process pool")
 	}
@@ -368,10 +367,9 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	session := &analysisSession{
-		remoteActions:     make(map[references.MirrorAccess]*actionremote.Service),
-		runners:           request.Runners,
-		enforcedLifecycle: request.EnforcedLifecycle,
-		analyzers:         request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
+		remoteActions: make(map[references.MirrorAccess]*actionremote.Service),
+		environment:   request.ExecutionEnvironment,
+		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
 		captures: captures, snapshots: snapshots, reader: reader,
 		tools: request.Tools, loadScriptEngine: request.LoadScriptEngine, rulePresets: request.RulePresets, allowConfigProcesses: request.AllowConfigProcesses,
 		ignorePats: request.IgnorePatterns, onRulesCreated: request.OnRulesCreated, analysisLogger: logger,
@@ -494,7 +492,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			if err == nil {
 				file.captured = captured
 				file.source.Content = captured.Bytes()
-				file.errors, file.outline, err = session.check(source.Path, source.InputPath, captured, source.Project, source.Config, source.ConfigProvenance, proc, ac, wc, &file.rules)
+				file.errors, file.outline, file.publication, err = session.check(source.Path, source.InputPath, captured, source.Project, source.Config, source.ConfigProvenance, proc, ac, wc, &file.rules)
 			}
 			if err != nil {
 				if revision := file.captured.Revision(); revision.Valid() {
@@ -543,12 +541,6 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		err = errors.Join(err, completionErr)
 	}
 	result.IncompleteChecks = session.checkCompletion.incompleteChecks()
-	session.suppressionUses.discardUnproven(result.files, result.IncompleteChecks)
-	additionalRules := selection.RuleNames(session.analyzers)
-	for _, registration := range session.ruleRegistrations {
-		additionalRules = append(additionalRules, registration.Descriptor.Name)
-	}
-	addUnusedSuppressionFixes(result.files, (policy.Processor{RuleSet: ConfigurationRules()}).SuppressionRules(additionalRules...))
 	err = result.revalidateCaptures(captures, rows, filepath.FromSlash(canonicalWorkingDir), err)
 	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
@@ -557,7 +549,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		return strings.Compare(a.CacheKey, b.CacheKey)
 	})
 	result.RunnerResults = session.runnerReports
-	result.collectDiagnostics()
+	err = errors.Join(err, result.publishDiagnostics())
 	result.Rules = selection.Templates(ConfigurationRules())
 	for _, file := range result.files {
 		for _, descriptor := range file.rules {
@@ -688,24 +680,30 @@ func (d *actionDocuments) list() []actionDocument {
 	return documents
 }
 
-func (r *analysisResult) collectDiagnostics() {
+func (r *analysisResult) publishDiagnostics() error {
 	r.FileCount = len(r.files)
-	files := make([]policy.File, len(r.files))
+	batches := make([]policy.Batch, len(r.files))
 	for i, file := range r.files {
-		project := ""
-		if file.source.Project != nil {
-			project = absPath(file.source.Project.RootDir())
+		var batch policy.Batch
+		if file.publication != nil {
+			batch = *file.publication
 		}
-		_, action := file.outline.(documentmodel.Action)
-		files[i] = policy.File{Project: project, InputPath: file.source.InputPath, Source: file.captured.Revision(), Content: file.source.Content, Action: action, Findings: file.errors}
+		batch.Project = projectRoot(file.source.Project)
+		batch.InputPath, batch.Source = file.source.InputPath, file.captured.Revision()
+		_, batch.Action = file.outline.(documentmodel.Action)
+		batch.Findings = file.errors
+		batches[i] = batch
 	}
-	r.Diagnostics, r.Sources = (policy.Processor{RuleSet: ConfigurationRules()}).Collect(files)
+	published, err := policy.Publish(batches, r.IncompleteChecks)
+	r.Diagnostics, r.Sources = published.Diagnostics, published.Sources
+	r.IncompleteChecks = published.IncompleteChecks
 	if r.Diagnostics == nil {
 		r.Diagnostics = []diagmodel.Diagnostic{}
 	}
-	for i, file := range files {
-		r.files[i].errors = file.Findings
+	for i, findings := range published.Findings {
+		r.files[i].errors = findings
 	}
+	return err
 }
 
 // revalidateCaptures is the final publication boundary: a handle admitted before
@@ -725,11 +723,25 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 		if file.captured.Valid() {
 			if err := captures.Verify(file.captured, file.captured.Bytes()); err != nil {
 				withheld += len(file.errors)
-				file.errors, file.outline = nil, nil
+				file.errors, file.outline, file.publication = nil, nil, nil
 				if !errors.Is(prior, err) {
 					prior = errors.Join(prior, err)
 				}
 				continue
+			}
+		}
+		if batch := file.publication; batch != nil {
+			for path, index := range batch.References {
+				row := admitted[index.Document.Document]
+				if row.State != capture.Captured || row.Revision.Digest() != index.Document.Revision {
+					delete(batch.References, path)
+					delete(batch.Sources, path)
+				}
+			}
+			for path := range batch.Sources {
+				if _, exists := batch.References[path]; !exists {
+					delete(batch.Sources, path)
+				}
 			}
 		}
 		accepted := file.errors[:0]

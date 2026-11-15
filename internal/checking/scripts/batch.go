@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -27,24 +28,23 @@ type Unit struct {
 	Coordinates  source.Coordinates
 	Occurrence   invocation.ID
 	Reference    source.Reference
-	Run          workflowdecl.ExecRunView
+	Run          workflowdecl.ExecRunView `clone:"shared"`
 	Input        *ActionInput
 	Shell        *string
-	Config       *repoconfig.Config
 	Path         string
-	Content      []byte
+	Content      []byte `clone:"intern"`
 	Origin       *findingmodel.IgnoreOrigin
 	Owner        *findingmodel.Owner
-	Scope        *Scope
+	Scope        *Scope `clone:"shared"` // cloneInputs remaps scopes once to preserve occurrence identity.
 	Execution    Execution
 	Environment  []scriptmodel.EnvironmentNames
-	Interpreters *commands.Registry
+	Interpreters *commands.Registry `clone:"shared"`
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  checkinputs.ScriptInput
-	Value workflowdecl.InputView
+	Value workflowdecl.InputView `clone:"shared"`
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.
@@ -67,8 +67,11 @@ type Collection struct {
 // Scope identifies a workflow or composite invocation independently of
 // whether it contains scripts, so configuration failures are still observable.
 type Scope struct {
-	Paths            workflowexecution.Paths
-	Reader           *files.Reader // records the filesystem reads tools make in this scope
+	Bindings *binding.Scope
+	Paths    workflowexecution.Paths
+	Reader   *files.Reader // records the filesystem reads tools make in this scope
+	// Config is a host-owned prepared value. Internal consumers treat it as read-only;
+	// Tool detaches selected settings before invoking a registered Runner.
 	Config           *repoconfig.Config
 	ConfigProvenance repoconfig.Provenance
 	Deployment       Deployment

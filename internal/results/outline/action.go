@@ -13,7 +13,8 @@ type Action struct {
 	path, name, description, parseStatus string
 	inputs                               []Input
 	outputs                              []Output
-	runs                                 ActionRuns
+	// Runtime values are private immutable handles; Runs returns an owned copy.
+	runs ActionRuns `clone:"shared"`
 }
 
 // ActionFields lists the declarations recorded by NewAction.
@@ -77,10 +78,7 @@ func cloneInputs(inputs []Input) []Input {
 	}
 	out := make([]Input, len(inputs))
 	for i, input := range inputs {
-		out[i] = Input{
-			ID: input.ID, Description: input.Description, Required: cloneBool(input.Required),
-			Default: cloneString(input.Default), Start: clonePosition(input.Start),
-		}
+		out[i] = copyOwnedInput(input)
 	}
 	return out
 }
@@ -91,25 +89,9 @@ func cloneOutputs(outputs []Output) []Output {
 	}
 	out := make([]Output, len(outputs))
 	for i, output := range outputs {
-		out[i] = Output{ID: output.ID, Description: output.Description, Value: cloneString(output.Value), Start: clonePosition(output.Start)}
+		out[i] = copyOwnedOutput(output)
 	}
 	return out
-}
-
-func cloneBool(value *bool) *bool {
-	if value == nil {
-		return nil
-	}
-	copied := *value
-	return &copied
-}
-
-func cloneString(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	copied := *value
-	return &copied
 }
 
 func (Action) documentOutline() {}
@@ -117,12 +99,11 @@ func (Action) documentOutline() {}
 // DocumentPath returns the manifest path.
 func (a Action) DocumentPath() string { return a.path }
 
-// WithPath returns a detached copy with a different manifest path.
+// WithPath returns an immutable action with a different manifest path.
 func (a Action) WithPath(path string) Outline {
-	return Action{
-		path: path, name: a.name, description: a.description, parseStatus: a.parseStatus,
-		inputs: cloneInputs(a.inputs), outputs: cloneOutputs(a.outputs), runs: cloneRuns(a.runs),
-	}
+	detached := copyOwnedAction(a)
+	detached.path = path
+	return detached
 }
 
 type actionWire struct {
