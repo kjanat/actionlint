@@ -149,7 +149,7 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 
 	want := &calls.Metadata{
 		Inputs: calls.Inputs{
-			"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
+			"input1": {Name: "input1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
 		},
 		Outputs: calls.Outputs{
 			"output1": {Name: "output1"},

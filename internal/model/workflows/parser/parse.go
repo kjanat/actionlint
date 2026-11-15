@@ -746,14 +746,9 @@ func (p *Parser) parseWorkflowCallEventInput(id string, name *workflowlang.Strin
 			if !p.CheckString(e.val, false) {
 				continue
 			}
-			switch e.val.Value {
-			case "boolean":
-				ret.Type = workflowlang.WorkflowCallEventInputTypeBoolean
-			case "number":
-				ret.Type = workflowlang.WorkflowCallEventInputTypeNumber
-			case "string":
-				ret.Type = workflowlang.WorkflowCallEventInputTypeString
-			default:
+			var known bool
+			ret.Type, known = workflowlang.ParseWorkflowCallEventInputType(e.val.Value)
+			if !known {
 				p.errorf(e.val, CodeInvalidValue, "invalid value %q for input type of workflow_call event. it must be one of \"boolean\", \"number\", or \"string\"", e.val.Value)
 			}
 		default:

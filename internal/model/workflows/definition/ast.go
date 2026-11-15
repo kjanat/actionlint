@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
 )
 
@@ -432,6 +433,39 @@ const (
 	// WorkflowCallEventInputTypeString identifies a string input.
 	WorkflowCallEventInputTypeString
 )
+
+// ParseWorkflowCallEventInputType returns the type spelled by a workflow_call
+// input's "type:" value. It reports false for anything but boolean, number and
+// string, and then returns WorkflowCallEventInputTypeInvalid.
+func ParseWorkflowCallEventInputType(spelling string) (WorkflowCallEventInputType, bool) {
+	switch spelling {
+	case "boolean":
+		return WorkflowCallEventInputTypeBoolean, true
+	case "number":
+		return WorkflowCallEventInputTypeNumber, true
+	case "string":
+		return WorkflowCallEventInputTypeString, true
+	}
+	return WorkflowCallEventInputTypeInvalid, false
+}
+
+// ExprType returns the expression type a value passed to the input must be
+// assignable to. An invalid or omitted type accepts every value.
+func (t WorkflowCallEventInputType) ExprType() exprtypes.Type {
+	switch t {
+	case WorkflowCallEventInputTypeBoolean:
+		return exprtypes.BoolType()
+	case WorkflowCallEventInputTypeNumber:
+		return exprtypes.NumberType()
+	case WorkflowCallEventInputTypeString:
+		return exprtypes.StringType()
+	case WorkflowCallEventInputTypeInvalid:
+	}
+	return exprtypes.AnyType()
+}
+
+// String returns the expression type's spelling, as used in diagnostics.
+func (t WorkflowCallEventInputType) String() string { return t.ExprType().String() }
 
 // WorkflowCallEventInput describes a workflow_call input.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onworkflow_callinputs

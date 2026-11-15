@@ -177,16 +177,7 @@ func (d metadataDecoder) inputs(root codec.Entered, out *Metadata) error {
 			return err
 		}
 		input := Input{Name: name.Node().Value, Required: definition.Required && definition.Default == nil}
-		switch definition.Type {
-		case "boolean":
-			input.Type = InputTypeBoolean
-		case "number":
-			input.Type = InputTypeNumber
-		case "string":
-			input.Type = InputTypeString
-		default:
-			input.Type = InputTypeAny
-		}
+		input.Type, _ = workflowlang.ParseWorkflowCallEventInputType(definition.Type)
 		inputs[strings.ToLower(input.Name)] = input
 	}
 	out.Inputs = inputs
