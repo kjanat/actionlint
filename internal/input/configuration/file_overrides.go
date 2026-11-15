@@ -180,6 +180,9 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 		}
 		delete(members(patch), "includes")
 		delete(members(patch), "excludes")
+		if local := field(patch, "local-actions"); local != nil {
+			normalizeLocalActionSourceNode(local)
+		}
 		if lint := field(patch, "lint"); lint != nil {
 			lint, err = ruleSet.normalizeRuleLocations(rawValue(lint))
 			if err != nil {
@@ -201,6 +204,8 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	if err := ruleSet.DecodeValue(merged, &next); err != nil {
 		return nil, err
 	}
+	origins := current.Origins()
+	next.Tools.setInputOrigins(origins, "/tools")
 	if next.LocalActions != nil {
 		next.LocalActions, err = normalizedLocalActionSources(next.LocalActions)
 		if err != nil {
@@ -208,7 +213,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 		}
 	}
 	next.Overrides = nil
-	next.Lint.locations = current.Origins()
+	next.Lint.locations = origins
 	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
 	next.Paths, next.Policy = nil, Policy{}
 	ruleSet.projectSettings(&next)

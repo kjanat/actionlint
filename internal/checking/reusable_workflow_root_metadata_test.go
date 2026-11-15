@@ -110,7 +110,7 @@ permissions: {}
 						t.Fatalf("AST=%v pass=%d: wanted %d caller diagnostics, got %v", fromAST, pass, want, errs)
 					}
 					if fromAST {
-						// Bindings identify separate analyses, not cached diagnostic contents.
+						// Each analysis owns its configuration bindings.
 						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{}), cmpopts.IgnoreFields(findingmodel.Finding{}, "Binding")); diff != "" {
 							t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 						}
@@ -224,7 +224,7 @@ permissions: {}
 							t.Fatalf("AST=%v pass=%d: wanted %d caller diagnostics, got %v", fromAST, pass, want, errs)
 						}
 						if fromAST {
-							// Bindings identify separate analyses, not cached diagnostic contents.
+							// Each analysis owns its configuration bindings.
 							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{}), cmpopts.IgnoreFields(findingmodel.Finding{}, "Binding")); diff != "" {
 								t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 							}

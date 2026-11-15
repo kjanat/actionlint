@@ -23,8 +23,8 @@ type dynamicVisit struct {
 	pointer uintptr
 }
 
-// detachDynamic preserves concrete values reachable through an interface. It
-// rejects cyclic or opaque state instead of silently dropping it.
+// detachDynamic preserves concrete values reachable through an interface.
+// Cyclic and opaque values return an error.
 func detachDynamic(value reflect.Value, active map[dynamicVisit]bool, hooks bool) (reflect.Value, error) {
 	if !value.IsValid() {
 		return value, nil

@@ -486,22 +486,14 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return Resolved{}, err
 	}
-	for name, tool := range c.Tools {
-		if tool.Config != nil {
-			tool.Config.fromInput = origins["/tools/"+configPointerPart(name)+"/config"].Source == "input"
-		}
-	}
+	c.Tools.setInputOrigins(inputs, "/tools")
 	for i := range c.Overrides {
 		if c.Overrides[i].partial != nil {
 			origins := configtree.Prefix(inputs, fmt.Sprintf("/overrides/%d", i))
 			c.Overrides[i].partial = configtree.Capture(c.Overrides[i].partial.Value(), origins)
 		}
 		if tools := c.Overrides[i].Tools; tools != nil {
-			for _, tool := range *tools {
-				if tool.Config != nil {
-					tool.Config.fromInput = origins["/overrides"].Source == "input"
-				}
-			}
+			tools.setInputOrigins(inputs, fmt.Sprintf("/overrides/%d/tools", i))
 		}
 	}
 	c.Lint.Rules.bindingSources = ruleBindingSources("", &c, inputs)

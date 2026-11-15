@@ -70,8 +70,8 @@ settings and mappings to the original source. Preparation does not launch tools.
 `internal/integrations/process` owns process limits and completion.
 
 Analyzer inputs, descriptors and returned diagnostics have owned copies at the
-extension boundary. Tool callbacks receive detached configuration, so changing
-their input cannot alter another tool or the policy used for publication.
+extension boundary. Each tool callback receives its own configuration copy.
+The host retains separate configuration for other tools and publication.
 Immutable invocation handles and explicit execution capabilities remain shared.
 
 ## Plugin contracts

@@ -19,6 +19,14 @@ import (
 // implements. Bundled providers and providers registered by plugins share it.
 type ToolsConfig map[string]ToolConfig
 
+func (tools ToolsConfig) setInputOrigins(inputs map[string]Input, prefix string) {
+	for name, tool := range tools {
+		if tool.Config != nil {
+			tool.Config.fromInput = inputs[prefix+"/"+configPointerPart(name)+"/config"].Name != ""
+		}
+	}
+}
+
 // ToolConfig configures one tool provider.
 type ToolConfig struct {
 	// Enabled turns the tool on or off. Omission or null keeps it enabled.
