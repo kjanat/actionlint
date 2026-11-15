@@ -23,6 +23,7 @@ import (
 type upstreamBlock struct{ Name, Body string }
 
 func TestUpstreamConformanceControls(t *testing.T) {
+	t.Parallel()
 	for _, c := range []upstreamCase{
 		{ID: "parser accepts runtime coercion", Kind: "expression", Input: "1 == false"},
 		{ID: "parser does not evaluate format", Kind: "expression", Input: "format('{2}', 'only one argument')"},
@@ -43,6 +44,7 @@ jobs:
     stepz: []`, Reject: true},
 	} {
 		t.Run(c.ID, func(t *testing.T) {
+			t.Parallel()
 			got := checkUpstreamCase(t, c)
 			if c.Reject != (len(got) > 0) {
 				t.Fatalf("want reject=%t, got %q", c.Reject, got)
@@ -133,6 +135,7 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 }
 
 func TestUpstreamConformanceContextScope(t *testing.T) {
+	t.Parallel()
 	checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	contexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
 	checker.SetContextTypes(contexts)
@@ -157,6 +160,7 @@ func TestUpstreamConformanceContextScope(t *testing.T) {
 }
 
 func TestUpstreamConformanceWorkflowChecks(t *testing.T) {
+	t.Parallel()
 	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 	for _, tc := range []struct {
 		name, input, rule string
@@ -167,6 +171,7 @@ func TestUpstreamConformanceWorkflowChecks(t *testing.T) {
 		{"check empty steps", strings.Replace(workflow, "echo ok", "''", 1), "empty-run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			findings := checkUpstreamCase(t, upstreamCase{Kind: "workflow", Input: tc.input})
 			if tc.rule == "" {
 				if len(findings) != 0 {

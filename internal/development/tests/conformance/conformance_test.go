@@ -37,6 +37,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -56,15 +57,16 @@ func TestMain(m *testing.M) {
 }
 
 type upstreamCase struct {
-	ID             string
-	Input          string
-	Reject         bool
-	ExpectedErrors []string
-	Contexts       map[string]json.RawMessage
-	Kind           string
-	Filter         []string
-	CompletionOnly bool
-	ReferenceSkips []string
+	ID                  string
+	Input               string
+	Reject              bool
+	ExpectedErrors      []string
+	Contexts            map[string]json.RawMessage
+	Kind                string
+	Filter              []string
+	CompletionOnly      bool
+	ReferenceSkips      []string
+	RejectionDiagnostic string
 }
 
 type upstreamResult struct {
@@ -102,6 +104,7 @@ func upstreamFingerprint(source conformance.Source, result upstreamResult) strin
 }
 
 func TestUpstreamConformance(t *testing.T) {
+	t.Parallel()
 	dir := os.Getenv("ACTIONLINT_CONFORMANCE_DIR")
 	if dir == "" {
 		dir = ".cache/conformance"
@@ -116,76 +119,83 @@ func TestUpstreamConformance(t *testing.T) {
 	if len(baseline.Cases) == 0 {
 		t.Fatal("diagnostic baseline has no cases")
 	}
-	seen := map[string]bool{}
-	var results []upstreamResult
-	for _, source := range sources {
-		root, closeSource, err := source.Open(dir)
-		if err != nil {
-			t.Fatalf("%v; run go run ./internal/development/tests/conformance/fetch first", err)
-		}
-		t.Cleanup(func() { _ = closeSource() })
-		cases := loadUpstreamCases(t, source.Name, root)
-		counts := map[string]int{"languageservices": 1228, "runner": 24, "schemastore": 67, "yaml-test-suite": 402}
-		if len(cases) != counts[source.Name] {
-			t.Fatalf("source inventory changed: want %d cases, got %d", counts[source.Name], len(cases))
-		}
-		for i := range cases {
-			cases[i].ID = source.Name + "/" + cases[i].ID
-			if seen[cases[i].ID] {
-				t.Fatalf("duplicate test case %q", cases[i].ID)
-			}
-			seen[cases[i].ID] = true
-		}
-		t.Run(source.Name, func(t *testing.T) {
-			for _, c := range cases {
-				t.Run(strings.TrimPrefix(c.ID, source.Name+"/"), func(t *testing.T) {
-					actual := checkUpstreamCase(t, c)
-					if len(c.Filter) > 0 {
-						actual = slices.DeleteFunc(actual, func(message string) bool {
-							return !slices.ContainsFunc(c.Filter, func(word string) bool { return strings.Contains(message, word) })
+	resultsBySource := make([][]upstreamResult, len(sources))
+	caseIDsBySource := make([][]string, len(sources))
+	t.Run("sources", func(t *testing.T) {
+		for index, source := range sources {
+			t.Run(source.Name, func(t *testing.T) {
+				t.Parallel()
+				root, closeSource, err := source.Open(dir)
+				if err != nil {
+					t.Fatalf("%v; run go run ./internal/development/tests/conformance/fetch first", err)
+				}
+				t.Cleanup(func() { _ = closeSource() })
+				cases := loadUpstreamCases(t, source.Name, root)
+				counts := map[string]int{"languageservices": 1228, "runner": 24, "schemastore": 67, "yaml-test-suite": 402}
+				if len(cases) != counts[source.Name] {
+					t.Fatalf("source inventory changed: want %d cases, got %d", counts[source.Name], len(cases))
+				}
+				for i := range cases {
+					cases[i].ID = source.Name + "/" + cases[i].ID
+					caseIDsBySource[index] = append(caseIDsBySource[index], cases[i].ID)
+				}
+				caseResults := make([]*upstreamResult, len(cases))
+				t.Run("cases", func(t *testing.T) {
+					for caseIndex, c := range cases {
+						t.Run(strings.TrimPrefix(c.ID, source.Name+"/"), func(t *testing.T) {
+							t.Parallel()
+							actual := checkUpstreamCase(t, c)
+							if len(c.Filter) > 0 {
+								actual = slices.DeleteFunc(actual, func(message string) bool {
+									return !slices.ContainsFunc(c.Filter, func(word string) bool { return strings.Contains(message, word) })
+								})
+							}
+							contract := "acceptance"
+							if len(c.Filter) > 0 {
+								contract = "diagnostics containing: " + strings.Join(c.Filter, ", ")
+							}
+							if c.CompletionOnly {
+								contract = "completes without panic or hang"
+							}
+							rejected := upstreamRejected(actual, c.RejectionDiagnostic)
+							if c.RejectionDiagnostic != "" {
+								contract = "rejection diagnostic containing: " + c.RejectionDiagnostic
+							}
+							known, ok := baseline.Cases[c.ID]
+							result := upstreamResult{
+								ID: c.ID, ExpectedReject: c.Reject, ExpectedErrors: c.ExpectedErrors, Actual: actual,
+								Difference: !c.CompletionOnly && c.Reject != rejected, Contract: contract,
+								InputSHA256:    fmt.Sprintf("%x", sha256.Sum256([]byte(c.Input))),
+								ReferenceSkips: c.ReferenceSkips,
+							}
+							result.Fingerprint = upstreamFingerprint(source, result)
+							caseResults[caseIndex] = &result
+							if !result.Difference {
+								if ok {
+									t.Error("now agrees with upstream; remove the resolved entry from differences.json")
+								}
+								return
+							}
+							if !ok {
+								t.Errorf("upstream reject=%t; actionlint diagnostics=%q; upstream diagnostics=%q", c.Reject, actual, c.ExpectedErrors)
+								return
+							}
+							if os.Getenv("ACTIONLINT_CONFORMANCE_STRICT") == "1" {
+								t.Error("reference acceptance differs from actionlint")
+							}
+							if diff := cmp.Diff(known, actual); diff != "" {
+								t.Errorf("recorded actionlint diagnostics changed; review whether behavior improved or regressed (-recorded +current):\n%s", diff)
+							}
 						})
 					}
-					contract := "acceptance"
-					if len(c.Filter) > 0 {
-						contract = "diagnostics containing: " + strings.Join(c.Filter, ", ")
-					}
-					if c.CompletionOnly {
-						contract = "completes without panic or hang"
-					}
-					known, ok := baseline.Cases[c.ID]
-					result := upstreamResult{
-						ID: c.ID, ExpectedReject: c.Reject, ExpectedErrors: c.ExpectedErrors, Actual: actual,
-						Difference: !c.CompletionOnly && c.Reject != (len(actual) > 0), Contract: contract,
-						InputSHA256:    fmt.Sprintf("%x", sha256.Sum256([]byte(c.Input))),
-						ReferenceSkips: c.ReferenceSkips,
-					}
-					result.Fingerprint = upstreamFingerprint(source, result)
-					results = append(results, result)
-					if !result.Difference {
-						if ok {
-							t.Error("now agrees with upstream; remove the resolved entry from differences.json")
-						}
-						return
-					}
-					if !ok {
-						t.Errorf("upstream reject=%t; actionlint diagnostics=%q; upstream diagnostics=%q", c.Reject, actual, c.ExpectedErrors)
-						return
-					}
-					if os.Getenv("ACTIONLINT_CONFORMANCE_STRICT") == "1" {
-						t.Error("reference acceptance differs from actionlint")
-					}
-					if diff := cmp.Diff(known, actual); diff != "" {
-						t.Errorf("recorded actionlint diagnostics changed; review whether behavior improved or regressed (-recorded +current):\n%s", diff)
-					}
 				})
-			}
-		})
-	}
-	for id := range baseline.Cases {
-		if !seen[id] {
-			t.Errorf("known difference refers to a missing case: %s", id)
+				resultsBySource[index] = collectedConformanceResults(caseResults)
+			})
 		}
-	}
+	})
+	seen := conformanceCaseInventory(t, caseIDsBySource)
+	results := slices.Concat(resultsBySource...)
+	checkBaselineInventory(t, baseline.Cases, seen)
 	observations := upstreamObservationReport{Sources: sources, Observations: results}
 	reportPath := os.Getenv("ACTIONLINT_CONFORMANCE_REPORT")
 	if reportPath != "" {
@@ -211,6 +221,40 @@ func TestUpstreamConformance(t *testing.T) {
 	}
 	if summary := os.Getenv("GITHUB_STEP_SUMMARY"); summary != "" {
 		writeUpstreamSummary(t, repositoryPath(t, summary), sources, results, baseline.Cases, assessments)
+	}
+}
+
+// collectedConformanceResults preserves fixture order and omits filtered cases.
+func collectedConformanceResults(cases []*upstreamResult) []upstreamResult {
+	results := make([]upstreamResult, 0, len(cases))
+	for _, result := range cases {
+		if result != nil {
+			results = append(results, *result)
+		}
+	}
+	return results
+}
+
+func conformanceCaseInventory(t *testing.T, groups [][]string) map[string]bool {
+	t.Helper()
+	seen := make(map[string]bool)
+	for _, group := range groups {
+		for _, id := range group {
+			if seen[id] {
+				t.Fatalf("duplicate test case %q", id)
+			}
+			seen[id] = true
+		}
+	}
+	return seen
+}
+
+func checkBaselineInventory(t *testing.T, baseline map[string][]string, seen map[string]bool) {
+	t.Helper()
+	for id := range baseline {
+		if !seen[id] {
+			t.Errorf("known difference refers to a missing case: %s", id)
+		}
 	}
 }
 
@@ -354,7 +398,12 @@ func loadUpstreamWorkflows(t *testing.T, root fs.FS) []upstreamCase {
 			t.Fatalf("%s has fewer than three fixture documents", file)
 		}
 		var metadata struct {
-			Skip []string `yaml:"skip"`
+			Skip           []string `yaml:"skip"`
+			MaxDepth       *int     `yaml:"max-depth"`
+			MaxFileSize    *int     `yaml:"max-file-size"`
+			MaxJobLimit    *int     `yaml:"max-job-limit"`
+			MaxResultSize  *int     `yaml:"max-result-size"`
+			MaxNestedDepth *int     `yaml:"max-nested-reusable-workflows-depth"`
 		}
 		if err := yaml.Unmarshal([]byte(docs[0]), &metadata); err != nil {
 			t.Fatalf("%s: invalid fixture metadata: %v", file, err)
@@ -367,9 +416,24 @@ func loadUpstreamWorkflows(t *testing.T, root fs.FS) []upstreamCase {
 		for _, e := range expected.Errors {
 			c.ExpectedErrors = append(c.ExpectedErrors, e.Message)
 		}
+		if len(c.ExpectedErrors) == 1 && (metadata.MaxDepth != nil || metadata.MaxFileSize != nil || metadata.MaxJobLimit != nil || metadata.MaxResultSize != nil || metadata.MaxNestedDepth != nil) {
+			// Limits from the fixture metadata are not applied by this adapter.
+			// Require the expected error itself, not an unrelated advisory.
+			c.RejectionDiagnostic = c.ExpectedErrors[0]
+			if index := strings.LastIndex(c.RejectionDiagnostic, ": "); index >= 0 {
+				c.RejectionDiagnostic = c.RejectionDiagnostic[index+2:]
+			}
+		}
 		cases = append(cases, c)
 	}
 	return cases
+}
+
+func upstreamRejected(actual []string, witness string) bool {
+	if witness == "" {
+		return len(actual) > 0
+	}
+	return slices.ContainsFunc(actual, func(message string) bool { return strings.Contains(message, witness) })
 }
 
 func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
@@ -432,12 +496,18 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		return out
 	case "workflow":
+		// The pinned SchemaStore and runner archives were captured on 2026-09-08.
+		// Keep lifecycle observations stable as the wall clock advances.
+		asOf, err := runner.ParseDate("2026-09-08")
+		if err != nil {
+			t.Fatal(err)
+		}
 		config := &repoconfig.Config{Lint: repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
 			Preset:      "none",
 			Correctness: repoconfig.NewGroup("recommended", "", nil),
 			Suspicious:  repoconfig.NewGroup("recommended", "", nil),
 		}}}
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
+		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runner.Options{AsOf: asOf}}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -540,6 +610,7 @@ func repositoryPath(t *testing.T, name string) string {
 }
 
 func TestRepositoryPathFindsModuleRoot(t *testing.T) {
+	t.Parallel()
 	name := repositoryPath(t, "go.mod")
 	data, err := os.ReadFile(name)
 	if err != nil {
