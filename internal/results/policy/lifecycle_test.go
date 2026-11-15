@@ -7,6 +7,7 @@ import (
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/runtimes"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -114,6 +115,46 @@ func TestLifecycleOptionalWindowsAndRuleLevels(t *testing.T) {
 			}
 			if len(got) != 1 || got[0].Severity != tc.want {
 				t.Fatalf("got %+v; want %s", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestLifecycleIntroductionPolicyPreservesUnavailableRuntime(t *testing.T) {
+	t.Parallel()
+	const policyConfig = `lint:
+  lifecycle:
+    policies:
+      - id: introduction
+        description: Notify when a language runtime becomes available
+        match: {subjects: [language-runtimes], events: [support-starts]}
+        notifications:
+          - {starts: {on: effective-date}, severity: warning}
+`
+	for _, tc := range []struct {
+		name, config string
+		want         int
+	}{
+		{"default", "{}", 1},
+		{"notification not started", policyConfig, 1},
+		{"rule disabled", policyConfig + "  rules: {correctness: {runtime-lifecycle: off}}\n", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := lifecycleFinding(t, "2026-01-01", true)
+			evidence, message, known := runtimes.NodeLifecycle("26", lifecycleDate(t, "2026-01-01"), f.LifecycleEvidence.Service)
+			if !known || !evidence.Current || evidence.Kind != lifecycle.SupportStarts {
+				t.Fatalf("expected an unavailable Node.js release: %+v", evidence)
+			}
+			f.Rule, f.Message, f.LifecycleEvidence = "runtime-lifecycle", message, &evidence
+			got := lifecycleApply(t, lifecycleRulesConfig(t, tc.config), f, func(p *policy.Policy) {
+				p.Content = []byte("on: push\njobs: {}\n")
+			})
+			if len(got) != tc.want {
+				t.Fatalf("findings = %+v; want %d unavailable-runtime findings", got, tc.want)
+			}
+			if tc.want == 1 && (got[0].Message != message || got[0].Severity != "warning") {
+				t.Fatalf("unavailable-runtime finding changed: %+v", got[0])
 			}
 		})
 	}

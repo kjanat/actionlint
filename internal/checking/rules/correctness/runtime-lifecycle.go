@@ -45,7 +45,7 @@ func RuntimeLifecycleCheck(context actionmeta.LifecycleContext) checkinputs.Decl
 			if !known {
 				return nil
 			}
-			evidence, message, known := runtimes.NodeLifecycle(selector, context.AsOf, context.Service)
+			evidence, message, known := runtimes.NodeLifecycle(strings.TrimSpace(selector), context.AsOf, context.Service)
 			if !known {
 				return nil
 			}

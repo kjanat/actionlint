@@ -49,7 +49,7 @@ func RuntimeProblem(using string, context LifecycleContext) RuntimeFinding {
 	if strings.EqualFold(using, "node20") && (context.Service.Kind() == services.GitHubCom || context.Service.Kind() == services.GitHubDataResidency) && !context.AsOf.IsZero() {
 		effective, _ := lifecycle.ParseDate("2026-09-23")
 		announced, _ := lifecycle.ParseDate("2026-08-25")
-		// The August 25 amendment establishes this deadline, not the original publication date.
+		// The August 25 amendment establishes this deadline.
 		evidence := &lifecycle.Evidence{Subject: lifecycle.ActionRuntimes, Name: "node20", Kind: lifecycle.SupportEnds, Service: context.Service, Announced: announced, Effective: effective, AsOf: context.AsOf, Source: "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/", Current: context.AsOf.Compare(effective) >= 0}
 		message := fmt.Sprintf("runtime %q is deprecated; support for executing actions with Node 20 on %s ends on %s; actions execute with Node 24 instead", using, context.Service.Kind(), effective)
 		if evidence.Current {

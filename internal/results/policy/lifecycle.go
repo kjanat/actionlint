@@ -58,7 +58,7 @@ func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Fi
 		projectActive := len(project.Active) != 0
 		mandatoryActive := len(mandatory.Active) != 0
 		if !projectActive && !mandatoryActive {
-			if evidence.Current && (!project.Matched || evidence.Effective.IsZero()) {
+			if evidence.Current && (evidence.Kind == lifecycle.SupportStarts || !project.Matched || evidence.Effective.IsZero()) {
 				optional = append(optional, finding)
 			}
 			continue

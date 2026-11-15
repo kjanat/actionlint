@@ -195,7 +195,6 @@ func TestUpstreamConformance(t *testing.T) {
 	})
 	seen := conformanceCaseInventory(t, caseIDsBySource)
 	results := slices.Concat(resultsBySource...)
-	checkBaselineInventory(t, baseline.Cases, seen)
 	observations := upstreamObservationReport{Sources: sources, Observations: results}
 	reportPath := os.Getenv("ACTIONLINT_CONFORMANCE_REPORT")
 	if reportPath != "" {
@@ -204,10 +203,11 @@ func TestUpstreamConformance(t *testing.T) {
 	if reportPath != "" {
 		writeConformanceJSON(t, reportPath, observations)
 	}
-	if len(results) != len(seen) {
-		t.Logf("partial conformance run: %d of %d cases; aggregate assessments require the complete inventory", len(results), len(seen))
+	if len(results) != len(seen) || slices.ContainsFunc(caseIDsBySource, func(ids []string) bool { return ids == nil }) {
+		t.Logf("partial conformance run: %d observations; aggregate assessments require every source and case", len(results))
 		return
 	}
+	checkBaselineInventory(t, baseline.Cases, seen)
 	// Regression assertions above depend only on observations and the baseline.
 	var assessments []upstreamAssessmentGroup
 	readConformanceJSON(t, "testdata/assessments.json", &assessments)
@@ -417,8 +417,7 @@ func loadUpstreamWorkflows(t *testing.T, root fs.FS) []upstreamCase {
 			c.ExpectedErrors = append(c.ExpectedErrors, e.Message)
 		}
 		if len(c.ExpectedErrors) == 1 && (metadata.MaxDepth != nil || metadata.MaxFileSize != nil || metadata.MaxJobLimit != nil || metadata.MaxResultSize != nil || metadata.MaxNestedDepth != nil) {
-			// Limits from the fixture metadata are not applied by this adapter.
-			// Require the expected error itself, not an unrelated advisory.
+			// Match the fixture's expected limit error because this adapter uses default limits.
 			c.RejectionDiagnostic = c.ExpectedErrors[0]
 			if index := strings.LastIndex(c.RejectionDiagnostic, ": "); index >= 0 {
 				c.RejectionDiagnostic = c.RejectionDiagnostic[index+2:]

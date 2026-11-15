@@ -29,6 +29,7 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 		current       bool
 	}{
 		{"actions/setup-node@v4", "12", 1, true},
+		{"actions/setup-node@v4", " 16 ", 1, true},
 		{"actions/setup-node@0123456789012345678901234567890123456789", "16.x", 1, true},
 		{"actions/setup-node@v4", "22", 1, false},
 		{"actions/setup-node@v4", "26", 1, false},
@@ -65,6 +66,34 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
+	t.Parallel()
+	// setup-node reads this input with getInput, which trims whitespace by default:
+	// https://github.com/actions/setup-node/blob/49933ea5288caeca8642d1e84afbd3f7d6820020/src/main.ts
+	// https://github.com/actions/toolkit/blob/main/packages/core/src/core.ts
+	date, err := lifecycle.ParseDate("2026-11-15")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: |\n            16\n"
+	parsed, errs := workflowparser.Parse([]byte(text))
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	workflow := workflowdecl.Publish(text, parsed, false, "").Bind("runtime-lifecycle").Workflow()
+	job, ok := workflow.Job("test")
+	if !ok {
+		t.Fatal("missing job")
+	}
+	check := RuntimeLifecycleCheck(actionmeta.LifecycleContext{AsOf: date})
+	for step := range job.Steps() {
+		findings := check.Step(step)
+		if len(findings) != 1 || findings[0].LifecycleEvidence == nil || findings[0].LifecycleEvidence.Name != "node16" || !findings[0].LifecycleEvidence.Current {
+			t.Fatalf("expected retired Node.js 16 finding, got %+v", findings)
+		}
 	}
 }
 
