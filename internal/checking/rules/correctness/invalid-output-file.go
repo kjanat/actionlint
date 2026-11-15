@@ -16,8 +16,11 @@ import (
 
 // InvalidOutputFileRule is the single definition of the invalid-output-file rule.
 var InvalidOutputFileRule = &define.Rule{
-	Name: "invalid-output-file", Description: "Check literal writes to GITHUB_OUTPUT",
-	Category: "correctness", Subcategory: "scripts", Recommended: true,
+	Name:         "invalid-output-file",
+	Description:  "Check literal writes to GITHUB_OUTPUT",
+	Category:     "correctness",
+	Subcategory:  "scripts",
+	Recommended:  true,
 	DefaultLevel: "error",
 	Explanation: "GITHUB_OUTPUT requires NAME=value records or multiline records enclosed by NAME<<delimiter and a matching delimiter. " +
 		"This check combines literal writes from Bash and sh scripts, then validates the complete file. " +
@@ -26,8 +29,9 @@ var InvalidOutputFileRule = &define.Rule{
 		"Commands that could redefine these utilities also cause the script to be skipped.",
 	Help: "Write NAME=value for a single-line output. " +
 		"For a multiline output, write NAME<<delimiter, the value, and the matching delimiter.",
-	SupportsActions: true, Scope: rule.SourceConfiguration,
-	RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution},
+	SupportsActions: true,
+	Scope:           rule.SourceConfiguration,
+	RequiredInputs:  []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution},
 	Examples: []rule.Example{rule.WorkflowExample("Write the value as a named output.",
 		"    steps:\n      - shell: bash\n        run: echo '{\"available\":true}' >> \"$GITHUB_OUTPUT\"\n",
 		"    steps:\n      - shell: bash\n        run: echo 'available=true' >> \"$GITHUB_OUTPUT\"\n")},

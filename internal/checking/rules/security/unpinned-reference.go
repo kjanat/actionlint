@@ -7,7 +7,14 @@ import (
 )
 
 // UnpinnedReferenceRule is the single definition of the unpinned-reference rule.
-var UnpinnedReferenceRule = &define.Rule{Name: "unpinned-reference", Aliases: []rule.Alias{{Name: "require-commit-hash", Deprecated: true}}, Description: "Require full commit SHAs for actions and workflows, and digests for images", Category: "security", Subcategory: "dependencies", Recommended: false, Help: "Pin uses references to a full commit SHA and container images to a digest.", Options: define.Options[lintconfig.CommitHashOptions](),
+var UnpinnedReferenceRule = &define.Rule{
+	Name:        "unpinned-reference",
+	Aliases:     []rule.Alias{{Name: "require-commit-hash", Deprecated: true}},
+	Description: "Require full commit SHAs for actions and workflows, and digests for images",
+	Category:    "security",
+	Subcategory: "dependencies",
+	Help:        "Pin uses references to a full commit SHA and container images to a digest.",
+	Options:     define.Options[lintconfig.CommitHashOptions](),
 	Checks: func(c define.Inputs) define.Checks {
 		options := new(lintconfig.CommitHashOptions)
 		if c.Config != nil {

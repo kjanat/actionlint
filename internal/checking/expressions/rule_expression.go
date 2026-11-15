@@ -22,8 +22,15 @@ import (
 )
 
 // Rule is the single definition of the expression rule.
-var Rule = &define.Rule{Name: "expression", Description: "Validate expression values assigned to workflow fields", Category: "correctness", Subcategory: "expressions", Recommended: true, Help: "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.", SupportsActions: true,
-	Prepare: define.PrepareWorkflowMetadata,
+var Rule = &define.Rule{
+	Name:            "expression",
+	Description:     "Validate expression values assigned to workflow fields",
+	Category:        "correctness",
+	Subcategory:     "expressions",
+	Recommended:     true,
+	Help:            "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.",
+	SupportsActions: true,
+	Prepare:         define.PrepareWorkflowMetadata,
 	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
 		return NewExpressionRule(c.Context, base, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 	},

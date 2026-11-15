@@ -12,8 +12,14 @@ import (
 
 // CollectionComparisonRule is the single definition of the collection-comparison rule.
 var CollectionComparisonRule = &define.Rule{
-	Name: "collection-comparison", Description: "Detect equality checks between object or array instances",
-	Category: "suspicious", Subcategory: "expressions", Recommended: true, DefaultLevel: "error", SupportsActions: true, Scope: rule.CompositeConfiguration,
+	Name:            "collection-comparison",
+	Description:     "Detect equality checks between object or array instances",
+	Category:        "suspicious",
+	Subcategory:     "expressions",
+	Recommended:     true,
+	DefaultLevel:    "error",
+	SupportsActions: true,
+	Scope:           rule.CompositeConfiguration,
 	Explanation: "Objects and arrays compare equal only when they are the same instance. " +
 		"Equal contents do not make separately created objects or arrays equal. " +
 		"A condition that grants access or gates a write can therefore evaluate differently from a comparison of contents. " +

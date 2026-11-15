@@ -17,7 +17,6 @@ var JoinLiteralRule = &define.Rule{
 	Category:        "suspicious",
 	Subcategory:     "expressions",
 	Maturity:        "nursery",
-	Recommended:     false,
 	DefaultLevel:    "info",
 	SupportsActions: true,
 	Scope:           rule.CompositeConfiguration,

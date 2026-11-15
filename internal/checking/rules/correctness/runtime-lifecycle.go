@@ -14,12 +14,17 @@ import (
 
 // RuntimeLifecycleRule is the single definition of the runtime-lifecycle rule.
 var RuntimeLifecycleRule = &define.Rule{
-	Name: "runtime-lifecycle", Description: "Report language runtimes outside their supported lifetime",
-	Category: "correctness", Subcategory: "actions", Recommended: true, DefaultLevel: "warn",
-	SupportsActions: true, Scope: rule.SourceConfiguration,
-	Explanation: "Check Node.js release schedules for static node-version inputs to actions/setup-node. Support dates come from the Node.js Release schedule. Named lifecycle policies can notify before a known support deadline. Dynamic values, broad version ranges, release aliases, prereleases and node-version-file inputs are not resolved by this check. Node.js release support does not determine which JavaScript runtimes GitHub Actions accepts in action metadata.",
-	Help:        "Select a supported Node.js release. Configure lint.lifecycle.policies to choose when support deadlines should produce notifications.",
-	Checks:      func(c define.Inputs) define.Checks { return RuntimeLifecycleChecks(c.Lifecycle) },
+	Name:            "runtime-lifecycle",
+	Description:     "Report language runtimes outside their supported lifetime",
+	Category:        "correctness",
+	Subcategory:     "actions",
+	Recommended:     true,
+	DefaultLevel:    "warn",
+	SupportsActions: true,
+	Scope:           rule.SourceConfiguration,
+	Explanation:     "Check Node.js release schedules for static node-version inputs to actions/setup-node. Support dates come from the Node.js Release schedule. Named lifecycle policies can notify before a known support deadline. Dynamic values, broad version ranges, release aliases, prereleases and node-version-file inputs are not resolved by this check. Node.js release support does not determine which JavaScript runtimes GitHub Actions accepts in action metadata.",
+	Help:            "Select a supported Node.js release. Configure lint.lifecycle.policies to choose when support deadlines should produce notifications.",
+	Checks:          func(c define.Inputs) define.Checks { return RuntimeLifecycleChecks(c.Lifecycle) },
 }
 
 func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
