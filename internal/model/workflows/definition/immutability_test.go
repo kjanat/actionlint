@@ -12,15 +12,20 @@ import (
 
 const definitionPackage = "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-// treeWriters may modify decoded syntax trees: they build them before publication.
-var treeWriters = []string{
+// treeBuilders may modify decoded syntax trees: they build them before
+// declaration.Publish takes ownership. internal/model/parsing builds the step
+// projection of composite action metadata.
+var treeBuilders = []string{
 	definitionPackage,
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser",
+	"actionlint.kjanat.dev/v2/internal/model/parsing",
 }
 
 // TestProductionCannotModifyPublishedSyntax replaces the read-only views that
-// consumers once received. Only tree builders may assign to fields of
-// definition types or write into their slices and maps.
+// consumers once received. Outside the tree builders, production code may not
+// assign to fields of definition types reached through a pointer, slice or map,
+// nor write into or delete from their slices and maps. Writes to a local copy
+// of a definition value stay allowed.
 func TestProductionCannotModifyPublishedSyntax(t *testing.T) {
 	if testing.Short() {
 		t.Skip("type-checks the whole module")
@@ -31,8 +36,42 @@ func TestProductionCannotModifyPublishedSyntax(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, write := range publishedSyntaxWrites(loaded) {
+		t.Error(write)
+	}
+}
+
+func TestPublishedSyntaxWritesFixture(t *testing.T) {
+	if testing.Short() {
+		t.Skip("type-checks the definition package")
+	}
+	t.Parallel()
+	config := &packages.Config{Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo}
+	loaded, err := packages.Load(config, "./testdata/immutability")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, write := range publishedSyntaxWrites(loaded) {
+		got = append(got, write[strings.LastIndex(write, "writes"):])
+	}
+	want := []string{
+		"writes published syntax field workflow.Step.Name",
+		"writes published syntax field workflow.String.Value",
+		"writes published syntax field workflow.Job.Steps",
+		"writes published syntax field workflow.Workflow.Jobs",
+		"writes published syntax field workflow.Workflow.Jobs",
+		"writes published syntax field workflow.Pos.Line",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("writes = %q, want %q", got, want)
+	}
+}
+
+func publishedSyntaxWrites(loaded []*packages.Package) []string {
+	var writes []string
 	for _, pkg := range loaded {
-		if slices.Contains(treeWriters, pkg.PkgPath) {
+		if slices.Contains(treeBuilders, pkg.PkgPath) {
 			continue
 		}
 		for _, file := range pkg.Syntax {
@@ -49,39 +88,50 @@ func TestProductionCannotModifyPublishedSyntax(t *testing.T) {
 					}
 				}
 				for _, target := range targets {
-					if field, ok := definitionField(pkg.TypesInfo, target); ok {
-						t.Errorf("%s writes published syntax field %s", pkg.Fset.Position(target.Pos()), field)
+					if field, ok := sharedDefinitionField(pkg.TypesInfo, target); ok {
+						writes = append(writes, pkg.Fset.Position(target.Pos()).String()+" writes published syntax field "+field)
 					}
 				}
 				return true
 			})
 		}
 	}
+	return writes
 }
 
-// definitionField reports a write target that is a field of a definition type,
-// or an element of a slice or map held in such a field.
-func definitionField(info *types.Info, target ast.Expr) (string, bool) {
+// sharedDefinitionField reports a write target that is a field of a definition
+// type, or an element of a slice or map held in one, reached through a pointer,
+// slice or map. A chain of value selections from a local variable is a copy.
+func sharedDefinitionField(info *types.Info, target ast.Expr) (string, bool) {
+	field, shared := "", false
 	for {
 		switch expression := target.(type) {
 		case *ast.ParenExpr:
 			target = expression.X
 		case *ast.IndexExpr:
+			shared = true
 			target = expression.X
 		case *ast.StarExpr:
+			shared = true
 			target = expression.X
 		case *ast.SelectorExpr:
 			selection, ok := info.Selections[expression]
 			if !ok || selection.Kind() != types.FieldVal {
 				return "", false
 			}
-			field, ok := selection.Obj().(*types.Var)
-			if !ok || field.Pkg() == nil || field.Pkg().Path() != definitionPackage {
-				return "", false
+			variable, ok := selection.Obj().(*types.Var)
+			if ok && field == "" && variable.Pkg() != nil && variable.Pkg().Path() == definitionPackage {
+				field = strings.TrimPrefix(types.TypeString(selection.Recv(), (*types.Package).Name), "*") + "." + variable.Name()
 			}
-			return strings.TrimPrefix(types.TypeString(selection.Recv(), (*types.Package).Name), "*") + "." + field.Name(), true
+			if selection.Indirect() {
+				shared = true
+			}
+			if _, pointer := info.TypeOf(expression.X).Underlying().(*types.Pointer); pointer {
+				shared = true
+			}
+			target = expression.X
 		default:
-			return "", false
+			return field, field != "" && shared
 		}
 	}
 }

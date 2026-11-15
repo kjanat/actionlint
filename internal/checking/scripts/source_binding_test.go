@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"slices"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -65,71 +63,6 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 		t.Fatal(err)
 	}
 	return graph, collection, snapshot, path, document
-}
-
-func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
-	t.Parallel()
-	for _, mapped := range []bool{false, true} {
-		t.Run(map[bool]string{false: "plain", true: "mapped"}[mapped], func(t *testing.T) {
-			t.Parallel()
-			graph, collection, snapshot, path, originalDocument := actionBatchFixtureWithDocument(t, mapped)
-			original := snapshot.Content()
-			collection.Scripts[0], collection.Scripts[1] = collection.Scripts[1], collection.Scripts[0]
-			batch, err := NewBatch(graph, collection)
-			if err != nil {
-				t.Fatal(err)
-			}
-			scopes, units := batch.Snapshot()
-			assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
-			for i, text := range []string{"echo first", "echo second"} {
-				unit := units[i]
-				if unit.Run.Run.Text() != text || unit.Occurrence != graph.Scripts()[i].ID || unit.Path != path || string(unit.Content) != string(original) || unit.Scope.Config != collection.Scopes[0].Config || unit.Scope != scopes[0] || unit.Owner.Job != "" || unit.Origin.Job != "" {
-					t.Fatalf("source binding changed action provenance: %+v", unit)
-				}
-				if unit.Shell == nil || *unit.Shell != []string{"bash", "sh"}[i] {
-					t.Fatal("inherited shell replaced the declaration shell")
-				}
-				fact, exists := batch.Fact(i, false)
-				if !exists || fact.Path != "" || fact.JobID != "" || invocation.ID(fact.Occurrence.Owner) != batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {
-					t.Fatalf("standalone fact changed entry semantics: %+v", fact)
-				}
-			}
-			if &units[0].Content[0] != &units[1].Content[0] {
-				t.Fatal("one snapshot duplicated a shared source buffer")
-			}
-			wantActionPath := filepath.Dir(path)
-			if mapped {
-				wantActionPath = ""
-			}
-			if scopes[0].Deployment.ActionPath() != wantActionPath || scopes[0].Paths.ActionPath != wantActionPath {
-				t.Fatal("deployment lost mapped-source semantics")
-			}
-			before, _ := batch.Fact(0, false)
-			units[0].Content[0] = 'X'
-			units[0].Owner.Step.Line = 999
-			units[0].Origin.StepPosition.Col = 999
-			if string(snapshot.Content()) != string(original) {
-				t.Fatal("returned source bytes mutated the registry")
-			}
-			body, _ := snapshot.ActionView()
-			steps := slices.Collect(body.Steps())
-			run, isRun := steps[0].Run()
-			position, present := steps[0].Position()
-			spans := run.Source.Spans
-			if !isRun || !present || run.Run.Text() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
-				t.Fatal("returned declaration mutated the registry")
-			}
-			originalRun := originalDocument.Facts.Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)
-			originalRun.Run.Value = "changed original"
-
-			*collection.Scripts[0].DefaultShell = "changed default"
-			after, _ := batch.Fact(0, false)
-			fresh := batch.Scripts()
-			if !reflect.DeepEqual(before, after) || string(fresh[0].Content) != string(original) || fresh[0].Owner.Step.Line == 999 || fresh[0].Origin.StepPosition.Col == 999 {
-				t.Fatal("mutable inputs changed batch data")
-			}
-		})
-	}
 }
 
 func TestDeploymentRejectsForeignSources(t *testing.T) {

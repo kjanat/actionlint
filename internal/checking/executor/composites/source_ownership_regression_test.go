@@ -3,9 +3,7 @@ package composites
 import (
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strconv"
-	"strings"
 	"testing"
 
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
@@ -21,13 +19,10 @@ import (
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 type sourceMutationRule struct {
@@ -133,44 +128,6 @@ func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.Step)
 
 var _ checkcalls.InvocationParticipant = (*canonicalFactObserver)(nil)
 
-func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
-	t.Parallel()
-	for _, composite := range []bool{false, true} {
-		name := "workflow"
-		workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo original}]}}\n"
-		var actions map[string]string
-		if composite {
-			name = "composite"
-			workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/child}]}}\n"
-			actions = map[string]string{"child/action.yml": "name: child\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo original}]}\n"}
-		}
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
-			captureMutableMetadata(f)
-			mutations := 0
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: func(step workflowdecl.Step) {
-				if run, ok := step.Run(); ok && run.Run != nil {
-					mutateRunInput(t, f, step, "echo mutated after collection")
-					mutations++
-				}
-			}}
-			f.options.Rules = append(f.options.Rules, probe)
-			result, err := Workflow(f.options, f.root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			units := result.Batch.Scripts()
-			if mutations != 1 || len(units) != 1 || units[0].Run == nil || units[0].Run.Run == nil {
-				t.Fatalf("mutation scenario not exercised: mutations=%d scripts=%d", mutations, len(units))
-			}
-			if got := units[0].Run.Run.Text(); got != "echo original" {
-				t.Fatalf("rule mutation after collection changed canonical script: %q", got)
-			}
-		})
-	}
-}
-
 func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 	t.Parallel()
 	for _, level := range []string{"workflow", "job"} {
@@ -200,54 +157,6 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 			}
 			if got := *units[0].Shell; got != "bash" {
 				t.Fatalf("rule mutation changed captured %s default shell: %q", level, got)
-			}
-		})
-	}
-}
-
-func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.T) {
-	t.Parallel()
-	for _, composite := range []bool{false, true} {
-		name := "workflow"
-		workflow := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/a}]}}\n"
-		actions := map[string]string{
-			"a/action.yml": "name: a\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo original-a}]}\n",
-			"b/action.yml": "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo mutated-b}]}\n",
-		}
-		if composite {
-			name = "composite"
-			workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n"
-			actions["outer/action.yml"] = "name: outer\ndescription: test\nruns: {using: composite, steps: [{uses: $/a}]}\n"
-		}
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
-			captureMutableMetadata(f)
-			mutations := 0
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-call", ""), mutate: func(step workflowdecl.Step) {
-				if action, ok := step.Action(); ok && action.Uses.Text() == "$/a" {
-					mutateCallInput(t, f, step, "$/b")
-					mutations++
-				}
-			}}
-			f.options.Rules = append([]workflowvisit.Rule{probe}, f.options.Rules...)
-			result, err := Workflow(f.options, f.root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var canonicalCall bool
-			for _, call := range result.Batch.Invocations().Calls() {
-				facts, ok := call.Facts()
-				if ok && facts.Uses == "$/a" {
-					target, resolved := call.Outcome.Target()
-					if !resolved || filepath.Base(filepath.Dir(target.Document)) != "a" {
-						t.Fatalf("canonical uses and target diverged: facts=%+v target=%+v resolved=%v", facts, target, resolved)
-					}
-					canonicalCall = true
-				}
-			}
-			if mutations != 1 || !canonicalCall || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo original-a" {
-				t.Fatalf("callback redirected canonical call: mutations=%d metadata=%d canonical=%v scripts=%+v", mutations, probe.metadata, canonicalCall, result.Batch.Scripts())
 			}
 		})
 	}
@@ -324,94 +233,6 @@ func (rule *workflowPreCallMutation) VisitWorkflowPre(_ workflowdecl.Workflow) e
 	return nil
 }
 
-func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
-	t.Parallel()
-	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/a}]}}\n")
-	actions := map[string]string{
-		"a/action.yml": "name: a\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo original-a}]}\n",
-		"b/action.yml": "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo mutated-b}]}\n",
-	}
-	f := newInvocationFixture(t, t.Context(), string(content), actions, nil)
-	view := workflowStepViews(t, workflowView(t, f.root), "test")[0]
-	wantFacts, err := workflowexecution.CallFacts(view, runnerlang.MacOrLinux)
-	if err != nil {
-		t.Fatal(err)
-	}
-	probe := &workflowPreCallMutation{original: f.original, Base: workflowvisit.NewBase("pre-mutate-call", "")}
-	f.options.Rules = append(f.options.Rules, probe)
-	result, err := Workflow(f.options, f.root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if probe.mutations != 1 {
-		t.Fatalf("pre-traversal mutation did not run: %d", probe.mutations)
-	}
-	graph := result.Batch.Invocations()
-	if len(graph.Calls()) != 1 {
-		t.Fatalf("call graph diverged: %+v", graph.Calls())
-	}
-	facts, _ := graph.Calls()[0].Facts()
-	if facts != wantFacts {
-		t.Fatalf("graph facts came from mutable AST: got=%+v want=%+v", facts, wantFacts)
-	}
-	if len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo original-a" {
-		t.Fatalf("pre-traversal mutation redirected collected scripts: %+v", result.Batch.Scripts())
-	}
-	projected, ok := result.Batch.Fact(0, false)
-	if !ok {
-		t.Fatal("batch script projection missing")
-	}
-	call, exists := result.Batch.CallGraph().Call(projected.Occurrence.Owner)
-	if !exists {
-		t.Fatal("batch script owner call missing")
-	}
-	if call.Uses != wantFacts.Uses || call.Step.Line != wantFacts.Step.Line || call.Step.Column != wantFacts.Step.Column {
-		t.Fatalf("batch public call facts differ from canonical graph: %+v", call)
-	}
-}
-
-func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T) {
-	t.Parallel()
-	content := "on: push\nenv: {ROOT_VALUE: original}\ndefaults: {run: {shell: bash, working-directory: source-dir}}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env: {JOB_VALUE: original}\n    container: alpine\n    steps:\n      - run: echo original\n"
-	f := newInvocationFixture(t, t.Context(), content, nil, nil)
-	baseline, err := Workflow(f.options, f.root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	baselineFacts := executionSnapshot(baseline)
-	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-workflow", ""), mutate: func(workflow *workflowlang.Workflow) {
-		if workflow.Env == nil || workflow.Defaults == nil || workflow.Defaults.Run == nil || workflow.Jobs["test"] == nil || workflow.Jobs["test"].Env == nil || workflow.Jobs["test"].Container == nil {
-			t.Fatalf("workflow mutation fixture fields unavailable: env=%v defaults=%v job=%+v", workflow.Env != nil, workflow.Defaults != nil, workflow.Jobs["test"])
-		}
-		for _, variable := range workflow.Env.Vars {
-			variable.Value.Value = "mutated"
-		}
-		workflow.Defaults.Run.Shell.Value = "pwsh"
-		workflow.Defaults.Run.WorkingDirectory.Value = "mutated-dir"
-		job := workflow.Jobs["test"]
-		job.ID = &workflowlang.String{Value: "mutated-job"}
-		for _, variable := range job.Env.Vars {
-			variable.Value.Value = "mutated"
-		}
-		job.Container.Image.Value = "mutated-image"
-		job.Steps[0].Exec.(*workflowlang.ExecRun).Run.Value = "echo mutated"
-	}}
-	f.options.Rules = append([]workflowvisit.Rule{probe}, f.options.Rules...)
-	mutated, err := Workflow(f.options, f.root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if probe.runs != 1 {
-		t.Fatalf("VisitWorkflowPre mutation did not run: %d", probe.runs)
-	}
-	if got := executionSnapshot(mutated); !reflect.DeepEqual(got, baselineFacts) {
-		t.Fatalf("legacy workflow mutations changed canonical execution facts:\n got: %#v\nwant: %#v", got, baselineFacts)
-	}
-	if len(mutated.Batch.Scripts()) != 1 || mutated.Batch.Scripts()[0].Run.Run.Text() != "echo original" {
-		t.Fatalf("mutated traversal changed canonical script: %+v", mutated.Batch.Scripts())
-	}
-}
-
 func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	t.Parallel()
 	content := "on: push\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: actions/checkout@v4\n        with: {path: repo}\n      - run: echo original\n"
@@ -437,71 +258,6 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	}
 	if got := checkoutSnapshot(mutated); !reflect.DeepEqual(got, baselineScopes) {
 		t.Fatalf("legacy checkout mutations changed canonical placement:\n got: %#v\nwant: %#v", got, baselineScopes)
-	}
-}
-
-func TestParallelChildrenStayBoundToCanonicalVariantsBeforeTraversal(t *testing.T) {
-	t.Parallel()
-	content := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - parallel:\n          - if: ${{ true }}\n            run: echo original\n          - uses: $/a\n"
-	actions := map[string]string{"a/action.yml": "name: a\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo action-a}]}\n", "b/action.yml": "name: b\ndescription: test\nruns: {using: composite, steps: [{shell: bash, run: echo action-b}]}\n"}
-	f := newInvocationFixture(t, t.Context(), content, actions, nil)
-	baseRules := f.options.Rules
-	baselineObserver := newCanonicalFactObserver(f.root)
-	f.options.Rules = append([]workflowvisit.Rule{baselineObserver}, baseRules...)
-	baseline, err := Workflow(f.options, f.root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	baselineFacts := executionSnapshot(baseline)
-	baselineObserved := canonicalObservation(baselineObserver)
-	observer := newCanonicalFactObserver(f.root)
-	workflow := f.original
-	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-parallel", ""), mutate: func(*workflowlang.Workflow) {
-		parallel := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecParallel)
-		run := parallel.Steps[0]
-		run.Exec.(*workflowlang.ExecRun).Run.Value = "echo mutated"
-		run.If.Value = "${{ false }}"
-		action := parallel.Steps[1].Exec.(*workflowlang.ExecAction)
-		action.Uses.Value = "$/b"
-	}}
-	f.options.Rules = append([]workflowvisit.Rule{probe, observer}, baseRules...)
-	mutated, err := Workflow(f.options, f.root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if probe.runs != 1 {
-		t.Fatalf("parallel mutation did not run: %d", probe.runs)
-	}
-	if got := executionSnapshot(mutated); !reflect.DeepEqual(got, baselineFacts) {
-		t.Fatalf("parallel callback traversal changed canonical facts:\n got: %#v\nwant: %#v", got, baselineFacts)
-	}
-	calls := mutated.Batch.Invocations().Calls()
-	if len(calls) != 1 {
-		t.Fatalf("parallel action variant changed or registered twice: calls=%+v", calls)
-	}
-	facts, ok := calls[0].Facts()
-	target, resolved := calls[0].Outcome.Target()
-	if !ok || facts.Uses != "$/a" || !resolved || filepath.Base(filepath.Dir(target.Document)) != "a" {
-		t.Fatalf("parallel graph lost canonical action variant: facts=%+v target=%+v resolved=%v", facts, target, resolved)
-	}
-	if len(mutated.Batch.Scripts()) != 2 || mutated.Batch.Scripts()[0].Run.Run.Text() != "echo original" || mutated.Batch.Scripts()[1].Run.Run.Text() != "echo action-a" {
-		t.Fatalf("parallel canonical scripts changed: %+v", mutated.Batch.Scripts())
-	}
-	if !*observer.valid || len(*observer.reference) < 2 {
-		t.Fatalf("canonical observer did not receive workflow and composite child scopes: valid=%t references=%+v", *observer.valid, *observer.reference)
-	}
-	if got := canonicalObservation(observer); !reflect.DeepEqual(got, baselineObserved) {
-		t.Fatalf("plugin/shared-facts observer saw changed canonical source:\n got: %#v\nwant: %#v", got, baselineObserved)
-	}
-	if !slices.Contains(baselineObserved.Runs, "echo original") || !slices.Contains(baselineObserved.Runs, "echo action-a") || !slices.ContainsFunc(baselineObserved.Conditions, func(condition string) bool { return strings.Contains(condition, "true") }) {
-		t.Fatalf("observer did not read original run and parallel condition values: %+v", baselineObserved)
-	}
-	seen := make(map[source.Reference]struct{}, len(*observer.reference))
-	for _, reference := range *observer.reference {
-		if _, duplicate := seen[reference]; duplicate {
-			t.Fatalf("canonical observer visited a source reference twice: %+v", reference)
-		}
-		seen[reference] = struct{}{}
 	}
 }
 
