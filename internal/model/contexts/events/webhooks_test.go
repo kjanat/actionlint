@@ -1,4 +1,4 @@
-package triggers
+package events
 
 import (
 	"slices"

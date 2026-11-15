@@ -440,7 +440,7 @@ See [the script README][the readme of the script-2] for usage and the document f
 [`Dockerfile`]: ./distribution/docker/Dockerfile
 [`Upkeep`]: .github/workflows/upkeep.yml
 [action-availability]: ./internal/model/actionmeta/availability.gen.go
-[`webhooks.gen.go`]: ./internal/model/contexts/events/triggers/webhooks.gen.go
+[`webhooks.gen.go`]: ./internal/model/contexts/events/webhooks.gen.go
 [`availability.gen.go`]: ./internal/model/contexts/availability.gen.go
 [`check-checks`]: ./internal/development/tests/integration/documentation
 [`ci.yml`]: .github/workflows/ci.yml

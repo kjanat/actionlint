@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
-	triggers "actionlint.kjanat.dev/v2/internal/model/contexts/events/triggers"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"github.com/robfig/cron/v3"
@@ -121,7 +121,7 @@ func (rule *eventsCheck) checkExclusiveFilters(filter, ignore declaration.Webhoo
 func (rule *eventsCheck) checkWebhookEvent(event declaration.WebhookEventView) {
 	hook := event.Hook().Value()
 
-	types, ok := triggers.AllWebhookTypes[hook]
+	types, ok := events.AllWebhookTypes[hook]
 	if !ok {
 		rule.Errorf(reporting.ViewPosition(event.Pos()), "unknown Webhook event %q. see https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events for list of all Webhook event names", hook)
 		return
@@ -149,19 +149,19 @@ func (rule *eventsCheck) checkWebhookEvent(event declaration.WebhookEventView) {
 		event.Paths(),
 		event.PathsIgnore(),
 		hook,
-		triggers.EventsWithField("paths"),
+		events.EventsWithField("paths"),
 	)
 	rule.checkExclusiveFilters(
 		event.Branches(),
 		event.BranchesIgnore(),
 		hook,
-		triggers.EventsWithField("branches"),
+		events.EventsWithField("branches"),
 	)
 	rule.checkExclusiveFilters(
 		event.Tags(),
 		event.TagsIgnore(),
 		hook,
-		triggers.EventsWithField("tags"),
+		events.EventsWithField("tags"),
 	)
 }
 
@@ -297,7 +297,7 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event declaration.WorkflowDi
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
 func (rule *eventsCheck) checkImageVersionEvent(event declaration.ImageVersionEventView) {
-	rule.checkTypes("image_version", reporting.ViewPosition(event.Pos()), event.Types(), triggers.AllWebhookTypes["image_version"])
+	rule.checkTypes("image_version", reporting.ViewPosition(event.Pos()), event.Types(), events.AllWebhookTypes["image_version"])
 }
 
 func filterEmpty(filter declaration.WebhookEventFilterView) bool {

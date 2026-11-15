@@ -93,7 +93,7 @@ check_input internal/input/references/actions/remote/remote.go true true
 check_input internal/development/generators/action-metadata/main.go true true
 check_input internal/development/generators/event-triggers/main.go true true
 check_input tools/generate/webhook-payloads/main.mts true false
-check_input internal/model/contexts/events/payload/catalogue.json true true
+check_input internal/model/contexts/events/payload_catalogue.json true true
 check_input package.json true false
 check_input bun.lock true false
 check_input internal/development/generators/expression-contexts/main.go true true

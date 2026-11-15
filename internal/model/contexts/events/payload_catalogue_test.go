@@ -1,4 +1,4 @@
-package payload
+package events
 
 import "testing"
 
@@ -36,7 +36,7 @@ func TestCatalogueReferences(t *testing.T) {
 
 func TestObservationsAreIsolated(t *testing.T) {
 	t.Parallel()
-	variants, ok := Variants("push")
+	variants, ok := PayloadVariants("push")
 	if !ok {
 		t.Fatal("missing push observation")
 	}
@@ -46,20 +46,20 @@ func TestObservationsAreIsolated(t *testing.T) {
 		break
 	}
 	clear(variants)
-	again, _ := Variants("push")
+	again, _ := PayloadVariants("push")
 	if len(again) == 0 {
 		t.Fatal("caller changed catalogue variants")
 	}
-	node := Node(id)
+	node := PayloadNode(id)
 	for node.Kind == "intersection" && len(node.Alternatives) == 1 {
 		id = node.Alternatives[0]
-		node = Node(id)
+		node = PayloadNode(id)
 	}
 	if len(node.Properties) == 0 {
 		t.Fatal("push has no properties")
 	}
 	clear(node.Properties)
-	if len(Node(id).Properties) == 0 {
+	if len(PayloadNode(id).Properties) == 0 {
 		t.Fatal("caller changed catalogue properties")
 	}
 }

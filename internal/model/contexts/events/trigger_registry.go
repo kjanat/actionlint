@@ -1,5 +1,4 @@
-// Package triggers describes valid Actions triggers independently of webhook payload observations.
-package triggers
+package events
 
 import (
 	"slices"
@@ -19,7 +18,7 @@ func DefaultActivities(event string) ([]string, bool) {
 
 // Fields returns the permitted configuration keys from the strict workflow
 // schema, after documented Actions corrections.
-func Fields(event string) []string { return slices.Clone(triggerFields[event]) }
+func TriggerFields(event string) []string { return slices.Clone(triggerFields[event]) }
 
 // EventsWithField returns event names accepting a configuration key.
 func EventsWithField(field string) []string {
