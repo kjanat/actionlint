@@ -3,6 +3,9 @@
 package finding
 
 import (
+	maps "maps"
+	slices "slices"
+
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	lifecycle "actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -53,7 +56,7 @@ func (ctx *ownedCopyContext) copyOwnedFinding(in Finding) Finding {
 func (ctx *ownedCopyContext) copyOwnedDiagnostic_7e9304eab05e88fed387b3b0ef071edf(in results.Diagnostic) results.Diagnostic {
 	out := in
 	out.Reference = ctx.copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in.Reference)
-	out.Related = ctx.copyOwnedValue_85d1ea1582d474a012c83424e4cb929e(in.Related)
+	out.Related = slices.Clone(in.Related)
 	out.Lifecycle = ctx.copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in.Lifecycle)
 	out.Fixes = ctx.copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in.Fixes)
 	return out
@@ -115,17 +118,6 @@ func (ctx *ownedCopyContext) copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in 
 	return (*source.Reference)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_85d1ea1582d474a012c83424e4cb929e(in []results.Related) []results.Related {
-	if in == nil {
-		return nil
-	}
-	out := make([]results.Related, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
 func (ctx *ownedCopyContext) copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in *results.LifecycleReport) *results.LifecycleReport {
 	if in == nil {
 		return nil
@@ -166,14 +158,14 @@ func (ctx *ownedCopyContext) copyOwnedOwner_04cdcfd326366ef897e9d060f96b402e(in 
 
 func (ctx *ownedCopyContext) copyOwnedLifecycleReport_d57d3d17001336fd5ea4de5528241a80(in results.LifecycleReport) results.LifecycleReport {
 	out := in
-	out.Policies = ctx.copyOwnedValue_b6515323be45e4e34bdf81973126a9d6(in.Policies)
+	out.Policies = slices.Clone(in.Policies)
 	return out
 }
 
 func (ctx *ownedCopyContext) copyOwnedFix_c828efda0bad60eab4a5235793b2a4d6(in results.Fix) results.Fix {
 	out := in
-	out.Revisions = ctx.copyOwnedValue_219dd46d9c2a4a1d442d64ab1c344e10(in.Revisions)
-	out.Edits = ctx.copyOwnedValue_ec8b0dff614e7f61469befded713e0e9(in.Edits)
+	out.Revisions = maps.Clone(in.Revisions)
+	out.Edits = slices.Clone(in.Edits)
 	return out
 }
 
@@ -184,39 +176,6 @@ func (ctx *ownedCopyContext) copyOwnedValue_1322c9e5dd27dde9d49a9a553ec6e340(in 
 	out := make([]lifecycle.Evidence, len(in))
 	for i := range in {
 		out[i] = ctx.copyOwnedEvidence_b6de2083f6a13cb13415ac74865b5030(in[i])
-	}
-	return out
-}
-
-func (ctx *ownedCopyContext) copyOwnedValue_b6515323be45e4e34bdf81973126a9d6(in []results.LifecyclePolicyReport) []results.LifecyclePolicyReport {
-	if in == nil {
-		return nil
-	}
-	out := make([]results.LifecyclePolicyReport, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func (ctx *ownedCopyContext) copyOwnedValue_219dd46d9c2a4a1d442d64ab1c344e10(in map[string]string) map[string]string {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-	return out
-}
-
-func (ctx *ownedCopyContext) copyOwnedValue_ec8b0dff614e7f61469befded713e0e9(in []results.Edit) []results.Edit {
-	if in == nil {
-		return nil
-	}
-	out := make([]results.Edit, len(in))
-	for i := range in {
-		out[i] = in[i]
 	}
 	return out
 }

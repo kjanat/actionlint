@@ -3,13 +3,16 @@
 package results
 
 import (
+	maps "maps"
+	slices "slices"
+
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func copyOwnedDiagnostic(in Diagnostic) Diagnostic {
 	out := in
 	out.Reference = copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in.Reference)
-	out.Related = copyOwnedValue_85d1ea1582d474a012c83424e4cb929e(in.Related)
+	out.Related = slices.Clone(in.Related)
 	out.Lifecycle = copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in.Lifecycle)
 	out.Fixes = copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in.Fixes)
 	return out
@@ -21,17 +24,6 @@ func copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in *source.Reference) *sour
 	}
 	out := *in
 	return (*source.Reference)(&out)
-}
-
-func copyOwnedValue_85d1ea1582d474a012c83424e4cb929e(in []Related) []Related {
-	if in == nil {
-		return nil
-	}
-	out := make([]Related, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
 }
 
 func copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in *LifecycleReport) *LifecycleReport {
@@ -55,46 +47,13 @@ func copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in []Fix) []Fix {
 
 func copyOwnedLifecycleReport_d57d3d17001336fd5ea4de5528241a80(in LifecycleReport) LifecycleReport {
 	out := in
-	out.Policies = copyOwnedValue_b6515323be45e4e34bdf81973126a9d6(in.Policies)
+	out.Policies = slices.Clone(in.Policies)
 	return out
 }
 
 func copyOwnedFix_c828efda0bad60eab4a5235793b2a4d6(in Fix) Fix {
 	out := in
-	out.Revisions = copyOwnedValue_219dd46d9c2a4a1d442d64ab1c344e10(in.Revisions)
-	out.Edits = copyOwnedValue_ec8b0dff614e7f61469befded713e0e9(in.Edits)
-	return out
-}
-
-func copyOwnedValue_b6515323be45e4e34bdf81973126a9d6(in []LifecyclePolicyReport) []LifecyclePolicyReport {
-	if in == nil {
-		return nil
-	}
-	out := make([]LifecyclePolicyReport, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_219dd46d9c2a4a1d442d64ab1c344e10(in map[string]string) map[string]string {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-	return out
-}
-
-func copyOwnedValue_ec8b0dff614e7f61469befded713e0e9(in []Edit) []Edit {
-	if in == nil {
-		return nil
-	}
-	out := make([]Edit, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
+	out.Revisions = maps.Clone(in.Revisions)
+	out.Edits = slices.Clone(in.Edits)
 	return out
 }

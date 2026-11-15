@@ -3,6 +3,8 @@
 package scripts
 
 import (
+	slices "slices"
+
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 )
 
@@ -23,9 +25,9 @@ func copyOwnedValue_8dabd9f0ba9772cd3ec0be62c315a9c0(in *processconfig.Options) 
 func copyOwnedOptions_87062cdf34e489a1b65af0562cf2fa13(in processconfig.Options) processconfig.Options {
 	out := in
 	out.Executable = copyOwnedValue_3e89801b52bf7f986e27b0847ce327c5(in.Executable)
-	out.Arguments = copyOwnedValue_4af101177fe720bf0766557228231c42(in.Arguments)
-	out.LauncherArguments = copyOwnedValue_4af101177fe720bf0766557228231c42(in.LauncherArguments)
-	out.Environment = copyOwnedValue_4af101177fe720bf0766557228231c42(in.Environment)
+	out.Arguments = slices.Clone(in.Arguments)
+	out.LauncherArguments = slices.Clone(in.LauncherArguments)
+	out.Environment = slices.Clone(in.Environment)
 	return out
 }
 
@@ -35,15 +37,4 @@ func copyOwnedValue_3e89801b52bf7f986e27b0847ce327c5(in *string) *string {
 	}
 	out := *in
 	return (*string)(&out)
-}
-
-func copyOwnedValue_4af101177fe720bf0766557228231c42(in []string) []string {
-	if in == nil {
-		return nil
-	}
-	out := make([]string, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
 }

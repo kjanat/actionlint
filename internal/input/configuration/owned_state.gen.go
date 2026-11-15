@@ -3,15 +3,18 @@
 package config
 
 import (
+	maps "maps"
+	slices "slices"
+
 	tree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
 func copyOwnedruleState(in ruleState) ruleState {
 	out := in
-	out.resolved = copyOwnedValue_da969a9eb24acc1a0c3dc3183ae4e343(in.resolved)
-	out.resolvedFixed = copyOwnedValue_049fe780a072d52d06e36b3dedd64ad7(in.resolvedFixed)
-	out.boundCategories = copyOwnedValue_219dd46d9c2a4a1d442d64ab1c344e10(in.boundCategories)
-	out.boundSettings = copyOwnedValue_26f02656eda3dc59445173dfffb374f8(in.boundSettings)
+	out.resolved = maps.Clone(in.resolved)
+	out.resolvedFixed = maps.Clone(in.resolvedFixed)
+	out.boundCategories = maps.Clone(in.boundCategories)
+	out.boundSettings = maps.Clone(in.boundSettings)
 	out.bindingSources = copyOwnedValue_80276ba9563d54f0e7f21456230a44d2(in.bindingSources)
 	return out
 }
@@ -25,7 +28,7 @@ func copyOwnedlintState(in lintState) lintState {
 func copyOwnedNetworkConfig(in NetworkConfig) NetworkConfig {
 	out := in
 	out.MetadataMirrors = copyOwnedMetadataMirrorsConfig_8281025ae69267b838b82b224505157d(in.MetadataMirrors)
-	out.excludedRepositories = copyOwnedValue_4af101177fe720bf0766557228231c42(in.excludedRepositories)
+	out.excludedRepositories = slices.Clone(in.excludedRepositories)
 	return out
 }
 
@@ -36,52 +39,8 @@ func copyOwnedRepositoryConfig(in RepositoryConfig) RepositoryConfig {
 
 func copyOwnedSuppressionsPolicy(in SuppressionsPolicy) SuppressionsPolicy {
 	out := in
-	out.rules = copyOwnedValue_4af101177fe720bf0766557228231c42(in.rules)
-	out.locations = copyOwnedValue_c20ee031e61f55b71582d3740df300f9(in.locations)
-	return out
-}
-
-func copyOwnedValue_da969a9eb24acc1a0c3dc3183ae4e343(in map[string]Level) map[string]Level {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]Level, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-	return out
-}
-
-func copyOwnedValue_049fe780a072d52d06e36b3dedd64ad7(in map[string]bool) map[string]bool {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]bool, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-	return out
-}
-
-func copyOwnedValue_219dd46d9c2a4a1d442d64ab1c344e10(in map[string]string) map[string]string {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-	return out
-}
-
-func copyOwnedValue_26f02656eda3dc59445173dfffb374f8(in map[string]boundSetting) map[string]boundSetting {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]boundSetting, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
+	out.rules = slices.Clone(in.rules)
+	out.locations = maps.Clone(in.locations)
 	return out
 }
 
@@ -114,33 +73,11 @@ func copyOwnedMetadataMirrorsConfig_8281025ae69267b838b82b224505157d(in Metadata
 	return out
 }
 
-func copyOwnedValue_4af101177fe720bf0766557228231c42(in []string) []string {
-	if in == nil {
-		return nil
-	}
-	out := make([]string, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
-}
-
-func copyOwnedValue_c20ee031e61f55b71582d3740df300f9(in map[string]int) map[string]int {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]int, len(in))
-	for key, value := range in {
-		out[key] = value
-	}
-	return out
-}
-
 func copyOwnedbindingSource_957605900e67a7425a02224fd81f937d(in bindingSource) bindingSource {
 	out := in
 	out.rules = copyOwnedLintRulesConfig_93e7b950654b73871497d3d404121028(in.rules)
 	out.inputs = copyOwnedValue_3ee038ef4a67f7cc16a445d7bb30447b(in.inputs)
-	out.prefix = copyOwnedValue_4af101177fe720bf0766557228231c42(in.prefix)
+	out.prefix = slices.Clone(in.prefix)
 	return out
 }
 
@@ -154,7 +91,7 @@ func copyOwnedValue_49f07da0d370222fdeec7bb2b446eeab(in *MetadataMirrorServices)
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedMetadataMirrorServices_f0e5e54b007f900bbb78d65484c7a8c4(*in)
+	out := slices.Clone(*in)
 	return (*MetadataMirrorServices)(&out)
 }
 
@@ -169,7 +106,7 @@ func copyOwnedValue_31f02903a9b7a4aae055be65580891b5(in *bool) *bool {
 func copyOwnedLintRulesConfig_93e7b950654b73871497d3d404121028(in LintRulesConfig) LintRulesConfig {
 	out := in
 	out.ruleState = copyOwnedruleState(in.ruleState)
-	out.Disable = copyOwnedValue_4af101177fe720bf0766557228231c42(in.Disable)
+	out.Disable = slices.Clone(in.Disable)
 	return out
 }
 
@@ -179,15 +116,4 @@ func copyOwnedValue_d930507abe548cfc883d13348955a558(in *tree.Input) *tree.Input
 	}
 	out := copyOwnedInput_ece8cd52d845a631acb8651692d9dae2(*in)
 	return (*tree.Input)(&out)
-}
-
-func copyOwnedMetadataMirrorServices_f0e5e54b007f900bbb78d65484c7a8c4(in MetadataMirrorServices) MetadataMirrorServices {
-	if in == nil {
-		return nil
-	}
-	out := make(MetadataMirrorServices, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
-	return out
 }

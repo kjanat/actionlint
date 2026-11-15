@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/canonical"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 )
@@ -1078,482 +1079,214 @@ func lowerMemInterruption(ctx context.Context, caller, callee *host.CallContext,
 
 func toGoFlatListCall(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) ([]Call, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ptr_ := uint32(stack[0])
-	ln_ := uint32(stack[1])
-	out_ := make([]Call, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := toGoMemCall(ctx, cc, h, lstT_.Elem, ptr_+i_*172); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadFlat(stack, 172, func(offset uint32) (Call, error) {
+		return toGoMemCall(ctx, cc, h, lstT_.Elem, offset)
+	})
 }
 
 func toGoMemListCall(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) ([]Call, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	var lptr_ uint32
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: toGoMemListCall: list ptr: bad memory read")
-	} else {
-		lptr_ = tmp_
-	}
-	var ln_ uint32
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: toGoMemListCall: list len: bad memory read")
-	} else {
-		ln_ = tmp_
-	}
-	out_ := make([]Call, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := toGoMemCall(ctx, cc, h, lstT_.Elem, lptr_+i_*172); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadMemory(cc.Memory(), ptr, 172, "toGoMemListCall", func(offset uint32) (Call, error) {
+		return toGoMemCall(ctx, cc, h, lstT_.Elem, offset)
+	})
 }
 
 func fromGoFlatListCall(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v []Call) error {
-	ln_ := uint32(len(v))
-	ptr_, err_ := cc.Realloc(ctx, 0, 0, 4, ln_*172)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: fromGoFlatListCall: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := fromGoMemCall(ctx, cc, h, ptr_+i_*172, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	stack[0] = uint64(ptr_)
-	stack[1] = uint64(ln_)
-	return nil
+	return canonical.WriteFlat(ctx, cc,
+
+		stack, v, 4, 172, "fromGoFlatListCall", func(offset uint32, value Call) error {
+			return fromGoMemCall(ctx, cc, h, offset, value)
+		})
 }
 
 func fromGoMemListCall(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v []Call) error {
-	ln_ := uint32(len(v))
-	lptr_, err_ := cc.Realloc(ctx, 0, 0, 4, ln_*172)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListCall: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := fromGoMemCall(ctx, cc, h, lptr_+i_*172, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr, lptr_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListCall: list ptr: bad memory write")
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr+4, ln_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListCall: list len: bad memory write")
-	}
-	return nil
+	return canonical.WriteMemory(ctx,
+		cc,
+		ptr, v, 4, 172, "fromGoMemListCall", func(offset uint32, value Call) error {
+			return fromGoMemCall(ctx, cc, h, offset, value)
+		})
 }
 
 func liftFlatListCall(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) ([]Call, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ptr_ := uint32(stack[0])
-	ln_ := uint32(stack[1])
-	out_ := make([]Call, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := liftMemCall(ctx, caller, callee, h, lstT_.Elem, ptr_+i_*172); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadFlat(stack, 172, func(offset uint32) (Call, error) {
+		return liftMemCall(ctx, caller, callee, h, lstT_.Elem, offset)
+	})
 }
 
 func liftMemListCall(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) ([]Call, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	var lptr_ uint32
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: liftMemListCall: list ptr: bad memory read")
-	} else {
-		lptr_ = tmp_
-	}
-	var ln_ uint32
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: liftMemListCall: list len: bad memory read")
-	} else {
-		ln_ = tmp_
-	}
-	out_ := make([]Call, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := liftMemCall(ctx, caller, callee, h, lstT_.Elem, lptr_+i_*172); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadMemory(callee.Memory(), ptr, 172, "liftMemListCall", func(offset uint32) (Call, error) {
+		return liftMemCall(ctx, caller, callee, h, lstT_.
+			Elem, offset)
+	})
 }
 
 func lowerFlatListCall(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v []Call) error {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ln_ := uint32(len(v))
-	ptr_, err_ := callee.Realloc(ctx, 0, 0, 4, ln_*172)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: lowerFlatListCall: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := lowerMemCall(ctx, caller, callee, h, lstT_.Elem, ptr_+i_*172, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	stack[0] = uint64(ptr_)
-	stack[1] = uint64(ln_)
-	return nil
+	return canonical.WriteFlat(ctx, callee, stack, v, 4, 172, "lowerFlatListCall", func(offset uint32, value Call) error {
+		return lowerMemCall(ctx, caller, callee,
+			h, lstT_.Elem, offset,
+			value,
+		)
+	})
 }
 
 func lowerMemListCall(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v []Call) error {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ln_ := uint32(len(v))
-	lptr_, err_ := callee.Realloc(ctx, 0, 0, 4, ln_*172)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: lowerMemListCall: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := lowerMemCall(ctx, caller, callee, h, lstT_.Elem, lptr_+i_*172, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr, lptr_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemListCall: list ptr: bad memory write")
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr+4, ln_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemListCall: list len: bad memory write")
-	}
-	return nil
+	return canonical.WriteMemory(ctx, callee, ptr, v, 4, 172, "lowerMemListCall", func(offset uint32, value Call) error {
+		return lowerMemCall(ctx, caller, callee,
+			h, lstT_.Elem, offset, value,
+		)
+	})
 }
 
 func toGoFlatListScriptOccurrence(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) ([]ScriptOccurrence, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ptr_ := uint32(stack[0])
-	ln_ := uint32(stack[1])
-	out_ := make([]ScriptOccurrence, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := toGoMemScriptOccurrence(ctx, cc, h, lstT_.Elem, ptr_+i_*72); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadFlat(stack, 72, func(offset uint32) (ScriptOccurrence, error) {
+		return toGoMemScriptOccurrence(ctx, cc, h, lstT_.Elem, offset)
+	})
 }
 
 func toGoMemListScriptOccurrence(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) ([]ScriptOccurrence, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	var lptr_ uint32
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: toGoMemListScriptOccurrence: list ptr: bad memory read")
-	} else {
-		lptr_ = tmp_
-	}
-	var ln_ uint32
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: toGoMemListScriptOccurrence: list len: bad memory read")
-	} else {
-		ln_ = tmp_
-	}
-	out_ := make([]ScriptOccurrence, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := toGoMemScriptOccurrence(ctx, cc, h, lstT_.Elem, lptr_+i_*72); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadMemory(cc.Memory(), ptr, 72, "toGoMemListScriptOccurrence", func(
+		offset uint32,
+	) (ScriptOccurrence, error) {
+		return toGoMemScriptOccurrence(ctx, cc, h, lstT_.Elem,
+
+			offset)
+	},
+	)
 }
 
 func fromGoFlatListScriptOccurrence(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v []ScriptOccurrence) error {
-	ln_ := uint32(len(v))
-	ptr_, err_ := cc.Realloc(ctx, 0, 0, 4, ln_*72)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: fromGoFlatListScriptOccurrence: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := fromGoMemScriptOccurrence(ctx, cc, h, ptr_+i_*72, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	stack[0] = uint64(ptr_)
-	stack[1] = uint64(ln_)
-	return nil
+	return canonical.WriteFlat(ctx, cc,
+
+		stack, v, 4, 72, "fromGoFlatListScriptOccurrence", func(offset uint32, value ScriptOccurrence) error {
+			return fromGoMemScriptOccurrence(ctx, cc, h, offset,
+				value)
+		})
 }
 
 func fromGoMemListScriptOccurrence(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v []ScriptOccurrence) error {
-	ln_ := uint32(len(v))
-	lptr_, err_ := cc.Realloc(ctx, 0, 0, 4, ln_*72)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListScriptOccurrence: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := fromGoMemScriptOccurrence(ctx, cc, h, lptr_+i_*72, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr, lptr_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListScriptOccurrence: list ptr: bad memory write")
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr+4, ln_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListScriptOccurrence: list len: bad memory write")
-	}
-	return nil
+	return canonical.WriteMemory(ctx,
+		cc,
+		ptr, v, 4, 72, "fromGoMemListScriptOccurrence", func(offset uint32, value ScriptOccurrence) error {
+			return fromGoMemScriptOccurrence(ctx, cc, h, offset,
+				value)
+		})
 }
 
 func liftFlatListScriptOccurrence(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) ([]ScriptOccurrence, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ptr_ := uint32(stack[0])
-	ln_ := uint32(stack[1])
-	out_ := make([]ScriptOccurrence, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := liftMemScriptOccurrence(ctx, caller, callee, h, lstT_.Elem, ptr_+i_*72); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadFlat(stack, 72, func(offset uint32) (ScriptOccurrence, error) {
+		return liftMemScriptOccurrence(ctx, caller, callee, h, lstT_.Elem, offset)
+	})
 }
 
 func liftMemListScriptOccurrence(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) ([]ScriptOccurrence, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	var lptr_ uint32
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: liftMemListScriptOccurrence: list ptr: bad memory read")
-	} else {
-		lptr_ = tmp_
-	}
-	var ln_ uint32
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: liftMemListScriptOccurrence: list len: bad memory read")
-	} else {
-		ln_ = tmp_
-	}
-	out_ := make([]ScriptOccurrence, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := liftMemScriptOccurrence(ctx, caller, callee, h, lstT_.Elem, lptr_+i_*72); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadMemory(callee.Memory(), ptr, 72, "liftMemListScriptOccurrence", func(offset uint32) (ScriptOccurrence, error) {
+		return liftMemScriptOccurrence(ctx, caller, callee,
+
+			h, lstT_.
+				Elem, offset,
+		)
+	})
 }
 
 func lowerFlatListScriptOccurrence(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v []ScriptOccurrence) error {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ln_ := uint32(len(v))
-	ptr_, err_ := callee.Realloc(ctx, 0, 0, 4, ln_*72)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: lowerFlatListScriptOccurrence: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := lowerMemScriptOccurrence(ctx, caller, callee, h, lstT_.Elem, ptr_+i_*72, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	stack[0] = uint64(ptr_)
-	stack[1] = uint64(ln_)
-	return nil
+	return canonical.WriteFlat(ctx, callee, stack, v, 4, 72, "lowerFlatListScriptOccurrence",
+		func(offset uint32, value ScriptOccurrence) error {
+			return lowerMemScriptOccurrence(ctx, caller,
+
+				callee,
+				h, lstT_.
+					Elem, offset,
+
+				value)
+		})
 }
 
 func lowerMemListScriptOccurrence(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v []ScriptOccurrence) error {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ln_ := uint32(len(v))
-	lptr_, err_ := callee.Realloc(ctx, 0, 0, 4, ln_*72)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: lowerMemListScriptOccurrence: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := lowerMemScriptOccurrence(ctx, caller, callee, h, lstT_.Elem, lptr_+i_*72, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr, lptr_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemListScriptOccurrence: list ptr: bad memory write")
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr+4, ln_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemListScriptOccurrence: list len: bad memory write")
-	}
-	return nil
+	return canonical.WriteMemory(ctx, callee, ptr, v, 4, 72, "lowerMemListScriptOccurrence",
+		func(offset uint32, value ScriptOccurrence) error {
+			return lowerMemScriptOccurrence(ctx, caller,
+
+				callee,
+				h, lstT_.Elem,
+				offset,
+
+				value)
+		})
 }
 
 func toGoFlatListString(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) ([]string, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ptr_ := uint32(stack[0])
-	ln_ := uint32(stack[1])
-	out_ := make([]string, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := toGoMemString(ctx, cc, h, lstT_.Elem, ptr_+i_*8); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadFlat(stack, 8, func(offset uint32) (string, error) {
+		return toGoMemString(ctx, cc, h, lstT_.Elem, offset)
+	})
 }
 
 func toGoMemListString(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) ([]string, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	var lptr_ uint32
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: toGoMemListString: list ptr: bad memory read")
-	} else {
-		lptr_ = tmp_
-	}
-	var ln_ uint32
-	if tmp_, ok_ := cc.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: toGoMemListString: list len: bad memory read")
-	} else {
-		ln_ = tmp_
-	}
-	out_ := make([]string, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := toGoMemString(ctx, cc, h, lstT_.Elem, lptr_+i_*8); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadMemory(cc.Memory(), ptr, 8, "toGoMemListString", func(offset uint32) (string, error) {
+		return toGoMemString(ctx, cc, h, lstT_.Elem, offset)
+	})
 }
 
 func fromGoFlatListString(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, stack []uint64, v []string) error {
-	ln_ := uint32(len(v))
-	ptr_, err_ := cc.Realloc(ctx, 0, 0, 4, ln_*8)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: fromGoFlatListString: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := fromGoMemString(ctx, cc, h, ptr_+i_*8, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	stack[0] = uint64(ptr_)
-	stack[1] = uint64(ln_)
-	return nil
+	return canonical.WriteFlat(ctx, cc,
+
+		stack, v, 4, 8, "fromGoFlatListString", func(offset uint32, value string) error {
+			return fromGoMemString(ctx, cc, h, offset, value)
+		})
 }
 
 func fromGoMemListString(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ptr uint32, v []string) error {
-	ln_ := uint32(len(v))
-	lptr_, err_ := cc.Realloc(ctx, 0, 0, 4, ln_*8)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListString: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := fromGoMemString(ctx, cc, h, lptr_+i_*8, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr, lptr_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListString: list ptr: bad memory write")
-	}
-	if ok_ := cc.Memory().WriteUint32Le(ptr+4, ln_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: fromGoMemListString: list len: bad memory write")
-	}
-	return nil
+	return canonical.WriteMemory(ctx,
+		cc,
+		ptr, v, 4, 8, "fromGoMemListString", func(offset uint32, value string) error {
+			return fromGoMemString(ctx, cc, h, offset, value)
+		})
 }
 
 func liftFlatListString(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) ([]string, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ptr_ := uint32(stack[0])
-	ln_ := uint32(stack[1])
-	out_ := make([]string, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := liftMemString(ctx, caller, callee, h, lstT_.Elem, ptr_+i_*8); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadFlat(stack, 8, func(offset uint32) (string, error) {
+		return liftMemString(ctx, caller, callee, h, lstT_.Elem, offset)
+	})
 }
 
 func liftMemListString(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32) ([]string, error) {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	var lptr_ uint32
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: liftMemListString: list ptr: bad memory read")
-	} else {
-		lptr_ = tmp_
-	}
-	var ln_ uint32
-	if tmp_, ok_ := callee.Memory().ReadUint32Le(ptr + 4); !ok_ {
-		return nil, fmt.Errorf("wacogo/witgen: liftMemListString: list len: bad memory read")
-	} else {
-		ln_ = tmp_
-	}
-	out_ := make([]string, ln_)
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if tmp_, err_ := liftMemString(ctx, caller, callee, h, lstT_.Elem, lptr_+i_*8); err_ != nil {
-			return nil, err_
-		} else {
-			out_[i_] = tmp_
-		}
-	}
-	return out_, nil
+	return canonical.ReadMemory(callee.Memory(), ptr, 8, "liftMemListString", func(offset uint32) (string, error) {
+		return liftMemString(ctx, caller, callee, h,
+			lstT_.Elem, offset)
+	})
 }
 
 func lowerFlatListString(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64, v []string) error {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ln_ := uint32(len(v))
-	ptr_, err_ := callee.Realloc(ctx, 0, 0, 4, ln_*8)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: lowerFlatListString: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := lowerMemString(ctx, caller, callee, h, lstT_.Elem, ptr_+i_*8, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	stack[0] = uint64(ptr_)
-	stack[1] = uint64(ln_)
-	return nil
+	return canonical.WriteFlat(ctx, callee, stack, v, 4, 8, "lowerFlatListString", func(offset uint32, value string) error {
+		return lowerMemString(ctx, caller, callee,
+			h, lstT_.Elem, offset,
+
+			value)
+	})
 }
 
 func lowerMemListString(ctx context.Context, caller, callee *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, ptr uint32, v []string) error {
 	lstT_ := ty.(wacogo.TypeList)
-	_ = lstT_
-	ln_ := uint32(len(v))
-	lptr_, err_ := callee.Realloc(ctx, 0, 0, 4, ln_*8)
-	if err_ != nil {
-		return fmt.Errorf("wacogo/witgen: lowerMemListString: realloc failed: %w", err_)
-	}
-	for i_ := uint32(0); i_ < ln_; i_++ {
-		if err_ := lowerMemString(ctx, caller, callee, h, lstT_.Elem, lptr_+i_*8, v[i_]); err_ != nil {
-			return err_
-		}
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr, lptr_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemListString: list ptr: bad memory write")
-	}
-	if ok_ := callee.Memory().WriteUint32Le(ptr+4, ln_); !ok_ {
-		return fmt.Errorf("wacogo/witgen: lowerMemListString: list len: bad memory write")
-	}
-	return nil
+	return canonical.WriteMemory(ctx, callee, ptr, v, 4, 8, "lowerMemListString", func(offset uint32, value string) error {
+		return lowerMemString(ctx, caller, callee,
+			h, lstT_.Elem, offset,
+
+			value)
+	})
 }
 
 func toGoFlatOpaque(ctx context.Context, cc *host.CallContext, h *host.ComponentInstance, ty wacogo.Type, stack []uint64) (Opaque, error) {

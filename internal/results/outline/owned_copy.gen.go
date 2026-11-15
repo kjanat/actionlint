@@ -3,12 +3,14 @@
 package outline
 
 import (
+	slices "slices"
+
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func copyOwnedWorkflow(in Workflow) Workflow {
 	out := in
-	out.triggers = copyOwnedValue_4af101177fe720bf0766557228231c42(in.triggers)
+	out.triggers = slices.Clone(in.triggers)
 	out.jobs = copyOwnedValue_fa49c9bb65db63f0743189780135da7f(in.jobs)
 	return out
 }
@@ -43,7 +45,7 @@ func copyOwnedCompositeRuns(in CompositeRuns) CompositeRuns {
 
 func copyOwnedDockerRuns(in DockerRuns) DockerRuns {
 	out := in
-	out.args = copyOwnedValue_4af101177fe720bf0766557228231c42(in.args)
+	out.args = slices.Clone(in.args)
 	return out
 }
 
@@ -59,17 +61,6 @@ func copyOwnedPluginRuns(in PluginRuns) PluginRuns {
 
 func copyOwnedUnknownRuns(in UnknownRuns) UnknownRuns {
 	out := in
-	return out
-}
-
-func copyOwnedValue_4af101177fe720bf0766557228231c42(in []string) []string {
-	if in == nil {
-		return nil
-	}
-	out := make([]string, len(in))
-	for i := range in {
-		out[i] = in[i]
-	}
 	return out
 }
 
@@ -144,7 +135,7 @@ func copyOwnedValue_fd4c870c6ff92ebc0f4d83c769cec887(in []Step) []Step {
 func copyOwnedJob_5dc78b7155a68addaed9ca9831ce07c8(in Job) Job {
 	out := in
 	out.start = copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.start)
-	out.needs = copyOwnedValue_4af101177fe720bf0766557228231c42(in.needs)
+	out.needs = slices.Clone(in.needs)
 	out.steps = copyOwnedValue_fd4c870c6ff92ebc0f4d83c769cec887(in.steps)
 	return out
 }

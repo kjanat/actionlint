@@ -157,12 +157,12 @@ func copyInto(dst, src string, t types.Type) {
 		}
 		panic("unhandled value " + ts(t))
 	case *types.Slice:
-		if n, ok := v.Elem().(*types.Named); ok && !n.Obj().Exported() {
-			if !scalar(n) {
-				panic("non-scalar private element")
-			}
+		if scalar(v.Elem()) {
 			fmt.Fprintf(&clone, "%s = slices.Clone(%s)\n", dst, src)
 			return
+		}
+		if n, ok := v.Elem().(*types.Named); ok && !n.Obj().Exported() {
+			panic("non-scalar private element")
 		}
 		serial++
 		i := fmt.Sprintf("i%d", serial)
@@ -279,6 +279,7 @@ func main() {
 			panic(name)
 		}
 		fmt.Fprintf(&clone, "func (b *builder) clone%s(in *workflowlang.%s) *workflowlang.%s { if in == nil {return nil}; out := new(workflowlang.%s)\n", name, name, name, name)
+		fmt.Fprintln(&clone, "*out = *in")
 		if name == "Step" {
 			fmt.Fprintln(&clone, "b.steps = append(b.steps, out)")
 		}
@@ -292,7 +293,9 @@ func main() {
 			if !field.Exported() {
 				panic("private model field " + name + "." + field.Name())
 			}
-			copyInto("out."+field.Name(), "in."+field.Name(), field.Type())
+			if !scalar(field.Type()) {
+				copyInto("out."+field.Name(), "in."+field.Name(), field.Type())
+			}
 		}
 		fmt.Fprintln(&clone, "return out }")
 		if name == "Step" || name == "Job" {
