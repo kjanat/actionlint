@@ -24,7 +24,7 @@ func referenceFinding() *Finding {
 		}},
 		Rule:              "rule",
 		Message:           "message",
-		EndPosition:       &workflowlang.Pos{Line: 1, Col: 2},
+		EndPosition:       &workflowlang.Pos{Line: 1, Column: 2},
 		Source:            []byte("source"),
 		SuppressionOrigin: &SuppressionOrigin{Path: "path"},
 		SuppressionTarget: &SuppressionOrigin{Path: "target", First: 1, Last: 2},
@@ -62,7 +62,7 @@ func TestCloneDetachesEveryReference(t *testing.T) {
 
 func TestClonePreservesAbsentReferences(t *testing.T) {
 	t.Parallel()
-	original := At(&workflowlang.Pos{Line: 1, Col: 1}, "rule", "message")
+	original := At(&workflowlang.Pos{Line: 1, Column: 1}, "rule", "message")
 	if diff := cmp.Diff(original, original.Clone(), cloneComparison); diff != "" {
 		t.Fatalf("clone of a plain finding differs:\n%s", diff)
 	}

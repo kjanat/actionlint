@@ -22,7 +22,7 @@ func TestCacheModeSyntax(t *testing.T) {
 		{workflowmodel.CacheModeWrite, "write", 3, true},
 		{workflowmodel.CacheModeWriteOnly, "write-only", 2, true},
 	} {
-		mode := &workflowmodel.CacheMode{Kind: tc.kind, Pos: &workflowmodel.Pos{Line: 1, Col: 1}}
+		mode := &workflowmodel.CacheMode{Kind: tc.kind, Pos: &workflowmodel.Pos{Line: 1, Column: 1}}
 		capabilities, valid := mode.Capabilities()
 		if tc.kind.String() != tc.name || capabilities != tc.capabilities || valid != tc.valid {
 			t.Fatalf("kind=%v capabilities=%d valid=%t", tc.kind, capabilities, valid)

@@ -11,7 +11,7 @@ import (
 func TestPermissiveJSONInformation(t *testing.T) {
 	t.Parallel()
 	checker := newTestChecker()
-	types, valid := checker.checkExprsIn("${{ fromJSON('[1,]') }}", &workflowlang.Pos{Line: 3, Col: 5}, false, false, "env")
+	types, valid := checker.checkExprsIn("${{ fromJSON('[1,]') }}", &workflowlang.Pos{Line: 3, Column: 5}, false, false, "env")
 	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindArray {
 		t.Fatalf("information changed expression validity or type: %v, %+v", valid, types)
 	}

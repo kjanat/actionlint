@@ -13,7 +13,7 @@ import (
 )
 
 func callFinding(pos workflowlang.Pos, format string, args ...any) results.Diagnostic {
-	return results.Diagnostic{Rule: "workflow-call", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}}
+	return results.Diagnostic{Rule: "workflow-call", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Column}}
 }
 
 // CheckArguments validates required and supplied inputs and secrets against

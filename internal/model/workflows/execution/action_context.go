@@ -24,7 +24,7 @@ func CallFacts(view workflowdecl.Step, platform runnerlang.Platform) (invocation
 	}
 	position := invocation.Position{}
 	if pos, present := view.Position(); present {
-		position = invocation.Position{Line: pos.Line, Column: pos.Col}
+		position = invocation.Position{Line: pos.Line, Column: pos.Column}
 	}
 	env := workflowdecl.Environment(view.Env)
 	effects := invocation.Facts{

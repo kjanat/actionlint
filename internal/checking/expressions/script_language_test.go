@@ -20,7 +20,7 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 				if shell == "" {
 					key = "jobs.<job_id>.steps.with"
 				}
-				rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "const value = ${{ " + expression + " }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}), key, shell)
+				rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "const value = ${{ " + expression + " }}", Pos: &workflowlang.Pos{Line: 1, Column: 1}}), key, shell)
 				positionDependent := expression == "github.sha" || expression == "hashFiles('**/go.sum')"
 				unsafe := positionDependent || shell != "bash" && shell != "sh"
 				findings := rule.Findings()

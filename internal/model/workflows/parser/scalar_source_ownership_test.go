@@ -44,8 +44,8 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 			if result == nil || len(result.Lines) == 0 || len(result.Spans) == 0 || len(result.Comments) == 0 {
 				t.Fatal("fixture must expose every mutable source field")
 			}
-			result.ContentStart = workflowlang.Pos{Line: 99, Col: 99}
-			result.ScalarEnd = workflowlang.Pos{Line: 99, Col: 99}
+			result.ContentStart = workflowlang.Pos{Line: 99, Column: 99}
+			result.ScalarEnd = workflowlang.Pos{Line: 99, Column: 99}
 			result.Value = "changed"
 			result.Literal = !result.Literal
 			result.Lines[0].Start = 99

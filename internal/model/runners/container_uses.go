@@ -44,7 +44,7 @@ func (target ContainerTarget) MayRun(conditions ...string) bool {
 func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *workflowlang.Pos) ContainerUse {
 	use := ContainerUse{Target: target, Kind: kind, Name: name}
 	if pos != nil {
-		use.Position = sourcepos.Position{Line: pos.Line, Column: pos.Col}
+		use.Position = sourcepos.Position{Line: pos.Line, Column: pos.Column}
 	}
 	return use
 }

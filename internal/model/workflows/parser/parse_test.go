@@ -205,7 +205,7 @@ next: value
 			},
 			line:       1,
 			column:     6,
-			want:       workflowlang.Pos{Line: 2, Col: 8},
+			want:       workflowlang.Pos{Line: 2, Column: 8},
 			wantMapped: true,
 		},
 		{
@@ -223,7 +223,7 @@ next: value
 			},
 			line:       2,
 			column:     3,
-			want:       workflowlang.Pos{Line: 3, Col: 5},
+			want:       workflowlang.Pos{Line: 3, Column: 5},
 			wantMapped: true,
 		},
 		{
@@ -241,7 +241,7 @@ next: value
 			},
 			line:       2,
 			column:     1,
-			want:       workflowlang.Pos{Line: 3, Col: 3},
+			want:       workflowlang.Pos{Line: 3, Column: 3},
 			wantMapped: true,
 		},
 		{
@@ -250,7 +250,7 @@ next: value
 			node:       &codec.Node{Value: "echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
-			want:       workflowlang.Pos{Line: 1, Col: 11},
+			want:       workflowlang.Pos{Line: 1, Column: 11},
 			wantMapped: true,
 		},
 		{
@@ -262,7 +262,7 @@ next: value
 			node:       &codec.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     17,
-			want:       workflowlang.Pos{Line: 2, Col: 8},
+			want:       workflowlang.Pos{Line: 2, Column: 8},
 			wantMapped: true,
 		},
 		{
@@ -285,7 +285,7 @@ next: value
 			node:       &codec.Node{Value: "echo first x", Line: 2, Column: 8},
 			line:       1,
 			column:     12,
-			want:       workflowlang.Pos{Line: 3, Col: 5},
+			want:       workflowlang.Pos{Line: 3, Column: 5},
 			wantMapped: true,
 		},
 		{
@@ -294,7 +294,7 @@ next: value
 			node:       &codec.Node{Value: "echo é $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     8,
-			want:       workflowlang.Pos{Line: 1, Col: 13},
+			want:       workflowlang.Pos{Line: 1, Column: 13},
 			wantMapped: true,
 		},
 		{
@@ -305,7 +305,7 @@ next: value
 			node:       &codec.Node{Style: codec.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
-			want:       workflowlang.Pos{Line: 2, Col: 8},
+			want:       workflowlang.Pos{Line: 2, Column: 8},
 			wantMapped: true,
 		},
 		{
@@ -355,14 +355,14 @@ next: value
 		if !ok {
 			t.Fatal("script position was not mapped")
 		}
-		if want := (workflowlang.Pos{Line: 2, Col: 8}); *pos != want {
+		if want := (workflowlang.Pos{Line: 2, Column: 8}); *pos != want {
 			t.Fatalf("mapped position is %v but wanted %v", pos, want)
 		}
 		end, ok := source.EndPos(1, 10)
 		if !ok {
 			t.Fatal("script end position was not mapped")
 		}
-		if want := (workflowlang.Pos{Line: 2, Col: 12}); *end != want {
+		if want := (workflowlang.Pos{Line: 2, Column: 12}); *end != want {
 			t.Fatalf("mapped end position is %v but wanted %v", end, want)
 		}
 	})
@@ -393,7 +393,7 @@ run: *script
 				t.Fatal("literal script lost its source mapping")
 			}
 			pos, ok := source.Position(1, 6)
-			if want := (workflowlang.Pos{Line: 2, Col: 8}); !ok || *pos != want {
+			if want := (workflowlang.Pos{Line: 2, Column: 8}); !ok || *pos != want {
 				t.Fatalf("script position is %v (mapped=%v), want %v", pos, ok, want)
 			}
 		}
@@ -415,7 +415,7 @@ run: *script
 		if !ok {
 			t.Fatal("script position after blank continuation was not mapped")
 		}
-		if want := (workflowlang.Pos{Line: 3, Col: 8}); *pos != want {
+		if want := (workflowlang.Pos{Line: 3, Column: 8}); *pos != want {
 			t.Fatalf("mapped position is %v but wanted %v", pos, want)
 		}
 	})
@@ -438,7 +438,7 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 			if len(diagnostics) != 0 || workflow == nil {
 				t.Fatalf("Parse diagnostics=%v", diagnostics)
 			}
-			wantStart, wantEnd := workflowlang.Pos{Line: tc.tokenLine, Col: 5}, workflowlang.Pos{Line: tc.tokenLine, Col: 9}
+			wantStart, wantEnd := workflowlang.Pos{Line: tc.tokenLine, Column: 5}, workflowlang.Pos{Line: tc.tokenLine, Column: 9}
 			for _, name := range []string{"block", "flow"} {
 				job := workflow.Jobs[name]
 				if job == nil || len(job.Steps) != 1 {

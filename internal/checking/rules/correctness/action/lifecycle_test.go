@@ -27,7 +27,7 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	context := actionmeta.LifecycleContext{AsOf: date, Service: service}
-	caller := &workflowlang.Pos{Line: 8, Col: 11}
+	caller := &workflowlang.Pos{Line: 8, Column: 11}
 	exec := ownedActionFixture(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "example/script@v1", Pos: caller}})
 	for _, tc := range []struct {
 		name     string

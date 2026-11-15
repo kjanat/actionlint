@@ -11,8 +11,8 @@ import (
 
 func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 	t.Parallel()
-	name := &workflowlang.String{Value: "before", Pos: &workflowlang.Pos{Line: 2, Col: 4}}
-	condition := &workflowlang.String{Value: "${{ true }}", Pos: &workflowlang.Pos{Line: 3, Col: 7}}
+	name := &workflowlang.String{Value: "before", Pos: &workflowlang.Pos{Line: 2, Column: 4}}
+	condition := &workflowlang.String{Value: "${{ true }}", Pos: &workflowlang.Pos{Line: 3, Column: 7}}
 	job := &workflowlang.Job{
 		Name:   name,
 		If:     condition,

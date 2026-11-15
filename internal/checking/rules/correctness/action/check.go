@@ -44,7 +44,7 @@ func CheckWithAdvisories(meta *actionmeta.Metadata, caller *workflowlang.Pos, fi
 // StandaloneWithAdvisories includes optional expression findings for host policy.
 func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*findingmodel.Finding {
 	rule := validator{files: files, standalone: meta, advisories: true, lifecycle: context}
-	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
+	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Column: 1})
 	return rule.errs
 }
 
@@ -75,7 +75,7 @@ func Check(meta *actionmeta.Metadata, caller *workflowlang.Pos, files actionmeta
 // Standalone validates a manifest's declarations at their own source positions.
 func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
 	rule := validator{files: files, standalone: meta}
-	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
+	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Column: 1})
 	return rule.errs
 }
 
@@ -173,7 +173,7 @@ func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionm
 func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *workflowlang.Pos, code actionmeta.ProblemCode, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	ruleName, diagnosticCode := problemRule(code)
-	err := findingmodel.At(&workflowlang.Pos{Line: line, Col: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
+	err := findingmodel.At(&workflowlang.Pos{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
 	err.Source = meta.Source
@@ -203,7 +203,7 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
 func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *workflowlang.Pos, code actionmeta.ProblemCode, format string, args ...any) {
 	ruleName, diagnosticCode := problemRule(code)
-	err := findingmodel.Errorf(&workflowlang.Pos{Line: line, Col: col}, ruleName, format, args...)
+	err := findingmodel.Errorf(&workflowlang.Pos{Line: line, Column: col}, ruleName, format, args...)
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
 	err.Source = meta.Source
@@ -225,7 +225,7 @@ func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 				)
 			}
 			rule.metadataErrorfAt(
-				meta, pos.Line, pos.Col, actionmeta.ExpressionEndPosition(meta, &kv.Value, v), v.Code,
+				meta, pos.Line, pos.Column, actionmeta.ExpressionEndPosition(meta, &kv.Value, v), v.Code,
 				`default value of input %q in metadata of %q action %s`, kv.Name, meta.Name, message,
 			)
 		}
@@ -302,12 +302,12 @@ func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, 
 			end := actionmeta.ExpressionEndPosition(meta, v, violation)
 			if ctx := violation.Context; ctx != "" {
 				rule.compositeStepErrorfAt(
-					meta, idx, pos.Line, pos.Col, end, violation.Code,
+					meta, idx, pos.Line, pos.Column, end, violation.Code,
 					`uses context %q at %q key which is not available in a composite action. %s`,
 					ctx, key, compositeStepContextHint(ctx),
 				)
 			} else {
-				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Col, end, violation.Code, `%s at %q key`, violation.Message, key)
+				rule.compositeStepErrorfAt(meta, idx, pos.Line, pos.Column, end, violation.Code, `%s at %q key`, violation.Message, key)
 			}
 		}
 	}
@@ -461,7 +461,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlan
 		}
 		id := strings.ToLower(name)
 		position := key.Origin().Span.Start
-		pos := &workflowlang.Pos{Line: position.Line, Col: position.Column}
+		pos := &workflowlang.Pos{Line: position.Line, Column: position.Column}
 		m, ok := meta.Input(id)
 		if !ok {
 			if meta.AllowsAdditionalInputs() {
@@ -528,9 +528,9 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 		for _, finding := range expressionSemanticFindings(field.Expressions, field.SchemaPath, rule.advisories) {
 			position := actionmeta.ExpressionPosition(meta, &field.Value, finding.Offset)
 			end := actionmeta.ExpressionEndPosition(meta, &field.Value, finding)
-			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: sourcepos.Position{Line: position.Line, Column: position.Col}}
+			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: sourcepos.Position{Line: position.Line, Column: position.Column}}
 			if end != nil {
-				problem.End = sourcepos.Position{Line: end.Line, Column: end.Col}
+				problem.End = sourcepos.Position{Line: end.Line, Column: end.Column}
 			}
 			problems = append(problems, problem)
 		}
@@ -554,7 +554,7 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 		return fallback
 	}
 	node := actionmeta.Node(rule.standalone.Root)
-	pos := &workflowlang.Pos{Line: 1, Col: 1}
+	pos := &workflowlang.Pos{Line: 1, Column: 1}
 	for _, field := range fields {
 		if node == nil || node.Kind != codec.MappingNode {
 			break
@@ -563,7 +563,7 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			if strings.EqualFold(actionmeta.Key(key), field) {
-				pos = &workflowlang.Pos{Line: key.Line, Col: key.Column}
+				pos = &workflowlang.Pos{Line: key.Line, Column: key.Column}
 				next = actionmeta.Node(node.Content[i+1])
 				break
 			}

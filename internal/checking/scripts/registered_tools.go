@@ -69,7 +69,7 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 			finding.SuppressionOrigin = &findingmodel.SuppressionOrigin{Path: at.Path, First: at.First, Last: at.Last}
 		}
 		if result.End.Line > 0 {
-			finding.EndPosition = &workflowlang.Pos{Line: result.End.Line, Col: result.End.Column}
+			finding.EndPosition = &workflowlang.Pos{Line: result.End.Line, Column: result.End.Column}
 			if result.End.Line == result.Start.Line {
 				finding.EndColumn = result.End.Column - 1
 			}

@@ -84,8 +84,8 @@ func (p *Parser) ScriptSourceForDeclaration(node *codec.Node, declaration *workf
 	}
 	alias := attachment.scalar
 	physical := &workflowlang.ScriptSource{
-		ContentStart: workflowlang.Pos{Line: alias.Line, Col: alias.Column},
-		ScalarEnd:    workflowlang.Pos{Line: alias.Line, Col: alias.Column + utf8.RuneCountInString(alias.Value) + 1},
+		ContentStart: workflowlang.Pos{Line: alias.Line, Column: alias.Column},
+		ScalarEnd:    workflowlang.Pos{Line: alias.Line, Column: alias.Column + utf8.RuneCountInString(alias.Value) + 1},
 	}
 	source.Comments = attachment.comments(p.sourceLines, physical)
 	return source
@@ -111,7 +111,7 @@ func (nodes scalarCommentNodes) comments(lines []string, source *workflowlang.Sc
 			break
 		}
 		column := strings.Index(lines[line-1], "#")
-		comments = append(comments, workflowlang.ScalarComment{Text: text, Pos: workflowlang.Pos{Line: line, Col: utf8.RuneCountInString(lines[line-1][:column]) + 1}})
+		comments = append(comments, workflowlang.ScalarComment{Text: text, Pos: workflowlang.Pos{Line: line, Column: utf8.RuneCountInString(lines[line-1][:column]) + 1}})
 	}
 	slices.Reverse(comments)
 	for _, text := range parts(nodes.trailing) {
@@ -121,11 +121,11 @@ func (nodes scalarCommentNodes) comments(lines []string, source *workflowlang.Sc
 				continue
 			}
 			prefix, _, _ := strings.CutLast(physical, text)
-			pos := workflowlang.Pos{Line: line, Col: utf8.RuneCountInString(prefix) + 1}
+			pos := workflowlang.Pos{Line: line, Column: utf8.RuneCountInString(prefix) + 1}
 			// Trailing comments lie before block/quoted content or after its closing token.
 			// Matching text inside a scalar is not another attachment.
-			before := line < source.ContentStart.Line || line == source.ContentStart.Line && (nodes.block || pos.Col < source.ContentStart.Col)
-			after := line > source.ScalarEnd.Line || line == source.ScalarEnd.Line && pos.Col >= source.ScalarEnd.Col
+			before := line < source.ContentStart.Line || line == source.ContentStart.Line && (nodes.block || pos.Column < source.ContentStart.Column)
+			after := line > source.ScalarEnd.Line || line == source.ScalarEnd.Line && pos.Column >= source.ScalarEnd.Column
 			if before || after {
 				comments = append(comments, workflowlang.ScalarComment{Text: text, Pos: pos, Trailing: true})
 				break
@@ -136,7 +136,7 @@ func (nodes scalarCommentNodes) comments(lines []string, source *workflowlang.Sc
 		if a.Pos.Line != b.Pos.Line {
 			return a.Pos.Line - b.Pos.Line
 		}
-		return a.Pos.Col - b.Pos.Col
+		return a.Pos.Column - b.Pos.Column
 	})
 	return slices.CompactFunc(comments, func(a, b workflowlang.ScalarComment) bool { return a.Pos == b.Pos })
 }

@@ -10,7 +10,7 @@ import (
 
 func TestOwnedReferenceValidationMatchesLegacyFindings(t *testing.T) {
 	t.Parallel()
-	position := workflowlang.Pos{Line: 7, Col: 11}
+	position := workflowlang.Pos{Line: 7, Column: 11}
 	for _, spec := range []string{"owner/repo@v1", "owner/repo", "./child", "$/child", "$/", "$/child@v1", "builtin:name", "self:owner/repo@v1", "docker://ghcr.io/team/image", "docker://ghcr.io/team/image:"} {
 		t.Run(spec, func(t *testing.T) {
 			t.Parallel()

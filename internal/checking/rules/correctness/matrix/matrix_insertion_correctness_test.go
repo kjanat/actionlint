@@ -68,7 +68,7 @@ jobs:
 			case "exclude insertion mismatch", "exclude insertion unknown axis":
 				position = workflow.Jobs["test"].Strategy.Matrix.Exclude.Combinations[0].Expression.Pos
 			}
-			if position != nil && (findings[0].Start.Line != position.Line || findings[0].Start.Column != position.Col) {
+			if position != nil && (findings[0].Start.Line != position.Line || findings[0].Start.Column != position.Column) {
 				t.Fatalf("expanded finding position = %v, want %v", findings[0], position)
 			}
 		})

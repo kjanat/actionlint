@@ -124,7 +124,7 @@ func NewTrust(w declaration.Workflow) *Trust {
 		if order := cmp.Compare(left.Line, right.Line); order != 0 {
 			return order
 		}
-		if order := cmp.Compare(left.Col, right.Col); order != 0 {
+		if order := cmp.Compare(left.Column, right.Column); order != 0 {
 			return order
 		}
 		return cmp.Compare(a.ID.Text(), b.ID.Text())
@@ -178,5 +178,5 @@ func (r *Trust) CheckCall(job declaration.Job) []results.Diagnostic {
 }
 
 func report(pos workflowlang.Pos, kind, format string, args ...any) results.Diagnostic {
-	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}}
+	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Column}}
 }

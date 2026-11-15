@@ -22,7 +22,7 @@ func checkJobDependencies(w declaration.Workflow) []reporting.Finding {
 		if left.Line != right.Line {
 			return left.Line - right.Line
 		}
-		return left.Col - right.Col
+		return left.Column - right.Column
 	})
 	input := make([]jobneeds.Job, 0, len(jobs))
 	for _, job := range jobs {

@@ -64,7 +64,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 			var want workflowlang.Pos
 			for i, raw := range strings.Split(tc.input, "\n") {
 				if offset := strings.Index(raw, tc.rawToken); offset >= 0 {
-					want = workflowlang.Pos{Line: i + 1, Col: utf8.RuneCountInString(raw[:offset]) + 1}
+					want = workflowlang.Pos{Line: i + 1, Column: utf8.RuneCountInString(raw[:offset]) + 1}
 					break
 				}
 			}
@@ -76,7 +76,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 				if tc.name == "quote-escape" {
 					width = 2
 				}
-				want.Col += width
+				want.Column += width
 				if got, ok := source.EndPos(line, col+1); !ok || *got != want {
 					t.Fatalf("escape end = %v, %v; want %v", got, ok, want)
 				}
@@ -134,9 +134,9 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 					source := p.ScriptSource(node)
 					lines := strings.Split(node.Value, "\n")
 					got, ok := source.EndPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
-					want := workflowlang.Pos{Line: 1, Col: len(content) + 1}
+					want := workflowlang.Pos{Line: 1, Column: len(content) + 1}
 					if suffix == "  " {
-						want.Col += len(suffix)
+						want.Column += len(suffix)
 					}
 					if !ok || *got != want {
 						t.Fatalf("EOF position = %v, %v; want %v", got, ok, want)
@@ -171,7 +171,7 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 				source := p.ScriptSource(node)
 				lines := strings.Split(node.Value, "\n")
 				got, ok := source.EndPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
-				want := workflowlang.Pos{Line: 2, Col: len("  echo ${{ github.ref") + 1}
+				want := workflowlang.Pos{Line: 2, Column: len("  echo ${{ github.ref") + 1}
 				if !ok || *got != want {
 					t.Fatalf("EOF position = %v, %v; want %v", got, ok, want)
 				}
@@ -197,7 +197,7 @@ func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
 				source := p.ScriptSource(node)
 				lines := strings.Split(node.Value, "\n")
 				got, ok := source.EndPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
-				want := workflowlang.Pos{Line: 1, Col: len(content) + 1}
+				want := workflowlang.Pos{Line: 1, Column: len(content) + 1}
 				if !ok || *got != want {
 					t.Fatalf("EOF = %v, %v; want %v", got, ok, want)
 				}

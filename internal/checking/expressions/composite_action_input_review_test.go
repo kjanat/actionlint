@@ -20,7 +20,7 @@ func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
 	view := ownedWorkflowFixture(workflow)
 	job := testJob(t, view, "test")
 	rule.BeginComposite(workflowdecl.ActionBody{})
-	rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "existing finding")
+	rule.Error(&workflowlang.Pos{Line: 1, Column: 1}, "existing finding")
 	originalFinding := rule.errs[0]
 	if err := rule.CheckCompositeStep(testStep(t, job, 0)); err != nil {
 		t.Fatal(err)

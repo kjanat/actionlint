@@ -67,7 +67,7 @@ func TestCachePolicyTriggers(t *testing.T) {
 			t.Run(event, func(t *testing.T) {
 				t.Parallel()
 				// Exercise each event independently of event-specific required fields.
-				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}}
+				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Column: 13}}}
 				w.Jobs = map[string]*workflowlang.Job{"test": {}}
 				view := policyWorkflowView(w)
 				job, _ := view.Job("test")
@@ -362,7 +362,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	} {
 		t.Run(tc.uses, func(t *testing.T) {
 			t.Parallel()
-			findings := checkStandaloneStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{Line: 7, Col: 15}}}}, &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone})
+			findings := checkStandaloneStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: tc.uses, Pos: &workflowlang.Pos{Line: 7, Column: 15}}}}, &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone})
 			if tc.warn {
 				if errs := findings; len(errs) != 1 || errs[0].Rule != "cache-operation" || errs[0].Start.Line != 7 || errs[0].Start.Column != 15 {
 					t.Fatalf("expected one cache-operation finding on the action, got %v", errs)

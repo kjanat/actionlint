@@ -18,8 +18,8 @@ import (
 type Pos struct {
 	// Line is the one-based line number.
 	Line int
-	// Col is the one-based column number.
-	Col int
+	// Column is the one-based column number.
+	Column int
 }
 
 type scriptSourceLine struct {
@@ -109,7 +109,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 			if last.YamlEndLine != 0 {
 				line = last.YamlEndLine
 			}
-			return &Pos{Line: line, Col: column}, true
+			return &Pos{Line: line, Column: column}, true
 		}
 	}
 	i := s.spanIndex(offset, endPosition)
@@ -131,7 +131,7 @@ func (s *ScriptSource) lookup(line, col int, endPosition bool) (*Pos, bool) {
 	if endPosition && offset == span.End && span.YamlEndLine != 0 {
 		line = span.YamlEndLine
 	}
-	return &Pos{Line: line, Col: column}, true
+	return &Pos{Line: line, Column: column}, true
 }
 
 // spanIndex returns the first span ending after offset, or at offset for an end
@@ -151,7 +151,7 @@ func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
 }
 
 func (p *Pos) String() string {
-	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Col)
+	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Column)
 }
 
 // IsBefore reports whether p precedes other. Equal positions return false.
@@ -162,7 +162,7 @@ func (p *Pos) IsBefore(other *Pos) bool {
 	if p.Line > other.Line {
 		return false
 	}
-	return p.Col < other.Col
+	return p.Column < other.Column
 }
 
 // SourceScalarKind identifies the YAML node kind captured from source.

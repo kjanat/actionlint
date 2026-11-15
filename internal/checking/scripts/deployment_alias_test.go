@@ -59,7 +59,7 @@ func (a deploymentAliasTool) Analyze(_ context.Context, batch tools.Batch) ([]to
 		if script.Path != a.paths[i] || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != filepath.Dir(a.paths[i]) {
 			a.t.Fatalf("native adapter reused another deployment: %+v", script)
 		}
-		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
+		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Column}, Script: i, Content: script.Content})
 	}
 	return findings, nil
 }

@@ -13,7 +13,7 @@ import (
 
 func TestTrustReadsPublishedDeclarations(t *testing.T) {
 	t.Parallel()
-	mode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}
+	mode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Column: 13}}
 	hook := &workflowlang.String{Value: "pull_request_target"}
 	job := &workflowlang.Job{}
 	model := &workflowlang.Workflow{

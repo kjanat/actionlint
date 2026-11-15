@@ -893,7 +893,7 @@ func expression(text *workflowlang.String) value.Value {
 func origin(pos *workflowlang.Pos, fromExpression bool) value.Origin {
 	o := value.Origin{FromExpression: fromExpression}
 	if pos != nil {
-		o.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Col}
+		o.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Column}
 	}
 	return o
 }

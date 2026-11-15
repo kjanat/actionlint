@@ -57,7 +57,7 @@ func (e *Finding) String() string {
 func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
-		Start: sourcepos.Position{Line: pos.Line, Column: pos.Col},
+		Start: sourcepos.Position{Line: pos.Line, Column: pos.Column},
 	}
 }
 
@@ -65,7 +65,7 @@ func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
 func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
-		Start: sourcepos.Position{Line: pos.Line, Column: pos.Col},
+		Start: sourcepos.Position{Line: pos.Line, Column: pos.Column},
 	}
 }
 

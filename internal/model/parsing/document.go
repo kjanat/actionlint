@@ -124,7 +124,7 @@ func actionFacts(metadata *actionmeta.Metadata) *workflowlang.Workflow {
 		if job.Outputs == nil {
 			job.Outputs = make(map[string]*workflowlang.Output)
 		}
-		job.Outputs[field.FieldPath] = &workflowlang.Output{Value: &workflowlang.String{Value: field.Value.Value, Pos: &workflowlang.Pos{Line: field.Value.Line, Col: field.Value.Column}}}
+		job.Outputs[field.FieldPath] = &workflowlang.Output{Value: &workflowlang.String{Value: field.Value.Value, Pos: &workflowlang.Pos{Line: field.Value.Line, Column: field.Value.Column}}}
 	}
 	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}, ExpressionSources: parser.ExpressionSources(metadata.Root)}
 	parser.IndexDependencySpans(workflow)

@@ -113,14 +113,14 @@ func (p *Parser) scalarSource(key workflowlang.Pos, value string) *workflowlang.
 	if !exists {
 		return nil
 	}
-	decoded, err := p.scalarDocument.Decode(sourcemap.Position{Line: key.Line, Column: key.Col}, context)
+	decoded, err := p.scalarDocument.Decode(sourcemap.Position{Line: key.Line, Column: key.Column}, context)
 	if err != nil || decoded.Value != value {
 		return nil
 	}
 	source := workflowlang.NewScriptSource(decoded.Value)
 	source.Literal = decoded.Literal
-	source.ContentStart = workflowlang.Pos{Line: decoded.Start.Line, Col: decoded.Start.Column}
-	source.ScalarEnd = workflowlang.Pos{Line: decoded.End.Line, Col: decoded.End.Column}
+	source.ContentStart = workflowlang.Pos{Line: decoded.Start.Line, Column: decoded.Start.Column}
+	source.ScalarEnd = workflowlang.Pos{Line: decoded.End.Line, Column: decoded.End.Column}
 	source.Comments = p.scalarComments[key].comments(p.sourceLines, source)
 	for _, span := range decoded.Spans {
 		endColumn := 0

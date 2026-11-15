@@ -93,5 +93,5 @@ func outlinePosition(pos *workflowlang.Pos) *sourcepos.Position {
 	if pos == nil {
 		return nil
 	}
-	return &sourcepos.Position{Line: pos.Line, Column: pos.Col}
+	return &sourcepos.Position{Line: pos.Line, Column: pos.Column}
 }

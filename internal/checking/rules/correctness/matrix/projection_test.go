@@ -33,12 +33,12 @@ func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
 			}
 			filters := workflow.Jobs["test"].Strategy.Matrix.Exclude
 			if tc.name == "empty filter" {
-				if filters.Expression == nil || filters.Expression.Pos == nil || findings[0].Start.Line != filters.Expression.Pos.Line || findings[0].Start.Column != filters.Expression.Pos.Col {
+				if filters.Expression == nil || filters.Expression.Pos == nil || findings[0].Start.Line != filters.Expression.Pos.Line || findings[0].Start.Column != filters.Expression.Pos.Column {
 					t.Fatalf("empty expression filter fabricated source position: %v", findings)
 				}
 			} else {
 				key := filters.Combinations[0].Assigns["nokey"].Key
-				if key == nil || key.Pos == nil || findings[0].Start.Line != key.Pos.Line || findings[0].Start.Column != key.Pos.Col {
+				if key == nil || key.Pos == nil || findings[0].Start.Line != key.Pos.Line || findings[0].Start.Column != key.Pos.Column {
 					t.Fatalf("missing axis diagnostic lost key origin: %v", findings)
 				}
 			}

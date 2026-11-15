@@ -77,12 +77,12 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 			ty := rule.checkMatrixRow(row)
 			if row.Expression != nil {
 				if pos := scalarPosition(row.Expression); pos != nil {
-					inferred[sourcepos.Position{Line: pos.Line, Column: pos.Col}] = ty
+					inferred[sourcepos.Position{Line: pos.Line, Column: pos.Column}] = ty
 				}
 			} else {
 				for _, item := range row.Values {
 					if pos := rawValuePosition(item); pos != nil {
-						inferred[sourcepos.Position{Line: pos.Line, Column: pos.Col}] = ty
+						inferred[sourcepos.Position{Line: pos.Line, Column: pos.Column}] = ty
 					}
 				}
 			}

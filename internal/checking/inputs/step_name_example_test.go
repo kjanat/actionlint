@@ -38,7 +38,7 @@ func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Input
 			if step.Name == nil {
 				findings = append(findings, results.Diagnostic{
 					Message: "every step must have its name",
-					Start:   sourcepos.Position{Line: step.Pos.Line, Column: step.Pos.Col},
+					Start:   sourcepos.Position{Line: step.Pos.Line, Column: step.Pos.Column},
 				})
 			}
 			if parallel, ok := step.Exec.(*workflowmodel.ExecParallel); ok {

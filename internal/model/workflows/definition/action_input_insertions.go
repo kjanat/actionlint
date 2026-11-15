@@ -15,7 +15,7 @@ func SemanticValue(node *String) value.Value {
 	}
 	origin := value.Origin{}
 	if node.Pos != nil {
-		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Column}
 	}
 	if node.SourceScalar.Evaluated {
 		origin.FromExpression = true
@@ -52,7 +52,7 @@ func semanticMappingValue(node *String) value.Value {
 	}
 	origin := value.Origin{}
 	if node.Pos != nil {
-		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Col}
+		origin.Span.Start = sourcepos.Position{Line: node.Pos.Line, Column: node.Pos.Column}
 	}
 	return MappingScalar(node.Value, node.SourceScalar, origin)
 }

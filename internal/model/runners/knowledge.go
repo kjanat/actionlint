@@ -198,7 +198,7 @@ func joinAnswers(job workflowdecl.Job, answers []runnerapi.Answer) (jobRecord, e
 			for _, rejection := range result.Rejections {
 				if rejection.Position.Line == 0 {
 					if declaration, present := job.Position(); present {
-						rejection.Position = sourcepos.Position{Line: declaration.Line, Column: declaration.Col}
+						rejection.Position = sourcepos.Position{Line: declaration.Line, Column: declaration.Column}
 					}
 				}
 				if !slices.Contains(record.rejections, rejection) {

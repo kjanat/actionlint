@@ -44,8 +44,8 @@ func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 
 func TestEffectiveModePreservesPublishedDeclaration(t *testing.T) {
 	t.Parallel()
-	workflowMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead, Pos: &workflowlang.Pos{Line: 2, Col: 13}}
-	jobMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone, Pos: &workflowlang.Pos{Line: 5, Col: 17}}
+	workflowMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead, Pos: &workflowlang.Pos{Line: 2, Column: 13}}
+	jobMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone, Pos: &workflowlang.Pos{Line: 5, Column: 17}}
 	if EffectiveMode(workflowMode, nil) != workflowMode || EffectiveMode(workflowMode, jobMode) != jobMode {
 		t.Fatal("inheritance did not select the declaring mode")
 	}

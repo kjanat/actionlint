@@ -27,7 +27,7 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 		Path: "script.sh", Start: source.Position{Line: 2, Column: 3},
 		LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.LanguageRuntimes, Name: "example"},
 		EndColumn:         8,
-		EndPosition:       &workflowlang.Pos{Line: 2, Col: 9},
+		EndPosition:       &workflowlang.Pos{Line: 2, Column: 9},
 		Source:            []byte("first\nsecond\n"),
 		RawScriptSource:   true,
 		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},

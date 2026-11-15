@@ -114,7 +114,7 @@ func (s Skeleton) Bind(path string, content []byte) References {
 			refs.Steps[step.step] = ref
 			refs.StepJobs[step.step] = step.job
 			if step.hasPosition {
-				refs.Positions[[2]int{step.position.Line, step.position.Col}] = ref
+				refs.Positions[[2]int{step.position.Line, step.position.Column}] = ref
 			}
 			walk(ref.Node, step.children)
 		}
@@ -122,7 +122,7 @@ func (s Skeleton) Bind(path string, content []byte) References {
 	for _, job := range s.jobs {
 		refs.Jobs[job.id] = index.Ref("", "job:"+job.id, "", job.address)
 		for _, pos := range job.positions {
-			refs.Positions[[2]int{pos.Line, pos.Col}] = refs.Jobs[job.id]
+			refs.Positions[[2]int{pos.Line, pos.Column}] = refs.Jobs[job.id]
 		}
 		walk("job:"+job.id, job.steps)
 	}

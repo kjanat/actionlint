@@ -42,7 +42,7 @@ func NodeKindName(k codec.Kind) string {
 }
 
 func PosAt(n *codec.Node) *workflowlang.Pos {
-	return &workflowlang.Pos{Line: n.Line, Col: n.Column}
+	return &workflowlang.Pos{Line: n.Line, Column: n.Column}
 }
 
 func newString(n *codec.Node) *workflowlang.String {
@@ -62,11 +62,11 @@ func newString(n *codec.Node) *workflowlang.String {
 	default:
 		return &workflowlang.String{Value: n.Value, Quoted: quoted, Pos: PosAt(n)}
 	}
-	pos := workflowlang.Pos{Line: n.Line, Col: n.Column}
+	pos := workflowlang.Pos{Line: n.Line, Column: n.Column}
 	return &workflowlang.String{
 		Value:  n.Value,
 		Quoted: quoted,
-		Pos:    &workflowlang.Pos{Line: pos.Line, Col: pos.Col},
+		Pos:    &workflowlang.Pos{Line: pos.Line, Column: pos.Column},
 		SourceScalar: workflowlang.SourceScalar{
 			HasSource: true,
 			Kind:      kind,
@@ -126,7 +126,7 @@ func (p *Parser) error(n *codec.Node, code Code, m string) {
 }
 
 func (p *Parser) errorAt(pos *workflowlang.Pos, code Code, m string) {
-	p.errs = append(p.errs, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Col, Kind: "syntax-check", Code: code})
+	p.errs = append(p.errs, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Column, Kind: "syntax-check", Code: code})
 }
 
 func (p *Parser) errorfAt(pos *workflowlang.Pos, code Code, format string, args ...any) {
@@ -503,12 +503,12 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 						origin := declaration.Origin.Span.Start
 						insertedKeys[strings.ToLower(declaration.Name)] = &workflowlang.String{
 							Value: declaration.Name,
-							Pos:   &workflowlang.Pos{Line: origin.Line, Col: origin.Column},
+							Pos:   &workflowlang.Pos{Line: origin.Line, Column: origin.Column},
 						}
 					case mapping.InvalidKey:
 						if n.Content[i+1].Kind == codec.ScalarNode && emptyResolvedMappingKey(declaration.Key) {
 							origin := declaration.Origin.Span.Start
-							pos := &workflowlang.Pos{Line: origin.Line, Col: origin.Column}
+							pos := &workflowlang.Pos{Line: origin.Line, Column: origin.Column}
 							if origin.Line == 0 || origin.Column == 0 {
 								pos = PosAt(n.Content[i+1])
 							}
@@ -2051,8 +2051,8 @@ func (p *Parser) parse(n *codec.Node) *workflowlang.Workflow {
 		if position.Line == 0 {
 			position.Line = 1
 		}
-		if position.Col == 0 {
-			position.Col = 1
+		if position.Column == 0 {
+			position.Column = 1
 		}
 		p.errorAt(position, CodeEmptyValue, "workflow is empty")
 		return w

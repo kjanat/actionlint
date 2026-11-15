@@ -59,7 +59,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 	const key = "${{ vars.AXIS }}"
 	strategy := &workflowlang.Strategy{Matrix: &workflowlang.Matrix{Expression: &workflowlang.String{
 		Value: `${{ fromJSON('{"${{ vars.AXIS }}":["ubuntu-latest"]}') }}`,
-		Pos:   &workflowlang.Pos{Line: 1, Col: 1},
+		Pos:   &workflowlang.Pos{Line: 1, Column: 1},
 	}}}
 	resolution := matrixcheck.Resolve(strategy)
 	if combinations, complete := resolution.Combinations(8); !complete || len(combinations) != 1 {

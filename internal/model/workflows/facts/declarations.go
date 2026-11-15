@@ -9,5 +9,5 @@ func Position(pos *workflowlang.Pos) sourcepos.Position {
 	if pos == nil {
 		return sourcepos.Position{}
 	}
-	return sourcepos.Position{Line: pos.Line, Column: pos.Col}
+	return sourcepos.Position{Line: pos.Line, Column: pos.Column}
 }

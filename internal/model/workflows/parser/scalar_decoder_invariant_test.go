@@ -135,11 +135,11 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 		if pos.Line < 1 || pos.Line > len(lines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}
-		if _, ok := inputsource.ByteOffsetAtColumn(lines[pos.Line-1], pos.Col); !ok {
+		if _, ok := inputsource.ByteOffsetAtColumn(lines[pos.Line-1], pos.Column); !ok {
 			t.Fatalf("scalar boundary outside line: %+v", pos)
 		}
 	}
-	if source.ScalarEnd.Line < source.ContentStart.Line || source.ScalarEnd.Line == source.ContentStart.Line && source.ScalarEnd.Col < source.ContentStart.Col {
+	if source.ScalarEnd.Line < source.ContentStart.Line || source.ScalarEnd.Line == source.ContentStart.Line && source.ScalarEnd.Column < source.ContentStart.Column {
 		t.Fatalf("scalar ends before content starts: %+v -> %+v", source.ContentStart, source.ScalarEnd)
 	}
 	covered := make([]bool, len(source.Value))

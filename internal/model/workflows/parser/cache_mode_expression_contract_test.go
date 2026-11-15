@@ -86,9 +86,9 @@ jobs:
 					}
 					// Metadata keeps only the mode; the parsed declaration keeps its source.
 					mode := workflowlang.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
-					want := workflowlang.Pos{Line: line, Col: 17}
+					want := workflowlang.Pos{Line: line, Column: 17}
 					if line == 2 || aliased {
-						want = workflowlang.Pos{Line: 2, Col: 13}
+						want = workflowlang.Pos{Line: 2, Column: 13}
 					}
 					if mode == nil || mode.Kind != kind || *mode.Pos != want {
 						t.Fatalf("%s: expected %s at %v, got %#v", id, kind, want, mode)

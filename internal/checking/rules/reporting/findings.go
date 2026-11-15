@@ -37,7 +37,7 @@ func Position(p *workflow.Pos) sourcepos.Position {
 	if p == nil {
 		return sourcepos.Position{}
 	}
-	return sourcepos.Position{Line: p.Line, Column: p.Col}
+	return sourcepos.Position{Line: p.Line, Column: p.Column}
 }
 
 // OptionalPosition returns nil when a declaration has no source position.

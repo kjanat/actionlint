@@ -57,8 +57,8 @@ func (rule *Checker) addScriptEnvironmentFix(report *report) {
 		return
 	}
 	edit := results.Edit{
-		Start:       sourcepos.Position{Line: start.Line, Column: start.Col},
-		End:         sourcepos.Position{Line: end.Line, Column: end.Col},
+		Start:       sourcepos.Position{Line: start.Line, Column: start.Column},
+		End:         sourcepos.Position{Line: end.Line, Column: end.Column},
 		Replacement: "${" + replacement.environment.Name() + "}",
 	}
 	report.fixes = append(report.fixes, results.Fix{

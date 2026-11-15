@@ -154,7 +154,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	step := workflowStepViews(t, w, "test")[0]
 	site := stepReference(t, f.root, step)
 	facts, _ := call.Facts()
-	if call.Parent() != graph.RootID() || call.Site().Document != graph.Entry().Reference.Document || call.Depth() != 1 || facts.Uses != "$/child" || call.Site() != site || facts.Step.Line != stepPosition(t, step).Line || facts.Step.Column != stepPosition(t, step).Col {
+	if call.Parent() != graph.RootID() || call.Site().Document != graph.Entry().Reference.Document || call.Depth() != 1 || facts.Uses != "$/child" || call.Site() != site || facts.Step.Line != stepPosition(t, step).Line || facts.Step.Column != stepPosition(t, step).Column {
 		t.Fatalf("top-level public call facts: %+v", call)
 	}
 }

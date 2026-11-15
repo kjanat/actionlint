@@ -88,7 +88,7 @@ func (v *visitor) visitWorkflow(n declaration.Workflow) error {
 			if order := cmp.Compare(left.Line, right.Line); order != 0 {
 				return order
 			}
-			if order := cmp.Compare(left.Col, right.Col); order != 0 {
+			if order := cmp.Compare(left.Column, right.Column); order != 0 {
 				return order
 			}
 		case leftPresent:

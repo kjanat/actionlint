@@ -81,7 +81,7 @@ runs:
 				t.Fatal(err)
 			}
 			meta.Filename, meta.Source = "action.yml", source
-			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
+			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			errs := findings
 			if tc.message == "" {
 				if len(errs) != 0 {

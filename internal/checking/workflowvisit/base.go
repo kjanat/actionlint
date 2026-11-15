@@ -57,8 +57,8 @@ func (r *Base) ErrorfRange(start, end *workflowlang.Pos, format string, args ...
 		copied := *end
 		err.EndPosition = &copied
 	}
-	if end != nil && end.Line == start.Line && end.Col > start.Col {
-		err.EndColumn = end.Col - 1
+	if end != nil && end.Line == start.Line && end.Column > start.Column {
+		err.EndColumn = end.Column - 1
 	}
 	r.findings.Report(err)
 }

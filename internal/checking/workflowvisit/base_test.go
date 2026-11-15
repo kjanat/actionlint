@@ -17,8 +17,8 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	if len(errs) > 0 {
 		t.Error("no error is expected", errs)
 	}
-	r.Error(&workflowlang.Pos{Line: 1, Col: 2}, "this is test 1")
-	r.Errorf(&workflowlang.Pos{Line: 3, Col: 4}, "this is test %d", 2)
+	r.Error(&workflowlang.Pos{Line: 1, Column: 2}, "this is test 1")
+	r.Errorf(&workflowlang.Pos{Line: 3, Column: 4}, "this is test %d", 2)
 	errs = r.Errs()
 	if len(errs) != 2 {
 		t.Error("wanted 2 errors but have", errs)
@@ -45,7 +45,7 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 func TestRuleBaseErrsAreDetached(t *testing.T) {
 	t.Parallel()
 	r := NewBase("rule", "description")
-	r.Error(&workflowlang.Pos{Line: 1, Col: 1}, "message")
+	r.Error(&workflowlang.Pos{Line: 1, Column: 1}, "message")
 	r.Errs()[0].Path = "changed"
 	if path := r.Errs()[0].Path; path != "" {
 		t.Fatalf("reader changed a recorded finding: path %q", path)
@@ -55,9 +55,9 @@ func TestRuleBaseErrsAreDetached(t *testing.T) {
 func TestRuleBaseAnnotateSince(t *testing.T) {
 	t.Parallel()
 	r := NewBase("rule", "description")
-	r.Error(&workflowlang.Pos{Line: 1, Col: 1}, "before")
+	r.Error(&workflowlang.Pos{Line: 1, Column: 1}, "before")
 	mark := r.FindingCount()
-	r.Error(&workflowlang.Pos{Line: 2, Col: 1}, "after")
+	r.Error(&workflowlang.Pos{Line: 2, Column: 1}, "after")
 	r.AnnotateSince(mark, func(finding *findingmodel.Finding) { finding.Path = "annotated" })
 	if count := r.FindingCount(); count != 2 {
 		t.Fatalf("wanted 2 findings, have %d", count)

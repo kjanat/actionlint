@@ -17,7 +17,7 @@ func TestErrorErrorAt(t *testing.T) {
 	t.Parallel()
 	m := "message"
 	k := "kind"
-	err := At(&workflowlang.Pos{Line: 1, Col: 2}, k, m)
+	err := At(&workflowlang.Pos{Line: 1, Column: 2}, k, m)
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
@@ -39,7 +39,7 @@ func TestErrorErrorfAt(t *testing.T) {
 	t.Parallel()
 	m := "this is message"
 	k := "kind"
-	err := Errorf(&workflowlang.Pos{Line: 1, Col: 2}, k, "%s is %s", "this", "message")
+	err := Errorf(&workflowlang.Pos{Line: 1, Column: 2}, k, "%s is %s", "this", "message")
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}

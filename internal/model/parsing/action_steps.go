@@ -11,7 +11,7 @@ import (
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
 func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workflowlang.Step {
-	pos := &workflowlang.Pos{Line: metadata.Line, Col: metadata.Column}
+	pos := &workflowlang.Pos{Line: metadata.Line, Column: metadata.Column}
 	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {
 		return opaque

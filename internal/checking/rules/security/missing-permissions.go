@@ -42,7 +42,7 @@ func MissingPermissions(workflow declaration.Workflow, locations []configuration
 	if requireWorkflow && workflow.Permissions == nil {
 		pos := workflow.Pos
 		if pos == nil {
-			pos = &workflowlang.Pos{Line: 1, Col: 1}
+			pos = &workflowlang.Pos{Line: 1, Column: 1}
 		}
 		findings.Errorf(pos, "workflow-level \"permissions\" is required; declare the token permissions your jobs need, or use \"permissions: {}\" to grant none")
 	}

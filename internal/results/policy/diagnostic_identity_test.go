@@ -22,7 +22,7 @@ func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
 		{"rule", func(e *finding.Finding) { e.Rule = "second" }},
 		{"code", func(e *finding.Finding) { e.Code = "E001" }},
 		{"inclusive end", func(e *finding.Finding) { e.EndColumn = 5 }},
-		{"end", func(e *finding.Finding) { e.EndPosition = &workflowlang.Pos{Line: 2, Col: 1} }},
+		{"end", func(e *finding.Finding) { e.EndPosition = &workflowlang.Pos{Line: 2, Column: 1} }},
 		{"fix", func(e *finding.Finding) { e.Fixes = []results.Fix{{Description: "fix"}} }},
 	} {
 		t.Run(change.name, func(t *testing.T) {

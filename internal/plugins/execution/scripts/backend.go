@@ -396,13 +396,13 @@ func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.Script
 	var end sourcepos.Position
 	if hasEnd {
 		position, endOK := script.Source.EndPos(endRow, d.EndLocation.Column)
-		if endOK && (position.Line > start.Line || position.Line == start.Line && position.Col >= start.Col) {
-			end = sourcepos.Position{Line: position.Line, Column: position.Col}
+		if endOK && (position.Line > start.Line || position.Line == start.Line && position.Column >= start.Column) {
+			end = sourcepos.Position{Line: position.Line, Column: position.Column}
 		} else {
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: sourcepos.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Content: script.Content}
+	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: sourcepos.Position{Line: start.Line, Column: start.Column}, End: end, Script: c.index, Content: script.Content}
 	for _, fix := range d.Fixes {
 		if mapped, ok := scriptFix(script.Source, c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)

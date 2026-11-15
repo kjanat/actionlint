@@ -55,7 +55,7 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 						if ok != wantOK {
 							t.Fatalf("line %d column %d exclusive=%v: mapped=%v, parser mapped=%v", line, column, exclusive, ok, wantOK)
 						}
-						if ok && (got.Line != want.Line || got.Column != want.Col) {
+						if ok && (got.Line != want.Line || got.Column != want.Column) {
 							t.Fatalf("line %d column %d exclusive=%v: %+v, parser %+v", line, column, exclusive, got, want)
 						}
 					}

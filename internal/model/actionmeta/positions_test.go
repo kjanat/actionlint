@@ -22,7 +22,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	}
 	value := &ExprString{Value: "example", Line: 2, Column: 3}
 	for range 2 {
-		if got := ExpressionPosition(&metadata, value, 2); *got != (workflowlang.Pos{Line: 2, Col: 3}) || metadata.Provenance.parsed != nil {
+		if got := ExpressionPosition(&metadata, value, 2); *got != (workflowlang.Pos{Line: 2, Column: 3}) || metadata.Provenance.parsed != nil {
 			t.Fatal("source-less position lookup allocated a cache or lost its fallback")
 		}
 	}
@@ -109,7 +109,7 @@ func TestMetadataPositionCache(t *testing.T) {
 			if got := view.Provenance.source(value); got == first || !reflect.DeepEqual(got, first) {
 				t.Errorf("copied metadata lost mapping values or shares mutable results")
 			}
-			if pos := ExpressionPosition(&view, value, 10); *pos != (workflowlang.Pos{Line: 6, Col: 21}) {
+			if pos := ExpressionPosition(&view, value, 10); *pos != (workflowlang.Pos{Line: 6, Column: 21}) {
 				t.Errorf("position = %+v", pos)
 			}
 		})

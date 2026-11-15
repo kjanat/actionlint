@@ -55,7 +55,7 @@ func (s *parsedSource) source(value *ExprString) *workflowlang.ScriptSource {
 	if !s.indexed {
 		s.index()
 	}
-	key := workflowlang.Pos{Line: value.Line, Col: value.Column}
+	key := workflowlang.Pos{Line: value.Line, Column: value.Column}
 	scalar := s.scalars[key]
 	if scalar == nil || scalar.Value != value.Value {
 		return nil
@@ -80,7 +80,7 @@ func (s *parsedSource) index() {
 			return
 		}
 		if node.Kind == codec.ScalarNode {
-			key := workflowlang.Pos{Line: node.Line, Col: node.Column}
+			key := workflowlang.Pos{Line: node.Line, Column: node.Column}
 			if _, exists := s.scalars[key]; !exists {
 				s.scalars[key] = node
 			}
@@ -96,7 +96,7 @@ func (s *parsedSource) index() {
 // ExpressionPosition maps a decoded expression offset to its YAML source position.
 // If the offset cannot be mapped, it returns the start of the value.
 func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *workflowlang.Pos {
-	fallback := &workflowlang.Pos{Line: value.Line, Col: value.Column}
+	fallback := &workflowlang.Pos{Line: value.Line, Column: value.Column}
 	if offset <= 0 || offset > len(value.Value)+1 {
 		return fallback
 	}

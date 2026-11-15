@@ -13,7 +13,7 @@ import (
 func origin(pos *workflowlang.Pos, expression bool) value.Origin {
 	result := value.Origin{FromExpression: expression}
 	if pos != nil {
-		result.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Col}
+		result.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Column}
 	}
 	return result
 }

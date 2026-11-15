@@ -368,7 +368,7 @@ func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey stri
 		rule.expressionSource = nil
 	}
 	rule.expressionOffset = offset
-	line, col := scalarPosition(str).Line, scalarPosition(str).Col+offset
+	line, col := scalarPosition(str).Line, scalarPosition(str).Column+offset
 	if offset != 0 && str.Quoted {
 		col++
 	}

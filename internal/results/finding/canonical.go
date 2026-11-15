@@ -23,7 +23,7 @@ func (e *Finding) Canonical(source []byte) results.Diagnostic {
 		end.Column = sourcepos.InclusiveEnd(snippet, e.Start.Column, e.EndColumn) + 1
 	}
 	if e.EndPosition != nil {
-		end = sourcepos.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Col}
+		end = sourcepos.Position{Line: e.EndPosition.Line, Column: e.EndPosition.Column}
 	}
 	d := e.Diagnostic.Clone()
 	switch {
