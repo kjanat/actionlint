@@ -16,6 +16,7 @@ import (
 type RuntimeScriptChecker struct{ declaration rule.Declaration }
 
 func ErrexitChecker() RuntimeScriptChecker { return RuntimeScriptChecker{ErrexitStatusDeclaration()} }
+
 func WorkflowCommandChecker() RuntimeScriptChecker {
 	return RuntimeScriptChecker{WorkflowCommandSyntaxDeclaration()}
 }
