@@ -71,9 +71,6 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 
 func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 	t.Parallel()
-	// setup-node reads this input with getInput, which trims whitespace by default:
-	// https://github.com/actions/setup-node/blob/49933ea5288caeca8642d1e84afbd3f7d6820020/src/main.ts
-	// https://github.com/actions/toolkit/blob/main/packages/core/src/core.ts
 	date, err := lifecycle.ParseDate("2026-11-15")
 	if err != nil {
 		t.Fatal(err)
@@ -99,9 +96,8 @@ func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 
 func TestRuntimeLifecycleOnReleaseWorkflow(t *testing.T) {
 	t.Parallel()
-	// This excerpt of kjanat/actionlint .github/workflows/release.yml at
-	// 8d8c9782a68f5ca91fd16719f7baddc26a3dd1d2 retains the Node 24 selection,
-	// SHA-pinned action, YAML anchors and original source positions.
+	// Source: kjanat/actionlint .github/workflows/release.yml at
+	// 8d8c9782a68f5ca91fd16719f7baddc26a3dd1d2.
 	content, err := os.ReadFile("testdata/runtime-lifecycle-release.yml")
 	if err != nil {
 		t.Fatal(err)
