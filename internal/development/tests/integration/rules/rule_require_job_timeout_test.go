@@ -1,10 +1,11 @@
 package rules
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"

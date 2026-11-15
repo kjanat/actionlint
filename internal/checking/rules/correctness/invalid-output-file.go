@@ -1,12 +1,13 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"context"
 	"fmt"
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"

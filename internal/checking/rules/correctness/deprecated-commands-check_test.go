@@ -1,9 +1,10 @@
 package correctness_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"reflect"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"

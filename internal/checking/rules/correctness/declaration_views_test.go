@@ -1,11 +1,12 @@
 package correctness_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"reflect"
 	"slices"
 	"sync"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 

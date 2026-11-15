@@ -1,10 +1,11 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	"fmt"
 	"path/filepath"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -18,9 +19,10 @@ import (
 // WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
 // It does not read files or depend on prior callbacks.
 func WorkflowRunNamesChecks(inventory namemodel.Inventory) define.Checks {
-	return define.Checks{Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
-		return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
-	},
+	return define.Checks{
+		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
+		},
 	}
 }
 

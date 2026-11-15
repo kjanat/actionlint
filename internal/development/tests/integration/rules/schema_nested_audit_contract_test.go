@@ -1,9 +1,10 @@
 package rules_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 

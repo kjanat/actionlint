@@ -1,9 +1,10 @@
 package security
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"regexp"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
@@ -14,7 +15,8 @@ import (
 
 // UnpinnedReferenceChecks binds reference exclusions to job and step declarations.
 func UnpinnedReferenceChecks(excluded func(string) bool) define.Checks {
-	return define.Checks{Job: func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
+	return define.Checks{
+		Job:  func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
 		Step: func(step declaration.Step) []reporting.Finding { return CommitHashStep(step, excluded) },
 	}
 }

@@ -1,8 +1,9 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"fmt"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -16,12 +17,13 @@ import (
 
 // VendorLockInChecks binds the execution target to job and step reference checks.
 func VendorLockInChecks(target string) define.Checks {
-	return define.Checks{Job: func(job declaration.Job) []reporting.Finding {
-		if !job.Present() || job.WorkflowCall == nil {
-			return nil
-		}
-		return reporting.FromDiagnostics(VendorLockIn(job.Workflow(), job.WorkflowCall.Uses, target))
-	},
+	return define.Checks{
+		Job: func(job declaration.Job) []reporting.Finding {
+			if !job.Present() || job.WorkflowCall == nil {
+				return nil
+			}
+			return reporting.FromDiagnostics(VendorLockIn(job.Workflow(), job.WorkflowCall.Uses, target))
+		},
 		Step: func(step declaration.Step) []reporting.Finding {
 			if action, present := step.Action(); present {
 				findings := reporting.FromDiagnostics(VendorLockIn(step.Workflow(), action.Uses, target))

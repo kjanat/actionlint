@@ -2,9 +2,10 @@
 package selection
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"fmt"
 	"io"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"

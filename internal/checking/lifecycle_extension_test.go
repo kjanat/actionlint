@@ -1,11 +1,12 @@
 package checking
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"

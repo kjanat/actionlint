@@ -1,12 +1,13 @@
 package selection_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"context"
 	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/binding"

@@ -1,8 +1,9 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -28,37 +29,38 @@ var RuntimeLifecycleRule = &define.Rule{
 }
 
 func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
-	return define.Checks{Step: func(step workflowdecl.Step) []reporting.Finding {
-		action, ok := step.Action()
-		if !ok {
-			return nil
-		}
-		spec, known := workflowdecl.Scalar(action.Uses).ScalarString()
-		if !known {
-			return nil
-		}
-		target, valid := references.ParseRepositoryUses(spec)
-		if !valid || !strings.EqualFold(target.Owner, "actions") || !strings.EqualFold(target.Repo, "setup-node") || target.Subpath != "" {
-			return nil
-		}
-		version := workflowdecl.ResolvedInputs(action).Lookup("node-version")
-		selector, known := version.ScalarString()
-		if !known {
-			return nil
-		}
-		evidence, message, known := lifecycle.NodeLifecycle(strings.TrimSpace(selector), context.AsOf, context.Service)
-		if !known {
-			return nil
-		}
-		position := version.Origin().Span.Start
-		if position.Line == 0 {
-			return nil
-		}
-		return []reporting.Finding{{
-			Code: string(evidence.Kind), Severity: "warning",
-			Message: message, Start: position, Step: step, DocumentationURL: evidence.Source,
-			LifecycleEvidence: &evidence,
-		}}
-	},
+	return define.Checks{
+		Step: func(step workflowdecl.Step) []reporting.Finding {
+			action, ok := step.Action()
+			if !ok {
+				return nil
+			}
+			spec, known := workflowdecl.Scalar(action.Uses).ScalarString()
+			if !known {
+				return nil
+			}
+			target, valid := references.ParseRepositoryUses(spec)
+			if !valid || !strings.EqualFold(target.Owner, "actions") || !strings.EqualFold(target.Repo, "setup-node") || target.Subpath != "" {
+				return nil
+			}
+			version := workflowdecl.ResolvedInputs(action).Lookup("node-version")
+			selector, known := version.ScalarString()
+			if !known {
+				return nil
+			}
+			evidence, message, known := lifecycle.NodeLifecycle(strings.TrimSpace(selector), context.AsOf, context.Service)
+			if !known {
+				return nil
+			}
+			position := version.Origin().Span.Start
+			if position.Line == 0 {
+				return nil
+			}
+			return []reporting.Finding{{
+				Code: string(evidence.Kind), Severity: "warning",
+				Message: message, Start: position, Step: step, DocumentationURL: evidence.Source,
+				LifecycleEvidence: &evidence,
+			}}
+		},
 	}
 }

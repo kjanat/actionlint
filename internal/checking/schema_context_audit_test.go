@@ -1,9 +1,10 @@
 package checking
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 

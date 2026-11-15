@@ -1,10 +1,11 @@
 package composites
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"context"
 	"errors"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"

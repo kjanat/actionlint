@@ -1,9 +1,10 @@
 package rules_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"

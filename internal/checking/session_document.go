@@ -1,7 +1,6 @@
 package checking
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 

@@ -1,8 +1,9 @@
 package rules
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 

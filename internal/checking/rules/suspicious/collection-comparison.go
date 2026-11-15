@@ -1,8 +1,9 @@
 package suspicious
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"slices"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"

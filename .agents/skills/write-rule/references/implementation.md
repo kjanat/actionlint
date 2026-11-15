@@ -7,15 +7,15 @@ signatures and their callers before editing. Search for the symbol if its file h
 
 For a declaration check, trace `missing-permissions` as a worked example:
 
-| Responsibility                                          | Entry point                                                                           |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Rule definition: metadata, options, enablement, checks  | `MissingPermissionsRule` in `internal/checking/rules/security/missing-permissions.go` |
-| Configuration projection                                | `internal/input/configuration/registry.go`, `internal/input/configuration/catalog.go` |
-| Catalog order                                           | `All` in `internal/checking/executor/registration/registry.go`                        |
-| Rule definition and adapter                             | `internal/checking/define/rule.go`, `internal/checking/define/checks.go`              |
-| Semantic implementation                                 | `MissingPermissions` in `internal/checking/rules/security/missing-permissions.go`     |
-| Semantic regression cases                               | `internal/checking/rules/security/missing_workflow_permissions_test.go`               |
-| Configured host and suppression cases                   | `internal/development/tests/integration/workflow/rule_missing_permissions_test.go`    |
+| Responsibility                                         | Entry point                                                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Rule definition: metadata, options, enablement, checks | `MissingPermissionsRule` in `internal/checking/rules/security/missing-permissions.go` |
+| Configuration projection                               | `internal/input/configuration/registry.go`, `internal/input/configuration/catalog.go` |
+| Catalog order                                          | `All` in `internal/checking/executor/registration/registry.go`                        |
+| Rule definition and adapter                            | `internal/checking/define/rule.go`, `internal/checking/define/checks.go`              |
+| Semantic implementation                                | `MissingPermissions` in `internal/checking/rules/security/missing-permissions.go`     |
+| Semantic regression cases                              | `internal/checking/rules/security/missing_workflow_permissions_test.go`               |
+| Configured host and suppression cases                  | `internal/development/tests/integration/workflow/rule_missing_permissions_test.go`    |
 
 This example separates absent permissions from explicit `{}` and distinguishes a
 reusable-only workflow from one with another trigger. Follow its registration,

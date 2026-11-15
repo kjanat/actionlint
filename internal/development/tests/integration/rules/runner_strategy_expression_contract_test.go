@@ -1,10 +1,11 @@
 package rules_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"reflect"
 	"strings"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 

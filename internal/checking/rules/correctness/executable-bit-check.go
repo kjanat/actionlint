@@ -1,11 +1,12 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/define"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"context"
 	"errors"
 	"os"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
