@@ -28,7 +28,7 @@ workflow, job or step views the rule consumes. Leave other callbacks nil. Define
 that binding beside the rule's metadata and implementation; the traversal adapter
 does not select implementations by rule name. For reasoning across calls, inspect
 `internal/model/workflows/facts` and `internal/model/workflows/execution` and an existing consumer.
-Shared semantic predicates live under `internal/checking/constraints`. Adapters supply facts
+Shared semantic predicates belong in the model packages, not in rule adapters. Adapters supply facts
 and attach findings; they should not each reconstruct the same analysis.
 
 Other parts of the model and host are relevant depending on the rule:
