@@ -55,7 +55,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 					}
 					visitedScripts++
 					position, present := step.Position()
-					return []reporting.Finding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: reporting.Position(reporting.ViewPosition(position, present)), Step: step, LifecycleEvidence: &evidence}}
+					return []reporting.Finding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: reporting.Position(reporting.OptionalPosition(position, present)), Step: step, LifecycleEvidence: &evidence}}
 				},
 			}
 			return []workflowvisit.Rule{declarationchecks.New(ConfigurationRules(), check)}

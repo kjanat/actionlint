@@ -76,7 +76,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					}
 					calls++
 					collector := reporting.Collector{Rule: check.Name, Step: input}
-					collector.Errorf(reporting.ViewPosition(input.Position()), "test finding")
+					collector.Errorf(reporting.OptionalPosition(input.Position()), "test finding")
 					return collector.Findings
 				}
 			}

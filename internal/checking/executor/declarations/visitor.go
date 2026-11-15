@@ -90,7 +90,7 @@ func (r *declarationRule) collect(input []reporting.Finding, job string) {
 			finding.Rule = descriptor.Name
 		}
 		if d.Step.Present() {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: reporting.ViewPosition(d.Step.Position())}
+			finding.Owner = &findingmodel.Owner{Job: job, Step: reporting.OptionalPosition(d.Step.Position())}
 			origin := d.Step.Origin(job)
 			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
 			if origin.HasPosition {

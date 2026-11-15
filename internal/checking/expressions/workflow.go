@@ -76,14 +76,14 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 					ty = exprtypes.BoolType()
 					if len(expressions) == 1 && input.Default.IsExpressionAssigned() {
 						if k := expressions[0].ty.Kind(); k != exprtypes.KindBool && k != exprtypes.KindAny {
-							rule.Errorf(viewPosition(input.Default), "type of input %q must be bool but found type %s", input.Name.Text(), expressions[0].ty.String())
+							rule.Errorf(scalarPosition(input.Default), "type of input %q must be bool but found type %s", input.Name.Text(), expressions[0].ty.String())
 						}
 					}
 				case workflowlang.WorkflowCallEventInputTypeNumber:
 					ty = exprtypes.NumberType()
 					if len(expressions) == 1 && input.Default.IsExpressionAssigned() {
 						if k := expressions[0].ty.Kind(); k != exprtypes.KindNumber && k != exprtypes.KindAny {
-							rule.Errorf(viewPosition(input.Default), "type of input %q must be number but found type %s", input.Name.Text(), expressions[0].ty.String())
+							rule.Errorf(scalarPosition(input.Default), "type of input %q must be number but found type %s", input.Name.Text(), expressions[0].ty.String())
 						}
 					}
 				case workflowlang.WorkflowCallEventInputTypeInvalid:
@@ -169,11 +169,11 @@ func (rule *Checker) VisitJobPre(n workflowdecl.Job) error {
 				case exprtypes.KindArray, exprtypes.KindString, exprtypes.KindAny:
 					if literal, known := expressionLiteral(runner.LabelsExpr.Text()); known {
 						if labels, ok := literal.([]any); ok && len(labels) == 0 {
-							rule.Error(viewPosition(runner.LabelsExpr), "runs-on.labels must contain at least one value")
+							rule.Error(scalarPosition(runner.LabelsExpr), "runs-on.labels must contain at least one value")
 						}
 					}
 				case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindObject:
-					rule.Errorf(viewPosition(runner.LabelsExpr), "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
+					rule.Errorf(scalarPosition(runner.LabelsExpr), "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
 				}
 			}
 		} else {

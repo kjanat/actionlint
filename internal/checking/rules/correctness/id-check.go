@@ -28,7 +28,7 @@ func checkIdentifiers(job declaration.Job) []reporting.Finding {
 		for step := range steps {
 			if step.ID != nil {
 				input.Steps = append(input.Steps, name(step.ID))
-				owners[reporting.Position(reporting.ViewPosition(step.ID.Position()))] = step
+				owners[reporting.Position(reporting.OptionalPosition(step.ID.Position()))] = step
 			}
 			if parallel, ok := step.ParallelSteps(); ok {
 				collect(parallel)

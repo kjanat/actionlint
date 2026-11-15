@@ -22,7 +22,6 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-
 )
 
 type sourceMutationRule struct {

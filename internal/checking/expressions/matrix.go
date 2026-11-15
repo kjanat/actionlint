@@ -63,7 +63,7 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 			if m.Exclude.Expression != nil {
 				if ty, ok := rule.checkArrayExpression(m.Exclude.Expression, "exclude", "jobs.<job_id>.strategy"); ok {
 					if array, ok := ty.Array(); ok {
-						rule.checkObjectTy(array.Elem(), viewPosition(m.Exclude.Expression), "exclude")
+						rule.checkObjectTy(array.Elem(), scalarPosition(m.Exclude.Expression), "exclude")
 					}
 				}
 			} else {
@@ -76,7 +76,7 @@ func (rule *Checker) checkMatrix(m *workflowlang.Matrix, resolution matrixcheck.
 			rule.checkMatrixSourceKey(row.Name, row.Evaluated)
 			ty := rule.checkMatrixRow(row)
 			if row.Expression != nil {
-				if pos := viewPosition(row.Expression); pos != nil {
+				if pos := scalarPosition(row.Expression); pos != nil {
 					inferred[sourcepos.Position{Line: pos.Line, Column: pos.Col}] = ty
 				}
 			} else {
@@ -161,7 +161,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, se
 				invalid := false
 				for i, value := range values {
 					if _, ok := value.(map[string]any); !ok {
-						rule.Errorf(viewPosition(s), "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, exprtypes.TypeOfJSONValue(value))
+						rule.Errorf(scalarPosition(s), "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, exprtypes.TypeOfJSONValue(value))
 						invalid = true
 					}
 				}
@@ -173,7 +173,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *workflowlang.String, se
 		ty = array.Elem()
 	}
 	if k := ty.Kind(); k != exprtypes.KindAny && k != exprtypes.KindObject {
-		rule.Errorf(viewPosition(s), "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
+		rule.Errorf(scalarPosition(s), "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
 	}
 }
 

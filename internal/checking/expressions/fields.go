@@ -33,14 +33,14 @@ func (rule *Checker) checkOneExpression(s *workflowlang.String, what, workflowKe
 		return exprtypes.AnyType(), false
 	}
 
-	ts, ok := rule.checkExprsIn(s.Value, viewPosition(s), s.Quoted, false, workflowKey)
+	ts, ok := rule.checkExprsIn(s.Value, scalarPosition(s), s.Quoted, false, workflowKey)
 
 	if len(ts) != 1 {
 		if !ok {
 			return exprtypes.AnyType(), false
 		}
 		// This case should be unreachable since only one ${{ }} is included is checked by parser
-		rule.Errorf(viewPosition(s), "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
+		rule.Errorf(scalarPosition(s), "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
 		return exprtypes.AnyType(), false
 	}
 	if !ok {
@@ -84,19 +84,19 @@ func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *workflowlang.Pos, wha
 // ok is false when the expression has errors or another type.
 func (rule *Checker) checkObjectExpression(s *workflowlang.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
-	return ty, ok && rule.checkObjectTy(ty, viewPosition(s), what)
+	return ty, ok && rule.checkObjectTy(ty, scalarPosition(s), what)
 }
 
 // checkArrayExpression checks a single expression that must be an array.
 // ok is false when the expression has errors or another type.
 func (rule *Checker) checkArrayExpression(s *workflowlang.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
-	return ty, ok && rule.checkArrayTy(ty, viewPosition(s), what)
+	return ty, ok && rule.checkArrayTy(ty, scalarPosition(s), what)
 }
 
 func (rule *Checker) checkNumberExpression(s *workflowlang.String, what, workflowKey string) {
 	if ty, ok := rule.checkOneExpression(s, what, workflowKey); ok {
-		rule.checkNumberTy(ty, viewPosition(s), what)
+		rule.checkNumberTy(ty, scalarPosition(s), what)
 	}
 }
 
@@ -235,7 +235,7 @@ func (rule *Checker) checkConcurrency(c *workflowlang.Concurrency, workflowKey s
 		cancel, _ = expressionLiteral(c.CancelInProgress.Expression.Text())
 	}
 	if queue == "max" && cancel == true {
-		rule.Error(viewPosition(c.Queue), `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
+		rule.Error(scalarPosition(c.Queue), `"queue: max" cannot be combined with "cancel-in-progress: true" in "concurrency" section`)
 	}
 }
 
@@ -296,7 +296,7 @@ func (rule *Checker) checkWorkflowCall(c *workflowlang.WorkflowCall) {
 
 		if !mi.Type.ExprType().Assignable(ty) {
 			rule.Errorf(
-				viewPosition(i.Value),
+				scalarPosition(i.Value),
 				"input %q is typed as %s by reusable workflow %q. %s value cannot be assigned",
 				mi.Name,
 				mi.Type.String(),
@@ -362,14 +362,14 @@ func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey stri
 	// - run: echo 'not run'
 	//   if: true && false
 
-	restore := rule.scopeExpressionSource(str.Value, viewPosition(str))
+	restore := rule.scopeExpressionSource(str.Value, scalarPosition(str))
 	defer restore()
 	expr, err, offset := exprsyntax.ParseConditionExpression(str.Value)
 	if exprsyntax.ConditionSource(str.Value) != str.Value && offset == 0 {
 		rule.expressionSource = nil
 	}
 	rule.expressionOffset = offset
-	line, col := viewPosition(str).Line, viewPosition(str).Col+offset
+	line, col := scalarPosition(str).Line, scalarPosition(str).Col+offset
 	if offset != 0 && str.Quoted {
 		col++
 	}
@@ -382,7 +382,7 @@ func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey stri
 		return
 	}
 	if result := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); result.Valid && !exprtypes.BoolType().Assignable(result.Type) {
-		rule.Errorf(viewPosition(str), "\"if\" condition should be type \"bool\" but got type %q", result.Type.String())
+		rule.Errorf(scalarPosition(str), "\"if\" condition should be type \"bool\" but got type %q", result.Type.String())
 	}
 }
 
@@ -407,13 +407,13 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 		return nil
 	}
 
-	ts, ok := rule.checkExprsIn(str.Value, viewPosition(str), str.Quoted, false, workflowKey)
+	ts, ok := rule.checkExprsIn(str.Value, scalarPosition(str), str.Quoted, false, workflowKey)
 	if !ok {
 		return nil
 	}
 	// Static fields accept a single string literal expression after template folding.
 	if workflowKey == "" && len(ts) > 0 && (len(ts) != 1 || !str.IsExpressionAssigned()) {
-		rule.Error(viewPosition(str), "expressions are not allowed in this static workflow field")
+		rule.Error(scalarPosition(str), "expressions are not allowed in this static workflow field")
 		return nil
 	}
 
@@ -444,7 +444,7 @@ func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey str
 		rule.scriptScalarArgs, rule.scriptWordLists, rule.scriptInsertion = previous, previousLists, previousPosition
 		rule.scriptEnvironment = previousEnvironment
 	}()
-	ts, ok := rule.checkExprsIn(str.Value, viewPosition(str), str.Quoted, true, workflowKey)
+	ts, ok := rule.checkExprsIn(str.Value, scalarPosition(str), str.Quoted, true, workflowKey)
 	if !ok {
 		return
 	}
@@ -463,7 +463,7 @@ func (rule *Checker) checkBool(b *workflowlang.Bool, workflowKey string) {
 	}
 
 	if k := ty.Kind(); k != exprtypes.KindBool && k != exprtypes.KindAny {
-		rule.Errorf(viewPosition(b.Expression), "type of expression must be bool but found type %s", ty.String())
+		rule.Errorf(scalarPosition(b.Expression), "type of expression must be bool but found type %s", ty.String())
 	}
 }
 
@@ -472,12 +472,12 @@ func (rule *Checker) checkMaxParallel(i *workflowlang.Int, workflowKey string) {
 		return
 	}
 	ty, ok := rule.checkOneExpression(i.Expression, "integer value", workflowKey)
-	if !ok || !rule.checkNumberTy(ty, viewPosition(i.Expression), "integer value") {
+	if !ok || !rule.checkNumberTy(ty, scalarPosition(i.Expression), "integer value") {
 		return
 	}
 	if value, known := expressionLiteral(i.Expression.Text()); known {
 		for _, message := range schema.LiteralErrors(schema.Positive, value, "max-parallel") {
-			rule.Error(viewPosition(i.Expression), message)
+			rule.Error(scalarPosition(i.Expression), message)
 		}
 	}
 }
@@ -559,6 +559,6 @@ func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key s
 		}
 	}
 	for _, message := range errors {
-		rule.Error(viewPosition(s), message)
+		rule.Error(scalarPosition(s), message)
 	}
 }

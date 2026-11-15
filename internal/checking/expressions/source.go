@@ -44,8 +44,8 @@ func (rule *Checker) expressionPosition(offset int, end bool) *workflowlang.Pos 
 	return position
 }
 
-// viewPosition returns the position of an optional scalar.
-func viewPosition(s *workflowlang.String) *workflowlang.Pos {
+// scalarPosition returns the position of an optional scalar.
+func scalarPosition(s *workflowlang.String) *workflowlang.Pos {
 	if s == nil {
 		return nil
 	}

@@ -40,8 +40,8 @@ func Position(p *workflow.Pos) sourcepos.Position {
 	return sourcepos.Position{Line: p.Line, Column: p.Col}
 }
 
-// ViewPosition returns nil when a view has no source position.
-func ViewPosition(pos workflow.Pos, present bool) *workflow.Pos {
+// OptionalPosition returns nil when a declaration has no source position.
+func OptionalPosition(pos workflow.Pos, present bool) *workflow.Pos {
 	if !present {
 		return nil
 	}
