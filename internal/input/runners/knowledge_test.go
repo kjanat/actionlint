@@ -60,7 +60,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 	}
 	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]workflowdecl.Job{}}
 	for id := range fixture.Jobs {
-		view, ok := workflow.JobsAt(id)
+		view, ok := workflow.Job(id)
 		if !ok {
 			t.Fatalf("job view %q is unavailable", id)
 		}

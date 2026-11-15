@@ -150,7 +150,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 			captureMutableMetadata(f)
 			mutations := 0
 			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: func(step workflowdecl.Step) {
-				if run, ok := step.Run(); ok && run.Run().Present() {
+				if run, ok := step.Run(); ok && run.Run != nil {
 					mutateRunInput(t, f, step, "echo mutated after collection")
 					mutations++
 				}
@@ -161,7 +161,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 				t.Fatal(err)
 			}
 			units := result.Batch.Scripts()
-			if mutations != 1 || len(units) != 1 || !units[0].Run != nil || !units[0].Run.Run().Present() {
+			if mutations != 1 || len(units) != 1 || units[0].Run == nil || units[0].Run.Run == nil {
 				t.Fatalf("mutation scenario not exercised: mutations=%d scripts=%d", mutations, len(units))
 			}
 			if got := units[0].Run.Run.Text(); got != "echo original" {
@@ -557,7 +557,7 @@ func executionSnapshot(result Result) executionFactSnapshot {
 func checkoutSnapshot(result Result) []string {
 	var paths []string
 	for _, scope := range result.Batch.Scopes() {
-		if placement := scope.Paths.Placements; placement != nil {
+		if placement := scope.Paths.Placements; placement.Present() {
 			paths = append(paths, placement.Details().Directory.Path)
 		}
 	}

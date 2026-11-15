@@ -72,7 +72,7 @@ func TestSourceSnapshotExcludesLookupDeploymentState(t *testing.T) {
 			if len(steps) != 2 {
 				t.Fatalf("indexed action declarations: %+v", steps)
 			}
-			if workflow, ok := snapshot.WorkflowView(); ok || workflow != nil {
+			if workflow, ok := snapshot.WorkflowView(); ok || workflow.Present() {
 				t.Fatal("action snapshot exposed a workflow traversal input")
 			}
 			left := steps[0].Reference()

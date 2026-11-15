@@ -54,7 +54,7 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: ownedRun.Source(), Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
+		findings, err := checker.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Text: run.Run.Value, Source: ownedRun.Source, Key: run.RunPos, Path: "ci.yml", Content: content, Execution: tools.Execution{Shell: "bash"}}}})
 		if err != nil || len(findings) != 2 || findings[0].Message != "valid" || findings[1].Message != "reversed" ||
 			findings[1].Start != (sourcepos.Position{Line: 8, Column: 15}) || findings[1].End != (sourcepos.Position{}) {
 			t.Fatalf("reversed end kept or finding lost: findings=%+v err=%v", findings, err)

@@ -1,6 +1,7 @@
 package rules_test
 
 import (
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"path/filepath"
 	"testing"
 
@@ -42,8 +43,8 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				t.Fatal("callee has no recovered workflow")
 			}
 			reusable := false
-			for event := range workflow.On() {
-				if _, ok := event.WorkflowCallEvent(); ok {
+			for _, event := range workflow.On {
+				if _, ok := event.(*workflowlang.WorkflowCallEvent); ok {
 					reusable = true
 				}
 			}

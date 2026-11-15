@@ -131,7 +131,7 @@ func TestMetadataValidationDebugLog(t *testing.T) {
 	rule := NewRuleAction(t.Context(), actionfixture.NewCache(t, root, &cacheLog), nil)
 	rule.EnableDebug(&ruleLog)
 	for i := 1; i <= 2; i++ {
-		if err := rule.checkLocalAction("./inner", "./inner", fixturedecl.Action(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}})); err != nil {
+		if err := rule.checkLocalAction("./inner", "./inner", &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -153,7 +153,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	rule := NewRuleAction(t.Context(), cache, nil)
 	for i := 1; i <= 3; i++ {
 		action := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./inner", Pos: &workflowlang.Pos{Line: i, Col: 1}}}
-		if err := rule.checkLocalAction("./inner", "./inner", fixturedecl.Action(action)); err != nil {
+		if err := rule.checkLocalAction("./inner", "./inner", action); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -270,7 +270,7 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	declaration, exists := collection.Declarations.Declaration(graph.Scripts()[0].Declaration)
-	position, hasPosition := declaration.Pos()
+	position, hasPosition := declaration.Position()
 	if !exists || !hasPosition {
 		t.Fatal("fixture source absent")
 	}

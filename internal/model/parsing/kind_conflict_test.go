@@ -62,7 +62,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				earlierReference = references[0]
 				var present bool
 				earlierView, present = registry.Declaration(earlierReference)
-				if !present || earlierView == nil {
+				if !present || !earlierView.Present() {
 					t.Fatal("initial canonical declaration unavailable")
 				}
 				bind(1)
@@ -75,7 +75,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 					t.Fatalf("kind mismatch returned untyped error: %v", failure)
 				}
 			}
-			if previous == nil {
+			if !previous.Present() {
 				t.Fatal("neither declaration was initially admitted")
 			}
 			for _, document := range documents {
@@ -91,7 +91,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if _, ok := registry.LookupDocument(captured.Revision().Document()); ok {
 				t.Fatal("registry retained a live document after conflict")
 			}
-			if earlierView != nil {
+			if earlierView.Present() {
 				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
 					t.Fatal("quarantined view retained semantic ownership")
 				}

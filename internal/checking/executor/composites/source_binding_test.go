@@ -110,7 +110,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 				t.Fatal(err)
 			}
 			scripts := result.Batch.Scripts()
-			if len(scripts) != 1 || !scripts[0].Run.Run().SourceScalar().HasSource || !scripts[0].Run.Source().Present() || scripts[0].Run.Run.Text() != "" {
+			if len(scripts) != 1 || !scripts[0].Run.Run.SourceScalar.HasSource || scripts[0].Run.Source == nil || scripts[0].Run.Run.Text() != "" {
 				t.Fatalf("empty workflow script lost its occurrence or physical source: %+v", scripts)
 			}
 		})

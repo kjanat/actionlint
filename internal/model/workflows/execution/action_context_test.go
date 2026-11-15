@@ -1,6 +1,7 @@
 package execution
 
 import (
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -86,7 +87,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 				if _, ok := step.Action(); !ok {
 					continue
 				}
-				position, present := step.Pos()
+				position, present := step.Position()
 				facts, err := CallFacts(step, runnerlang.MacOrLinux)
 				if err != nil || !present || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != position.Line || facts.Step.Column != position.Col {
 					t.Fatalf("metadata call position: %+v error=%v", facts.Step, err)
@@ -160,7 +161,7 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, _ := snapshot.Workflow()
+	workflow, _ := snapshot.WorkflowView()
 	job, _ := workflow.Job("é")
 	view := slices.Collect(job.Steps())[0]
 	facts, err := CallFacts(view, runnerlang.MacOrLinux)
@@ -186,7 +187,7 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, _ := snapshot.Workflow()
+	workflow, _ := snapshot.WorkflowView()
 	job, _ := workflow.Job("test")
 	step := slices.Collect(job.Steps())[0]
 	action, present := step.Action()
@@ -247,7 +248,7 @@ func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.
 	if err != nil {
 		return invocation.Context{}, err
 	}
-	workflow, _ := snapshot.Workflow()
+	workflow, _ := snapshot.WorkflowView()
 	job, _ := workflow.Job("test")
 	view := slices.Collect(job.Steps())[0]
 	facts, err := CallFacts(view, platform)

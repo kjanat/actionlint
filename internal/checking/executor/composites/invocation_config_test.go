@@ -181,7 +181,7 @@ func (*ignoreProbeRule) LeaveInvocation(invocation.Context) error { return nil }
 
 func (rule *ignoreProbeRule) VisitOpaqueAction(step workflowdecl.Step) error {
 	if _, action := step.Action(); action {
-		pos, _ := step.Pos()
+		pos, _ := step.Position()
 		rule.Error(&pos, "probe")
 	}
 	return nil

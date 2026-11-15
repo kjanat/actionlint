@@ -177,7 +177,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 		t.Fatalf("empty composite script lost: scripts=%d findings=%v", len(scripts), result.Findings)
 	}
 	run := scripts[0].Run
-	if !run.Run().SourceScalar().HasSource || !run.Source().Present() || run.Run.Text() != "" {
+	if !run.Run.SourceScalar.HasSource || run.Source == nil || run.Run.Text() != "" {
 		t.Fatal("empty script lost its physical scalar or source mapping")
 	}
 }

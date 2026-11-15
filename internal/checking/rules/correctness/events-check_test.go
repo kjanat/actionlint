@@ -1,12 +1,9 @@
 package correctness
 
 import (
-	"slices"
 	"testing"
 
 	triggers "actionlint.kjanat.dev/v2/internal/model/contexts/events/triggers"
-
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -52,7 +49,7 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
 			pos := &workflowlang.Pos{Line: 1, Col: 1}
-			rule.checkTypes(tc.event, pos, slices.Values([]*workflowlang.String{ownedString(&workflowlang.String{Value: tc.activity, Pos: pos})}), triggers.AllWebhookTypes[tc.event])
+			rule.checkTypes(tc.event, pos, []*workflowlang.String{{Value: tc.activity, Pos: pos}}, triggers.AllWebhookTypes[tc.event])
 			if valid := len(rule.Findings) == 0; valid != tc.valid {
 				t.Fatalf("valid=%v, want %v: %v", valid, tc.valid, rule.Findings)
 			}
@@ -61,5 +58,5 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 }
 
 func ownedString(value *workflowlang.String) *workflowlang.String {
-	return declaration.Publish("", &workflowlang.Workflow{Name: value}, false, "").Bind("test").Workflow().Name()
+	return value
 }

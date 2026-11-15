@@ -114,8 +114,8 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			body, _ := snapshot.ActionView()
 			steps := slices.Collect(body.Steps())
 			run, isRun := steps[0].Run()
-			position, present := steps[0].Pos()
-			spans := slices.Collect(run.Source().Spans())
+			position, present := steps[0].Position()
+			spans := run.Source.Spans
 			if !isRun || !present || run.Run.Text() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
 				t.Fatal("returned declaration mutated the registry")
 			}

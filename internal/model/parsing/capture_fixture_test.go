@@ -24,7 +24,7 @@ func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflowdecl.Workf
 
 func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []workflowdecl.Step {
 	tb.Helper()
-	job, present := snapshotWorkflow(tb, snapshot).JobsAt(key)
+	job, present := snapshotWorkflow(tb, snapshot).Job(key)
 	if !present {
 		tb.Fatalf("workflow job %q unavailable", key)
 	}

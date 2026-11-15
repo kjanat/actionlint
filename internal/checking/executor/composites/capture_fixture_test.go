@@ -24,7 +24,7 @@ func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.W
 
 func workflowJob(tb testing.TB, workflow workflowdecl.Workflow, key string) workflowdecl.Job {
 	tb.Helper()
-	job, available := workflow.JobsAt(key)
+	job, available := workflow.Job(key)
 	if !available {
 		tb.Fatalf("workflow job %q unavailable", key)
 	}
@@ -55,7 +55,7 @@ func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflow
 
 func stepPosition(tb testing.TB, step workflowdecl.Step) workflowlang.Pos {
 	tb.Helper()
-	position, present := step.Pos()
+	position, present := step.Position()
 	if !present {
 		tb.Fatal("step position unavailable")
 	}

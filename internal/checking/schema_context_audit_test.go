@@ -117,7 +117,7 @@ jobs:
 			if tc.name == "matrix reserved key expression" {
 				job, _ := workflow.Job("test")
 				matrix := job.Strategy.Matrix
-				if matrix == nil || matrix.Exclude == nil || !matrix.Exclude.Name().Present() || matrix.Exclude.Name.Text() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude.Evaluated() {
+				if matrix == nil || matrix.Exclude == nil || matrix.Exclude.Name == nil || matrix.Exclude.Name.Text() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude.Evaluated {
 					t.Fatalf("matrix reserved key source lost: %#v", matrix)
 				}
 			}

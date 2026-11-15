@@ -95,7 +95,7 @@ func TestInheritedScriptEnvironment(t *testing.T) {
 			if unsafe != tc.unsafe {
 				t.Fatalf("unsafe=%t, want %t: %+v", unsafe, tc.unsafe, rule.Findings())
 			}
-			if rule.jobEnv.Present() || rule.scriptEnv.Present() {
+			if rule.jobEnv != nil || rule.scriptEnv != nil {
 				t.Fatal("environment scope leaked after visiting job")
 			}
 		})

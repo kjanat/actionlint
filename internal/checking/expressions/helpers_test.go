@@ -63,7 +63,7 @@ func ownedWorkflowFixture(workflow *workflowlang.Workflow) workflowdecl.Workflow
 }
 
 func ownedStringFixture(value *workflowlang.String) *workflowlang.String {
-	return ownedWorkflowFixture(&workflowlang.Workflow{Name: value}).Name()
+	return value
 }
 
 func ownedMatrixFixture(matrix *workflowlang.Matrix) *workflowlang.Matrix {
@@ -73,15 +73,9 @@ func ownedMatrixFixture(matrix *workflowlang.Matrix) *workflowlang.Matrix {
 }
 
 func ownedRawStringFixture(value *workflowlang.RawYAMLString) *workflowlang.RawYAMLString {
-	row, _ := ownedMatrixFixture(&workflowlang.Matrix{Rows: map[string]*workflowlang.MatrixRow{"value": {Values: []workflowlang.RawYAMLValue{value}}}}).RowsAt("value")
-	for value := range row.Values() {
-		scalar, _ := value.RawYAMLString()
-		return scalar
-	}
-	return nil
+	return value
 }
 
 func ownedMatrixRowFixture(row *workflowlang.MatrixRow) *workflowlang.MatrixRow {
-	view, _ := ownedMatrixFixture(&workflowlang.Matrix{Rows: map[string]*workflowlang.MatrixRow{"value": row}}).RowsAt("value")
-	return view
+	return row
 }

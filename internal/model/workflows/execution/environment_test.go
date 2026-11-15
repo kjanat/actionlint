@@ -1,6 +1,7 @@
 package execution
 
 import (
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"fmt"
 	"testing"
 
@@ -72,7 +73,7 @@ func TestCanonicalEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, present := snapshot.Workflow()
+	workflow, present := snapshot.WorkflowView()
 	if !present {
 		t.Fatal("workflow view unavailable")
 	}

@@ -26,7 +26,7 @@ func TestTrustReadsPublishedDeclarations(t *testing.T) {
 	mode.Kind = workflowlang.CacheModeNone
 	hook.Value = "push"
 	job.If = &workflowlang.String{Value: "false"}
-	ownedJob, exists := view.JobsAt("build")
+	ownedJob, exists := view.Job("build")
 	if !exists {
 		t.Fatal("published job missing")
 	}
@@ -86,7 +86,7 @@ func TestReusableMetadataGrantBoundary(t *testing.T) {
 		t.Fatal(findings)
 	}
 	view := policyWorkflowView(parsed)
-	job, exists := view.JobsAt("caller")
+	job, exists := view.Job("caller")
 	if !exists {
 		t.Fatal("caller missing")
 	}
@@ -105,8 +105,8 @@ func TestReusableMetadataGrantBoundary(t *testing.T) {
 			metadata := &calls.Metadata{JobCacheAccess: map[string]calls.CacheAccess{
 				"nested": {Mode: tc.mode, Operations: []string{"actions/cache/save"}},
 			}}
-			ceiling := CheckCeiling(job.WorkflowCall(), view.CacheMode(), metadata, fixedMetadata{metadata}, nil)
-			operations := CheckCallOperations(job.WorkflowCall(), view.CacheMode(), fixedMetadata{metadata})
+			ceiling := CheckCeiling(job.WorkflowCall, view.CacheMode, metadata, fixedMetadata{metadata}, nil)
+			operations := CheckCallOperations(job.WorkflowCall, view.CacheMode, fixedMetadata{metadata})
 			if len(ceiling) != tc.ceiling || len(operations) != tc.operation {
 				t.Fatalf("ceiling=%v operations=%v; want counts %d/%d", ceiling, operations, tc.ceiling, tc.operation)
 			}

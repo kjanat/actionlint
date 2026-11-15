@@ -40,7 +40,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	for _, j := range w.Jobs() {
 		jobs = append(jobs, j)
 	}
-	slices.SortFunc(jobs, func(a, b declaration.Job) int { return position(a).Line - position(b).Line })
+	slices.SortFunc(jobs, func(a, b declaration.Job) int { return position(a.Pos).Line - position(b.Pos).Line })
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
 		findings = append(findings, trust.CheckCall(j)...)
@@ -70,7 +70,7 @@ func TestCachePolicyTriggers(t *testing.T) {
 				w := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Hook: &workflowlang.String{Value: event}}}, CacheMode: &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &workflowlang.Pos{Line: 2, Col: 13}}}
 				w.Jobs = map[string]*workflowlang.Job{"test": {}}
 				view := policyWorkflowView(w)
-				job, _ := view.JobsAt("test")
+				job, _ := view.Job("test")
 				findings := NewTrust(view).CheckWrites(job)
 				if (len(findings) == 1) != group.warn {
 					t.Fatalf("want warning=%v, got %v", group.warn, findings)
@@ -380,7 +380,7 @@ func policyWorkflowView(workflow *workflowlang.Workflow) declaration.Workflow {
 
 func checkStandaloneStep(step *workflowlang.Step, mode *workflowlang.CacheMode) []results.Diagnostic {
 	view := policyWorkflowView(&workflowlang.Workflow{CacheMode: mode, Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}})
-	job, _ := view.JobsAt("test")
+	job, _ := view.Job("test")
 	for step := range job.Steps() {
 		return CheckStep(step, view.CacheMode)
 	}

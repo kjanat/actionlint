@@ -54,7 +54,7 @@ func scriptFixture(t *testing.T, input string) tools.Script {
 	if !ok {
 		t.Fatal("fixture has no run")
 	}
-	return tools.Script{Text: run.Run.Value, Source: view.Source(), Key: run.RunPos, Value: run.Run.Pos, Path: "fix.yml", Content: []byte(content), Execution: tools.Execution{Shell: "bash"}}
+	return tools.Script{Text: run.Run.Value, Source: view.Source, Key: run.RunPos, Value: run.Run.Pos, Path: "fix.yml", Content: []byte(content), Execution: tools.Execution{Shell: "bash"}}
 }
 
 // generated prepares a script as a shell preparation does: a kept shebang,
@@ -128,7 +128,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 			t.Parallel()
 			input := strings.ReplaceAll("run: |\n  #!/bin/bash\n  echo\té 🐚 $VALUE\n  echo $OTHER\nnext: unchanged\n", "\n", newline)
 			script := scriptFixture(t, input)
-			fix, ok := scriptFix(script.Source, generated(script.Source.Value()), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
+			fix, ok := scriptFix(script.Source, generated(script.Source.Value), checkinputs.ScriptFix{Description: "Quote variables", Replacements: []checkinputs.ScriptReplacement{
 				replacement(4, 10, `"`), replacement(4, 16, `"`), replacement(5, 6, `"`), replacement(5, 12, `"`),
 			}})
 			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != results.FixSuggested {
@@ -170,7 +170,7 @@ func TestScriptFixPreservesApplicability(t *testing.T) {
 	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
 	for _, applicability := range []results.Applicability{results.FixSuggested, results.FixSafe, results.FixUnsafe} {
-		fix, ok := scriptFix(script.Source, generated(script.Source.Value()), checkinputs.ScriptFix{
+		fix, ok := scriptFix(script.Source, generated(script.Source.Value), checkinputs.ScriptFix{
 			Applicability: applicability,
 			Replacements:  []checkinputs.ScriptReplacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},
 		})
