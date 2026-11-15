@@ -163,7 +163,7 @@ func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.Job) error 
 	analysis.scriptRunnerShell = scriptmodel.DefaultShell(workflowdecl.Container(declaration.Container), knowledge.Shell)
 	analysis.jobID = ""
 	if id := declaration.ID; id != nil {
-		analysis.jobID = id.Value()
+		analysis.jobID = id.Value
 	}
 	analysis.actions.BeginJob(analysis.workflowEnv, analysis.workflowShell, declaration)
 	return nil

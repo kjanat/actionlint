@@ -313,7 +313,7 @@ func invocationOutput(bindings *binding.Scope, rule workflowvisit.Rule, snapshot
 		// Metadata declarations belong to their captured target, which the run
 		// binds after source admission. Other findings belong to this invocation.
 		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source == nil) {
-			finding.Binding = bindings.Rule(finding.Rule).ID
+			finding.Binding = bindings.Rule(finding.Rule).ID()
 		}
 		if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
 			origin.Path = path
