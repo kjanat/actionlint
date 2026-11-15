@@ -16,13 +16,14 @@ import (
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection config.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection configreport.Inspection, err error) {
 	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err

@@ -23,6 +23,8 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/selection"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -322,7 +324,7 @@ type Config struct {
 	// or source for a direct artifact. Empty or null disables plugins.
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
-	Files FilesConfig `yaml:"files,omitempty" jsonschema:"nullable"`
+	Files selection.Selection `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Output configures defaults for CLI reporting.
 	Output OutputConfig `yaml:"output,omitempty" jsonschema:"nullable"`
 	// Network controls fallback services for remote metadata.
@@ -422,8 +424,8 @@ type Resolved struct {
 	Inputs     map[string]Input
 	Config     *Config
 	Values     map[string]any
-	Origins    map[string]Origin
-	Warnings   []Warning
+	Origins    map[string]configreport.Origin
+	Warnings   []configreport.Warning
 }
 
 func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (Resolved, error) {
@@ -481,7 +483,7 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 	if err != nil {
 		return Resolved{}, err
 	}
-	origins := map[string]Origin{}
+	origins := map[string]configreport.Origin{}
 	configDefaultOrigins(values, "", origins)
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return Resolved{}, err
@@ -533,7 +535,7 @@ func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string
 
 func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*Loaded, error) {
 	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
-	warningsByFile := map[string][]Warning{}
+	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
 	documents := map[string]any{}
 	loaded, err := loadConfigTree(path, reader.ReadConfig, func(origin string, doc document.Document) (document.Document, error) {

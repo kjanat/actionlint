@@ -35,10 +35,6 @@ type Overlay struct {
 	inputs map[string]Input
 }
 
-// OverlayError reports individually valid inputs whose combined settings
-// are invalid, for example timeout bounds that conflict with the config file.
-type OverlayError = configreport.OverlayError
-
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
 // the YAML/JSON value of one ConfigKeys entry. It rejects unknown keys.
 func (ruleSet RuleSet) ParseOverlay(input string, content []byte, additional ...string) (Overlay, error) {

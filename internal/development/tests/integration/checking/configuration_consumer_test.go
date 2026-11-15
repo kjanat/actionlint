@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -88,7 +89,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 			} else {
 				_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: root})
 			}
-			var overlayError *config.OverlayError
+			var overlayError *configreport.OverlayError
 			if !errors.As(err, &overlayError) || errors.Unwrap(overlayError) == nil {
 				t.Fatalf("cannot classify merged overlay validation: %v", err)
 			}

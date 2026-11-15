@@ -11,8 +11,8 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 
 	providerconfig "actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 	"github.com/kjanat/go-yaml/v4"
@@ -63,7 +63,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 			}
 			checkSchema := func(content []byte) {
 				t.Helper()
-				node, err := configtree.Decode(path, content)
+				node, err := configdocument.Parse(path, content)
 				if err != nil {
 					t.Fatal(err)
 				}

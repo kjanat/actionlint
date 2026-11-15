@@ -9,7 +9,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -69,7 +69,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 		t.Fatalf("TOML migration is not idempotent: %v\n%s", err, second.Content)
 	}
 
-	before, err := configtree.Decode("actionlint.toml", original)
+	before, err := configdocument.Parse("actionlint.toml", original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := configtree.Decode("actionlint.toml", migration.Content)
+	after, err := configdocument.Parse("actionlint.toml", migration.Content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 			if !bytes.Contains(migration.Content, []byte("TOKEN#VALUE")) {
 				t.Fatalf("quoted hash changed:\n%s", migration.Content)
 			}
-			root, err := configtree.Decode("actionlint.toml", migration.Content)
+			root, err := configdocument.Parse("actionlint.toml", migration.Content)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -222,7 +222,7 @@ value = "kept"
 			t.Errorf("unrelated TOML bytes changed; missing %q:\n%s", preserved, migration.Content)
 		}
 	}
-	before, err := configtree.Decode("actionlint.toml", original)
+	before, err := configdocument.Parse("actionlint.toml", original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ value = "kept"
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := configtree.Decode("actionlint.toml", migration.Content)
+	after, err := configdocument.Parse("actionlint.toml", migration.Content)
 	if err != nil {
 		t.Fatal(err)
 	}

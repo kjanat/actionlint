@@ -10,6 +10,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -22,7 +23,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	var calls atomic.Int32
 	session, err := workspace.New(t.Context(), workspace.Options{
 		ConfigOverlays: []repoconfig.Overlay{overlay},
-		OnConfigLoaded: func(repoconfig.Report) { calls.Add(1) }, Rules: checking.ConfigurationRules(),
+		OnConfigLoaded: func(configreport.Report) { calls.Add(1) }, Rules: checking.ConfigurationRules(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -82,8 +83,8 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var report repoconfig.Report
-			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }, Rules: checking.ConfigurationRules()})
+			var report configreport.Report
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -126,8 +127,8 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 				}
 				overlays = append(overlays, overlay)
 			}
-			var report repoconfig.Report
-			session, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }, Rules: checking.ConfigurationRules()})
+			var report configreport.Report
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigOverlays: overlays, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}

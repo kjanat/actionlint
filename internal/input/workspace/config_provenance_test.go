@@ -8,6 +8,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -42,8 +43,8 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var report repoconfig.Report
-				session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }, Rules: checking.ConfigurationRules()})
+				var report configreport.Report
+				session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -92,8 +93,8 @@ config-secrets: [SECRET]
 				}
 				overlays = append(overlays, overlay)
 			}
-			var report repoconfig.Report
-			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }, Rules: checking.ConfigurationRules()})
+			var report configreport.Report
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -148,11 +149,11 @@ func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
 			if value == "null" {
 				state = "null"
 			}
-			want := repoconfig.Origin{File: base, Source: "config", State: state, Line: 2, Column: strings.Index(line, value) + 1}
+			want := configreport.Origin{File: base, Source: "config", State: state, Line: 2, Column: strings.Index(line, value) + 1}
 			if got := inspection.Origins[pointer]; got != want {
 				t.Fatalf("origin=%+v, want %+v", got, want)
 			}
-			if got, exists := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; exists && got != (repoconfig.Origin{Source: "default", State: "missing"}) {
+			if got, exists := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; exists && got != (configreport.Origin{Source: "default", State: "missing"}) {
 				t.Fatalf("implicit knowledge level acquired a source origin: %+v", got)
 			}
 			cfg, err := checking.ConfigurationRules().Load(leaf)

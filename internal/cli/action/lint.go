@@ -184,7 +184,7 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	if err != nil {
 		code := commandstatus.ExitFailure
-		if _, ok := errors.AsType[*repoconfig.OverlayError](err); ok {
+		if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
 			code = commandstatus.ExitInvalidCommandOption
 		}
 		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
