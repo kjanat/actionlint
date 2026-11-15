@@ -39,7 +39,7 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 // A nil pointer or zero value permits suppressions. Use DisallowSuppressions
 // to construct an enabled policy.
 type SuppressionsPolicy struct {
-	names     rulemeta.Names
+	names     rulemeta.Names `clone:"shared"`
 	report    SuppressionReport
 	rules     []string
 	locations map[string]int
@@ -163,3 +163,6 @@ func (p *SuppressionsPolicy) ReportFor(rule string) SuppressionReport {
 	}
 	return p.report
 }
+
+// CopyConfig copies the owned configuration state.
+func (p *SuppressionsPolicy) CopyConfig() (any, error) { return copyOwnedSuppressionsPolicy(*p), nil }

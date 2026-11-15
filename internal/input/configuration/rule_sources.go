@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
 type ruleSources struct {
@@ -41,10 +42,10 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		return config, nil
 	}
 	sources := config.Lint.Rules.sources
-	merged := sources.base
-	cache := map[string]any{}
-	var load func(string) (any, error)
-	load = func(path string) (any, error) {
+	merged := configtree.Capture(sources.base, nil)
+	cache := map[string]*configtree.Node{}
+	var load func(string) (*configtree.Node, error)
+	load = func(path string) (*configtree.Node, error) {
 		if value, found := cache[path]; found {
 			return value, nil
 		}
@@ -58,7 +59,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 				return nil, err
 			}
 		}
-		var base any
+		var base *configtree.Node
 		for _, parent := range parents {
 			path, err := address.Resolve(path, parent)
 			if err != nil {
@@ -68,13 +69,13 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			base = MergeDocuments(base, inherited)
+			base = configtree.Overlay(base, inherited, MergePlan())
 		}
 		normalized, err := ruleSet.normalizeRuleDocument(value)
 		if err != nil {
 			return nil, err
 		}
-		result := MergeDocuments(base, normalized)
+		result := configtree.Overlay(base, configtree.Capture(normalized, nil), MergePlan())
 		cache[path] = result
 		return result, nil
 	}
@@ -86,7 +87,9 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		}
 	} else {
 		var err error
-		merged, err = ruleSet.normalizeRuleDocument(merged)
+		normalized, normalizeErr := ruleSet.normalizeRuleDocument(merged.Value())
+		err = normalizeErr
+		merged = configtree.Capture(normalized, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -96,17 +99,18 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		merged = MergeDocuments(merged, normalized)
+		merged = configtree.Overlay(merged, configtree.Capture(normalized, nil), MergePlan())
 	}
-	if merged == nil {
+	if merged.Value() == nil {
 		return config, nil
 	}
 	var decoded Config
-	if err := ruleSet.DecodeValue(merged, &decoded); err != nil {
+	if err := ruleSet.DecodeValue(merged.Value(), &decoded); err != nil {
 		return nil, err
 	}
 	next := *config
 	next.Lint = decoded.Lint
+	next.Lint.locations = config.Lint.locations
 	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
 	return &next, nil
 }

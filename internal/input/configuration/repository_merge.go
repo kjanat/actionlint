@@ -1,46 +1,33 @@
 package config
 
 import (
+	"maps"
+	"reflect"
+	"slices"
+	"sync"
+
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
+var compiledMergePlan = sync.OnceValue(func() configtree.Plan {
+	plan, err := configtree.CompilePlan(reflect.TypeFor[Config]())
+	if err != nil {
+		panic(err)
+	}
+	return plan
+})
+
+// MergePlan returns detached overlay rules derived from configuration fields.
+func MergePlan() configtree.Plan {
+	plan := maps.Clone(compiledMergePlan())
+	for path, rule := range plan {
+		rule.Members = slices.Clone(rule.Members)
+		plan[path] = rule
+	}
+	return plan
+}
+
 func loadConfigTree(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error)) (configtree.Loaded, error) {
-	return configtree.LoadWithMerge(path, read, normalize, MergeDocuments)
-}
-
-// MergeDocuments applies inheritance rules, including atomic repository facts.
-func MergeDocuments(base, overlay any) any {
-	merged := configtree.Merge(base, overlay)
-	if selected := field(overlay, "lint"); selected != nil && isMapping(merged) {
-		next := cloneMapping(merged)
-		setField(next, "lint", mergeLifecycleLint(field(base, "lint"), selected))
-		merged = next
-	}
-	if selected := field(overlay, "repository"); selected != nil && isMapping(merged) {
-		next := cloneMapping(merged)
-		setField(next, "repository", mergeRepositoryNodes(field(base, "repository"), selected))
-		return next
-	}
-	return merged
-}
-
-func mergeRepositoryNodes(base, overlay any) any {
-	if !isMapping(overlay) {
-		return rawValue(overlay)
-	}
-	next := cloneMapping(base)
-	if base != nil && isNull(base) {
-		next = mapping()
-		for _, key := range []string{"service", "default-workflow-permissions", "runners", "variables", "secrets", "environments"} {
-			setField(next, key, nil)
-		}
-	}
-	if !isMapping(next) {
-		return overlay
-	}
-	for key, value := range members(overlay) {
-		setField(next, key, cloneValue(value))
-	}
-	return next
+	return configtree.LoadWithMerge(path, read, normalize, MergePlan())
 }

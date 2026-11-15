@@ -22,6 +22,9 @@ type Decoder interface{ DecodeConfig(any) error }
 // Encoder projects settings into the shared configuration model.
 type Encoder interface{ EncodeConfig() (any, error) }
 
+// OwnedCopier detaches a value whose runtime state cannot round-trip through its wire form.
+type OwnedCopier interface{ CopyConfig() (any, error) }
+
 // ErrUnknownKey marks an unsupported object member. Its source is the key token.
 var ErrUnknownKey = errors.New("unknown key")
 
@@ -300,9 +303,12 @@ func fieldPointer(name string, value any) string {
 
 // Encode returns detached standard containers and scalar values. Serialization
 // tags supply field names only; format libraries own syntax and presentation.
-func Encode(value any) (any, error) { return encode(reflect.ValueOf(value)) }
+func Encode(value any) (any, error) { return encode(reflect.ValueOf(value), false) }
 
-func encode(value reflect.Value) (any, error) {
+// EncodePartial omits unset struct fields while retaining explicit map entries.
+func EncodePartial(value any) (any, error) { return encode(reflect.ValueOf(value), true) }
+
+func encode(value reflect.Value, partial bool) (any, error) {
 	if !value.IsValid() || isNil(value) {
 		return nil, nil
 	}
@@ -317,11 +323,14 @@ func encode(value reflect.Value) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			return Encode(next)
+			return encode(reflect.ValueOf(next), partial)
 		}
 	}
-	if value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
-		return encode(value.Elem())
+	if value.Kind() == reflect.Interface {
+		return encode(value.Elem(), partial)
+	}
+	if value.Kind() == reflect.Pointer {
+		return encode(value.Elem(), partial)
 	}
 	switch value.Kind() {
 	case reflect.Struct:
@@ -339,9 +348,15 @@ func encode(value reflect.Value) (any, error) {
 			if slices.Contains(parts[1:], "omitempty") && empty(child) {
 				continue
 			}
-			item, err := encode(child)
+			item, err := encode(child, partial)
 			if err != nil {
 				return nil, At(parts[0], err)
+			}
+			if partial && item == nil {
+				continue
+			}
+			if partial && child.Kind() == reflect.Struct && empty(child) {
+				continue
 			}
 			if slices.Contains(parts[1:], "inline") {
 				if item == nil {
@@ -369,7 +384,7 @@ func encode(value reflect.Value) (any, error) {
 		iterator := value.MapRange()
 		for iterator.Next() {
 			key := iterator.Key().String()
-			child, err := encode(iterator.Value())
+			child, err := encode(iterator.Value(), partial)
 			if err != nil {
 				return nil, At(key, err)
 			}
@@ -379,7 +394,7 @@ func encode(value reflect.Value) (any, error) {
 	case reflect.Slice, reflect.Array:
 		result := make([]any, value.Len())
 		for i := range result {
-			child, err := encode(value.Index(i))
+			child, err := encode(value.Index(i), partial)
 			if err != nil {
 				return nil, At(strconv.Itoa(i), err)
 			}
@@ -390,12 +405,10 @@ func encode(value reflect.Value) (any, error) {
 		return value.String(), nil
 	case reflect.Bool:
 		return value.Bool(), nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return value.Int(), nil
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return value.Uint(), nil
-	case reflect.Float32, reflect.Float64:
-		return value.Float(), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return value.Interface(), nil
 	case reflect.Invalid, reflect.Uintptr, reflect.Complex64, reflect.Complex128, reflect.Chan, reflect.Func, reflect.Interface, reflect.Pointer, reflect.UnsafePointer:
 		return nil, fmt.Errorf("unsupported configuration value %s", value.Type())
 	default:

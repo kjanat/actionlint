@@ -219,7 +219,7 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	resolved := make(map[string]Level)
 	next.Lint.Rules.SetResolved(resolved)
 	next.Lint.Rules.resolvedFixed = make(map[string]bool)
-	next.Lint.Rules.boundSettings = make(map[string]Setting)
+	next.Lint.Rules.boundSettings = make(map[string]boundSetting)
 	next.Lint.Rules.ruleSet = ruleSet
 	descriptors := ruleSet.Rules()
 	seen, optionOverrides := registered.seen, registered.options
@@ -230,7 +230,7 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 		setting, fixed := ruleSet.settingFor(config, d, p, seen[d.Name])
 		resolved[d.Name] = setting.Level()
 		next.Lint.Rules.resolvedFixed[d.Name] = fixed
-		next.Lint.Rules.boundSettings[d.Name] = setting
+		next.Lint.Rules.boundSettings[d.Name] = boundSetting{Setting: setting}
 		if d.Configure != nil {
 			d.Configure(&next, setting)
 		}

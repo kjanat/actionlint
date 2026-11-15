@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
@@ -13,16 +14,32 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
+// RepositoryWire defines the configuration fields shared by the schema and overlay.
+type RepositoryWire struct {
+	Service      any                `yaml:"service"`
+	Permissions  *string            `yaml:"default-workflow-permissions" jsonschema:"nullable,enum=read,enum=write,description=Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown."`
+	Runners      []string           `yaml:"runners" jsonschema:"nullable,description=Additional runner labels or Go path.Match patterns. Empty permits no additional labels."`
+	Variables    map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics."`
+	Secrets      []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets."`
+	Environments map[string]struct {
+		Variables map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics."`
+		Secrets   []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names for this environment. Values are never accepted."`
+	} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
+}
+
+// MergeWire exposes the repository's wire shape to configuration plan compilation.
+func (RepositoryConfig) MergeWire() reflect.Type { return reflect.TypeFor[RepositoryWire]() }
+
 // RepositoryConfig supplies overrides for host knowledge. Omission inherits the
 // host fact; null makes it unknown; an empty collection is a known empty set.
 type RepositoryConfig struct {
 	reset        bool
-	service      *services.Service
-	permissions  *repository.Permissions
-	runners      *repository.Names
-	variables    *repository.Variables
-	secrets      *repository.Names
-	environments *repository.Environments
+	service      *services.Service        `clone:"shared"`
+	permissions  *repository.Permissions  `clone:"shared"`
+	runners      *repository.Names        `clone:"shared"`
+	variables    *repository.Variables    `clone:"shared"`
+	secrets      *repository.Names        `clone:"shared"`
+	environments *repository.Environments `clone:"shared"`
 }
 
 // Apply overlays explicit selections after configuration inheritance is resolved.
@@ -294,3 +311,6 @@ func RunnerLabels(facts repository.Snapshot) []string {
 	}
 	return nil
 }
+
+// CopyConfig copies the owned configuration state.
+func (r RepositoryConfig) CopyConfig() (any, error) { return copyOwnedRepositoryConfig(r), nil }

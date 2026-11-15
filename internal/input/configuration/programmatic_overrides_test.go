@@ -24,8 +24,7 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			config.Overrides[0].toolsNode = nil
-			config.Overrides[0].toolsSet = false
+			config.Overrides[0] = Override{Includes: []string{"ci.yml"}, Tools: config.Overrides[0].Tools}
 			for range 2 {
 				got, err := rules.ForFile(config, "ci.yml", "")
 				if err != nil {
@@ -44,5 +43,22 @@ func TestProgrammaticToolOverridesPreserveOmissions(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParsedOverrideRetainsCapturedPrecedence(t *testing.T) {
+	t.Parallel()
+	rules := RuleSet{}
+	cfg, err := rules.Parse([]byte("overrides: [{includes: ['**'], lint: {enabled: false}}]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.Overrides[0].Lint.Enabled = new(true)
+	got, err := rules.ForFile(cfg, "ci.yml", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Lint.Enabled == nil || *got.Lint.Enabled {
+		t.Fatalf("typed mutation replaced the captured partial: %+v", got.Lint.Enabled)
 	}
 }

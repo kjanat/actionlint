@@ -109,7 +109,7 @@ func networkPolicyFiles() []string {
 
 func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*NetworkPolicy, error) {
 	p := &NetworkPolicy{defaultOrigins: map[string]Input{}}
-	var defaults any
+	var defaults *tree.Node
 	for _, path := range paths {
 		loaded, err := tree.Load(path, read, func(origin string, doc document.Document) (document.Document, error) {
 			object, ok := doc.Value.(map[string]any)
@@ -148,19 +148,14 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 		}
 		root, _ := loaded.Value.(map[string]any)
 		if value, present := root["defaults"]; present {
-			origins := map[string]Input{}
-			for key, origin := range loaded.Origins {
-				if key == "/defaults" || strings.HasPrefix(key, "/defaults/") {
-					origins[strings.TrimPrefix(key, "/defaults")] = origin
-				}
-			}
-			tree.MergeOrigins(p.defaultOrigins, origins, defaults, value)
-			defaults = tree.Merge(defaults, value)
+			_ = value
+			defaults = tree.Overlay(defaults, loaded.Node.Child("defaults"), nil)
+			p.defaultOrigins = defaults.Origins()
 		}
 		p.files = append(p.files, loaded.Files...)
 	}
 	var selected NetworkPolicyDefaults
-	if err := binding.Decode(defaults, &selected); err != nil {
+	if err := binding.Decode(defaults.Value(), &selected); err != nil {
 		return nil, err
 	}
 	p.defaults = selected.Network

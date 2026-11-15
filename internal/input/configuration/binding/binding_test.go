@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -153,5 +154,55 @@ func TestErrorTraversalKeepsSiblingPaths(t *testing.T) {
 	lines := strings.Split(err.Error(), "\n")
 	if len(lines) != 2 || lines[0] != "/options/first: first failure" || lines[1] != "/options/second: second failure" {
 		t.Fatalf("paths: %v", err)
+	}
+}
+
+func TestEncodePreservesNumericTypesAndBounds(t *testing.T) {
+	t.Parallel()
+	type namedInt int32
+	values := []any{int(-3), int8(-128), int16(-32768), int32(-2147483648), int64(-9223372036854775808), uint(3), uint8(255), uint16(65535), uint32(4294967295), uint64(18446744073709551615), float32(0.1), float64(0.1), namedInt(-9), json.Number("123456789012345678901234567890")}
+	for _, value := range values {
+		encoded, err := Encode(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reflect.TypeOf(encoded) != reflect.TypeOf(value) || !reflect.DeepEqual(encoded, value) {
+			t.Fatalf("Encode(%T(%v)) = %T(%v)", value, value, encoded, encoded)
+		}
+	}
+}
+
+func TestEncodePartialPreservesExplicitMapValues(t *testing.T) {
+	t.Parallel()
+	type nested struct {
+		Enabled *bool          `yaml:"enabled"`
+		Options map[string]any `yaml:"options"`
+	}
+	input := struct {
+		Nil   *string  `yaml:"nil"`
+		Empty []string `yaml:"empty"`
+		Tool  *nested  `yaml:"tool"`
+	}{Empty: []string{}, Tool: &nested{Options: map[string]any{"unknown": nil, "limit": int(3)}}}
+	encoded, err := EncodePartial(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	object := encoded.(map[string]any)
+	if _, ok := object["nil"]; ok {
+		t.Fatal("unset pointer was encoded")
+	}
+	if list, ok := object["empty"].([]any); !ok || len(list) != 0 {
+		t.Fatalf("empty list lost: %#v", object)
+	}
+	tool := object["tool"].(map[string]any)
+	if _, ok := tool["enabled"]; ok {
+		t.Fatal("unset nested field was encoded")
+	}
+	options := tool["options"].(map[string]any)
+	if value, ok := options["unknown"]; !ok || value != nil {
+		t.Fatalf("explicit null map entry lost: %#v", options)
+	}
+	if value, ok := options["limit"].(int); !ok || value != 3 {
+		t.Fatalf("numeric map entry changed: %#v", options)
 	}
 }

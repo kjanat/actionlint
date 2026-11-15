@@ -1,6 +1,9 @@
 package tree
 
-import "slices"
+import (
+	"maps"
+	"slices"
+)
 
 // SelectLintRules projects a lint tree without altering reset or preset semantics.
 func SelectLintRules(value any, rules map[string][]string) any {
@@ -8,14 +11,9 @@ func SelectLintRules(value any, rules map[string][]string) any {
 	if !ok {
 		return value
 	}
-	next := make(map[string]any)
-	for key, child := range object {
-		switch key {
-		case "enabled", "dependencies":
-			next[key] = child
-		case "rules":
-			next[key] = selectRuleNode(child, "", rules)
-		}
+	next := maps.Clone(object)
+	if child, present := object["rules"]; present {
+		next["rules"] = selectRuleNode(child, "", rules)
 	}
 	return next
 }

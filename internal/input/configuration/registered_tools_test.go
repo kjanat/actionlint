@@ -42,3 +42,34 @@ func TestRegisteredToolSettingsForFiles(t *testing.T) {
 		t.Fatal("provider metadata leaked into another rule set")
 	}
 }
+
+func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
+	t.Parallel()
+	metadata := configschema.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
+	rules, err := (RuleSet{}).WithRegisteredRules(
+		RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
+		RuleRegistration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, overridden := range []string{"file-tool", "other-tool"} {
+		t.Run(overridden, func(t *testing.T) {
+			t.Parallel()
+			text := "tools: {file-tool: {config: {limit: 3}}, other-tool: {config: {limit: 9}}}\noverrides: [{includes: ['**'], tools: {" + overridden + ": {enabled: false}}}]\n"
+			cfg, err := rules.Parse([]byte(text))
+			if err != nil {
+				t.Fatal(err)
+			}
+			projected, err := rules.ForFile(cfg, "ci.yml", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for name, want := range map[string]int{"file-tool": 3, "other-tool": 9} {
+				got := projected.Tools[name].Config.Inline()["limit"]
+				if value, ok := got.(int); !ok || value != want {
+					t.Fatalf("%s untouched limit changed type or value: %T(%v)", name, got, got)
+				}
+			}
+		})
+	}
+}
