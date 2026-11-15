@@ -18,12 +18,12 @@ import (
 // values only: no live rules, parser nodes, process handles, or rendering policy.
 // Sources aligns with Diagnostics and contains the analyzed text for each finding.
 type Analysis struct {
-	IncompleteChecks []IncompleteCheck    `merge:"append"`
-	ActionMetadata   []actions.Coverage   `merge:"append"`
-	RunnerResults    []runner.Report      `merge:"append"`
-	FileCount        int                  `merge:"sum"`
-	Diagnostics      []results.Diagnostic `merge:"append"`
-	Sources          []DiagnosticSource   `merge:"append"`
+	IncompleteChecks []IncompleteCheck          `merge:"append"`
+	ActionMetadata   []actions.Coverage         `merge:"append"`
+	RunnerResults    []runner.Report            `merge:"append"`
+	FileCount        int                        `merge:"sum"`
+	Diagnostics      []results.Diagnostic       `merge:"append"`
+	Sources          []results.DiagnosticSource `merge:"append"`
 	// CapturedSources projects only admitted rows after capture teardown joins.
 	// Keys are captured aliases; values and byte slices belong to this result.
 	CapturedSources map[string]CapturedSource `merge:"captured"`
@@ -55,22 +55,4 @@ type CapturedSource struct {
 	Coordinates          source.Coordinates
 	CoordinatesAvailable bool
 	Content              []byte
-}
-
-// DiagnosticSource supplies source coordinates without imposing a display format.
-// RawScript distinguishes external tools' LF coordinates from YAML line breaks.
-// Unavailable forbids inferring ranges from unverified display text.
-type DiagnosticSource struct {
-	Content     []byte
-	RawScript   bool
-	Unavailable bool
-	// Suppression is present only when the resolved policy permits a comment
-	// for this rule. Editors bind its YAML target to a captured revision.
-	Suppression *SuppressionTarget
-}
-
-// SuppressionTarget identifies the YAML declaration that may suppress a finding.
-type SuppressionTarget struct {
-	Path        string
-	First, Last int
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool, configPath string) error {
+func (f RenderedFinding) printPretty(out io.Writer, width int, hyperlinks, colored bool, configPath string) error {
 	var b strings.Builder
 	d := f.Diagnostic
 	severity := d.Severity
@@ -176,7 +176,7 @@ func writeWrapped(b *strings.Builder, prefix, text string, width int, style *col
 	}
 }
 
-func (f Finding) prettySource(line string, width int) (string, int, int) {
+func (f RenderedFinding) prettySource(line string, width int) (string, int, int) {
 	var expanded strings.Builder
 	start, end, cells := -1, -1, 0
 	last := f.end(line)

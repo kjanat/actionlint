@@ -1,4 +1,4 @@
-package finding
+package results
 
 import (
 	"errors"

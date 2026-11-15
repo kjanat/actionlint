@@ -19,21 +19,13 @@ type Finding struct {
 	LifecycleEvidence *lifecycle.Evidence
 	// inferredReference is traversal provenance, not a distinct analyzer finding.
 	InferredReference bool
-	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
-	// infer the range from the source token at Column.
-	EndColumn   int
-	EndPosition *workflowlang.Pos
-	// source is the content of the file at Filepath when the error points at a file other than the
-	// linted workflow. It replaces the workflow source for rendering the snippet.
-	Source []byte `clone:"intern"`
-	// RawScriptSource selects LF-only line splitting for external checker positions.
-	RawScriptSource   bool
-	UnavailableSource UnavailableSource
-	// suppressionOrigin identifies the YAML run declaration which caused a
+	// Source is the text Start and End refer to when the finding points at a file other than the
+	// linted workflow, and replaces the workflow source for rendering the snippet.
+	// Source.Suppression identifies YAML that an editor may amend to suppress this finding.
+	Source results.DiagnosticSource
+	// SuppressionOrigin identifies the YAML run declaration which caused a
 	// sourced diagnostic, independently of its displayed script location.
-	SuppressionOrigin *SuppressionOrigin
-	// SuppressionTarget identifies YAML that an editor may amend to suppress this finding.
-	SuppressionTarget *SuppressionOrigin
+	SuppressionOrigin *results.SuppressionOrigin
 	// UnusedSuppressionRule identifies a candidate whose selector usage must be
 	// reconciled across all invocations of the same captured source before publication.
 	UnusedSuppressionRule string
@@ -69,20 +61,28 @@ func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Fin
 	}
 }
 
+// EndAt sets the exclusive end of the finding's range. A nil end keeps the
+// range open, so rendering infers the token ending at Start.
+func (e *Finding) EndAt(end *workflowlang.Pos) {
+	if end != nil {
+		e.End = sourcepos.Position{Line: end.Line, Column: end.Col}
+	}
+}
+
 // Foreign reports whether the finding's positions refer to its own Source
 // instead of source, the snapshot of the document it was reported for. That
 // is the case when a snapshot is available and the finding points at another
 // file.
 func (e *Finding) Foreign(source []byte) bool {
-	return source != nil && e.Source != nil
+	return source != nil && e.Source.Content != nil
 }
 
-// sourceFor returns the text the finding's positions refer to: Source when
-// the finding is Foreign, otherwise source. Canonical only reads the snippet
-// line from it.
+// sourceFor returns the text the finding's positions refer to: Source.Content
+// when the finding is Foreign, otherwise source. Canonical only reads the
+// snippet line from it.
 func (e *Finding) sourceFor(source []byte) []byte {
 	if e.Foreign(source) {
-		return e.Source
+		return e.Source.Content
 	}
 	return source
 }
@@ -101,8 +101,11 @@ func Compare(lhs, rhs *Finding) int {
 	if c := strings.Compare(lhs.Message, rhs.Message); c != 0 {
 		return c
 	}
-	if lhs.EndColumn != rhs.EndColumn {
-		return lhs.EndColumn - rhs.EndColumn
+	if lhs.End.Line != rhs.End.Line {
+		return lhs.End.Line - rhs.End.Line
+	}
+	if lhs.End.Column != rhs.End.Column {
+		return lhs.End.Column - rhs.End.Column
 	}
 	return strings.Compare(lhs.Severity, rhs.Severity)
 }

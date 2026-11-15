@@ -34,7 +34,7 @@ func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.
 	files := pluginSourceFiles{}
 	finding := results.Diagnostic{Path: "actions/example/action.yml", Reference: &reference, Message: "shell issue"}
 	got, err := files.finding("shellcheck", finding, script, 2)
-	if err != nil || got.Path != script.Path || got.Reference == nil || *got.Reference != reference || got.Script != 2 || string(got.Content) != string(script.Content) || got.RawScript || got.UnavailableSource.Present() {
+	if err != nil || got.Path != script.Path || got.Reference == nil || *got.Reference != reference || got.Script != 2 || string(got.Source.Content) != string(script.Content) || got.Source.RawScript || got.Source.Unavailable.Present() {
 		t.Fatalf("captured script mapping=%+v error=%v", got, err)
 	}
 	for _, foreign := range []*sourcepos.Reference{nil, {}, {Document: "other", Revision: reference.Revision, Node: reference.Node}, {Document: reference.Document, Revision: "stale", Node: reference.Node}, {Document: reference.Document, Revision: reference.Revision, Node: "other"}} {
@@ -88,15 +88,15 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		}
 	}
 	finding, err := sources.finding("shellcheck", results.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: sourcepos.Position{Line: 1, Column: 1}, Fixes: []results.Fix{{Description: "must not survive"}}}, script, 3)
-	if err != nil || finding.Path != sourcePath(file, root) || !finding.RawScript || string(finding.Content) != "VALUE=one\n" || finding.Script != 3 {
+	if err != nil || finding.Path != sourcePath(file, root) || !finding.Source.RawScript || string(finding.Source.Content) != "VALUE=one\n" || finding.Script != 3 {
 		t.Fatalf("mapping=%+v error=%v", finding, err)
 	}
-	if !finding.UnavailableSource.Present() || finding.UnavailableSource.Provider() != "shellcheck" || finding.UnavailableSource.Reason() != "not-captured" || finding.Reference != nil || len(finding.Fixes) != 0 {
+	if !finding.Source.Unavailable.Present() || finding.Source.Unavailable.Provider() != "shellcheck" || finding.Source.Unavailable.Reason() != "not-captured" || finding.Reference != nil || len(finding.Fixes) != 0 {
 		t.Fatalf("plugin grant source fabricated revision evidence: %+v", finding)
 	}
 	for _, path := range []string{"/workspace/lib/unread.sh", "/ungranted/clean.sh"} {
 		finding, err := sources.finding("shellcheck", results.Diagnostic{Path: path}, script, 3)
-		if err == nil || finding.UnavailableSource.Present() {
+		if err == nil || finding.Source.Unavailable.Present() {
 			t.Fatalf("unread or ungranted source acquired an unavailable allowance: path=%s finding=%+v error=%v", path, finding, err)
 		}
 	}
@@ -118,7 +118,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	finding, err = sources.finding("shellcheck", results.Diagnostic{Path: "/workspace/link/../clean.sh"}, script, 3)
-	if err != nil || finding.Path != sourcePath(file, root) || string(finding.Content) != "VALUE=one\n" {
+	if err != nil || finding.Path != sourcePath(file, root) || string(finding.Source.Content) != "VALUE=one\n" {
 		t.Fatalf("symlink mapping=%+v error=%v", finding, err)
 	}
 	if err := os.WriteFile(file, []byte("VALUE=changed\n"), 0o600); err != nil {
@@ -207,7 +207,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 				}
 			}
 			finding, err := sources.finding("shellcheck", results.Diagnostic{Path: "/sources/2/shared.sh"}, script, 0)
-			if err != nil || finding.Path != filepath.Join(resolved, "shared.sh") || string(finding.Content) != "SHARED=two\n" {
+			if err != nil || finding.Path != filepath.Join(resolved, "shared.sh") || string(finding.Source.Content) != "SHARED=two\n" {
 				t.Fatalf("source mapping=%+v error=%v", finding, err)
 			}
 		})

@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -26,10 +26,8 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 		Rule: "native-record", Code: "example", Message: "Example finding", Severity: "warning",
 		Path: "script.sh", Start: source.Position{Line: 2, Column: 3},
 		LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.LanguageRuntimes, Name: "example"},
-		EndColumn:         8,
-		EndPosition:       &workflowlang.Pos{Line: 2, Col: 9},
-		Source:            []byte("first\nsecond\n"),
-		RawScriptSource:   true,
+		End:               source.Position{Line: 2, Column: 9},
+		Source:            results.DiagnosticSource{Content: []byte("first\nsecond\n"), RawScript: true},
 		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
 	}
 	adapter := New(rules, checkinputs.DeclarationCheck{

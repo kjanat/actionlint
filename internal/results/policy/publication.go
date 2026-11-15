@@ -30,7 +30,7 @@ type Batch struct {
 // Publication contains the retained findings in batch order and their public projections.
 type Publication struct {
 	Diagnostics      []results.Diagnostic
-	Sources          []report.DiagnosticSource
+	Sources          []results.DiagnosticSource
 	Findings         [][]*findingmodel.Finding
 	IncompleteChecks []report.IncompleteCheck
 }

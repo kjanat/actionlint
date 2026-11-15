@@ -425,7 +425,7 @@ func TestFactAnalyzerPreservesForeignDiagnosticPath(t *testing.T) {
 		t.Fatalf("foreign findings lost: %v %v", findings, err)
 	}
 	for _, finding := range findings {
-		if finding.Path != "sourced/helper.sh" || finding.Source != nil || finding.Snippet != "captured foreign snippet" || finding.Owner == nil || finding.IgnoreOrigin == nil {
+		if finding.Path != "sourced/helper.sh" || finding.Source.Content != nil || finding.Snippet != "captured foreign snippet" || finding.Owner == nil || finding.IgnoreOrigin == nil {
 			t.Fatalf("unit provenance overwrote foreign diagnostic source: %+v", finding)
 		}
 	}

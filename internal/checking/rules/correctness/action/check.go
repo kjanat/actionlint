@@ -176,8 +176,8 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 	err := findingmodel.At(&workflowlang.Pos{Line: line, Col: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
-	err.Source = meta.Source
-	err.EndPosition = end
+	err.Source.Content = meta.Source
+	err.EndAt(end)
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
 		origin := &findingmodel.IgnoreOrigin{}
@@ -206,8 +206,8 @@ func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int
 	err := findingmodel.Errorf(&workflowlang.Pos{Line: line, Col: col}, ruleName, format, args...)
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
-	err.Source = meta.Source
-	err.EndPosition = end
+	err.Source.Content = meta.Source
+	err.EndAt(end)
 	err.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
 	rule.errs = append(rule.errs, err)
 }
@@ -541,7 +541,7 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 			Rule: ruleName, Code: diagnosticCode, Path: problem.Path,
 			Message: problem.Message, Start: problem.Start, End: problem.End,
 		})
-		finding.Source = meta.Source
+		finding.Source.Content = meta.Source
 		finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
 		rule.errs = append(rule.errs, finding)
 	}

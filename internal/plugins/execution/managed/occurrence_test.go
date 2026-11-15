@@ -129,7 +129,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 
 type actionInputObserver struct{ inputs []checkinputs.Script }
 
-func (observer *actionInputObserver) Analyze(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (observer *actionInputObserver) Analyze(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	for _, script := range batch.Scripts {
 		if script.Input != nil {
 			observer.inputs = append(observer.inputs, script.Fact)

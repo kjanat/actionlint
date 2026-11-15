@@ -121,7 +121,7 @@ type fixtureIdentity struct {
 func fixtureIdentities(findings []*finding.Finding) []fixtureIdentity {
 	out := make([]fixtureIdentity, len(findings))
 	for i, f := range findings {
-		out[i] = fixtureIdentity{Rule: f.Rule, Start: f.Start, Message: f.Message, Source: string(f.Source)}
+		out[i] = fixtureIdentity{Rule: f.Rule, Start: f.Start, Message: f.Message, Source: string(f.Source.Content)}
 	}
 	return out
 }

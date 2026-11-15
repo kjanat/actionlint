@@ -47,7 +47,7 @@ func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing
 							continue
 						}
 						matched++
-						if finding.Path == "" || !bytes.Equal(finding.Source, []byte(content)) || finding.Reference == nil || finding.Reference.Document == fixture.root.Reference().Document || finding.Start.Line < 1 || finding.Start.Column < 1 {
+						if finding.Path == "" || !bytes.Equal(finding.Source.Content, []byte(content)) || finding.Reference == nil || finding.Reference.Document == fixture.root.Reference().Document || finding.Start.Line < 1 || finding.Start.Column < 1 {
 							t.Fatalf("opaque input lost its declaring source: %+v", finding)
 						}
 					}

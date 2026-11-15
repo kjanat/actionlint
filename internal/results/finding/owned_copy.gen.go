@@ -43,10 +43,8 @@ func (ctx *ownedCopyContext) copyOwnedFinding(in Finding) Finding {
 	out := in
 	out.Diagnostic = ctx.copyOwnedDiagnostic_7e9304eab05e88fed387b3b0ef071edf(in.Diagnostic)
 	out.LifecycleEvidence = ctx.copyOwnedValue_a20c76a4097cded664fbce69c4763a0d(in.LifecycleEvidence)
-	out.EndPosition = ctx.copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in.EndPosition)
-	out.Source = ctx.copyOwnedInternedBytes(in.Source)
-	out.SuppressionOrigin = ctx.copyOwnedValue_5b63e45071f3623d527e4e32b340556f(in.SuppressionOrigin)
-	out.SuppressionTarget = ctx.copyOwnedValue_5b63e45071f3623d527e4e32b340556f(in.SuppressionTarget)
+	out.Source = ctx.copyOwnedDiagnosticSource_0501a5497ec72587ae9bdd2ba5c771c1(in.Source)
+	out.SuppressionOrigin = ctx.copyOwnedValue_b4a5b1b397d5a381792c663e0ca0b89d(in.SuppressionOrigin)
 	out.IgnoreOrigin = ctx.copyOwnedValue_b455585ef54c0fa7055fb0e2b9ec5236(in.IgnoreOrigin)
 	out.Owner = ctx.copyOwnedValue_488883a8c9e16b542a80654da9eff6cf(in.Owner)
 	out.MetadataIdentity = ctx.copyOwnedValue_42b6878d647d4ff2cce39f1e3f24130d(in.MetadataIdentity)
@@ -70,20 +68,19 @@ func (ctx *ownedCopyContext) copyOwnedValue_a20c76a4097cded664fbce69c4763a0d(in 
 	return (*lifecycle.Evidence)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in *workflow.Pos) *workflow.Pos {
-	if in == nil {
-		return nil
-	}
-	out := *in
-	return (*workflow.Pos)(&out)
+func (ctx *ownedCopyContext) copyOwnedDiagnosticSource_0501a5497ec72587ae9bdd2ba5c771c1(in results.DiagnosticSource) results.DiagnosticSource {
+	out := in
+	out.Content = ctx.copyOwnedInternedBytes(in.Content)
+	out.Suppression = ctx.copyOwnedValue_b4a5b1b397d5a381792c663e0ca0b89d(in.Suppression)
+	return out
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_5b63e45071f3623d527e4e32b340556f(in *SuppressionOrigin) *SuppressionOrigin {
+func (ctx *ownedCopyContext) copyOwnedValue_b4a5b1b397d5a381792c663e0ca0b89d(in *results.SuppressionOrigin) *results.SuppressionOrigin {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	return (*SuppressionOrigin)(&out)
+	return (*results.SuppressionOrigin)(&out)
 }
 
 func (ctx *ownedCopyContext) copyOwnedValue_b455585ef54c0fa7055fb0e2b9ec5236(in *IgnoreOrigin) *IgnoreOrigin {
@@ -178,4 +175,12 @@ func (ctx *ownedCopyContext) copyOwnedValue_1322c9e5dd27dde9d49a9a553ec6e340(in 
 		out[i] = ctx.copyOwnedEvidence_b6de2083f6a13cb13415ac74865b5030(in[i])
 	}
 	return out
+}
+
+func (ctx *ownedCopyContext) copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in *workflow.Pos) *workflow.Pos {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	return (*workflow.Pos)(&out)
 }

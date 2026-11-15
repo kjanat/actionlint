@@ -56,17 +56,17 @@ type sourceTool struct {
 	content          []byte
 }
 
-func (a sourceTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (a sourceTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	a.t.Helper()
 	if len(batch.Scripts) != 2 {
 		a.t.Fatalf("native adapter script count: %d", len(batch.Scripts))
 	}
-	var findings []tools.Finding
+	var findings []tools.ToolFinding
 	for i, script := range batch.Scripts {
 		if script.Path != a.path || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != a.actionPath {
 			a.t.Fatalf("native adapter changed source deployment: %+v", script)
 		}
-		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "source finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
+		findings = append(findings, tools.ToolFinding{Rule: "shellcheck", Message: "source finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Source: results.DiagnosticSource{Content: script.Content}})
 	}
 	return findings, nil
 }
@@ -192,7 +192,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 								t.Fatalf("adapter findings: %v %v", findings, err)
 							}
 							for _, finding := range findings {
-								if finding.Path != path || string(finding.Source) != string(content) || finding.IgnoreOrigin == nil || finding.IgnoreOrigin.Metadata {
+								if finding.Path != path || string(finding.Source.Content) != string(content) || finding.IgnoreOrigin == nil || finding.IgnoreOrigin.Metadata {
 									t.Fatalf("adapter lost display source or changed origin: %+v", finding)
 								}
 							}
@@ -251,7 +251,7 @@ type partialTool struct {
 	failure error
 }
 
-func (a partialTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (a partialTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	a.t.Helper()
 	if len(batch.Scripts) != 1 || batch.Scripts[0].Text != "echo ok" {
 		a.t.Fatalf("changed tool batch: %+v", batch)
@@ -259,7 +259,7 @@ func (a partialTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Find
 	if batch.Scripts[0].Path != "" || batch.Scripts[0].Content != nil {
 		a.t.Fatal("workflow script lost the native adapter's root-source fallback")
 	}
-	return []tools.Finding{{Rule: "test", Message: "partial finding", Start: sourcepos.Position{Line: 1, Column: 1}, Script: 0, Content: batch.Scripts[0].Content}}, a.failure
+	return []tools.ToolFinding{{Rule: "test", Message: "partial finding", Start: sourcepos.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
 }
 
 func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
@@ -291,7 +291,7 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 			t.Parallel()
 			adapter := adapter(t)
 			findings, err := (Service{Analyzers: []Analyzer{adapter}}).Run(t.Context(), batch)
-			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Owner, owner) || !reflect.DeepEqual(findings[0].IgnoreOrigin, origin) || findings[0].Source != nil {
+			if !errors.Is(err, failure) || len(findings) != 1 || findings[0].Message != "partial finding" || !reflect.DeepEqual(findings[0].Owner, owner) || !reflect.DeepEqual(findings[0].IgnoreOrigin, origin) || findings[0].Source.Content != nil {
 				t.Fatalf("partial finding lost its independent owner or source: %+v %v", findings, err)
 			}
 		})

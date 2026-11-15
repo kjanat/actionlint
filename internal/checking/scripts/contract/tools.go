@@ -17,7 +17,6 @@ import (
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Context supplies invocation-owned resources to a registered adapter.
@@ -63,7 +62,7 @@ type Registration struct {
 }
 
 type Runner interface {
-	Analyze(context.Context, Batch) ([]Finding, error)
+	Analyze(context.Context, Batch) ([]ToolFinding, error)
 }
 
 type Scope struct {
@@ -103,15 +102,12 @@ type Batch struct {
 
 // Finding binds a result to the invocation that produced it. Policy is applied
 // by the host after adapters finish, including for externally sourced findings.
-type Finding struct {
+type ToolFinding struct {
 	results.Diagnostic
-	Script            int
-	Content           []byte
-	RawScript         bool
-	UnavailableSource findingmodel.UnavailableSource
-	Suppression       *Suppression
-}
-type Suppression struct {
-	Path        string
-	First, Last int
+	Script int
+	// Source is the text of the reported file. Source.Suppression is left for
+	// policy to fill in.
+	Source results.DiagnosticSource
+	// Suppression identifies the YAML run declaration which caused the finding.
+	Suppression *results.SuppressionOrigin
 }

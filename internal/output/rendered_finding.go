@@ -13,46 +13,49 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// Finding is one diagnostic together with the source its snippet is rendered from.
-// EndColumn is the inclusive column where the indicator ends; zero infers the
-// token end. RawScript selects LF line splitting for external checker sources.
-// Unavailable retains only a reported range or a single caret.
-type Finding struct {
+// RenderedFinding is one diagnostic together with the source its snippet is rendered from.
+// Source.RawScript selects LF line splitting for external checker sources.
+// Source.Unavailable retains only a reported range or a single caret.
+type RenderedFinding struct {
 	Diagnostic       results.Diagnostic
-	Source           []byte
-	EndColumn        int
-	RawScript        bool
-	Unavailable      bool
+	Source           results.DiagnosticSource
 	canonicalSnippet string
 }
 
-// FindingOf adapts a canonical half-open span to the inclusive legacy columns.
-func FindingOf(d results.Diagnostic, source []byte) Finding {
-	f := Finding{Diagnostic: d, Source: source, canonicalSnippet: d.Snippet}
-	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
-		f.EndColumn = d.End.Column - 1
-	}
-	return f
+// RenderedFindingOf renders a diagnostic from the given source text.
+func RenderedFindingOf(d results.Diagnostic, content []byte) RenderedFinding {
+	return RenderedFinding{Diagnostic: d, Source: results.DiagnosticSource{Content: content}, canonicalSnippet: d.Snippet}
 }
 
-func (f Finding) line() (string, bool) {
-	if f.Source != nil {
-		return sourcemap.DiagnosticLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
+func (f RenderedFinding) line() (string, bool) {
+	if f.Source.Content != nil {
+		return sourcemap.DiagnosticLine(f.Source.Content, f.Diagnostic.Start.Line, f.Source.RawScript)
 	}
 	if f.canonicalSnippet != "" {
 		return f.canonicalSnippet, true
 	}
-	return sourcemap.DiagnosticLine(f.Source, f.Diagnostic.Start.Line, f.RawScript)
+	return sourcemap.DiagnosticLine(f.Source.Content, f.Diagnostic.Start.Line, f.Source.RawScript)
 }
 
-func (f Finding) end(line string) int {
-	if f.Unavailable {
-		return max(f.Diagnostic.Start.Column, f.EndColumn)
+// explicitEndColumn converts the diagnostic's half-open end to the inclusive
+// column where the indicator ends. Zero means the end was not reported on the
+// start line, so the token end is inferred.
+func (f RenderedFinding) explicitEndColumn() int {
+	d := f.Diagnostic
+	if d.End.Line == d.Start.Line && d.End.Column > d.Start.Column {
+		return d.End.Column - 1
 	}
-	return source.InclusiveEnd(line, f.Diagnostic.Start.Column, f.EndColumn)
+	return 0
 }
 
-func (f Finding) indicator(line string) string {
+func (f RenderedFinding) end(line string) int {
+	if f.Source.Unavailable.Present() {
+		return max(f.Diagnostic.Start.Column, f.explicitEndColumn())
+	}
+	return source.InclusiveEnd(line, f.Diagnostic.Start.Column, f.explicitEndColumn())
+}
+
+func (f RenderedFinding) indicator(line string) string {
 	column := f.Diagnostic.Start.Column
 	if column <= 0 {
 		return ""
@@ -76,11 +79,11 @@ func (f Finding) indicator(line string) string {
 }
 
 // TemplateFields prepares the finding for a custom Go template.
-func (f Finding) TemplateFields() *TemplateFields {
+func (f RenderedFinding) TemplateFields() *TemplateFields {
 	d := f.Diagnostic
 	snippet := ""
 	end := d.Start.Column
-	if (len(f.Source) > 0 || f.canonicalSnippet != "") && d.Start.Line > 0 {
+	if (len(f.Source.Content) > 0 || f.canonicalSnippet != "") && d.Start.Line > 0 {
 		if line, ok := f.line(); ok {
 			snippet = line
 			if indicator := f.indicator(line); indicator != "" {
@@ -97,11 +100,11 @@ func (f Finding) TemplateFields() *TemplateFields {
 
 // PrettyPrint writes the location, message, rule and an indicated source line.
 // Without source bytes, the diagnostic's captured snippet is used when available.
-func (f Finding) PrettyPrint(w io.Writer) {
+func (f RenderedFinding) PrettyPrint(w io.Writer) {
 	f.prettyPrint(w, false)
 }
 
-func (f Finding) prettyPrint(w io.Writer, colored bool) {
+func (f RenderedFinding) prettyPrint(w io.Writer, colored bool) {
 	bold := colorStyle(colored, color.Bold)
 	green := colorStyle(colored, color.FgGreen)
 	yellow := colorStyle(colored, color.FgYellow)
@@ -120,7 +123,7 @@ func (f Finding) prettyPrint(w io.Writer, colored bool) {
 	}
 	_, _ = gray.Fprintf(w, " [%s]\n", d.Rule)
 
-	if (len(f.Source) == 0 && f.canonicalSnippet == "") || d.Start.Line <= 0 {
+	if (len(f.Source.Content) == 0 && f.canonicalSnippet == "") || d.Start.Line <= 0 {
 		return
 	}
 	line, ok := f.line()

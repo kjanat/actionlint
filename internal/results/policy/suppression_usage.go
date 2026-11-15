@@ -45,7 +45,7 @@ func addUnusedSuppressionFixes(files []evaluatedBatch) {
 			key := comment{ref.Document, ref.Revision, finding.Start}
 			entry, exists := groups[key]
 			if !exists {
-				content := finding.Source
+				content := finding.Source.Content
 				if content == nil {
 					content = file.Policy.Content
 				}

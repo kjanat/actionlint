@@ -44,9 +44,9 @@ func (guest *fallbackGuest) CheckDocument(_ context.Context, input checkinputs.I
 	return []results.Diagnostic{{Path: input.Path, Message: "plugin"}}, nil
 }
 
-type fallbackRunner func(context.Context, tools.Batch) ([]tools.Finding, error)
+type fallbackRunner func(context.Context, tools.Batch) ([]tools.ToolFinding, error)
 
-func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (run fallbackRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	return run(ctx, batch)
 }
 
@@ -80,12 +80,12 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 		if selected != cfg {
 			t.Fatal("fallback initialized with the workflow configuration instead of the declined script configuration")
 		}
-		return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
+		return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.ToolFinding, error) {
 			nativeCalls++
 			if len(selected.Scopes) != 0 || !reflect.DeepEqual(selected.CallGraph, graph) || len(selected.Scripts) != 1 || !reflect.DeepEqual(selected.Scripts[0].Fact, batch.Scripts[1].Fact) {
 				t.Fatal("native fallback lost graph or script fact")
 			}
-			return []tools.Finding{{Script: 0, Message: "native"}}, nil
+			return []tools.ToolFinding{{Script: 0, Message: "native"}}, nil
 		}), nil
 	}}
 	findings, err := runner.Analyze(t.Context(), batch)

@@ -52,7 +52,7 @@ func TestGitHubAnnotationUsesDiagnosticCode(t *testing.T) {
 func TestTemplateRangeUsesInclusiveEndColumn(t *testing.T) {
 	t.Parallel()
 	d := diagmodel.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 2, Column: 4}}
-	if got := render.FindingOf(d, []byte("abc\ndefgh")).TemplateFields().EndColumn; got != 3 {
+	if got := render.RenderedFindingOf(d, []byte("abc\ndefgh")).TemplateFields().EndColumn; got != 3 {
 		t.Fatalf("want inclusive column 3, got %d", got)
 	}
 }

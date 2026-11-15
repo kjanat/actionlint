@@ -14,7 +14,7 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // reportedFile is the display copy of a file an engine reported a finding
@@ -173,7 +173,7 @@ func RecordSources(files *inputfiles.Reader, paths []string, directory string) e
 // comments of the script still apply. A check with copies takes the display
 // copy from them; otherwise the copy is reread by path, as a native process
 // read the file by path itself.
-func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) tools.Finding {
+func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) tools.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)
@@ -200,9 +200,9 @@ func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.Sc
 		// Without a directory the name anchors nowhere and records nothing.
 		scope.Record(reported)
 	}
-	finding := tools.Finding{
-		Script: index, Content: file.content, RawScript: true,
-		UnavailableSource: findingmodel.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed),
+	finding := tools.ToolFinding{
+		Script: index,
+		Source: results.DiagnosticSource{Content: file.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed)},
 	}
 	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
 	finding.Message = r.message(d, d.Location.Row, d.Location.Column)
@@ -211,7 +211,7 @@ func (r runner) reportedFinding(index int, script tools.Script, d checkinputs.Sc
 		finding.End = sourcepos.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
 	}
 	if key := script.Key; key != nil {
-		origin := &tools.Suppression{Path: script.Path, First: key.Line, Last: key.Line}
+		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}
 		if value := script.Value; value != nil {
 			origin.Last = max(origin.Last, value.Line)
 		}

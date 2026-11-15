@@ -10,7 +10,7 @@ not read are marked **inferred** or **investigator-cited**.
 
 - `core.Engine`, `component.Plugin` and `ruff.ProcessBackend` implement `analyzer.ScriptBackend.Check(ctx, ScriptRequest) ([]ScriptDiagnostic, error)`. See `analyzer/backend.go:16-18,117-121,139-149` and `internal/checking/scripts/contract/ruff/backend_process.go:88`. Native ShellCheck converts backend diagnostics into its private json1 structure at `internal/checking/scripts/contract/shellcheck/analysis_shellcheck_run.go:288-297`.
 
-- `backend.runner.Analyze` converts `ScriptDiagnostic` results to `tools.Finding` at `internal/plugins/execution/scripts/backend.go:98-212`. It selects scripts, checks template effects and filenames, filters findings, maps positions and supplies fallback identifiers. The fallback is also implemented at `internal/checking/scripts/contract/ruff/adapter.go:141-145` and `analysis_shellcheck_run.go:261-267`.
+- `backend.runner.Analyze` converts `ScriptDiagnostic` results to `tools.ToolFinding` at `internal/plugins/execution/scripts/backend.go:98-212`. It selects scripts, checks template effects and filenames, filters findings, maps positions and supplies fallback identifiers. The fallback is also implemented at `internal/checking/scripts/contract/ruff/adapter.go:141-145` and `analysis_shellcheck_run.go:261-267`.
 
 - `backend.Process` and `processBackend.Check` run a native process and decode its `{ok,diagnostics,errors}` response at `internal/plugins/execution/scripts/process.go:19-71`. Only `internal/checking/tools_registry_test.go:24,38` call this code at the reviewed revision.
 

@@ -49,12 +49,12 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
 				context: tools.Context{Document: checkinputs.Input{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 				native: func(*configuration.Config) (tools.Runner, error) {
-					return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.Finding, error) {
+					return fallbackRunner(func(_ context.Context, selected tools.Batch) ([]tools.ToolFinding, error) {
 						nativeCalls++
 						if len(selected.Scripts) != 1 || selected.Scripts[0].Fact.Occurrence.ID != batch.Scripts[nativeIndex].Fact.Occurrence.ID || len(selected.Scopes) != 0 {
 							t.Fatal("native fallback selection changed")
 						}
-						return []tools.Finding{{Script: 0, Message: "native"}}, nil
+						return []tools.ToolFinding{{Script: 0, Message: "native"}}, nil
 					}), nil
 				},
 			}

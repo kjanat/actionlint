@@ -53,13 +53,7 @@ func (r *Base) Errorf(pos *workflowlang.Pos, format string, args ...any) {
 // ErrorfRange reports an error with an exclusive source-range end.
 func (r *Base) ErrorfRange(start, end *workflowlang.Pos, format string, args ...any) {
 	err := findingmodel.Errorf(start, r.name, format, args...)
-	if end != nil {
-		copied := *end
-		err.EndPosition = &copied
-	}
-	if end != nil && end.Line == start.Line && end.Col > start.Col {
-		err.EndColumn = end.Col - 1
-	}
+	err.EndAt(end)
 	r.findings.Report(err)
 }
 

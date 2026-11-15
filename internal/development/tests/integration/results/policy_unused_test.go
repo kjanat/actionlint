@@ -8,6 +8,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -27,7 +28,7 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 		{name: "plugin", source: "run: echo ok # ignore plugin-rule\n", findings: []*findingmodel.Finding{{Rule: "plugin-rule", Start: sourcepos.Position{Line: 1}}}},
 		{name: "explicit audit exception", source: "run: echo ok # ignore unused-suppression expression-reference\n"},
 		{name: "script text", source: "run: |\n  # ignore expression-reference\n  echo hi\n"},
-		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*findingmodel.Finding{{Rule: "shellcheck", Start: sourcepos.Position{Line: 100}, Source: []byte("external"), SuppressionOrigin: &findingmodel.SuppressionOrigin{First: 2, Last: 2}}}},
+		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*findingmodel.Finding{{Rule: "shellcheck", Start: sourcepos.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 2}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -25,6 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -173,13 +174,13 @@ type outcome struct {
 
 // Analyze prepares the selected scripts, checks them, concurrently when the
 // backend allows, and maps the diagnostics back in script order.
-func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r runner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	checks, failures := r.prepare(ctx, batch)
 	if err := ctx.Err(); err != nil {
 		return nil, errors.Join(failures, err)
 	}
 	outcomes := r.check(ctx, checks)
-	var out []tools.Finding
+	var out []tools.ToolFinding
 	for i, c := range checks {
 		findings, err := r.findings(c, batch.Scripts[c.index], outcomes[i])
 		out = append(out, findings...)
@@ -312,8 +313,8 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 }
 
 // findings maps one check's diagnostics to findings in the workflow.
-func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.Finding, error) {
-	var out []tools.Finding
+func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.ToolFinding, error) {
+	var out []tools.ToolFinding
 	var failures error
 	if len(result.sources) != 0 {
 		failures = errors.Join(failures, r.recordSources(script, result.sources, result.directory))
@@ -367,7 +368,7 @@ func (r runner) findings(c check, script tools.Script, result outcome) ([]tools.
 // generated startup line is dropped unless its severity is error. An
 // unmapped start falls back to the script key; an unmapped or reversed end is
 // dropped.
-func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.ScriptDiagnostic) (*tools.Finding, error) {
+func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.ScriptDiagnostic) (*tools.ToolFinding, error) {
 	row, endRow := d.Location.Row, d.EndLocation.Row
 	hasEnd := d.EndLocation != (checkinputs.ScriptPosition{})
 	if lines := c.prepared.LineMap; lines != nil {
@@ -402,7 +403,7 @@ func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.Script
 			r.debug("%s: dropped the unmapped or reversed end of %s at %d:%d", r.descriptor.Name, d.Code, row, d.Location.Column)
 		}
 	}
-	finding := tools.Finding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: sourcepos.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Content: script.Content}
+	finding := tools.ToolFinding{Rule: r.descriptor.Name, Path: script.Path, Message: r.message(d, row, d.Location.Column), Code: d.Code, Severity: string(r.severity(d.Severity)), DocumentationURL: d.URL, Start: sourcepos.Position{Line: start.Line, Column: start.Col}, End: end, Script: c.index, Source: results.DiagnosticSource{Content: script.Content}}
 	for _, fix := range d.Fixes {
 		if mapped, ok := scriptFix(script.Source, c.prepared, fix); ok {
 			finding.Fixes = append(finding.Fixes, mapped)

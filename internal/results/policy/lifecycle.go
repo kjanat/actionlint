@@ -66,7 +66,7 @@ func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Fi
 				return nil, nil, err
 			}
 			authority[finding] = obligation{domain: "lifecycle", identity: string(identity)}
-			finding.SuppressionTarget = nil
+			finding.Source.Suppression = nil
 			finding.NonBlocking = false
 			required = append(required, finding)
 		} else {

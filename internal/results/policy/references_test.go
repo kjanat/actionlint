@@ -8,6 +8,7 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -48,7 +49,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 			t.Parallel()
 			finding := &findingmodel.Finding{
 				Start: sourcepos.Position{Line: first.Pos.Line, Column: first.Pos.Col}, Owner: tc.owner,
-				IgnoreOrigin: &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, RawScriptSource: tc.raw, Reference: tc.reference,
+				IgnoreOrigin: &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
 			}
 			InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]workflowfacts.SourceIndex{"ci.yml": refs.SourceIndex()})
 			if finding.Reference == nil || *finding.Reference != tc.want {

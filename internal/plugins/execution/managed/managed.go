@@ -237,11 +237,11 @@ type documentRunner struct {
 	native     func(*configuration.Config) (tools.Runner, error)
 }
 
-func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	if err := r.validateDocumentBatch(batch); err != nil {
 		return nil, err
 	}
-	var findings []tools.Finding
+	var findings []tools.ToolFinding
 	var failure error
 	nativeBatch := tools.Batch{CallGraph: batch.CallGraph}
 	var nativeIndices []int

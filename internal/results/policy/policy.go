@@ -43,7 +43,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 		metadataSources[metadata.Path()] = content
 		for _, finding := range all {
 			if finding.Path == "" {
-				finding.Path, finding.Source = metadata.Path(), content
+				finding.Path, finding.Source.Content = metadata.Path(), content
 			}
 		}
 	}

@@ -63,8 +63,8 @@ func TestDuplicateDependencyFindingUsesStricterCaller(t *testing.T) {
 	t.Parallel()
 	for _, firstNonBlocking := range []bool{false, true} {
 		files := []policy.Batch{
-			{InputPath: "one.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: []byte("name: action"), Message: "same finding", NonBlocking: firstNonBlocking}}},
-			{InputPath: "two.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: []byte("name: action"), Message: "same finding", NonBlocking: !firstNonBlocking}}},
+			{InputPath: "one.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: results.DiagnosticSource{Content: []byte("name: action")}, Message: "same finding", NonBlocking: firstNonBlocking}}},
+			{InputPath: "two.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: results.DiagnosticSource{Content: []byte("name: action")}, Message: "same finding", NonBlocking: !firstNonBlocking}}},
 		}
 		for i := range files {
 			cfgText := "{}"

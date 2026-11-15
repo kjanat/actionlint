@@ -25,7 +25,7 @@ func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Regis
 			legacy := findingmodel.FromDiagnostic(finding)
 			if legacy.Path != "" && legacy.Path != input.Path {
 				if source, ok := metadataSources[legacy.Path]; ok {
-					legacy.Source = source
+					legacy.Source.Content = source
 				}
 			}
 			all = append(all, legacy)

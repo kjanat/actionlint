@@ -21,8 +21,3 @@ type IgnoreOrigin struct {
 func (origin *IgnoreOrigin) Matches(job, step, uses string) bool {
 	return (job == "" || job == origin.Job) && (step == "" || step == origin.StepID || step == origin.StepName) && (uses == "" || uses == origin.Uses)
 }
-
-type SuppressionOrigin struct {
-	Path        string
-	First, Last int
-}

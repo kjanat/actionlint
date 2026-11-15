@@ -61,7 +61,7 @@ func TestMetadataCallbackFailurePreservesFindingAndSource(t *testing.T) {
 	snapshot := f.actionSnapshot(t, "$/outer")
 	step := actionStepViews(t, snapshot)[0]
 	finding := result.Findings[0]
-	if finding.Message != "partial metadata result" || finding.Path != filepath.Join(f.options.Paths.Workspace, "outer", "action.yml") || !bytes.Equal(finding.Source, []byte(outer)) || finding.Reference == nil || *finding.Reference != step.Reference() {
+	if finding.Message != "partial metadata result" || finding.Path != filepath.Join(f.options.Paths.Workspace, "outer", "action.yml") || !bytes.Equal(finding.Source.Content, []byte(outer)) || finding.Reference == nil || *finding.Reference != step.Reference() {
 		t.Fatalf("partial metadata result has incorrect provenance: %+v", finding)
 	}
 }

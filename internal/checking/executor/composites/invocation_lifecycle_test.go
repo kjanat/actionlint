@@ -37,7 +37,7 @@ func (p *invocationLifecycleProbe) emit(phase string, ref source.Reference) {
 	p.Error(&workflowlang.Pos{Line: 1, Col: 1}, phase)
 	p.t.Cleanup(func() {
 		finding := p.Errs()[before]
-		if finding.Path != call.Path || !bytes.Equal(finding.Source, call.Source.Content()) || finding.Reference == nil || *finding.Reference != ref {
+		if finding.Path != call.Path || !bytes.Equal(finding.Source.Content, call.Source.Content()) || finding.Reference == nil || *finding.Reference != ref {
 			p.t.Errorf("%s finding lost invocation source: %+v", phase, finding)
 		}
 	})

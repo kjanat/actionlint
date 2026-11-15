@@ -1,4 +1,4 @@
-package finding
+package results
 
 import (
 	"go/ast"
@@ -13,7 +13,7 @@ import (
 
 func TestUnavailableSourceProducerGate(t *testing.T) {
 	t.Parallel()
-	root := filepath.Join("..", "..", "..")
+	root := filepath.Join("..", "..")
 	// The process runner and the managed document route each produce the
 	// marker once.
 	producers := []string{
@@ -50,7 +50,7 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 				return true
 			}
 			name, literal := unavailableSourceUse(node)
-			if literal && filepath.Clean(path) != filepath.Clean(filepath.Join(root, "internal", "results", "finding", "unavailable_source.go")) {
+			if literal && filepath.Clean(path) != filepath.Clean(filepath.Join(root, "internal", "results", "unavailable_source.go")) {
 				t.Errorf("E7/M07 source marker literal escaped its owner: %s", path)
 			}
 			expected, tracked := want[name]
@@ -115,10 +115,10 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 		literal         bool
 	}{
 		{source: `ReportedSourceUnavailable("tool", "reported.sh", false)`, factory: "ReportedSourceUnavailable"},
-		{source: `finding.ReportedSourceUnavailable("tool", "reported.sh", true)`, factory: "ReportedSourceUnavailable"},
+		{source: `results.ReportedSourceUnavailable("tool", "reported.sh", true)`, factory: "ReportedSourceUnavailable"},
 		{source: `ReportedSourceUnavailable`, factory: "ReportedSourceUnavailable"},
 		{source: `UnavailableSource{state: sourceNotCaptured}`, literal: true},
-		{source: `finding.UnavailableSource{}`, literal: true},
+		{source: `results.UnavailableSource{}`, literal: true},
 		{source: `UnavailableSource(other)`, literal: true},
 	} {
 		node, err := parser.ParseExpr(expression.source)
@@ -141,7 +141,7 @@ func TestUnavailableProducerGateDetectsUnqualifiedCallsAndLiterals(t *testing.T)
 			t.Fatalf("producer gate missed %s: factories=%d literals=%d", expression.source, factories, literals)
 		}
 	}
-	file, err := parser.ParseFile(token.NewFileSet(), "escape.go", `package finding; type Alias = UnavailableSource; func escaped() { _ = Alias{state: sourceNotCaptured} }`, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), "escape.go", `package results; type Alias = UnavailableSource; func escaped() { _ = Alias{state: sourceNotCaptured} }`, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

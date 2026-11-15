@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -56,23 +55,14 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	out := make([]*findingmodel.Finding, 0, len(findings))
 	for _, result := range findings {
 		finding := findingmodel.FromDiagnostic(result.Diagnostic)
-		finding.Source, finding.RawScriptSource = result.Content, result.RawScript
-		finding.UnavailableSource = result.UnavailableSource
+		finding.Source = result.Source
+		finding.SuppressionOrigin = result.Suppression
 		if result.Script >= 0 && result.Script < len(batchScripts) {
 			if scope := batchScripts[result.Script].Scope.Bindings; scope != nil {
 				finding.Binding = scope.Rule(finding.Rule).ID()
 			}
 			finding.IgnoreOrigin = batchScripts[result.Script].Origin
 			finding.Owner = batchScripts[result.Script].Owner
-		}
-		if at := result.Suppression; at != nil {
-			finding.SuppressionOrigin = &findingmodel.SuppressionOrigin{Path: at.Path, First: at.First, Last: at.Last}
-		}
-		if result.End.Line > 0 {
-			finding.EndPosition = &workflowlang.Pos{Line: result.End.Line, Col: result.End.Column}
-			if result.End.Line == result.Start.Line {
-				finding.EndColumn = result.End.Column - 1
-			}
 		}
 		out = append(out, finding)
 	}

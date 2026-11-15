@@ -121,7 +121,7 @@ func (r report) finding() *findingmodel.Finding {
 	}
 	if r.hasEnd {
 		end := r.end
-		finding.EndPosition = &end
+		finding.EndAt(&end)
 	}
 	return finding
 }

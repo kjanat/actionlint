@@ -262,7 +262,7 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 6}, "kind", "this is message")
-	err.EndColumn = 9
+	err.Diagnostic.End = sourcepos.Position{Line: 1, Column: 10}
 	f := testFields(err, []byte("echo $foo bar"))
 	if f.Snippet != "echo $foo bar\n     ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -275,7 +275,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 	t.Parallel()
 	err := testFinding(&sourcepos.Position{Line: 1, Column: 8}, "kind", "this is message")
-	err.EndColumn = 11
+	err.Diagnostic.End = sourcepos.Position{Line: 1, Column: 12}
 	f := testFields(err, []byte("echo é $foo"))
 	if f.Snippet != "echo é $foo\n       ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -367,7 +367,7 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 
 func TestErrorPrintFormattedErrors(t *testing.T) {
 	t.Parallel()
-	errs := []*Finding{
+	errs := []*RenderedFinding{
 		testFinding(&sourcepos.Position{Line: 1, Column: 1}, "kind1", "error1"),
 		testFinding(&sourcepos.Position{Line: 1, Column: 0}, "kind2", "error2"),
 	}
@@ -523,16 +523,19 @@ func TestErrorFormatterPrintGetVersion(t *testing.T) {
 }
 
 // Fixtures construct presentation inputs directly; no engine or compatibility API is involved.
-func testFinding(pos *sourcepos.Position, kind, message string) *Finding {
-	return &Finding{Diagnostic: diagmodel.Diagnostic{Start: *pos, Rule: kind, Message: message}}
+func testFinding(pos *sourcepos.Position, kind, message string) *RenderedFinding {
+	return &RenderedFinding{Diagnostic: diagmodel.Diagnostic{Start: *pos, Rule: kind, Message: message}}
 }
 
-func testFields(f *Finding, source []byte) *TemplateFields {
-	f.Source = source
+func testFields(f *RenderedFinding, source []byte) *TemplateFields {
+	f.Source.Content = source
 	return f.TemplateFields()
 }
 
-func testPrettyPrint(f *Finding, out io.Writer, source []byte) { f.Source = source; f.PrettyPrint(out) }
+func testPrettyPrint(f *RenderedFinding, out io.Writer, source []byte) {
+	f.Source.Content = source
+	f.PrettyPrint(out)
+}
 
 func newTestFormatter(format string) (*Formatter, error) {
 	return NewFormatter(format, buildinfo.Version, nil)

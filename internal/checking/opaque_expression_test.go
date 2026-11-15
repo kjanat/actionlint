@@ -48,7 +48,7 @@ func TestAnalyzeOpaqueCompositeInputsPublishCapturedInspectExpression(t *testing
 							continue
 						}
 						matched++
-						if finding.Reference == nil || finding.Reference.Document != captured.Revision.Document() || finding.Reference.Revision != captured.Revision.Digest() || !bytes.Equal(result.Sources[index].Content, []byte(content)) || finding.Start.Line < 1 || finding.Start.Column < 1 || result.Sources[index].Unavailable || result.Sources[index].RawScript {
+						if finding.Reference == nil || finding.Reference.Document != captured.Revision.Document() || finding.Reference.Revision != captured.Revision.Digest() || !bytes.Equal(result.Sources[index].Content, []byte(content)) || finding.Start.Line < 1 || finding.Start.Column < 1 || result.Sources[index].Unavailable.Present() || result.Sources[index].RawScript {
 							t.Fatalf("published sink lost captured YAML evidence: %+v", finding)
 						}
 					}

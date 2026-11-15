@@ -44,7 +44,7 @@ jobs:
 	// Prints all errors to stdout following the template
 	var fields []*render.TemplateFields
 	for _, d := range errs {
-		fields = append(fields, render.FindingOf(d, []byte(src)).TemplateFields())
+		fields = append(fields, render.RenderedFindingOf(d, []byte(src)).TemplateFields())
 	}
 	if err := f.Print(os.Stdout, fields); err != nil {
 		panic(err)

@@ -35,7 +35,7 @@ func metadataFindingKey(meta *actionmeta.Metadata, document string, finding *fin
 		strconv.Quote(meta.Dir()), strconv.Quote(path.Dir(document)),
 	).Replace(finding.Message)
 	key := findingmodel.MetadataKey{Path: document, Message: message}
-	if finding.Source != nil {
+	if finding.Source.Content != nil {
 		key.Line, key.Column = finding.Start.Line, finding.Start.Column
 	}
 	return key
@@ -65,7 +65,7 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 	for _, template := range templates {
 		finding := store.copies.Clone(template)
 		key := metadataFindingKey(meta, document, finding)
-		if finding.Source == nil {
+		if finding.Source.Content == nil {
 			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses).Line, reporting.SourcePosition(action.Uses).Col
 		}
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}

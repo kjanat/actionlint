@@ -33,7 +33,7 @@ func TestDocumentPluginMapsRelativeFindingToAbsoluteScriptPath(t *testing.T) {
 		t.Fatalf("captured finding lost: findings=%+v error=%v", findings, err)
 	}
 	finding := findings[0]
-	if finding.Path != batch.Scripts[0].Path || finding.Reference == nil || *finding.Reference != batch.Scripts[0].Fact.Reference || finding.Message != "captured script" || string(finding.Content) != "captured content" {
+	if finding.Path != batch.Scripts[0].Path || finding.Reference == nil || *finding.Reference != batch.Scripts[0].Fact.Reference || finding.Message != "captured script" || string(finding.Source.Content) != "captured content" {
 		t.Fatalf("finding has the wrong source: %+v", finding)
 	}
 }

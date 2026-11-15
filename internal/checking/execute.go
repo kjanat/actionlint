@@ -745,7 +745,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 		}
 		accepted := file.errors[:0]
 		for _, finding := range file.errors {
-			if marker := finding.UnavailableSource; marker.Present() {
+			if marker := finding.Source.Unavailable; marker.Present() {
 				row := admitted[marker.Document()]
 				if marker.Document() == "" || row.State == capture.Conflicted {
 					withheld++
@@ -798,8 +798,8 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 					}
 					continue
 				}
-			} else if finding.Source != nil || finding.RawScriptSource {
-				if !own || !file.captured.Valid() || captures.Verify(file.captured, finding.Source) != nil {
+			} else if finding.Source.Content != nil || finding.Source.RawScript {
+				if !own || !file.captured.Valid() || captures.Verify(file.captured, finding.Source.Content) != nil {
 					withheld++
 					continue
 				}

@@ -128,7 +128,7 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	registration := backendroute.WithConfiguredEngine(tools.Registration{
 		Descriptor: rule.Descriptor{Name: "ruff"},
 		Build: func(tools.Context) (tools.Runner, error) {
-			return coreBatchRunner(func(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+			return coreBatchRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 				nativeCalls++
 				if len(batch.Scripts) != 2 || batch.Scripts[0].Text != "print(1)" || batch.Scripts[1].Text != "print(2)" {
 					t.Fatalf("legacy core shell selectors lost supported runs: %+v", batch.Scripts)
@@ -163,9 +163,9 @@ func (b coreDescribedBackend) ScriptDescriptor() checkinputs.ScriptEngineDescrip
 	return b.descriptor
 }
 
-type coreBatchRunner func(context.Context, tools.Batch) ([]tools.Finding, error)
+type coreBatchRunner func(context.Context, tools.Batch) ([]tools.ToolFinding, error)
 
-func (r coreBatchRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r coreBatchRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	return r(ctx, batch)
 }
 

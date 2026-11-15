@@ -8,7 +8,7 @@ import (
 // sets command completion in CheckResult before requesting JSON output.
 type Result struct {
 	report.CheckResult
-	Findings []Finding
+	Findings []RenderedFinding
 	Rules    []Rule
 }
 
@@ -20,13 +20,10 @@ func FromAnalysis(analysis report.Analysis) Result {
 		Rules:       analysis.Rules,
 	}
 	for i, d := range analysis.Diagnostics {
-		var source report.DiagnosticSource
+		finding := RenderedFinding{Diagnostic: d, canonicalSnippet: d.Snippet}
 		if i < len(analysis.Sources) {
-			source = analysis.Sources[i]
+			finding.Source = analysis.Sources[i]
 		}
-		finding := FindingOf(d, source.Content)
-		finding.RawScript = source.RawScript
-		finding.Unavailable = source.Unavailable
 		r.Findings = append(r.Findings, finding)
 	}
 	return r

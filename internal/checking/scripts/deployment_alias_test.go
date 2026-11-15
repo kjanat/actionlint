@@ -49,17 +49,17 @@ type deploymentAliasTool struct {
 	content []byte
 }
 
-func (a deploymentAliasTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (a deploymentAliasTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	a.t.Helper()
 	if len(batch.Scripts) != len(a.paths) {
 		a.t.Fatal("native adapter lost script occurrences")
 	}
-	var findings []tools.Finding
+	var findings []tools.ToolFinding
 	for i, script := range batch.Scripts {
 		if script.Path != a.paths[i] || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != filepath.Dir(a.paths[i]) {
 			a.t.Fatalf("native adapter reused another deployment: %+v", script)
 		}
-		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Content: script.Content})
+		findings = append(findings, tools.ToolFinding{Rule: "shellcheck", Message: "alias finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Col}, Script: i, Source: results.DiagnosticSource{Content: script.Content}})
 	}
 	return findings, nil
 }
@@ -128,7 +128,7 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 				t.Fatalf("alias findings: %v %v", findings, err)
 			}
 			for i, finding := range findings {
-				if finding.Path != want[i] || string(finding.Source) != string(content) {
+				if finding.Path != want[i] || string(finding.Source.Content) != string(content) {
 					t.Fatalf("finding lost invocation display path: %+v", finding)
 				}
 			}

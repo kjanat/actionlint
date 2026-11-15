@@ -103,8 +103,8 @@ func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entr
 			count++
 			continue
 		}
-		if finding.UnavailableSource.Present() {
-			address := finding.UnavailableSource.Address()
+		if finding.Source.Unavailable.Present() {
+			address := finding.Source.Unavailable.Address()
 			if address != "<stdin>" && !filepath.IsAbs(address) {
 				address = filepath.Join(s.workingDir, address)
 			}
@@ -114,13 +114,13 @@ func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entr
 				count++
 				continue
 			}
-			marker, err := finding.UnavailableSource.BindDocument(document)
+			marker, err := finding.Source.Unavailable.BindDocument(document)
 			if err != nil {
 				failure = errors.Join(failure, err)
 				count++
 				continue
 			}
-			finding.UnavailableSource = marker
+			finding.Source.Unavailable = marker
 			finding.Reference, finding.Fixes = nil, nil
 		} else if !entryOwns(finding.Path) {
 			foreignEvidence := finding.Reference != nil

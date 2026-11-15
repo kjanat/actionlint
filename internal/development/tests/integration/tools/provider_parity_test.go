@@ -55,7 +55,7 @@ type parityDiagnostics struct {
 	Error    string                   `json:"error,omitempty"`
 }
 
-// paritySource is a report.DiagnosticSource with its content hashed.
+// paritySource is a results.DiagnosticSource with its content hashed.
 type paritySource struct {
 	Content     string `json:"content,omitempty"`
 	RawScript   bool   `json:"raw_script,omitempty"`
@@ -76,7 +76,7 @@ type parityReport struct {
 	Suppression *paritySuppression `json:"suppression,omitempty"`
 }
 
-// parityUnavailable is a present finding.UnavailableSource.
+// parityUnavailable is a present finding.Source.Unavailable.
 type parityUnavailable struct {
 	Reason  string `json:"reason"`
 	Address string `json:"address"`
@@ -108,7 +108,7 @@ func contentHash(content []byte) string {
 // parityRecorder collects the findings the tool runners return to the host.
 type parityRecorder struct {
 	mu       sync.Mutex
-	findings []tools.Finding
+	findings []tools.ToolFinding
 }
 
 // wrap returns registrations whose runners record their findings in r.
@@ -133,7 +133,7 @@ type recordingRunner struct {
 	recorder *parityRecorder
 }
 
-func (r recordingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
+func (r recordingRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 	findings, err := r.runner.Analyze(ctx, batch)
 	r.recorder.mu.Lock()
 	r.recorder.findings = append(r.recorder.findings, findings...)
@@ -227,7 +227,7 @@ func toolFindings(t *testing.T, result *checking.Result, err error, recorder *pa
 				out.Findings = append(out.Findings, d)
 				if i < len(result.Sources) {
 					evidence := result.Sources[i]
-					out.Sources = append(out.Sources, paritySource{Content: contentHash(evidence.Content), RawScript: evidence.RawScript, Unavailable: evidence.Unavailable})
+					out.Sources = append(out.Sources, paritySource{Content: contentHash(evidence.Content), RawScript: evidence.RawScript, Unavailable: evidence.Unavailable.Present()})
 				}
 			}
 		}
@@ -240,12 +240,12 @@ func toolFindings(t *testing.T, result *checking.Result, err error, recorder *pa
 	}
 	recorder.mu.Lock()
 	for _, finding := range recorder.findings {
-		if finding.UnavailableSource.Present() && finding.UnavailableSource.Provider() != finding.Rule {
-			t.Errorf("unavailable source of a %s finding names provider %q", finding.Rule, finding.UnavailableSource.Provider())
+		if finding.Source.Unavailable.Present() && finding.Source.Unavailable.Provider() != finding.Rule {
+			t.Errorf("unavailable source of a %s finding names provider %q", finding.Rule, finding.Source.Unavailable.Provider())
 		}
-		report := parityReport{Rule: finding.Rule, Code: finding.Code, Path: finding.Path, Start: finding.Start, Content: contentHash(finding.Content), RawScript: finding.RawScript}
-		if finding.UnavailableSource.Present() {
-			report.Unavailable = &parityUnavailable{Reason: finding.UnavailableSource.Reason(), Address: finding.UnavailableSource.Address()}
+		report := parityReport{Rule: finding.Rule, Code: finding.Code, Path: finding.Path, Start: finding.Start, Content: contentHash(finding.Source.Content), RawScript: finding.Source.RawScript}
+		if finding.Source.Unavailable.Present() {
+			report.Unavailable = &parityUnavailable{Reason: finding.Source.Unavailable.Reason(), Address: finding.Source.Unavailable.Address()}
 		}
 		if finding.Suppression != nil {
 			report.Suppression = &paritySuppression{Path: finding.Suppression.Path, First: finding.Suppression.First, Last: finding.Suppression.Last}
