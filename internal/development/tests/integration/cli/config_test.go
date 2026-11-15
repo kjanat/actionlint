@@ -11,7 +11,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
@@ -156,7 +156,7 @@ lint:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repoconfig.VariableNames(resolved.Facts()) == nil || repoconfig.SecretNames(resolved.Facts()) != nil {
+	if configuration.VariableNames(resolved.Facts()) == nil || configuration.SecretNames(resolved.Facts()) != nil {
 		t.Fatal("[] and null lost their distinction")
 	}
 	if checking.ConfigurationRules().DiagnosticLevel(resolved, "require-commit-hash") != "off" {
@@ -263,7 +263,7 @@ lint:
 		if err := os.WriteFile(config, []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
-		result, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: config}, true)
+		result, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: config}, true)
 		if err != nil {
 			t.Fatal(err)
 		}

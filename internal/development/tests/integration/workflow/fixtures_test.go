@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -36,10 +36,10 @@ func TestLinterMissingLocalAction(t *testing.T) {
 	} {
 		request := checking.Options{}
 		var requestSources []workspace.Source
-		var lConfig *repoconfig.Config
+		var lConfig *configuration.Config
 		var err error
 
-		lConfig = &repoconfig.Config{}
+		lConfig = &configuration.Config{}
 		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps + "permissions: {}\n"
 		requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: proj, Config: lConfig}}
 		errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
@@ -113,7 +113,7 @@ func TestWorkflowFixturesOK(t *testing.T) {
 			}
 
 			request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
-			requestSources := testutil.FixtureSources(t, []string{f}, proj, &repoconfig.Config{})
+			requestSources := testutil.FixtureSources(t, []string{f}, proj, &configuration.Config{})
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)
@@ -233,7 +233,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 					tool = shellcheck
 				}
 				request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})})
-				requestSources := []workspace.Source{{Path: "test.yaml", Content: b, Project: proj, Config: &repoconfig.Config{}}}
+				requestSources := []workspace.Source{{Path: "test.yaml", Content: b, Project: proj, Config: &configuration.Config{}}}
 				errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 				if err != nil {
 					t.Fatal(err)
@@ -267,7 +267,7 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 	files = append(files, fs...)
 
 	request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
-	requestSources := testutil.FixtureSources(t, files, proj, &repoconfig.Config{})
+	requestSources := testutil.FixtureSources(t, files, proj, &configuration.Config{})
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 	if err != nil {
 		t.Fatal(err)

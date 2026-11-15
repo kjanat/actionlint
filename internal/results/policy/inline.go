@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -22,18 +22,18 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 }
 
 type inlineAudit struct {
-	level func(string) repoconfig.Level
+	level func(string) configuration.Level
 	used  func(sourcepos.Position, string)
 }
 
-func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
+func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*findingmodel.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
 	allowedRules := processor.SuppressionRules(additional...)
 	directives, invalid := suppression.Parse(source, allowedRules, processor.RuleSet.Names())
 	evaluation, reports := suppression.Evaluate(directives, func(name string) suppression.Decision {
 		mode := policy.ReportFor(processor.RuleSet.ResolveAlias(name))
 		return suppression.Decision{
-			Suppress: mode == repoconfig.SuppressionsAllowed || mode == repoconfig.ReportSuppression,
-			Report:   mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll,
+			Suppress: mode == configuration.SuppressionsAllowed || mode == configuration.ReportSuppression,
+			Report:   mode == configuration.ReportSuppression || mode == configuration.ReportAll,
 		}
 	}, processor.RuleSet.Names())
 	for _, d := range invalid {
@@ -69,7 +69,7 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 		if applies && finding.Rule != "inline-suppression" && processor.RuleSet.ResolveAlias(finding.Rule) != "forbidden-suppression" &&
 			slices.ContainsFunc(allowedRules, func(name string) bool {
 				return processor.RuleSet.ResolveAlias(name) == processor.RuleSet.ResolveAlias(finding.Rule)
-			}) && policy.ReportFor(finding.Rule) == repoconfig.SuppressionsAllowed {
+			}) && policy.ReportFor(finding.Rule) == configuration.SuppressionsAllowed {
 			finding.SuppressionTarget = &findingmodel.SuppressionOrigin{Path: targetPath, First: first, Last: last}
 		} else {
 			finding.SuppressionTarget = nil
@@ -99,7 +99,7 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 	return filtered
 }
 
-func (processor Processor) filterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
+func (processor Processor) filterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *configuration.SuppressionsPolicy, audit *inlineAudit, additional ...string) []*findingmodel.Finding {
 	local := make([]*findingmodel.Finding, len(findings))
 	for i, finding := range findings {
 		scoped := *finding

@@ -8,7 +8,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -22,7 +22,7 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 				Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions,
 				Step: func(declaration.StepView) []reporting.Finding { return nil },
 			}
-			rules, err := repoconfig.NewRuleSet([]rule.Declaration{check.Declaration})
+			rules, err := configuration.NewRuleSet([]rule.Declaration{check.Declaration})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,7 +80,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return collector.Findings
 				}
 			}
-			rules, err := repoconfig.NewRuleSet([]rule.Declaration{check.Declaration})
+			rules, err := configuration.NewRuleSet([]rule.Declaration{check.Declaration})
 			if err != nil {
 				t.Fatal(err)
 			}

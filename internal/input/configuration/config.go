@@ -1,6 +1,6 @@
 // Package config owns the repository configuration document: its model, decoding,
 // validation, inheritance, overlays and inspection.
-package config
+package configuration
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/selection"

@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // Project represents one GitHub project. One Git repository corresponds to one project.
 type Project struct {
 	root       string
-	config     *repoconfig.Loaded
+	config     *configuration.Loaded
 	configPath string
 }
 
@@ -61,11 +61,11 @@ func (p *Project) ConfigPath() string { return p.configPath }
 
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
-func NewProject(rules repoconfig.RuleSet, root string) (*Project, error) {
+func NewProject(rules configuration.RuleSet, root string) (*Project, error) {
 	return newProject(context.Background(), rules, root, nil)
 }
 
-func newProject(ctx context.Context, rules repoconfig.RuleSet, root string, readFile func(string) ([]byte, error), additional ...string) (*Project, error) {
+func newProject(ctx context.Context, rules configuration.RuleSet, root string, readFile func(string) ([]byte, error), additional ...string) (*Project, error) {
 	c, path, err := rules.LoadRepositoryContext(ctx, root, readFile, additional...)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (p *Project) Knows(path string) bool {
 // Config returns config object of the GitHub project repository. The config file was read from
 // ".github/actionlint.yaml" or ".github/actionlint.yml" when this Project instance was created.
 // When no config was found, this method returns nil.
-func (p *Project) Config() *repoconfig.Config {
+func (p *Project) Config() *configuration.Config {
 	// Note: Calling this method must be thread safe (#333)
 	if p.config == nil {
 		return nil
@@ -103,9 +103,9 @@ func (p *Project) Config() *repoconfig.Config {
 }
 
 // ConfigProvenance identifies the documents that supplied the project's settings.
-func (p *Project) ConfigProvenance() repoconfig.Provenance {
+func (p *Project) ConfigProvenance() configuration.Provenance {
 	if p.config == nil {
-		return repoconfig.Provenance{}
+		return configuration.Provenance{}
 	}
 	return p.config.Provenance
 }
@@ -114,7 +114,7 @@ func (p *Project) ConfigProvenance() repoconfig.Provenance {
 // and reuses them.
 // Create a new instance after changing repository boundaries or loaded configuration.
 type Projects struct {
-	rules      repoconfig.RuleSet
+	rules      configuration.RuleSet
 	ctx        context.Context
 	ruleNames  []string
 	known      []*Project
@@ -124,7 +124,7 @@ type Projects struct {
 }
 
 // NewProjects creates new Projects instance.
-func NewProjects(rules repoconfig.RuleSet) *Projects {
+func NewProjects(rules configuration.RuleSet) *Projects {
 	return &Projects{rules: rules}
 }
 
@@ -167,6 +167,6 @@ func (ps *Projects) At(path string) (*Project, error) {
 }
 
 // Discoverer selects configuration loading policy before the first lookup.
-func Discoverer(rules repoconfig.RuleSet, skipConfig bool) *Projects {
+func Discoverer(rules configuration.RuleSet, skipConfig bool) *Projects {
 	return &Projects{rules: rules, skipConfig: skipConfig}
 }

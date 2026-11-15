@@ -16,7 +16,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	registry "actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	scriptbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -57,7 +57,7 @@ func configuredEngineSelections() registry.Selections {
 	return selections
 }
 
-func configuredEngineFixture(t *testing.T) (string, []string, *config.Loaded) {
+func configuredEngineFixture(t *testing.T) (string, []string, *configuration.Loaded) {
 	t.Helper()
 	root := t.TempDir()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
@@ -90,7 +90,7 @@ func configuredEngineFixture(t *testing.T) (string, []string, *config.Loaded) {
 	return root, paths, cfg
 }
 
-func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *config.Loaded, options checking.Options) (*checking.Result, error) {
+func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *configuration.Loaded, options checking.Options) (*checking.Result, error) {
 	t.Helper()
 	if options.Tools == nil {
 		options.Tools = registry.Registrations(configuredEngineSelections())
@@ -309,7 +309,7 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				return backend, nil
 			}}
 			var sources []workspace.Source
-			for i, selected := range []*config.Config{cfg, other} {
+			for i, selected := range []*configuration.Config{cfg, other} {
 				content, err := os.ReadFile(paths[i])
 				if err != nil {
 					t.Fatal(err)

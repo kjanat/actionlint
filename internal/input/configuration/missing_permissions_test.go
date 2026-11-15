@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"slices"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
@@ -15,14 +15,14 @@ func TestMissingPermissionsLocations(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		options map[string]any
-		want    []config.PermissionLocation
+		want    []configuration.PermissionLocation
 		invalid bool
 	}{
 		{"default", map[string]any{}, nil, false},
-		{"workflow", map[string]any{"require-at": "workflow"}, []config.PermissionLocation{config.WorkflowPermissions}, false},
-		{"every job", map[string]any{"require-at": "every-job"}, []config.PermissionLocation{config.EveryJobPermissions}, false},
-		{"both", map[string]any{"require-at": []any{"workflow", "every-job"}}, config.PermissionLocations(), false},
-		{"duplicate", map[string]any{"require-at": []any{"workflow", "workflow"}}, []config.PermissionLocation{config.WorkflowPermissions}, false},
+		{"workflow", map[string]any{"require-at": "workflow"}, []configuration.PermissionLocation{configuration.WorkflowPermissions}, false},
+		{"every job", map[string]any{"require-at": "every-job"}, []configuration.PermissionLocation{configuration.EveryJobPermissions}, false},
+		{"both", map[string]any{"require-at": []any{"workflow", "every-job"}}, configuration.PermissionLocations(), false},
+		{"duplicate", map[string]any{"require-at": []any{"workflow", "workflow"}}, []configuration.PermissionLocation{configuration.WorkflowPermissions}, false},
 		{"empty", map[string]any{"require-at": []any{}}, nil, true},
 		{"null", map[string]any{"require-at": nil}, nil, true},
 		{"boolean", map[string]any{"require-at": true}, nil, true},
@@ -33,7 +33,7 @@ func TestMissingPermissionsLocations(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var options config.MissingPermissionsOptions
+			var options configuration.MissingPermissionsOptions
 			err := binding.Decode(tc.options, &options)
 			if tc.invalid {
 				if err == nil {
@@ -76,14 +76,14 @@ func TestMissingPermissionsMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, err := checking.ConfigurationRules().ResolveRules(config.Presets{}, cfg)
+			resolved, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got := checking.ConfigurationRules().DiagnosticLevel(resolved, "missing-permissions"); string(got) != tc.level {
 				t.Fatalf("level=%s want=%s", got, tc.level)
 			}
-			if tc.want != "" && !slices.Equal(permissionLocations(t, resolved), []config.PermissionLocation{config.PermissionLocation(tc.want)}) {
+			if tc.want != "" && !slices.Equal(permissionLocations(t, resolved), []configuration.PermissionLocation{configuration.PermissionLocation(tc.want)}) {
 				t.Fatalf("locations=%v want=%s", permissionLocations(t, resolved), tc.want)
 			}
 			again, err := checking.ConfigurationRules().MigrateDocument("actionlint.yaml", migrated.Content)
@@ -94,7 +94,7 @@ func TestMissingPermissionsMigration(t *testing.T) {
 	}
 }
 
-func permissionLocations(t *testing.T, cfg *config.Config) []config.PermissionLocation {
+func permissionLocations(t *testing.T, cfg *configuration.Config) []configuration.PermissionLocation {
 	t.Helper()
 	locations, err := cfg.PermissionDeclarationLocations()
 	if err != nil {

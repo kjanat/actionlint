@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"github.com/bmatcuk/doublestar/v4"
 )
 

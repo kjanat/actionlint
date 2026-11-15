@@ -3,12 +3,12 @@ package installation
 import (
 	"context"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 )
 
 // OpenForSelection reads declarations without granting permission to edit a symlinked configuration.
-func OpenForSelection(ctx context.Context, rules config.RuleSet, acquisition Acquisition, directory, configPath string, readMode configplugins.ReadMode) (*Project, error) {
+func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, directory, configPath string, readMode configplugins.ReadMode) (*Project, error) {
 	configPath, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err

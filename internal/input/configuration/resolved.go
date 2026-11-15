@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"

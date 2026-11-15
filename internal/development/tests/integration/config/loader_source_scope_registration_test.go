@@ -7,7 +7,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
@@ -24,7 +24,7 @@ func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
 		for _, group := range groups {
 			for _, project := range []struct {
 				name  string
-				apply func(*repoconfig.Config, string, string) (*repoconfig.Config, error)
+				apply func(*configuration.Config, string, string) (*configuration.Config, error)
 			}{{"action", checking.ConfigurationRules().ForAction}, {"suppressions", checking.ConfigurationRules().ForSuppressions}} {
 				t.Run(descriptor.Name+"/"+group+"/"+project.name, func(t *testing.T) {
 					t.Parallel()
@@ -37,7 +37,7 @@ func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					resolved, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, projected)
+					resolved, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, projected)
 					if err != nil {
 						t.Fatal(err)
 					}

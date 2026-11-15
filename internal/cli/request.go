@@ -11,7 +11,7 @@ import (
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // commandRequest runs a command using the inputs stored in its request type.
@@ -72,7 +72,7 @@ type doctorRequest struct {
 	// Deprecations holds a warning for each deprecated flag used; doctor
 	// prints them to stderr.
 	Deprecations []string
-	Config       repoconfig.Selection
+	Config       configuration.Selection
 	JSON         bool
 	Hyperlinks   hyperlinkMode
 }
@@ -113,7 +113,7 @@ func (r configSchemaRequest) run(ctx context.Context, streams Command) (int, err
 type configInitRequest struct {
 	JSON       bool
 	Hyperlinks hyperlinkMode
-	Format     repoconfig.FileFormat
+	Format     configuration.FileFormat
 }
 
 type configMigrateRequest configcmd.MigrateOptions

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 )
 

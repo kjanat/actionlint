@@ -10,7 +10,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
@@ -23,12 +23,12 @@ import (
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection config.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection configreport.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection configreport.Inspection, err error) {
 	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	path, err := config.SelectedPath(selection)
+	path, err := configuration.SelectedPath(selection)
 	if err != nil {
 		return inspection, err
 	}
@@ -52,7 +52,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 	}
 	rules := configurationRegistrations(configured.Analyzers, configured.Tools)
 	for _, engine := range plugins.ScriptEngines {
-		rules = append(rules, config.RuleRegistration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: engine.Descriptor.Engine})
+		rules = append(rules, configuration.RuleRegistration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: engine.Descriptor.Engine})
 	}
 	for _, provider := range plugins.Providers {
 		manifest := provider.Files.Manifest
@@ -60,7 +60,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		if scopeErr != nil {
 			return inspection, fmt.Errorf("provider %s: %w", manifest.ID, scopeErr)
 		}
-		registration := config.RuleRegistration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true, ToolSettings: new(manifest.Settings())}
+		registration := configuration.RuleRegistration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true, ToolSettings: new(manifest.Settings())}
 		if manifest.Role == pluginmanifests.RoleScript {
 			registration.ReplacesTool = manifest.Rule.Name
 		}
@@ -70,7 +70,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 		return inspection, err
 	}
 	reader := configsource.New(ctx, nil, acquisition.Connections)
-	policy, err := config.LoadNetworkPolicy(ctx, acquisition.Connections)
+	policy, err := configuration.LoadNetworkPolicy(ctx, acquisition.Connections)
 	if err != nil {
 		return inspection, err
 	}
@@ -81,7 +81,7 @@ func InspectConfig(ctx context.Context, selection config.Selection, paths []stri
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection config.Selection, paths []string, acquisition plugininstall.Acquisition) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition plugininstall.Acquisition) ([]pluginmanifests.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ import (
 	results1 "actionlint.kjanat.dev/v2/internal/results"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -49,7 +49,7 @@ type lintRequest struct {
 	workingDir   string
 	workspaceDir string
 	configFile   string
-	overlays     []repoconfig.Overlay
+	overlays     []configuration.Overlay
 	ignore       []string
 	format       outputFormat
 	sarif        bool

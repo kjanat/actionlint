@@ -11,7 +11,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -77,7 +77,7 @@ func (s selection) defaultCommand(name string) bool {
 }
 
 // forConfig lets a repository backend replace a default plugin.
-func (s selection) forConfig(name string, cfg *config.Config) Selection {
+func (s selection) forConfig(name string, cfg *configuration.Config) Selection {
 	if s.fallback && cfg != nil && cfg.Tools[name].Backend != nil {
 		s.Backend, s.Command, s.Process = nil, name, &hostprocess.CommandOptions{Optional: true}
 	}
@@ -154,8 +154,8 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 			options := ProcessOptions(name, o.Command, o.Process, c.Config, c.WorkingDir)
 			return o.Backend != nil || Module(name, o.Command, o.Process, c.Config) != nil || options == nil && o.Runner == nil || options != nil && !options.Optional
 		},
-		NeedsProcess: func(_ context.Context, cfg, project *config.Config) (bool, error) {
-			return ProjectMayNeedProcessFor(name, cfg, project, func(candidate *config.Config) bool {
+		NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
+			return ProjectMayNeedProcessFor(name, cfg, project, func(candidate *configuration.Config) bool {
 				o := sel.forConfig(name, candidate)
 				return o.Backend == nil && o.Runner == nil && hostprocess.CommandEnabled(o.Command, o.Process) && Module(name, o.Command, o.Process, candidate) == nil
 			})
@@ -215,7 +215,7 @@ type transports struct {
 	registration tools.Registration
 	context      tools.Context
 	built        map[string]tools.Runner
-	selected     map[*config.Config]string
+	selected     map[*configuration.Config]string
 	probes       *versionProbes
 }
 
@@ -242,7 +242,7 @@ func (p *versionProbes) get(key string) *process.VersionProbe {
 
 // forConfig returns the key of the runner cfg selects, building it once;
 // "" selects none.
-func (t *transports) forConfig(cfg *config.Config) (string, error) {
+func (t *transports) forConfig(cfg *configuration.Config) (string, error) {
 	if key, ok := t.selected[cfg]; ok {
 		return key, nil
 	}
@@ -251,13 +251,13 @@ func (t *transports) forConfig(cfg *config.Config) (string, error) {
 		return "", err
 	}
 	if t.selected == nil {
-		t.selected = map[*config.Config]string{}
+		t.selected = map[*configuration.Config]string{}
 	}
 	t.selected[cfg] = key
 	return key, nil
 }
 
-func (t *transports) build(cfg *config.Config) (string, error) {
+func (t *transports) build(cfg *configuration.Config) (string, error) {
 	m := t.provider.Manifest
 	name := m.Rule.Name
 	o := t.selection.forConfig(name, cfg)
@@ -396,8 +396,8 @@ type transportRouting struct{ transports *transports }
 func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
 	t := r.transports
 	var failures error
-	failed := map[*config.Config]bool{}
-	keyOf := func(cfg *config.Config) string {
+	failed := map[*configuration.Config]bool{}
+	keyOf := func(cfg *configuration.Config) string {
 		if failed[cfg] {
 			return ""
 		}
@@ -424,7 +424,7 @@ func (r transportRouting) Analyze(ctx context.Context, batch tools.Batch) ([]too
 		return groups[key]
 	}
 	for _, scope := range batch.Scopes {
-		var cfg *config.Config
+		var cfg *configuration.Config
 		if scope != nil {
 			cfg = scope.Config
 		}

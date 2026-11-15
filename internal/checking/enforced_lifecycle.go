@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
@@ -31,7 +31,7 @@ func prepareEnforcedLifecycle(ctx context.Context, options Options) (Options, er
 		paths = append(paths, path)
 	}
 	reader := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
-	loaded, err := repoconfig.ReadEnforcedLifecyclePolicies(paths, reader.ReadConfig)
+	loaded, err := configuration.ReadEnforcedLifecyclePolicies(paths, reader.ReadConfig)
 	if err != nil {
 		return options, &RequiredPolicyError{Err: err}
 	}

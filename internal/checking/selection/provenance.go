@@ -5,7 +5,7 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -56,4 +56,4 @@ type originParticipant interface {
 	SetIgnoreOrigin(*findingmodel.IgnoreOrigin)
 }
 
-func HasConfiguredIgnores(cfg *repoconfig.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }
+func HasConfiguredIgnores(cfg *configuration.Config) bool { return cfg != nil && len(cfg.Ignores) != 0 }

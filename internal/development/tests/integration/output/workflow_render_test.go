@@ -12,7 +12,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
@@ -124,7 +124,7 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: infile, InputPath: filepath.Join(root, infile), Content: content, Project: proj, Config: &repoconfig.Config{}}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: infile, InputPath: filepath.Join(root, infile), Content: content, Project: proj, Config: &configuration.Config{}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -178,7 +178,7 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.Write(t, root, file, string(content))
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: proj, Config: &repoconfig.Config{}}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: proj, Config: &configuration.Config{}}})
 	if err != nil {
 		t.Fatal(err)
 	}

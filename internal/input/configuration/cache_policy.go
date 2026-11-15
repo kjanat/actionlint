@@ -1,4 +1,4 @@
-package config
+package configuration
 
 func (cfg *Config) CachePolicyEnabled(name string) bool {
 	var enabled *bool

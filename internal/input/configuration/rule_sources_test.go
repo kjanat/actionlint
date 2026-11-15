@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
@@ -15,7 +15,7 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		base, leaf string
-		want       repoconfig.Level
+		want       configuration.Level
 	}{
 		{"same layer", "", "lint: {rules: {external: {shellcheck: off}, plugins: {shellcheck: on}}}", "on"},
 		{"inherited native", "lint: {rules: {external: {shellcheck: off}}}", "extends: [base.yml]\nlint: {rules: {plugins: {shellcheck: on}}}", "on"},
@@ -42,7 +42,7 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 				t.Fatal(err)
 			}
 			capturedReads := reads
-			registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: "shellcheck"}
+			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true, ReplacesTool: "shellcheck"}
 			rules, err := checking.ConfigurationRules().WithRegisteredRules(registration)
 			if err != nil {
 				t.Fatal(err)
@@ -52,7 +52,7 @@ func TestCapturedRuleLayersUseRegisteredProviderPrecedence(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				resolved, err := checking.ConfigurationRules().ResolveRegisteredRules(repoconfig.Presets{}, selected, registration)
+				resolved, err := checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, selected, registration)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	results1 "actionlint.kjanat.dev/v2/internal/results"
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -124,7 +124,7 @@ func TestActionMetadataOmitsSectionMirrors(t *testing.T) {
 	if err := yaml.Unmarshal([]byte(read(t, filepath.Join("..", "..", "..", "action.yml"))), &metadata); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range repoconfig.Keys() {
+	for _, key := range configuration.Keys() {
 		// The released files input selects workflow paths.
 		if key == "files" {
 			continue

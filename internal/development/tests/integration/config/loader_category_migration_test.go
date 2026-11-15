@@ -11,10 +11,10 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestCategoryMigrationPreservesSelection(t *testing.T) {
@@ -47,7 +47,7 @@ func TestCategoryMigrationPreservesSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, preset := range []repoconfig.Presets{{}, {Strict: true}, {Experimental: new(true)}, {Experimental: new(false)}} {
+			for _, preset := range []configuration.Presets{{}, {Strict: true}, {Experimental: new(true)}, {Experimental: new(false)}} {
 				a, err := checking.ConfigurationRules().ResolveRules(preset, before)
 				if err != nil {
 					t.Fatal(err)
@@ -92,7 +92,7 @@ func TestCategoryMigrationPluginMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, preset := range []repoconfig.Presets{{}, {Strict: true}} {
+	for _, preset := range []configuration.Presets{{}, {Strict: true}} {
 		a, err := checking.ConfigurationRules().ResolveRules(preset, before, descriptor)
 		if err != nil {
 			t.Fatal(err)

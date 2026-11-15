@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 type transportFunc func(*http.Request) (*http.Response, error)

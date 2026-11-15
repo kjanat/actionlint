@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -61,7 +61,7 @@ func TestForeignInlineSuppressionSource(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].Rule != "shellcheck" {
 		t.Fatalf("caller suppressed foreign finding: %+v %v", got, err)
 	}
-	got, err = publishFindings(t, p, cfg, []*findingmodel.Finding{finding}, map[string][]byte{finding.Path: source}, map[string]*config.Config{finding.Path: cfg})
+	got, err = publishFindings(t, p, cfg, []*findingmodel.Finding{finding}, map[string][]byte{finding.Path: source}, map[string]*configuration.Config{finding.Path: cfg})
 	if err != nil || len(got) != 0 {
 		t.Fatalf("foreign suppression: %+v %v", got, err)
 	}

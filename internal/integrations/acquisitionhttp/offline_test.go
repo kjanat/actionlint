@@ -7,7 +7,7 @@ import (
 	"net/netip"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 

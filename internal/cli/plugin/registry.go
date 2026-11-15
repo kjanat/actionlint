@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
@@ -45,7 +45,7 @@ type RegistryRequest struct {
 	Options   RegistryOptions
 	Paths     []string
 
-	Config repoconfig.Selection
+	Config configuration.Selection
 	JSON   bool
 }
 

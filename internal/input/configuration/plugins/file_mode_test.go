@@ -7,13 +7,13 @@ import (
 	"runtime"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestPluginManifestFileMode(t *testing.T) {
@@ -48,7 +48,7 @@ func TestPluginManifestFileMode(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+			manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}

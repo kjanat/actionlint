@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
@@ -39,7 +39,7 @@ func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						selected = resolveRules(t, repoconfig.Presets{Strict: true}, selected)
+						selected = resolveRules(t, configuration.Presets{Strict: true}, selected)
 						if got := rules.DiagnosticLevel(selected, descriptor.Name); got != "off" {
 							t.Fatalf("later setting lost to category order: %s", got)
 						}
@@ -77,7 +77,7 @@ overrides:
 	}
 	for _, tc := range []struct {
 		path    string
-		level   repoconfig.Level
+		level   configuration.Level
 		minimum float64
 	}{{"target.yml", "error", 0}, {"options.yml", "warn", 10}} {
 		t.Run(tc.path, func(t *testing.T) {
@@ -86,7 +86,7 @@ overrides:
 			if err != nil {
 				t.Fatal(err)
 			}
-			selected = resolveRules(t, repoconfig.Presets{}, selected)
+			selected = resolveRules(t, configuration.Presets{}, selected)
 			minimum, _ := selected.RequiresJobTimeout().MinMinutes()
 			maximum, _ := selected.RequiresJobTimeout().MaxMinutes()
 			if rules.DiagnosticLevel(selected, "job-timeout") != tc.level || minimum != tc.minimum || maximum != 20 {

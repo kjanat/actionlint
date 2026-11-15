@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 )
@@ -75,7 +75,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 		filepath.Join("local", "action.yml"): {URI: FileURI(actionPath), Version: 9, Text: unsaved},
 	}
 	var actionReads atomic.Int32
-	result, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []repoconfig.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
+	result, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
 		if filepath.Clean(path) == actionPath {
 			actionReads.Add(1)
 		}

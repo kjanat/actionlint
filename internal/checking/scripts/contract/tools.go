@@ -10,7 +10,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -22,7 +22,7 @@ import (
 
 // Context supplies invocation-owned resources to a registered adapter.
 type Context struct {
-	Config, ProjectConfig   *config.Config
+	Config, ProjectConfig   *configuration.Config
 	WorkingDir, ProjectRoot string
 	Processes               *process.ProcessPool
 	LoadEngine              func(context.Context, string) (checkinputs.ScriptBackend, error)
@@ -50,7 +50,7 @@ type Registration struct {
 	InputSelectors    func(Context) ([]checkinputs.ScriptInput, error)
 	ConfiguredBackend func(Context) (checkinputs.ScriptBackend, error)
 	RequiresExecution bool
-	NeedsProcess      func(context.Context, *config.Config, *config.Config) (bool, error)
+	NeedsProcess      func(context.Context, *configuration.Config, *configuration.Config) (bool, error)
 	Validate          func() error
 	Enabled           func(Context) bool
 	Required          func(Context) bool
@@ -67,8 +67,8 @@ type Runner interface {
 }
 
 type Scope struct {
-	Config                             *config.Config
-	ConfigProvenance                   config.Provenance
+	Config                             *configuration.Config
+	ConfigProvenance                   configuration.Provenance
 	AnalysisDir, Workspace, ActionPath string
 	Reader                             *files.Reader
 	Composite                          bool
@@ -89,7 +89,7 @@ type Script struct {
 	Source     workflowdecl.ScriptSourceView
 	Key, Value *workflow.Pos
 	Shell      *string
-	Config     *config.Config
+	Config     *configuration.Config
 	Path       string
 	Content    []byte
 	Scope      *Scope

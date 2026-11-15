@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/google/go-cmp/cmp"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
@@ -54,7 +54,7 @@ func TestNetworkPolicySchema(t *testing.T) {
 			if err := json.Unmarshal([]byte(tc.text), &value); err != nil {
 				t.Fatal(err)
 			}
-			_, parseErr := config.ReadNetworkPolicy([]string{"policy.json"}, func(string) ([]byte, error) { return []byte(tc.text), nil })
+			_, parseErr := configuration.ReadNetworkPolicy([]string{"policy.json"}, func(string) ([]byte, error) { return []byte(tc.text), nil })
 			schemaErr := schema.Validate(value)
 			if (parseErr == nil) != tc.valid || (schemaErr == nil) != tc.valid {
 				t.Fatalf("want valid=%t; parser=%v; schema=%v", tc.valid, parseErr, schemaErr)

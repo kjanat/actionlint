@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -30,8 +30,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -59,7 +59,7 @@ type Options struct {
 	// ConfigFile resolves relative to WorkingDir unless it is absolute or remote.
 	ConfigFile        string
 	ConfigConnections acquisitionhttp.Connections
-	ConfigOverlays    []repoconfig.Overlay
+	ConfigOverlays    []configuration.Overlay
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
@@ -74,7 +74,7 @@ type Options struct {
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
 	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
-	Presets                      repoconfig.Presets
+	Presets                      configuration.Presets
 	IgnorePatterns               []string
 	IgnoreSelectors              policy.IgnoreSelectors
 	LogWriter                    io.Writer
@@ -225,14 +225,14 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	} else if options.Debug {
 		request.LogLevel = LogLevelDebug
 	}
-	request.IgnorePatterns, err = repoconfig.CompileIgnorePatterns(options.IgnorePatterns)
+	request.IgnorePatterns, err = configuration.CompileIgnorePatterns(options.IgnorePatterns)
 	request.IgnoreSelectors = options.IgnoreSelectors
 	if err != nil {
 		return nil, err
 	}
 	if input.Kind == inputmodel.Prepared {
 		request.Sources, request.WorkingDir = slices.Clone(input.Sources), options.WorkingDir
-		policy, err := repoconfig.LoadNetworkPolicy(ctx, options.ConfigConnections)
+		policy, err := configuration.LoadNetworkPolicy(ctx, options.ConfigConnections)
 		if err != nil {
 			return nil, err
 		}

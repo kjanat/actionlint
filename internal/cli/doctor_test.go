@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
@@ -20,7 +20,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := doctorRequest{Config: repoconfig.Selection{Disabled: true}, Tools: registry.Selections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
+	request := doctorRequest{Config: configuration.Selection{Disabled: true}, Tools: registry.Selections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
 	var text, data bytes.Buffer
 	if err := writeDoctor(t.Context(), &text, request, plugininstall.Acquisition{}); err != nil {
 		t.Fatal(err)

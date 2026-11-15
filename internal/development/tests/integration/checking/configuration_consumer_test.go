@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -71,7 +71,7 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 	if err := os.WriteFile(path, []byte(configurationWorkflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var overlays []config.Overlay
+	var overlays []configuration.Overlay
 	for _, source := range []string{"{require-job-timeout: {min-minutes: 20}}", "{require-job-timeout: {max-minutes: 10}}"} {
 		overlay, err := checking.ConfigurationRules().ParseOverlay("policy", []byte(source))
 		if err != nil {

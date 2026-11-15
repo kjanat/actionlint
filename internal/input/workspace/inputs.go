@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
@@ -41,7 +41,7 @@ func (f *Inputs) List() []string {
 	return paths
 }
 
-func (f *Inputs) AddConfig(config *repoconfig.Config, provenance repoconfig.Provenance, project *Project, workingDir string) {
+func (f *Inputs) AddConfig(config *configuration.Config, provenance configuration.Provenance, project *Project, workingDir string) {
 	if config != nil {
 		for _, name := range slices.Sorted(maps.Keys(config.Tools)) {
 			if module, ok := config.Tools[name].Backend.Wasm(); ok {

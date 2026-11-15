@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 // ExplicitSource grants the initial HTTP authority named by an invocation or

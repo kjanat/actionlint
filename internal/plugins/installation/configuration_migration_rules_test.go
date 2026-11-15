@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -74,7 +74,7 @@ func TestCheckingDefersUninspectableLegacyPluginSettings(t *testing.T) {
 	if err := MigrateConfiguration(t.Context(), path, DefaultPluginOptions{}); err != nil {
 		t.Fatalf("ordinary checking forced plugin metadata migration: %v", err)
 	}
-	if _, err := PrepareConfigurationMigration(t.Context(), path, DefaultPluginOptions{}); err == nil || !strings.Contains(err.Error(), config.ErrRuleMetadataRequired.Error()) {
+	if _, err := PrepareConfigurationMigration(t.Context(), path, DefaultPluginOptions{}); err == nil || !strings.Contains(err.Error(), configuration.ErrRuleMetadataRequired.Error()) {
 		t.Fatalf("explicit migration guessed plugin category: %v", err)
 	}
 	current, err := os.ReadFile(path)

@@ -14,7 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -123,7 +123,7 @@ func AssertSourceFile(t *testing.T, got, want string) {
 	}
 }
 
-func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []workspace.Source {
+func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []workspace.Source {
 	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
@@ -211,7 +211,7 @@ func WorkflowDiagnostics(t *testing.T, source, config string) []results.Diagnost
 
 func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options checking.Options) []results.Diagnostic {
 	t.Helper()
-	var cfg *repoconfig.Config
+	var cfg *configuration.Config
 	if config != "" {
 		var err error
 		cfg, err = checking.ConfigurationRules().Parse([]byte(config))

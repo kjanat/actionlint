@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
@@ -30,7 +30,7 @@ func TestLocalActionSourceConfig(t *testing.T) {
 	if config.LocalActions["./generated"] != "./source" {
 		t.Fatal("override mutated shared config")
 	}
-	programmatic := &repoconfig.Config{LocalActions: repoconfig.LocalActionSources{"$/generated/": "$/source"}, Overrides: []repoconfig.Override{{Includes: []string{"special.yml"}, LocalActions: repoconfig.LocalActionSources{"$/generated": "$/other"}}}}
+	programmatic := &configuration.Config{LocalActions: configuration.LocalActionSources{"$/generated/": "$/source"}, Overrides: []configuration.Override{{Includes: []string{"special.yml"}, LocalActions: configuration.LocalActionSources{"$/generated": "$/other"}}}}
 	got, err := checking.ConfigurationRules().ForFile(programmatic, "special.yml", "")
 	if err != nil || got.LocalActions["./generated"] != "./other" {
 		t.Fatalf("programmatic mappings: %+v %v", got, err)

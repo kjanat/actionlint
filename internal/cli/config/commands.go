@@ -9,7 +9,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -17,34 +17,34 @@ import (
 )
 
 type PathOptions struct {
-	Config repoconfig.Selection
+	Config configuration.Selection
 	JSON   bool
 }
 
 type ShowOptions struct {
-	Config       repoconfig.Selection
+	Config       configuration.Selection
 	Plugins      []string
 	JSON, Origin bool
 }
 
 type ValidateOptions struct {
-	Config  repoconfig.Selection
+	Config  configuration.Selection
 	Plugins []string
 	JSON    bool
 }
 
 type SchemaOptions struct {
-	Config  repoconfig.Selection
+	Config  configuration.Selection
 	Plugins []string
 }
 
 type MigrateOptions struct {
-	Config             repoconfig.Selection
+	Config             configuration.Selection
 	JSON, Write, Check bool
 }
 
 func WritePath(out io.Writer, req PathOptions) error {
-	path, err := repoconfig.SelectedPath(req.Config)
+	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 }
 
 func Migrate(ctx context.Context, streams commandstreams.Streams, req MigrateOptions, acquisition plugininstall.Acquisition) (int, error) {
-	path, err := repoconfig.SelectedPath(req.Config)
+	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err
 	}

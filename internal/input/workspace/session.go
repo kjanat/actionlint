@@ -10,20 +10,20 @@ import (
 	"path/filepath"
 	"slices"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 // Source associates the displayed path with the file read for analysis.
 type Source struct {
 	Path             string
 	Content          []byte
-	Config           *repoconfig.Config
-	ConfigProvenance repoconfig.Provenance
+	Config           *configuration.Config
+	ConfigProvenance configuration.Provenance
 	Project          *Project
 	InputPath        string
 	// ExplicitFile marks a literally named file.
@@ -40,14 +40,14 @@ type Selection struct {
 // Options controls only input preparation, not analysis or rendering.
 type Options struct {
 	// Rules supplies the declarations used to validate loaded configuration.
-	Rules                                 repoconfig.RuleSet
+	Rules                                 configuration.RuleSet
 	WorkingDir, StdinFileName, ConfigFile string
 	// Config, when set, is used for every input instead of the repository's
 	// configuration file. It cannot be combined with ConfigFile.
-	Config            *repoconfig.Config
+	Config            *configuration.Config
 	ConfigConnections acquisitionhttp.Connections
-	ConfigProvenance  repoconfig.Provenance
-	ConfigOverlays    []repoconfig.Overlay
+	ConfigProvenance  configuration.Provenance
+	ConfigOverlays    []configuration.Overlay
 	OnConfigLoaded    func(configreport.Report)
 	SkipProjectConfig bool
 	NoIgnore          bool
@@ -60,13 +60,13 @@ type Options struct {
 
 // Session shares repository and configuration lookups across input selections.
 type Session struct {
-	networkPolicy *repoconfig.NetworkPolicy
-	rules         repoconfig.RuleSet
+	networkPolicy *configuration.NetworkPolicy
+	rules         configuration.RuleSet
 	projects      *Projects
 	// defaultConfig comes from Options.Config or Options.ConfigFile and
 	// replaces every project's configuration.
-	defaultConfig           *repoconfig.Config
-	defaultConfigProvenance repoconfig.Provenance
+	defaultConfig           *configuration.Config
+	defaultConfigProvenance configuration.Provenance
 	defaultConfigPath       string
 	configState             *configState
 	ctx                     context.Context
@@ -84,7 +84,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	if opts.Config != nil && opts.ConfigFile != "" {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
-	policy, policyErr := repoconfig.LoadNetworkPolicy(ctx, opts.ConfigConnections)
+	policy, policyErr := configuration.LoadNetworkPolicy(ctx, opts.ConfigConnections)
 	if policyErr != nil {
 		return nil, policyErr
 	}
@@ -102,7 +102,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	a.projects.readFile = a.readFile
 	a.projects.ruleNames = a.ruleNames
 	a.projects.skipConfig = opts.SkipProjectConfig
-	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*repoconfig.Config), reports: make(map[*Project]configreport.Report)}
+	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*configuration.Config), reports: make(map[*Project]configreport.Report)}
 	var err error
 	if a.cwd == "" {
 		a.cwd, err = os.Getwd()

@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestMigrationCanonicalSettings(t *testing.T) {
@@ -44,16 +44,16 @@ policy:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repoconfig.VariableNames(cfg.Facts()) == nil || len(repoconfig.VariableNames(cfg.Facts())) != 0 || repoconfig.SecretNames(cfg.Facts()) != nil {
+	if configuration.VariableNames(cfg.Facts()) == nil || len(configuration.VariableNames(cfg.Facts())) != 0 || configuration.SecretNames(cfg.Facts()) != nil {
 		t.Fatal("unknown and empty name sets were conflated")
 	}
-	if !reflect.DeepEqual(repoconfig.RunnerLabels(cfg.Facts()), []string{"gpu", "custom-*"}) || configuredWorkflowPermissions(cfg) != "write" {
+	if !reflect.DeepEqual(configuration.RunnerLabels(cfg.Facts()), []string{"gpu", "custom-*"}) || configuredWorkflowPermissions(cfg) != "write" {
 		t.Fatalf("knowledge lost: %+v", cfg)
 	}
 	if !cfg.Paths["**"].Ignore.Match("legacy some message") {
 		t.Fatal("message suppression lost")
 	}
-	strict, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{Strict: true}, cfg)
+	strict, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{Strict: true}, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,11 +70,11 @@ func TestMigrationNullUsesSelectedPreset(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		rule        string
-		strictLevel repoconfig.Level
-		enabled     func(*repoconfig.Config) bool
+		strictLevel configuration.Level
+		enabled     func(*configuration.Config) bool
 	}{
-		{"require-job-timeout", "off", func(cfg *repoconfig.Config) bool { return cfg.RequiresJobTimeout().Enabled() }},
-		{"require-commit-hash", "on", (*repoconfig.Config).RequiresCommitHash},
+		{"require-job-timeout", "off", func(cfg *configuration.Config) bool { return cfg.RequiresJobTimeout().Enabled() }},
+		{"require-commit-hash", "on", (*configuration.Config).RequiresCommitHash},
 	} {
 		t.Run(tc.rule, func(t *testing.T) {
 			t.Parallel()
@@ -92,7 +92,7 @@ func TestMigrationNullUsesSelectedPreset(t *testing.T) {
 			if tc.enabled(cfg) || checking.ConfigurationRules().DiagnosticLevel(cfg, tc.rule) != "off" {
 				t.Fatal("null did not restore the ordinary disabled default")
 			}
-			strict, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{Strict: true}, cfg)
+			strict, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{Strict: true}, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,7 +172,7 @@ func TestMigrationFormatsAndInheritance(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg, err := checking.ConfigurationRules().Load(path)
-			if err != nil || repoconfig.VariableNames(cfg.Facts()) == nil || cfg.RequiresCommitHash() {
+			if err != nil || configuration.VariableNames(cfg.Facts()) == nil || cfg.RequiresCommitHash() {
 				t.Fatalf("migration semantics: %+v %v", cfg, err)
 			}
 			if tc.name == "actionlint.yaml" && !bytes.Contains(plan.Content, []byte("\r\n")) {
@@ -330,7 +330,7 @@ func TestMigrationAliasesRetainGlobalKnowledge(t *testing.T) {
             options: &labels {labels: [gpu]}
 self-hosted-runner: *labels
 `)
-	var direct repoconfig.Config
+	var direct configuration.Config
 	if err := checking.ConfigurationRules().Unmarshal(source, &direct); err != nil {
 		t.Fatal(err)
 	}
@@ -338,12 +338,12 @@ self-hosted-runner: *labels
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay})
+	resolved, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, cfg := range []*repoconfig.Config{&direct, resolved} {
-		if !reflect.DeepEqual(repoconfig.RunnerLabels(cfg.Facts()), []string{"gpu"}) {
+	for _, cfg := range []*configuration.Config{&direct, resolved} {
+		if !reflect.DeepEqual(configuration.RunnerLabels(cfg.Facts()), []string{"gpu"}) {
 			t.Fatalf("aliased global runner knowledge dropped: %+v", cfg.Facts())
 		}
 	}
@@ -373,7 +373,7 @@ policy: {require-job-timeout: false}
 		if err != nil {
 			t.Fatal(err)
 		}
-		if repoconfig.VariableNames(cfg.Facts()) == nil || len(repoconfig.VariableNames(cfg.Facts())) != 0 || repoconfig.SecretNames(cfg.Facts()) != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
+		if configuration.VariableNames(cfg.Facts()) == nil || len(configuration.VariableNames(cfg.Facts())) != 0 || configuration.SecretNames(cfg.Facts()) != nil || cfg.RequiresJobTimeout().Enabled() || !cfg.Paths["**"].Ignore.Match("legacy") {
 			t.Fatalf("inheritance changed: %+v", cfg)
 		}
 		plan, err := checking.ConfigurationRules().PrepareMigration(t.Context(), path, acquisitionhttp.Connections{})
@@ -437,7 +437,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repoconfig.VariableNames(effective.Facts()) == nil || !reflect.DeepEqual(repoconfig.SecretNames(effective.Facts()), []string{"RELEASE_TOKEN"}) || !reflect.DeepEqual(repoconfig.RunnerLabels(effective.Facts()), []string{"gpu"}) {
+	if configuration.VariableNames(effective.Facts()) == nil || !reflect.DeepEqual(configuration.SecretNames(effective.Facts()), []string{"RELEASE_TOKEN"}) || !reflect.DeepEqual(configuration.RunnerLabels(effective.Facts()), []string{"gpu"}) {
 		t.Fatalf("override knowledge: %+v", effective)
 	}
 }

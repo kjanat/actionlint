@@ -10,30 +10,30 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 // ConfigurationRules supplies the declarations used by the native and editor entry points.
 // The cached set has no mutation operations; each caller receives the same read-only values.
-func ConfigurationRules() repoconfig.RuleSet { return configurationRules() }
+func ConfigurationRules() configuration.RuleSet { return configurationRules() }
 
-func configurationRegistrations(checkers []checkinputs.Registration, providers []tools.Registration) []repoconfig.RuleRegistration {
-	var registrations []repoconfig.RuleRegistration
+func configurationRegistrations(checkers []checkinputs.Registration, providers []tools.Registration) []configuration.RuleRegistration {
+	var registrations []configuration.RuleRegistration
 	for _, checker := range checkers {
 		if validation.IsNil(checker.Checker) {
 			continue
 		}
 		descriptor := checker.Checker.Descriptor()
-		registrations = append(registrations, repoconfig.RuleRegistration{Descriptor: descriptor.Clone(), Scope: descriptor.Scope, SupportsActions: descriptor.SupportsActions, Options: slices.Clone(checker.Options)})
+		registrations = append(registrations, configuration.RuleRegistration{Descriptor: descriptor.Clone(), Scope: descriptor.Scope, SupportsActions: descriptor.SupportsActions, Options: slices.Clone(checker.Options)})
 	}
 	for _, provider := range providers {
 		_, builtin := FindRule(provider.Descriptor.Name)
 		if builtin && provider.ToolIntegration == nil && provider.ToolSettings == nil {
 			continue
 		}
-		registration := repoconfig.RuleRegistration{Descriptor: provider.Descriptor.Clone(), Scope: provider.Scope, SupportsActions: provider.SupportsActions, ToolSettings: provider.ToolSettings}
+		registration := configuration.RuleRegistration{Descriptor: provider.Descriptor.Clone(), Scope: provider.Scope, SupportsActions: provider.SupportsActions, ToolSettings: provider.ToolSettings}
 		if provider.ToolIntegration != nil && provider.ToolIntegration.Tool == provider.Descriptor.Name {
 			registration.ReplacesTool = provider.ToolIntegration.Tool
 		}
@@ -45,7 +45,7 @@ func configurationRegistrations(checkers []checkinputs.Registration, providers [
 	return registrations
 }
 
-var configurationRules = sync.OnceValue(func() repoconfig.RuleSet {
+var configurationRules = sync.OnceValue(func() configuration.RuleSet {
 	declarations := BuiltinRuleDeclarations()
 	for _, name := range bundled.Names() {
 		data, found := bundled.Manifest(name)
@@ -66,7 +66,7 @@ var configurationRules = sync.OnceValue(func() repoconfig.RuleSet {
 		declaration := rulemeta.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true}
 		declarations = append(declarations, declaration)
 	}
-	rules, err := repoconfig.NewRuleSet(declarations)
+	rules, err := configuration.NewRuleSet(declarations)
 	if err != nil {
 		panic(err)
 	}

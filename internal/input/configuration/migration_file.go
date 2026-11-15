@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 // FileMigration holds a preview and the exact input graph used to prepare it.

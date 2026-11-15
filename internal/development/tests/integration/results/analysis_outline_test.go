@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
@@ -251,12 +251,12 @@ func TestCalledActionConfigurationValidatedForEveryRuntime(t *testing.T) {
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "local/index.js", "console.log('ok');\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  "+tc.runs)
-			setting, err := repoconfig.NewSetting("bogus", nil)
+			setting, err := configuration.NewSetting("bogus", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": setting})}}
-			config := &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
+			lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+			config := &configuration.Config{Overrides: []configuration.Override{{Includes: []string{"local/action.yml"}, Lint: lint}}}
 			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Content: []byte(caller), Project: workspace.Identity(root), Config: config}})
 			if err == nil || !strings.Contains(err.Error(), "rule level") {
 				t.Fatalf("invalid action configuration was accepted: %v", err)
@@ -286,18 +286,18 @@ jobs:
       - uses: ./local
 permissions: {}
 `
-	bogus := func(include string) *repoconfig.Config {
-		setting, err := repoconfig.NewSetting("bogus", nil)
+	bogus := func(include string) *configuration.Config {
+		setting, err := configuration.NewSetting("bogus", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		lint := &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"inline-suppression": setting})}}
-		return &repoconfig.Config{Overrides: []repoconfig.Override{{Includes: []string{include}, Lint: lint}}}
+		lint := &configuration.LintConfig{Rules: configuration.LintRulesConfig{Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"inline-suppression": setting})}}
+		return &configuration.Config{Overrides: []configuration.Override{{Includes: []string{include}, Lint: lint}}}
 	}
 	action := filepath.FromSlash("local/action.yml") + ":complete"
 	for _, tc := range []struct {
 		name    string
-		config  *repoconfig.Config
+		config  *configuration.Config
 		ruff    string
 		sources map[string]string
 		wantErr string

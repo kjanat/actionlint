@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 

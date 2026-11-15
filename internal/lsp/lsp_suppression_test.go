@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -159,7 +159,7 @@ func TestEditorSuppressionRespectsPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: \"echo '::set-output name=x::y'\"}]}}\npermissions: {}\n"
-	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []repoconfig.Overlay{overlay}}, map[string]Document{path: {URI: FileURI(path), Version: 1, Text: text}})
+	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}}, map[string]Document{path: {URI: FileURI(path), Version: 1, Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 {
 		t.Fatalf("fixture analysis: %+v, %v", analysis.Diagnostics, err)
 	}

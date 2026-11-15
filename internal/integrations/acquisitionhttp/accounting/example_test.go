@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 )
 
 // exampleTransport supplies an offline response; no server is contacted.

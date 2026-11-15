@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -14,7 +14,7 @@ func TestRuleLevelAliasOverrides(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		base, overlay string
-		want          repoconfig.Level
+		want          configuration.Level
 	}{
 		{"correctness: {expression-reference: error}", "correctness: {expression-reference: false}", "off"},
 		{"correctness: {expression-reference: false}", "correctness: {expression-reference: null}", "on"},

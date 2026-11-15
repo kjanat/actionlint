@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestCatalogRuleConfiguration(t *testing.T) {
@@ -18,7 +18,7 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, p := range []repoconfig.Presets{{}, {Strict: true, Experimental: new(true)}} {
+			for _, p := range []configuration.Presets{{}, {Strict: true, Experimental: new(true)}} {
 				if got := checking.ConfigurationRules().DiagnosticLevel(resolveRules(t, p, cfg), d.Name); got != "off" {
 					t.Fatalf("explicit off overridden: %s", got)
 				}
@@ -38,7 +38,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 	for _, tc := range []struct {
 		rules string
 		name  string
-		want  repoconfig.Level
+		want  configuration.Level
 	}{
 		{"correctness: false", "expression", "off"},
 		{"preset: none, correctness: true", "expression", "on"},
@@ -72,7 +72,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 				t.Fatal(err)
 			}
 			for range 2 {
-				if got := checking.ConfigurationRules().DiagnosticLevel(resolveRules(t, repoconfig.Presets{}, cfg), tc.name); got != tc.want {
+				if got := checking.ConfigurationRules().DiagnosticLevel(resolveRules(t, configuration.Presets{}, cfg), tc.name); got != tc.want {
 					t.Fatalf("got %s, want %s", got, tc.want)
 				}
 				encoded, err := checking.ConfigurationRules().Marshal(cfg)
@@ -103,11 +103,11 @@ func TestRuleLevelAliasesWithStrict(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := repoconfig.Level("on")
+		want := configuration.Level("on")
 		if level == "off" || level == "false" {
 			want = "off"
 		}
-		if got := checking.ConfigurationRules().DiagnosticLevel(resolveRules(t, repoconfig.Presets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
+		if got := checking.ConfigurationRules().DiagnosticLevel(resolveRules(t, configuration.Presets{Strict: true}, cfg), "case-insensitive-conditions"); got != want {
 			t.Fatalf("%s: got %s, want %s", level, got, want)
 		}
 	}
@@ -117,23 +117,23 @@ func TestRuleLevelPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		rules  string
-		preset repoconfig.Presets
+		preset configuration.Presets
 		name   string
-		want   repoconfig.Level
+		want   configuration.Level
 	}{
-		{"preset: none", repoconfig.Presets{}, "expression", "off"},
-		{"preset: none, correctness: {expression: warn}", repoconfig.Presets{}, "expression", "warn"},
-		{"correctness: off", repoconfig.Presets{Strict: true}, "expression", "off"},
-		{"correctness: {preset: none, expression: info}", repoconfig.Presets{Strict: true}, "expression", "info"},
-		{"preset: all", repoconfig.Presets{}, "require-job-timeout", "on"},
-		{"preset: all", repoconfig.Presets{}, "case-insensitive-conditions", "on"},
-		{"suspicious: warn", repoconfig.Presets{}, "case-insensitive-conditions", "warn"},
-		{"suspicious: warn", repoconfig.Presets{Experimental: new(true)}, "case-insensitive-conditions", "warn"},
-		{"suspicious: off", repoconfig.Presets{Experimental: new(true)}, "case-insensitive-conditions", "off"},
-		{"suspicious: {case-insensitive-conditions: info}", repoconfig.Presets{}, "case-insensitive-conditions", "info"},
-		{"suspicious: {case-insensitive-conditions: info}", repoconfig.Presets{Experimental: new(false)}, "case-insensitive-conditions", "info"},
-		{"policy: {preset: all, require-job-timeout: off}", repoconfig.Presets{}, "require-job-timeout", "off"},
-		{"disable: [expression], correctness: error", repoconfig.Presets{Strict: true}, "expression", "off"},
+		{"preset: none", configuration.Presets{}, "expression", "off"},
+		{"preset: none, correctness: {expression: warn}", configuration.Presets{}, "expression", "warn"},
+		{"correctness: off", configuration.Presets{Strict: true}, "expression", "off"},
+		{"correctness: {preset: none, expression: info}", configuration.Presets{Strict: true}, "expression", "info"},
+		{"preset: all", configuration.Presets{}, "require-job-timeout", "on"},
+		{"preset: all", configuration.Presets{}, "case-insensitive-conditions", "on"},
+		{"suspicious: warn", configuration.Presets{}, "case-insensitive-conditions", "warn"},
+		{"suspicious: warn", configuration.Presets{Experimental: new(true)}, "case-insensitive-conditions", "warn"},
+		{"suspicious: off", configuration.Presets{Experimental: new(true)}, "case-insensitive-conditions", "off"},
+		{"suspicious: {case-insensitive-conditions: info}", configuration.Presets{}, "case-insensitive-conditions", "info"},
+		{"suspicious: {case-insensitive-conditions: info}", configuration.Presets{Experimental: new(false)}, "case-insensitive-conditions", "info"},
+		{"policy: {preset: all, require-job-timeout: off}", configuration.Presets{}, "require-job-timeout", "off"},
+		{"disable: [expression], correctness: error", configuration.Presets{Strict: true}, "expression", "off"},
 	} {
 		t.Run(tc.rules+"/"+tc.name+"/"+string(tc.want), func(t *testing.T) {
 			t.Parallel()
@@ -165,7 +165,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 			t.Parallel()
 			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + rules + "}}"))
 			if err == nil {
-				_, err = checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+				_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			}
 			if err == nil {
 				t.Fatal("invalid settings accepted")
@@ -188,11 +188,11 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		got := resolveRules(t, repoconfig.Presets{}, cfg)
+		got := resolveRules(t, configuration.Presets{}, cfg)
 		if maximum, ok := got.RequiresJobTimeout().MaxMinutes(); !ok || maximum != 30 {
 			t.Fatal(got.Policy)
 		}
-		if (len(permissionLocations(t, got)) != 1 || permissionLocations(t, got)[0] != repoconfig.EveryJobPermissions) || got.Policy.DisallowSuppressions.Report() != "violation" {
+		if (len(permissionLocations(t, got)) != 1 || permissionLocations(t, got)[0] != configuration.EveryJobPermissions) || got.Policy.DisallowSuppressions.Report() != "violation" {
 			t.Fatal(got.Policy)
 		}
 		if checking.ConfigurationRules().DiagnosticLevel(got, "expression") != "warn" {
@@ -245,12 +245,12 @@ func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			setting, err := repoconfig.NewSetting("error", options)
+			setting, err := configuration.NewSetting("error", options)
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg := &repoconfig.Config{Lint: repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
-				Policy: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{name: setting}),
+			cfg := &configuration.Config{Lint: configuration.LintConfig{Rules: configuration.LintRulesConfig{
+				Policy: configuration.NewGroup("", "", map[string]configuration.Setting{name: setting}),
 			}}}
 			if err := checking.ConfigurationRules().ValidateRuleNames(cfg); err == nil || !strings.Contains(err.Error(), name) {
 				t.Fatalf("invalid options for %s accepted: %v", name, err)
@@ -262,11 +262,11 @@ func TestGoBuiltRuleSettingsAreValidated(t *testing.T) {
 func TestNewSettingRejectsDisabledPolicies(t *testing.T) {
 	t.Parallel()
 	for name, policy := range map[string]any{
-		"require-job-timeout":   &repoconfig.JobTimeoutPolicy{},
-		"require-permissions":   &repoconfig.PermissionsPolicy{},
-		"disallow-suppressions": &repoconfig.SuppressionsPolicy{},
+		"require-job-timeout":   &configuration.JobTimeoutPolicy{},
+		"require-permissions":   &configuration.PermissionsPolicy{},
+		"disallow-suppressions": &configuration.SuppressionsPolicy{},
 	} {
-		if _, err := repoconfig.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "boolean") {
+		if _, err := configuration.NewSetting("on", policy); err == nil || !strings.Contains(err.Error(), "boolean") {
 			t.Fatalf("%s: disabled policy accepted as options: %v", name, err)
 		}
 	}

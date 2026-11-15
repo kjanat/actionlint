@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
@@ -25,7 +25,7 @@ type Policy struct {
 	SourceBindings    map[string]*binding.Scope
 	Metadata          *actionmeta.Metadata
 	AdditionalRules   []string
-	IgnorePatterns    repoconfig.IgnorePatterns
+	IgnorePatterns    configuration.IgnorePatterns
 	IgnoreSelectors   IgnoreSelectors
 	Log               func(...any)
 	Debug             func(string, ...any)
@@ -35,7 +35,7 @@ type Policy struct {
 func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metadataSources map[string][]byte, authority map[*findingmodel.Finding]obligation) ([]*findingmodel.Finding, error) {
 	path, configPath, root, content, cfg, metadata := p.Path, p.ConfigPath, p.Root, p.Content, p.Scope.Caller(), p.Metadata
 	additionalRules := p.AdditionalRules
-	var suppressionPolicy *repoconfig.SuppressionsPolicy
+	var suppressionPolicy *configuration.SuppressionsPolicy
 	if cfg != nil {
 		suppressionPolicy = cfg.Policy.DisallowSuppressions
 	}
@@ -104,7 +104,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 		sourcePath, isMetadata := foreignSources[group.path]
 		source := metadataSources[sourcePath]
 		scope := group.binding
-		diagnosticLevel := func(kind string) repoconfig.Level {
+		diagnosticLevel := func(kind string) configuration.Level {
 			return scope.DiagnosticLevel(kind)
 		}
 		if isMetadata && source != nil {
@@ -113,7 +113,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 				return nil, fmt.Errorf("rule configuration was not prepared for source %q", sourcePath)
 			}
 			findingConfig := prepared.Source()
-			var policy *repoconfig.SuppressionsPolicy
+			var policy *configuration.SuppressionsPolicy
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
@@ -172,7 +172,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 	return all, nil
 }
 
-func (p Policy) inlineAudit(path string, level func(string) repoconfig.Level) *inlineAudit {
+func (p Policy) inlineAudit(path string, level func(string) configuration.Level) *inlineAudit {
 	return &inlineAudit{level: level, used: func(position sourcepos.Position, rule string) {
 		if p.usedSuppression != nil {
 			p.usedSuppression(path, position, rule)
@@ -180,7 +180,7 @@ func (p Policy) inlineAudit(path string, level func(string) repoconfig.Level) *i
 	}}
 }
 
-func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []repoconfig.PathConfig) []*findingmodel.Finding {
+func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []configuration.PathConfig) []*findingmodel.Finding {
 	if len(p.IgnorePatterns) == 0 && len(cfgs) == 0 {
 		return errs
 	}
@@ -208,7 +208,7 @@ Loop:
 
 // Code-based filters keep working when messages no longer repeat the code.
 // Match the plain message too, preserving existing message-anchored patterns.
-func matchesIgnorePatterns(patterns repoconfig.IgnorePatterns, finding *findingmodel.Finding) bool {
+func matchesIgnorePatterns(patterns configuration.IgnorePatterns, finding *findingmodel.Finding) bool {
 	return len(patterns) != 0 && (patterns.Match(finding.Message) ||
 		finding.Code != "" && patterns.Match(finding.Code+": "+finding.Message))
 }

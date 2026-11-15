@@ -5,20 +5,20 @@ import (
 	"maps"
 	"slices"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 // RequireProcessOptIn rejects repository-selected executables without host authorization.
-func RequireProcessOptIn(name, requested string, explicit *process.CommandOptions, cfg *config.Config, allowed bool) error {
+func RequireProcessOptIn(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, allowed bool) error {
 	if !allowed && processCommand(name, requested, explicit, cfg) != nil {
 		return fmt.Errorf("tools.%s.backend.process requires host opt-in; use --allow-config-processes for trusted repository configuration", name)
 	}
 	return nil
 }
 
-func processCommand(name, requested string, explicit *process.CommandOptions, cfg *config.Config) *toolconfig.Command {
+func processCommand(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config) *toolconfig.Command {
 	// An empty command is an explicit disable. Application/CLI/env choices win
 	// over repository invocation settings, including an explicit default name.
 	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional) {
@@ -32,7 +32,7 @@ func processCommand(name, requested string, explicit *process.CommandOptions, cf
 }
 
 // ProcessOptions applies repository backend settings unless the caller made an explicit choice.
-func ProcessOptions(name, requested string, explicit *process.CommandOptions, cfg *config.Config, cwd string) *process.CommandOptions {
+func ProcessOptions(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, cwd string) *process.CommandOptions {
 	command := processCommand(name, requested, explicit, cfg)
 	if command == nil {
 		return explicit

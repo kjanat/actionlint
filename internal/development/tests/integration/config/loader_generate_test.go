@@ -10,7 +10,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 
@@ -47,7 +47,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, format := range repoconfig.FileFormats() {
+	for _, format := range configuration.FileFormats() {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
 			content, err := checking.ConfigurationRules().DefaultDocument("2.0.0-SNAPSHOT-02d216d", format)
@@ -77,9 +77,9 @@ func TestDefaultConfigFormats(t *testing.T) {
 				}
 			}
 			checkSchema(content)
-			if format == repoconfig.FormatJSONC || format == repoconfig.FormatTOML {
+			if format == configuration.FormatJSONC || format == configuration.FormatTOML {
 				prefix := "// "
-				if format == repoconfig.FormatTOML {
+				if format == configuration.FormatTOML {
 					prefix = "# "
 				}
 				_, examples, found := strings.Cut(string(content), prefix+"Rule defaults in this build:\n")
@@ -108,7 +108,7 @@ func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
 	} {
 		t.Run(tc.name+"/"+tc.category, func(t *testing.T) {
 			t.Parallel()
-			rules, err := repoconfig.NewRuleSet([]rule.Declaration{{
+			rules, err := configuration.NewRuleSet([]rule.Declaration{{
 				Name: tc.name, Category: tc.category, Maturity: tc.maturity,
 				Aliases:     []rule.Alias{{Name: "previous-name", Deprecated: true}},
 				Recommended: true, DefaultLevel: tc.level,
@@ -116,7 +116,7 @@ func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			content, err := rules.DefaultDocument("2.0.0", repoconfig.FormatYAML)
+			content, err := rules.DefaultDocument("2.0.0", configuration.FormatYAML)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -177,7 +177,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	generatedBytes, err := checking.ConfigurationRules().DefaultDocument("2.0.0", repoconfig.FormatYAML)
+	generatedBytes, err := checking.ConfigurationRules().DefaultDocument("2.0.0", configuration.FormatYAML)
 	if err != nil {
 		t.Fatal(err)
 	}

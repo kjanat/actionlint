@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
@@ -18,7 +18,7 @@ func TestParseDecodeErrorPreservesTypeAndSingleLineText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var decoded repoconfig.Config
+	var decoded configuration.Config
 	raw := checking.ConfigurationRules().DecodeValue(parsed.Value, &decoded)
 	if raw == nil {
 		t.Fatal("invalid boolean accepted by decoder")

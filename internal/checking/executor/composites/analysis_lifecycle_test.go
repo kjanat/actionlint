@@ -8,7 +8,7 @@ import (
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
@@ -44,7 +44,7 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
 	check := conventions.MissingActionMetadataCheck(nil)
-	rules, err := repoconfig.NewRuleSet([]rulemeta.Declaration{check.Declaration})
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{check.Declaration})
 	if err != nil {
 		t.Fatal(err)
 	}

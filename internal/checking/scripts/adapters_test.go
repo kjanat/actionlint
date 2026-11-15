@@ -14,7 +14,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -145,7 +145,7 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot parsing.Sou
 
 func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 	t.Parallel()
-	rules, err := repoconfig.NewRuleSet([]rulemetadata.Declaration{{
+	rules, err := configuration.NewRuleSet([]rulemetadata.Declaration{{
 		Name: "shellcheck", Category: "correctness", Recommended: true,
 		Scope: rulemetadata.SourceConfiguration,
 	}})
@@ -196,11 +196,11 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 									t.Fatalf("adapter lost display source or changed origin: %+v", finding)
 								}
 							}
-							cfg := &repoconfig.Config{}
+							cfg := &configuration.Config{}
 							if disabled {
 								cfg.Lint.Rules.Disable = []string{"shellcheck"}
 							}
-							cfg, err = rules.ResolveRules(repoconfig.Presets{}, cfg)
+							cfg, err = rules.ResolveRules(configuration.Presets{}, cfg)
 							if err != nil {
 								t.Fatal(err)
 							}

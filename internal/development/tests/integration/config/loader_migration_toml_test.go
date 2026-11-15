@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"github.com/pelletier/go-toml/v2"
@@ -143,7 +143,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 				t.Fatalf("%v\n%s", err, migration.Content)
 			}
 			cfg := resolved.Config
-			if cfg.RequiresCommitHash() || checking.ConfigurationRules().DiagnosticLevel(cfg, "cache-operation") != "on" || !reflect.DeepEqual(repoconfig.SecretNames(cfg.Facts()), []string{"TOKEN#VALUE"}) {
+			if cfg.RequiresCommitHash() || checking.ConfigurationRules().DiagnosticLevel(cfg, "cache-operation") != "on" || !reflect.DeepEqual(configuration.SecretNames(cfg.Facts()), []string{"TOKEN#VALUE"}) {
 				t.Fatalf("migration semantics: %+v", cfg)
 			}
 		})
@@ -263,7 +263,7 @@ value = "kept"
 	timeout := resolved.Config.RequiresJobTimeout()
 	minimum, hasMinimum := timeout.MinMinutes()
 	maximum, hasMaximum := timeout.MaxMinutes()
-	if !reflect.DeepEqual(repoconfig.RunnerLabels(resolved.Config.Facts()), []string{"self-hosted"}) || configuredWorkflowPermissions(resolved.Config) != "write" || !resolved.Config.Paths["**/*.yml"].Ignore.Match("legacy.*message") || !hasMinimum || minimum != 5 || !hasMaximum || maximum != 30 {
+	if !reflect.DeepEqual(configuration.RunnerLabels(resolved.Config.Facts()), []string{"self-hosted"}) || configuredWorkflowPermissions(resolved.Config) != "write" || !resolved.Config.Paths["**/*.yml"].Ignore.Match("legacy.*message") || !hasMinimum || minimum != 5 || !hasMaximum || maximum != 30 {
 		t.Fatalf("legacy settings lost: %+v", resolved.Config)
 	}
 }

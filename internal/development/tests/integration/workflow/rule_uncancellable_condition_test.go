@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
@@ -26,7 +26,7 @@ func TestUncancellableConditionSelectionAndSuppression(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			findings := testutil.WorkflowDiagnosticsWithOptions(t, fmt.Sprintf(workflow, tc.comment), tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
+			findings := testutil.WorkflowDiagnosticsWithOptions(t, fmt.Sprintf(workflow, tc.comment), tc.config, checking.Options{Presets: configuration.Presets{Strict: tc.strict}})
 			if tc.severity == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected findings: %+v", findings)
@@ -56,7 +56,7 @@ func TestCancellationPolicyDoesNotClassifyCheckoutSteps(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			findings := testutil.WorkflowDiagnosticsWithOptions(t, workflow, tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
+			findings := testutil.WorkflowDiagnosticsWithOptions(t, workflow, tc.config, checking.Options{Presets: configuration.Presets{Strict: tc.strict}})
 			for _, finding := range findings {
 				if finding.Rule == "uncancellable-condition" {
 					t.Fatalf("checkout step was classified by action name: %+v", finding)

@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 
 	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func manifestTestReference(t *testing.T, name string) pluginref.Reference {
@@ -85,7 +85,7 @@ func TestPluginManifestFormats(t *testing.T) {
 			if test.source != "" {
 				fixturefiles.WriteText(t, path, test.source)
 			}
-			manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+			manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func TestPluginManifestFormats(t *testing.T) {
 			if !strings.Contains(content, test.expectedFragment) {
 				t.Fatalf("unrelated formatting lost:\n%s", content)
 			}
-			loaded, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+			loaded, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -110,7 +110,7 @@ func TestPluginManifestFormats(t *testing.T) {
 			if strings.Contains(test.source, "... # end") && !strings.Contains(readManifestTest(t, path), "... # end") {
 				t.Fatal("removing plugins discarded commented document end")
 			}
-			empty, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+			empty, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -137,7 +137,7 @@ func TestPluginTOMLInsertionPreservesSchemaHeader(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(t.TempDir(), "actionlint.toml")
 			fixturefiles.WriteText(t, path, test.source)
-			manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+			manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -177,7 +177,7 @@ func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T
 	const original = "#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json\n\n[lint.rules]\npreset = 'none'\n"
 	path := filepath.Join(t.TempDir(), "actionlint.toml")
 	fixturefiles.WriteText(t, path, original)
-	manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,13 +189,13 @@ func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T
 	if !strings.HasPrefix(content, original) || !strings.Contains(content, "source = \"https://example.org/check.wasm#sha256=") {
 		t.Fatalf("plugin tables were not appended with pinned direct sources:\n%s", content)
 	}
-	reloaded, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	reloaded, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil || !slices.Equal(reloaded.References, refs) {
 		t.Fatalf("appended declarations changed identity: %+v, %v", reloaded, err)
 	}
 	const existing = "#:schema https://cdn.jsdelivr.net/gh/kjanat/actionlint@2/actionlint.schema.json\n\nplugins = ['old/plugin@v1']\n\n[lint.rules]\npreset = 'none'\n"
 	fixturefiles.WriteText(t, path, existing)
-	manifest, err = Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err = Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestPluginManifestInheritance(t *testing.T) {
 	source := "# inherited\nplugins: [base/plugin]\nother: kept\n"
 	fixturefiles.WriteText(t, base, source)
 	fixturefiles.WriteText(t, leaf, "extends: [base.yml]\n# leaf\nlint: {rules: {custom-rule: warn}}\n")
-	manifest, err := Open(t.Context(), config.RuleSet{}, leaf, acquisitionhttp.Connections{})
+	manifest, err := Open(t.Context(), configuration.RuleSet{}, leaf, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestPluginManifestInheritance(t *testing.T) {
 	if readManifestTest(t, base) != source {
 		t.Fatal("edited base")
 	}
-	reopened, err := Open(t.Context(), config.RuleSet{}, leaf, acquisitionhttp.Connections{})
+	reopened, err := Open(t.Context(), configuration.RuleSet{}, leaf, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestPluginManifestExplicitNull(t *testing.T) {
 	fixturefiles.WriteText(t, filepath.Join(dir, "base.yml"), "plugins: [base/plugin]\n")
 	path := filepath.Join(dir, "leaf.yml")
 	fixturefiles.WriteText(t, path, "extends: [base.yml]\nplugins: null\n")
-	manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestPluginManifestConcurrentEdits(t *testing.T) {
 			if change == "leaf" || change == "base" {
 				fixturefiles.WriteText(t, path, "extends: [base.yml]\n")
 			}
-			manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+			manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -297,7 +297,7 @@ func TestPluginManifestRefusesSymlink(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	if _, err := Open(t.Context(), config.RuleSet{}, link, acquisitionhttp.Connections{}); err == nil {
+	if _, err := Open(t.Context(), configuration.RuleSet{}, link, acquisitionhttp.Connections{}); err == nil {
 		t.Fatal("accepted symlink")
 	}
 	if readManifestTest(t, target) != "plugins: []\n" {
@@ -320,7 +320,7 @@ func TestPluginManifestDirectoryAlias(t *testing.T) {
 			}
 			fixturefiles.WriteText(t, filepath.Join(physical, "base.yml"), "plugins: [base/plugin]\n")
 			fixturefiles.WriteText(t, filepath.Join(physical, "config.yml"), "extends: [base.yml]\n")
-			manifest, err := Open(t.Context(), config.RuleSet{}, filepath.Join(alias, name), acquisitionhttp.Connections{})
+			manifest, err := Open(t.Context(), configuration.RuleSet{}, filepath.Join(alias, name), acquisitionhttp.Connections{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -330,7 +330,7 @@ func TestPluginManifestDirectoryAlias(t *testing.T) {
 			if err := manifest.Save(t.Context(), nil); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := Open(t.Context(), config.RuleSet{}, filepath.Join(physical, name), acquisitionhttp.Connections{}); err != nil {
+			if _, err := Open(t.Context(), configuration.RuleSet{}, filepath.Join(physical, name), acquisitionhttp.Connections{}); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -347,7 +347,7 @@ func TestPluginManifestRejectsInheritedDirectoryLink(t *testing.T) {
 	}
 	path := filepath.Join(root, "config.yml")
 	fixturefiles.WriteText(t, path, "extends: [inherited/base.yml]\n")
-	if _, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+	if _, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
 		t.Fatalf("inherited directory link accepted: %v", err)
 	}
 }
@@ -361,7 +361,7 @@ func TestPluginManifestRejectsDirectoryReplacement(t *testing.T) {
 	}
 	path := filepath.Join(directory, "actionlint.yml")
 	fixturefiles.WriteText(t, path, "plugins: []\n")
-	manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,7 +388,7 @@ func TestPluginManifestCancellationAndAnchors(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yml")
 	source := "plugins: &dependencies [old/plugin]\nother: *dependencies\n"
 	fixturefiles.WriteText(t, path, source)
-	manifest, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +400,7 @@ func TestPluginManifestCancellationAndAnchors(t *testing.T) {
 	}
 	path = filepath.Join(t.TempDir(), "config.yml")
 	fixturefiles.WriteText(t, path, "plugins: [old/plugin]\n")
-	manifest, err = Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{})
+	manifest, err = Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,7 +424,7 @@ func TestPluginManifestRejectsAmbiguousDeclarations(t *testing.T) {
 	} {
 		path := filepath.Join(t.TempDir(), "config.yml")
 		fixturefiles.WriteText(t, path, source)
-		if _, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{}); err == nil {
+		if _, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{}); err == nil {
 			t.Fatalf("accepted invalid config: %s", source)
 		}
 	}
@@ -436,7 +436,7 @@ func TestPluginManifestOversize(t *testing.T) {
 	if err := os.WriteFile(path, bytes.Repeat([]byte{' '}, MaxFileBytes+1), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(t.Context(), config.RuleSet{}, path, acquisitionhttp.Connections{}); err == nil {
+	if _, err := Open(t.Context(), configuration.RuleSet{}, path, acquisitionhttp.Connections{}); err == nil {
 		t.Fatal("accepted oversized config")
 	}
 }

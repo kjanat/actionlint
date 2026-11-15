@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
@@ -17,7 +17,7 @@ func assertNeutralSource(t *testing.T, err error, file string, line, column int,
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	var src *config.SourceError
+	var src *configuration.SourceError
 	if !errors.As(err, &src) {
 		t.Fatalf("missing SourceError: %v", err)
 	}

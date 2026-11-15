@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -20,7 +20,7 @@ func TestToolsSchemaFollowsBundledManifests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(mapYAMLType(reflect.TypeFor[actionlint.ToolsConfig](), nil))
+	data, err := json.Marshal(mapYAMLType(reflect.TypeFor[configuration.ToolsConfig](), nil))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -48,7 +48,7 @@ tools:
 					if err != nil {
 						t.Fatal(err)
 					}
-					opts.ConfigOverlays = []repoconfig.Overlay{value}
+					opts.ConfigOverlays = []configuration.Overlay{value}
 				}
 				selectInput := func(session *workspace.Session) *workspace.Selection {
 					t.Helper()
@@ -105,7 +105,7 @@ tools:
 					t.Fatalf("publication changed the source reused by a new project: %+v", third.Configurations)
 				}
 				cfg, err := session.ConfigForProject(nil)
-				if err != nil || !reflect.DeepEqual(repoconfig.VariableNames(cfg.Facts()), []string{"SAFE"}) {
+				if err != nil || !reflect.DeepEqual(configuration.VariableNames(cfg.Facts()), []string{"SAFE"}) {
 					t.Fatalf("publication changed analysis configuration: %+v, %v", cfg, err)
 				}
 			})

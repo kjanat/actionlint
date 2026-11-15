@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -66,7 +66,7 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 	if err != nil || baseline == nil || len(baseline.Diagnostics) != 1 {
 		t.Fatalf("baseline=%+v err=%v", baseline, err)
 	}
-	options.ConfigOverlays = []config.Overlay{overlay}
+	options.ConfigOverlays = []configuration.Overlay{overlay}
 	result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
 	if err != nil || result == nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("overlay did not disable lint findings: result=%+v err=%v", result, err)

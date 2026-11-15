@@ -1,4 +1,4 @@
-package config
+package configuration
 
 // FileFormat selects the syntax and extension of a configuration file.
 type FileFormat string

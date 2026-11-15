@@ -6,14 +6,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 	t.Parallel()
-	rules, err := config.NewRuleSet([]rulemeta.Declaration{{Name: "metadata-files", Category: "correctness", Scope: rulemeta.CompositeConfiguration}})
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{{Name: "metadata-files", Category: "correctness", Scope: rulemeta.CompositeConfiguration}})
 	if err != nil {
 		t.Fatal(err)
 	}

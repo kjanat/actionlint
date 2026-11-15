@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	render "actionlint.kjanat.dev/v2/internal/output"
@@ -47,7 +47,7 @@ jobs:
       - run: echo
 permissions: {}
 `
-		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &repoconfig.Config{}}}
+		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &configuration.Config{}}}
 		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ jobs:
       - run: echo
 permissions: {}
 `
-		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &repoconfig.Config{}}}
+		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &configuration.Config{}}}
 		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
@@ -101,7 +101,7 @@ func TestTraversalRemovesBuiltinRule(t *testing.T) {
 	}
 
 	f := filepath.Join("..", "development", "tests", "integration", "workflow", "testdata", "err", "invalid_runner_labels.yaml")
-	request.Sources = readFixtureSources(t, []string{f}, nil, &repoconfig.Config{})
+	request.Sources = readFixtureSources(t, []string{f}, nil, &configuration.Config{})
 	errs, err := testFindings(runTestAnalysis(t.Context(), request))
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 
 		b.Run(name, func(b *testing.B) {
 			for range b.N {
-				result, err := runTestAnalysis(b.Context(), analysisRequest{WorkingDir: dir, Sources: []sourceUnit{{Path: f, Content: content, Project: proj, Config: &repoconfig.Config{}}}})
+				result, err := runTestAnalysis(b.Context(), analysisRequest{WorkingDir: dir, Sources: []sourceUnit{{Path: f, Content: content, Project: proj, Config: &configuration.Config{}}}})
 				if err != nil {
 					b.Fatal(err)
 				}

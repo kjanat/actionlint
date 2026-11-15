@@ -12,7 +12,7 @@ import (
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -156,7 +156,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 		workflowPerms string
 		jobIf         bool
 		callee        map[string]calls.PermissionScopeLevels
-		cfg           *repoconfig.Config
+		cfg           *configuration.Config
 		errs          []string
 	}{
 		{
@@ -319,7 +319,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			r := workflowCallVisitor(t, fixturedecl.Workflow(w), cache, repoconfig.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
+			r := workflowCallVisitor(t, fixturedecl.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
 			if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}

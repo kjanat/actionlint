@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -72,15 +72,15 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			cfg := &repoconfig.Config{}
+			cfg := &configuration.Config{}
 			request := checking.Options{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
 			var requestSources []workspace.Source
 			shell := "python"
 			if name == "ruff" {
-				cfg.Tools = repoconfig.ToolsConfig{"ruff": {Backend: process}}
+				cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: process}}
 				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})
 			} else {
-				cfg.Tools = repoconfig.ToolsConfig{"shellcheck": {Backend: process}}
+				cfg.Tools = configuration.ToolsConfig{"shellcheck": {Backend: process}}
 				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})
 				shell = "bash"
 			}

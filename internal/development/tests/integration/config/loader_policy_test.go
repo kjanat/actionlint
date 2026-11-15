@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestConfigTimeoutBounds(t *testing.T) {
@@ -56,7 +56,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 		t.Run(tc.mapping, func(t *testing.T) {
 			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-job-timeout: " + tc.mapping))
-			var source *repoconfig.SourceError
+			var source *configuration.SourceError
 			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
 			}
@@ -67,7 +67,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 func TestJobTimeoutRangeAPI(t *testing.T) {
 	t.Parallel()
 	for _, bounds := range [][2]float64{{0, 0}, {5, 0}, {0, 60}, {5, 60}, {5, 5}} {
-		p, err := repoconfig.RequireJobTimeoutRange(bounds[0], bounds[1])
+		p, err := configuration.RequireJobTimeoutRange(bounds[0], bounds[1])
 		if err != nil || !p.Enabled() {
 			t.Fatalf("bounds %v: policy %v, error %v", bounds, p, err)
 		}
@@ -78,16 +78,16 @@ func TestJobTimeoutRangeAPI(t *testing.T) {
 		}
 	}
 	for _, bounds := range [][2]float64{{-1, 5}, {5, -1}, {30, 5}, {math.NaN(), 5}, {5, math.Inf(1)}} {
-		if p, err := repoconfig.RequireJobTimeoutRange(bounds[0], bounds[1]); err == nil || p != nil {
+		if p, err := configuration.RequireJobTimeoutRange(bounds[0], bounds[1]); err == nil || p != nil {
 			t.Fatalf("accepted invalid bounds %v", bounds)
 		}
 	}
-	for _, p := range []*repoconfig.JobTimeoutPolicy{nil, {}, repoconfig.RequireJobTimeout(30)} {
+	for _, p := range []*configuration.JobTimeoutPolicy{nil, {}, configuration.RequireJobTimeout(30)} {
 		if lower, ok := p.MinMinutes(); lower != 0 || ok {
 			t.Fatalf("unexpected minimum on %v", p)
 		}
 	}
-	p, err := repoconfig.RequireJobTimeoutRange(5, 30)
+	p, err := configuration.RequireJobTimeoutRange(5, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,15 +103,15 @@ func TestConfigRequirePermissions(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		value     string
-		level     repoconfig.Level
-		locations []repoconfig.PermissionLocation
+		level     configuration.Level
+		locations []configuration.PermissionLocation
 	}{
 		{"null", "error", nil},
 		{"false", "off", nil},
-		{"true", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
-		{"{}", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
-		{"{scope: workflow}", "error", []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}},
-		{"{scope: job}", "error", []repoconfig.PermissionLocation{repoconfig.EveryJobPermissions}},
+		{"true", "error", []configuration.PermissionLocation{configuration.WorkflowPermissions}},
+		{"{}", "error", []configuration.PermissionLocation{configuration.WorkflowPermissions}},
+		{"{scope: workflow}", "error", []configuration.PermissionLocation{configuration.WorkflowPermissions}},
+		{"{scope: job}", "error", []configuration.PermissionLocation{configuration.EveryJobPermissions}},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
@@ -119,7 +119,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+			resolved, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,24 +151,24 @@ func TestConfigRequirePermissions(t *testing.T) {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
 			_, err := checking.ConfigurationRules().Parse([]byte("policy:\n  require-permissions: " + tc.value))
-			var source *repoconfig.SourceError
+			var source *configuration.SourceError
 			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
 			}
 		})
 	}
-	for _, cfg := range []*repoconfig.Config{nil, {}, {Policy: repoconfig.Policy{}}} {
+	for _, cfg := range []*configuration.Config{nil, {}, {Policy: configuration.Policy{}}} {
 		if cfg.RequiresPermissions() != nil {
 			t.Fatal("unset policy must remain nil")
 		}
 	}
 	for _, scope := range []string{"workflow", "job"} {
-		p, err := repoconfig.RequirePermissions(scope)
+		p, err := configuration.RequirePermissions(scope)
 		if err != nil || !p.Enabled() || p.Scope() != scope {
 			t.Fatalf("scope %q: policy %v, error %v", scope, p, err)
 		}
 	}
-	if p, err := repoconfig.RequirePermissions("step"); err == nil || p != nil {
+	if p, err := configuration.RequirePermissions("step"); err == nil || p != nil {
 		t.Fatal("accepted an invalid scope")
 	}
 }

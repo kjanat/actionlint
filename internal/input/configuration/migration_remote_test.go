@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestMigrationRemoteDependencySnapshot(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -22,7 +22,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	}
 	var calls atomic.Int32
 	session, err := workspace.New(t.Context(), workspace.Options{
-		ConfigOverlays: []repoconfig.Overlay{overlay},
+		ConfigOverlays: []configuration.Overlay{overlay},
 		OnConfigLoaded: func(configreport.Report) { calls.Add(1) }, Rules: checking.ConfigurationRules(),
 	})
 	if err != nil {
@@ -31,7 +31,7 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	projects := []*workspace.Project{workspace.Identity("first"), workspace.Identity("second")}
 	type loaded struct {
 		project int
-		config  *repoconfig.Config
+		config  *configuration.Config
 		err     error
 	}
 	const requests = 16
@@ -49,9 +49,9 @@ func TestConfigLoadedCallbackOncePerConcurrentProject(t *testing.T) {
 	close(start)
 	group.Wait()
 	close(results)
-	configs := make(map[int]*repoconfig.Config)
+	configs := make(map[int]*configuration.Config)
 	for result := range results {
-		if result.err != nil || result.config == nil || !reflect.DeepEqual(repoconfig.VariableNames(result.config.Facts()), []string{"ALLOWED"}) {
+		if result.err != nil || result.config == nil || !reflect.DeepEqual(configuration.VariableNames(result.config.Facts()), []string{"ALLOWED"}) {
 			t.Fatalf("concurrent configuration: %+v", result)
 		}
 		if previous, ok := configs[result.project]; ok && previous != result.config {
@@ -84,7 +84,7 @@ func TestConfigOverlayResetOrigins(t *testing.T) {
 				t.Fatal(err)
 			}
 			var report configreport.Report
-			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []configuration.Overlay{overlay}, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -115,7 +115,7 @@ func TestConfigOverlayPartialMappingAfterReset(t *testing.T) {
 	for _, reset := range []string{"null", "policy: null"} {
 		t.Run(reset, func(t *testing.T) {
 			t.Parallel()
-			var overlays []repoconfig.Overlay
+			var overlays []configuration.Overlay
 			for _, input := range []struct{ name, value string }{
 				{"config", reset},
 				{"policy", "cache-operation: false"},

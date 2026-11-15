@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -122,7 +122,7 @@ func TestWorkflowOverridesApplyToDependencyDiagnostics(t *testing.T) {
 	}
 }
 
-func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cfg *repoconfig.Config) (*analysisResult, error) {
+func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cfg *configuration.Config) (*analysisResult, error) {
 	t.Helper()
 	cache := newCapturedWorkflowCache(t, root, root, nil)
 	path := filepath.Join(root, dependency)

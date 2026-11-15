@@ -11,7 +11,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 )
@@ -34,11 +34,11 @@ func TestToolRequirementsCannotMutateSiblingConfiguration(t *testing.T) {
 	}
 	seen := 0
 	providers := []tools.Registration{
-		{Descriptor: rule.Descriptor{Name: "mutator", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *config.Config) (bool, error) {
+		{Descriptor: rule.Descriptor{Name: "mutator", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			cfg.Lint.Enabled, project.Lint.Enabled = new(false), new(false)
 			return false, nil
 		}},
-		{Descriptor: rule.Descriptor{Name: "observer", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *config.Config) (bool, error) {
+		{Descriptor: rule.Descriptor{Name: "observer", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			seen++
 			if cfg.Lint.Enabled == nil || !*cfg.Lint.Enabled || project.Lint.Enabled == nil || !*project.Lint.Enabled {
 				t.Error("tool requirement callback mutated another provider's configuration")
@@ -66,7 +66,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 			calls := 0
 			mutate := func(c tools.Context) {
 				calls++
-				for _, selected := range []*config.Config{c.Config, c.ProjectConfig} {
+				for _, selected := range []*configuration.Config{c.Config, c.ProjectConfig} {
 					if selected != nil {
 						selected.Lint.Enabled = new(false)
 					}

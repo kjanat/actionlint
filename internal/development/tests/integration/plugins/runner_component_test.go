@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
@@ -154,7 +154,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	t.Parallel()
 	observer := &runtimeObserver{}
 	label := "self-32vcpu-windows-2022"
-	cfg, err := (config.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
+	cfg, err := (configuration.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
 	if err != nil {
 		t.Fatal(err)
 	}

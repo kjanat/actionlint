@@ -8,7 +8,7 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -45,9 +45,9 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 				"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 				"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 			}, nil)
-			rootConfig := &repoconfig.Config{}
+			rootConfig := &configuration.Config{}
 			f.options.Bindings = testBindings(rootConfig)
-			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return &repoconfig.Config{}, nil })
+			f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return &configuration.Config{}, nil })
 			entered, visited := 0, 0
 			_, err := analyze(f.options, func(parent *compositeAnalyzer) error {
 				if err := parent.startEntry(invocation.EntryWorkflow, f.root); err != nil {

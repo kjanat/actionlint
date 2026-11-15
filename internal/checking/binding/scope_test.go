@@ -6,12 +6,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestPreparedDecisionsKeepScopeAndRegistryIdentity(t *testing.T) {
 	t.Parallel()
-	rules, err := config.NewRuleSet([]rule.Declaration{
+	rules, err := configuration.NewRuleSet([]rule.Declaration{
 		{Name: "caller", Category: "correctness", Scope: rule.CallerConfiguration},
 		{Name: "source", Category: "correctness", Scope: rule.SourceConfiguration},
 		{Name: "composite", Category: "correctness", Scope: rule.CompositeConfiguration},
@@ -19,7 +19,7 @@ func TestPreparedDecisionsKeepScopeAndRegistryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	caller, source, composite := &config.Config{}, &config.Config{}, &config.Config{}
+	caller, source, composite := &configuration.Config{}, &configuration.Config{}, &configuration.Config{}
 	registry := binding.NewRegistry(rules)
 	scope := registry.Prepare(caller, source, composite)
 	other := binding.NewRegistry(rules).Prepare(caller, source, composite)
@@ -27,7 +27,7 @@ func TestPreparedDecisionsKeepScopeAndRegistryIdentity(t *testing.T) {
 	if _, ok := snapshot.Lookup(other.Rule("source").ID()); ok {
 		t.Fatal("accepted another registry's identity")
 	}
-	for name, want := range map[string]*config.Config{"caller": caller, "source": source, "composite": composite} {
+	for name, want := range map[string]*configuration.Config{"caller": caller, "source": source, "composite": composite} {
 		prepared := scope.Rule(name)
 		published, ok := snapshot.Lookup(prepared.ID())
 		if !ok || published != prepared || published.Config() != want || published.Policy() != want || published.Scope() != scope {

@@ -3,7 +3,7 @@ package installation
 import (
 	"slices"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 

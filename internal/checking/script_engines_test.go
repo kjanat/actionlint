@@ -14,7 +14,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -154,7 +154,7 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 		loaded := map[string]bool{}
 		var loadedMu sync.Mutex
 		options := checking.Options{
-			WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
+			WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
 			Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
 			LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 				loadedMu.Lock()

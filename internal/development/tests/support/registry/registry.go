@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"golang.org/x/net/dns/dnsmessage"
 )

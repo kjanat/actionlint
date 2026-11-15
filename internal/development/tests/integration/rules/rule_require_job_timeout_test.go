@@ -9,7 +9,7 @@ import (
 
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -34,7 +34,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 
 	tests := []struct {
 		what   string
-		policy *repoconfig.JobTimeoutPolicy
+		policy *configuration.JobTimeoutPolicy
 		job    *workflowlang.Job
 		want   []string
 	}{
@@ -45,38 +45,38 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		},
 		{
 			what:   "policy is disabled",
-			policy: &repoconfig.JobTimeoutPolicy{},
+			policy: &configuration.JobTimeoutPolicy{},
 			job:    newJob(nil),
 		},
 		{
 			what:   "timeout is missing",
-			policy: repoconfig.RequireJobTimeout(0),
+			policy: configuration.RequireJobTimeout(0),
 			job:    newJob(nil),
 			want:   []string{missing},
 		},
 		{
 			what:   "timeout is set",
-			policy: repoconfig.RequireJobTimeout(0),
+			policy: configuration.RequireJobTimeout(0),
 			job:    newJob(minutes(45)),
 		},
 		{
 			what:   "no maximum is configured",
-			policy: repoconfig.RequireJobTimeout(0),
+			policy: configuration.RequireJobTimeout(0),
 			job:    newJob(minutes(4320)),
 		},
 		{
 			what:   "timeout is below the maximum",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job:    newJob(minutes(15)),
 		},
 		{
 			what:   "timeout is equal to the maximum",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job:    newJob(minutes(30)),
 		},
 		{
 			what:   "timeout is above the maximum",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job:    newJob(minutes(45)),
 			want: []string{
 				":6:22: \"timeout-minutes\" is 45 in job \"test\", above the configured max-minutes of 30 [job-timeout]",
@@ -84,7 +84,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		},
 		{
 			what:   "maximum is a fraction",
-			policy: repoconfig.RequireJobTimeout(30.5),
+			policy: configuration.RequireJobTimeout(30.5),
 			job:    newJob(minutes(45)),
 			want: []string{
 				":6:22: \"timeout-minutes\" is 45 in job \"test\", above the configured max-minutes of 30.5 [job-timeout]",
@@ -92,13 +92,13 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		},
 		{
 			what:   "timeout is missing while a maximum is configured",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job:    newJob(nil),
 			want:   []string{missing},
 		},
 		{
 			what:   "timeout is an expression",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job: newJob(&workflowlang.Float{
 				Value:      45,
 				Expression: &workflowlang.String{Value: "matrix.timeout", Pos: valuePos},
@@ -107,7 +107,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		},
 		{
 			what:   "job calls a reusable workflow",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job: &workflowlang.Job{
 				ID: &workflowlang.String{Value: "test", Pos: jobPos},
 				WorkflowCall: &workflowlang.WorkflowCall{
@@ -119,7 +119,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		},
 		{
 			what:   "job has no steps",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job: &workflowlang.Job{
 				ID:  &workflowlang.String{Value: "test", Pos: jobPos},
 				Pos: jobPos,
@@ -127,7 +127,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 		},
 		{
 			what:   "job has an empty steps section",
-			policy: repoconfig.RequireJobTimeout(30),
+			policy: configuration.RequireJobTimeout(30),
 			job: &workflowlang.Job{
 				ID:    &workflowlang.String{Value: "test", Pos: jobPos},
 				Steps: []*workflowlang.Step{},
@@ -178,7 +178,7 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			policy, err := repoconfig.RequireJobTimeoutRange(tc.min, tc.max)
+			policy, err := configuration.RequireJobTimeoutRange(tc.min, tc.max)
 			if err != nil {
 				t.Fatal(err)
 			}

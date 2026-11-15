@@ -14,7 +14,7 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
@@ -265,7 +265,7 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.StepVie
 	return nil
 }
 
-func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepView, config *repoconfig.Config) error {
+func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepView, config *configuration.Config) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}

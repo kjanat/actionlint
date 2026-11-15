@@ -4,19 +4,19 @@ import (
 	"reflect"
 	"testing"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestProjectToolBackendPrecedence(t *testing.T) {
 	t.Parallel()
-	cfg := &config.Config{}
+	cfg := &configuration.Config{}
 	command, err := toolconfig.NewCommand("mise", []string{"exec", "ruff", "--", "ruff"}, map[string]string{"CUSTOM": "literal $value"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.Tools = config.ToolsConfig{"ruff": {Backend: toolconfig.ProcessBackend(command)}}
+	cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: toolconfig.ProcessBackend(command)}}
 	automatic := &process.CommandOptions{Optional: true, Arguments: []string{"--select", "F"}}
 	selected := ProcessOptions("ruff", "ruff", automatic, cfg, "/analysis")
 	if selected.Executable == nil || *selected.Executable != "mise" || !reflect.DeepEqual(selected.LauncherArguments, command.Args()) || !reflect.DeepEqual(selected.Arguments, automatic.Arguments) || !reflect.DeepEqual(selected.Environment, []string{"CUSTOM=literal $value"}) {
@@ -31,13 +31,13 @@ func TestProjectToolBackendPrecedence(t *testing.T) {
 	}
 }
 
-func wasmToolConfig(t *testing.T, name string) *config.Config {
+func wasmToolConfig(t *testing.T, name string) *configuration.Config {
 	t.Helper()
 	module, err := toolconfig.NewModule("selected.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &config.Config{Tools: config.ToolsConfig{name: {Backend: toolconfig.WasmBackend(module)}}}
+	return &configuration.Config{Tools: configuration.ToolsConfig{name: {Backend: toolconfig.WasmBackend(module)}}}
 }
 
 func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
@@ -68,7 +68,7 @@ func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg.Tools[name] = config.ToolConfig{Backend: toolconfig.ProcessBackend(command)}
+			cfg.Tools[name] = configuration.ToolConfig{Backend: toolconfig.ProcessBackend(command)}
 			if got := processCommand(name, name, &process.CommandOptions{AllowWasm: true}, cfg); got != nil {
 				t.Fatalf("repository process replaced provisioned command: %+v", got)
 			}

@@ -10,7 +10,7 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -26,7 +26,7 @@ type declarationRule struct {
 	workflowCheck func(workflowdecl.WorkflowView) []reporting.Finding
 	jobCheck      func(workflowdecl.JobView) []reporting.Finding
 	stepCheck     func(workflowdecl.StepView) []reporting.Finding
-	rules         repoconfig.RuleSet
+	rules         configuration.RuleSet
 }
 
 // invocationDeclarationRule applies a source-local check to composite bodies.
@@ -64,7 +64,7 @@ func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView
 }
 
 // New invokes only the workflow, job and step checks supplied by the rule.
-func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) workflowvisit.Rule {
+func New(rules configuration.RuleSet, check checkinputs.DeclarationCheck) workflowvisit.Rule {
 	if check.Workflow == nil && check.Job == nil && check.Step == nil {
 		panic("rule " + check.Name + " supplies no declaration check")
 	}
@@ -122,11 +122,11 @@ func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 }
 
 // NewVendorLockIn checks URL-form references in jobs, steps and called composites.
-func NewVendorLockIn(rules repoconfig.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
+func NewVendorLockIn(rules configuration.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
 	return New(rules, correctness.VendorLockInCheck(runners.Target()))
 }
 
-func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTimeoutPolicy) workflowvisit.Rule {
+func NewRuleRequireJobTimeout(rules configuration.RuleSet, policy *configuration.JobTimeoutPolicy) workflowvisit.Rule {
 	options := conventions.TimeoutPolicy{Enabled: policy.Enabled()}
 	if lower, ok := policy.MinMinutes(); ok {
 		options.Min = new(lower)
@@ -137,7 +137,7 @@ func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTi
 	return New(rules, conventions.JobTimeoutCheck(options))
 }
 
-func NewRuleRequireCommitHash(rules repoconfig.RuleSet, excluded func(string) bool) workflowvisit.Rule {
+func NewRuleRequireCommitHash(rules configuration.RuleSet, excluded func(string) bool) workflowvisit.Rule {
 	return New(rules, security.UnpinnedReferenceCheck(excluded))
 }
 

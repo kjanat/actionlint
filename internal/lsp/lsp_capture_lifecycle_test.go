@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -98,7 +98,7 @@ func TestEditorMissingOnDiskEntryAndExcludedDependencyUseBuffers(t *testing.T) {
 		t.Fatal(err)
 	}
 	var reads atomic.Int32
-	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []repoconfig.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
+	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
 		if path == workflow || path == dependency {
 			reads.Add(1)
 		}

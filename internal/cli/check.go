@@ -16,9 +16,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
+	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/services"
@@ -77,10 +77,10 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
 		IgnoreSelectors: ignoreSelectors,
 		Debug:           c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
-		LegacyErrors: inv.Legacy, Presets: repoconfig.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
+		LegacyErrors: inv.Legacy, Presets: configuration.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
 	}
 	if c.ResolverCommand != "" && !c.Offline {
-		options.Resolver = resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
+		options.Resolver = execprotocol.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 		options.SuggestCommitPins = true
 	}
 	options.RemoteActions, err = c.actionMetadata(streams.Acquisition)

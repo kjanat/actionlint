@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	resolverprocess "actionlint.kjanat.dev/v2/internal/input/references/process"
+	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
@@ -22,7 +22,7 @@ func (c checkInvocation) actionMetadata(acquisition plugininstall.Acquisition) (
 	if options.Mode == github.Online {
 		if c.ResolverCommand != "" {
 			options.Resolver = func() references.Resolver {
-				return resolverprocess.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
+				return execprotocol.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
 			}
 		}
 	}

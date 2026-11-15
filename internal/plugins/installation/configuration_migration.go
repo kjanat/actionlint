@@ -9,7 +9,7 @@ import (
 	"slices"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
@@ -21,7 +21,7 @@ import (
 // ConfigurationMigration previews the syntax conversion and default plugin declarations.
 // Applying it verifies dependencies before writing exact plugin declarations.
 type ConfigurationMigration struct {
-	*config.FileMigration
+	*configuration.FileMigration
 	project       *Project
 	refs          []pluginref.Reference
 	updatePlugins bool
@@ -29,7 +29,7 @@ type ConfigurationMigration struct {
 
 func PrepareConfigurationMigration(ctx context.Context, path string, options DefaultPluginOptions) (*ConfigurationMigration, error) {
 	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
-	if errors.Is(err, config.ErrRuleMetadataRequired) {
+	if errors.Is(err, configuration.ErrRuleMetadataRequired) {
 		descriptors, metadataErr := cachedMigrationRules(ctx, options.RuleSet, options.Acquisition, path)
 		if metadataErr != nil {
 			return nil, fmt.Errorf("%w; inspect or install plugin metadata before migrating: %w", err, metadataErr)
@@ -175,7 +175,7 @@ func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, op
 		return nil, nil
 	}
 	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
-	if errors.Is(err, config.ErrRuleMetadataRequired) {
+	if errors.Is(err, configuration.ErrRuleMetadataRequired) {
 		// Checking can bind legacy selections after plugin registration. Do
 		// not force an implicit rewrite to inspect or execute plugin code.
 		return nil, nil
@@ -329,7 +329,7 @@ func (s Selection) Migrate(ctx context.Context, directory string, input inputmod
 
 // InitializeConfiguration verifies default plugin artifacts before creating configuration.
 // A failed resolution leaves the project unchanged.
-func InitializeConfiguration(ctx context.Context, rules config.RuleSet, acquisition Acquisition, root, version string, format config.FileFormat) (string, error) {
+func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, root, version string, format configuration.FileFormat) (string, error) {
 	path, err := projectConfigPath(root, "")
 	if err != nil {
 		return "", err

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -17,7 +17,7 @@ func TestSourcePolicyRequiresPreparedConfiguration(t *testing.T) {
 	if _, err := publishFindings(processor, missing, nil, sources); err == nil || !strings.Contains(err.Error(), "configuration was not prepared") {
 		t.Fatalf("missing configuration did not fail: %v", err)
 	}
-	prepared := preparePolicy(processor.RuleSet, nil, policy.Policy{Path: "workflow.yml"}, map[string]*repoconfig.Config{"inner/action.yml": nil}, nil)
+	prepared := preparePolicy(processor.RuleSet, nil, policy.Policy{Path: "workflow.yml"}, map[string]*configuration.Config{"inner/action.yml": nil}, nil)
 	if _, err := publishFindings(processor, prepared, nil, sources); err != nil {
 		t.Fatalf("explicit default configuration was rejected: %v", err)
 	}

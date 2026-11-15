@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"sync"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 type configState struct {
 	sync.Mutex
-	source     *repoconfig.Loaded
-	overlays   []repoconfig.Overlay
+	source     *configuration.Loaded
+	overlays   []configuration.Overlay
 	onLoaded   func(configreport.Report)
-	loaded     map[*Project]*repoconfig.Config
-	provenance map[*Project]repoconfig.Provenance
+	loaded     map[*Project]*configuration.Config
+	provenance map[*Project]configuration.Provenance
 	reports    map[*Project]configreport.Report
 }
 
-func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error) {
-	var cfg *repoconfig.Config
-	var source *repoconfig.Loaded
+func (a *Session) ConfigForProject(project *Project) (*configuration.Config, error) {
+	var cfg *configuration.Config
+	var source *configuration.Loaded
 	if a.defaultConfig != nil {
 		cfg = a.defaultConfig
 		if a.configState != nil {
@@ -76,7 +76,7 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 	}
 	s.loaded[project] = cfg
 	if s.provenance == nil {
-		s.provenance = make(map[*Project]repoconfig.Provenance)
+		s.provenance = make(map[*Project]configuration.Provenance)
 	}
 	provenance := resolved.Provenance
 	if source == nil && a.defaultConfig != nil {
@@ -92,7 +92,7 @@ func (a *Session) ConfigForProject(project *Project) (*repoconfig.Config, error)
 }
 
 // ConfigProvenanceForProject reads the source owner selected by ConfigForProject.
-func (a *Session) ConfigProvenanceForProject(project *Project) repoconfig.Provenance {
+func (a *Session) ConfigProvenanceForProject(project *Project) configuration.Provenance {
 	if a.configState == nil {
 		if a.defaultConfig != nil {
 			return a.defaultConfigProvenance
@@ -100,7 +100,7 @@ func (a *Session) ConfigProvenanceForProject(project *Project) repoconfig.Proven
 		if project != nil && project.config != nil {
 			return project.config.Provenance
 		}
-		return repoconfig.Provenance{}
+		return configuration.Provenance{}
 	}
 	a.configState.Lock()
 	defer a.configState.Unlock()

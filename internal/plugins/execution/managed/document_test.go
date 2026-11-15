@@ -20,7 +20,7 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -236,7 +236,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: []tools.Registration{registration}}
+			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []tools.Registration{registration}}
 			needed, err := checking.RequiredTools(t.Context(), options, nil)
 			if err != nil || needed["shellcheck"] {
 				t.Fatalf("native dependency: %v %v", needed, err)
@@ -305,7 +305,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			needed, err := checking.RequiredTools(t.Context(), checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: []tools.Registration{registration}}, nil)
+			needed, err := checking.RequiredTools(t.Context(), checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []tools.Registration{registration}}, nil)
 			if err != nil || !needed["shellcheck"] {
 				t.Fatalf("explicit native settings lost: %v %v", needed, err)
 			}
@@ -348,7 +348,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			overlays := []config.Overlay{base}
+			overlays := []configuration.Overlay{base}
 			if tc.extra != "" {
 				extra, err := checking.ConfigurationRules().ParseOverlay("config", []byte(tc.extra), "shellcheck")
 				if err != nil {
@@ -403,7 +403,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			}
 			guest := &documentGuest{}
 			options := checking.Options{
-				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []config.Overlay{base, disabled},
+				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{base, disabled},
 				Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck", ManagedOnly: true})},
 				Analyzers: []checkinputs.Registration{{Checker: guest}},
 			}
@@ -445,7 +445,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	}
 	guest := &documentGuest{}
 	options := checking.Options{
-		WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
+		WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
 		Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
 		Analyzers: []checkinputs.Registration{{Checker: guest}},
 	}

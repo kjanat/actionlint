@@ -4,15 +4,15 @@ import (
 	"context"
 	"path/filepath"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 )
 
 // ToolOptions asks providers which tools are possible for a resolved configuration.
 type ToolOptions struct {
-	Presets  repoconfig.Presets
-	Required func(*repoconfig.Config, *repoconfig.Config) ([]string, error)
+	Presets  configuration.Presets
+	Required func(*configuration.Config, *configuration.Config) ([]string, error)
 }
 type ExternalToolRequirements map[string]bool
 
@@ -92,7 +92,7 @@ func (a *Session) RequiredTools(ctx context.Context, paths []string, options Too
 		if project != nil {
 			repositoryRoot = project.RootDir()
 		}
-		names, err := options.Required(config, repoconfig.InvocationPlanningConfig(config, projectConfig, repositoryRoot))
+		names, err := options.Required(config, configuration.InvocationPlanningConfig(config, projectConfig, repositoryRoot))
 		if err != nil {
 			return needed, err
 		}

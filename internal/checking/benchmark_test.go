@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
@@ -151,7 +151,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 			for range b.N {
 				opts := workspace.Options{WorkingDir: root, Rules: checking.ConfigurationRules()}
 				if bm.what != "our workflows" {
-					opts.Config = &repoconfig.Config{}
+					opts.Config = &configuration.Config{}
 				}
 				session, err := workspace.New(b.Context(), opts)
 				if err != nil {
@@ -213,7 +213,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 	}
 
 	for b.Loop() {
-		session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root, Config: &repoconfig.Config{}, Rules: checking.ConfigurationRules()})
+		session, err := workspace.New(b.Context(), workspace.Options{WorkingDir: root, Config: &configuration.Config{}, Rules: checking.ConfigurationRules()})
 		if err != nil {
 			b.Fatal(err)
 		}

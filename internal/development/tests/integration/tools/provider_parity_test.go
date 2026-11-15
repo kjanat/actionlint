@@ -20,7 +20,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -395,7 +395,7 @@ func TestProviderParityFixtures(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					sources := []workspace.Source{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &repoconfig.Config{}}}
+					sources := []workspace.Source{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &configuration.Config{}}}
 					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: repository, Tools: recorder.wrap(registrations)}, sources)
 					return toolFindings(t, result, err, recorder, map[string]string{repository: "<repository>"})
 				}, shellcheck, ruff)

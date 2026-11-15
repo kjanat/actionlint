@@ -29,7 +29,7 @@ import (
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -55,16 +55,16 @@ import (
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
 	Bindings                    *binding.Scope
-	RequiredPermissionLocations []repoconfig.PermissionLocation
+	RequiredPermissionLocations []configuration.PermissionLocation
 	Lifecycle                   actionmeta.LifecycleContext
 
 	Debug                         io.Writer
-	Rules                         repoconfig.RuleSet
+	Rules                         configuration.RuleSet
 	SourceSnapshot                parsing.SourceSnapshot
 	Runners                       *runnerlang.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
-	Config                        *repoconfig.Config
+	Config                        *configuration.Config
 	Repository                    repository.Snapshot
 	Actions                       *workspaceactions.Resolver
 	RemoteActions                 *actionremote.ResolvedActions
@@ -79,7 +79,7 @@ type Inputs struct {
 
 // Registration pairs a rule declaration with its constructor and execution conditions.
 type Registration struct {
-	repoconfig.Rule
+	configuration.Rule
 	// Prepare distinguishes usable inputs, unavailable knowledge and operation
 	// failures before construction. Nil means no preparation is needed.
 	Prepare func(Inputs) (InputPreparation, error)
@@ -143,7 +143,7 @@ var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
 		}}),
 		newSpec(correctness.RunnerLabelDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			labels := runnerlang.LabelSet{}
-			if known, available := repoconfig.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
+			if known, available := configuration.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
 				labels = runnerlang.KnownLabels(known.Values())
 			}
 			return declarationchecks.New(c.Rules, correctness.RunnerLabelCheck(c.Runners, labels))
@@ -173,7 +173,7 @@ var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
 		newSpec(correctness.WorkflowCallDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			logger := reporting.Logger{Tag: "workflow-call", Writer: c.Debug}
-			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
+			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, configuration.RepositoryFacts(c.Config, c.Repository), logger.Debug))
 		}}),
 		newSpec(correctness.ExpressionDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
@@ -222,7 +222,7 @@ func declarationImplementation(check checkinputs.DeclarationCheck) implementatio
 }
 
 // Registrations returns check implementations in rule-declaration order.
-func Registrations(rules repoconfig.RuleSet) []Registration {
+func Registrations(rules configuration.RuleSet) []Registration {
 	behaviors := make(map[string]implementation)
 	for _, spec := range nativeRuleCatalog() {
 		behavior := spec.behavior

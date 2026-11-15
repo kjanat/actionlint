@@ -13,7 +13,7 @@ import (
 	"time"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -51,7 +51,7 @@ jobs:
 permissions: {}
 `
 
-func knownRunnerOverlay(t *testing.T) repoconfig.Overlay {
+func knownRunnerOverlay(t *testing.T) configuration.Overlay {
 	t.Helper()
 	overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte("repository: {runners: []}"))
 	if err != nil {
@@ -252,7 +252,7 @@ func TestRunLinterFindsProblems(t *testing.T) {
 	dir := nativeWorkspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, files: []string{"broken.yaml"}, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
 	if got.code != commandstatus.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -276,7 +276,7 @@ func TestRunLinterRendersSARIF(t *testing.T) {
 	dir := nativeWorkspaceWith(t, map[string]string{"broken.yaml": brokenWorkflow})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatSARIF, files: []string{"broken.yaml"}, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
 	if got.code != commandstatus.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -303,7 +303,7 @@ func TestRunLinterAppliesIgnorePatterns(t *testing.T) {
 		format:     formatJSON,
 		files:      []string{"broken.yaml"},
 		ignore:     []string{`label "unknown-runner" is unknown`},
-		overlays:   []repoconfig.Overlay{knownRunnerOverlay(t)},
+		overlays:   []configuration.Overlay{knownRunnerOverlay(t)},
 	})
 	if got.code != commandstatus.ExitSuccessNoProblem {
 		t.Fatalf("wanted the problem ignored but got %d: %s%s", got.code, got.stderr, got.stdout)
@@ -371,7 +371,7 @@ func TestRunLinterLintsWholeRepository(t *testing.T) {
 	})
 	t.Chdir(dir)
 
-	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
+	got := runLinter(&lintRequest{workingDir: dir, format: formatJSON, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
 	if got.code != commandstatus.ExitSuccessProblemFound {
 		t.Fatalf("wanted exit code 1 but got %d: %s%s", got.code, got.stderr, got.stdout)
 	}
@@ -588,7 +588,7 @@ func TestActionRunLintPreservesProcessDirectory(t *testing.T) {
 			return runLinter(req)
 		},
 	}
-	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: formatJSON, overlays: []repoconfig.Overlay{knownRunnerOverlay(t)}})
+	got := a.runLint(&lintRequest{workingDir: sub, files: []string{"broken.yaml"}, format: formatJSON, overlays: []configuration.Overlay{knownRunnerOverlay(t)}})
 
 	if resolved(t, seen) != resolved(t, dir) {
 		t.Errorf("wanted the process directory to remain %q while linting but got %q", dir, seen)
