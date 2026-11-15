@@ -23,11 +23,11 @@ type Script struct {
 
 // Graph publishes a workflow entry with one enabled call expanded into Action.
 // Entry scripts are registered first, then call scripts, each in order.
-func Graph(t testing.TB, scripts ...Script) invocation.Graph {
-	t.Helper()
+func Graph(tb testing.TB, scripts ...Script) invocation.Graph {
+	tb.Helper()
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, Workflow, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: max(1, len(scripts))})
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	add := func(owner invocation.Context, body source.Reference, entry bool) {
 		for _, script := range scripts {
@@ -40,7 +40,7 @@ func Graph(t testing.TB, scripts ...Script) invocation.Graph {
 			}
 			declaration := source.Reference{Document: body.Document, Revision: body.Revision, Node: script.Node}
 			if _, err := builder.AddScript(owner, declaration, kind, script.Input); err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 		}
 	}
@@ -48,26 +48,26 @@ func Graph(t testing.TB, scripts ...Script) invocation.Graph {
 	site := source.Reference{Document: Workflow.Document, Revision: Workflow.Revision, Node: "call"}
 	ticket, err := builder.Begin(builder.RootContext(), site, invocation.Facts{Condition: invocation.ConditionEnabled, Uses: "./action", HasUses: true})
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	call, admitted := ticket.Context()
 	if !admitted {
-		t.Fatalf("fixture call was not admitted: %v", ticket.Status())
+		tb.Fatalf("fixture call was not admitted: %v", ticket.Status())
 	}
 	expanded, err := invocation.Expanded(Action)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	if _, err := builder.Resolve(call, expanded); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	add(call, Action, false)
 	if err := builder.Close(call); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	graph, err := builder.Publish()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return graph
 }
