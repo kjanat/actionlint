@@ -16,7 +16,7 @@ func DefaultActivities(event string) ([]string, bool) {
 	return slices.Clone(activities), ok
 }
 
-// Fields returns the permitted configuration keys from the strict workflow
+// TriggerFields returns the permitted configuration keys from the strict workflow
 // schema, after documented Actions corrections.
 func TriggerFields(event string) []string { return slices.Clone(triggerFields[event]) }
 
