@@ -139,7 +139,7 @@ func TestParseMetadataParity(t *testing.T) {
 		{name: "byte order mark", src: "\xef\xbb\xbf" + input("{type: string}"), want: "in=[a:a/string] out=- sec=-"},
 		{name: "second document", src: input("{type: string}") + "---\nfoo: bar\n", want: "in=[a:a/string] out=- sec=-"},
 
-		// the rest of the workflow is recovered, not required
+		// errors outside workflow_call do not fail the decoder
 		{name: "jobs missing", src: "on: workflow_call\n", want: none},
 		{name: "unknown top level key", src: "on: workflow_call\nbogus: 1\n", want: none},
 		{name: "invalid jobs", src: "on: workflow_call\njobs: foo\n", want: none},
