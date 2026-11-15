@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 

@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 

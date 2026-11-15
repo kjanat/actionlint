@@ -133,4 +133,7 @@ func CheckPermissions(call *workflowlang.WorkflowCall, granted calls.ResolvedPer
 	return findings
 }
 
-func callPosition(node *workflowlang.String) sourcepos.Position { pos, _ := node.Position(); return pos }
+func callPosition(node *workflowlang.String) sourcepos.Position {
+	pos, _ := node.Position()
+	return pos
+}

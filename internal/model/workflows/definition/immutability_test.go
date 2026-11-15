@@ -61,7 +61,7 @@ func TestPublishedSyntaxWritesFixture(t *testing.T) {
 		"writes published syntax field workflow.Job.Steps",
 		"writes published syntax field workflow.Workflow.Jobs",
 		"writes published syntax field workflow.Workflow.Jobs",
-		"writes published syntax field workflow.Pos.Line",
+		"writes published syntax field workflow.Step.Pos",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("writes = %q, want %q", got, want)

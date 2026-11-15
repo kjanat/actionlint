@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 

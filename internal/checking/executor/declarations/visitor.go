@@ -1,13 +1,13 @@
 package declarations
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"

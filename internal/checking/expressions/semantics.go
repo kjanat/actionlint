@@ -306,7 +306,7 @@ func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bo
 func convertExprLineColToPos(line, col, lineBase, colBase int) source.Position {
 	// Line and column in ExprError are 1-based
 	return source.Position{
-		Line: line - 1 + lineBase,
-		Column:  col - 1 + colBase,
+		Line:   line - 1 + lineBase,
+		Column: col - 1 + colBase,
 	}
 }

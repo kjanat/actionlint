@@ -3,8 +3,8 @@ package action_test
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"

@@ -166,4 +166,3 @@ func hasPosition(s *workflowlang.String) bool {
 	_, present := s.Position()
 	return present
 }
-

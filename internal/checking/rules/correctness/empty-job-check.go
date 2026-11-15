@@ -3,8 +3,8 @@ package correctness
 import (
 	"fmt"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

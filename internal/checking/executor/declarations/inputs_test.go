@@ -4,12 +4,12 @@ import (
 	"slices"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )

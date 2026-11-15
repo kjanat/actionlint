@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
