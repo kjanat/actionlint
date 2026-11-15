@@ -1,7 +1,11 @@
 package correctness
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"context"
+	"errors"
+	"os"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
@@ -17,22 +21,20 @@ import (
 type ruleExecutableBit struct {
 	*ExecutableChecker
 	reporting.Logger
-	frames   []executableInvocation
-	findings workflowvisit.Findings
+	name, description string
+	frames            []executableInvocation
+	findings          workflowvisit.Findings
 }
 
 // NewRuleExecutableBit checks script executable bits using prepared Git-index facts.
-func NewRuleExecutableBit(input ExecutableContext) workflowvisit.Rule {
-	descriptor := ExecutableBitDeclaration()
-	r := &ruleExecutableBit{Tag: descriptor.Name}
+func NewRuleExecutableBit(base workflowvisit.Base, input ExecutableContext) workflowvisit.Rule {
+	r := &ruleExecutableBit{Logger: reporting.Logger{Tag: base.Name()}, name: base.Name(), description: base.Description()}
 	input.Report = func(finding *findingmodel.Finding) { r.findings.Report(finding) }
 	r.ExecutableChecker = NewExecutableChecker(input)
 	return r
 }
-func (rule *ruleExecutableBit) Name() string { return "executable-bit" }
-func (rule *ruleExecutableBit) Description() string {
-	return ExecutableBitDeclaration().Description
-}
+func (rule *ruleExecutableBit) Name() string        { return rule.name }
+func (rule *ruleExecutableBit) Description() string { return rule.description }
 
 func (rule *ruleExecutableBit) Errs() []*findingmodel.Finding { return rule.findings.Errs() }
 func (rule *ruleExecutableBit) FindingCount() int             { return rule.findings.FindingCount() }
@@ -87,3 +89,25 @@ func (rule *ruleExecutableBit) LeaveInvocation(context invocation.Context) error
 }
 
 var _ workflowvisit.InvocationParticipant = (*ruleExecutableBit)(nil)
+
+func prepareExecutableIndex(c define.Inputs) (define.InputPreparation, error) {
+	if c.Rules.DiagnosticLevel(c.Config, "executable-bit") == "off" {
+		return define.PreparedInputs{Inputs: c}, nil
+	}
+	if err := c.Context.Err(); err != nil {
+		return nil, err
+	}
+	snapshot := c.Index(c.Context, c.ProjectRoot)
+	if err := c.Context.Err(); err != nil {
+		return nil, err
+	}
+	if err := snapshot.Err(); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrPermission) {
+			return nil, err
+		}
+		return define.UnavailableInputs{Reason: "Git index could not be read: " + err.Error()}, nil
+	}
+	c.Reader.Record(snapshot.Path())
+	c.ExecutableIndex = snapshot
+	return define.PreparedInputs{Inputs: c}, nil
+}

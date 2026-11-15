@@ -1,9 +1,11 @@
 package correctness
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	"fmt"
+	"path/filepath"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -13,14 +15,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// WorkflowRunNamesCheck checks trigger filters against the supplied inventory.
+// WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
 // It does not read files or depend on prior callbacks.
-func WorkflowRunNamesCheck(inventory namemodel.Inventory) checkinputs.DeclarationCheck {
-	return checkinputs.DeclarationCheck{
-		Declaration: WorkflowRunNamesDeclaration(),
-		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
-			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
-		},
+func WorkflowRunNamesChecks(inventory namemodel.Inventory) define.Checks {
+	return define.Checks{Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+		return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
+	},
 	}
 }
 
@@ -46,7 +46,7 @@ func workflowRunNameDiagnostics(n namemodel.Inventory, references []*workflowlan
 		return findings
 	}
 	report := func(pos *workflowlang.Pos, format string, args ...any) {
-		findings = append(findings, results.Diagnostic{Rule: "workflow-run-names", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}})
+		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}})
 	}
 	if !n.Complete() {
 		return findings
@@ -75,4 +75,41 @@ func workflowRunNameDiagnostics(n namemodel.Inventory, references []*workflowlan
 		report(references[0].Pos, "workflow_run workflow-name filters exclude every matching workflow in this repository")
 	}
 	return findings
+}
+
+func absolutePath(path string) string {
+	if absolute, err := filepath.Abs(path); err == nil {
+		return absolute
+	}
+	return path
+}
+
+func workflowRunNamesAvailable(c define.Inputs) bool {
+	if c.ProjectRoot == "" || c.WorkflowNames == nil {
+		return false
+	}
+	path := c.Path
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(c.WorkingDir, path)
+	}
+	return workflownames.SamePath(filepath.Dir(path), filepath.Join(absolutePath(c.ProjectRoot), ".github", "workflows"))
+}
+
+func prepareWorkflowRunNames(c define.Inputs) (define.InputPreparation, error) {
+	if c.Rules.DiagnosticLevel(c.Config, "workflow-run-names") == "off" {
+		return define.PreparedInputs{Inputs: c}, nil
+	}
+	workflow, available := c.SourceSnapshot.WorkflowView()
+	if !available || len(WorkflowRunFilters(workflow)) == 0 {
+		return define.PreparedInputs{Inputs: c}, nil
+	}
+	inventory, err := c.WorkflowNames.ForRoot(absolutePath(c.ProjectRoot))
+	if err != nil {
+		return nil, err
+	}
+	if !inventory.Complete() {
+		return define.UnavailableInputs{Reason: "not every repository workflow name could be determined"}, nil
+	}
+	c.WorkflowNameInventory = inventory
+	return define.PreparedInputs{Inputs: c}, nil
 }

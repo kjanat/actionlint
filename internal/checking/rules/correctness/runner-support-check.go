@@ -1,10 +1,10 @@
 package correctness
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"fmt"
 	"slices"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
@@ -13,28 +13,26 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// RunnerSupportCheck reports support facts without changing which runners match.
-func RunnerSupportCheck(runners *runnerlang.Knowledge) checkinputs.DeclarationCheck {
-	return checkinputs.DeclarationCheck{
-		Declaration: RunnerSupportDeclaration(),
-		Job: func(job workflowdecl.Job) []reporting.Finding {
-			var findings []reporting.Finding
-			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
-			for _, problem := range problems {
-				position := supportPosition(job, problem.Selector)
-				message := supportMessage(problem)
-				finding := reporting.Finding{Rule: "runner-support", Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
-				if problem.Evidence != nil && !problem.Evidence.Current {
-					finding.Code = string(problem.Evidence.Kind)
-				}
-				if !slices.ContainsFunc(findings, func(existing reporting.Finding) bool {
-					return existing.Start == finding.Start && existing.Message == finding.Message
-				}) {
-					findings = append(findings, finding)
-				}
+// RunnerSupportChecks reports support facts without changing which runners match.
+func RunnerSupportChecks(runners *runnerlang.Knowledge) define.Checks {
+	return define.Checks{Job: func(job workflowdecl.Job) []reporting.Finding {
+		var findings []reporting.Finding
+		problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
+		for _, problem := range problems {
+			position := supportPosition(job, problem.Selector)
+			message := supportMessage(problem)
+			finding := reporting.Finding{Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
+			if problem.Evidence != nil && !problem.Evidence.Current {
+				finding.Code = string(problem.Evidence.Kind)
 			}
-			return findings
-		},
+			if !slices.ContainsFunc(findings, func(existing reporting.Finding) bool {
+				return existing.Start == finding.Start && existing.Message == finding.Message
+			}) {
+				findings = append(findings, finding)
+			}
+		}
+		return findings
+	},
 	}
 }
 

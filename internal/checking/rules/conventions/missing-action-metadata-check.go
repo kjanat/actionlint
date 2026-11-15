@@ -1,7 +1,7 @@
 package conventions
 
 import (
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
@@ -15,10 +15,10 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// MissingActionMetadataCheck reads acquisition outcomes prepared by the host.
+// MissingActionMetadataChecks reads acquisition outcomes prepared by the host.
 // It does not start provider requests or depend on preceding step callbacks.
-func MissingActionMetadataCheck(remote *actionremote.ResolvedActions) checkinputs.DeclarationCheck {
-	return checkinputs.DeclarationCheck{Declaration: MissingActionMetadataDeclaration(), Step: func(step workflowdecl.Step) []reporting.Finding {
+func MissingActionMetadataChecks(remote *actionremote.ResolvedActions) define.Checks {
+	return define.Checks{Step: func(step workflowdecl.Step) []reporting.Finding {
 		return missingActionMetadata(step, remote)
 	}}
 }
@@ -62,7 +62,7 @@ func missingActionMetadata(step workflowdecl.Step, remote *actionremote.Resolved
 		factavailability.UnsupportedReason, factavailability.ResolverNotConfiguredReason, factavailability.CacheMissReason,
 		factavailability.InaccessibleReason, factavailability.LimitReason:
 	}
-	collector := reporting.Collector{Rule: "missing-action-metadata", Step: step}
+	collector := reporting.Collector{Step: step}
 	collector.Error(action.Uses.Pos, "could not inspect metadata for "+spec+" ("+reason+")"+help)
 	return collector.Findings
 }

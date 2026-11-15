@@ -1,11 +1,23 @@
 package conventions
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-// JobTimeoutDeclaration describes the job-timeout rule.
-func JobTimeoutDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "job-timeout", Aliases: []rule.Alias{{Name: "require-job-timeout", Deprecated: true}}, Description: "Require explicit job timeouts within configured bounds", Category: "conventions", Subcategory: "jobs", Maturity: "stable", Provider: "actionlint", Recommended: false, Explanation: "Require explicit job timeouts within configured bounds.", Help: "Set timeout-minutes on the job within the configured bounds.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#job-timeout", Options: func() any { return &configuration.JobTimeoutPolicy{} }}
+// JobTimeoutRule is the single definition of the job-timeout rule.
+var JobTimeoutRule = &define.Rule{Name: "job-timeout", Aliases: []rule.Alias{{Name: "require-job-timeout", Deprecated: true}}, Description: "Require explicit job timeouts within configured bounds", Category: "conventions", Subcategory: "jobs", Recommended: false, Help: "Set timeout-minutes on the job within the configured bounds.", Options: define.Options[configuration.JobTimeoutPolicy](),
+	Checks: func(c define.Inputs) define.Checks {
+		policy := c.Config.RequiresJobTimeout()
+		options := TimeoutPolicy{Enabled: policy.Enabled()}
+		if lower, ok := policy.MinMinutes(); ok {
+			options.Min = new(lower)
+		}
+		if upper, ok := policy.MaxMinutes(); ok {
+			options.Max = new(upper)
+		}
+		return JobTimeoutChecks(options)
+	},
+	Enabled: func(c define.Inputs) bool { return c.Config.RequiresJobTimeout().Enabled() },
 }

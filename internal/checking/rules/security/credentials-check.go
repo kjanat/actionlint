@@ -16,7 +16,7 @@ type credentialsCheck struct{ reporting.Collector }
 
 // Credentials checks container passwords in a complete job declaration.
 func Credentials(n declaration.Job) []reporting.Finding {
-	rule := &credentialsCheck{Rule: "credentials"}
+	rule := &credentialsCheck{}
 
 	if !n.Present() {
 		return rule.Findings

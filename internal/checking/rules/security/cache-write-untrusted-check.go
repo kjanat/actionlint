@@ -2,19 +2,17 @@ package security
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-// CacheWriteUntrustedCheck reports write-capable cache declarations reachable
+// CacheWriteUntrustedChecks reports write-capable cache declarations reachable
 // from low-trust events. It prepares declaration ownership before callbacks run.
-func CacheWriteUntrustedCheck(workflow workflowdecl.Workflow) checkinputs.DeclarationCheck {
+func CacheWriteUntrustedChecks(workflow workflowdecl.Workflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
-	return checkinputs.DeclarationCheck{
-		Declaration: CacheWriteUntrustedDeclaration(),
-		Job: func(job workflowdecl.Job) []reporting.Finding {
-			return reporting.FromDiagnostics(access.CheckWrites(job))
-		},
+	return define.Checks{Job: func(job workflowdecl.Job) []reporting.Finding {
+		return reporting.FromDiagnostics(access.CheckWrites(job))
+	},
 	}
 }

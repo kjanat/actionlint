@@ -1,10 +1,10 @@
 package security
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"regexp"
 	"strings"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
@@ -12,12 +12,10 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// UnpinnedReferenceCheck binds reference exclusions to job and step declarations.
-func UnpinnedReferenceCheck(excluded func(string) bool) checkinputs.DeclarationCheck {
-	return checkinputs.DeclarationCheck{
-		Declaration: UnpinnedReferenceDeclaration(),
-		Job:         func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
-		Step:        func(step declaration.Step) []reporting.Finding { return CommitHashStep(step, excluded) },
+// UnpinnedReferenceChecks binds reference exclusions to job and step declarations.
+func UnpinnedReferenceChecks(excluded func(string) bool) define.Checks {
+	return define.Checks{Job: func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
+		Step: func(step declaration.Step) []reporting.Finding { return CommitHashStep(step, excluded) },
 	}
 }
 
@@ -36,13 +34,13 @@ type commitHashCheck struct {
 }
 
 func CommitHashStep(step declaration.Step, excluded func(string) bool) []reporting.Finding {
-	rule := &commitHashCheck{Rule: "unpinned-reference", excluded: excluded}
+	rule := &commitHashCheck{excluded: excluded}
 	rule.checkStep(step)
 	return rule.Findings
 }
 
 func CommitHashJob(job declaration.Job, excluded func(string) bool) []reporting.Finding {
-	rule := &commitHashCheck{Rule: "unpinned-reference", excluded: excluded}
+	rule := &commitHashCheck{excluded: excluded}
 	rule.checkJob(job)
 	return rule.Findings
 }

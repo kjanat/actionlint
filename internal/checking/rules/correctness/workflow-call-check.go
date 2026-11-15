@@ -1,7 +1,7 @@
 package correctness
 
 import (
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
@@ -28,20 +28,17 @@ type workflowCallCheck struct {
 	log                 func(string, ...any)
 }
 
-// WorkflowCallCheck validates each reusable call against supplied workflow
+// WorkflowCallChecks validates each reusable call against supplied workflow
 // defaults, repository facts and loaded dependency metadata. Source preparation
 // seeds the metadata cache before callbacks run. A nil log disables debug output.
-func WorkflowCallCheck(workflow workflowdecl.Workflow, cache *workflowinputs.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) checkinputs.DeclarationCheck {
-	descriptor := WorkflowCallDeclaration()
+func WorkflowCallChecks(workflow workflowdecl.Workflow, cache *workflowinputs.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {
 		defaults = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(permissions.String() == "write")}
 	}
-	return checkinputs.DeclarationCheck{
-		Declaration: descriptor,
+	return define.Checks{
 		Job: func(job workflowdecl.Job) []reporting.Finding {
 			check := workflowCallCheck{
-				Rule:                descriptor.Name,
 				workflowPermissions: workflow.Permissions, workflowCacheMode: workflow.CacheMode,
 				cache: cache, defaultPermissions: defaults, log: log,
 			}

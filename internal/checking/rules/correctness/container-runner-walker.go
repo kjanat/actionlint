@@ -1,10 +1,8 @@
-package declarations
+package correctness
 
 import (
 	"context"
 	"strings"
-
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
@@ -38,11 +36,10 @@ type containerAdapter struct {
 	conditions map[source.Reference]string
 }
 
-// NewContainerRunner supplies container facts to the rule and tracks enclosing
+// newContainerRunner supplies container facts to the rule and tracks enclosing
 // composite conditions. The composition coordinator acquires action metadata.
-func NewContainerRunner(ctx context.Context, runners *runnerlang.Knowledge, actions *workspaceactions.Resolver, remote *actionremote.ResolvedActions) workflowvisit.Rule {
-	descriptor := correctness.ContainerRunnerDeclaration()
-	return &containerAdapter{Base: workflowvisit.NewBase(descriptor.Name, descriptor.Description), ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
+func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runnerlang.Knowledge, actions *workspaceactions.Resolver, remote *actionremote.ResolvedActions) workflowvisit.Rule {
+	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
 }
 
 func (r *containerAdapter) VisitJobPre(job workflowdecl.Job) error {
@@ -53,7 +50,7 @@ func (r *containerAdapter) VisitJobPre(job workflowdecl.Job) error {
 }
 
 func (r *containerAdapter) reportUses(uses []runnerlang.ContainerUse) {
-	for _, finding := range correctness.ContainerRunnerFindings(uses) {
+	for _, finding := range ContainerRunnerFindings(uses) {
 		r.Report(new(finding.Finding))
 	}
 }

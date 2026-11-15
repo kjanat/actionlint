@@ -32,7 +32,7 @@ func ContainerRunnerFindings(uses []runnerlang.ContainerUse) []reporting.Finding
 		case runnerlang.ContainerUnknown:
 			continue
 		}
-		findings = append(findings, reporting.Finding{Rule: "container-runner", Message: message, Severity: severity, Start: use.Position})
+		findings = append(findings, reporting.Finding{Message: message, Severity: severity, Start: use.Position})
 	}
 	return findings
 }

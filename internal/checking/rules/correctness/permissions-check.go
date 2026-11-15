@@ -53,7 +53,7 @@ func permissionDiagnostics(input permissionDeclaration) []results.Diagnostic {
 	scopes := permissionmodel.Scopes()
 	var findings []results.Diagnostic
 	report := func(start sourcepos.Position, message string) {
-		findings = append(findings, results.Diagnostic{Rule: "permissions", Start: start, Message: message})
+		findings = append(findings, results.Diagnostic{Start: start, Message: message})
 	}
 	if all := input.All; all != nil {
 		if all.Text != "write-all" && all.Text != "read-all" {

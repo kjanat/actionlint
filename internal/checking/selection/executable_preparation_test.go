@@ -39,7 +39,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 			loads := 0
 			var recorded []string
 			snapshot := execution.NewIndexSnapshot(indexPath, map[string]string{"script.sh": "100644"}, tc.failure)
-			input := ruleexec.Inputs{
+			input := define.Inputs{
 				Rules: rules, Config: config, Context: t.Context(), ProjectRoot: root,
 				Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) }),
 				Index: func(_ context.Context, path string) *execution.IndexSnapshot {
@@ -51,7 +51,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 				},
 			}
 			registrations := ruleexec.Registrations(rules)
-			index := slices.IndexFunc(registrations, func(r ruleexec.Registration) bool { return r.Name == "executable-bit" })
+			index := slices.IndexFunc(registrations, func(r define.Registration) bool { return r.Name == "executable-bit" })
 			if index < 0 || registrations[index].Prepare == nil {
 				t.Fatal("executable-bit has no preparation")
 			}
@@ -66,13 +66,13 @@ func TestExecutableIndexPreparation(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.unavailable {
-				unavailable, ok := outcome.(ruleexec.UnavailableInputs)
+				unavailable, ok := outcome.(define.UnavailableInputs)
 				if !ok || unavailable.Reason == "" || len(recorded) != 0 {
 					t.Fatalf("missing index became usable: %+v", outcome)
 				}
 				return
 			}
-			prepared, ok := outcome.(ruleexec.PreparedInputs)
+			prepared, ok := outcome.(define.PreparedInputs)
 			if !ok {
 				t.Fatalf("inputs not supplied: %T", outcome)
 			}

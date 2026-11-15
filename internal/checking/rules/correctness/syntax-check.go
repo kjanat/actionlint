@@ -1,8 +1,10 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+)
 
-// SyntaxCheckDeclaration describes the syntax-check rule.
-func SyntaxCheckDeclaration() rule.Declaration {
-	return rule.Declaration{ExecutionFailure: true, Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Subcategory: "syntax", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate GitHub Actions workflow syntax.", Help: "Check the indicated YAML field and its expected GitHub Actions value type.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#syntax-check", SupportsActions: true}
+// SyntaxCheckRule is the single definition of the syntax-check rule.
+var SyntaxCheckRule = &define.Rule{ExecutionFailure: true, Name: "syntax-check", Description: "Validate GitHub Actions workflow syntax", Category: "correctness", Subcategory: "syntax", Recommended: true, Help: "Check the indicated YAML field and its expected GitHub Actions value type.", SupportsActions: true,
+	DeclaredBy: "workflow parser",
 }

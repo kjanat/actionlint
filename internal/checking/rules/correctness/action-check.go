@@ -50,11 +50,10 @@ func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *rule
 }
 
 // NewRuleAction checks references using local metadata and acquired remote definitions.
-func NewRuleAction(ctx context.Context, cache workspaceactions.MetadataDocumentLookup, remote *actionremote.ResolvedActions) *ruleAction {
-	descriptor := ActionDeclaration()
+func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspaceactions.MetadataDocumentLookup, remote *actionremote.ResolvedActions) *ruleAction {
 	return &ruleAction{
-		Base:  workflowvisit.NewBase(descriptor.Name, descriptor.Description),
-		Tag:   descriptor.Name,
+		Base:  base,
+		Tag:   base.Name(),
 		cache: cache, validation: newActionMetadataValidation(), remote: remote, context: ctx,
 	}
 }
@@ -164,7 +163,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 }
 
 func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflowvisit.MetadataParticipant {
-	child := NewRuleAction(rule.context, actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
+	child := NewRuleAction(rule.context, workflowvisit.NewBase(rule.Name(), rule.Description()), actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
 	child.validation = rule.validation
 	return child
 }

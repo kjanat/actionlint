@@ -31,7 +31,7 @@ type node struct {
 func Check(jobs []Job) []results.Diagnostic {
 	var findings []results.Diagnostic
 	report := func(pos sourcepos.Position, message string) {
-		findings = append(findings, results.Diagnostic{Rule: "job-needs", Start: pos, Message: message})
+		findings = append(findings, results.Diagnostic{Start: pos, Message: message})
 	}
 	nodes := map[string]node{}
 	for _, job := range jobs {

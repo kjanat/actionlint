@@ -1,8 +1,10 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+)
 
-// ExpressionReferenceDeclaration describes the expression-reference rule.
-func ExpressionReferenceDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "expression-reference", Description: "Resolve expression variables, properties and functions", Category: "correctness", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Explanation: "Resolve expression variables, properties and functions.", Help: "Use a declared context, property or function; check the suggested spelling and available names.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-reference", Recommended: true, SupportsActions: true}
+// ExpressionReferenceRule is the single definition of the expression-reference rule.
+var ExpressionReferenceRule = &define.Rule{Name: "expression-reference", Description: "Resolve expression variables, properties and functions", Category: "correctness", Subcategory: "expressions", Help: "Use a declared context, property or function; check the suggested spelling and available names.", Recommended: true, SupportsActions: true,
+	DeclaredBy: "expression",
 }

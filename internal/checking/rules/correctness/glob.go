@@ -1,16 +1,10 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 )
 
-// GlobDeclaration describes the glob rule.
-func GlobDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "glob", Description: "Validate branch, tag, and path filter patterns", Category: "correctness", Subcategory: "filters", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate branch, tag, and path filter patterns.", Help: "Correct the pattern syntax and check how positive and negative patterns are ordered.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#glob"}
-}
-
-// GlobCheck binds the rule to workflow and job declarations.
-func GlobCheck() inputs.DeclarationCheck {
-	return inputs.DeclarationCheck{Declaration: GlobDeclaration(), Workflow: GlobWorkflow, Job: GlobJob}
+// GlobRule is the single definition of the glob rule.
+var GlobRule = &define.Rule{Name: "glob", Description: "Validate branch, tag, and path filter patterns", Category: "correctness", Subcategory: "filters", Recommended: true, Help: "Correct the pattern syntax and check how positive and negative patterns are ordered.",
+	Checks: define.Fixed(define.Checks{Workflow: GlobWorkflow, Job: GlobJob}),
 }

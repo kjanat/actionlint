@@ -1,8 +1,18 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+)
 
-// RunnerLabelDeclaration describes the runner-label rule.
-func RunnerLabelDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "runner-label", Description: "Report unknown or incompatible runner labels", Category: "correctness", Subcategory: "runners", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report unknown or incompatible runner labels.", Help: "Correct the runner label or declare repository-specific labels in repository.runners.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#runner-label"}
+// RunnerLabelRule is the single definition of the runner-label rule.
+var RunnerLabelRule = &define.Rule{Name: "runner-label", Description: "Report unknown or incompatible runner labels", Category: "correctness", Subcategory: "runners", Recommended: true, Help: "Correct the runner label or declare repository-specific labels in repository.runners.",
+	Checks: func(c define.Inputs) define.Checks {
+		labels := runnerlang.LabelSet{}
+		if known, available := configuration.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
+			labels = runnerlang.KnownLabels(known.Values())
+		}
+		return RunnerLabelChecks(c.Runners, labels)
+	},
 }

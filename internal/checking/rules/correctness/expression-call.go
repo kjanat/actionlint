@@ -1,8 +1,10 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+)
 
-// ExpressionCallDeclaration describes the expression-call rule.
-func ExpressionCallDeclaration() rule.Declaration {
-	return rule.Declaration{ExecutionFailure: true, Name: "expression-call", Description: "Validate function invocation and constant arguments", Category: "correctness", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Explanation: "Validate function invocation and constant arguments.", Help: "Check parentheses, argument count, format placeholders and literal JSON.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#expression-call", Recommended: true, SupportsActions: true}
+// ExpressionCallRule is the single definition of the expression-call rule.
+var ExpressionCallRule = &define.Rule{ExecutionFailure: true, Name: "expression-call", Description: "Validate function invocation and constant arguments", Category: "correctness", Subcategory: "expressions", Help: "Check parentheses, argument count, format placeholders and literal JSON.", Recommended: true, SupportsActions: true,
+	DeclaredBy: "expression",
 }

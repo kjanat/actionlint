@@ -1,10 +1,9 @@
-package declarations
+package define
 
 import (
 	"slices"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -18,15 +17,13 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 	for _, supportsActions := range []bool{false, true} {
 		t.Run(map[bool]string{false: "workflow", true: "workflow and actions"}[supportsActions], func(t *testing.T) {
 			t.Parallel()
-			check := checkinputs.DeclarationCheck{
-				Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions,
-				Step: func(declaration.Step) []reporting.Finding { return nil },
-			}
-			rules, err := configuration.NewRuleSet([]rule.Declaration{check.Declaration})
+			native := rule.Declaration{Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions}
+			checks := Checks{Step: func(declaration.Step) []reporting.Finding { return nil }}
+			rules, err := configuration.NewRuleSet([]rule.Declaration{native})
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, participates := New(rules, check).(workflowvisit.InvocationParticipant)
+			_, participates := NewChecksVisitor(rules, native.Name, checks).(workflowvisit.InvocationParticipant)
 			if participates != supportsActions {
 				t.Fatalf("check declares action support %t, but composite participation is %t", supportsActions, participates)
 			}
@@ -50,11 +47,12 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	for _, scope := range []string{"workflow", "job", "step"} {
 		t.Run(scope, func(t *testing.T) {
 			t.Parallel()
-			check := checkinputs.DeclarationCheck{Name: "native-" + scope, Category: "correctness"}
+			native := rule.Declaration{Name: "native-" + scope, Category: "correctness"}
+			var checks Checks
 			calls := 0
 			switch scope {
 			case "workflow":
-				check.Workflow = func(input declaration.Workflow) []reporting.Finding {
+				checks.Workflow = func(input declaration.Workflow) []reporting.Finding {
 					if input.Name.Text() != "Native" {
 						t.Fatal("callback received a different workflow")
 					}
@@ -62,7 +60,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return nil
 				}
 			case "job":
-				check.Job = func(input declaration.Job) []reporting.Finding {
+				checks.Job = func(input declaration.Job) []reporting.Finding {
 					if input.ID.Text() != "build" {
 						t.Fatal("callback received a different job")
 					}
@@ -70,21 +68,21 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					return nil
 				}
 			case "step":
-				check.Step = func(input declaration.Step) []reporting.Finding {
+				checks.Step = func(input declaration.Step) []reporting.Finding {
 					if input.Reference() != step.Reference() {
 						t.Fatal("callback received a different step")
 					}
 					calls++
-					collector := reporting.Collector{Rule: check.Name, Step: input}
+					collector := reporting.Collector{Step: input}
 					collector.Errorf(reporting.OptionalPosition(input.Position()), "test finding")
 					return collector.Findings
 				}
 			}
-			rules, err := configuration.NewRuleSet([]rule.Declaration{check.Declaration})
+			rules, err := configuration.NewRuleSet([]rule.Declaration{native})
 			if err != nil {
 				t.Fatal(err)
 			}
-			adapter := New(rules, check)
+			adapter := NewChecksVisitor(rules, native.Name, checks)
 			for _, err := range []error{adapter.VisitWorkflowPre(workflow), adapter.VisitJobPre(job), adapter.VisitStep(step)} {
 				if err != nil {
 					t.Fatal(err)
@@ -95,7 +93,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 			}
 			if scope == "step" {
 				findings := adapter.Errs()
-				if len(findings) != 1 || findings[0].Owner == nil || findings[0].Owner.Job != "build" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "build" {
+				if len(findings) != 1 || findings[0].Rule != native.Name || findings[0].Owner == nil || findings[0].Owner.Job != "build" || findings[0].IgnoreOrigin == nil || findings[0].IgnoreOrigin.Job != "build" {
 					t.Fatalf("step finding lost its declaring job: %+v", findings)
 				}
 			}

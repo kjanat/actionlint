@@ -1,10 +1,9 @@
-package declarations
+package define
 
 import (
 	"reflect"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -32,9 +31,8 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 		RawScriptSource:   true,
 		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
 	}
-	adapter := New(rules, checkinputs.DeclarationCheck{
-		Declaration: declaration,
-		Workflow:    func(workflowdecl.Workflow) []reporting.Finding { return []reporting.Finding{{Finding: want}} },
+	adapter := NewChecksVisitor(rules, declaration.Name, Checks{
+		Workflow: func(workflowdecl.Workflow) []reporting.Finding { return []reporting.Finding{{Finding: want}} },
 	})
 	if err := adapter.VisitWorkflowPre(workflowdecl.Workflow{}); err != nil {
 		t.Fatal(err)

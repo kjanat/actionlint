@@ -1,12 +1,12 @@
 package checking
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"fmt"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
@@ -21,7 +21,7 @@ type documentChecks struct {
 	registeredTools  []tools.Registration
 }
 
-func (s *analysisSession) buildChecks(context ruleexec.Inputs, toolContext tools.Context, action bool) (documentChecks, error) {
+func (s *analysisSession) buildChecks(context define.Inputs, toolContext tools.Context, action bool) (documentChecks, error) {
 	rules, err := selection.CreateRules(ConfigurationRules(), context, action)
 	selected := documentChecks{Selection: rules}
 	if err != nil {

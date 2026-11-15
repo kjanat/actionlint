@@ -1,4 +1,4 @@
-package registration
+package define
 
 // InputPreparation distinguishes supplied facts from knowledge that could not
 // be acquired. Operation failures use Prepare's error result instead.

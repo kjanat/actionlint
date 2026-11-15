@@ -55,7 +55,7 @@ func environmentNameDiagnostics(entries []workflowfacts.Entry) []results.Diagnos
 		if entry.State == workflowfacts.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
 			continue
 		}
-		findings = append(findings, results.Diagnostic{Rule: "env-var", Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Start})
+		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Start})
 	}
 	return findings
 }

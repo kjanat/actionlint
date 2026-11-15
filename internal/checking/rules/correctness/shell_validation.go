@@ -36,7 +36,7 @@ func checkShell(shell value.Value, platform runnerlang.Platform, registries ...*
 	if len(invocation.Issues) != 0 {
 		var findings []results.Diagnostic
 		for _, issue := range invocation.Issues {
-			findings = append(findings, results.Diagnostic{Rule: "shell-name", Code: issue.Code, Severity: issue.Severity, Start: shell.Origin().Span.Start, End: shell.Origin().Span.End, Message: issue.Message})
+			findings = append(findings, results.Diagnostic{Code: issue.Code, Severity: issue.Severity, Start: shell.Origin().Span.Start, End: shell.Origin().Span.End, Message: issue.Message})
 		}
 		return findings
 	}
@@ -71,7 +71,7 @@ func checkShell(shell value.Value, platform runnerlang.Platform, registries ...*
 	}
 
 	position := shell.Origin().Span.Start
-	return []results.Diagnostic{{Rule: "shell-name", Start: position, Message: fmt.Sprintf("shell name %q is invalid%s. available names are %s", node, onPlatform, messages.SortedQuotes(available))}}
+	return []results.Diagnostic{{Start: position, Message: fmt.Sprintf("shell name %q is invalid%s. available names are %s", node, onPlatform, messages.SortedQuotes(available))}}
 }
 
 func getAvailableShellNames(kind runnerlang.Platform) []string {

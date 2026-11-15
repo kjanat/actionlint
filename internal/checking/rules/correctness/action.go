@@ -1,8 +1,13 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+)
 
-// ActionDeclaration describes the action rule.
-func ActionDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "action", Description: "Validate action references, inputs, outputs, and local metadata", Category: "correctness", Subcategory: "actions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate action references, inputs, outputs, and local metadata.", Help: "Check the action reference, runtime, declared inputs and action metadata at the indicated source.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#action", SupportsActions: true}
+// ActionRule is the single definition of the action rule.
+var ActionRule = &define.Rule{Name: "action", Description: "Validate action references, inputs, outputs, and local metadata", Category: "correctness", Subcategory: "actions", Recommended: true, Help: "Check the action reference, runtime, declared inputs and action metadata at the indicated source.", SupportsActions: true,
+	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+		return NewRuleAction(c.Context, base, c.Actions.Prepared(), c.RemoteActions).WithLifecycle(c.Lifecycle)
+	},
 }

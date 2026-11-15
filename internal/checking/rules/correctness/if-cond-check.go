@@ -42,7 +42,7 @@ func conditionDiagnostics(value string, start sourcepos.Position) []results.Diag
 		return nil
 	}
 	report := func(message string) []results.Diagnostic {
-		return []results.Diagnostic{{Rule: "if-cond", Message: message, Start: start}}
+		return []results.Diagnostic{{Message: message, Start: start}}
 	}
 	if expr == nil {
 		return report(fmt.Sprintf("if: condition %q is always evaluated to true because extra characters are around ${{ }}", value))

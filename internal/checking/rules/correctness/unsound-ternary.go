@@ -1,8 +1,10 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+)
 
-// UnsoundTernaryDeclaration describes the unsound-ternary rule.
-func UnsoundTernaryDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report a && b || c expressions where b is always falsy.", Help: "The middle operand of a && b || c must be truthy to select b; use an explicit conditional or a truthy representation.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#unsound-ternary"}
+// UnsoundTernaryRule is the single definition of the unsound-ternary rule.
+var UnsoundTernaryRule = &define.Rule{Name: "unsound-ternary", Description: "Report a && b || c expressions where b is always falsy", Category: "correctness", Subcategory: "expressions", Recommended: true, Help: "The middle operand of a && b || c must be truthy to select b; use an explicit conditional or a truthy representation.",
+	DeclaredBy: "expression",
 }

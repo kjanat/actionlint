@@ -15,5 +15,5 @@ func EmptyJob(job declaration.Job) []reporting.Finding {
 	for range job.Steps() {
 		return nil
 	}
-	return []reporting.Finding{{Rule: "empty-job", Severity: "error", Start: reporting.Position(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
+	return []reporting.Finding{{Severity: "error", Start: reporting.Position(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
 }
