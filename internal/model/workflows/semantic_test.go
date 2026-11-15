@@ -43,7 +43,7 @@ func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 	if got, ok := jobView.Name().Semantic().Text(); !ok || got != "before" {
 		t.Fatalf("published name = %q, %v; want before, true", got, ok)
 	}
-	var step StepView
+	var step Step
 	for candidate := range jobView.Steps() {
 		step = candidate
 	}
@@ -132,7 +132,7 @@ jobs:
 	if got, ok := job.Snapshot().If().Semantic().Bool(); !ok || got {
 		t.Fatalf("snapshot condition = %v, %v; want false", got, ok)
 	}
-	var parallel StepView
+	var parallel Step
 	for step := range job.Steps() {
 		parallel = step
 	}
@@ -140,7 +140,7 @@ jobs:
 	if !ok {
 		t.Fatal("parallel step missing")
 	}
-	var children []StepView
+	var children []Step
 	for child := range group.Steps() {
 		children = append(children, child)
 	}
@@ -283,7 +283,7 @@ jobs:
 	if !ok {
 		t.Fatal("job view missing")
 	}
-	var step StepView
+	var step Step
 	for candidate := range job.Steps() {
 		step = candidate
 	}

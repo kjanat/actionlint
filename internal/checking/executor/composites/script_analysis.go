@@ -5,6 +5,8 @@ import (
 	"maps"
 	"slices"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
@@ -20,15 +22,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-func scriptDefaultShell(defaults workflowdecl.DefaultsView) *string {
-	shell, known := execution.DefaultShell(defaults.Run().Semantic()).ScalarString()
+func scriptDefaultShell(defaults *workflowlang.Defaults) *string {
+	shell, known := execution.DefaultShell(workflowdecl.DefaultsRun(defaults)).ScalarString()
 	if !known {
 		return nil
 	}
 	return new(shell)
 }
 
-func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepView, jobShell, workflowShell *string) error {
+func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.Step, jobShell, workflowShell *string) error {
 	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
 		return err
 	}
@@ -39,11 +41,8 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 		return analysis.collectActionInputs(declaration, action)
 	}
 	run, ok := declaration.Run()
-	if !ok || !run.Run().Present() {
-		return nil
-	}
 	// Rejected run values have recovery strings without a source scalar.
-	if !run.Run().SourceScalar().HasSource {
+	if !ok || run.Run == nil || !run.Run.SourceScalar.HasSource {
 		return nil
 	}
 	occurrence, err := analysis.invocations.AddScript(analysis.context, declaration.Reference(), invocation.ScriptRun, "")
@@ -62,7 +61,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 	if analysis.scriptScope != nil && analysis.scriptScope.Composite {
 		jobDefault, workflowDefault, runnerDefault = value.Value{}, value.Value{}, value.Value{}
 	}
-	resolvedShell := execution.ResolveShell(run.Shell().Semantic(), jobDefault, workflowDefault, runnerDefault)
+	resolvedShell := execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobDefault, workflowDefault, runnerDefault)
 	request.Environment = analysis.scriptEnvironment(declaration, resolvedShell.Name)
 	if analysis.scriptScope != nil && analysis.resolveScriptExecution {
 		paths := analysis.scriptScope.Paths
@@ -77,25 +76,25 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 			jobDir, workflowDir = execution.Directory{}, execution.Directory{}
 		}
 		request.Execution = scriptexecution.Execution{
-			Shell:     execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell),
-			Directory: runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(run.WorkingDirectory().Semantic(), jobDir, workflowDir), analysis.reader),
+			Shell:     execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobShell, workflowShell, runnerShell),
+			Directory: runnerpaths.ResolveDirectory(paths, paths.EffectiveDirectory(workflowdecl.Scalar(run.WorkingDirectory), jobDir, workflowDir), analysis.reader),
 		}
 	}
 	analysis.scripts = append(analysis.scripts, request)
 	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepView, action workflowdecl.ExecActionView) error {
+func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.Step, action *workflowlang.ExecAction) error {
 	name, valid := scriptexecution.ScriptInputAction(action)
 	if !valid {
 		return nil
 	}
-	inputValues, _ := action.InputNames()
+	inputValues, _ := workflowdecl.InputNames(action)
 	inputs := maps.Collect(inputValues)
 	var catalogue []checkinputs.ScriptInput
 	for _, inputName := range slices.Sorted(maps.Keys(inputs)) {
 		input := inputs[inputName]
-		if !input.Value().Present() || !input.Value().SourceScalar().HasSource || !input.Source().Present() {
+		if input == nil || input.Value == nil || !input.Value.SourceScalar.HasSource || input.Source == nil {
 			continue // Expression-created values have no physical script scalar.
 		}
 		if catalogue == nil {
@@ -130,12 +129,12 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepVie
 	return nil
 }
 
-func (analysis *compositeAnalyzer) scriptEnvironment(step workflowdecl.StepView, shell string) []scriptmodel.EnvironmentNames {
+func (analysis *compositeAnalyzer) scriptEnvironment(step workflowdecl.Step, shell string) []scriptmodel.EnvironmentNames {
 	// ProcessInvoker overlays step variables on the inherited process environment.
 	// https://github.com/actions/runner/blob/main/src/Runner.Sdk/ProcessInvoker.cs
 	layers := []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true}}
 	layers = append(layers, analysis.environmentLayers...)
-	layers = append(layers, scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentStep, step.Env().Mapping()))
+	layers = append(layers, scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentStep, workflowdecl.Environment(step.Env)))
 	if target := analysis.runners.Target(); target == "" || target == "github" {
 		composite := analysis.scriptScope != nil && analysis.scriptScope.Composite
 		// ScriptHandler exports runtime contexts after the step environment.

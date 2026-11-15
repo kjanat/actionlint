@@ -8,7 +8,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -31,16 +30,16 @@ func (r *ceilingCheck) Debug(format string, args ...any) {
 
 // CheckCeiling verifies that callee jobs cannot exceed the caller's cache grant.
 // It follows nested local calls and reports failures at the original call site.
-func CheckCeiling(call declaration.WorkflowCallView, granted declaration.CacheModeView, metadata *calls.Metadata, lookup MetadataLookup, debug func(string, ...any)) []results.Diagnostic {
-	if !call.Present() || !call.Uses().Present() || metadata == nil {
+func CheckCeiling(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, metadata *calls.Metadata, lookup MetadataLookup, debug func(string, ...any)) []results.Diagnostic {
+	if call == nil || call.Uses == nil || metadata == nil {
 		return nil
 	}
-	spec, local := references.LocalWorkflow(call.Uses().Value())
+	spec, local := references.LocalWorkflow(call.Uses.Value)
 	if !local {
 		return nil
 	}
 	r := ceilingCheck{cache: lookup, debug: debug}
-	r.check(position(call.Uses()), spec, call.Uses().Value(), cachemodel.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
+	r.check(position(call.Uses.Pos), spec, call.Uses.Value, cachemodel.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
 	return r.findings
 }
 

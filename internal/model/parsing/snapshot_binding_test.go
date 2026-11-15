@@ -29,20 +29,20 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	}
 	ref := step.Reference()
 
-	if got, ok := snapshots.Lookup(source.Reference{}); ok || got.Present() {
+	if got, ok := snapshots.Lookup(source.Reference{}); ok || got != nil {
 		t.Fatal("lookup accepted a zero reference")
 	}
 	var nilSnapshots *SourceSnapshots
-	if got, ok := nilSnapshots.Lookup(ref); ok || got.Present() {
+	if got, ok := nilSnapshots.Lookup(ref); ok || got != nil {
 		t.Fatal("lookup accepted a nil snapshot set")
 	}
 	if _, ok := snapshots.Lookup(source.Reference{Document: ref.Document}); ok {
 		t.Fatal("lookup accepted a missing reference")
 	}
-	if declaration, ok := snapshots.Declaration(source.Reference{}); ok || declaration != (workflowdecl.StepView{}) {
+	if declaration, ok := snapshots.Declaration(source.Reference{}); ok || declaration != (workflowdecl.Step{}) {
 		t.Fatal("step lookup accepted a zero reference")
 	}
-	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflowdecl.StepView{}) {
+	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflowdecl.Step{}) {
 		t.Fatal("step lookup accepted a nil snapshot set")
 	}
 	if _, ok := snapshots.Declaration(source.Reference{Document: ref.Document}); ok {
@@ -62,10 +62,10 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 			mutate(&modified)
 			documentRef := snapshot.Reference()
 			mutate(&documentRef)
-			if got, ok := snapshots.Lookup(documentRef); ok || got.Present() {
+			if got, ok := snapshots.Lookup(documentRef); ok || got != nil {
 				t.Fatalf("lookup accepted modified document reference: %+v", documentRef)
 			}
-			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflowdecl.StepView{}) {
+			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflowdecl.Step{}) {
 				t.Fatalf("step lookup accepted modified reference: %+v", modified)
 			}
 		})
@@ -99,12 +99,12 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 	build := snapshotJobSteps(t, workflowSnapshot, "build")
 	deploy := snapshotJobSteps(t, workflowSnapshot, "deploy")
 	outer := build[2]
-	parallel, present := outer.Parallel()
+	parallel, present := outer.ParallelSteps()
 	if !present {
 		t.Fatal("parallel declaration unavailable")
 	}
 	nested := slices.Collect(parallel.Steps())
-	steps := []workflowdecl.StepView{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
+	steps := []workflowdecl.Step{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
 	refs := make([]source.Reference, len(steps))
 	for i, step := range steps {
 		refs[i] = step.Reference()

@@ -9,8 +9,8 @@ import (
 
 func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
 	t.Parallel()
-	view := func(permissions *workflowlang.Permissions) declaration.PermissionsView {
-		return declaration.Publish("", &workflowlang.Workflow{Permissions: permissions}, false, "").Bind("permissions").Workflow().Permissions()
+	view := func(permissions *workflowlang.Permissions) *workflowlang.Permissions {
+		return declaration.Publish("", &workflowlang.Workflow{Permissions: permissions}, false, "").Bind("permissions").Workflow().Permissions
 	}
 	read := view(&workflowlang.Permissions{All: &workflowlang.String{Value: "read-all"}})
 	empty := view(&workflowlang.Permissions{Scopes: map[string]*workflowlang.PermissionScope{}})
@@ -18,15 +18,15 @@ func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
 	defaults := ResolvedPermissions{Kind: PermissionsDeclared, Levels: PermissionScopeLevels{"contents": PermissionLevelWrite}}
 	for _, tc := range []struct {
 		name          string
-		workflow, job declaration.PermissionsView
+		workflow, job *workflowlang.Permissions
 		kind          permissionsKind
 		contents      PermissionLevel
 	}{
-		{"repository default", declaration.PermissionsView{}, declaration.PermissionsView{}, PermissionsDeclared, PermissionLevelWrite},
-		{"workflow override", read, declaration.PermissionsView{}, PermissionsDeclared, PermissionLevelRead},
+		{"repository default", nil, nil, PermissionsDeclared, PermissionLevelWrite},
+		{"workflow override", read, nil, PermissionsDeclared, PermissionLevelRead},
 		{"explicit empty job", read, empty, PermissionsDeclared, PermissionLevelNone},
 		{"invalid job stops inheritance", read, invalid, PermissionsInvalid, PermissionLevelNone},
-		{"invalid workflow stops inheritance", invalid, declaration.PermissionsView{}, PermissionsInvalid, PermissionLevelNone},
+		{"invalid workflow stops inheritance", invalid, nil, PermissionsInvalid, PermissionLevelNone},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -42,7 +42,7 @@ func TestEffectivePermissionsPrecedenceAndDetachedDefaults(t *testing.T) {
 			}
 		})
 	}
-	if result := EffectivePermissions(declaration.PermissionsView{}, declaration.PermissionsView{}, ResolvedPermissions{}); result.Kind != PermissionsAbsent {
+	if result := EffectivePermissions(nil, nil, ResolvedPermissions{}); result.Kind != PermissionsAbsent {
 		t.Fatalf("unknown defaults became an explicit permission grant: %+v", result)
 	}
 }

@@ -92,7 +92,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 		t.Fatal("job view unavailable")
 	}
 	resolver := NewResolver(newCapturedActionCache(t, t.TempDir(), nil), nil)
-	resolver.BeginJob(workflow.Env().Mapping(), workflow.Defaults().Run().Semantic(), job)
+	resolver.BeginJob(declaration.Environment(workflow.Env), declaration.DefaultsRun(workflow.Defaults), job)
 	checkout := slices.Collect(job.Steps())[0]
 	resolver.ObserveCheckout(checkout)
 	placement := resolver.CheckoutState()

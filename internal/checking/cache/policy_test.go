@@ -36,15 +36,15 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	}
 	w := policyWorkflowView(parsed)
 	trust := NewTrust(w)
-	jobs := []declaration.JobView{}
+	jobs := []declaration.Job{}
 	for _, j := range w.Jobs() {
 		jobs = append(jobs, j)
 	}
-	slices.SortFunc(jobs, func(a, b declaration.JobView) int { return position(a).Line - position(b).Line })
+	slices.SortFunc(jobs, func(a, b declaration.Job) int { return position(a).Line - position(b).Line })
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
 		findings = append(findings, trust.CheckCall(j)...)
-		mode := cachemodel.EffectiveMode(w.CacheMode(), j.CacheMode())
+		mode := cachemodel.EffectiveMode(w.CacheMode, j.CacheMode)
 		for step := range j.Steps() {
 			findings = append(findings, CheckStep(step, mode)...)
 		}
@@ -374,7 +374,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	}
 }
 
-func policyWorkflowView(workflow *workflowlang.Workflow) declaration.WorkflowView {
+func policyWorkflowView(workflow *workflowlang.Workflow) declaration.Workflow {
 	return declaration.Publish("", workflow, false, "").Bind("policy-fixture").Workflow()
 }
 
@@ -382,7 +382,7 @@ func checkStandaloneStep(step *workflowlang.Step, mode *workflowlang.CacheMode) 
 	view := policyWorkflowView(&workflowlang.Workflow{CacheMode: mode, Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}})
 	job, _ := view.JobsAt("test")
 	for step := range job.Steps() {
-		return CheckStep(step, view.CacheMode())
+		return CheckStep(step, view.CacheMode)
 	}
 	return nil
 }

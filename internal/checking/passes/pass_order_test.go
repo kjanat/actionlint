@@ -15,7 +15,7 @@ type jobOrderPass struct {
 	jobs []string
 }
 
-func (p *jobOrderPass) VisitJobPre(job declaration.JobView) error {
+func (p *jobOrderPass) VisitJobPre(job declaration.Job) error {
 	p.jobs = append(p.jobs, job.Key())
 	return nil
 }

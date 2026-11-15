@@ -64,17 +64,17 @@ type SupportProblem struct {
 }
 
 // Support reports policy effects established for every candidate of a selector.
-func (k *Knowledge) Support(job workflowdecl.JobView, capability runnerapi.Capability) []SupportProblem {
+func (k *Knowledge) Support(job workflowdecl.Job, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, false)
 }
 
 // UpcomingSupport reports future events that one policy establishes for every candidate.
 // These observations do not establish a current support problem.
-func (k *Knowledge) UpcomingSupport(job workflowdecl.JobView, capability runnerapi.Capability) []SupportProblem {
+func (k *Knowledge) UpcomingSupport(job workflowdecl.Job, capability runnerapi.Capability) []SupportProblem {
 	return k.supportProblems(job, capability, true)
 }
 
-func (k *Knowledge) supportProblems(job workflowdecl.JobView, capability runnerapi.Capability, upcoming bool) []SupportProblem {
+func (k *Knowledge) supportProblems(job workflowdecl.Job, capability runnerapi.Capability, upcoming bool) []SupportProblem {
 	if k == nil || k.report.AsOf.IsZero() {
 		return nil
 	}
@@ -82,8 +82,8 @@ func (k *Knowledge) supportProblems(job workflowdecl.JobView, capability runnera
 	if catalog.DatasetStatus.Freshness != runnerapi.Fresh || !catalog.DatasetStatus.Complete {
 		return nil
 	}
-	if job.Strategy().Matrix().Present() {
-		if rows, complete := job.Strategy().MatrixResolution().Combinations(256); complete && len(rows) == 0 {
+	if job.Strategy != nil && job.Strategy.Matrix != nil {
+		if rows, complete := workflowdecl.MatrixResolution(job.Strategy).Combinations(256); complete && len(rows) == 0 {
 			return nil
 		}
 	}

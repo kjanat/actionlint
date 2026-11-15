@@ -13,7 +13,6 @@ import (
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -86,7 +85,7 @@ type Script struct {
 	Input      *checkinputs.ScriptInput
 	Fact       checkinputs.Script
 	Text       string
-	Source     workflowdecl.ScriptSourceView
+	Source     *workflow.ScriptSource
 	Key, Value *workflow.Pos
 	Shell      *string
 	Config     *config.Config

@@ -6,28 +6,22 @@ import (
 )
 
 // Step publishes a step in a single-job workflow and returns its declaration view.
-func Step(step *workflowlang.Step) workflowdecl.StepView {
+func Step(step *workflowlang.Step) workflowdecl.Step {
 	view := workflowdecl.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("unit-builtin").Workflow()
 	job, _ := view.Job("test")
 	for step := range job.Steps() {
 		return step
 	}
-	return workflowdecl.StepView{}
-}
-
-// Action publishes an action step and returns its action declaration view.
-func Action(action *workflowlang.ExecAction) workflowdecl.ExecActionView {
-	view, _ := Step(&workflowlang.Step{Exec: action}).Action()
-	return view
+	return workflowdecl.Step{}
 }
 
 // Workflow publishes the supplied workflow and returns its declaration view.
-func Workflow(workflow *workflowlang.Workflow) workflowdecl.WorkflowView {
+func Workflow(workflow *workflowlang.Workflow) workflowdecl.Workflow {
 	return workflowdecl.Publish("", workflow, false, "").Bind("unit-builtin").Workflow()
 }
 
 // Job publishes a job in a workflow and returns its declaration view.
-func Job(job *workflowlang.Job) workflowdecl.JobView {
+func Job(job *workflowlang.Job) workflowdecl.Job {
 	view, _ := Workflow(&workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": job}}).Job("test")
 	return view
 }

@@ -57,12 +57,15 @@ func Complete(content string, offset int) []Item {
 	w := declaration.Publish(content, parsed, false, "").Bind("editor-buffer").Workflow()
 	contextspec.SetEventPayloadType(c, events.Type(w))
 	if w.Present() {
-		for event := range w.On() {
-			if dispatch, ok := event.WorkflowDispatchEvent(); ok {
+		for _, event := range w.On {
+			if dispatch, ok := event.(*workflow.WorkflowDispatchEvent); ok && dispatch != nil {
 				var inputs exprtypes.ObjectBuilder
-				for name, input := range dispatch.Inputs() {
+				for name, input := range dispatch.Inputs {
+					if input == nil {
+						continue
+					}
 					ty := exprtypes.StringType()
-					switch input.Type() {
+					switch input.Type {
 					case workflow.WorkflowDispatchEventInputTypeBoolean:
 						ty = exprtypes.BoolType()
 					case workflow.WorkflowDispatchEventInputTypeNumber:

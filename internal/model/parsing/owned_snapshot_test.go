@@ -70,7 +70,7 @@ func TestOwnedDeclarationSurvivesDecoderAndPositionMutation(t *testing.T) {
 			position, present := declaration.Pos()
 			run, isRun := declaration.Run()
 			mapped, mappedOK := run.Source().Position(1, 1)
-			if declaration.ID().Value() != "original" || declaration.Name().Value() != "Original" || !present || position.Line == 999 || !isRun || run.Run().Value() != "echo original" || run.Source().Value() != "echo original" || !mappedOK || mapped.Line == 999 {
+			if declaration.ID.Text() != "original" || declaration.Name.Text() != "Original" || !present || position.Line == 999 || !isRun || run.Run.Text() != "echo original" || run.Source().Value() != "echo original" || !mappedOK || mapped.Line == 999 {
 				t.Fatal("legacy mutation changed frozen declaration or scalar mapping")
 			}
 			if declaration.Reference() != reference || declaration.SourceReference() != snapshot.Reference() || declaration.DeclaringJob() != "Build" || declaration.ContentText() != string(content) {
@@ -116,7 +116,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	for _, step := range steps {
 		run, ok := step.Run()
 		position, hasPosition := step.Pos()
-		if !ok || run.Run().Value() != "echo original" || !hasPosition || position.Line == 999 || step.ContentText() != original {
+		if !ok || run.Run.Text() != "echo original" || !hasPosition || position.Line == 999 || step.ContentText() != original {
 			t.Fatal("mutable action metadata or traversal escaped into canonical steps")
 		}
 	}
@@ -172,14 +172,14 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	if err := reused.ValidateStep(foreignStep); err == nil {
 		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.StepView{}) {
+	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.Step{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
-	if err := bound.ValidateStep(workflowdecl.StepView{}); err == nil {
+	if err := bound.ValidateStep(workflowdecl.Step{}); err == nil {
 		t.Fatal("missing declaration accepted")
 	}
-	zero := workflowdecl.StepView{}
-	if zero.Present() || zero.Reference() != (source.Reference{}) || zero.ID().Present() {
+	zero := workflowdecl.Step{}
+	if zero != nil || zero.Reference() != (source.Reference{}) || zero.ID != nil {
 		t.Fatal("zero handle exposes declarations")
 	}
 }
@@ -243,7 +243,7 @@ func TestConcurrentRegistryBindingSharesCanonicalBoundHandle(t *testing.T) {
 		if result.err != nil {
 			t.Fatal(result.err)
 		}
-		if !canonical.Present() {
+		if canonical == nil {
 			canonical = result.snapshot
 		} else if canonical != result.snapshot {
 			t.Fatal("concurrent bind returned a noncanonical snapshot")
@@ -274,7 +274,7 @@ func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
 		t.Fatal("recovered step missing")
 	}
 	action, ok := steps[0].Action()
-	if !ok || !action.Present() || action.Uses().Present() {
+	if !ok || action == nil || action.Uses != nil {
 		t.Fatal("opaque composite step changed execution variant")
 	}
 }
@@ -328,7 +328,7 @@ func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
 		t.Fatal("recovered declaration lost during admission")
 	}
 	run, ok := steps[0].Run()
-	if !ok || run.Run().Value() != "echo recovered" {
+	if !ok || run.Run.Text() != "echo recovered" {
 		t.Fatal("recovered declaration changed execution semantics")
 	}
 }

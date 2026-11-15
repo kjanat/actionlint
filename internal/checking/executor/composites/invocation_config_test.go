@@ -28,12 +28,12 @@ type configVisitProbe struct {
 	finished bool
 }
 
-func (probe *configVisitProbe) VisitStep(step workflowdecl.StepView) error {
-	probe.steps = append(probe.steps, step.ID().Value())
+func (probe *configVisitProbe) VisitStep(step workflowdecl.Step) error {
+	probe.steps = append(probe.steps, step.ID.Text())
 	return nil
 }
 
-func (probe *configVisitProbe) VisitWorkflowPost(workflowdecl.WorkflowView) error {
+func (probe *configVisitProbe) VisitWorkflowPost(workflowdecl.Workflow) error {
 	probe.finished = true
 	return nil
 }
@@ -70,7 +70,7 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			if collect {
 				wantScripts = 1
 			}
-			if len(result.Batch.Scripts()) != wantScripts || (collect && result.Batch.Scripts()[0].Run.Run().Value() != "echo before") {
+			if len(result.Batch.Scripts()) != wantScripts || (collect && result.Batch.Scripts()[0].Run.Run.Text() != "echo before") {
 				t.Fatal("interruption lost preceding facts or collected scripts after the failing call")
 			}
 		})
@@ -175,11 +175,11 @@ type ignoreProbeRule struct{ workflowvisit.Base }
 
 func (*ignoreProbeRule) EnterInvocation(checkcalls.Invocation) error { return nil }
 
-func (*ignoreProbeRule) VisitInvocationStep(workflowdecl.StepView) error { return nil }
+func (*ignoreProbeRule) VisitInvocationStep(workflowdecl.Step) error { return nil }
 
 func (*ignoreProbeRule) LeaveInvocation(invocation.Context) error { return nil }
 
-func (rule *ignoreProbeRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (rule *ignoreProbeRule) VisitOpaqueAction(step workflowdecl.Step) error {
 	if _, action := step.Action(); action {
 		pos, _ := step.Pos()
 		rule.Error(&pos, "probe")

@@ -9,15 +9,15 @@ import (
 // error if traversal cannot continue.
 type Pass interface {
 	// VisitStep visits a step and returns an error if traversal cannot continue.
-	VisitStep(node declaration.StepView) error
+	VisitStep(node declaration.Step) error
 	// VisitJobPre visits a job before its children.
-	VisitJobPre(node declaration.JobView) error
+	VisitJobPre(node declaration.Job) error
 	// VisitJobPost visits a job after its children.
-	VisitJobPost(node declaration.JobView) error
+	VisitJobPost(node declaration.Job) error
 	// VisitWorkflowPre visits a workflow before its children.
-	VisitWorkflowPre(node declaration.WorkflowView) error
+	VisitWorkflowPre(node declaration.Workflow) error
 	// VisitWorkflowPost visits a workflow after its children.
-	VisitWorkflowPost(node declaration.WorkflowView) error
+	VisitWorkflowPost(node declaration.Workflow) error
 }
 
 // Rule is the internal adapter contract for traversal-based checks. Configuration,

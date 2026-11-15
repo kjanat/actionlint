@@ -5,10 +5,9 @@ import (
 )
 
 // position uses the declaration's source position when present.
-func position(node interface {
-	Pos() (workflowlang.Pos, bool)
-},
-) workflowlang.Pos {
-	pos, _ := node.Pos()
-	return pos
+func position(pos *workflowlang.Pos) workflowlang.Pos {
+	if pos == nil {
+		return workflowlang.Pos{}
+	}
+	return *pos
 }

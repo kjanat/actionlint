@@ -47,11 +47,11 @@ func TestPreparedScopeRetainsEarlierCheckoutPlacement(t *testing.T) {
 		t.Fatalf("expected entry and child, got %d scopes", len(scopes))
 	}
 	paths := scopes[1].Paths
-	if paths.ActionPath != directory || paths.ActionRunnerPath != "repo/child" || !paths.Placements.Present() || !paths.Placements.Details().CaseInsensitive || paths.Placements.Details().Directory.Kind != execution.DirectoryKnown || paths.Placements.Details().Directory.Path != "repo" {
+	if paths.ActionPath != directory || paths.ActionRunnerPath != "repo/child" || paths.Placements == nil || !paths.Placements.Details().CaseInsensitive || paths.Placements.Details().Directory.Kind != execution.DirectoryKnown || paths.Placements.Details().Directory.Path != "repo" {
 		t.Fatalf("earlier checkout origin changed: %+v", paths)
 	}
 	current := f.options.Actions.CheckoutState()
-	if !current.Present() || current.Details().Directory.Path != "Repo" {
+	if current == nil || current.Details().Directory.Path != "Repo" {
 		t.Fatal("fixture did not advance checkout after the child")
 	}
 }
@@ -71,7 +71,7 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := result.Batch.Invocations().Calls()
-	if len(calls) != 1 || calls[0].Uses() != "$/inner" {
+	if len(calls) != 1 || calls[0].Uses != "$/inner" {
 		t.Fatal("standalone fixture lost nested call")
 	}
 	facts, exists := calls[0].Facts()
@@ -95,7 +95,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 		t.Fatal("fixture must have only an entry scope")
 	}
 	got := scopes[0].Paths
-	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || !got.Placements.Present() || got.Placements.Details().Directory.Path != "checkout" {
+	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || got.Placements == nil || got.Placements.Details().Directory.Path != "checkout" {
 		t.Fatalf("entry origin or shared paths incorrect: %+v", got)
 	}
 	if fact, exists := result.Batch.Fact(0, false); !exists || invocation.ID(fact.Occurrence.Owner) != result.Batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {
@@ -120,7 +120,7 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Snapshot()
+	scopes, scripts := result.Batch.Snapshot
 	if len(scopes) != 1 || !scopes[0].Context.IsEntry() || scopes[0].Deployment.ActionPath() == "" || !scopes[0].Composite {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
@@ -169,7 +169,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Snapshot()
+	scopes, scripts := result.Batch.Snapshot
 	if len(scopes) != 3 || len(scripts) != 2 {
 		t.Fatal("fixture did not expand both calls")
 	}
@@ -183,7 +183,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 		config := &repoconfig.Config{}
 		configByOwner[record.Owner] = config
 		for _, scope := range scopes {
-			if scope.Context.ID() == record.Owner {
+			if scope.Context.ID == record.Owner {
 				scope.Config = config
 			}
 		}
@@ -258,9 +258,9 @@ func (rule *standaloneEntryFailure) EnterInvocation(checkcalls.Invocation) error
 	return rule.failure
 }
 
-func (*standaloneEntryFailure) VisitInvocationStep(workflowdecl.StepView) error { return nil }
-func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.StepView) error   { return nil }
-func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error        { return nil }
+func (*standaloneEntryFailure) VisitInvocationStep(workflowdecl.Step) error { return nil }
+func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.Step) error   { return nil }
+func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error    { return nil }
 
 func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	t.Parallel()
@@ -305,14 +305,14 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 	for _, change := range []string{"zero context", "foreign context", "derived path"} {
 		t.Run(change, func(t *testing.T) {
 			t.Parallel()
-			scopes, units := first.Batch.Snapshot()
+			scopes, units := first.Batch.Snapshot
 			want := "foreign invocation context"
 			switch change {
 			case "zero context":
 				scopes[1].Context = invocation.Context{}
 			case "foreign context":
 				foreign := second.Batch.Scopes()[1].Context
-				if foreign.ID() != scopes[1].Context.ID() {
+				if foreign.ID != scopes[1].Context.ID {
 					t.Fatal("fixture IDs differ")
 				}
 				scopes[1].Context = foreign
@@ -343,7 +343,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 		t.Fatal("fixture must produce one nested script")
 	}
 	owner, exists := graph.Call(graph.Scripts()[0].Owner)
-	if !exists || owner.Uses() != "$/inner" || owner.Depth() != 2 {
+	if !exists || owner.Uses != "$/inner" || owner.Depth() != 2 {
 		t.Fatal("nested script lost its owning call")
 	}
 	projection, exists := result.Batch.Fact(0, false)
@@ -351,7 +351,7 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 		t.Fatal("missing invocation projection")
 	}
 	call, exists := result.Batch.CallGraph().Call(projection.Occurrence.Owner)
-	if !exists || invocation.ID(projection.Occurrence.Owner) != owner.ID() {
+	if !exists || invocation.ID(projection.Occurrence.Owner) != owner.ID {
 		t.Fatal("missing occurrence owner call")
 	}
 	prefix, _, found := strings.Cut(line, "{uses")
@@ -384,7 +384,7 @@ func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
 	}
 	var inner []invocation.Call
 	for _, call := range result.Batch.Invocations().Calls() {
-		if call.Uses() == "$/inner" {
+		if call.Uses == "$/inner" {
 			inner = append(inner, call)
 		}
 	}

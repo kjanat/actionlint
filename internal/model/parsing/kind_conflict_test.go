@@ -37,7 +37,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]SourceSnapshot
 			var failures [2]error
-			var earlierView workflowdecl.StepView
+			var earlierView workflowdecl.Step
 			var earlierReference source.Reference
 			bind := func(index int) {
 				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])
@@ -62,7 +62,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				earlierReference = references[0]
 				var present bool
 				earlierView, present = registry.Declaration(earlierReference)
-				if !present || !earlierView.Present() {
+				if !present || earlierView == nil {
 					t.Fatal("initial canonical declaration unavailable")
 				}
 				bind(1)
@@ -75,7 +75,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 					t.Fatalf("kind mismatch returned untyped error: %v", failure)
 				}
 			}
-			if !previous.Present() {
+			if previous == nil {
 				t.Fatal("neither declaration was initially admitted")
 			}
 			for _, document := range documents {
@@ -91,7 +91,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if _, ok := registry.LookupDocument(captured.Revision().Document()); ok {
 				t.Fatal("registry retained a live document after conflict")
 			}
-			if earlierView.Present() {
+			if earlierView != nil {
 				if _, ok := registry.Declaration(earlierReference); ok || registry.Owns(earlierView) {
 					t.Fatal("quarantined view retained semantic ownership")
 				}

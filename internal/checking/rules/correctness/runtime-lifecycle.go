@@ -27,12 +27,12 @@ func RuntimeLifecycleDeclaration() rule.Declaration {
 func RuntimeLifecycleCheck(context actionmeta.LifecycleContext) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: RuntimeLifecycleDeclaration(),
-		Step: func(step workflowdecl.StepView) []reporting.Finding {
+		Step: func(step workflowdecl.Step) []reporting.Finding {
 			action, ok := step.Action()
 			if !ok {
 				return nil
 			}
-			spec, known := action.Uses().Semantic().ScalarString()
+			spec, known := workflowdecl.Scalar(action.Uses).ScalarString()
 			if !known {
 				return nil
 			}
@@ -40,7 +40,7 @@ func RuntimeLifecycleCheck(context actionmeta.LifecycleContext) checkinputs.Decl
 			if !valid || !strings.EqualFold(target.Owner, "actions") || !strings.EqualFold(target.Repo, "setup-node") || target.Subpath != "" {
 				return nil
 			}
-			version := action.ResolvedInputs().Lookup("node-version")
+			version := workflowdecl.ResolvedInputs(action).Lookup("node-version")
 			selector, known := version.ScalarString()
 			if !known {
 				return nil

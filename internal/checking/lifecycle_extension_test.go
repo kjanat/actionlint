@@ -49,7 +49,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			check := checkinputs.DeclarationCheck{
 				Declaration: correctness.RuntimeLifecycleDeclaration(),
-				Step: func(step workflowdecl.StepView) []reporting.Finding {
+				Step: func(step workflowdecl.Step) []reporting.Finding {
 					if _, run := step.Run(); !run {
 						return nil
 					}

@@ -26,16 +26,16 @@ type Options struct {
 // visit so the caller can attribute what the pass reports to the job.
 // ParallelBoundary invalidates caller-owned assumptions between parallel branches.
 type Hooks struct {
-	Workflow         func(declaration.WorkflowView) error
-	Job              func(declaration.JobView) error
-	JobPass          func(pass workflowvisit.Pass, job declaration.JobView, visit func() error) error
-	Step             func(declaration.StepView) error
+	Workflow         func(declaration.Workflow) error
+	Job              func(declaration.Job) error
+	JobPass          func(pass workflowvisit.Pass, job declaration.Job, visit func() error) error
+	Step             func(declaration.Step) error
 	ParallelBoundary func()
 }
 
 // Visit traverses n depth-first, jobs in source order, and returns the first
 // error a hook or pass reports.
-func Visit(n declaration.WorkflowView, options Options) error {
+func Visit(n declaration.Workflow, options Options) error {
 	v := visitor{passes: options.Passes, hooks: options.Hooks, dbg: options.Debug}
 	return v.visitWorkflow(n)
 }
@@ -51,7 +51,7 @@ func (v *visitor) reportElapsedTime(what string, start time.Time) {
 	_, _ = fmt.Fprintf(v.dbg, "[Visitor] %s took %vms\n", what, time.Since(start).Milliseconds())
 }
 
-func (v *visitor) visitWorkflow(n declaration.WorkflowView) error {
+func (v *visitor) visitWorkflow(n declaration.Workflow) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -75,15 +75,15 @@ func (v *visitor) visitWorkflow(n declaration.WorkflowView) error {
 
 	// Stable source order also makes reusable metadata findings select the first
 	// visible caller consistently, including calls through nested composites.
-	jobs := slices.SortedFunc(func(yield func(declaration.JobView) bool) {
+	jobs := slices.SortedFunc(func(yield func(declaration.Job) bool) {
 		for _, job := range n.Jobs() {
 			if !yield(job) {
 				return
 			}
 		}
-	}, func(a, b declaration.JobView) int {
-		left, leftPresent := a.Pos()
-		right, rightPresent := b.Pos()
+	}, func(a, b declaration.Job) int {
+		left, leftPresent := a.Position()
+		right, rightPresent := b.Position()
 		switch {
 		case leftPresent && rightPresent:
 			if order := cmp.Compare(left.Line, right.Line); order != 0 {
@@ -123,7 +123,7 @@ func (v *visitor) visitWorkflow(n declaration.WorkflowView) error {
 	return nil
 }
 
-func (v *visitor) visitJob(n declaration.JobView) error {
+func (v *visitor) visitJob(n declaration.Job) error {
 	if v.hooks.Job != nil {
 		if err := v.hooks.Job(n); err != nil {
 			return err
@@ -141,7 +141,7 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPre at job %q", n.ID().Value()), t)
+		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPre at job %q", n.ID.Text()), t)
 		t = time.Now()
 	}
 
@@ -154,7 +154,7 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("Visiting %d steps at job %q", stepCount, n.ID().Value()), t)
+		v.reportElapsedTime(fmt.Sprintf("Visiting %d steps at job %q", stepCount, n.ID.Text()), t)
 		t = time.Now()
 	}
 
@@ -165,20 +165,20 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	}
 
 	if v.dbg != nil {
-		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPost at job %q", n.ID().Value()), t)
+		v.reportElapsedTime(fmt.Sprintf("VisitWorkflowJobPost at job %q", n.ID.Text()), t)
 	}
 
 	return nil
 }
 
-func (v *visitor) visitJobPass(p workflowvisit.Pass, n declaration.JobView, visit func() error) error {
+func (v *visitor) visitJobPass(p workflowvisit.Pass, n declaration.Job, visit func() error) error {
 	if v.hooks.JobPass != nil {
 		return v.hooks.JobPass(p, n, visit)
 	}
 	return visit()
 }
 
-func (v *visitor) visitStep(n declaration.StepView) error {
+func (v *visitor) visitStep(n declaration.Step) error {
 	var t time.Time
 	if v.dbg != nil {
 		t = time.Now()
@@ -198,8 +198,8 @@ func (v *visitor) visitStep(n declaration.StepView) error {
 
 	// Steps grouped in a 'parallel' step are visited as well so that rules are applied to them.
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
-	if e, ok := n.Parallel(); ok {
-		for s := range e.Steps() {
+	if steps, ok := n.ParallelSteps(); ok {
+		for s := range steps {
 			if v.hooks.ParallelBoundary != nil {
 				v.hooks.ParallelBoundary()
 			}

@@ -15,54 +15,60 @@ import (
 type credentialsCheck struct{ reporting.Collector }
 
 // Credentials checks container passwords in a complete job declaration.
-func Credentials(n declaration.JobView) []reporting.Finding {
+func Credentials(n declaration.Job) []reporting.Finding {
 	rule := &credentialsCheck{Rule: "credentials"}
 
-	if n.Container().Present() {
-		rule.checkContainer("\"container\" section", n.Container())
+	if !n.Present() {
+		return rule.Findings
 	}
-	if n.Services().Present() {
-		if n.Services().Expression().Present() {
-			if value, known := workflowvalues.Constant(n.Services().Expression()); known {
+	rule.checkContainer("\"container\" section", n.Container)
+	if n.Services != nil {
+		if expression := n.Services.Expression; expression != nil {
+			if value, known := workflowvalues.Constant(expression); known {
 				if services, ok := value.(map[string]any); ok {
 					for name, container := range services {
-						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, reporting.ViewPosition(n.Services().Expression().Pos()))
+						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, expression.Pos)
 					}
 				}
 			}
 		}
-		for _, s := range n.Services().Value() {
-			rule.checkContainer(fmt.Sprintf("%q service", s.Name().Value()), s.Container())
+		for _, s := range n.Services.Value {
+			if s != nil {
+				rule.checkContainer(fmt.Sprintf("%q service", s.Name.Text()), s.Container)
+			}
 		}
 	}
 	return rule.Findings
 }
 
-func (rule *credentialsCheck) checkContainer(where string, n declaration.ContainerView) {
-	if n.Expression().Present() {
-		if value, known := workflowvalues.Constant(n.Expression()); known {
-			rule.checkContainerValue(where, value, reporting.ViewPosition(n.Expression().Pos()))
+func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Container) {
+	if n == nil {
+		return
+	}
+	if n.Expression != nil {
+		if value, known := workflowvalues.Constant(n.Expression); known {
+			rule.checkContainerValue(where, value, n.Expression.Pos)
 		}
 		return
 	}
-	if !n.Credentials().Present() {
+	credentials := n.Credentials
+	if credentials == nil {
 		return
 	}
-	if n.Credentials().Expression().Present() {
-		if value, known := workflowvalues.Constant(n.Credentials().Expression()); known {
-			rule.checkCredentialsValue(where, value, reporting.ViewPosition(n.Credentials().Expression().Pos()))
+	if credentials.Expression != nil {
+		if value, known := workflowvalues.Constant(credentials.Expression); known {
+			rule.checkCredentialsValue(where, value, credentials.Expression.Pos)
 		}
 		return
 	}
-
-	p := n.Credentials().Password()
-	if !p.Present() {
+	p := credentials.Password
+	if p == nil {
 		return
 	}
 	if value, known := workflowvalues.Constant(p); known {
-		rule.checkPasswordValue(where, value, reporting.ViewPosition(p.Pos()))
+		rule.checkPasswordValue(where, value, p.Pos)
 	} else if !p.IsExpressionAssigned() {
-		rule.reportPassword(where, reporting.ViewPosition(p.Pos()))
+		rule.reportPassword(where, p.Pos)
 	}
 }
 

@@ -46,17 +46,17 @@ func (c *Resolver) state() resolverState {
 }
 
 // BeginJob resets checkout and persistent environment assumptions for a new job.
-func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Value, job workflowdecl.JobView) {
+func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Value, job workflowdecl.Job) {
 	c.setCheckout(execution.Directory{})
 	knowledge := c.runners.Job(job)
 	c.platform = knowledge.Platform
 	c.caseInsensitive = knowledge.CaseInsensitive
-	jobEnv := job.Env().Mapping()
+	jobEnv := workflowdecl.Environment(job.Env)
 	c.checkoutEnvUnknown = !knowledge.PathsKnown || execution.CheckoutEnvironmentUnknown(workflowEnv, c.platform) || execution.CheckoutEnvironmentUnknown(jobEnv, c.platform)
 	c.persistentEnvUnknown = false
 	c.shellEnvUnknown = c.shellEnvironmentUnknown(workflowEnv) || c.shellEnvironmentUnknown(jobEnv)
-	runnerShell := scriptmodel.DefaultShell(job.Container().Semantic(), knowledge.Shell)
-	c.checkoutShell = execution.ResolveShell(value.Value{}, execution.DefaultShell(job.Defaults().Run().Semantic()), workflowShell, runnerShell)
+	runnerShell := scriptmodel.DefaultShell(workflowdecl.Container(job.Container), knowledge.Shell)
+	c.checkoutShell = execution.ResolveShell(value.Value{}, execution.DefaultShell(workflowdecl.DefaultsRun(job.Defaults)), workflowShell, runnerShell)
 }
 
 // ForkComposite creates an isolated traversal frame. The caller must verify

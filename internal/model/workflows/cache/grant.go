@@ -3,14 +3,13 @@ package cache
 
 import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // EffectiveMode returns the job declaration when present, otherwise the workflow
 // declaration. It preserves the selected declaration's source location.
-func EffectiveMode(workflow, job declaration.CacheModeView) declaration.CacheModeView {
-	if job.Present() {
+func EffectiveMode(workflow, job *workflowlang.CacheMode) *workflowlang.CacheMode {
+	if job != nil {
 		return job
 	}
 	return workflow
@@ -23,8 +22,11 @@ type Grant struct {
 	kind    workflowlang.CacheModeKind
 }
 
-func FromDeclaration(mode declaration.CacheModeView) Grant {
-	return Grant{present: mode.Present(), kind: mode.Kind()}
+func FromDeclaration(mode *workflowlang.CacheMode) Grant {
+	if mode == nil {
+		return Grant{}
+	}
+	return Grant{present: true, kind: mode.Kind}
 }
 
 func FromMetadata(mode calls.CacheModeDeclaration) Grant {

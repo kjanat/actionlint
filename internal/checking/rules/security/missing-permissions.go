@@ -26,21 +26,21 @@ func MissingPermissionsDeclaration() rule.Declaration {
 
 func MissingPermissionsCheck(locations []config.PermissionLocation) inputs.DeclarationCheck {
 	locations = slices.Clone(locations)
-	return inputs.DeclarationCheck{Declaration: MissingPermissionsDeclaration(), Workflow: func(workflow declaration.WorkflowView) []reporting.Finding {
+	return inputs.DeclarationCheck{Declaration: MissingPermissionsDeclaration(), Workflow: func(workflow declaration.Workflow) []reporting.Finding {
 		return MissingPermissions(workflow, locations)
 	}}
 }
 
-func MissingPermissions(workflow declaration.WorkflowView, locations []config.PermissionLocation) []reporting.Finding {
+func MissingPermissions(workflow declaration.Workflow, locations []config.PermissionLocation) []reporting.Finding {
 	defaultLocations := len(locations) == 0
 	requireWorkflow := slices.Contains(locations, config.WorkflowPermissions)
 	requireJob := slices.Contains(locations, config.EveryJobPermissions)
-	if defaultLocations && workflow.Permissions().Present() {
+	if !workflow.Present() || defaultLocations && workflow.Permissions != nil {
 		return nil
 	}
 	findings := reporting.Collector{Rule: "missing-permissions"}
-	if requireWorkflow && !workflow.Permissions().Present() {
-		pos := reporting.ViewPosition(workflow.Pos())
+	if requireWorkflow && workflow.Permissions == nil {
+		pos := workflow.Pos
 		if pos == nil {
 			pos = &workflowlang.Pos{Line: 1, Col: 1}
 		}
@@ -51,8 +51,8 @@ func MissingPermissions(workflow declaration.WorkflowView, locations []config.Pe
 	}
 	if defaultLocations {
 		independentlyTriggered := false
-		for event := range workflow.On() {
-			if _, reusable := event.WorkflowCallEvent(); !reusable {
+		for _, event := range workflow.On {
+			if _, reusable := event.(*workflowlang.WorkflowCallEvent); !reusable {
 				independentlyTriggered = true
 				break
 			}
@@ -62,8 +62,8 @@ func MissingPermissions(workflow declaration.WorkflowView, locations []config.Pe
 		}
 	}
 	for _, job := range workflow.Jobs() {
-		if !job.Permissions().Present() {
-			findings.Errorf(reporting.ViewPosition(job.Pos()), "job %q does not declare token permissions; add \"permissions\" %s, or use \"permissions: {}\" to grant none", job.ID().Value(), permissionLocationDescription(defaultLocations))
+		if job.Permissions == nil {
+			findings.Errorf(job.Pos, "job %q does not declare token permissions; add \"permissions\" %s, or use \"permissions: {}\" to grant none", job.ID.Text(), permissionLocationDescription(defaultLocations))
 		}
 	}
 	return findings.Findings

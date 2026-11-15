@@ -52,7 +52,7 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
 			pos := &workflowlang.Pos{Line: 1, Col: 1}
-			rule.checkTypes(tc.event, pos, slices.Values([]declaration.StringView{ownedString(&workflowlang.String{Value: tc.activity, Pos: pos})}), triggers.AllWebhookTypes[tc.event])
+			rule.checkTypes(tc.event, pos, slices.Values([]*workflowlang.String{ownedString(&workflowlang.String{Value: tc.activity, Pos: pos})}), triggers.AllWebhookTypes[tc.event])
 			if valid := len(rule.Findings) == 0; valid != tc.valid {
 				t.Fatalf("valid=%v, want %v: %v", valid, tc.valid, rule.Findings)
 			}
@@ -60,6 +60,6 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 	}
 }
 
-func ownedString(value *workflowlang.String) declaration.StringView {
+func ownedString(value *workflowlang.String) *workflowlang.String {
 	return declaration.Publish("", &workflowlang.Workflow{Name: value}, false, "").Bind("test").Workflow().Name()
 }

@@ -160,7 +160,7 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, _ := snapshot.WorkflowView()
+	workflow, _ := snapshot.Workflow()
 	job, _ := workflow.Job("é")
 	view := slices.Collect(job.Steps())[0]
 	facts, err := CallFacts(view, runnerlang.MacOrLinux)
@@ -186,14 +186,14 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, _ := snapshot.WorkflowView()
+	workflow, _ := snapshot.Workflow()
 	job, _ := workflow.Job("test")
 	step := slices.Collect(job.Steps())[0]
 	action, present := step.Action()
 	if !present {
 		t.Fatal("action view unavailable")
 	}
-	inputs := action.ResolvedInputs()
+	inputs := declaration.ResolvedInputs(action)
 	if got := inputs.Lookup("null-value"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}
@@ -247,7 +247,7 @@ func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.
 	if err != nil {
 		return invocation.Context{}, err
 	}
-	workflow, _ := snapshot.WorkflowView()
+	workflow, _ := snapshot.Workflow()
 	job, _ := workflow.Job("test")
 	view := slices.Collect(job.Steps())[0]
 	facts, err := CallFacts(view, platform)

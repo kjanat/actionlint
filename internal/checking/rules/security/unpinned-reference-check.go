@@ -9,14 +9,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // UnpinnedReferenceCheck binds reference exclusions to job and step declarations.
 func UnpinnedReferenceCheck(excluded func(string) bool) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: UnpinnedReferenceDeclaration(),
-		Job:         func(job declaration.JobView) []reporting.Finding { return CommitHashJob(job, excluded) },
-		Step:        func(step declaration.StepView) []reporting.Finding { return CommitHashStep(step, excluded) },
+		Job:         func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
+		Step:        func(step declaration.Step) []reporting.Finding { return CommitHashStep(step, excluded) },
 	}
 }
 
@@ -34,43 +35,43 @@ type commitHashCheck struct {
 	excluded func(string) bool
 }
 
-func CommitHashStep(step declaration.StepView, excluded func(string) bool) []reporting.Finding {
+func CommitHashStep(step declaration.Step, excluded func(string) bool) []reporting.Finding {
 	rule := &commitHashCheck{Rule: "unpinned-reference", excluded: excluded}
 	rule.checkStep(step)
 	return rule.Findings
 }
 
-func CommitHashJob(job declaration.JobView, excluded func(string) bool) []reporting.Finding {
+func CommitHashJob(job declaration.Job, excluded func(string) bool) []reporting.Finding {
 	rule := &commitHashCheck{Rule: "unpinned-reference", excluded: excluded}
 	rule.checkJob(job)
 	return rule.Findings
 }
 
-func (rule *commitHashCheck) checkStep(n declaration.StepView) {
+func (rule *commitHashCheck) checkStep(n declaration.Step) {
 	e, ok := n.Action()
-	if !ok || !e.Uses().Present() || e.Uses().ContainsExpression() || (rule.excluded != nil && rule.excluded(e.Uses().Value())) {
+	if !ok || e.Uses == nil || e.Uses.ContainsExpression() || (rule.excluded != nil && rule.excluded(e.Uses.Value)) {
 		return
 	}
 
-	if image, ok := strings.CutPrefix(e.Uses().Value(), "docker://"); ok {
-		rule.checkImageDigest(image, e.Uses())
+	if image, ok := strings.CutPrefix(e.Uses.Value, "docker://"); ok {
+		rule.checkImageDigest(image, e.Uses)
 		return
 	}
 
-	ref, ok := actionUsesRepoRef(e.Uses().Value())
+	ref, ok := actionUsesRepoRef(e.Uses.Value)
 	if !ok || reCommitSHA.MatchString(ref) {
 		return
 	}
 
 	rule.Errorf(
-		reporting.ViewPosition(e.Uses().Pos()),
+		e.Uses.Pos,
 		"the ref %q of action %q is not a commit SHA. actions must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits). see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
 		ref,
-		e.Uses().Value(),
+		e.Uses.Value,
 	)
 }
 
-func (rule *commitHashCheck) checkImageDigest(image string, uses declaration.StringView) {
+func (rule *commitHashCheck) checkImageDigest(image string, uses *workflowlang.String) {
 	if strings.HasSuffix(image, ":") {
 		return
 	}
@@ -81,32 +82,32 @@ func (rule *commitHashCheck) checkImageDigest(image string, uses declaration.Str
 	}
 
 	rule.Errorf(
-		reporting.ViewPosition(uses.Pos()),
+		uses.Pos,
 		"the Docker image %q is not pinned to an image digest. images must be specified in \"docker://{image}@{algorithm}:{hex}\" form",
-		uses.Value(),
+		uses.Value,
 	)
 }
 
-func (rule *commitHashCheck) checkJob(n declaration.JobView) {
-	if !n.WorkflowCall().Present() {
+func (rule *commitHashCheck) checkJob(n declaration.Job) {
+	if !n.Present() || n.WorkflowCall == nil {
 		return
 	}
 
-	u := n.WorkflowCall().Uses()
-	if !u.Present() || u.Value() == "" || u.ContainsExpression() || (rule.excluded != nil && rule.excluded(u.Value())) {
+	u := n.WorkflowCall.Uses
+	if u == nil || u.Value == "" || u.ContainsExpression() || (rule.excluded != nil && rule.excluded(u.Value)) {
 		return
 	}
 
-	ref, ok := references.WorkflowRef(u.Value())
+	ref, ok := references.WorkflowRef(u.Value)
 	if !ok || reCommitSHA.MatchString(ref) {
 		return
 	}
 
 	rule.Errorf(
-		reporting.ViewPosition(u.Pos()),
+		u.Pos,
 		"the ref %q of reusable workflow %q is not a commit SHA. reusable workflow calls must be pinned to a full-length commit SHA (40 or 64 hexadecimal digits). see https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions for more details",
 		ref,
-		u.Value(),
+		u.Value,
 	)
 }
 

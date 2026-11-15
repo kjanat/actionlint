@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
-func (rule *Checker) scriptShell(step workflowdecl.StepView) string {
+func (rule *Checker) scriptShell(step workflowdecl.Step) string {
 	run, ok := step.Run()
 	if !ok {
 		return ""
@@ -25,20 +25,20 @@ func (rule *Checker) scriptShell(step workflowdecl.StepView) string {
 	var jobShell, workflowShell, runnerShell value.Value
 	if !rule.compositeScript {
 		if rule.workflow.Present() {
-			workflowShell = execution.DefaultShell(rule.workflow.Defaults().Run().Semantic())
+			workflowShell = execution.DefaultShell(workflowdecl.DefaultsRun(rule.workflow.Defaults))
 			if job := rule.scriptJob; job.Present() {
-				jobShell = execution.DefaultShell(job.Defaults().Run().Semantic())
+				jobShell = execution.DefaultShell(workflowdecl.DefaultsRun(job.Defaults))
 				knownShell := ""
 				if rule.dependencies.Runners != nil {
 					knownShell = rule.dependencies.Runners.Job(job).Shell
 				}
-				runnerShell = scriptmodel.DefaultShell(job.Container().Semantic(), knownShell)
+				runnerShell = scriptmodel.DefaultShell(workflowdecl.Container(job.Container), knownShell)
 			}
 		} else {
 			runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
 		}
 	}
-	return execution.ResolveShell(run.Shell().Semantic(), jobShell, workflowShell, runnerShell).Name
+	return execution.ResolveShell(workflowdecl.Scalar(run.Shell), jobShell, workflowShell, runnerShell).Name
 }
 
 func scriptShellVariant(shell string) (syntax.LangVariant, bool) {

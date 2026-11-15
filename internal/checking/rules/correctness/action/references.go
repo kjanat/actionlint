@@ -8,27 +8,26 @@ import (
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Repository checks a repository action reference against available metadata.
-func Repository(exec workflowdecl.ExecActionView, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*findingmodel.Finding {
-	if !exec.Present() || !exec.Uses().Present() {
+func Repository(exec *workflowlang.ExecAction, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+	if exec == nil || exec.Uses == nil {
 		return nil
 	}
 	rule := validator{lifecycle: context}
-	rule.checkRepoAction(exec.Uses().Value(), exec, metadata)
+	rule.checkRepoAction(exec.Uses.Value, exec, metadata)
 	return rule.errs
 }
 
 // Docker checks the URI and optional tag of a Docker action reference.
-func Docker(exec workflowdecl.ExecActionView) []*findingmodel.Finding {
-	if !exec.Present() || !exec.Uses().Present() || !strings.HasPrefix(exec.Uses().Value(), "docker://") {
+func Docker(exec *workflowlang.ExecAction) []*findingmodel.Finding {
+	if exec == nil || exec.Uses == nil || !strings.HasPrefix(exec.Uses.Value, "docker://") {
 		return nil
 	}
-	return DockerReference(exec.Uses().Value(), positionPointer(exec.Uses().Pos()))
+	return DockerReference(exec.Uses.Value, exec.Uses.Pos)
 }
 
 // DockerReference validates a Docker reference from its canonical source value.
@@ -94,15 +93,15 @@ func InvalidReference(pos *workflowlang.Pos, spec, why string) *findingmodel.Fin
 	return rule.errs[0]
 }
 
-func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecActionView, meta actionmeta.Definition) {
-	if !rule.checkRepositoryReference(spec, positionPointer(exec.Uses().Pos())) {
+func (rule *validator) checkRepoAction(spec string, exec *workflowlang.ExecAction, meta actionmeta.Definition) {
+	if !rule.checkRepositoryReference(spec, exec.Uses.Pos) {
 		return
 	}
 	if !meta.Present() {
 		return
 	}
 	if problem := actionmeta.RuntimeProblem(meta.Using(), rule.lifecycle); problem.Code != "" {
-		rule.runtimeFinding(positionPointer(exec.Uses().Pos()), problem, fmt.Sprintf("update the version of action %q", spec))
+		rule.runtimeFinding(exec.Uses.Pos, problem, fmt.Sprintf("update the version of action %q", spec))
 	}
 	rule.checkAction(meta, exec, strconv.Quote(spec))
 }

@@ -18,7 +18,7 @@ type customRuleForTest struct {
 	count int
 }
 
-func (r *customRuleForTest) VisitStep(n workflowdecl.StepView) error {
+func (r *customRuleForTest) VisitStep(n workflowdecl.Step) error {
 	r.count++
 	if r.count > 1 {
 		position, _ := n.Pos()

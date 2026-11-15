@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -28,7 +28,7 @@ type Unit struct {
 	Coordinates  source.Coordinates
 	Occurrence   invocation.ID
 	Reference    source.Reference
-	Run          workflowdecl.ExecRunView `clone:"shared"`
+	Run          *workflowlang.ExecRun `clone:"shared"`
 	Input        *ActionInput
 	Shell        *string
 	Path         string
@@ -44,7 +44,7 @@ type Unit struct {
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  checkinputs.ScriptInput
-	Value workflowdecl.InputView `clone:"shared"`
+	Value *workflowlang.Input `clone:"shared"`
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.

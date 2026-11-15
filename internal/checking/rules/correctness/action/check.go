@@ -80,7 +80,7 @@ func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*
 }
 
 // Inputs validates supplied and required inputs against resolved action metadata.
-func Inputs(meta *actionmeta.Metadata, exec workflowdecl.ExecActionView, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
+func Inputs(meta *actionmeta.Metadata, exec *workflowlang.ExecAction, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
 	rule := validator{}
 	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
@@ -450,8 +450,8 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, calle
 
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
-func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl.ExecActionView, description string) {
-	inputs := exec.ResolvedInputs()
+func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlang.ExecAction, description string) {
+	inputs := workflowdecl.ResolvedInputs(exec)
 	known := inputs.Complete()
 	// Check specified inputs are defined in action's inputs spec
 	for key := range inputs.KeyedEntries() {
@@ -509,7 +509,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec workflowdecl
 					}
 				}
 				rule.Errorf(
-					positionPointer(exec.Uses().Pos()),
+					positionPointer(exec.Uses.Position()),
 					actionmeta.CodeRequiredInput,
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,

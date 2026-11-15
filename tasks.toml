@@ -156,11 +156,6 @@ run     = [
   "go run ./internal/development/generators/action-metadata -output internal/model/actions/availability.gen.go"
 ]
 
-["generate:workflow-views"]
-sources = ["internal/development/generators/workflow-views/**", "internal/model/workflows/definition/*.go"]
-outputs = ["internal/model/workflows/*.gen.go"]
-run     = "go run ./internal/development/generators/workflow-views . internal/model/workflows"
-
 ["generate:owned-copies"]
 run = "go generate -run owned-copies ./..."
 
@@ -174,7 +169,6 @@ depends = [
   "generate:contexts",
   "generate:events",
   "generate:actions",
-  "generate:workflow-views",
   "generate:owned-copies",
   "generate:analysis-merge"
 ]

@@ -35,12 +35,12 @@ func (r *operationCheck) Errorf(pos workflowlang.Pos, format string, args ...any
 
 // CheckCallOperations applies the caller's ceiling to inherited callee operations.
 // Results belong to the call site; policy evaluation is never cached with metadata.
-func CheckCallOperations(call declaration.WorkflowCallView, granted declaration.CacheModeView, lookup MetadataLookup) []results.Diagnostic {
-	if !call.Present() || !call.Uses().Present() || lookup == nil {
+func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, lookup MetadataLookup) []results.Diagnostic {
+	if call == nil || call.Uses == nil || lookup == nil {
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(position(call.Uses()), call.Uses().Value(), cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(position(call.Uses.Pos), call.Uses.Value, cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
@@ -93,18 +93,18 @@ func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec st
 }
 
 // CheckStep reports cache action operations disabled by an explicit cache mode.
-func CheckStep(step declaration.StepView, mode declaration.CacheModeView) []results.Diagnostic {
+func CheckStep(step declaration.Step, mode *workflowlang.CacheMode) []results.Diagnostic {
 	action, ok := step.Action()
-	if !ok || !action.Uses().Present() {
+	if !ok || action.Uses == nil {
 		return nil
 	}
 	access, valid := cachemodel.FromDeclaration(mode).Capabilities()
 	if !valid {
 		return nil
 	}
-	name := references.CacheAction(action.Uses().Value())
+	name := references.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
-		return []results.Diagnostic{report(position(action.Uses()), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind().String())}
+		return []results.Diagnostic{report(position(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
 	}
 	return nil
 }

@@ -98,7 +98,7 @@ jobs:
 	workers.Wait()
 }
 
-func jobView(w declaration.WorkflowView, key string) declaration.JobView {
+func jobView(w declaration.Workflow, key string) declaration.Job {
 	job, _ := w.Job(key)
 	return job
 }

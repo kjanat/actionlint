@@ -72,11 +72,11 @@ func TestCanonicalEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	workflow, present := snapshot.WorkflowView()
+	workflow, present := snapshot.Workflow()
 	if !present {
 		t.Fatal("workflow view unavailable")
 	}
-	resolved := workflow.Env().Mapping()
+	resolved := declaration.Environment(workflow.Env)
 	if got := resolved.Lookup("NULL_VALUE"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}

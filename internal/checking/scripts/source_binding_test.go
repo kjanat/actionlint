@@ -83,7 +83,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
 			for i, text := range []string{"echo first", "echo second"} {
 				unit := units[i]
-				if unit.Run.Run().Value() != text || unit.Occurrence != graph.Scripts()[i].ID || unit.Path != path || string(unit.Content) != string(original) || unit.Scope.Config != collection.Scopes[0].Config || unit.Scope != scopes[0] || unit.Owner.Job != "" || unit.Origin.Job != "" {
+				if unit.Run.Run.Text() != text || unit.Occurrence != graph.Scripts()[i].ID || unit.Path != path || string(unit.Content) != string(original) || unit.Scope.Config != collection.Scopes[0].Config || unit.Scope != scopes[0] || unit.Owner.Job != "" || unit.Origin.Job != "" {
 					t.Fatalf("source binding changed action provenance: %+v", unit)
 				}
 				if unit.Shell == nil || *unit.Shell != []string{"bash", "sh"}[i] {
@@ -116,7 +116,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 			run, isRun := steps[0].Run()
 			position, present := steps[0].Pos()
 			spans := slices.Collect(run.Source().Spans())
-			if !isRun || !present || run.Run().Value() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
+			if !isRun || !present || run.Run.Text() != "echo first" || position.Line == 999 || position.Col == 999 || spans[0].YamlLine == 999 {
 				t.Fatal("returned declaration mutated the registry")
 			}
 			originalRun := originalDocument.Facts.Jobs[""].Steps[0].Exec.(*workflowlang.ExecRun)

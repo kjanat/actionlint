@@ -207,7 +207,7 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 			}
 			view := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {WorkflowCall: c}}}, false, "").Bind("call-fixture").Workflow()
 			job, _ := view.JobsAt("test")
-			findings := workflowcall.CheckArguments(job.WorkflowCall(), metadata)
+			findings := workflowcall.CheckArguments(job.WorkflowCall, metadata)
 
 			errs := []string{}
 			for _, err := range findings {

@@ -16,22 +16,22 @@ import (
 )
 
 // WorkflowRunFilters returns declared producer-name filters without loading an inventory.
-func WorkflowRunFilters(w workflowdecl.WorkflowView) []workflowdecl.StringView {
-	var references []workflowdecl.StringView
-	for event := range w.On() {
-		if hook, ok := event.WebhookEvent(); ok && hook.Hook().Value() == "workflow_run" {
-			for reference := range hook.Workflows() {
-				references = append(references, reference)
-			}
+func WorkflowRunFilters(w workflowdecl.Workflow) []*workflowlang.String {
+	if !w.Present() {
+		return nil
+	}
+	var references []*workflowlang.String
+	for _, event := range w.On {
+		if hook, ok := event.(*workflowlang.WebhookEvent); ok && hook != nil && hook.Hook.Text() == "workflow_run" {
+			references = append(references, hook.Workflows...)
 		}
 	}
-
 	return references
 }
 
 // Check verifies name filters against a complete repository inventory.
 // Unknown expressions and incomplete inventories cannot establish missing producers.
-func Check(n namemodel.Inventory, references []workflowdecl.StringView) []results.Diagnostic {
+func Check(n namemodel.Inventory, references []*workflowlang.String) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if len(references) == 0 {
 		return findings
@@ -45,11 +45,11 @@ func Check(n namemodel.Inventory, references []workflowdecl.StringView) []result
 	var patterns []string
 	allKnown, missing := true, false
 	for _, ref := range references {
-		if !ref.Present() {
+		if ref == nil {
 			allKnown = false
 			continue
 		}
-		value := ref.Value()
+		value := ref.Value
 		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
 			value = *literal
 		} else if ref.ContainsExpression() {
@@ -59,19 +59,11 @@ func Check(n namemodel.Inventory, references []workflowdecl.StringView) []result
 		patterns = append(patterns, value)
 		if n.Missing(value) {
 			missing = true
-			report(namePosition(ref), "workflow_run references workflow pattern %q, but no workflow name matches it in this repository", value)
+			report(ref.Pos, "workflow_run references workflow pattern %q, but no workflow name matches it in this repository", value)
 		}
 	}
 	if allKnown && !missing && n.ExcludesAll(patterns) {
-		report(namePosition(references[0]), "workflow_run workflow-name filters exclude every matching workflow in this repository")
+		report(references[0].Pos, "workflow_run workflow-name filters exclude every matching workflow in this repository")
 	}
 	return findings
-}
-
-func namePosition(value workflowdecl.StringView) *workflowlang.Pos {
-	position, present := value.Pos()
-	if !present {
-		return nil
-	}
-	return &position
 }

@@ -17,14 +17,14 @@ type mutateCanonicalCallRule struct {
 	unchanged bool
 }
 
-func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflowdecl.WorkflowView) error {
+func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflowdecl.Workflow) error {
 	rule.visits++
 	job, _ := workflow.Job("test")
 	for step := range job.Steps() {
-		if action, ok := step.Action(); ok && action.Uses().Value() == "./local" {
-			rule.copied = action.Uses().Value()
+		if action, ok := step.Action(); ok && action.Uses.Text() == "./local" {
+			rule.copied = action.Uses.Text()
 			rule.copied = "./decoy"
-			rule.unchanged = action.Uses().Value() == "./local"
+			rule.unchanged = action.Uses.Text() == "./local"
 		}
 	}
 	return nil

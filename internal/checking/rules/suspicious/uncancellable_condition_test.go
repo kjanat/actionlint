@@ -130,7 +130,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					if got := suspicious.UncancellableConditionCheck().Job(fixedJob); len(got) != 0 {
 						t.Fatalf("fix leaves finding: %+v", got)
 					}
-					if !strings.Contains(fixedJob.If().Value(), "!cancelled()") {
+					if !strings.Contains(fixedJob.If.Text(), "!cancelled()") {
 						t.Fatalf("missing cancellation guard: %s", fixed)
 					}
 				}

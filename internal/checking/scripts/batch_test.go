@@ -84,7 +84,7 @@ func TestBatchValidatesScopeOutcome(t *testing.T) {
 				if err != nil || frontier.Status() != invocation.DepthLimited {
 					t.Fatalf("depth fixture: %v", err)
 				}
-				context, exists := builder.Context(frontier.ID())
+				context, exists := builder.Context(frontier.ID)
 				if !exists {
 					t.Fatal("frontier context absent")
 				}
@@ -350,7 +350,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var declaration *workflowdecl.StepView
+			var declaration *workflowdecl.Step
 			for _, reference := range snapshot.CanonicalReferences().Steps {
 				candidate, exists := registry.Declaration(reference)
 				if !exists {
@@ -367,7 +367,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 					}
 				} else if action, exists := candidate.Action(); exists {
 					declaration = &candidate
-					inputs, _ := action.InputNames()
+					inputs, _ := workflowdecl.InputNames(action)
 					for name, input := range inputs {
 						if name == tc.input {
 							if input.Source().Present() {
@@ -422,8 +422,8 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 		}
 		if record.Kind == invocation.ScriptRun {
 			run, isRun := declaration.Run()
-			_, hasBodyPosition := run.Run().Pos()
-			_, hasKeyPosition := run.RunPos()
+			_, hasBodyPosition := run.Run.Position()
+			_, hasKeyPosition := run.RunPos
 			if !isRun || !run.Source().Present() || !hasBodyPosition || !hasKeyPosition {
 				t.Fatalf("scalar run lacks parser-owned mapping or positions: run=%v body=%v key=%v", isRun, hasBodyPosition, hasKeyPosition)
 			}
@@ -433,8 +433,8 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 		if !isAction {
 			t.Fatal("action input declaration is not an action")
 		}
-		inputs, _ := action.InputNames()
-		var input workflowdecl.InputView
+		inputs, _ := workflowdecl.InputNames(action)
+		var input *workflowlang.Input
 		var inputExists bool
 		for name, candidate := range inputs {
 			if name == record.Input {
@@ -442,7 +442,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 				break
 			}
 		}
-		_, hasNamePosition := input.Name().Pos()
+		_, hasNamePosition := input.Name.Position()
 		_, hasValuePosition := input.Value().Pos()
 		if !inputExists || !input.Name().Present() || !input.Value().Present() || !input.Source().Present() || !hasNamePosition || !hasValuePosition {
 			t.Fatalf("scalar input lacks parser-owned mapping or positions: found=%v name=%v value=%v source=%v", inputExists, hasNamePosition, hasValuePosition, input.Source().Present())
@@ -505,7 +505,7 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	scopes[0].Context = invocation.Context{}
 	placement.Directory.Path = "corrupt placement"
 	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
-	clonedScopes, clonedUnits := batch.Snapshot()
+	clonedScopes, clonedUnits := batch.Snapshot
 	if clonedUnits[0].Scope != clonedScopes[0] || clonedUnits[1].Scope != clonedScopes[0] || clonedUnits[0].Content != nil || clonedUnits[1].Content != nil {
 		t.Fatal("snapshot lost scope ownership or workflow source fallback")
 	}
@@ -520,18 +520,18 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	if !reflect.DeepEqual(first, after) || !reflect.DeepEqual(input, afterInput) {
 		t.Fatal("caller mutation changed a prepared fact")
 	}
-	_, fresh := batch.Snapshot()
+	_, fresh := batch.Snapshot
 	if fresh[0].Scope.Paths.Placements.Details().Directory.Path != "original" {
 		t.Fatal("snapshot mutation changed checkout placement")
 	}
-	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID() != graph.RootID() {
+	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID != graph.RootID() {
 		t.Fatal("snapshot mutation changed source provenance")
 	}
 }
 
 func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, registry *parsing.SourceSnapshots) {
 	t.Helper()
-	_, units := batch.Snapshot()
+	_, units := batch.Snapshot
 	for index, unit := range units {
 		declaration, exists := registry.Declaration(unit.Reference)
 		if !exists {
@@ -548,15 +548,15 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 		if run, isRun := declaration.Run(); isRun {
 			projected.Run, projected.Input = run, nil
 		} else if input, isInput := declaration.Action(); isInput && unit.Input != nil {
-			inputs, _ := input.InputNames()
-			var found workflowdecl.InputView
+			inputs, _ := workflowdecl.InputNames(input)
+			var found *workflowlang.Input
 			for name, candidate := range inputs {
 				if name == unit.Input.Site.Input {
 					found = candidate
 					break
 				}
 			}
-			projected.Run = workflowdecl.ExecRunView{}
+			projected.Run = nil
 			projected.Input = &ActionInput{Site: unit.Input.Site, Value: found}
 		} else {
 			t.Fatalf("canonical declaration kind disagrees with batch unit %d", index)
@@ -671,8 +671,8 @@ func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
 				}
 				fact.Comments[0].Text = "changed"
 				fact.Spans[0].Document.Line = 999
-				_, snapshot := batch.Snapshot()
-				snapshot[0].Run = workflowdecl.ExecRunView{}
+				_, snapshot := batch.Snapshot
+				snapshot[0].Run = nil
 				snapshot[0].Owner.Step.Line = 999
 			}
 		})

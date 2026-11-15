@@ -35,9 +35,9 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 				units := batch.Scripts()
 				assertScalarMapping(t, rawRun.Source, units[0].Run.Source())
 				assertScalarMapping(t, rawInput.Source, units[1].Input.Value.Source())
-				runPos, runHasPos := units[0].Run.Run().Pos()
+				runPos, runHasPos := units[0].Run.Run.Position()
 				inputPos, inputHasPos := units[1].Input.Value.Value().Pos()
-				if units[0].Run.Run().Value() != rawRun.Run.Value || units[1].Input.Value.Value().Value() != rawInput.Value.Value ||
+				if units[0].Run.Run.Text() != rawRun.Run.Value || units[1].Input.Value.Value().Value() != rawInput.Value.Value ||
 					!runHasPos || runPos != *rawRun.Run.Pos || !inputHasPos || inputPos != *rawInput.Value.Pos {
 					t.Fatal("canonical scalar changed decoded text or position")
 				}
@@ -46,9 +46,9 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 	}
 }
 
-func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical workflowdecl.ScriptSourceView) {
+func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical *workflowlang.ScriptSource) {
 	t.Helper()
-	if original == nil || !canonical.Present() {
+	if original == nil || canonical == nil {
 		t.Fatal("scalar source absent")
 	}
 	if canonical.Value() != original.Value || canonical.Literal() != original.Literal || canonical.ContentStart() != original.ContentStart || canonical.ScalarEnd() != original.ScalarEnd ||

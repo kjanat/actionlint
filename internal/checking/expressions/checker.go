@@ -41,24 +41,24 @@ type Checker struct {
 	// The *Ty context types are nil while the context keeps its built-in type.
 	matrixTy          *exprtypes.ObjectType
 	matrixScriptSafe  map[string]scriptValueProof
-	scriptEnv         workflowdecl.EnvView
-	jobEnv            workflowdecl.EnvView
+	scriptEnv         *workflowlang.Env
+	jobEnv            *workflowlang.Env
 	stepsTy           *exprtypes.ObjectType
 	needsTy           *exprtypes.ObjectType
 	secretsTy         *exprtypes.ObjectType
 	inputsTy          *exprtypes.ObjectType
 	dispatchInputsTy  *exprtypes.ObjectType
 	jobsTy            *exprtypes.ObjectType
-	workflow          workflowdecl.WorkflowView
+	workflow          workflowdecl.Workflow
 	eventTy           *exprtypes.ObjectType
-	expressionSource  workflowdecl.ScriptSourceView
-	scriptSources     map[workflowlang.Pos]workflowdecl.ScriptSourceView
+	expressionSource  *workflowlang.ScriptSource
+	scriptSources     map[workflowlang.Pos]*workflowlang.ScriptSource
 	expressionOffset  int
 	scriptScalarArgs  map[int]bool
 	scriptWordLists   map[int]bool
 	scriptEnvironment map[int]scriptEnvironmentReplacement
 	scriptInsertion   correctness.ScriptInsertionKind
-	scriptJob         workflowdecl.JobView
+	scriptJob         workflowdecl.Job
 	compositeScript   bool
 	jobReferences     *ReferenceNames
 }
@@ -80,7 +80,7 @@ type Options struct {
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool
 	ScriptInjectionDisabled   bool
-	JobReferences             func(workflowdecl.JobView) ReferenceNames
+	JobReferences             func(workflowdecl.Job) ReferenceNames
 }
 
 // Dependencies supplies runner facts and action/workflow definitions for expression inference.

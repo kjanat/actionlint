@@ -15,12 +15,12 @@ type jobPhasePass struct {
 	events []string
 }
 
-func (p *jobPhasePass) VisitJobPre(job declaration.JobView) error {
+func (p *jobPhasePass) VisitJobPre(job declaration.Job) error {
 	p.events = append(p.events, "pre "+job.Key())
 	return nil
 }
 
-func (p *jobPhasePass) VisitJobPost(job declaration.JobView) error {
+func (p *jobPhasePass) VisitJobPost(job declaration.Job) error {
 	p.events = append(p.events, "post "+job.Key())
 	return nil
 }
@@ -31,7 +31,7 @@ func TestVisitJobPassWrapsEveryJobPhase(t *testing.T) {
 	workflow := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {}}}, false, "").Bind("phases").Workflow()
 	err := Visit(workflow, Options{
 		Passes: []workflowvisit.Pass{pass},
-		Hooks: Hooks{JobPass: func(wrapped workflowvisit.Pass, job declaration.JobView, visit func() error) error {
+		Hooks: Hooks{JobPass: func(wrapped workflowvisit.Pass, job declaration.Job, visit func() error) error {
 			if wrapped != workflowvisit.Pass(pass) {
 				t.Fatalf("hook received pass %v, want %v", wrapped, pass)
 			}

@@ -238,7 +238,7 @@ func JobPermissionsAndCacheAccess(workflow *workflowlang.Workflow) (map[string]P
 	}
 	var permissionsByJob map[string]PermissionScopeLevels
 	var cacheByJob map[string]CacheAccess
-	permissions := resolvePermissionsModel(workflow.Permissions)
+	permissions := ResolvePermissions(workflow.Permissions)
 	for _, job := range workflow.Jobs {
 		uses := ""
 		if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
@@ -252,7 +252,7 @@ func JobPermissionsAndCacheAccess(workflow *workflowlang.Workflow) (map[string]P
 		}
 		resolved := permissions
 		if job.Permissions != nil {
-			resolved = resolvePermissionsModel(job.Permissions)
+			resolved = ResolvePermissions(job.Permissions)
 		}
 		if resolved.Kind != PermissionsDeclared || len(resolved.Levels) == 0 {
 			continue

@@ -110,7 +110,7 @@ func TestEmptyWorkflowRunKeepsScriptOccurrence(t *testing.T) {
 				t.Fatal(err)
 			}
 			scripts := result.Batch.Scripts()
-			if len(scripts) != 1 || !scripts[0].Run.Run().SourceScalar().HasSource || !scripts[0].Run.Source().Present() || scripts[0].Run.Run().Value() != "" {
+			if len(scripts) != 1 || !scripts[0].Run.Run().SourceScalar().HasSource || !scripts[0].Run.Source().Present() || scripts[0].Run.Run.Text() != "" {
 				t.Fatalf("empty workflow script lost its occurrence or physical source: %+v", scripts)
 			}
 		})
@@ -352,7 +352,7 @@ func checkOnlySurroundingRuns(t *testing.T, content []byte) {
 		t.Fatal(err)
 	}
 	scripts := result.Batch.Scripts()
-	if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+	if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 		t.Fatalf("scripts = %+v, want only the surrounding valid runs", scripts)
 	}
 }

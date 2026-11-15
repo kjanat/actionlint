@@ -270,7 +270,7 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 				if collect {
 					wantUnits = 1
 				}
-				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run().Value() != "echo initial") {
+				if len(result.Batch.Scripts()) != wantUnits || len(graph.Scripts()) != 1 || (collect && result.Batch.Scripts()[0].Run.Run.Text() != "echo initial") {
 					t.Fatal("earlier script missing or rejected script was published")
 				}
 				for _, call := range graph.Calls() {

@@ -40,7 +40,7 @@ func (p *failingMetadataCallback) CheckStandaloneMetadata(*actionmeta.Metadata, 
 	return p.failure
 }
 
-func (p *failingMetadataCallback) VisitStep(step declaration.StepView) error {
+func (p *failingMetadataCallback) VisitStep(step declaration.Step) error {
 	position, _ := step.Pos()
 	p.Error(&position, "partial metadata result")
 	return p.failure

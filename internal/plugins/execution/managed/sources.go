@@ -339,7 +339,7 @@ func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, scr
 		result.Content, result.RawScript = content, true
 		result.UnavailableSource = findingmodel.ReportedSourceUnavailable(name, result.Path, false)
 		last := script.Value.Line
-		for span := range script.Source.LineSpans() {
+		for _, span := range script.Source.LineSpans() {
 			last = max(last, span.YamlLine)
 		}
 		result.Suppression = &tools.Suppression{Path: script.Path, First: script.Key.Line, Last: last}

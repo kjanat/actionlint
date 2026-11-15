@@ -116,8 +116,8 @@ jobs:
 			workflow, rule := schemaAuditExpressionRule(t, source)
 			if tc.name == "matrix reserved key expression" {
 				job, _ := workflow.Job("test")
-				matrix := job.Strategy().Matrix()
-				if !matrix.Present() || !matrix.Exclude().Present() || !matrix.Exclude().Name().Present() || matrix.Exclude().Name().Value() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude().Evaluated() {
+				matrix := job.Strategy.Matrix
+				if matrix == nil || matrix.Exclude == nil || !matrix.Exclude.Name().Present() || matrix.Exclude.Name.Text() != "${{ case(true, 'exclude', missing) }}" || matrix.Exclude.Evaluated() {
 					t.Fatalf("matrix reserved key source lost: %#v", matrix)
 				}
 			}
@@ -167,7 +167,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.WorkflowView, visit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workflow, visit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -194,5 +194,5 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 		}
 	}
 	t.Fatal("expression rule is not registered")
-	return workflowdecl.WorkflowView{}, nil
+	return workflowdecl.Workflow{}, nil
 }

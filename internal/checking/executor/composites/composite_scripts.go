@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -29,7 +31,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView, parents []checkcalls.InvocationParticipant, validate func() error) (err error) {
+func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.Step, parents []checkcalls.InvocationParticipant, validate func() error) (err error) {
 	if err := analysis.sourceSnapshot.ValidateStep(call); err != nil {
 		return err
 	}
@@ -64,7 +66,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	}
 	callFrame := *analysis
 	callFrame.context = callContext
-	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentCaller, call.Env().Mapping()))
+	callFrame.environmentLayers = append(slices.Clone(analysis.environmentLayers), scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentCaller, workflowdecl.Environment(call.Env)))
 	opened := false
 	defer func() {
 		err = analysis.interrupt(err)
@@ -74,10 +76,10 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 			}
 		}
 	}()
-	if err := analysis.actions.PrepareMetadata(analysis.ctx, actionView.Uses().Value()); err != nil {
+	if err := analysis.actions.PrepareMetadata(analysis.ctx, actionView.Uses.Text()); err != nil {
 		return err
 	}
-	prepared, _ := analysis.actions.Prepared().LookupMetadata(actionView.Uses().Value())
+	prepared, _ := analysis.actions.Prepared().LookupMetadata(actionView.Uses.Text())
 	if errors.Is(prepared.Err(), errRemoteMetadataLookupLimit) {
 		return prepared.Err()
 	}
@@ -128,7 +130,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflowdecl.StepView
 	return callFrame.visitMetadataScripts(meta, snapshot, address, callContext, parents)
 }
 
-func (analysis *compositeAnalyzer) visitOpaqueAction(call workflowdecl.StepView, declaration workflowdecl.StepView, actionView workflowdecl.ExecActionView, parents []checkcalls.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitOpaqueAction(call workflowdecl.Step, declaration workflowdecl.Step, actionView *workflowlang.ExecAction, parents []checkcalls.InvocationParticipant) error {
 	analysis.actions.ObserveOpaqueAction(declaration, actionView)
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)
@@ -253,7 +255,7 @@ func (analysis *compositeAnalyzer) visitMetadataScripts(meta *actionmeta.Metadat
 	return nil
 }
 
-func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.StepView, participants []checkcalls.InvocationParticipant) error {
+func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.Step, participants []checkcalls.InvocationParticipant) error {
 	for _, participant := range participants {
 		compositeCheckoutPaths(participant, analysis.actions)
 		if err := invocationOutput(analysis.bindings, participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), step.Reference(), func() error {
@@ -265,7 +267,7 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.StepVie
 	return nil
 }
 
-func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepView, config *repoconfig.Config) error {
+func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.Step, config *repoconfig.Config) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -296,7 +298,7 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *workspaceactions.R
 	participant.ApplyCheckout(actions)
 }
 
-func (analysis *compositeAnalyzer) describeCall(step workflowdecl.StepView) (source.Reference, invocation.Facts, error) {
+func (analysis *compositeAnalyzer) describeCall(step workflowdecl.Step) (source.Reference, invocation.Facts, error) {
 	if !analysis.sourceSnapshot.Present() {
 		return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
 	}
@@ -311,7 +313,7 @@ func invocationOutput(bindings *binding.Scope, rule workflowvisit.Rule, snapshot
 		// Metadata declarations belong to their captured target, which the run
 		// binds after source admission. Other findings belong to this invocation.
 		if bindings != nil && !finding.Binding.Valid() && (finding.MetadataIdentity == nil || finding.Source == nil) {
-			finding.Binding = bindings.Rule(finding.Rule).ID()
+			finding.Binding = bindings.Rule(finding.Rule).ID
 		}
 		if origin := finding.SuppressionOrigin; origin != nil && origin.Path == "" {
 			origin.Path = path

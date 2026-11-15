@@ -32,12 +32,12 @@ import (
 
 type sourceMutationRule struct {
 	workflowvisit.Base
-	mutate   func(workflowdecl.StepView)
+	mutate   func(workflowdecl.Step)
 	visits   int
 	metadata int
 }
 
-func (r *sourceMutationRule) VisitStep(step workflowdecl.StepView) error {
+func (r *sourceMutationRule) VisitStep(step workflowdecl.Step) error {
 	r.visits++
 	r.mutate(step)
 	return nil
@@ -45,11 +45,11 @@ func (r *sourceMutationRule) VisitStep(step workflowdecl.StepView) error {
 
 func (r *sourceMutationRule) EnterInvocation(checkcalls.Invocation) error { return nil }
 func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error    { return nil }
-func (r *sourceMutationRule) VisitInvocationStep(step workflowdecl.StepView) error {
+func (r *sourceMutationRule) VisitInvocationStep(step workflowdecl.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.Step) error {
 	return r.VisitStep(step)
 }
 
@@ -87,7 +87,7 @@ func newCanonicalFactObserver(snapshot parsing.SourceSnapshot) *canonicalFactObs
 	return &canonicalFactObserver{Base: workflowvisit.NewBase("observe-canonical-source", ""), source: snapshot, uses: &uses, runs: &runs, conditions: &conditions, reference: &references, valid: &valid}
 }
 
-func (observer *canonicalFactObserver) VisitStep(view workflowdecl.StepView) error {
+func (observer *canonicalFactObserver) VisitStep(view workflowdecl.Step) error {
 	if err := observer.source.ValidateStep(view); err != nil {
 		*observer.valid = false
 		return err
@@ -103,10 +103,10 @@ func (observer *canonicalFactObserver) VisitStep(view workflowdecl.StepView) err
 		*observer.conditions = append(*observer.conditions, strconv.Itoa(int(condition.State()))+"\x00"+semantic)
 	}
 	if action, ok := view.Action(); ok {
-		*observer.uses = append(*observer.uses, action.Uses().Value())
+		*observer.uses = append(*observer.uses, action.Uses.Text())
 	}
 	if run, ok := view.Run(); ok {
-		*observer.runs = append(*observer.runs, run.Run().Value())
+		*observer.runs = append(*observer.runs, run.Run.Text())
 	}
 	return nil
 }
@@ -123,11 +123,11 @@ func (observer *canonicalFactObserver) LeaveInvocation(invocation.Context) error
 	return nil
 }
 
-func (observer *canonicalFactObserver) VisitInvocationStep(step workflowdecl.StepView) error {
+func (observer *canonicalFactObserver) VisitInvocationStep(step workflowdecl.Step) error {
 	return observer.VisitStep(step)
 }
 
-func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.Step) error {
 	return observer.VisitStep(step)
 }
 
@@ -149,7 +149,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 			captureMutableMetadata(f)
 			mutations := 0
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: func(step workflowdecl.StepView) {
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-source", ""), mutate: func(step workflowdecl.Step) {
 				if run, ok := step.Run(); ok && run.Run().Present() {
 					mutateRunInput(t, f, step, "echo mutated after collection")
 					mutations++
@@ -161,10 +161,10 @@ func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 				t.Fatal(err)
 			}
 			units := result.Batch.Scripts()
-			if mutations != 1 || len(units) != 1 || !units[0].Run.Present() || !units[0].Run.Run().Present() {
+			if mutations != 1 || len(units) != 1 || !units[0].Run != nil || !units[0].Run.Run().Present() {
 				t.Fatalf("mutation scenario not exercised: mutations=%d scripts=%d", mutations, len(units))
 			}
-			if got := units[0].Run.Run().Value(); got != "echo original" {
+			if got := units[0].Run.Run.Text(); got != "echo original" {
 				t.Fatalf("rule mutation after collection changed canonical script: %q", got)
 			}
 		})
@@ -186,7 +186,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 			if level == "job" {
 				defaults = parsed.Jobs["test"].Defaults
 			}
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflowdecl.StepView) {
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflowdecl.Step) {
 				defaults.Run.Shell.Value = "pwsh"
 			}}
 			f.options.Rules = append(f.options.Rules, probe)
@@ -224,8 +224,8 @@ func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.
 			f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 			captureMutableMetadata(f)
 			mutations := 0
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-call", ""), mutate: func(step workflowdecl.StepView) {
-				if action, ok := step.Action(); ok && action.Uses().Value() == "$/a" {
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-call", ""), mutate: func(step workflowdecl.Step) {
+				if action, ok := step.Action(); ok && action.Uses.Text() == "$/a" {
 					mutateCallInput(t, f, step, "$/b")
 					mutations++
 				}
@@ -246,7 +246,7 @@ func TestCallResolutionUsesCanonicalDeclarationAfterCallbackMutation(t *testing.
 					canonicalCall = true
 				}
 			}
-			if mutations != 1 || !canonicalCall || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo original-a" {
+			if mutations != 1 || !canonicalCall || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo original-a" {
 				t.Fatalf("callback redirected canonical call: mutations=%d metadata=%d canonical=%v scripts=%+v", mutations, probe.metadata, canonicalCall, result.Batch.Scripts())
 			}
 		})
@@ -264,8 +264,8 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 	f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 	captureMutableMetadata(f)
 	mutations := 0
-	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflowdecl.StepView) {
-		if action, ok := step.Action(); ok && action.Uses().Value() == "$/a" {
+	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflowdecl.Step) {
+		if action, ok := step.Action(); ok && action.Uses.Text() == "$/a" {
 			mutateCallInput(t, f, step, "$/b")
 			mutations++
 		}
@@ -290,7 +290,7 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 		}
 		original = true
 	}
-	if !original || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo original-a" {
+	if !original || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo original-a" {
 		t.Fatalf("nested callback redirected canonical call: original=%v scripts=%+v", original, result.Batch.Scripts())
 	}
 }
@@ -308,13 +308,13 @@ type workflowPreMutation struct {
 	runs     int
 }
 
-func (rule *workflowPreMutation) VisitWorkflowPre(_ workflowdecl.WorkflowView) error {
+func (rule *workflowPreMutation) VisitWorkflowPre(_ workflowdecl.Workflow) error {
 	rule.runs++
 	rule.mutate(rule.original)
 	return nil
 }
 
-func (rule *workflowPreCallMutation) VisitWorkflowPre(_ workflowdecl.WorkflowView) error {
+func (rule *workflowPreCallMutation) VisitWorkflowPre(_ workflowdecl.Workflow) error {
 	step := rule.original.Jobs["test"].Steps[0]
 	action := step.Exec.(*workflowlang.ExecAction)
 	action.Uses.Value = "$/b"
@@ -354,7 +354,7 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 	if facts != wantFacts {
 		t.Fatalf("graph facts came from mutable AST: got=%+v want=%+v", facts, wantFacts)
 	}
-	if len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo original-a" {
+	if len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo original-a" {
 		t.Fatalf("pre-traversal mutation redirected collected scripts: %+v", result.Batch.Scripts())
 	}
 	projected, ok := result.Batch.Fact(0, false)
@@ -407,7 +407,7 @@ func TestExecutionFactsStayBoundToCanonicalWorkflowBeforeTraversal(t *testing.T)
 	if got := executionSnapshot(mutated); !reflect.DeepEqual(got, baselineFacts) {
 		t.Fatalf("legacy workflow mutations changed canonical execution facts:\n got: %#v\nwant: %#v", got, baselineFacts)
 	}
-	if len(mutated.Batch.Scripts()) != 1 || mutated.Batch.Scripts()[0].Run.Run().Value() != "echo original" {
+	if len(mutated.Batch.Scripts()) != 1 || mutated.Batch.Scripts()[0].Run.Run.Text() != "echo original" {
 		t.Fatalf("mutated traversal changed canonical script: %+v", mutated.Batch.Scripts())
 	}
 }
@@ -484,7 +484,7 @@ func TestParallelChildrenStayBoundToCanonicalVariantsBeforeTraversal(t *testing.
 	if !ok || facts.Uses != "$/a" || !resolved || filepath.Base(filepath.Dir(target.Document)) != "a" {
 		t.Fatalf("parallel graph lost canonical action variant: facts=%+v target=%+v resolved=%v", facts, target, resolved)
 	}
-	if len(mutated.Batch.Scripts()) != 2 || mutated.Batch.Scripts()[0].Run.Run().Value() != "echo original" || mutated.Batch.Scripts()[1].Run.Run().Value() != "echo action-a" {
+	if len(mutated.Batch.Scripts()) != 2 || mutated.Batch.Scripts()[0].Run.Run.Text() != "echo original" || mutated.Batch.Scripts()[1].Run.Run.Text() != "echo action-a" {
 		t.Fatalf("parallel canonical scripts changed: %+v", mutated.Batch.Scripts())
 	}
 	if !*observer.valid || len(*observer.reference) < 2 {
@@ -539,7 +539,7 @@ func executionSnapshot(result Result) executionFactSnapshot {
 		}
 	}
 	for index, unit := range result.Batch.Scripts() {
-		snapshot.ScriptTexts = append(snapshot.ScriptTexts, unit.Run.Run().Value())
+		snapshot.ScriptTexts = append(snapshot.ScriptTexts, unit.Run.Run.Text())
 		snapshot.Shells = append(snapshot.Shells, unit.Execution.Shell.Name)
 		snapshot.Directories = append(snapshot.Directories, unit.Execution.Directory.Path)
 		fact, ok := result.Batch.Fact(index, true)
@@ -557,7 +557,7 @@ func executionSnapshot(result Result) executionFactSnapshot {
 func checkoutSnapshot(result Result) []string {
 	var paths []string
 	for _, scope := range result.Batch.Scopes() {
-		if placement := scope.Paths.Placements; placement.Present() {
+		if placement := scope.Paths.Placements; placement != nil {
 			paths = append(paths, placement.Details().Directory.Path)
 		}
 	}
@@ -569,7 +569,7 @@ func captureMutableMetadata(f *invocationFixture) {
 	f.mutateMeta = func(meta *actionmeta.Metadata) { f.mutableMetadata[filepath.Clean(meta.Path())] = meta }
 }
 
-func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.StepView, text string) {
+func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.Step, text string) {
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
 		for key, job := range f.original.Jobs {
@@ -593,7 +593,7 @@ func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.StepVi
 	t.Fatal("mutable run input unavailable")
 }
 
-func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.StepView, text string) {
+func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.Step, text string) {
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
 		for key, job := range f.original.Jobs {

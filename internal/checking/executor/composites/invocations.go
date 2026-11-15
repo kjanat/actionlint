@@ -16,13 +16,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot parsing.SourceSnapshot) error {
-	if !snapshot.Present() {
+	if snapshot == nil {
 		return errors.New("entry source snapshot is unavailable")
 	}
 	if analysis.sourceSnapshots == nil {
@@ -87,9 +85,9 @@ func metadataOutcome(result workspaceactions.MetadataResult) (invocation.Outcome
 	return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionView) (*actionmeta.Metadata, string, invocation.Outcome, error) {
-	uses := action.Uses()
-	if !uses.Present() || uses.Value() == "" {
+func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction) (*actionmeta.Metadata, string, invocation.Outcome, error) {
+	uses := action.Uses
+	if uses == nil || uses.Value() == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")
 		return nil, "", outcome, err
 	}
@@ -98,7 +96,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 		outcome, err := invocation.Dynamic(spec)
 		return nil, "", outcome, err
 	}
-	position, hasPosition := uses.Pos()
+	position, hasPosition := uses.Pos
 	if invalidActionReference(spec, position, hasPosition) {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference has invalid syntax")
 		return nil, "", outcome, err
@@ -130,7 +128,7 @@ func (analysis *compositeAnalyzer) resolveAction(action workflowdecl.ExecActionV
 	if meta == nil {
 		return nil, sourceDocument.Address(), invocation.Outcome{}, errors.New("resolved action metadata is unavailable")
 	}
-	if !snapshot.Present() {
+	if snapshot == nil {
 		return nil, sourceDocument.Address(), invocation.Outcome{}, errors.New("resolved action source document is unavailable")
 	}
 	actionView, available := snapshot.ActionView()

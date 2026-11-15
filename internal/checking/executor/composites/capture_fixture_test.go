@@ -13,7 +13,7 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.WorkflowView {
+func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.Workflow {
 	tb.Helper()
 	view, available := snapshot.WorkflowView()
 	if !available {
@@ -22,7 +22,7 @@ func workflowView(tb testing.TB, snapshot parsing.SourceSnapshot) workflowdecl.W
 	return view
 }
 
-func workflowJob(tb testing.TB, workflow workflowdecl.WorkflowView, key string) workflowdecl.JobView {
+func workflowJob(tb testing.TB, workflow workflowdecl.Workflow, key string) workflowdecl.Job {
 	tb.Helper()
 	job, available := workflow.JobsAt(key)
 	if !available {
@@ -31,12 +31,12 @@ func workflowJob(tb testing.TB, workflow workflowdecl.WorkflowView, key string) 
 	return job
 }
 
-func workflowStepViews(tb testing.TB, workflow workflowdecl.WorkflowView, key string) []workflowdecl.StepView {
+func workflowStepViews(tb testing.TB, workflow workflowdecl.Workflow, key string) []workflowdecl.Step {
 	tb.Helper()
 	return slices.Collect(workflowJob(tb, workflow, key).Steps())
 }
 
-func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflowdecl.StepView {
+func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflowdecl.Step {
 	tb.Helper()
 	action, available := snapshot.ActionView()
 	if !available {
@@ -45,7 +45,7 @@ func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflowd
 	return slices.Collect(action.Steps())
 }
 
-func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflowdecl.StepView) source.Reference {
+func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflowdecl.Step) source.Reference {
 	tb.Helper()
 	if err := snapshot.ValidateStep(step); err != nil {
 		tb.Fatal(err)
@@ -53,7 +53,7 @@ func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflow
 	return step.Reference()
 }
 
-func stepPosition(tb testing.TB, step workflowdecl.StepView) workflowlang.Pos {
+func stepPosition(tb testing.TB, step workflowdecl.Step) workflowlang.Pos {
 	tb.Helper()
 	position, present := step.Pos()
 	if !present {

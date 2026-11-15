@@ -1,8 +1,6 @@
 package expressions
 
 import (
-	"maps"
-
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -10,17 +8,17 @@ import (
 
 // BeginComposite initializes the expression contexts owned by one action invocation.
 // Caller values are unknown; step output declarations are added as steps execute.
-func (rule *Checker) BeginComposite(body workflowdecl.ActionBodyView) {
+func (rule *Checker) BeginComposite(body workflowdecl.ActionBody) {
 	rule.compositeScript = true
 	rule.inputsTy = new(exprtypes.NewMapObjectType(exprtypes.StringType()))
 	rule.stepsTy = new(exprtypes.NewMapObjectType(exprtypes.AnyType()))
 	rule.matrixTy = new(exprtypes.NewMapObjectType(exprtypes.AnyType()))
-	rule.scriptSources = maps.Collect(body.ExpressionSources())
+	rule.scriptSources = body.ExpressionSources()
 }
 
 // CheckCompositeStep checks invocation-dependent references and script sinks.
 // Declaration validation owns syntax, context availability and call diagnostics.
-func (rule *Checker) CheckCompositeStep(step workflowdecl.StepView) error {
+func (rule *Checker) CheckCompositeStep(step workflowdecl.Step) error {
 	mark := len(rule.errs)
 	err := rule.VisitStep(step)
 	rule.filterCompositeFindings(mark)
@@ -38,7 +36,7 @@ func (rule *Checker) filterCompositeFindings(mark int) {
 }
 
 // CheckCompositeOutputs checks output values against the invocation's final steps.
-func (rule *Checker) CheckCompositeOutputs(body workflowdecl.ActionBodyView) {
+func (rule *Checker) CheckCompositeOutputs(body workflowdecl.ActionBody) {
 	mark := len(rule.errs)
 	for output := range body.OutputValues() {
 		rule.checkString(output, "jobs.<job_id>.outputs.<output_id>")

@@ -391,7 +391,7 @@ func (r runner) scriptFinding(c check, script tools.Script, d checkinputs.Script
 	}
 	start, ok := script.Source.Position(row, d.Location.Column)
 	if !ok {
-		start, hasEnd = *script.Key, false
+		start, hasEnd = script.Key, false
 	}
 	var end sourcepos.Position
 	if hasEnd {

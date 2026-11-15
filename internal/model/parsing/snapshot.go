@@ -277,36 +277,36 @@ func (s SourceSnapshot) Kind() DocumentKind {
 	return KindWorkflow
 }
 
-func (s SourceSnapshot) WorkflowView() (workflowdecl.WorkflowView, bool) {
+func (s SourceSnapshot) WorkflowView() (workflowdecl.Workflow, bool) {
 	if s.Kind() != KindWorkflow {
-		return workflowdecl.WorkflowView{}, false
+		return workflowdecl.Workflow{}, false
 	}
 	view := s.admission.bound.Workflow()
 	return view, view.Present()
 }
 
-func (s SourceSnapshot) ActionView() (workflowdecl.ActionBodyView, bool) {
+func (s SourceSnapshot) ActionView() (workflowdecl.ActionBody, bool) {
 	if s.Kind() != KindAction {
-		return workflowdecl.ActionBodyView{}, false
+		return workflowdecl.ActionBody{}, false
 	}
 	view := s.admission.bound.ActionBody()
 	return view, view.Present()
 }
 
-func (s *SourceSnapshots) Declaration(reference source.Reference) (workflowdecl.StepView, bool) {
+func (s *SourceSnapshots) Declaration(reference source.Reference) (workflowdecl.Step, bool) {
 	if s == nil {
-		return workflowdecl.StepView{}, false
+		return workflowdecl.Step{}, false
 	}
 	s.mu.Lock()
 	admitted := s.documents[reference.Document]
 	s.mu.Unlock()
 	if admitted == nil || admitted.bound == nil || admitted.verify() != nil {
-		return workflowdecl.StepView{}, false
+		return workflowdecl.Step{}, false
 	}
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step workflowdecl.StepView) bool {
+func (s *SourceSnapshots) Owns(step workflowdecl.Step) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
@@ -331,7 +331,7 @@ func (s SourceSnapshot) Declarations() ([]workflowfacts.Mapping, []workflowfacts
 	return s.admission.bound.Declarations()
 }
 
-func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.WorkflowView) error {
+func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.Workflow) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.WorkflowView) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
+func (s SourceSnapshot) ValidateJob(view workflowdecl.Job) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func (s SourceSnapshot) ValidateJob(view workflowdecl.JobView) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateStep(view workflowdecl.StepView) error {
+func (s SourceSnapshot) ValidateStep(view workflowdecl.Step) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
