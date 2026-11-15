@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -37,7 +37,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	known, err := repositoryid.Known(42)
+	known, err := repofacts.KnownID(42)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 	reports := []actions.MetadataReport{
 		(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.MissingMetadata(availability.Offline())}).Report(),
 	}
-	for _, id := range []repositoryid.ID{known, {}} {
+	for _, id := range []repofacts.ID{known, {}} {
 		identity, err := actions.NewIdentity("github.com", "owner/repository", id, "0123456789abcdef0123456789abcdef01234567", "")
 		if err != nil {
 			t.Fatal(err)

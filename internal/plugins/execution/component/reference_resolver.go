@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
@@ -331,7 +331,7 @@ func (r *repositoryObjects) validate(result references.Result) error {
 	return nil
 }
 
-func lowerRepositoryID(id repositoryid.ID) repositorybind.OptionU64 {
+func lowerRepositoryID(id repofacts.ID) repositorybind.OptionU64 {
 	if value, known := id.Value(); known {
 		return repositorybind.SomeU64(value)
 	}
@@ -396,7 +396,7 @@ func liftReferenceResolution(value wacogo.Val) (references.Result, error) {
 		if !ok {
 			return result, liftError{"reference repository ID", identity.Val()}
 		}
-		if result.RepositoryID, err = repositoryid.Known(uint64(value)); err != nil {
+		if result.RepositoryID, err = repofacts.KnownID(uint64(value)); err != nil {
 			return result, liftError{"reference repository ID", identity.Val()}
 		}
 	}

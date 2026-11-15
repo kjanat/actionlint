@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
@@ -19,7 +19,7 @@ import (
 
 // documentValues compares opaque document outlines and repository IDs by their recorded values.
 var documentValues = cmp.AllowUnexported(
-	outline.Workflow{}, outline.Job{}, outline.Step{}, outline.Action{}, outline.CompositeRuns{}, outline.DockerRuns{}, repositoryid.ID{},
+	outline.Workflow{}, outline.Job{}, outline.Step{}, outline.Action{}, outline.CompositeRuns{}, outline.DockerRuns{}, repofacts.ID{},
 )
 
 func TestActionMultiProjectResultParity(t *testing.T) {

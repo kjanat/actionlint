@@ -1,4 +1,4 @@
-package repositoryid
+package repository
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 
 func known(t *testing.T, value uint64) ID {
 	t.Helper()
-	id, err := Known(value)
+	id, err := KnownID(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,8 +17,8 @@ func known(t *testing.T, value uint64) ID {
 
 func TestKnownRejectsZero(t *testing.T) {
 	t.Parallel()
-	if _, err := Known(0); err == nil {
-		t.Fatal("Known(0) returned no error")
+	if _, err := KnownID(0); err == nil {
+		t.Fatal("KnownID(0) returned no error")
 	}
 	value, ok := known(t, 42).Value()
 	if value != 42 || !ok {

@@ -1,17 +1,17 @@
-// Package repositoryid models a hosting platform's numeric repository ID, which a lookup may not know.
-package repositoryid
+package repository
 
 import (
 	"errors"
 	"strconv"
 )
 
+// ID is a hosting platform's numeric repository ID, which a lookup may not know.
 type ID struct {
 	value uint64
 	known bool
 }
 
-func Known(value uint64) (ID, error) {
+func KnownID(value uint64) (ID, error) {
 	if value == 0 {
 		return ID{}, errors.New("repository ID must be positive")
 	}
@@ -38,7 +38,7 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return errors.New("repository ID must be a positive integer")
 	}
-	known, err := Known(value)
+	known, err := KnownID(value)
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -16,7 +16,7 @@ import (
 type ResolutionSession struct {
 	provider      Resolver
 	mu            sync.Mutex
-	repositoryIDs map[string]repositoryid.ID
+	repositoryIDs map[string]repofacts.ID
 }
 
 func NewResolutionSession(provider Resolver) *ResolutionSession {
@@ -68,7 +68,7 @@ func (session *ResolutionSession) resolve(ctx context.Context, request Request) 
 		return result, nil
 	}
 	if session.repositoryIDs == nil {
-		session.repositoryIDs = make(map[string]repositoryid.ID)
+		session.repositoryIDs = make(map[string]repofacts.ID)
 	}
 	session.repositoryIDs[repository] = result.RepositoryID
 	return result, nil

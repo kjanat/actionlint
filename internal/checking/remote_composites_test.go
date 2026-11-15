@@ -22,7 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func remoteCompositeProvider(t *testing.T, manifests map[string]string) (manifestProvider, func() map[string]int) {
@@ -50,7 +50,7 @@ func remoteCompositeProviderAtCommits(t *testing.T, manifests, commits map[strin
 		if commit == "" {
 			commit = strings.Repeat("a", 40)
 		}
-		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repositoryid.ID{}, commit, ref.Directory())
+		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, commit, ref.Directory())
 		if err != nil {
 			return actions.Manifest{}, err
 		}

@@ -12,15 +12,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type cachedRef struct {
-	Name         string          `json:"name"`
-	Commit       string          `json:"commit"`
-	Object       string          `json:"object"`
-	Ref          string          `json:"ref"`
-	RepositoryID repositoryid.ID `json:"repository_id,omitzero"`
+	Name         string       `json:"name"`
+	Commit       string       `json:"commit"`
+	Object       string       `json:"object"`
+	Ref          string       `json:"ref"`
+	RepositoryID repofacts.ID `json:"repository_id,omitzero"`
 }
 
 func (g *GitHub) namedCachePath(ref actions.Reference) string {

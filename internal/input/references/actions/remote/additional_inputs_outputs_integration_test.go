@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -29,7 +29,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 		t.Fatal("request-action fixture has no provenance header")
 	}
 	const commit = "3d6703deef41a82916a2e5ca87096f93035cef66"
-	reviewedID, err := repositoryid.Known(213507602)
+	reviewedID, err := repofacts.KnownID(213507602)
 	if err != nil {
 		t.Fatal(err)
 	}

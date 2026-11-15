@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type repositoryKey struct {
@@ -36,11 +36,11 @@ type Service struct {
 	manifests  map[contentKey]actionmeta.DefinitionInspection
 	content    map[contentKey]string
 	names      map[repositoryKey]string
-	identities map[location]repositoryid.ID
+	identities map[location]repofacts.ID
 }
 
 func New(provider actions.Provider) *Service {
-	return &Service{provider: provider, references: make(map[actions.Reference]Result), pending: make(map[actions.Reference]*pendingLookup), manifests: make(map[contentKey]actionmeta.DefinitionInspection), content: make(map[contentKey]string), names: make(map[repositoryKey]string), identities: make(map[location]repositoryid.ID)}
+	return &Service{provider: provider, references: make(map[actions.Reference]Result), pending: make(map[actions.Reference]*pendingLookup), manifests: make(map[contentKey]actionmeta.DefinitionInspection), content: make(map[contentKey]string), names: make(map[repositoryKey]string), identities: make(map[location]repofacts.ID)}
 }
 
 type pendingLookup struct {

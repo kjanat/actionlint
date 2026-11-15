@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestValidateResultComparesKnownRepositoryIDs(t *testing.T) {
 	t.Parallel()
-	known := func(value uint64) repositoryid.ID {
-		id, err := repositoryid.Known(value)
+	known := func(value uint64) repofacts.ID {
+		id, err := repofacts.KnownID(value)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -19,7 +19,7 @@ func TestValidateResultComparesKnownRepositoryIDs(t *testing.T) {
 	}
 	for _, test := range []struct {
 		name               string
-		expected, observed repositoryid.ID
+		expected, observed repofacts.ID
 		repository         string
 		valid              bool
 	}{
