@@ -1,8 +1,8 @@
-package reference
+package actionmeta
 
 import "testing"
 
-func TestNormalizeLocalDirectory(t *testing.T) {
+func TestNormalizeLocalActionDirectory(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ input, want string }{
 		{"./source", "./source"},
@@ -14,9 +14,9 @@ func TestNormalizeLocalDirectory(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			got, err := NormalizeLocalDirectory(tc.input)
+			got, err := NormalizeLocalActionDirectory(tc.input)
 			if err != nil || got != tc.want {
-				t.Fatalf("NormalizeLocalDirectory(%q) = %q, %v; want %q", tc.input, got, err, tc.want)
+				t.Fatalf("NormalizeLocalActionDirectory(%q) = %q, %v; want %q", tc.input, got, err, tc.want)
 			}
 		})
 	}
@@ -35,8 +35,8 @@ func TestNormalizeLocalDirectory(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			if got, err := NormalizeLocalDirectory(input); err == nil {
-				t.Fatalf("NormalizeLocalDirectory(%q) = %q, want error", input, got)
+			if got, err := NormalizeLocalActionDirectory(input); err == nil {
+				t.Fatalf("NormalizeLocalActionDirectory(%q) = %q, want error", input, got)
 			}
 		})
 	}

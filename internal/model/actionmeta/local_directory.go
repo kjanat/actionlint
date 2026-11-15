@@ -1,5 +1,4 @@
-// Package reference validates source references for local actions.
-package reference
+package actionmeta
 
 import (
 	"fmt"
@@ -7,8 +6,8 @@ import (
 	"strings"
 )
 
-// NormalizeLocalDirectory returns a canonical repository-relative directory reference.
-func NormalizeLocalDirectory(value string) (string, error) {
+// NormalizeLocalActionDirectory returns a canonical repository-relative directory reference.
+func NormalizeLocalActionDirectory(value string) (string, error) {
 	if !strings.HasPrefix(value, "./") && !strings.HasPrefix(value, "$/") {
 		return "", fmt.Errorf("action directory %q must start with ./ or $/", value)
 	}
