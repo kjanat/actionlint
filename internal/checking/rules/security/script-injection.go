@@ -3,6 +3,8 @@ package security
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 // ScriptInjectionRule is the single definition of the script-injection rule.
@@ -25,4 +27,11 @@ var ScriptInjectionRule = &define.Rule{
 	},
 	SupportsActions: true,
 	DeclaredBy:      "expression",
+}
+
+// ScriptInjection reports untrusted values and secrets inserted into script text.
+// Semantic errors exclude invalid secret selectors without hiding findings in other branches.
+func ScriptInjection(expr exprsyntax.Node, semanticErrors []*exprlang.Error) []*exprlang.Error {
+	findings := checkUntrustedInputs(expr)
+	return append(findings, checkSecretInterpolations(expr, semanticErrors)...)
 }

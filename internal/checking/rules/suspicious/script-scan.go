@@ -57,39 +57,6 @@ func scanRuntimeScripts(
 	return diagnostics, nil
 }
 
-// checkErrexitStatus reports status reads that Bash errexit makes unable to capture a failure.
-func checkErrexitStatus(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
-	return scanRuntimeScripts(ctx, input, func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)) {
-		for _, span := range scripts.ErrexitStatusReads(script.Text, invocation, script.Interpreters) {
-			report(span, "Bash errexit exits if the preceding command fails, so this status read cannot capture that failure. Use an explicit condition or an OR handler if the script must continue")
-		}
-	})
-}
-
-// checkWorkflowCommandSyntax reports malformed workflow commands in literal script output.
-func checkWorkflowCommandSyntax(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
-	return scanRuntimeScripts(ctx, input, func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)) {
-		if invocation.Status == commands.Unknown && invocation.Reason == "no interpreter definition matches the command" {
-			// The runner recognizes these exact built-in shell names even when
-			// the corresponding optional language plugin is not installed.
-			switch script.Runtime.Shell {
-			case "python", "pwsh", "powershell":
-				invocation = commands.Invocation{Status: commands.Valid, Language: script.Runtime.Shell, Input: "file"}
-			}
-		}
-		seen := make(map[scripts.ScriptRange]bool)
-		for _, path := range scripts.LiteralStdoutPaths(script.Text, invocation, script.Interpreters) {
-			var state commands.WorkflowCommandState
-			for _, output := range path {
-				if problem := state.WorkflowCommandProblem(output.Text); problem != "" && !seen[output.ScriptRange] {
-					report(output.ScriptRange, problem)
-					seen[output.ScriptRange] = true
-				}
-			}
-		}
-	})
-}
-
 func scriptTextPosition(text string, offset int, exclusive bool) (int, int, bool) {
 	prefix := text[:offset]
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1, exclusive

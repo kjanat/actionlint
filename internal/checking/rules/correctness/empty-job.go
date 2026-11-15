@@ -1,8 +1,12 @@
 package correctness
 
 import (
+	"fmt"
+
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // EmptyJobRule is the single definition of the empty-job rule.
@@ -17,4 +21,15 @@ var EmptyJobRule = &define.Rule{
 	Examples: []rule.Example{rule.WorkflowExample("Give the job steps to run.",
 		"    steps: []\n", "")},
 	Checks: define.Fixed(define.Checks{Job: EmptyJob}),
+}
+
+// EmptyJob reports a job that runs no steps. Reusable workflow calls have none.
+func EmptyJob(job declaration.Job) []reporting.Finding {
+	if job.WorkflowCall != nil || job.DeclaredUses != nil {
+		return nil
+	}
+	for range job.Steps() {
+		return nil
+	}
+	return []reporting.Finding{{Severity: "error", Start: reporting.Position(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
 }

@@ -2,7 +2,12 @@ package suspicious
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
+	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"context"
 )
 
 // WorkflowCommandSyntaxRule is the single definition of the workflow-command-syntax rule.
@@ -32,4 +37,28 @@ var WorkflowCommandSyntaxRule = &define.Rule{
 		"    steps:\n      - shell: bash\n        run: echo \"::notice:Up to date\"\n",
 		"    steps:\n      - shell: bash\n        run: echo \"::notice::Up to date\"\n")},
 	Script: checkWorkflowCommandSyntax,
+}
+
+// checkWorkflowCommandSyntax reports malformed workflow commands in literal script output.
+func checkWorkflowCommandSyntax(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+	return scanRuntimeScripts(ctx, input, func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)) {
+		if invocation.Status == commands.Unknown && invocation.Reason == "no interpreter definition matches the command" {
+			// The runner recognizes these exact built-in shell names even when
+			// the corresponding optional language plugin is not installed.
+			switch script.Runtime.Shell {
+			case "python", "pwsh", "powershell":
+				invocation = commands.Invocation{Status: commands.Valid, Language: script.Runtime.Shell, Input: "file"}
+			}
+		}
+		seen := make(map[scripts.ScriptRange]bool)
+		for _, path := range scripts.LiteralStdoutPaths(script.Text, invocation, script.Interpreters) {
+			var state commands.WorkflowCommandState
+			for _, output := range path {
+				if problem := state.WorkflowCommandProblem(output.Text); problem != "" && !seen[output.ScriptRange] {
+					report(output.ScriptRange, problem)
+					seen[output.ScriptRange] = true
+				}
+			}
+		}
+	})
 }
