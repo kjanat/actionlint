@@ -8,9 +8,6 @@ import (
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// persistedResult is the JSON document written for the Action wrapper.
-type persistedResult = resultreport.CheckResult
-
 func (a *action) persistResult(code int, failure error) error {
 	path := a.env("ACTIONLINT_ACTION_RESULT")
 	if path == "" {

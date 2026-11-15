@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // ConfigurationMigration previews the syntax conversion and default plugin declarations.
@@ -23,7 +23,7 @@ import (
 type ConfigurationMigration struct {
 	*config.FileMigration
 	project       *Project
-	refs          []pluginref.Reference
+	refs          []pluginreference.Reference
 	updatePlugins bool
 }
 
@@ -62,7 +62,7 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 		return nil, err
 	}
 	updatePlugins := true
-	var refs []pluginref.Reference
+	var refs []pluginreference.Reference
 	switch {
 	case !declaredLocally && project.Manifest.Declared:
 		// Keep inherited declarations inherited. Writing the effective list into

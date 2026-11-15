@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
-	"actionlint.kjanat.dev/v2/internal/plugins/bundled/commitish"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
@@ -381,7 +380,7 @@ func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) 
 
 func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 	t.Parallel()
-	plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
+	plugin, err := LoadArtifact(t.Context(), BuiltinCommitishArtifact(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +413,7 @@ func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 
 func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 	t.Parallel()
-	plugin, err := LoadArtifact(t.Context(), commitish.Artifact(), Options{})
+	plugin, err := LoadArtifact(t.Context(), BuiltinCommitishArtifact(), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

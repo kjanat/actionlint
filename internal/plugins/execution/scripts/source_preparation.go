@@ -25,7 +25,7 @@ func applySourcePreparation(ctx context.Context, transform *preparation.SourceTr
 	default:
 		declarations = ""
 	}
-	plan, err := transform.Apply(ctx, preparation.ScriptContext{
+	plan, err := transform.Apply(ctx, preparation.TransformInput{
 		Source: script.Text, Language: language,
 		EnvironmentStartup: declarations, EnvironmentKnown: known,
 		Settings:   settings,

@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -115,7 +117,7 @@ waiting:
 	if _, err := os.Stat(ready); err != nil {
 		t.Fatalf("analyzer did not start before timeout: %v", err)
 	}
-	var result persistedResult
+	var result resultreport.CheckResult
 	if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +137,7 @@ waiting:
 	if !ok || workflow.DocumentPath() != "./timeout.yaml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 		t.Fatalf("timeout corrupted workflow document: %+v", result.Documents)
 	}
-	var emitted persistedResult
+	var emitted resultreport.CheckResult
 	outputs := parseOutputs(read(t, env["GITHUB_OUTPUT"]))
 	if err := json.Unmarshal([]byte(outputs["output"]), &emitted); err != nil {
 		t.Fatalf("invalid JSON output: %v", err)
@@ -188,7 +190,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 			if code := a.run(); code != commandstatus.ExitFailure {
 				t.Fatalf("exit = %d, want failure: %s", code, output.String())
 			}
-			var result persistedResult
+			var result resultreport.CheckResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 				t.Fatal(err)
 			}
@@ -198,7 +200,7 @@ func TestActionPreservesNativePartialFindings(t *testing.T) {
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Path != tc.path || result.Diagnostics[0].Rule != tc.rule {
 				t.Fatalf("lost partial finding: %+v", result.Diagnostics)
 			}
-			var emitted persistedResult
+			var emitted resultreport.CheckResult
 			outputs := parseOutputs(read(t, env["GITHUB_OUTPUT"]))
 			if err := json.Unmarshal([]byte(outputs["output"]), &emitted); err != nil {
 				t.Fatalf("invalid JSON output: %v", err)

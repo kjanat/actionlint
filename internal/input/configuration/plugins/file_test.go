@@ -15,14 +15,14 @@ import (
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 )
 
-func manifestTestReference(t *testing.T, name string) pluginref.Reference {
+func manifestTestReference(t *testing.T, name string) pluginreference.Reference {
 	t.Helper()
-	ref, err := pluginref.Parse(name)
+	ref, err := pluginreference.Parse(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func readManifestTest(t *testing.T, path string) string {
 func TestPluginManifestFormats(t *testing.T) {
 	t.Parallel()
 	ref := manifestTestReference(t, "kjanat/actionlint-plugin-shellcheck@v0.2.0")
-	custom, err := pluginref.New("gitlab.com/team/plugin", "v2", "https://example.com/catalogue/")
+	custom, err := pluginreference.New("gitlab.com/team/plugin", "v2", "https://example.com/catalogue/")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestPluginManifestFormats(t *testing.T) {
 	if !strings.HasPrefix(catalogue, "/") {
 		catalogue = "/" + catalogue
 	}
-	candidate, err := pluginref.NewCandidate("owner/candidate", "v1.2.3", (&url.URL{Scheme: "file", Path: catalogue}).String(), strings.Repeat("ab", 32))
+	candidate, err := pluginreference.NewCandidate("owner/candidate", "v1.2.3", (&url.URL{Scheme: "file", Path: catalogue}).String(), strings.Repeat("ab", 32))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestPluginManifestFormats(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			refs := []pluginref.Reference{ref, custom, candidate}
+			refs := []pluginreference.Reference{ref, custom, candidate}
 			if err := manifest.Save(t.Context(), refs); err != nil {
 				t.Fatal(err)
 			}
@@ -141,7 +141,7 @@ func TestPluginTOMLInsertionPreservesSchemaHeader(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := manifest.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+			if err := manifest.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 				t.Fatal(err)
 			}
 			content := readManifestTest(t, path)
@@ -181,7 +181,7 @@ func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	refs := []pluginref.Reference{ref, direct}
+	refs := []pluginreference.Reference{ref, direct}
 	if err := manifest.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestPluginTOMLAppendsDirectSourcesAndPreservesExistingPosition(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := manifest.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+	if err := manifest.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
 	content = readManifestTest(t, path)

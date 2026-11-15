@@ -5,8 +5,6 @@ import (
 	"context"
 	"io"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/lsp/transport"
 )
 
 func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
@@ -30,7 +28,7 @@ func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
 	reader := bufio.NewReader(receive)
 	request := func(method string, id int, params any) map[string]any {
 		t.Helper()
-		if err := transport.WriteMessage(client, map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": params}); err != nil {
+		if err := WriteRPCMessage(client, map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": params}); err != nil {
 			t.Fatal(err)
 		}
 		for {
@@ -55,7 +53,7 @@ func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
 		{"textDocument/didOpen", map[string]any{"textDocument": Document{uri, 1, "old"}}},
 		{"textDocument/didChange", map[string]any{"textDocument": Document{URI: uri, Version: 2}, "contentChanges": []any{map[string]any{"text": "😀titel"}}}},
 	} {
-		if err := transport.WriteMessage(client, map[string]any{"jsonrpc": "2.0", "method": change.method, "params": change.params}); err != nil {
+		if err := WriteRPCMessage(client, map[string]any{"jsonrpc": "2.0", "method": change.method, "params": change.params}); err != nil {
 			t.Fatal(err)
 		}
 		// Drain the diagnostic publication before sending the next message on pipes.
@@ -74,7 +72,7 @@ func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
 		t.Fatal(span)
 	}
 	request("shutdown", 3, nil)
-	if err := transport.WriteMessage(client, map[string]any{"jsonrpc": "2.0", "method": "exit"}); err != nil {
+	if err := WriteRPCMessage(client, map[string]any{"jsonrpc": "2.0", "method": "exit"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-done; err != nil {

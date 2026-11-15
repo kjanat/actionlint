@@ -1,6 +1,6 @@
-// Package pluginref defines plugin dependency declarations independently of
+// Package pluginreference defines plugin dependency declarations independently of
 // registry transport, artifact resolution, and runtime loading.
-package pluginref
+package pluginreference
 
 import (
 	"encoding/hex"

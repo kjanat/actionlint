@@ -20,7 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // Selection chooses plugins from explicit arguments or repository configuration.
@@ -337,7 +337,7 @@ func (s Selection) selectedPlugins(ctx context.Context, project *Project) (Resol
 			skipped = append(skipped, ref.Name())
 			continue
 		}
-		pins, err := project.selectedPins(ctx, []pluginref.Reference{ref})
+		pins, err := project.selectedPins(ctx, []pluginreference.Reference{ref})
 		if err != nil {
 			if s.DisableTools && network.OnlyOffline(err) {
 				skipped = append(skipped, ref.Name())

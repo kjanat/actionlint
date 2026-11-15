@@ -17,7 +17,7 @@ func TestSourceTransformRejectsMalformedPlans(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := transform.Apply(t.Context(), ScriptContext{}); err == nil {
+			if _, err := transform.Apply(t.Context(), TransformInput{}); err == nil {
 				t.Fatal("accepted invalid preparation plan")
 			}
 		})
@@ -32,7 +32,7 @@ func TestSourceTransformHonorsCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := transform.Apply(ctx, ScriptContext{}); !errors.Is(err, context.Canceled) {
+	if _, err := transform.Apply(ctx, TransformInput{}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("error=%v", err)
 	}
 }

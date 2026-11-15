@@ -100,7 +100,7 @@ permissions: {}
 				if code := Main(func(key string) string { return env[key] }, &output, plugininstall.Acquisition{}); code != 1 {
 					t.Fatalf("code %d; want findings: %s", code, output.String())
 				}
-				var result persistedResult
+				var result resultreport.CheckResult
 				if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 					t.Fatal(err)
 				}
@@ -207,7 +207,7 @@ permissions: {}
 	if report := read(t, filepath.Join(workspace, "report.sarif")); strings.TrimSuffix(report, "\n") != selected {
 		t.Fatal("output-file differs from selected output")
 	}
-	var persisted persistedResult
+	var persisted resultreport.CheckResult
 	if err := json.Unmarshal([]byte(read(t, resultPath)), &persisted); err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			var result persistedResult
+			var result resultreport.CheckResult
 			if err := json.Unmarshal(data, &result); err != nil {
 				t.Fatal(err)
 			}
@@ -341,7 +341,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result persistedResult
+	var result resultreport.CheckResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}

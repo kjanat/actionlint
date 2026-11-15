@@ -13,11 +13,11 @@ import (
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // References reads the effective plugin list and reports whether it was declared.
-func References(value any) ([]pluginref.Reference, bool, error) {
+func References(value any) ([]pluginreference.Reference, bool, error) {
 	if err := ValidateRoot(value); err != nil {
 		return nil, false, err
 	}
@@ -29,7 +29,7 @@ func References(value any) ([]pluginref.Reference, bool, error) {
 	if err := declarations.DecodeConfig(raw); err != nil {
 		return nil, true, binding.At("plugins", err)
 	}
-	return []pluginref.Reference(declarations), true, nil
+	return []pluginreference.Reference(declarations), true, nil
 }
 
 func ValidateRoot(value any) error {
@@ -39,14 +39,14 @@ func ValidateRoot(value any) error {
 	return nil
 }
 
-func pluginManifestSequence(refs []pluginref.Reference) ([]any, error) {
+func pluginManifestSequence(refs []pluginreference.Reference) ([]any, error) {
 	sequence := make([]any, 0, len(refs))
 	for _, ref := range refs {
 		normalized, err := ref.Normalize()
 		if err != nil {
 			return nil, err
 		}
-		if normalized.DirectSource() != "" || normalized.Registry() == pluginref.DefaultRegistry {
+		if normalized.DirectSource() != "" || normalized.Registry() == pluginreference.DefaultRegistry {
 			sequence = append(sequence, normalized.String())
 			continue
 		}
@@ -59,7 +59,7 @@ func pluginManifestSequence(refs []pluginref.Reference) ([]any, error) {
 	return sequence, nil
 }
 
-func EditManifest(path string, original []byte, refs []pluginref.Reference) ([]byte, error) {
+func EditManifest(path string, original []byte, refs []pluginreference.Reference) ([]byte, error) {
 	before, err := document.Parse(path, original)
 	if err != nil {
 		return nil, err

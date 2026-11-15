@@ -30,7 +30,7 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ch
 	return Serve(ctx, in, out, session.analyze, CompleteDocument)
 }
 
-func (s *editorSession) analyze(ctx context.Context, documents map[string]Document) (Analysis, error) {
+func (s *editorPluginHost) analyze(ctx context.Context, documents map[string]Document) (Analysis, error) {
 	// A registry refresh in another process can revoke an already compiled
 	// plugin. Recheck local status before every analysis without network access.
 	if err := checkEditorPluginStatuses(ctx, s.sources, s.options.LogWriter); err != nil {

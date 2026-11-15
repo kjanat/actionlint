@@ -1,4 +1,4 @@
-package commitish
+package component
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 
 func TestBundledComponentMatchesSourceRecord(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("source.json")
+	data, err := os.ReadFile("builtin_commitish.source.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func TestBundledComponentMatchesSourceRecord(t *testing.T) {
 	if err := json.Unmarshal(data, &record); err != nil {
 		t.Fatal(err)
 	}
-	artifact := Artifact()
+	artifact := BuiltinCommitishArtifact()
 	if record.SHA256 != artifact.Info.SHA256 {
 		t.Fatalf("component digest %s differs from recorded source build %s", artifact.Info.SHA256, record.SHA256)
 	}
@@ -28,7 +28,7 @@ func TestBundledComponentMatchesSourceRecord(t *testing.T) {
 		t.Fatalf("missing source revision: %+v", record)
 	}
 	artifact.Bytes[0] = 0xff
-	if Artifact().Bytes[0] != 0 {
+	if BuiltinCommitishArtifact().Bytes[0] != 0 {
 		t.Fatal("artifact caller modified the bundled component")
 	}
 }

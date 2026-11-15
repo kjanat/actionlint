@@ -339,7 +339,7 @@ func (p *puller) resolve(ctx context.Context) (*artifacts.Artifact, error) {
 	if err != nil {
 		return nil, err
 	}
-	info := artifacts.Info{Source: p.ref.String(), SHA256: p.ref.Digest(), Manifest: manifest, Platform: platform}
+	info := artifacts.ArtifactProvenance{Source: p.ref.String(), SHA256: p.ref.Digest(), Manifest: manifest, Platform: platform}
 	for _, layer := range layers {
 		digest, err := descriptorDigest(layer)
 		if err != nil {

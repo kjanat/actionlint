@@ -36,7 +36,7 @@ on:
       - "!cmd/**"
       - "cmd/actionlint-lsp-wasm/**"
       - "!internal/cli/**"
-      - "!internal/cli/action/**"
+      - "!internal/cli/githubaction/**"
       - "!**/*_test.go"
       - "!**/*.md"
       - "man/actionlint.1.md"

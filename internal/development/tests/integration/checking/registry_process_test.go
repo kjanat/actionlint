@@ -18,7 +18,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // Registry installation must preserve the process boundary: install without
@@ -65,14 +65,14 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
+	ref, err := pluginreference.New(fixtureregistry.FixturePluginName, "v1.0.0", fixtureregistry.FixtureRegistryURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Resolve(t.Context(), []pluginref.Reference{ref}, nil); err != nil {
+	if err := project.Resolve(t.Context(), []pluginreference.Reference{ref}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Save(t.Context(), []pluginref.Reference{ref}); err != nil {
+	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
 	sources, err := (plugininstall.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})

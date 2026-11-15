@@ -31,11 +31,11 @@ const (
 	ProviderManifest Kind = "manifest"
 )
 
-// Info describes the distributed artifact and its top-level custom metadata.
+// ArtifactProvenance describes the distributed artifact and its top-level custom metadata.
 // SHA256 covers the downloaded bytes, before optional gzip decompression;
 // for an oci:// source it is the digest the source pins. Metadata is
 // untrusted declarative data, not evidence of ABI compatibility.
-type Info struct {
+type ArtifactProvenance struct {
 	Source     string          `json:"source"`
 	Kind       Kind            `json:"kind"`
 	SHA256     string          `json:"sha256"`
@@ -56,7 +56,7 @@ type Info struct {
 
 // Artifact owns one resolved snapshot, shared by inspection and execution.
 type Artifact struct {
-	Info  Info
+	Info  ArtifactProvenance
 	Bytes []byte
 }
 

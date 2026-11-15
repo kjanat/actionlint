@@ -1,4 +1,4 @@
-package pluginref
+package pluginreference
 
 import (
 	"net/url"

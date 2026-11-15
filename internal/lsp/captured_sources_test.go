@@ -11,7 +11,6 @@ import (
 	"time"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/lsp/transport"
 
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -61,7 +60,7 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 		if id != nil {
 			message["id"] = id
 		}
-		if err := transport.WriteMessage(client, message); err != nil {
+		if err := WriteRPCMessage(client, message); err != nil {
 			t.Fatal(err)
 		}
 	}

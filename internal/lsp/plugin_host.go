@@ -21,14 +21,14 @@ import (
 // Configured local artifacts are identified by content; changing their bytes or
 // selecting a different URI loads a new engine. Engines are closed at shutdown
 // because in-flight analyses may use an earlier version.
-type editorSession struct {
+type editorPluginHost struct {
 	options checking.Options
 	plugins *pluginexec.Loaded
 	engines *editorEngines
 	sources plugininstall.Sources
 }
 
-func newEditorSession(ctx context.Context, options checking.Options, paths []string, acquisition plugininstall.Acquisition) (*editorSession, error) {
+func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition plugininstall.Acquisition) (*editorPluginHost, error) {
 	sources, err := plugininstall.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func newEditorSession(ctx context.Context, options checking.Options, paths []str
 	return newEditorSources(ctx, options, sources)
 }
 
-func newEditorSources(ctx context.Context, options checking.Options, sources plugininstall.Sources) (*editorSession, error) {
+func newEditorSources(ctx context.Context, options checking.Options, sources plugininstall.Sources) (*editorPluginHost, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
 	}
 	options.LoadScriptEngine = engines.load
-	return &editorSession{options: options, plugins: plugins, engines: engines, sources: sources}, nil
+	return &editorPluginHost{options: options, plugins: plugins, engines: engines, sources: sources}, nil
 }
 
 func checkEditorPluginStatuses(ctx context.Context, sources plugininstall.Sources, log io.Writer) error {
@@ -84,7 +84,7 @@ func checkEditorPluginStatuses(ctx context.Context, sources plugininstall.Source
 }
 
 // Serve waits for every analysis before this releases their shared resources.
-func (s *editorSession) close(ctx context.Context) error {
+func (s *editorPluginHost) close(ctx context.Context) error {
 	return errors.Join(s.plugins.Close(ctx), s.engines.close(ctx))
 }
 

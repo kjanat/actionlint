@@ -1,4 +1,4 @@
-package plugincmd
+package plugincommand
 
 import (
 	"bytes"
@@ -18,6 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -45,18 +46,18 @@ type authoringReport struct {
 }
 
 type authoringFixture struct {
-	Preparation       *preparation.ScriptContext `json:"preparation,omitempty"`
-	ExpectSource      *string                    `json:"expect_source,omitempty"`
-	ExpectPreparation *preparation.SourcePlan    `json:"expect_preparation,omitempty"`
-	Name              string                     `json:"name"`
-	Request           checkinputs.ScriptRequest  `json:"request"`
-	Stdout            *string                    `json:"stdout,omitempty"`
-	Variables         map[string]string          `json:"variables,omitempty"`
-	ExitCode          *int                       `json:"exit_code,omitempty"`
-	Expect            *process.Result            `json:"expect,omitempty"`
-	ExpectConfig      json.RawMessage            `json:"expect_config,omitempty"`
-	ExpectVars        map[string]string          `json:"expect_vars,omitempty"`
-	ExpectError       string                     `json:"expect_error,omitempty"`
+	Preparation       *preparation.TransformInput `json:"preparation,omitempty"`
+	ExpectSource      *string                     `json:"expect_source,omitempty"`
+	ExpectPreparation *preparation.SourcePlan     `json:"expect_preparation,omitempty"`
+	Name              string                      `json:"name"`
+	Request           checkinputs.ScriptRequest   `json:"request"`
+	Stdout            *string                     `json:"stdout,omitempty"`
+	Variables         map[string]string           `json:"variables,omitempty"`
+	ExitCode          *int                        `json:"exit_code,omitempty"`
+	Expect            *process.Result             `json:"expect,omitempty"`
+	ExpectConfig      json.RawMessage             `json:"expect_config,omitempty"`
+	ExpectVars        map[string]string           `json:"expect_vars,omitempty"`
+	ExpectError       string                      `json:"expect_error,omitempty"`
 }
 
 type authoringCaseResult struct {
@@ -70,7 +71,8 @@ type authoringCaseResult struct {
 	Error       string                  `json:"error,omitempty"`
 }
 
-func Validate(ctx context.Context, streams commandstreams.Streams, r ValidateOptions) (int, error) {
+// Run validates the manifest without running its tool.
+func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams, _ plugininstall.Acquisition) (int, error) {
 	manifest, programs, err := loadAuthorManifest(ctx, streams, r.Path)
 	if err == nil {
 		err = process.ValidateManifest(manifest, programs)
@@ -96,7 +98,8 @@ func Validate(ctx context.Context, streams commandstreams.Streams, r ValidateOpt
 	return 0, nil
 }
 
-func Test(ctx context.Context, streams commandstreams.Streams, r TestOptions) (int, error) {
+// Run applies the manifest transforms to fixtures without running its tool.
+func (r TestOptions) Run(ctx context.Context, streams commandstreams.Streams, _ plugininstall.Acquisition) (int, error) {
 	manifest, programs, fixtures, err := loadAuthorTests(ctx, streams, r.Paths)
 	cases := []authoringCaseResult{}
 	report := authoringReport{SchemaVersion: 1, Valid: true, Cases: &cases}

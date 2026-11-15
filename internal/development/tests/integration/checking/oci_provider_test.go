@@ -22,7 +22,7 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -203,7 +203,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
 		t.Fatalf("planning fetched executable %d times", got)
 	}
-	ref, err := pluginref.Parse(pkg.reference)
+	ref, err := pluginreference.Parse(pkg.reference)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginref.Reference{ref}}, StatusOptions: plugininstall.StatusOptions{Network: grant, Acquisition: acquisition}}
+	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: plugininstall.StatusOptions{Network: grant, Acquisition: acquisition}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

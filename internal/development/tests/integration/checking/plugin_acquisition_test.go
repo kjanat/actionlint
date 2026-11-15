@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
@@ -54,11 +54,11 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginref.New("publisher/plugin", "v1.0.0", "https://127.0.0.1:8443/catalogue/")
+	ref, err := pluginreference.New("publisher/plugin", "v1.0.0", "https://127.0.0.1:8443/catalogue/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.Manifest.References = []pluginref.Reference{ref}
+	project.Manifest.References = []pluginreference.Reference{ref}
 	if _, err := project.SelectedPlugins(t.Context()); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("project private registry acquired: %v", err)
 	}

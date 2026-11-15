@@ -129,7 +129,7 @@ func TestCallScopeClosesPartialImportsAfterFailure(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = p.Close(context.Background()) })
 	teardown := callScope{plugin: p}
-	teardown.host, err = p.hostFactory.NewInstance(t.Context(), hostImplementation{}, nil)
+	teardown.host, err = p.hostFactory.NewInstance(t.Context(), hostLogger{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

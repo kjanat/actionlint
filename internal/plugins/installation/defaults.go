@@ -7,7 +7,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	pluginref "actionlint.kjanat.dev/v2/internal/plugins/manifests/references"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // DefaultPluginOptions selects registry defaults for tools without an explicit
@@ -31,11 +31,11 @@ type DefaultPluginOptions struct {
 // It declares, in bundled directory order, the registry plugin named after
 // each bundled tool in options.Tools that configuration leaves enabled and
 // on its default backend.
-func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]pluginref.Reference, error) {
+func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]pluginreference.Reference, error) {
 	if cfg.Plugins != nil {
 		return slices.Clone(cfg.Plugins), nil
 	}
-	refs := []pluginref.Reference{}
+	refs := []pluginreference.Reference{}
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]plug
 		}) {
 			continue
 		}
-		ref, err := pluginref.Parse(id)
+		ref, err := pluginreference.Parse(id)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]plug
 // SourceFollowingNotes warns, for each default registry plugin in refs that
 // replaces a bundled tool reporting findings in files its scripts source,
 // that the isolated plugin stops following those files.
-func SourceFollowingNotes(refs []pluginref.Reference) ([]string, error) {
+func SourceFollowingNotes(refs []pluginreference.Reference) ([]string, error) {
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		return nil, err
@@ -75,8 +75,8 @@ func SourceFollowingNotes(refs []pluginref.Reference) ([]string, error) {
 	var notes []string
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
-		if !manifest.Capabilities.ReportedSources || !slices.ContainsFunc(refs, func(ref pluginref.Reference) bool {
-			return ref.Name() == id && ref.Registry() == pluginref.DefaultRegistry
+		if !manifest.Capabilities.ReportedSources || !slices.ContainsFunc(refs, func(ref pluginreference.Reference) bool {
+			return ref.Name() == id && ref.Registry() == pluginreference.DefaultRegistry
 		}) {
 			continue
 		}

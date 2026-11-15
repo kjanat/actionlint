@@ -1,5 +1,4 @@
-// Package transport reads and writes Content-Length-framed language-server messages.
-package transport
+package lsp
 
 import (
 	"bufio"
@@ -12,26 +11,28 @@ import (
 	"strings"
 )
 
-type Message struct {
+// RPCMessage is one JSON-RPC request or notification.
+type RPCMessage struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"`
 }
 
-func ReadMessage(r *bufio.Reader) (Message, error) {
-	data, err := ReadPayload(r)
+// ReadRPCMessage reads and decodes one Content-Length-framed message.
+func ReadRPCMessage(r *bufio.Reader) (RPCMessage, error) {
+	data, err := ReadFramedPayload(r)
 	if err != nil {
-		return Message{}, err
+		return RPCMessage{}, err
 	}
-	var m Message
+	var m RPCMessage
 	err = jsonv2.Unmarshal(data, &m)
 	return m, err
 }
 
-// ReadPayload reads one Content-Length-framed JSON-RPC payload. Browser hosts
+// ReadFramedPayload reads one Content-Length-framed JSON-RPC payload. Browser hosts
 // use it to carry unchanged server responses over a worker message channel.
-func ReadPayload(r *bufio.Reader) (json.RawMessage, error) {
+func ReadFramedPayload(r *bufio.Reader) (json.RawMessage, error) {
 	length := -1
 	headers := 0
 	for {
@@ -72,7 +73,8 @@ func ReadPayload(r *bufio.Reader) (json.RawMessage, error) {
 	return data, nil
 }
 
-func WriteMessage(w io.Writer, value any) error {
+// WriteRPCMessage writes value as one Content-Length-framed JSON message.
+func WriteRPCMessage(w io.Writer, value any) error {
 	data, err := jsonv2.Marshal(value)
 	if err != nil {
 		return err

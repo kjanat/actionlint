@@ -120,7 +120,7 @@ func (c *callScope) execute(ctx context.Context, iface, name string, args ...wac
 func (c *callScope) prepareImports(ctx context.Context) error {
 	p := c.plugin
 	output := &lineWriter{log: p.log}
-	hostInstance, err := p.hostFactory.NewInstance(ctx, hostImplementation{output: output}, nil)
+	hostInstance, err := p.hostFactory.NewInstance(ctx, hostLogger{output: output}, nil)
 	if err != nil {
 		return err
 	}
