@@ -10,9 +10,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	checkpasses "actionlint.kjanat.dev/v2/internal/checking/passes"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
@@ -93,9 +92,9 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Result, error) 
 		if err := c.startEntry(invocation.EntryWorkflow, snapshot); err != nil {
 			return err
 		}
-		return checkpasses.Visit(w, checkpasses.Options{
+		return workflowvisit.Visit(w, workflowvisit.Options{
 			Passes: c.passes,
-			Hooks:  checkpasses.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, JobPass: c.visitJobPass, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
+			Hooks:  workflowvisit.Hooks{Workflow: c.beginWorkflow, Job: c.beginJob, JobPass: c.visitJobPass, Step: c.visitStep, ParallelBoundary: c.invalidateCheckout},
 			Debug:  options.Debug,
 		})
 	})

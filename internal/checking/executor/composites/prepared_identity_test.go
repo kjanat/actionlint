@@ -9,11 +9,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -254,7 +252,7 @@ type standaloneEntryFailure struct {
 	failure error
 }
 
-func (rule *standaloneEntryFailure) EnterInvocation(checkcalls.Invocation) error {
+func (rule *standaloneEntryFailure) EnterInvocation(workflowvisit.Invocation) error {
 	return rule.failure
 }
 

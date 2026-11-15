@@ -3,9 +3,7 @@ package correctness
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -49,7 +47,7 @@ func (rule *ruleExecutableBit) ApplyCheckout(actions *workspaceactions.Resolver)
 }
 
 type executableInvocation struct {
-	scope  checkcalls.Invocation
+	scope  workflowvisit.Invocation
 	parent *ExecutableChecker
 }
 
@@ -68,7 +66,7 @@ func (rule *ruleExecutableBit) VisitOpaqueAction(step workflowdecl.StepView) err
 	return rule.VisitInvocationStep(step)
 }
 
-func (rule *ruleExecutableBit) EnterInvocation(scope checkcalls.Invocation) error {
+func (rule *ruleExecutableBit) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
@@ -88,4 +86,4 @@ func (rule *ruleExecutableBit) LeaveInvocation(context invocation.Context) error
 	return nil
 }
 
-var _ checkcalls.InvocationParticipant = (*ruleExecutableBit)(nil)
+var _ workflowvisit.InvocationParticipant = (*ruleExecutableBit)(nil)

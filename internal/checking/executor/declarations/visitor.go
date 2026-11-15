@@ -1,14 +1,12 @@
 package declarations
 
 import (
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -36,7 +34,7 @@ type invocationDeclarationRule struct {
 	contexts []invocation.Context
 }
 
-func (r *invocationDeclarationRule) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *invocationDeclarationRule) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}

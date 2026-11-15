@@ -5,11 +5,11 @@ import (
 
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
-	workflowcall "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-call"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 
-	cachepolicy "actionlint.kjanat.dev/v2/internal/checking/cache"
+	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"

@@ -4,10 +4,10 @@ import (
 	"slices"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -26,7 +26,7 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, participates := New(rules, check).(checkcalls.InvocationParticipant)
+			_, participates := New(rules, check).(workflowvisit.InvocationParticipant)
 			if participates != supportsActions {
 				t.Fatalf("check declares action support %t, but composite participation is %t", supportsActions, participates)
 			}

@@ -1,7 +1,7 @@
 package correctness
 
 import (
-	cachepolicy "actionlint.kjanat.dev/v2/internal/checking/cache"
+	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"

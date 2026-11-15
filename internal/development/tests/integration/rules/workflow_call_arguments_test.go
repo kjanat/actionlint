@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowcall "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-call"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"

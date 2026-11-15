@@ -27,7 +27,7 @@ resolve configuration, dispatch document languages or manage execution.
 | `internal/checking/selection`           | Builtin selection, configured analyzer registrations, pass configuration and synchronous provenance capture.        |
 | `internal/checking`                     | Input dispatch, resolved document configuration, registration validation, tool construction and resource ownership. |
 | `internal/input/workspace`              | Repository discovery and immutable Git index snapshots shared within a session.                                     |
-| `internal/checking/passes`              | Ordered workflow traversal over supplied passes, with hooks for caller-owned expansion.                             |
+| `internal/checking/workflowvisit`       | Visitor and invocation contracts, and ordered workflow traversal over supplied passes with caller-owned expansion.  |
 | `internal/checking/executor/composites` | Nested invocation discovery, execution facts, script completion and collection into one result.                     |
 | `internal/checking/scripts`             | Prepared script batches, fact/tool adapters and bounded execution.                                                  |
 | `internal/results/policy`               | Reference inference, suppression/severity/filter policy, diagnostic completion and cross-document deduplication.    |
@@ -38,7 +38,7 @@ flowchart LR
     Application --> Registry[checking/selection]
     Application --> Composition[checking/executor/composites]
     Registry --> Builtin[builtin adapters]
-    Composition --> Engine[checking/passes]
+    Composition --> Engine[checking/workflowvisit]
     Composition --> Scripts[checking/scripts]
     Application --> Policy[results/policy]
     Application --> Workspace[input/workspace]

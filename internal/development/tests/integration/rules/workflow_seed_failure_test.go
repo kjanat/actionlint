@@ -6,10 +6,9 @@ import (
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
-	"actionlint.kjanat.dev/v2/internal/checking/passes"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -73,7 +72,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				}
 				callRule := workflowCallVisitor(t, workflow, cache, repofacts.Snapshot{})
 				labelRule := productionRunnerRule(t, snapshot, runners)
-				if err := passes.Visit(workflow, passes.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
+				if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
 					t.Fatalf("metadata cache failure stopped recovered entry traversal: %v", err)
 				}
 				return len(callRule.Errs()), len(labelRule.Errs())

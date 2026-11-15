@@ -9,7 +9,7 @@ import (
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 )

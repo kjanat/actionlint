@@ -7,12 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 
@@ -163,7 +161,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 	return nil
 }
 
-func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	child := NewRuleAction(rule.context, actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
 	child.validation = rule.validation
 	return child
@@ -183,4 +181,4 @@ func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 	return nil
 }
 
-var _ checkcalls.MetadataParticipant = (*ruleAction)(nil)
+var _ workflowvisit.MetadataParticipant = (*ruleAction)(nil)

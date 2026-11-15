@@ -11,7 +11,7 @@ import (
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"

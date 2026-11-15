@@ -3,7 +3,7 @@ package correctness
 import (
 	"iter"
 
-	identifier "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/id"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"

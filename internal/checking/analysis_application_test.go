@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )

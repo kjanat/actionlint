@@ -50,6 +50,6 @@ runny-*
 commitish
 *.log
 /.review-artifacts/
-!internal/checking/cache
+!internal/checking/cachepolicy
 /custom-gcl*
 *.exe

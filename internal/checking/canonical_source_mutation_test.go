@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )

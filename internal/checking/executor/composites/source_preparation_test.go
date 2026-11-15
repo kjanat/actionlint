@@ -4,8 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -22,7 +21,7 @@ type preparationObserver struct {
 	metadataChecks int
 }
 
-var _ checkcalls.InvocationParticipant = (*preparationObserver)(nil)
+var _ workflowvisit.InvocationParticipant = (*preparationObserver)(nil)
 
 func (r *preparationObserver) VisitWorkflowPre(workflowdecl.WorkflowView) error {
 	if !r.prepared[r.entryDocument] {
@@ -31,7 +30,7 @@ func (r *preparationObserver) VisitWorkflowPre(workflowdecl.WorkflowView) error 
 	return nil
 }
 
-func (r *preparationObserver) EnterInvocation(call checkcalls.Invocation) error {
+func (r *preparationObserver) EnterInvocation(call workflowvisit.Invocation) error {
 	if !r.prepared[call.Source.Reference().Document] {
 		r.t.Fatal("composite checks started before source preparation")
 	}
@@ -51,7 +50,7 @@ func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, sn
 	return nil
 }
 
-func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	return r
 }
 

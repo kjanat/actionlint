@@ -6,14 +6,12 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -192,9 +190,9 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
 	if _, action := declaration.Action(); !action {
 		return analysis.visitStepPasses(step)
 	}
-	var scripts []checkcalls.InvocationParticipant
+	var scripts []workflowvisit.InvocationParticipant
 	for _, pass := range analysis.passes {
-		if participant, ok := pass.(checkcalls.InvocationParticipant); ok {
+		if participant, ok := pass.(workflowvisit.InvocationParticipant); ok {
 			scripts = append(scripts, participant)
 		}
 	}
