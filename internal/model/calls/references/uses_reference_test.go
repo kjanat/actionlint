@@ -1,8 +1,9 @@
-package outline
+package references
 
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -32,7 +33,7 @@ func TestUsesReference(t *testing.T) {
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
 			t.Parallel()
-			got := ParseReference(tc.raw)
+			got := Classify(tc.raw)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v (%T), want %+v", got, got, tc.want)
 			}
@@ -40,7 +41,7 @@ func TestUsesReference(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			roundTrip, err := decodeUsesReference(data)
+			roundTrip, err := DecodeUsesReference(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,9 +68,45 @@ func TestWorkflowCallReference(t *testing.T) {
 	} {
 		t.Run(tc.raw, func(t *testing.T) {
 			t.Parallel()
-			if got := ParseWorkflowReference(tc.raw); !reflect.DeepEqual(got, tc.want) {
+			if got := ClassifyWorkflow(tc.raw); !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %+v (%T), want %+v", got, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestFormOfMatchesPrefixChecks proves FormOf agrees with the prefix tests it
+// replaced at each caller, for spellings with and without a valid remainder.
+func TestFormOfMatchesPrefixChecks(t *testing.T) {
+	t.Parallel()
+	for _, spec := range []string{
+		"", " ", ".", "./", "./a", "./a@v", ".//a", "./a ${{ x }}", "../a", ".@v", ".x/r@v",
+		"$", "$/", "$/a", "$/a@v", "$//a", "$@v", "$x/r@v", "$$/r@v",
+		"docker://", "docker://x", "docker://x:1", "docker://x@sha256:ab", "docker://${{ x }}", "Docker://x", "DOCKER://x", "docker:/x", "docker:x",
+		"builtin:", "builtin:x", "builtin:o/r@v", "Builtin:x",
+		"o/r@v", "o/r", "self:o/r@v", "https://h/o/r@v", " o/r@v", "o/r@v ${{ x }}", "${{ x }}",
+	} {
+		form := FormOf(spec)
+		if got, want := form == FormWorkspace, strings.HasPrefix(spec, "./"); got != want {
+			t.Errorf("FormOf(%q) workspace = %v, want %v", spec, got, want)
+		}
+		if got, want := form == FormSelfRepository, strings.HasPrefix(spec, "$/"); got != want {
+			t.Errorf("FormOf(%q) self-repository = %v, want %v", spec, got, want)
+		}
+		if got, want := form == FormContainer, strings.HasPrefix(spec, "docker://"); got != want {
+			t.Errorf("FormOf(%q) container = %v, want %v", spec, got, want)
+		}
+		if got, want := form == FormBuiltin, strings.HasPrefix(spec, "builtin:"); got != want {
+			t.Errorf("FormOf(%q) builtin = %v, want %v", spec, got, want)
+		}
+		image, hasImage := ContainerImage(spec)
+		wantImage, wantHasImage := strings.CutPrefix(spec, "docker://")
+		if image != wantImage || hasImage != wantHasImage {
+			t.Errorf("ContainerImage(%q) = %q, %v; want %q, %v", spec, image, hasImage, wantImage, wantHasImage)
+		}
+		other := strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") || strings.HasPrefix(spec, "docker://") || strings.HasPrefix(spec, "builtin:")
+		if got := form == FormRepository; got == other {
+			t.Errorf("FormOf(%q) repository = %v, want %v", spec, got, !other)
+		}
 	}
 }

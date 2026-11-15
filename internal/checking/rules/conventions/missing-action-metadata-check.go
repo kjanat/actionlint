@@ -1,8 +1,6 @@
 package conventions
 
 import (
-	"strings"
-
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -31,7 +29,12 @@ func missingActionMetadata(step workflowdecl.StepView, remote *actionremote.Reso
 		return nil
 	}
 	spec := action.Uses().Value()
-	if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") || strings.HasPrefix(spec, "docker://") || references.ActionReferenceProblem(spec) != "" {
+	switch references.FormOf(spec) {
+	case references.FormWorkspace, references.FormSelfRepository, references.FormContainer:
+		return nil
+	case references.FormRepository, references.FormBuiltin:
+	}
+	if references.ActionReferenceProblem(spec) != "" {
 		return nil
 	}
 	result := remote.Inspect(spec)

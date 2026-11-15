@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -1758,7 +1759,7 @@ func (p *Parser) ParseStep(n *syntax.Node) *workflowlang.Step {
 				declaredUses = newString(e.val)
 				declaredUses.Value = uses
 			}
-			if strings.HasPrefix(uses, "docker://") {
+			if references.FormOf(uses) == references.FormContainer {
 				kind = isDocker
 			} else {
 				kind = isAction

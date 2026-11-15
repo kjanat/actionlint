@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 )
 
 // Workflow describes selected workflow declarations recovered by a parser.
@@ -96,28 +97,28 @@ func (j Job) Needs() []string { return slices.Clone(j.needs) }
 // Uses returns the reusable workflow declaration, if any.
 func (j Job) Uses() string { return j.uses }
 
-// Reference classifies Uses with ParseWorkflowReference; it is nil when the job
+// Reference classifies Uses with callrefs.ClassifyWorkflow; it is nil when the job
 // calls no workflow.
-func (j Job) Reference() UsesReference { return ParseWorkflowReference(j.uses) }
+func (j Job) Reference() callrefs.UsesReference { return callrefs.ClassifyWorkflow(j.uses) }
 
 // Steps returns the declared steps in source order.
 func (j Job) Steps() []Step { return cloneSteps(j.steps) }
 
 type jobWire struct {
-	ID        string              `json:"id"`
-	Name      string              `json:"name,omitempty"`
-	Start     *sourcepos.Position `json:"start,omitempty"`
-	Needs     []string            `json:"needs"`
-	Uses      string              `json:"uses,omitempty"`
-	Reference UsesReference       `json:"reference,omitempty"`
-	Steps     []Step              `json:"steps"`
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name,omitempty"`
+	Start     *sourcepos.Position    `json:"start,omitempty"`
+	Needs     []string               `json:"needs"`
+	Uses      string                 `json:"uses,omitempty"`
+	Reference callrefs.UsesReference `json:"reference,omitempty"`
+	Steps     []Step                 `json:"steps"`
 }
 
 // MarshalJSON encodes the job's declarations.
 func (j Job) MarshalJSON() ([]byte, error) {
 	return marshal(jobWire{
 		ID: j.id, Name: j.name, Start: clonePosition(j.start), Needs: slices.Clone(j.needs),
-		Uses: j.uses, Reference: ParseWorkflowReference(j.uses), Steps: cloneSteps(j.steps),
+		Uses: j.uses, Reference: callrefs.ClassifyWorkflow(j.uses), Steps: cloneSteps(j.steps),
 	})
 }
 
@@ -131,7 +132,7 @@ func (j *Job) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	if _, err := decodeUsesReference(wire.Reference); err != nil {
+	if _, err := callrefs.DecodeUsesReference(wire.Reference); err != nil {
 		return err
 	}
 	*j = Job{id: value.ID, name: value.Name, uses: value.Uses, start: value.Start, needs: value.Needs, steps: value.Steps}
@@ -180,28 +181,28 @@ func (s Step) Kind() string { return s.kind }
 // Uses returns the declared action, if any.
 func (s Step) Uses() string { return s.uses }
 
-// Reference classifies Uses with ParseReference; it is nil when the step uses
+// Reference classifies Uses with callrefs.Classify; it is nil when the step uses
 // no action.
-func (s Step) Reference() UsesReference { return ParseReference(s.uses) }
+func (s Step) Reference() callrefs.UsesReference { return callrefs.Classify(s.uses) }
 
 // Steps returns the children of a parallel group.
 func (s Step) Steps() []Step { return cloneSteps(s.steps) }
 
 type stepWire struct {
-	ID        string              `json:"id,omitempty"`
-	Name      string              `json:"name,omitempty"`
-	Start     *sourcepos.Position `json:"start,omitempty"`
-	Kind      string              `json:"kind"`
-	Uses      string              `json:"uses,omitempty"`
-	Reference UsesReference       `json:"reference,omitempty"`
-	Steps     []Step              `json:"steps,omitempty"`
+	ID        string                 `json:"id,omitempty"`
+	Name      string                 `json:"name,omitempty"`
+	Start     *sourcepos.Position    `json:"start,omitempty"`
+	Kind      string                 `json:"kind"`
+	Uses      string                 `json:"uses,omitempty"`
+	Reference callrefs.UsesReference `json:"reference,omitempty"`
+	Steps     []Step                 `json:"steps,omitempty"`
 }
 
 // MarshalJSON encodes the step's declarations.
 func (s Step) MarshalJSON() ([]byte, error) {
 	return marshal(stepWire{
 		ID: s.id, Name: s.name, Start: clonePosition(s.start), Kind: s.kind,
-		Uses: s.uses, Reference: ParseReference(s.uses), Steps: cloneSteps(s.steps),
+		Uses: s.uses, Reference: callrefs.Classify(s.uses), Steps: cloneSteps(s.steps),
 	})
 }
 
@@ -216,7 +217,7 @@ func (s *Step) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	if _, err := decodeUsesReference(wire.Reference); err != nil {
+	if _, err := callrefs.DecodeUsesReference(wire.Reference); err != nil {
 		return err
 	}
 	*s = Step{id: value.ID, name: value.Name, kind: value.Kind, uses: value.Uses, start: value.Start, steps: value.Steps}

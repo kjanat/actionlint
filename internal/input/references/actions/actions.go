@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 
@@ -28,7 +29,7 @@ func ParseReference(host, spec string) (Reference, error) {
 		return Reference{}, errors.New("action ref is missing")
 	}
 	parts := strings.SplitN(location, "/", 3)
-	if len(parts) < 2 || parts[0] == "" || parts[1] == "" || parts[0] == "." || parts[0] == "$" {
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" || isLocalForm(spec) {
 		return Reference{}, errors.New("action needs an owner and repository")
 	}
 	directory := ""
@@ -39,6 +40,13 @@ func ParseReference(host, spec string) (Reference, error) {
 		return Reference{}, fmt.Errorf("invalid action directory %q", directory)
 	}
 	return Reference{host: strings.ToLower(host), repository: parts[0] + "/" + parts[1], directory: directory, ref: ref}, nil
+}
+
+// isLocalForm reports whether spec spells a workspace or self-repository path,
+// which has no owner.
+func isLocalForm(spec string) bool {
+	form := references.FormOf(spec)
+	return form == references.FormWorkspace || form == references.FormSelfRepository
 }
 
 func (r Reference) Host() string       { return r.host }

@@ -15,6 +15,7 @@ import (
 
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 
@@ -72,8 +73,9 @@ func (r *containerAdapter) checkStep(step workflowdecl.StepView) error {
 		return nil
 	}
 	spec := action.Uses().Value()
-	docker := strings.HasPrefix(spec, "docker://")
-	if !docker && (strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/")) {
+	form := references.FormOf(spec)
+	docker := form == references.FormContainer
+	if !docker && (form == references.FormWorkspace || form == references.FormSelfRepository) {
 		result, _ := r.actions.LookupMetadata(spec)
 		docker = result.Status() == workspaceactions.MetadataDockerfileOnly
 		if meta := result.Metadata(); meta != nil {

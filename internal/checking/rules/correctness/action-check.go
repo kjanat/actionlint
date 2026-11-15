@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
@@ -78,12 +77,11 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 		return nil
 	}
 
-	if strings.HasPrefix(spec, "./") {
+	switch references.FormOf(spec) {
+	case references.FormWorkspace:
 		// Relative to repository root
 		return rule.checkLocalAction(spec, spec, e)
-	}
-
-	if strings.HasPrefix(spec, "$/") {
+	case references.FormSelfRepository:
 		// Relative to the repository and commit that contain the running workflow.
 		// Normalize it to the existing local path form so metadata and output validation still work.
 		local, ok := references.SelfRepositoryLocal(spec)
@@ -92,11 +90,10 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 			return nil
 		}
 		return rule.checkLocalAction(local, spec, e)
-	}
-
-	if strings.HasPrefix(spec, "docker://") {
+	case references.FormContainer:
 		rule.Report(actioncheck.Docker(e)...)
 		return nil
+	case references.FormRepository, references.FormBuiltin:
 	}
 
 	if findings := actioncheck.RepositoryReference(spec, reporting.SourcePosition(e.Uses())); len(findings) != 0 {
@@ -128,7 +125,7 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action workflowdecl.ExecActionView) error {
-	if strings.HasPrefix(displaySpec, "$/") {
+	if references.FormOf(displaySpec) == references.FormSelfRepository {
 		localSpec = displaySpec
 	}
 	meta, _, source, err := rule.cache.FindMetadataDocument(localSpec)

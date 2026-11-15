@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
@@ -29,10 +30,10 @@ func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 		t.Fatalf("round trip: %s", data)
 	}
 	step := output[0].(outline.Workflow).Jobs()[0].Steps()[0]
-	if got := step.Reference(); got != (outline.WorkspaceReference{Path: "action"}) {
+	if got := step.Reference(); got != (callrefs.WorkspaceReference{Path: "action"}) {
 		t.Fatalf("step reference = %#v", got)
 	}
-	if got := outline.ParseWorkflowReference("./.github/workflows/reuse.yml"); got != (outline.SelfRepositoryReference{Path: ".github/workflows/reuse.yml"}) {
+	if got := callrefs.ClassifyWorkflow("./.github/workflows/reuse.yml"); got != (callrefs.SelfRepositoryReference{Path: ".github/workflows/reuse.yml"}) {
 		t.Fatal(got)
 	}
 }

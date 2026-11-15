@@ -52,7 +52,7 @@ func (rule *commitHashCheck) checkStep(n declaration.StepView) {
 		return
 	}
 
-	if image, ok := strings.CutPrefix(e.Uses().Value(), "docker://"); ok {
+	if image, ok := references.ContainerImage(e.Uses().Value()); ok {
 		rule.checkImageDigest(image, e.Uses())
 		return
 	}
@@ -114,7 +114,7 @@ func (rule *commitHashCheck) checkJob(n declaration.JobView) {
 // second return value is false when the specification has another form. The "action" rule reports the forms
 // which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
-	if strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "$/") {
+	if form := references.FormOf(spec); form == references.FormWorkspace || form == references.FormSelfRepository {
 		return "", false
 	}
 	owner, repo, ref, problem := references.SplitAction(spec)
