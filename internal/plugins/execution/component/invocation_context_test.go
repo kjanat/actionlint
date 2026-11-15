@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -163,8 +164,8 @@ func invocationContextPagedGraph(t *testing.T, count int) (invocation.Graph, []i
 		}
 		scriptIDs = append(scriptIDs, id)
 	}
-	for index := len(contexts) - 1; index >= 0; index-- {
-		if err := builder.Close(contexts[index]); err != nil {
+	for _, context := range slices.Backward(contexts) {
+		if err := builder.Close(context); err != nil {
 			t.Fatal(err)
 		}
 	}
