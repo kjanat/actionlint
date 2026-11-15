@@ -144,10 +144,12 @@ func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
 	checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
 		checked = true
 		if len(input.Invoked) != 2 || input.CallGraph.CallCount() != 4 {
-			return fmt.Errorf("want two scripts in four calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Export())
+			return fmt.Errorf("want two scripts in four calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Calls())
 		}
 		left, right := input.Invoked[0], input.Invoked[1]
-		if left.Reference != right.Reference || left.Occurrence.Owner == right.Occurrence.Owner || left.Occurrence.Ancestry[1] == right.Occurrence.Ancestry[1] {
+		leftChain, _ := input.CallGraph.Chain(left.Occurrence.Owner)
+		rightChain, _ := input.CallGraph.Chain(right.Occurrence.Owner)
+		if left.Reference != right.Reference || left.Occurrence.Owner == right.Occurrence.Owner || leftChain[1] == rightChain[1] {
 			return fmt.Errorf("repeated remote source lost distinct calls: %+v, %+v", left.Occurrence, right.Occurrence)
 		}
 		if !strings.HasPrefix(left.Reference.Document, "https://github.com/example/inner/blob/") {
@@ -195,22 +197,18 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 			checked := false
 			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
 				checked = true
-				calls := input.CallGraph.Export().Calls
+				calls := input.CallGraph.Calls()
 				if len(calls) == 0 {
 					return errors.New("missing remote call in graph")
 				}
-				last := calls[len(calls)-1].Outcome.Value()
-				valid := false
-				switch tc.name {
-				case "cycle":
-					_, valid = last.(checkinputs.CycleCall)
-				case "missing":
-					_, valid = last.(checkinputs.UnavailableCall)
-				case "invalid", "invalid metadata", "invalid self reference":
-					_, valid = last.(checkinputs.UnresolvedCall)
-				}
+				last := calls[len(calls)-1].Outcome.Kind()
+				want := map[string]invocation.OutcomeKind{
+					"cycle": invocation.OutcomeCycle, "missing": invocation.OutcomeUnavailable,
+					"invalid": invocation.OutcomeUnresolved, "invalid metadata": invocation.OutcomeUnresolved, "invalid self reference": invocation.OutcomeUnresolved,
+				}[tc.name]
+				valid := want != invocation.OutcomeInvalid && last == want
 				if !valid || len(input.Invoked) != 0 {
-					return fmt.Errorf("%s produced outcome %#v and %d scripts", tc.name, last, len(input.Invoked))
+					return fmt.Errorf("%s produced outcome %s and %d scripts", tc.name, last, len(input.Invoked))
 				}
 				return nil
 			}}
@@ -238,11 +236,11 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 	checked := false
 	checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
 		checked = true
-		calls := input.CallGraph.Export().Calls
+		calls := input.CallGraph.Calls()
 		if len(calls) != limit+1 {
 			return fmt.Errorf("depth limit %d produced %d calls", limit, len(calls))
 		}
-		if _, ok := calls[len(calls)-1].Outcome.Value().(checkinputs.DepthLimitedCall); !ok {
+		if calls[len(calls)-1].Outcome.Kind() != invocation.OutcomeDepthLimit {
 			return fmt.Errorf("last call did not report the depth limit: %+v", calls[len(calls)-1])
 		}
 		return nil
@@ -362,7 +360,7 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
 				checked = true
 				if len(input.Invoked) != 1 {
-					return fmt.Errorf("want one script, got %+v", input.CallGraph.Export())
+					return fmt.Errorf("want one script, got %+v", input.CallGraph.Calls())
 				}
 				document := input.Invoked[0].Reference.Document
 				remote := strings.HasPrefix(document, "https://github.com/example/action/blob/")
@@ -418,7 +416,7 @@ func TestRemoteCompositeRepositorySwitches(t *testing.T) {
 			checker := remoteGraphChecker{inspect: func(input checkinputs.Input) error {
 				checked = true
 				if len(input.Invoked) != 1 || input.CallGraph.CallCount() != 3 {
-					return fmt.Errorf("want one script across three calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Export())
+					return fmt.Errorf("want one script across three calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Calls())
 				}
 				want := filepath.ToSlash(filepath.Join(root, "nested", "action.yml"))
 				if middle == "example/second@v2" {

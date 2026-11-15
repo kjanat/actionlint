@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -96,7 +97,7 @@ type Script struct {
 	Execution  Execution
 }
 type Batch struct {
-	CallGraph checkinputs.CallGraph
+	CallGraph invocation.Graph
 	Scopes    []*Scope
 	Scripts   []Script
 }

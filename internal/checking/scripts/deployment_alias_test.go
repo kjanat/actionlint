@@ -36,7 +36,7 @@ func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input checkin
 	if !exists {
 		a.t.Fatal("nested invocation call missing")
 	}
-	path, exists := a.paths[call.Site]
+	path, exists := a.paths[call.Site()]
 	if !exists || script.Path != path {
 		a.t.Fatalf("source path crossed invocation boundary: %+v", script)
 	}

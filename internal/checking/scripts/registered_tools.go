@@ -20,7 +20,7 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 		return nil, ErrInvalidBatch
 	}
 	batchScopes, batchScripts := batch.Snapshot()
-	prepared := tools.Batch{CallGraph: batch.CallGraph()}
+	prepared := tools.Batch{CallGraph: batch.Invocations()}
 	scopes := map[*Scope]*tools.Scope{}
 	for _, scope := range batchScopes {
 		config := scope.Config

@@ -2,42 +2,32 @@ package inputs
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
-
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	t.Parallel()
-	graph := graphFixture(t)
-	entryID, callID := graph.Entry.ID, graph.Calls[0].ID
-	rootRun := ScriptOccurrence{
-		ID: OccurrenceID(strings.Repeat("d", 64)), Owner: entryID, Ancestry: []OccurrenceID{entryID},
-		Depth: 0, Declaration: source.Reference{Document: "workflow", Revision: "r", Node: "root-run"}, Kind: RunScript,
-	}
-	invokedRun := graph.Scripts[0]
-	actionInput := ScriptOccurrence{
-		ID: OccurrenceID(strings.Repeat("e", 64)), Owner: callID, Ancestry: []OccurrenceID{entryID, callID},
-		Depth: 1, Declaration: source.Reference{Document: "action", Revision: "r", Node: "input"}, Kind: ActionInputScript, Input: "script",
-	}
-	graph.Scripts = []ScriptOccurrence{rootRun, invokedRun, actionInput}
-	graph.Budget.MaxScripts = len(graph.Scripts)
+	graph := invocationfixture.Graph(t,
+		invocationfixture.Script{Node: "root-run", Entry: true}, invocationfixture.Script{Node: "script"},
+		invocationfixture.Script{Node: "input", Input: "script"})
+	scripts := graph.Scripts()
+	rootRun, invokedRun, actionInput := scripts[0], scripts[1], scripts[2]
 	rootText := Script{Reference: rootRun.Declaration, Text: "root", Occurrence: rootRun}
 	invokedText := Script{Reference: invokedRun.Declaration, Text: "invoked", Occurrence: invokedRun}
 	inputText := Script{Reference: actionInput.Declaration, Text: "input", Occurrence: actionInput}
-	valid := func(t *testing.T) Input {
-		t.Helper()
+	valid := func() Input {
 		return Input{
-			Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph),
+			Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
 			Scripts: []Script{rootText}, Invoked: []Script{invokedText},
 			ActionInputs: []ActionInput{{Script: inputText, Site: ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 		}
 	}
-	if err := valid(t).ValidateInvocations(); err != nil {
+	if err := valid().ValidateInvocations(); err != nil {
 		t.Fatalf("valid action input rejected: %v", err)
 	}
 	for name, change := range map[string]func(*Input){
@@ -67,7 +57,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			input := valid(t)
+			input := valid()
 			change(&input)
 			if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 				t.Fatalf("invalid collection accepted: %v", err)
@@ -78,11 +68,10 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 
 func TestCollectedInvocationGraphCanHaveZeroScripts(t *testing.T) {
 	t.Parallel()
-	graph := graphFixture(t)
-	graph.Scripts = nil
+	graph := invocationfixture.Graph(t)
 	input := Input{
-		Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph),
-		SelectedScripts: []OccurrenceID{},
+		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
+		SelectedScripts: []invocation.ID{},
 	}
 	if err := input.ValidateInvocations(); err != nil {
 		t.Fatalf("valid empty script collection rejected: %v", err)

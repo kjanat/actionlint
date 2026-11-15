@@ -549,9 +549,9 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 			t.Fatalf("canonical declaration kind disagrees with batch unit %d", index)
 		}
 		want := fact(projected, batch.data.graph, false)
-		occurrence, found := batch.data.projection.Script(unit.Occurrence)
+		occurrence, found := batch.data.graph.Script(unit.Occurrence)
 		if !found {
-			t.Fatalf("script occurrence %q is missing from projection", unit.Occurrence)
+			t.Fatalf("script occurrence %q is missing from the graph", unit.Occurrence)
 		}
 		want.Occurrence = occurrence
 		got, exists := batch.Fact(index, false)

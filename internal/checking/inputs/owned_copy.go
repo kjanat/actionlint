@@ -1,6 +1,6 @@
 package inputs
 
-//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/checking/inputs -type Input,Descriptor,CallGraphData,Call,ScriptOccurrence -output internal/checking/inputs/owned_copy.gen.go
+//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/checking/inputs -type Input,Descriptor -output internal/checking/inputs/owned_copy.gen.go
 
 // Detached returns an input with its mutable data isolated from the caller.
 // Immutable graph and interpreter handles and explicit capabilities stay shared.

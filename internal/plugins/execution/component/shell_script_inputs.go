@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 )
@@ -17,7 +18,7 @@ type (
 	shellScriptInputsKey  struct{}
 	shellScriptInputScope struct {
 		prepare     checkinputs.ShellScriptInputBuilder
-		occurrences map[checkinputs.OccurrenceID]struct{}
+		occurrences map[invocation.ID]struct{}
 	}
 )
 type shellScriptInputs struct{}
@@ -35,7 +36,7 @@ func (shellScriptInputs) ForScript(ctx context.Context, id string, dialect shell
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	occurrence := checkinputs.OccurrenceID(id)
+	occurrence := invocation.ID(id)
 	if _, ok := scope.occurrences[occurrence]; !ok {
 		return shellinputbind.ResultOptionInputStringErr{Value: "script occurrence is outside this analysis call"}, nil
 	}
@@ -84,11 +85,11 @@ func shellInputFailure(err error) (shellinputbind.ResultOptionInputString, error
 
 // Only run scripts with supplied text can request preparation, even when the
 // graph describes additional occurrences.
-func suppliedOccurrences(input checkinputs.Input) map[checkinputs.OccurrenceID]struct{} {
-	occurrences := make(map[checkinputs.OccurrenceID]struct{}, len(input.Scripts)+len(input.Invoked))
+func suppliedOccurrences(input checkinputs.Input) map[invocation.ID]struct{} {
+	occurrences := make(map[invocation.ID]struct{}, len(input.Scripts)+len(input.Invoked))
 	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {
-			if script.Occurrence.ID != "" && script.Occurrence.Kind == checkinputs.RunScript {
+			if script.Occurrence.ID != "" && script.Occurrence.Kind == invocation.ScriptRun {
 				occurrences[script.Occurrence.ID] = struct{}{}
 			}
 		}

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -16,8 +17,8 @@ import (
 // source preparation to plugins through the public WIT import. It prepares
 // only scripts whose occurrence is unique among scripts.
 func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellScriptInputBuilder {
-	byOccurrence := make(map[checkinputs.OccurrenceID]checkinputs.Script, len(scripts))
-	duplicates := make(map[checkinputs.OccurrenceID]struct{})
+	byOccurrence := make(map[invocation.ID]checkinputs.Script, len(scripts))
+	duplicates := make(map[invocation.ID]struct{})
 	for _, script := range scripts {
 		id := script.Occurrence.ID
 		if _, exists := byOccurrence[id]; exists {
@@ -26,7 +27,7 @@ func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellS
 		}
 		byOccurrence[id] = script
 	}
-	return func(ctx context.Context, id checkinputs.OccurrenceID, override *string) (*checkinputs.ShellScriptInput, error) {
+	return func(ctx context.Context, id invocation.ID, override *string) (*checkinputs.ShellScriptInput, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}

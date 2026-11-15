@@ -8,6 +8,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -15,10 +16,10 @@ import (
 func TestPreparerSelectsExactOccurrence(t *testing.T) {
 	t.Parallel()
 	reference := sourcepos.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
-	bashID, shID := checkinputs.OccurrenceID(strings.Repeat("a", 64)), checkinputs.OccurrenceID(strings.Repeat("b", 64))
+	bashID, shID := invocation.ID(strings.Repeat("a", 64)), invocation.ID(strings.Repeat("b", 64))
 	scripts := []checkinputs.Script{
-		{Reference: reference, Text: "echo same", Occurrence: checkinputs.ScriptOccurrence{ID: bashID}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}},
-		{Reference: reference, Text: "echo same", Occurrence: checkinputs.ScriptOccurrence{ID: shID}, Runtime: &scriptmodel.Execution{Shell: "sh", ShellKnown: true}},
+		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: bashID}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}},
+		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: shID}, Runtime: &scriptmodel.Execution{Shell: "sh", ShellKnown: true}},
 	}
 	prepare := NewShellScriptInputBuilder(scripts)
 	bash, err := prepare(t.Context(), bashID, nil)
@@ -33,10 +34,10 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 
 func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 	t.Parallel()
-	const id checkinputs.OccurrenceID = "known"
-	script := checkinputs.Script{Text: "echo hi", Occurrence: checkinputs.ScriptOccurrence{ID: id}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
+	const id invocation.ID = "known"
+	script := checkinputs.Script{Text: "echo hi", Occurrence: invocation.Script{ID: id}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 	prepare := NewShellScriptInputBuilder([]checkinputs.Script{script})
-	for name, occurrence := range map[string]checkinputs.OccurrenceID{"empty": "", "unknown": "foreign"} {
+	for name, occurrence := range map[string]invocation.ID{"empty": "", "unknown": "foreign"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			if _, err := prepare(t.Context(), occurrence, nil); err == nil {

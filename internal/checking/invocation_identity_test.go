@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +23,7 @@ type invocationCollector struct {
 
 type invocationObservation struct {
 	checkinputs.Script
-	graph checkinputs.CallGraph
+	graph invocation.Graph
 }
 
 func (*invocationCollector) Descriptor() checkinputs.Descriptor {
@@ -62,10 +63,10 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	}
 	script := scripts[0]
 	call, found := script.graph.Call(script.Occurrence.Owner)
-	if !found || call.Depth != 1 || call.Parent != script.graph.Entry().ID || call.Uses != "$/nested" {
+	if !found || call.Depth() != 1 || call.Parent() != script.graph.RootID() || call.Uses() != "$/nested" {
 		t.Fatalf("standalone nested call lost its root: %+v", call)
 	}
-	if err := script.graph.ValidateOccurrence(script.Occurrence); err != nil {
+	if err := checkinputs.ValidateOccurrence(script.graph, script.Occurrence); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -127,9 +128,9 @@ jobs:
 				if script.Text != "echo nested" || !strings.HasSuffix(filepath.ToSlash(script.Path), "nested/action.yml") || script.Reference.Document == "" {
 					t.Fatalf("missing script declaration: %+v", script)
 				}
-				invocation, found := script.graph.Call(script.Occurrence.Owner)
-				if !found || invocation.Site.Document == "" || !strings.HasSuffix(filepath.ToSlash(invocation.Site.Document), caller) || invocation.Uses != "$/nested" || invocation.Depth != depth {
-					t.Fatalf("missing immediate call site: %+v", invocation)
+				call, found := script.graph.Call(script.Occurrence.Owner)
+				if !found || call.Site().Document == "" || !strings.HasSuffix(filepath.ToSlash(call.Site().Document), caller) || call.Uses() != "$/nested" || call.Depth() != depth {
+					t.Fatalf("missing immediate call site: %+v", call)
 				}
 			}
 			if scripts[0].Reference != scripts[1].Reference {
@@ -138,30 +139,34 @@ jobs:
 			left, right := scripts[0], scripts[1]
 			leftCall, _ := left.graph.Call(left.Occurrence.Owner)
 			rightCall, _ := right.graph.Call(right.Occurrence.Owner)
-			if leftCall.Site != rightCall.Site {
+			if leftCall.Site() != rightCall.Site() {
 				t.Fatal("one immediate call site acquired different source identities")
 			}
+			ancestry := map[invocation.ID][]invocation.ID{}
 			for _, script := range scripts {
 				occurrence := script.Occurrence
-				if err := script.graph.ValidateOccurrence(occurrence); err != nil {
+				if err := checkinputs.ValidateOccurrence(script.graph, occurrence); err != nil {
 					t.Fatal(err)
 				}
-				if occurrence.Depth != depth || len(occurrence.Ancestry) != depth+1 || occurrence.Ancestry[0] != script.graph.Entry().ID || occurrence.Ancestry[depth] != occurrence.Owner {
-					t.Fatalf("incomplete ancestry: %+v", occurrence)
+				chain, _ := script.graph.Chain(occurrence.Owner)
+				if len(chain) != depth+1 || chain[0] != script.graph.RootID() || chain[depth] != occurrence.Owner {
+					t.Fatalf("incomplete ancestry: %+v", chain)
 				}
-				for level, id := range occurrence.Ancestry[1:] {
+				for level, id := range chain[1:] {
 					call, found := script.graph.Call(id)
-					if !found || call.Depth != level+1 || call.Parent != occurrence.Ancestry[level] {
+					if !found || call.Depth() != level+1 || call.Parent() != chain[level] {
 						t.Fatalf("broken ancestry link at level %d: %+v", level, call)
 					}
 				}
+				ancestry[occurrence.ID] = chain
 			}
-			if left.Occurrence.ID == right.Occurrence.ID || left.Occurrence.Owner == right.Occurrence.Owner || left.Occurrence.Ancestry[1] == right.Occurrence.Ancestry[1] {
+			leftChain, rightChain := ancestry[left.Occurrence.ID], ancestry[right.Occurrence.ID]
+			if left.Occurrence.ID == right.Occurrence.ID || left.Occurrence.Owner == right.Occurrence.Owner || leftChain[1] == rightChain[1] {
 				t.Fatal("distinct outer calls collapsed into one occurrence")
 			}
-			leftOuter, _ := left.graph.Call(left.Occurrence.Ancestry[1])
-			rightOuter, _ := right.graph.Call(right.Occurrence.Ancestry[1])
-			if leftOuter.Site == rightOuter.Site {
+			leftOuter, _ := left.graph.Call(leftChain[1])
+			rightOuter, _ := right.graph.Call(rightChain[1])
+			if leftOuter.Site() == rightOuter.Site() {
 				t.Fatal("distinct workflow call sites lost their source identity")
 			}
 		})

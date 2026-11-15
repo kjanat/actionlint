@@ -360,11 +360,11 @@ func TestCallFactsStayBoundToCanonicalDeclarationBeforeTraversal(t *testing.T) {
 	if !ok {
 		t.Fatal("batch script projection missing")
 	}
-	call, exists := result.Batch.CallGraph().Call(projected.Occurrence.Owner)
+	call, exists := result.Batch.Invocations().Call(projected.Occurrence.Owner)
 	if !exists {
 		t.Fatal("batch script owner call missing")
 	}
-	if call.Uses != wantFacts.Uses || call.Step.Line != wantFacts.Step.Line || call.Step.Column != wantFacts.Step.Column {
+	if callFacts, _ := call.Facts(); callFacts.Uses != wantFacts.Uses || callFacts.Step != wantFacts.Step {
 		t.Fatalf("batch public call facts differ from canonical graph: %+v", call)
 	}
 }

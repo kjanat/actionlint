@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -126,25 +126,9 @@ func TestRunCancellationDuringPreparationDoesNotStartChecker(t *testing.T) {
 
 func TestRunIsolatesActionInputFacts(t *testing.T) {
 	t.Parallel()
-	root, callID, scriptID := checkinputs.OccurrenceID(strings.Repeat("1", 64)), checkinputs.OccurrenceID(strings.Repeat("2", 64)), checkinputs.OccurrenceID(strings.Repeat("3", 64))
-	declaration := source.Reference{Document: "action.yml", Revision: "r", Node: "script"}
-	outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: source.Reference{Document: "action.yml", Revision: "r", Node: "document"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	graph, err := checkinputs.NewCallGraph(checkinputs.CallGraphData{
-		Entry:  checkinputs.InvocationEntry{ID: root, Kind: checkinputs.WorkflowEntry, Reference: source.Reference{Document: "workflow.yml", Revision: "r", Node: "document"}},
-		Budget: checkinputs.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}, Complete: true,
-		Calls:   []checkinputs.Call{{ID: callID, Parent: root, Ancestry: []checkinputs.OccurrenceID{root}, Depth: 1, Site: source.Reference{Document: "workflow.yml", Revision: "r", Node: "call"}, Uses: "owner/action", HasUses: true, Condition: checkinputs.CallEnabled, Outcome: outcome}},
-		Scripts: []checkinputs.ScriptOccurrence{{ID: scriptID, Owner: callID, Ancestry: []checkinputs.OccurrenceID{root, callID}, Depth: 1, Declaration: declaration, Kind: checkinputs.ActionInputScript, Input: "script"}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	occurrence, exists := graph.Script(scriptID)
-	if !exists {
-		t.Fatal("action input occurrence missing")
-	}
+	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script", Input: "script"})
+	occurrence := graph.Scripts()[0]
+	declaration := occurrence.Declaration
 	input := checkinputs.Input{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, ActionInputs: []checkinputs.ActionInput{{
 		Reference: declaration,
 		Spans:     []scriptmodel.Span{{Line: 1, Start: 1, End: 8}}, Occurrence: occurrence,
@@ -154,14 +138,14 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
 		in.ActionInputs[0].Site.Language = "python"
 		in.ActionInputs[0].Spans[0].End = 99
-		in.ActionInputs[0].Occurrence.Ancestry[0] = "changed"
+		in.ActionInputs[0].Occurrence.Owner = "changed"
 		close(changed)
 		return nil, nil
 	}}
 	second := testAnalyzer{checkinputs.Descriptor{Name: "second", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}, func(_ context.Context, in checkinputs.Input) ([]results.Diagnostic, error) {
 		<-changed
 		got := in.ActionInputs[0]
-		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence.Ancestry[0] != root {
+		if got.Site.Language != "javascript" || got.Spans[0].End != 8 || got.Occurrence != occurrence {
 			t.Errorf("action input facts shared between analyzers: %+v", got)
 		}
 		return nil, nil

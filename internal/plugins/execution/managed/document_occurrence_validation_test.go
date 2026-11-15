@@ -8,7 +8,9 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 type negotiationObserver struct {
@@ -23,11 +25,9 @@ func (guest *negotiationObserver) NegotiateTool(ctx context.Context, data, versi
 
 func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 	t.Parallel()
-	for name, change := range map[string]func(*checkinputs.ScriptOccurrence){
-		"owner":    func(value *checkinputs.ScriptOccurrence) { value.Owner = "foreign" },
-		"ancestry": func(value *checkinputs.ScriptOccurrence) { value.Ancestry[0] = "foreign" },
-		"depth":    func(value *checkinputs.ScriptOccurrence) { value.Depth++ },
-		"input":    func(value *checkinputs.ScriptOccurrence) { value.Input = "script" },
+	for name, change := range map[string]func(*invocation.Script){
+		"owner": func(value *invocation.Script) { value.Owner = "foreign" },
+		"input": func(value *invocation.Script) { value.Input = "script" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -67,15 +67,10 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 func TestDocumentBatchHeaderRequiredForSkippedInputs(t *testing.T) {
 	t.Parallel()
 	batch := documentBatchFixture(t, 1)
-	records := batch.CallGraph.Export()
-	records.Scripts[0].Kind = checkinputs.ActionInputScript
-	records.Scripts[0].Input = "script"
-	graph, err := checkinputs.NewCallGraph(records)
-	if err != nil {
-		t.Fatal(err)
-	}
+	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "run0", Input: "script", Entry: true})
 	batch.CallGraph = graph
-	batch.Scripts[0].Fact.Occurrence = records.Scripts[0]
+	batch.Scripts[0].Fact.Occurrence = graph.Scripts()[0]
+	batch.Scripts[0].Fact.Reference = graph.Scripts()[0].Declaration
 	batch.Scripts[0].Fact.Runtime = nil
 	batch.Scripts[0].Input = &checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}
 	guest := &negotiationObserver{}

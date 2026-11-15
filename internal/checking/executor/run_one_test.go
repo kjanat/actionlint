@@ -14,7 +14,9 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -291,41 +293,23 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 
 func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 	t.Parallel()
-	root, callID := checkinputs.OccurrenceID(strings.Repeat("1", 64)), checkinputs.OccurrenceID(strings.Repeat("2", 64))
-	runID, inputID := checkinputs.OccurrenceID(strings.Repeat("3", 64)), checkinputs.OccurrenceID(strings.Repeat("4", 64))
-	entry := source.Reference{Document: "workflow", Revision: "r", Node: "document"}
-	target := source.Reference{Document: "action", Revision: "r", Node: "document"}
-	outcome, err := checkinputs.NewCallOutcome(checkinputs.ExpandedCall{Target: target})
-	if err != nil {
-		t.Fatal(err)
-	}
-	occurrences := []checkinputs.ScriptOccurrence{
-		{ID: runID, Owner: callID, Ancestry: []checkinputs.OccurrenceID{root, callID}, Depth: 1, Declaration: source.Reference{Document: "action", Revision: "r", Node: "run"}, Kind: checkinputs.RunScript},
-		{ID: inputID, Owner: callID, Ancestry: []checkinputs.OccurrenceID{root, callID}, Depth: 1, Declaration: source.Reference{Document: "action", Revision: "r", Node: "input"}, Kind: checkinputs.ActionInputScript, Input: "script"},
-	}
-	graph, err := checkinputs.NewCallGraph(checkinputs.CallGraphData{
-		Entry:  checkinputs.InvocationEntry{ID: root, Kind: checkinputs.WorkflowEntry, Reference: entry},
-		Budget: checkinputs.InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 2}, Complete: true,
-		Calls: []checkinputs.Call{{ID: callID, Parent: root, Ancestry: []checkinputs.OccurrenceID{root}, Depth: 1, Site: source.Reference{Document: "workflow", Revision: "r", Node: "call"}, Condition: checkinputs.CallEnabled, Outcome: outcome}}, Scripts: occurrences,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "run"}, invocationfixture.Script{Node: "input", Input: "script"})
+	occurrences := graph.Scripts()
+	runID, inputID, entry := occurrences[0].ID, occurrences[1].ID, graph.Entry().Reference
 	input := checkinputs.Input{
-		Reference: entry, CallGraph: graph, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, SelectedScripts: []checkinputs.OccurrenceID{runID, inputID},
+		Reference: entry, CallGraph: graph, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, SelectedScripts: []invocation.ID{runID, inputID},
 		Invoked:      []checkinputs.Script{{Reference: occurrences[0].Declaration, Text: "original", Spans: []scriptmodel.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "original"}}, Occurrence: occurrences[0], Runtime: &scriptmodel.Execution{Shell: "bash"}}},
 		ActionInputs: []checkinputs.ActionInput{{Reference: occurrences[1].Declaration, Text: "original", Spans: []scriptmodel.Span{{End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "original"}}, Occurrence: occurrences[1], Site: checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 	}
-	want := graph.Export()
 	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "mutator"}}, run: func(_ context.Context, supplied checkinputs.Input) ([]results.Diagnostic, error) {
 		supplied.SelectedScripts[0] = "changed"
 		supplied.Invoked[0].Text = "changed"
-		supplied.Invoked[0].Occurrence.Ancestry[0] = "changed"
+		supplied.Invoked[0].Occurrence.Owner = "changed"
 		supplied.Invoked[0].Spans[0].End = 99
 		supplied.Invoked[0].Comments[0].Text = "changed"
 		supplied.Invoked[0].Runtime.Shell = "changed"
 		supplied.ActionInputs[0].Text = "changed"
-		supplied.ActionInputs[0].Occurrence.Ancestry[0] = "changed"
+		supplied.ActionInputs[0].Occurrence.Owner = "changed"
 		supplied.ActionInputs[0].Spans[0].End = 99
 		supplied.ActionInputs[0].Comments[0].Text = "changed"
 		supplied.ActionInputs[0].Site.Language = "changed"
@@ -334,11 +318,11 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 	if _, err := RunOne(t.Context(), input, prepared); err != nil {
 		t.Fatal(err)
 	}
-	if input.SelectedScripts[0] != runID || input.Invoked[0].Text != "original" || input.Invoked[0].Occurrence.Ancestry[0] != root || input.Invoked[0].Spans[0].End != 8 || input.Invoked[0].Comments[0].Text != "original" || input.Invoked[0].Runtime.Shell != "bash" {
+	if input.SelectedScripts[0] != runID || input.Invoked[0].Text != "original" || input.Invoked[0].Occurrence != occurrences[0] || input.Invoked[0].Spans[0].End != 8 || input.Invoked[0].Comments[0].Text != "original" || input.Invoked[0].Runtime.Shell != "bash" {
 		t.Fatal("RunOne mutated invoked script or selection")
 	}
-	if input.ActionInputs[0].Text != "original" || input.ActionInputs[0].Occurrence.Ancestry[0] != root || input.ActionInputs[0].Spans[0].End != 8 || input.ActionInputs[0].Comments[0].Text != "original" || input.ActionInputs[0].Site.Language != "javascript" || !reflect.DeepEqual(graph.Export(), want) {
-		t.Fatal("RunOne mutated action input or graph")
+	if input.ActionInputs[0].Text != "original" || input.ActionInputs[0].Occurrence != occurrences[1] || input.ActionInputs[0].Spans[0].End != 8 || input.ActionInputs[0].Comments[0].Text != "original" || input.ActionInputs[0].Site.Language != "javascript" {
+		t.Fatal("RunOne mutated action input")
 	}
 }
 
