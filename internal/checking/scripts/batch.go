@@ -28,23 +28,23 @@ type Unit struct {
 	Coordinates  source.Coordinates
 	Occurrence   invocation.ID
 	Reference    source.Reference
-	Run          workflowdecl.ExecRunView `clone:"shared"`
+	Run          workflowdecl.ExecRunView
 	Input        *ActionInput
 	Shell        *string
 	Path         string
-	Content      []byte `clone:"intern"`
+	Content      []byte
 	Origin       *findingmodel.IgnoreOrigin
 	Owner        *findingmodel.Owner
-	Scope        *Scope `clone:"shared"` // cloneInputs remaps scopes once to preserve occurrence identity.
+	Scope        *Scope
 	Execution    Execution
 	Environment  []scriptmodel.EnvironmentNames
-	Interpreters *commands.Registry `clone:"shared"`
+	Interpreters *commands.Registry
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  checkinputs.ScriptInput
-	Value workflowdecl.InputView `clone:"shared"`
+	Value workflowdecl.InputView
 }
 
 // ScriptRequest contains invocation policy; declarations come from the source registry.
@@ -126,10 +126,6 @@ func NewBatch(graph invocation.Graph, collection Collection) (Batch, error) {
 			return Batch{}, fmt.Errorf("%w: completed invocation scope %q is missing", ErrInvalidBatch, call.ID())
 		}
 	}
-	scopes, _ = cloneInputs(scopes, nil)
-	for _, scope := range scopes {
-		owners[scope.Context.ID()] = scope
-	}
 	scripts, err := prepareScripts(graph, collection, owners)
 	if err != nil {
 		return Batch{}, err
@@ -198,13 +194,12 @@ func (batch Batch) Invocations() invocation.Graph {
 
 func (batch Batch) CollectedScripts() bool { return batch.data != nil && batch.data.collected }
 
-// Snapshot copies invocation data and retains immutable declaration views.
-// Scope links are preserved within the copy.
+// Snapshot returns the batch's scopes and scripts. Callers must not modify them.
 func (batch Batch) Snapshot() ([]*Scope, []Unit) {
 	if batch.data == nil {
 		return nil, nil
 	}
-	return cloneInputs(batch.data.scopes, batch.data.scripts)
+	return batch.data.scopes, batch.data.scripts
 }
 
 func (batch Batch) Scripts() []Unit  { _, scripts := batch.Snapshot(); return scripts }

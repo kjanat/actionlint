@@ -305,7 +305,11 @@ func TestPreparedBatchRejectsForeignAndDerivedContexts(t *testing.T) {
 	for _, change := range []string{"zero context", "foreign context", "derived path"} {
 		t.Run(change, func(t *testing.T) {
 			t.Parallel()
-			scopes, units := first.Batch.Snapshot()
+			shared, units := first.Batch.Snapshot()
+			scopes := make([]*scriptexecution.Scope, len(shared))
+			for i, scope := range shared {
+				scopes[i] = new(*scope)
+			}
 			want := "foreign invocation context"
 			switch change {
 			case "zero context":
