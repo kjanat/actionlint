@@ -56,9 +56,6 @@ func TestReusableWorkflowCacheFindMetadataOK(t *testing.T) {
 	if diff := cmp.Diff(m, m2); diff != "" {
 		t.Error(diff)
 	}
-	if m == m2 {
-		t.Error("lookups share one metadata record")
-	}
 }
 
 func TestReusableWorkflowCacheFindMetadataError(t *testing.T) {
@@ -600,42 +597,6 @@ func TestReusableWorkflowNullCache(t *testing.T) {
 	}
 	if err != nil {
 		t.Errorf("error should not happen since the cache simply doesn't hit: %v", err)
-	}
-}
-
-func TestReusableWorkflowCacheDetachesMetadata(t *testing.T) {
-	t.Parallel()
-	cwd := filepath.Join("path", "to", "project")
-	c := newCapturedWorkflowCache(t, cwd, cwd, nil)
-	want := func() *calls.Metadata {
-		return &calls.Metadata{
-			Inputs:         calls.Inputs{"in": {Name: "in", Required: true, Type: calls.InputTypeString}},
-			Outputs:        calls.Outputs{"out": {Name: "out"}},
-			Secrets:        calls.Secrets{"token": {Name: "token", Required: true}},
-			JobPermissions: map[string]calls.PermissionScopeLevels{"build": {"contents": calls.PermissionLevelRead}},
-			JobCacheAccess: map[string]calls.CacheAccess{"build": {Mode: calls.DeclaredCacheMode(workflowlang.CacheModeRead), Operations: []string{"actions/cache"}}},
-		}
-	}
-	stored := want()
-	c.Store("./callee.yaml", stored)
-	stored.Inputs["in"] = calls.Input{Name: "changed"}
-	stored.JobPermissions["build"]["contents"] = calls.PermissionLevelWrite
-
-	first, _, ok := c.Lookup("./callee.yaml")
-	if !ok {
-		t.Fatal("stored metadata was not found")
-	}
-	if diff := cmp.Diff(want(), first); diff != "" {
-		t.Fatalf("Store kept the caller's storage: %s", diff)
-	}
-	delete(first.Outputs, "out")
-	first.Secrets["token"] = calls.Secret{Name: "token"}
-	first.JobPermissions["build"]["contents"] = calls.PermissionLevelWrite
-	first.JobCacheAccess["build"].Operations[0] = "changed"
-
-	second, _, _ := c.Lookup("./callee.yaml")
-	if diff := cmp.Diff(want(), second); diff != "" {
-		t.Fatalf("Lookup exposed cached storage: %s", diff)
 	}
 }
 

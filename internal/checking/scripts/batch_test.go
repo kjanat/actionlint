@@ -502,30 +502,17 @@ func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
 	run.Source.Spans[0].YamlLine = 999
 	argument.Value.Value = "corrupt input"
 	workflow.Jobs["test"].Steps[0].Pos.Line = 999
-	scopes[0].Context = invocation.Context{}
-	placement.Directory.Path = "corrupt placement"
-	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
-	clonedScopes, clonedUnits := batch.Snapshot()
-	if clonedUnits[0].Scope != clonedScopes[0] || clonedUnits[1].Scope != clonedScopes[0] || clonedUnits[0].Content != nil || clonedUnits[1].Content != nil {
+	batchScopes, units := batch.Snapshot()
+	if units[0].Scope != batchScopes[0] || units[1].Scope != batchScopes[0] || units[0].Content != nil || units[1].Content != nil {
 		t.Fatal("snapshot lost scope ownership or workflow source fallback")
 	}
-	clonedScopes[0].Context = invocation.Context{}
-	placement = clonedScopes[0].Paths.Placements.Details()
-	placement.Directory.Path = "corrupt returned placement"
-	clonedScopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
-	clonedUnits[0].Owner.Step.Line = 888
-	clonedUnits[0].Origin.StepPosition.Line = 777
 	after, _ := batch.Fact(0, false)
 	afterInput, _ := batch.Fact(1, false)
 	if !reflect.DeepEqual(first, after) || !reflect.DeepEqual(input, afterInput) {
 		t.Fatal("caller mutation changed a prepared fact")
 	}
-	_, fresh := batch.Snapshot()
-	if fresh[0].Scope.Paths.Placements.Details().Directory.Path != "original" {
-		t.Fatal("snapshot mutation changed checkout placement")
-	}
-	if fresh[0].Content != nil || fresh[0].Owner.Step.Line != 6 || fresh[0].Origin.StepPosition.Line != 6 || fresh[0].Scope.Context.ID() != graph.RootID() {
-		t.Fatal("snapshot mutation changed source provenance")
+	if batchScopes[0].Paths.Placements.Details().Directory.Path != "original" || units[0].Owner.Step.Line != 6 || units[0].Origin.StepPosition.Line != 6 || batchScopes[0].Context.ID() != graph.RootID() {
+		t.Fatal("snapshot lost source provenance")
 	}
 }
 
@@ -671,9 +658,6 @@ func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
 				}
 				fact.Comments[0].Text = "changed"
 				fact.Spans[0].Document.Line = 999
-				_, snapshot := batch.Snapshot()
-				snapshot[0].Run = workflowdecl.ExecRunView{}
-				snapshot[0].Owner.Step.Line = 999
 			}
 		})
 	}

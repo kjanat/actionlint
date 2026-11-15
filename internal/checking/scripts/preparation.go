@@ -126,7 +126,7 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 		if request.Input != nil || !hasRun || !run.Run().Present() || !run.Source().Present() || !hasBodyPos || !hasRunPos {
 			return fmt.Errorf("%w: run occurrence %q needs one mapped run body", ErrInvalidBatch, record.ID)
 		}
-		unit.Run, unit.Shell = run, copyValue(request.DefaultShell)
+		unit.Run, unit.Shell = run, request.DefaultShell
 		if run.Shell().Present() {
 			unit.Shell = new(run.Shell().Value())
 		}

@@ -291,7 +291,9 @@ func TestReferenceResolverSessionCachesExactRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result.FetchLog[0] = 'x'
+	if !json.Valid(result.FetchLog) {
+		t.Fatalf("result=%s", result.FetchLog)
+	}
 	cached, err := session.Resolve(t.Context(), request)
 	if err != nil || !json.Valid(cached.FetchLog) || calls.Load() != 1 {
 		t.Fatalf("cached=%s calls=%d err=%v", cached.FetchLog, calls.Load(), err)

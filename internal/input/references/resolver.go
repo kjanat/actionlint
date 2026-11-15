@@ -56,11 +56,6 @@ type RequestReport struct {
 	Requests            []RequestCounts `json:"requests"`
 }
 
-//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/input/references -type Result -output internal/input/references/owned_copy.gen.go
-
-// Clone detaches every mutable field, including optional network receipts.
-func (r Result) Clone() Result { return copyOwnedResult(r) }
-
 type Resolver interface {
 	Resolve(context.Context, Request) (Result, error)
 }

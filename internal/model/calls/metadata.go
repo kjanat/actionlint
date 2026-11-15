@@ -156,17 +156,6 @@ func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflow
 	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
 }
 
-//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/model/calls -type Metadata -output internal/model/calls/owned_copy.gen.go
-
-// Clone returns a copy that shares no map or slice storage with m.
-func (m *Metadata) Clone() *Metadata {
-	if m == nil {
-		return nil
-	}
-	result := copyOwnedMetadata(*m)
-	return &result
-}
-
 func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {
 	for _, step := range steps {
 		switch exec := step.Exec.(type) {

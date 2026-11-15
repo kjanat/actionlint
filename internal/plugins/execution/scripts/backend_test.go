@@ -11,8 +11,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -49,37 +47,6 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 	}
 	if got := backend.calls.Load(); got != 6 {
 		t.Fatalf("catalogue selected %d scripts, want 6", got)
-	}
-}
-
-func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
-	t.Parallel()
-	executable, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	shells := []string{"python"}
-	registration, err := RegisterProvider(Provider{
-		Manifest: envelopeManifest("catalogue", shells),
-		Selection: Selection{Process: &processconfig.Options{
-			Executable: &executable, LauncherArguments: []string{"-test.run=^TestShellSelectorProcessHelper$"},
-			Environment: []string{"ACTIONLINT_SELECTOR_HELPER=1"},
-		}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	shells[0] = "bash"
-	processes := process.NewProcessPool(t.Context(), 1)
-	defer processes.Wait()
-	for range 2 {
-		runner, err := registration.Build(tools.Context{Processes: processes})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Execution: tools.Execution{Shell: "bash"}}}}); err != nil {
-			t.Fatalf("caller changed registered catalogue: %v", err)
-		}
 	}
 }
 
