@@ -42,7 +42,7 @@ func (ctx *ownedCopyContext) copyOwnedFinding(in Finding) Finding {
 	out := in
 	out.Diagnostic = ctx.copyOwnedDiagnostic_7e9304eab05e88fed387b3b0ef071edf(in.Diagnostic)
 	out.LifecycleEvidence = ctx.copyOwnedValue_a20c76a4097cded664fbce69c4763a0d(in.LifecycleEvidence)
-	out.EndPosition = ctx.copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in.EndPosition)
+	out.EndPosition = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.EndPosition)
 	out.Source = ctx.copyOwnedInternedBytes(in.Source)
 	out.SuppressionOrigin = ctx.copyOwnedValue_5b63e45071f3623d527e4e32b340556f(in.SuppressionOrigin)
 	out.SuppressionTarget = ctx.copyOwnedValue_5b63e45071f3623d527e4e32b340556f(in.SuppressionTarget)
@@ -69,7 +69,7 @@ func (ctx *ownedCopyContext) copyOwnedValue_a20c76a4097cded664fbce69c4763a0d(in 
 	return (*lifecycle.Evidence)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in *source.Position) *source.Position {
+func (ctx *ownedCopyContext) copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in *source.Position) *source.Position {
 	if in == nil {
 		return nil
 	}
@@ -145,13 +145,13 @@ func (ctx *ownedCopyContext) copyOwnedEvidence_b6de2083f6a13cb13415ac74865b5030(
 
 func (ctx *ownedCopyContext) copyOwnedIgnoreOrigin_a1370ab1e0d227e8e22f7d6653cb694e(in IgnoreOrigin) IgnoreOrigin {
 	out := in
-	out.StepPosition = ctx.copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in.StepPosition)
+	out.StepPosition = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.StepPosition)
 	return out
 }
 
 func (ctx *ownedCopyContext) copyOwnedOwner_04cdcfd326366ef897e9d060f96b402e(in Owner) Owner {
 	out := in
-	out.Step = ctx.copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in.Step)
+	out.Step = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.Step)
 	return out
 }
 

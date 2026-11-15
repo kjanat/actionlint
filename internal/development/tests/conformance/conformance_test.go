@@ -549,7 +549,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			}
 		}
 		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
-		out := upstreamDiagnostics(actioncheck.Check(meta, &source.Position{Line: 1, Col: 1}, actionmeta.ReferencedFiles{}))
+		out := upstreamDiagnostics(actioncheck.Check(meta, &source.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")

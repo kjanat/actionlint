@@ -93,5 +93,6 @@ func outlinePosition(pos *sourcepos.Position) *sourcepos.Position {
 	if pos == nil {
 		return nil
 	}
-	return &sourcepos.Position{Line: pos.Line, Column: pos.Column}
+	clone := *pos
+	return &clone
 }

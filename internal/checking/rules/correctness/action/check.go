@@ -461,7 +461,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlan
 		}
 		id := strings.ToLower(name)
 		position := key.Origin().Span.Start
-		pos := &sourcepos.Position{Line: position.Line, Column: position.Column}
+		pos := &position
 		m, ok := meta.Input(id)
 		if !ok {
 			if meta.AllowsAdditionalInputs() {
