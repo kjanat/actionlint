@@ -141,7 +141,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 				t.Fatal(err)
 			}
 			scripts := result.Batch.Scripts()
-			if len(scripts) != 2 || scripts[0].Run.Run().Value() != "echo before" || scripts[1].Run.Run().Value() != "echo after" {
+			if len(scripts) != 2 || scripts[0].Run.Run.Text() != "echo before" || scripts[1].Run.Run.Text() != "echo after" {
 				t.Fatalf("rejected run entered standalone script batch: %+v", scripts)
 			}
 			found := false
@@ -176,7 +176,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 		t.Fatalf("empty composite script lost: scripts=%d findings=%v", len(scripts), result.Findings)
 	}
 	run := scripts[0].Run
-	if !run.Run().SourceScalar().HasSource || !run.Source().Present() || run.Run().Value() != "" {
+	if !run.Run.SourceScalar.HasSource || run.Source == nil || run.Run.Text() != "" {
 		t.Fatal("empty script lost its physical scalar or source mapping")
 	}
 }

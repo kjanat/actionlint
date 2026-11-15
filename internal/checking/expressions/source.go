@@ -8,20 +8,21 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func (rule *Checker) scopeExpressionSource(value string, pos *workflowlang.Pos) func() {
 	previous, offset := rule.expressionSource, rule.expressionOffset
-	rule.expressionSource, rule.expressionOffset = workflowdecl.ScriptSourceView{}, 0
+	rule.expressionSource, rule.expressionOffset = nil, 0
 	if pos != nil {
-		source, _ := rule.workflow.ExpressionSourcesAt(*pos)
+		var source *workflowlang.ScriptSource
+		if rule.workflow.Present() {
+			source = rule.workflow.ExpressionSources[*pos]
+		}
 		if override, exists := rule.scriptSources[*pos]; exists {
 			source = override
 		}
-		if source.Present() && source.Value() == value {
+		if source != nil && source.Value == value {
 			rule.expressionSource = source
 		}
 	}
@@ -30,34 +31,25 @@ func (rule *Checker) scopeExpressionSource(value string, pos *workflowlang.Pos) 
 
 func (rule *Checker) expressionPosition(offset int, end bool) *workflowlang.Pos {
 	source := rule.expressionSource
-	if !source.Present() || offset < 0 || offset > len(source.Value()) {
+	if source == nil || offset < 0 || offset > len(source.Value) {
 		return nil
 	}
-	prefix := source.Value()[:offset]
+	prefix := source.Value[:offset]
 	line, column := strings.Count(prefix, "\n")+1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:])+1
-	if end || offset == len(source.Value()) {
-		position, present := source.EndPos(line, column)
-		if present {
-			return &position
-		}
-		return nil
+	if end || offset == len(source.Value) {
+		position, _ := source.EndPos(line, column)
+		return position
 	}
-	position, present := source.Position(line, column)
-	if present {
-		return &position
-	}
-	return nil
+	position, _ := source.Position(line, column)
+	return position
 }
 
-func viewPosition(view interface {
-	Pos() (workflowlang.Pos, bool)
-},
-) *workflowlang.Pos {
-	position, present := view.Pos()
-	if !present {
+// scalarPosition returns the position of an optional scalar.
+func scalarPosition(s *workflowlang.String) *workflowlang.Pos {
+	if s == nil {
 		return nil
 	}
-	return &position
+	return s.Pos
 }
 
 func expressionLiteral(text string) (any, bool) {
@@ -68,26 +60,9 @@ func expressionLiteral(text string) (any, bool) {
 	return expreval.ConditionConstantValue(expression)
 }
 
-func rawPosition(view interface {
-	Position() (workflowlang.Pos, bool)
-},
-) *workflowlang.Pos {
-	position, present := view.Position()
-	if !present {
+func rawValuePosition(value workflowlang.RawYAMLValue) *workflowlang.Pos {
+	if value == nil {
 		return nil
 	}
-	return &position
-}
-
-func rawValuePosition(view workflowdecl.RawYAMLValueView) *workflowlang.Pos {
-	if object, present := view.RawYAMLObject(); present {
-		return rawPosition(object)
-	}
-	if array, present := view.RawYAMLArray(); present {
-		return rawPosition(array)
-	}
-	if scalar, present := view.RawYAMLString(); present {
-		return rawPosition(scalar)
-	}
-	return nil
+	return value.Pos()
 }

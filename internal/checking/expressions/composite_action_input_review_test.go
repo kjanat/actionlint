@@ -19,7 +19,7 @@ func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
 	rule := newTestChecker()
 	view := ownedWorkflowFixture(workflow)
 	job := testJob(t, view, "test")
-	rule.BeginComposite(workflowdecl.ActionBodyView{})
+	rule.BeginComposite(workflowdecl.ActionBody{})
 	rule.Error(&workflowlang.Pos{Line: 1, Col: 1}, "existing finding")
 	originalFinding := rule.errs[0]
 	if err := rule.CheckCompositeStep(testStep(t, job, 0)); err != nil {
@@ -28,7 +28,7 @@ func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
 	if len(rule.errs) != 2 || rule.errs[0].message != originalFinding.message || rule.errs[1].rule != "script-injection" {
 		t.Fatalf("script finding lost: %+v", rule.errs)
 	}
-	if rule.scriptEnv.Present() {
+	if rule.scriptEnv != nil {
 		t.Fatal("composite action input checking kept the previous step's environment")
 	}
 }

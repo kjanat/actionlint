@@ -1,12 +1,11 @@
 package execution
 
 import (
-	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
@@ -87,19 +86,22 @@ func EnvironmentLiteral(semantic value.Value) (string, bool) {
 
 // ServicesMayChangeWorkspace reports service mounts or options that can expose
 // the workspace even when the job itself does not run in a container.
-func ServicesMayChangeWorkspace(services workflowdecl.ServicesView) bool {
-	if !services.Present() {
+func ServicesMayChangeWorkspace(services *workflowlang.Services) bool {
+	if services == nil {
 		return false
 	}
-	if services.Expression().Present() {
+	if services.Expression != nil {
 		return true
 	}
-	for _, service := range services.Value() {
-		container := service.Container()
-		if !container.Present() || container.Expression().Present() || container.VolumesExpression().Present() || len(slices.Collect(container.Volumes())) != 0 {
+	for _, service := range services.Value {
+		var container *workflowlang.Container
+		if service != nil {
+			container = service.Container
+		}
+		if container == nil || container.Expression != nil || container.VolumesExpression != nil || len(container.Volumes) != 0 {
 			return true
 		}
-		if options := container.Options(); options.Present() && options.Value() != "" {
+		if container.Options.Text() != "" {
 			return true
 		}
 	}

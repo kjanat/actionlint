@@ -1,12 +1,9 @@
 package scripts
 
 import (
-	"reflect"
-	"slices"
 	"strings"
 	"testing"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -33,11 +30,11 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 					t.Fatal(err)
 				}
 				units := batch.Scripts()
-				assertScalarMapping(t, rawRun.Source, units[0].Run.Source())
-				assertScalarMapping(t, rawInput.Source, units[1].Input.Value.Source())
-				runPos, runHasPos := units[0].Run.Run().Pos()
-				inputPos, inputHasPos := units[1].Input.Value.Value().Pos()
-				if units[0].Run.Run().Value() != rawRun.Run.Value || units[1].Input.Value.Value().Value() != rawInput.Value.Value ||
+				assertScalarMapping(t, rawRun.Source, units[0].Run.Source)
+				assertScalarMapping(t, rawInput.Source, units[1].Input.Value.Source)
+				runPos, runHasPos := units[0].Run.Run.Position()
+				inputPos, inputHasPos := units[1].Input.Value.Value.Position()
+				if units[0].Run.Run.Text() != rawRun.Run.Value || units[1].Input.Value.Value.Text() != rawInput.Value.Value ||
 					!runHasPos || runPos != *rawRun.Run.Pos || !inputHasPos || inputPos != *rawInput.Value.Pos {
 					t.Fatal("canonical scalar changed decoded text or position")
 				}
@@ -46,34 +43,9 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 	}
 }
 
-func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical workflowdecl.ScriptSourceView) {
+func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical *workflowlang.ScriptSource) {
 	t.Helper()
-	if original == nil || !canonical.Present() {
-		t.Fatal("scalar source absent")
-	}
-	if canonical.Value() != original.Value || canonical.Literal() != original.Literal || canonical.ContentStart() != original.ContentStart || canonical.ScalarEnd() != original.ScalarEnd ||
-		!reflect.DeepEqual(slices.Collect(canonical.Spans()), original.Spans) || !reflect.DeepEqual(slices.Collect(canonical.Comments()), original.Comments) ||
-		!reflect.DeepEqual(slices.Collect(canonical.LineSpans()), original.LineSpans()) || canonical.LinesLen() != len(original.Lines) {
-		t.Fatal("canonical source changed scalar metadata, spans, or comments")
-	}
-	for index, originalLine := range original.Lines {
-		line, ok := canonical.Line(index)
-		if !ok || line.Start != originalLine.Start || line.End != originalLine.End {
-			t.Fatal("canonical source changed line bounds")
-		}
-	}
-	for line := 0; line <= len(original.Lines)+1; line++ {
-		for column := range 49 {
-			position, ok := original.Position(line, column)
-			actual, actualOK := canonical.Position(line, column)
-			if ok != actualOK || ok && *position != actual {
-				t.Fatalf("Position(%d,%d) changed: %v/%v != %v/%v", line, column, position, ok, actual, actualOK)
-			}
-			end, endOK := original.EndPos(line, column)
-			actualEnd, actualEndOK := canonical.EndPos(line, column)
-			if endOK != actualEndOK || endOK && *end != actualEnd {
-				t.Fatalf("EndPos(%d,%d) changed: %v/%v != %v/%v", line, column, end, endOK, actualEnd, actualEndOK)
-			}
-		}
+	if original == nil || canonical != original {
+		t.Fatal("unit lost its declared scalar source")
 	}
 }

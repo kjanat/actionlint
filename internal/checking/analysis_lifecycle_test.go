@@ -17,7 +17,7 @@ type failAfterScheduling struct {
 	failure error
 }
 
-func (r *failAfterScheduling) VisitStep(workflowdecl.StepView) error { return r.failure }
+func (r *failAfterScheduling) VisitStep(workflowdecl.Step) error { return r.failure }
 
 func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	t.Parallel()
@@ -48,7 +48,7 @@ func (rule *scheduledResourceRule) attachScope(scope *process.Scope) {
 	scope.Register(func() error { rule.workers.Wait(); return nil })
 }
 
-func (rule *scheduledResourceRule) VisitStep(workflowdecl.StepView) error {
+func (rule *scheduledResourceRule) VisitStep(workflowdecl.Step) error {
 	rule.workers.Go(func() { rule.completed.Store(true) })
 	return nil
 }

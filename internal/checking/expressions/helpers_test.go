@@ -14,7 +14,7 @@ import (
 
 func newTestChecker() *Checker { return New(Dependencies{}, Options{UnsoundTernary: true}) }
 
-func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdecl.WorkflowView) {
+func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdecl.Workflow) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -38,7 +38,7 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflowdec
 	return checker, workflow
 }
 
-func testJob(tb testing.TB, workflow workflowdecl.WorkflowView, key string) workflowdecl.JobView {
+func testJob(tb testing.TB, workflow workflowdecl.Workflow, key string) workflowdecl.Job {
 	tb.Helper()
 	job, present := workflow.Job(key)
 	if !present {
@@ -47,7 +47,7 @@ func testJob(tb testing.TB, workflow workflowdecl.WorkflowView, key string) work
 	return job
 }
 
-func testStep(tb testing.TB, job workflowdecl.JobView, index int) workflowdecl.StepView {
+func testStep(tb testing.TB, job workflowdecl.Job, index int) workflowdecl.Step {
 	tb.Helper()
 	steps := slices.Collect(job.Steps())
 	if index < 0 || index >= len(steps) {
@@ -58,30 +58,24 @@ func testStep(tb testing.TB, job workflowdecl.JobView, index int) workflowdecl.S
 
 // Pure checker fixtures freeze synthetic typed models; they do not admit bytes
 // to a SourceSnapshots registry or claim captured parse provenance.
-func ownedWorkflowFixture(workflow *workflowlang.Workflow) workflowdecl.WorkflowView {
+func ownedWorkflowFixture(workflow *workflowlang.Workflow) workflowdecl.Workflow {
 	return workflowdecl.Publish("", workflow, false, "").Bind("unit-expression").Workflow()
 }
 
-func ownedStringFixture(value *workflowlang.String) workflowdecl.StringView {
-	return ownedWorkflowFixture(&workflowlang.Workflow{Name: value}).Name()
+func ownedStringFixture(value *workflowlang.String) *workflowlang.String {
+	return value
 }
 
-func ownedMatrixFixture(matrix *workflowlang.Matrix) workflowdecl.MatrixView {
+func ownedMatrixFixture(matrix *workflowlang.Matrix) *workflowlang.Matrix {
 	workflow := ownedWorkflowFixture(&workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Strategy: &workflowlang.Strategy{Matrix: matrix}}}})
 	job, _ := workflow.Job("test")
-	return job.Strategy().Matrix()
+	return job.Strategy.Matrix
 }
 
-func ownedRawStringFixture(value *workflowlang.RawYAMLString) workflowdecl.RawYAMLStringView {
-	row, _ := ownedMatrixFixture(&workflowlang.Matrix{Rows: map[string]*workflowlang.MatrixRow{"value": {Values: []workflowlang.RawYAMLValue{value}}}}).RowsAt("value")
-	for value := range row.Values() {
-		scalar, _ := value.RawYAMLString()
-		return scalar
-	}
-	return workflowdecl.RawYAMLStringView{}
+func ownedRawStringFixture(value *workflowlang.RawYAMLString) *workflowlang.RawYAMLString {
+	return value
 }
 
-func ownedMatrixRowFixture(row *workflowlang.MatrixRow) workflowdecl.MatrixRowView {
-	view, _ := ownedMatrixFixture(&workflowlang.Matrix{Rows: map[string]*workflowlang.MatrixRow{"value": row}}).RowsAt("value")
-	return view
+func ownedMatrixRowFixture(row *workflowlang.MatrixRow) *workflowlang.MatrixRow {
+	return row
 }

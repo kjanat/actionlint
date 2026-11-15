@@ -203,7 +203,23 @@ type String struct {
 
 // ContainsExpression returns whether the String contains at least one ${{ }} expression.
 func (s *String) ContainsExpression() bool {
-	return exprsyntax.ContainsExpression(s.Value)
+	return s != nil && exprsyntax.ContainsExpression(s.Value)
+}
+
+// Text returns the decoded value, or "" when the scalar is absent.
+func (s *String) Text() string {
+	if s == nil {
+		return ""
+	}
+	return s.Value
+}
+
+// Position returns the scalar's position when it is present.
+func (s *String) Position() (Pos, bool) {
+	if s == nil || s.Pos == nil {
+		return Pos{}, false
+	}
+	return *s.Pos, true
 }
 
 func IsExprAssigned(s string) bool {
@@ -231,7 +247,7 @@ func IsExprAssigned(s string) bool {
 
 // IsExpressionAssigned returns whether a single expression is assigned to the String.
 func (s *String) IsExpressionAssigned() bool {
-	return IsExprAssigned(s.Value)
+	return s != nil && IsExprAssigned(s.Value)
 }
 
 // Bool represents a YAML boolean or expression and its source position.

@@ -4,6 +4,10 @@ import (
 	"strconv"
 	"strings"
 
+	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -11,8 +15,6 @@ import (
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
@@ -40,10 +42,10 @@ func scriptLiteralProof(value string) scriptValueProof {
 }
 
 func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
-	if !rule.scriptEnv.Present() {
+	if rule.scriptEnv == nil {
 		return false
 	}
-	semantic := rule.scriptEnv.Mapping().Lookup(name)
+	semantic := workflowdecl.Environment(rule.scriptEnv).Lookup(name)
 	text, known := semantic.ScalarString()
 	return known && scriptLiteralProof(text).safe(argument)
 }
@@ -52,10 +54,10 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 	var values []string
 	var complete bool
 	if name, env := strings.CutPrefix(exprsyntax.StaticReference(node), "env."); env {
-		if !rule.scriptEnv.Present() {
+		if rule.scriptEnv == nil {
 			return false
 		}
-		values, complete = rule.scriptEnv.Mapping().Lookup(name).StringAlternatives()
+		values, complete = workflowdecl.Environment(rule.scriptEnv).Lookup(name).StringAlternatives()
 	} else {
 		values, complete = expreval.StringAlternatives(node)
 	}
@@ -70,11 +72,11 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 	return true
 }
 
-func (rule *Checker) matrixResolution(strategy workflowdecl.StrategyView) matrixcheck.Resolution {
-	if !strategy.Present() {
+func (rule *Checker) matrixResolution(strategy *workflowlang.Strategy) matrixcheck.Resolution {
+	if strategy == nil {
 		return matrixcheck.Resolution{}
 	}
-	return strategy.MatrixResolution()
+	return workflowdecl.MatrixResolution(strategy)
 }
 
 // safeMatrixScriptReferences proves individual paths across all declared axis

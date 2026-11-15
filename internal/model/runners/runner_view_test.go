@@ -7,7 +7,7 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func runnerJobView(t *testing.T, source string) workflowdecl.JobView {
+func runnerJobView(t *testing.T, source string) workflowdecl.Job {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)

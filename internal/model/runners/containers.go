@@ -36,12 +36,12 @@ type ContainerTarget struct {
 
 // ContainerLimitations uses provider evidence rather than inferring an
 // external provider's capabilities from the spelling of its labels.
-func (k *Knowledge) ContainerLimitations(job workflowdecl.JobView) []ContainerTarget {
+func (k *Knowledge) ContainerLimitations(job workflowdecl.Job) []ContainerTarget {
 	if k == nil || k.report.Target != "github" {
 		return nil
 	}
-	if job.Strategy().Matrix().Present() {
-		if rows, complete := job.Strategy().MatrixResolution().Combinations(256); complete && len(rows) == 0 {
+	if job.Strategy != nil && job.Strategy.Matrix != nil {
+		if rows, complete := workflowdecl.MatrixResolution(job.Strategy).Combinations(256); complete && len(rows) == 0 {
 			return nil
 		}
 	}

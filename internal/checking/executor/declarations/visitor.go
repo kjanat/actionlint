@@ -7,6 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -21,9 +22,9 @@ import (
 // declarationRule is the traversal adapter for stateless declaration checks.
 type declarationRule struct {
 	workflowvisit.Base
-	workflowCheck func(workflowdecl.WorkflowView) []reporting.Finding
-	jobCheck      func(workflowdecl.JobView) []reporting.Finding
-	stepCheck     func(workflowdecl.StepView) []reporting.Finding
+	workflowCheck func(workflowdecl.Workflow) []reporting.Finding
+	jobCheck      func(workflowdecl.Job) []reporting.Finding
+	stepCheck     func(workflowdecl.Step) []reporting.Finding
 	rules         configuration.RuleSet
 }
 
@@ -50,11 +51,11 @@ func (r *invocationDeclarationRule) LeaveInvocation(scope invocation.Context) er
 	return nil
 }
 
-func (r *invocationDeclarationRule) VisitInvocationStep(step workflowdecl.StepView) error {
+func (r *invocationDeclarationRule) VisitInvocationStep(step workflowdecl.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView) error {
+func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.Step) error {
 	if len(r.contexts) == 0 {
 		return nil
 	}
@@ -87,7 +88,7 @@ func (r *declarationRule) collect(input []reporting.Finding, job string) {
 			finding.Rule = descriptor.Name
 		}
 		if d.Step.Present() {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: reporting.SourcePosition(d.Step)}
+			finding.Owner = &findingmodel.Owner{Job: job, Step: reporting.OptionalPosition(d.Step.Position())}
 			origin := d.Step.Origin(job)
 			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
 			if origin.HasPosition {
@@ -98,21 +99,21 @@ func (r *declarationRule) collect(input []reporting.Finding, job string) {
 	}
 }
 
-func (r *declarationRule) VisitWorkflowPre(w workflowdecl.WorkflowView) error {
+func (r *declarationRule) VisitWorkflowPre(w workflowdecl.Workflow) error {
 	if r.workflowCheck != nil {
 		r.collect(r.workflowCheck(w), "")
 	}
 	return nil
 }
 
-func (r *declarationRule) VisitJobPre(j workflowdecl.JobView) error {
+func (r *declarationRule) VisitJobPre(j workflowdecl.Job) error {
 	if r.jobCheck != nil {
-		r.collect(r.jobCheck(j), declarationID(j.ID()))
+		r.collect(r.jobCheck(j), declarationID(j.ID))
 	}
 	return nil
 }
 
-func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
+func (r *declarationRule) VisitStep(s workflowdecl.Step) error {
 	if r.stepCheck != nil {
 		r.collect(r.stepCheck(s), s.DeclaringJob())
 	}
@@ -139,6 +140,6 @@ func NewRuleRequireCommitHash(rules configuration.RuleSet, excluded func(string)
 	return New(rules, security.UnpinnedReferenceCheck(excluded))
 }
 
-func declarationID(value workflowdecl.StringView) string {
-	return value.Value()
+func declarationID(value *workflowlang.String) string {
+	return value.Text()
 }

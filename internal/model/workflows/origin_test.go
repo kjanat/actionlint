@@ -36,7 +36,7 @@ func TestOriginOwnsSelectorValuesAndPosition(t *testing.T) {
 			}
 		})
 	}
-	if got := (StepView{}).Origin("Build"); got != (Origin{Job: "Build"}) {
+	if got := (Step{}).Origin("Build"); got != (Origin{Job: "Build"}) {
 		t.Fatalf("missing step origin = %+v", got)
 	}
 }
@@ -64,7 +64,7 @@ func TestJobOriginOwnsUsesSelector(t *testing.T) {
 			}
 		})
 	}
-	if got := (JobView{}).Origin(); got != (Origin{}) {
+	if got := (Job{}).Origin(); got != (Origin{}) {
 		t.Fatalf("missing job origin = %+v", got)
 	}
 }

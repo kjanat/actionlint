@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
@@ -13,8 +15,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -45,13 +45,13 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding), copies: findingmodel.NewCopier()}
 }
 
-func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source workspaceactions.SourceDocument, action workflowdecl.ExecActionView, displaySpec string) error {
+func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source workspaceactions.SourceDocument, action *workflowlang.ExecAction, displaySpec string) error {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]
 	if !checked {
 		rule.Debug("Checking metadata of %s action %q at %q", meta.Runs.Using, meta.Name, displaySpec)
-		templates = actioncheck.CheckWithAdvisories(meta, reporting.SourcePosition(action.Uses()), source.ReferencedFiles(), rule.lifecycle)
+		templates = actioncheck.CheckWithAdvisories(meta, reporting.SourcePosition(action.Uses), source.ReferencedFiles(), rule.lifecycle)
 		store.templates[path] = templates
 	}
 	if len(templates) != 0 {
@@ -66,7 +66,7 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 		finding := store.copies.Clone(template)
 		key := metadataFindingKey(meta, document, finding)
 		if finding.Source == nil {
-			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses()).Line, reporting.SourcePosition(action.Uses()).Col
+			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses).Line, reporting.SourcePosition(action.Uses).Col
 		}
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}
 		rule.Report(finding)

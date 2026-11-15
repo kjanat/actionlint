@@ -3,6 +3,8 @@ package correctness
 import (
 	"fmt"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -16,12 +18,15 @@ import (
 func VendorLockInCheck(target string) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: VendorLockInDeclaration(),
-		Job: func(job declaration.JobView) []reporting.Finding {
-			return reporting.FromDiagnostics(VendorLockIn(job.WorkflowCall().Uses(), target))
+		Job: func(job declaration.Job) []reporting.Finding {
+			if !job.Present() || job.WorkflowCall == nil {
+				return nil
+			}
+			return reporting.FromDiagnostics(VendorLockIn(job.Workflow(), job.WorkflowCall.Uses, target))
 		},
-		Step: func(step declaration.StepView) []reporting.Finding {
+		Step: func(step declaration.Step) []reporting.Finding {
 			if action, present := step.Action(); present {
-				findings := reporting.FromDiagnostics(VendorLockIn(action.Uses(), target))
+				findings := reporting.FromDiagnostics(VendorLockIn(step.Workflow(), action.Uses, target))
 				for i := range findings {
 					findings[i].Step = step
 				}
@@ -47,22 +52,22 @@ func VendorLockInDeclaration() rule.Declaration {
 	}
 }
 
-func VendorLockIn(uses declaration.StringView, target string) []results.Diagnostic {
-	if target != "github" || !uses.Present() || uses.ContainsExpression() {
+func VendorLockIn(w declaration.Workflow, uses *workflowlang.String, target string) []results.Diagnostic {
+	if target != "github" || uses == nil || uses.ContainsExpression() {
 		return nil
 	}
-	ref, present := references.ParseRepositoryURL(uses.Value())
+	ref, present := references.ParseRepositoryURL(uses.Value)
 	if !present {
 		return nil
 	}
-	location, _ := uses.Pos()
+	location, _ := uses.Position()
 	finding := results.Diagnostic{
 		Rule: "vendor-lock-in", Severity: "error", Start: sourcepos.Position{Line: location.Line, Column: location.Col},
 		Message: fmt.Sprintf("GitHub Actions requires owner/repo[/path]@ref in uses, not a full repository URL (host %q)", ref.Host()),
 	}
 	if ref.Shorthand() != "" {
 		finding.Message = fmt.Sprintf("GitHub Actions requires repository shorthand in uses; write %q instead of the full GitHub URL", ref.Shorthand())
-		if source := uses.ScalarSource(); source.Present() {
+		if source := w.ScalarSource(uses); source != nil {
 			start, startOK := source.Position(1, 1)
 			end, endOK := source.EndPos(1, ref.PrefixLength()+1)
 			if startOK && endOK {

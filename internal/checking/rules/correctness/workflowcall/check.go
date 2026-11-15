@@ -7,7 +7,6 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
@@ -19,24 +18,24 @@ func callFinding(pos workflowlang.Pos, format string, args ...any) results.Diagn
 
 // CheckArguments validates required and supplied inputs and secrets against
 // reusable workflow metadata.
-func CheckArguments(call declaration.WorkflowCallView, m *calls.Metadata) []results.Diagnostic {
+func CheckArguments(call *workflowlang.WorkflowCall, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
-	if !call.Present() || !call.Uses().Present() || m == nil {
+	if call == nil || call.Uses == nil || m == nil {
 		return findings
 	}
-	u := call.Uses()
+	u := call.Uses
 	report := func(pos workflowlang.Pos, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	// Validate inputs
 	for n, i := range m.Inputs {
 		if i.Required {
-			if _, ok := call.InputsAt(n); !ok {
-				report(callPosition(u), "input %q is required by %q reusable workflow", i.Name, u.Value())
+			if _, ok := call.Inputs[n]; !ok {
+				report(callPosition(u), "input %q is required by %q reusable workflow", i.Name, u.Value)
 			}
 		}
 	}
-	for n, i := range call.Inputs() {
+	for n, i := range call.Inputs {
 		if _, ok := m.Inputs[n]; !ok {
 			note := "no input is defined"
 			if len(m.Inputs) > 0 {
@@ -50,20 +49,20 @@ func CheckArguments(call declaration.WorkflowCallView, m *calls.Metadata) []resu
 					note = "defined inputs are " + messages.SortedQuotes(is)
 				}
 			}
-			report(callPosition(i.Name()), "input %q is not defined in %q reusable workflow. %s", i.Name().Value(), u.Value(), note)
+			report(callPosition(i.Name), "input %q is not defined in %q reusable workflow. %s", i.Name.Text(), u.Value, note)
 		}
 	}
 
 	// Validate secrets
-	if !call.InheritSecrets() {
+	if !call.InheritSecrets {
 		for n, s := range m.Secrets {
 			if s.Required {
-				if _, ok := call.SecretsAt(n); !ok {
-					report(callPosition(u), "secret %q is required by %q reusable workflow", s.Name, u.Value())
+				if _, ok := call.Secrets[n]; !ok {
+					report(callPosition(u), "secret %q is required by %q reusable workflow", s.Name, u.Value)
 				}
 			}
 		}
-		for n, s := range call.Secrets() {
+		for n, s := range call.Secrets {
 			if _, ok := m.Secrets[n]; !ok {
 				note := "no secret is defined"
 				if len(m.Secrets) > 0 {
@@ -77,7 +76,7 @@ func CheckArguments(call declaration.WorkflowCallView, m *calls.Metadata) []resu
 						note = "defined secrets are " + messages.SortedQuotes(ss)
 					}
 				}
-				report(callPosition(s.Name()), "secret %q is not defined in %q reusable workflow. %s", s.Name().Value(), u.Value(), note)
+				report(callPosition(s.Name), "secret %q is not defined in %q reusable workflow. %s", s.Name.Text(), u.Value, note)
 			}
 		}
 	}
@@ -87,9 +86,9 @@ func CheckArguments(call declaration.WorkflowCallView, m *calls.Metadata) []resu
 
 // CheckPermissions compares every callee job's requirements with the explicit
 // caller grant. Conditions do not weaken this contract: GitHub validates it before execution.
-func CheckPermissions(call declaration.WorkflowCallView, granted calls.ResolvedPermissions, m *calls.Metadata) []results.Diagnostic {
+func CheckPermissions(call *workflowlang.WorkflowCall, granted calls.ResolvedPermissions, m *calls.Metadata) []results.Diagnostic {
 	var findings []results.Diagnostic
-	if !call.Present() || !call.Uses().Present() || m == nil || granted.Kind != calls.PermissionsDeclared {
+	if call == nil || call.Uses == nil || m == nil || granted.Kind != calls.PermissionsDeclared {
 		return findings
 	}
 	report := func(pos workflowlang.Pos, format string, args ...any) {
@@ -122,10 +121,10 @@ func CheckPermissions(call declaration.WorkflowCallView, granted calls.ResolvedP
 		}
 
 		report(
-			callPosition(call.Uses()),
+			callPosition(call.Uses),
 			"nested job %q of %q requires %s but the calling job grants %s",
 			id,
-			call.Uses().Value(),
+			call.Uses.Value,
 			messages.Quotes(want),
 			messages.Quotes(have),
 		)
@@ -134,4 +133,4 @@ func CheckPermissions(call declaration.WorkflowCallView, granted calls.ResolvedP
 	return findings
 }
 
-func callPosition(node declaration.StringView) workflowlang.Pos { pos, _ := node.Pos(); return pos }
+func callPosition(node *workflowlang.String) workflowlang.Pos { pos, _ := node.Position(); return pos }

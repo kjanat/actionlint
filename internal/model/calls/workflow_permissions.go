@@ -8,7 +8,6 @@ import (
 	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -86,11 +85,11 @@ type ResolvedPermissions struct {
 // EffectivePermissions applies job, workflow and repository defaults in that
 // order. An explicit invalid declaration stops inheritance. The returned map
 // does not share storage with defaults or the published declarations.
-func EffectivePermissions(workflow, job declaration.PermissionsView, defaults ResolvedPermissions) ResolvedPermissions {
-	if job.Present() {
+func EffectivePermissions(workflow, job *workflowlang.Permissions, defaults ResolvedPermissions) ResolvedPermissions {
+	if job != nil {
 		return ResolvePermissions(job)
 	}
-	if workflow.Present() {
+	if workflow != nil {
 		return ResolvePermissions(workflow)
 	}
 	return ResolvedPermissions{Kind: defaults.Kind, Levels: maps.Clone(defaults.Levels)}
@@ -135,34 +134,18 @@ func resolvePermissions(src permissionsSource) ResolvedPermissions {
 	return ResolvedPermissions{PermissionsDeclared, ls}
 }
 
-// ResolvePermissions resolves an immutable parsed permissions declaration.
-func ResolvePermissions(p declaration.PermissionsView) ResolvedPermissions {
-	if !p.Present() {
-		return ResolvedPermissions{Kind: PermissionsAbsent}
-	}
-	if p.ScopesPresent() {
-		scopes := map[string]string{}
-		for _, scope := range p.Scopes() {
-			scopes[scope.Name().Value()] = strings.ToLower(scope.Value().Value())
-		}
-		return resolvePermissions(permissionsSource{scopes: scopes})
-	}
-	if p.All().Present() {
-		return resolvePermissions(permissionsSource{all: strings.ToLower(p.All().Value())})
-	}
-	return ResolvedPermissions{Kind: PermissionsInvalid}
-}
-
-// resolvePermissionsModel resolves a parsed "permissions:" section. A nil node means the section is
-// absent.
-func resolvePermissionsModel(p *workflowlang.Permissions) ResolvedPermissions {
+// ResolvePermissions resolves a parsed "permissions:" section. A nil node
+// means the section is absent.
+func ResolvePermissions(p *workflowlang.Permissions) ResolvedPermissions {
 	if p == nil {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}
 	if p.Scopes != nil {
 		ss := make(map[string]string, len(p.Scopes))
 		for _, s := range p.Scopes {
-			ss[s.Name.Value] = strings.ToLower(s.Value.Value)
+			if s != nil {
+				ss[s.Name.Text()] = strings.ToLower(s.Value.Text())
+			}
 		}
 		return resolvePermissions(permissionsSource{scopes: ss})
 	}

@@ -98,7 +98,7 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.WorkflowView) error {
+func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workflow) error {
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
@@ -106,10 +106,10 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workfl
 		return errors.New("workflow source snapshot is unavailable")
 	}
 	analysis.beginEntryScope(scriptexecution.Deployment{})
-	defaults := declaration.Defaults().Run().Semantic()
+	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
-	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults())
-	analysis.workflowEnv = declaration.Env().Mapping()
+	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults)
+	analysis.workflowEnv = workflowdecl.Environment(declaration.Env)
 	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv)}
 	analysis.workflowShell = execution.DefaultShell(defaults)
 	return nil
@@ -138,17 +138,17 @@ func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.De
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 }
 
-func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.JobView) error {
+func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.Job) error {
 	if err := analysis.sourceSnapshot.ValidateJob(declaration); err != nil {
 		return err
 	}
-	analysis.jobScriptShell = scriptDefaultShell(declaration.Defaults())
-	defaults := declaration.Defaults().Run().Semantic()
+	analysis.jobScriptShell = scriptDefaultShell(declaration.Defaults)
+	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
 	analysis.scriptJobShell = execution.DefaultShell(defaults)
 	analysis.scriptJobDir = execution.DefaultDirectory(defaults)
 	knowledge := analysis.runners.Job(declaration)
 	analysis.operatingSystems = knowledge.OperatingSystems()
-	if container := scriptmodel.ContainerShell(declaration.Container().Semantic()); container.State() != value.Missing {
+	if container := scriptmodel.ContainerShell(workflowdecl.Container(declaration.Container)); container.State() != value.Missing {
 		analysis.operatingSystems = []runnerapi.OS{runnerapi.UnknownOS}
 		if container.Known() {
 			analysis.operatingSystems = []runnerapi.OS{runnerapi.Linux}
@@ -156,12 +156,12 @@ func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.JobView) er
 	}
 	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{
 		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv),
-		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentJob, declaration.Env().Mapping()),
+		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentJob, workflowdecl.Environment(declaration.Env)),
 	}
-	analysis.scriptRunnerShell = scriptmodel.DefaultShell(declaration.Container().Semantic(), knowledge.Shell)
+	analysis.scriptRunnerShell = scriptmodel.DefaultShell(workflowdecl.Container(declaration.Container), knowledge.Shell)
 	analysis.jobID = ""
-	if id := declaration.ID(); id.Present() {
-		analysis.jobID = id.Value()
+	if id := declaration.ID; id != nil {
+		analysis.jobID = id.Value
 	}
 	analysis.actions.BeginJob(analysis.workflowEnv, analysis.workflowShell, declaration)
 	return nil
@@ -171,7 +171,7 @@ func (analysis *compositeAnalyzer) invalidateCheckout() {
 	analysis.actions.InvalidateCheckout()
 }
 
-func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
+func (analysis *compositeAnalyzer) visitStep(step workflowdecl.Step) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.StepView) error {
 	return analysis.visitActionScripts(step, scripts, func() error { return analysis.visitStepPasses(step) })
 }
 
-func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) error {
+func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.Step) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -218,11 +218,11 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.StepView) e
 }
 
 // visitJobPass attributes what a pass reports while visiting a job to that job.
-func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflowdecl.JobView, visit func() error) error {
+func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflowdecl.Job, visit func() error) error {
 	return selection.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), selection.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }
 
-func canonicalStepOrigin(step workflowdecl.StepView, job string) *findingmodel.IgnoreOrigin {
+func canonicalStepOrigin(step workflowdecl.Step, job string) *findingmodel.IgnoreOrigin {
 	return canonicalOrigin(step.Origin(job))
 }
 

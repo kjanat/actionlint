@@ -55,49 +55,53 @@ func boolean(node *workflowlang.Bool) value.Value {
 	return value.YAMLScalar(strconv.FormatBool(node.Value), workflowlang.YamlTagBool, origin(node.Pos, false))
 }
 
-func (r *Record) publishSemantics(b *builder) {
-	conditionNodes := map[*workflowlang.String]struct{}{}
-	for _, job := range b.jobs {
-		conditionNodes[job.If] = struct{}{}
-		if job.Snapshot != nil {
-			conditionNodes[job.Snapshot.If] = struct{}{}
-		}
+// Bool decodes a boolean field.
+func Bool(node *workflowlang.Bool) value.Value { return boolean(node) }
+
+// Environment resolves an env mapping, including insertions.
+func Environment(node *workflowlang.Env) mapping.Mapping { return resolvedEnvironment(node) }
+
+// ResolvedInputs resolves an action step's with: mapping, including insertions.
+func ResolvedInputs(node *workflowlang.ExecAction) mapping.Mapping {
+	if node == nil {
+		return mapping.Mapping{}
 	}
-	for _, step := range b.steps {
-		conditionNodes[step.If] = struct{}{}
+	return mapping.Resolve(actionInputs(node))
+}
+
+// MatrixResolution resolves a strategy's matrix.
+func MatrixResolution(node *workflowlang.Strategy) matrix.Resolution {
+	if node == nil {
+		return matrix.Resolution{}
 	}
-	for _, node := range b.stringNodes {
-		if _, ok := conditionNodes[node]; ok {
-			resolved := condition(node)
-			r.conditions[node], r.strings[node] = resolved, resolved
-		} else {
-			r.strings[node] = scalar(node)
-		}
+	return matrix.Resolve(node)
+}
+
+// MatrixMapping resolves a matrix's keys as a mapping.
+func MatrixMapping(node *workflowlang.Matrix) mapping.Mapping {
+	if node == nil {
+		return mapping.Mapping{}
 	}
-	for _, node := range b.boolNodes {
-		r.bools[node] = boolean(node)
+	return mapping.Resolve(matrixMappingInputs(node))
+}
+
+// RunnerSelection decodes runs-on.
+func RunnerSelection(node *workflowlang.Runner) value.Value { return runnerSelection(node) }
+
+// DefaultsRun decodes defaults.run.
+func DefaultsRun(defaults *workflowlang.Defaults) value.Value {
+	if defaults == nil {
+		return value.Value{}
 	}
-	for _, node := range b.envNodes {
-		r.environments[node] = resolvedEnvironment(node)
+	return defaultsRunValue(defaults.Run)
+}
+
+// Container decodes a job or service container.
+func Container(node *workflowlang.Container) value.Value {
+	if node == nil {
+		return value.Value{}
 	}
-	for _, node := range b.execActionNodes {
-		r.resolved[node] = mapping.Resolve(actionInputs(node))
-	}
-	for _, node := range b.strategyNodes {
-		r.matrices[node] = matrix.Resolve(node)
-		if node.Matrix != nil {
-			r.matrixMaps[node.Matrix] = mapping.Resolve(matrixMappingInputs(node.Matrix))
-		}
-	}
-	for _, node := range b.runnerNodes {
-		r.selections[node] = runnerSelection(node)
-	}
-	for _, node := range b.defaultsRunNodes {
-		r.defaultsRun[node] = defaultsRunValue(node)
-	}
-	for _, node := range b.containerNodes {
-		r.containers[node] = containerValue(node, r.environments[node.Env])
-	}
+	return containerValue(node, resolvedEnvironment(node.Env))
 }
 
 func runnerSelection(node *workflowlang.Runner) value.Value {
@@ -309,3 +313,9 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.Inputs {
 	}
 	return inputs
 }
+
+// Scalar decodes a scalar as a YAML value or template.
+func Scalar(node *workflowlang.String) value.Value { return scalar(node) }
+
+// Condition decodes a scalar as an if condition.
+func Condition(node *workflowlang.String) value.Value { return condition(node) }

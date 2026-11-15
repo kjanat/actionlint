@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -76,7 +78,7 @@ func TestCanonicalEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	if !present {
 		t.Fatal("workflow view unavailable")
 	}
-	resolved := workflow.Env().Mapping()
+	resolved := declaration.Environment(workflow.Env)
 	if got := resolved.Lookup("NULL_VALUE"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}

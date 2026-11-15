@@ -257,9 +257,9 @@ func (rule *standaloneEntryFailure) EnterInvocation(workflowvisit.Invocation) er
 	return rule.failure
 }
 
-func (*standaloneEntryFailure) VisitInvocationStep(workflowdecl.StepView) error { return nil }
-func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.StepView) error   { return nil }
-func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error        { return nil }
+func (*standaloneEntryFailure) VisitInvocationStep(workflowdecl.Step) error { return nil }
+func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.Step) error   { return nil }
+func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error    { return nil }
 
 func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	t.Parallel()

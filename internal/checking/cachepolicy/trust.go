@@ -73,9 +73,9 @@ var cacheEventClasses = map[string]cacheEventClass{
 // cacheRestrictedEvents includes unclassified triggers conservatively.
 //
 // Inventory tests require an explicit decision before a new generated event can ship.
-func cacheRestrictedEvents(w declaration.WorkflowView) []string {
+func cacheRestrictedEvents(w declaration.Workflow) []string {
 	var events []string
-	for event := range w.On() {
+	for _, event := range w.On {
 		name := event.EventName()
 		switch cacheEventClasses[name] {
 		case cacheEventTrusted, cacheEventRefScoped, cacheEventInherited:
@@ -92,19 +92,19 @@ func cacheRestrictedEvents(w declaration.WorkflowView) []string {
 // Each shared declaration is assigned to its first reachable job in source order.
 // Construction prepares that assignment; checks do not mutate it.
 type Trust struct {
-	workflow     declaration.CacheModeView
+	workflow     *workflowlang.CacheMode
 	events       []string
 	declarations []cacheDeclaration
 }
 type cacheDeclaration struct {
-	mode      declaration.CacheModeView
-	job       declaration.JobView
+	mode      *workflowlang.CacheMode
+	job       declaration.Job
 	reachable []string
 }
 
-func (r *Trust) declaration(mode declaration.CacheModeView, job declaration.JobView) *cacheDeclaration {
+func (r *Trust) declaration(mode *workflowlang.CacheMode, job declaration.Job) *cacheDeclaration {
 	for i := range r.declarations {
-		if r.declarations[i].mode.SameDeclaration(mode) {
+		if r.declarations[i].mode == mode {
 			return &r.declarations[i]
 		}
 	}
@@ -113,27 +113,27 @@ func (r *Trust) declaration(mode declaration.CacheModeView, job declaration.JobV
 }
 
 // NewTrust prepares event reachability and shared cache declarations for one workflow.
-func NewTrust(w declaration.WorkflowView) *Trust {
-	r := &Trust{workflow: w.CacheMode(), events: cacheRestrictedEvents(w)}
-	var jobs []declaration.JobView
+func NewTrust(w declaration.Workflow) *Trust {
+	r := &Trust{workflow: w.CacheMode, events: cacheRestrictedEvents(w)}
+	var jobs []declaration.Job
 	for _, job := range w.Jobs() {
 		jobs = append(jobs, job)
 	}
-	slices.SortFunc(jobs, func(a, b declaration.JobView) int {
-		left, right := position(a), position(b)
+	slices.SortFunc(jobs, func(a, b declaration.Job) int {
+		left, right := position(a.Pos), position(b.Pos)
 		if order := cmp.Compare(left.Line, right.Line); order != 0 {
 			return order
 		}
 		if order := cmp.Compare(left.Col, right.Col); order != 0 {
 			return order
 		}
-		return cmp.Compare(a.ID().Value(), b.ID().Value())
+		return cmp.Compare(a.ID.Text(), b.ID.Text())
 	})
 	for _, job := range jobs {
-		mode := cachemodel.EffectiveMode(r.workflow, job.CacheMode())
+		mode := cachemodel.EffectiveMode(r.workflow, job.CacheMode)
 		access, valid := cachemodel.FromDeclaration(mode).Capabilities()
 		if valid && access&2 != 0 {
-			events := workflowconditions.ReachableEvents(r.events, job.If().Value())
+			events := workflowconditions.ReachableEvents(r.events, job.If.Text())
 			if len(events) != 0 {
 				declaration := r.declaration(mode, job)
 				declaration.reachable = append(declaration.reachable, events...)
@@ -149,32 +149,32 @@ func NewTrust(w declaration.WorkflowView) *Trust {
 }
 
 // CheckWrites reports effective write grants reachable from low-trust events.
-func (r *Trust) CheckWrites(job declaration.JobView) []results.Diagnostic {
+func (r *Trust) CheckWrites(job declaration.Job) []results.Diagnostic {
 	for _, declaration := range r.declarations {
 		if declaration.job == job {
 			mode := declaration.mode
-			return []results.Diagnostic{report(position(mode), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind().String(), messages.SortedQuotes(declaration.reachable))}
+			return []results.Diagnostic{report(position(mode.Pos), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), messages.SortedQuotes(declaration.reachable))}
 		}
 	}
 	return nil
 }
 
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
-func (r *Trust) CheckCall(job declaration.JobView) []results.Diagnostic {
-	call := job.WorkflowCall()
-	if len(r.events) == 0 || !call.Present() || !call.Uses().Present() || call.Uses().ContainsExpression() || cachemodel.EffectiveMode(r.workflow, job.CacheMode()).Present() {
+func (r *Trust) CheckCall(job declaration.Job) []results.Diagnostic {
+	call := job.WorkflowCall
+	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cachemodel.EffectiveMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
-	if _, local := references.LocalWorkflow(call.Uses().Value()); !local {
-		if _, remote := references.WorkflowRef(call.Uses().Value()); !remote {
+	if _, local := references.LocalWorkflow(call.Uses.Value); !local {
+		if _, remote := references.WorkflowRef(call.Uses.Value); !remote {
 			return nil
 		}
 	}
-	events := workflowconditions.ReachableEvents(r.events, job.If().Value())
+	events := workflowconditions.ReachableEvents(r.events, job.If.Text())
 	if len(events) == 0 {
 		return nil
 	}
-	return []results.Diagnostic{report(position(call.Uses()), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses().Value(), messages.SortedQuotes(events))}
+	return []results.Diagnostic{report(position(call.Uses.Pos), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, messages.SortedQuotes(events))}
 }
 
 func report(pos workflowlang.Pos, kind, format string, args ...any) results.Diagnostic {

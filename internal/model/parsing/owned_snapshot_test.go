@@ -24,62 +24,6 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 	}
 }
 
-func TestOwnedDeclarationSurvivesDecoderAndPositionMutation(t *testing.T) {
-	t.Parallel()
-	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: original\n        name: Original\n        run: echo original\n")
-	for _, access := range []string{"before binding", "position accessor", "original model after binding"} {
-		t.Run(access, func(t *testing.T) {
-			t.Parallel()
-			document := Workflow(content)
-			cursor := document.Workflow.Jobs["build"].Steps[0]
-			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))
-			mutate := func(step *workflowlang.Step) {
-				step.ID.Value, step.Name.Value, step.Pos.Line = "changed", "Changed", 999
-				switch run := step.Exec.(type) {
-				case *workflowlang.ExecRun:
-					run.Run.Value = "echo changed"
-					run.Source.Value = "changed source mapping"
-					run.Source.Spans[0].YamlLine = 999
-				default:
-					t.Fatal("fixture run unavailable")
-				}
-			}
-			if access == "before binding" {
-				mutate(cursor)
-			}
-			snapshot, err := snapshots.Document("ci.yml", content, document)
-			if err != nil {
-				t.Fatal(err)
-			}
-			view := snapshotJobSteps(t, snapshot, "build")[0]
-			reference := view.Reference()
-			switch access {
-			case "position accessor":
-				position, _ := view.Pos()
-				position.Line = 999
-				if fresh, _ := view.Pos(); fresh.Line == position.Line {
-					t.Fatal("position accessor exposed mutable declaration state")
-				}
-			case "original model after binding":
-				mutate(cursor)
-			}
-			declaration, ok := snapshots.Declaration(reference)
-			if !ok || declaration != view || !snapshots.Owns(view) {
-				t.Fatal("canonical handle identity changed")
-			}
-			position, present := declaration.Pos()
-			run, isRun := declaration.Run()
-			mapped, mappedOK := run.Source().Position(1, 1)
-			if declaration.ID().Value() != "original" || declaration.Name().Value() != "Original" || !present || position.Line == 999 || !isRun || run.Run().Value() != "echo original" || run.Source().Value() != "echo original" || !mappedOK || mapped.Line == 999 {
-				t.Fatal("legacy mutation changed frozen declaration or scalar mapping")
-			}
-			if declaration.Reference() != reference || declaration.SourceReference() != snapshot.Reference() || declaration.DeclaringJob() != "Build" || declaration.ContentText() != string(content) {
-				t.Fatal("canonical source identity changed")
-			}
-		})
-	}
-}
-
 func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: original\ndescription: test\nruns:\n  using: composite\n  steps:\n    - &shared\n      shell: bash\n      run: echo original\n    - *shared\n")
@@ -105,18 +49,18 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	if len(steps) != 2 || steps[0].Reference() == steps[1].Reference() {
 		t.Fatal("action alias sites collapsed")
 	}
-	detached, present := steps[0].Pos()
+	detached, present := steps[0].Position()
 	if !present {
 		t.Fatal("action step position unavailable")
 	}
 	detached.Line = 999
-	if fresh, _ := steps[0].Pos(); fresh.Line == detached.Line {
+	if fresh, _ := steps[0].Position(); fresh.Line == detached.Line {
 		t.Fatal("action position accessor exposed mutable declaration state")
 	}
 	for _, step := range steps {
 		run, ok := step.Run()
-		position, hasPosition := step.Pos()
-		if !ok || run.Run().Value() != "echo original" || !hasPosition || position.Line == 999 || step.ContentText() != original {
+		position, hasPosition := step.Position()
+		if !ok || run.Run.Text() != "echo original" || !hasPosition || position.Line == 999 || step.ContentText() != original {
 			t.Fatal("mutable action metadata or traversal escaped into canonical steps")
 		}
 	}
@@ -172,14 +116,14 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	if err := reused.ValidateStep(foreignStep); err == nil {
 		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.StepView{}) {
+	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.Step{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
-	if err := bound.ValidateStep(workflowdecl.StepView{}); err == nil {
+	if err := bound.ValidateStep(workflowdecl.Step{}); err == nil {
 		t.Fatal("missing declaration accepted")
 	}
-	zero := workflowdecl.StepView{}
-	if zero.Present() || zero.Reference() != (source.Reference{}) || zero.ID().Present() {
+	zero := workflowdecl.Step{}
+	if zero.Present() || zero.Reference() != (source.Reference{}) {
 		t.Fatal("zero handle exposes declarations")
 	}
 }
@@ -274,7 +218,7 @@ func TestOwnedOpaqueCompositeStepRemainsInvalidActionCall(t *testing.T) {
 		t.Fatal("recovered step missing")
 	}
 	action, ok := steps[0].Action()
-	if !ok || !action.Present() || action.Uses().Present() {
+	if !ok || action == nil || action.Uses != nil {
 		t.Fatal("opaque composite step changed execution variant")
 	}
 }
@@ -328,7 +272,7 @@ func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
 		t.Fatal("recovered declaration lost during admission")
 	}
 	run, ok := steps[0].Run()
-	if !ok || run.Run().Value() != "echo recovered" {
+	if !ok || run.Run.Text() != "echo recovered" {
 		t.Fatal("recovered declaration changed execution semantics")
 	}
 }

@@ -1,8 +1,6 @@
 package correctness
 
 import (
-	"iter"
-	"slices"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -22,20 +20,20 @@ import (
 type globCheck struct{ reporting.Collector }
 
 // GlobWorkflow validates patterns in event declarations.
-func GlobWorkflow(n declaration.WorkflowView) []reporting.Finding {
+func GlobWorkflow(n declaration.Workflow) []reporting.Finding {
 	rule := &globCheck{Rule: "glob"}
 
-	for e := range n.On() {
-		if webhook, ok := e.WebhookEvent(); ok {
-			rule.checkGitRefGlobs(webhook.Branches())
-			rule.checkGitRefGlobs(webhook.BranchesIgnore())
-			rule.checkGitRefGlobs(webhook.Tags())
-			rule.checkGitRefGlobs(webhook.TagsIgnore())
-			rule.checkFilePathGlobs(webhook.Paths())
-			rule.checkFilePathGlobs(webhook.PathsIgnore())
-			rule.checkWorkflowNameGlobs(webhook.Workflows())
-		} else if image, ok := e.ImageVersionEvent(); ok {
-			for v := range image.Versions() {
+	for _, e := range n.On {
+		if webhook, ok := e.(*workflowlang.WebhookEvent); ok {
+			rule.checkGitRefGlobs(webhook.Branches)
+			rule.checkGitRefGlobs(webhook.BranchesIgnore)
+			rule.checkGitRefGlobs(webhook.Tags)
+			rule.checkGitRefGlobs(webhook.TagsIgnore)
+			rule.checkFilePathGlobs(webhook.Paths)
+			rule.checkFilePathGlobs(webhook.PathsIgnore)
+			rule.checkWorkflowNameGlobs(webhook.Workflows)
+		} else if image, ok := e.(*workflowlang.ImageVersionEvent); ok {
+			for _, v := range image.Versions {
 				rule.checkRefGlob(v)
 			}
 		}
@@ -43,15 +41,14 @@ func GlobWorkflow(n declaration.WorkflowView) []reporting.Finding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkWorkflowNameGlobs(values iter.Seq[declaration.StringView]) {
-	names := slices.Collect(values)
+func (rule *globCheck) checkWorkflowNameGlobs(names []*workflowlang.String) {
 	allValid, positive := len(names) != 0, false
 	for _, name := range names {
-		if !name.Present() {
+		if name == nil {
 			allValid = false
 			continue
 		}
-		value, evaluated := name.Value(), false
+		value, evaluated := name.Value, false
 		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
 			value, evaluated = *literal, true
 		} else if name.ContainsExpression() {
@@ -75,30 +72,30 @@ func (rule *globCheck) checkWorkflowNameGlobs(values iter.Seq[declaration.String
 				errs[i].Column = 0
 			}
 		}
-		rule.globErrors(errs, reporting.ViewPosition(name.Pos()), name.Quoted() && !evaluated)
+		rule.globErrors(errs, name.Pos, name.Quoted && !evaluated)
 	}
 	if allValid && !positive {
-		rule.Error(reporting.ViewPosition(names[0].Pos()), "workflow_run.workflows requires at least one positive workflow-name pattern")
+		rule.Error(names[0].Pos, "workflow_run.workflows requires at least one positive workflow-name pattern")
 	}
 }
 
-func GlobJob(n declaration.JobView) []reporting.Finding {
+func GlobJob(n declaration.Job) []reporting.Finding {
 	rule := &globCheck{Rule: "glob"}
-	if !n.Snapshot().Present() {
+	if n.Snapshot == nil {
 		return rule.Findings
 	}
-	if expression := n.Snapshot().Expression(); expression.Present() {
+	if expression := n.Snapshot.Expression; expression != nil {
 		if value, known := workflowvalues.Constant(expression); known {
 			if snapshot, ok := value.(map[string]any); ok {
-				rule.checkKnownRefGlob(schema.Property(snapshot, "version"), reporting.ViewPosition(expression.Pos()))
+				rule.checkKnownRefGlob(schema.Property(snapshot, "version"), expression.Pos)
 			}
 		}
-	} else if version := n.Snapshot().Version(); version.Present() && version.ContainsExpression() {
+	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
 		if value, known := workflowvalues.Constant(version); known {
-			rule.checkKnownRefGlob(value, reporting.ViewPosition(version.Pos()))
+			rule.checkKnownRefGlob(value, version.Pos)
 		}
 	} else {
-		rule.checkRefGlob(n.Snapshot().Version())
+		rule.checkRefGlob(n.Snapshot.Version)
 	}
 	return rule.Findings
 }
@@ -115,31 +112,31 @@ func (rule *globCheck) checkKnownRefGlob(value any, pos *workflowlang.Pos) {
 	rule.globErrors(errs, pos, false)
 }
 
-func (rule *globCheck) checkRefGlob(s declaration.StringView) {
+func (rule *globCheck) checkRefGlob(s *workflowlang.String) {
 	// Empty value is already checked by parser. Avoid duplicate errors
-	if !s.Present() || s.Value() == "" {
+	if s == nil || s.Value == "" {
 		return
 	}
-	rule.globErrors(glob.ValidateRefGlob(s.Value()), reporting.ViewPosition(s.Pos()), s.Quoted())
+	rule.globErrors(glob.ValidateRefGlob(s.Value), s.Pos, s.Quoted)
 }
 
-func (rule *globCheck) checkGitRefGlobs(filter declaration.WebhookEventFilterView) {
-	if !filter.Present() {
+func (rule *globCheck) checkGitRefGlobs(filter *workflowlang.WebhookEventFilter) {
+	if filter == nil {
 		return
 	}
-	for v := range filter.Values() {
+	for _, v := range filter.Values {
 		rule.checkRefGlob(v)
 	}
 }
 
-func (rule *globCheck) checkFilePathGlobs(filter declaration.WebhookEventFilterView) {
-	if !filter.Present() {
+func (rule *globCheck) checkFilePathGlobs(filter *workflowlang.WebhookEventFilter) {
+	if filter == nil {
 		return
 	}
-	for v := range filter.Values() {
+	for _, v := range filter.Values {
 		// Empty value is already checked by parser. Avoid duplicate errors
-		if v.Value() != "" {
-			rule.globErrors(glob.ValidatePathGlob(v.Value()), reporting.ViewPosition(v.Pos()), v.Quoted())
+		if v.Value != "" {
+			rule.globErrors(glob.ValidatePathGlob(v.Value), v.Pos, v.Quoted)
 		}
 	}
 }

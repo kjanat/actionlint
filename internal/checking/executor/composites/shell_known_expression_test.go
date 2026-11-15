@@ -48,7 +48,7 @@ jobs:
 		}
 	}
 	job := workflowJob(t, workflow, "python")
-	if job.Defaults().Run().Shell().Present() || len(slices.Collect(job.RunsOn().Labels())) != 0 {
+	if job.Defaults != nil && job.Defaults.Run != nil && job.Defaults.Run.Shell != nil || job.RunsOn != nil && len(job.RunsOn.Labels) != 0 {
 		t.Fatal("shell resolution mutated the published declarations")
 	}
 	original := document.Workflow.Jobs["python"]

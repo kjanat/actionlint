@@ -238,7 +238,7 @@ func TestCompositionBudgetsGateMetadataValidationLookups(t *testing.T) {
 			if len(f.parsed) != 1 || filepath.Base(filepath.Dir(f.parsed[0])) != "outer" {
 				t.Fatalf("validation fetched a body beyond the budget: %v", f.parsed)
 			}
-			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run().Value() != "echo initial" {
+			if !result.Batch.Invocations().Incomplete() || len(result.Batch.Scripts()) != 1 || result.Batch.Scripts()[0].Run.Run.Text() != "echo initial" {
 				t.Fatal("budget lost prior facts or incomplete state")
 			}
 			if tc.total {

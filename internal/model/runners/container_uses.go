@@ -41,13 +41,9 @@ func (target ContainerTarget) MayRun(conditions ...string) bool {
 	return true
 }
 
-func containerUse(target ContainerTarget, kind ContainerUseKind, name string, position interface {
-	Pos() (workflowlang.Pos, bool)
-},
-) ContainerUse {
-	pos, present := position.Pos()
+func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *workflowlang.Pos) ContainerUse {
 	use := ContainerUse{Target: target, Kind: kind, Name: name}
-	if present {
+	if pos != nil {
 		use.Position = sourcepos.Position{Line: pos.Line, Column: pos.Col}
 	}
 	return use
@@ -55,39 +51,44 @@ func containerUse(target ContainerTarget, kind ContainerUseKind, name string, po
 
 // JobContainerUses evaluates job containers and services using established
 // runner and matrix facts. It does not read action metadata or acquire sources.
-func (k *Knowledge) JobContainerUses(job workflowdecl.JobView) []ContainerUse {
+func (k *Knowledge) JobContainerUses(job workflowdecl.Job) []ContainerUse {
 	targets := k.ContainerLimitations(job)
 	var uses []ContainerUse
-	add := func(container workflowdecl.ContainerView, kind ContainerUseKind, name string) {
-		if !container.Present() {
+	add := func(container *workflowlang.Container, kind ContainerUseKind, name string) {
+		if container == nil {
 			return
 		}
 		for _, target := range targets {
-			image := container.Image().Semantic()
-			if container.Expression().Present() {
-				image = target.Evaluate(container.Expression().Value())
+			image := workflowdecl.Scalar(container.Image)
+			if container.Expression != nil {
+				image = target.Evaluate(container.Expression.Value)
 				if objectImage, ok := image.Prop("image"); ok {
 					image = objectImage
 				}
-			} else if container.Image().ContainsExpression() {
-				image = target.Evaluate(container.Image().Value())
+			} else if container.Image.ContainsExpression() {
+				image = target.Evaluate(container.Image.Value)
 			}
-			if text, known := image.ScalarString(); known && text != "" && target.MayRun(job.If().Value()) {
-				uses = append(uses, containerUse(target, kind, name, container))
+			if text, known := image.ScalarString(); known && text != "" && target.MayRun(job.If.Text()) {
+				uses = append(uses, containerUse(target, kind, name, container.Pos))
 			}
 		}
 	}
-	add(job.Container(), JobContainer, "")
-	for name, service := range job.Services().Value() {
-		add(service.Container(), ServiceContainer, name)
+	add(job.Container, JobContainer, "")
+	if job.Services == nil {
+		return uses
 	}
-	if expression := job.Services().Expression(); expression.Present() {
+	for name, service := range job.Services.Value {
+		if service != nil {
+			add(service.Container, ServiceContainer, name)
+		}
+	}
+	if expression := job.Services.Expression; expression != nil {
 		for _, target := range targets {
-			services := target.Evaluate(expression.Value())
+			services := target.Evaluate(expression.Value)
 			for name, service := range services.Props() {
 				image, present := service.Prop("image")
-				if text, known := image.ScalarString(); present && known && text != "" && target.MayRun(job.If().Value()) {
-					uses = append(uses, containerUse(target, ServiceContainer, name, expression))
+				if text, known := image.ScalarString(); present && known && text != "" && target.MayRun(job.If.Text()) {
+					uses = append(uses, containerUse(target, ServiceContainer, name, expression.Pos))
 				}
 			}
 		}
@@ -97,15 +98,19 @@ func (k *Knowledge) JobContainerUses(job workflowdecl.JobView) []ContainerUse {
 
 // DockerActionUses supplies execution alternatives after the caller has
 // established that the action uses Docker. Guards belong to its enclosing calls.
-func DockerActionUses(step workflowdecl.StepView, targets []ContainerTarget, guards []string) []ContainerUse {
+func DockerActionUses(step workflowdecl.Step, targets []ContainerTarget, guards []string) []ContainerUse {
 	action, present := step.Action()
 	if !present {
 		return nil
 	}
 	var uses []ContainerUse
 	for _, target := range targets {
-		if target.MayRun(guards...) && target.MayRun(step.If().Value()) {
-			uses = append(uses, containerUse(target, DockerAction, action.Uses().Value(), action.Uses()))
+		if target.MayRun(guards...) && target.MayRun(step.If.Text()) {
+			var pos *workflowlang.Pos
+			if action.Uses != nil {
+				pos = action.Uses.Pos
+			}
+			uses = append(uses, containerUse(target, DockerAction, action.Uses.Text(), pos))
 		}
 	}
 	return uses

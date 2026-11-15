@@ -9,30 +9,32 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func UncancellableCondition(value declaration.StringView) []reporting.Finding {
-	if !value.Present() {
+// UncancellableCondition reports a condition of w that keeps running after cancellation.
+func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) []reporting.Finding {
+	if value == nil {
 		return nil
 	}
-	expr, err, offset := exprsyntax.ParseConditionExpression(value.Value())
+	expr, err, offset := exprsyntax.ParseConditionExpression(value.Value)
 	if err != nil || expr == nil || !workflowconditions.AlwaysIgnoresCancellation(expr) {
 		return nil
 	}
-	finding := reporting.Warning("uncancellable-condition", "", reporting.ViewPosition(value.Pos()),
+	finding := reporting.Warning("uncancellable-condition", "", value.Pos,
 		"this job can continue after workflow cancellation. Review whether it must finish cancellation cleanup or reporting")
 	// Fix only a standalone call. Compound conditions can deliberately select
 	// cancellation-only work or have branches needing different cancellation behavior.
 	call, standalone := expr.(*exprsyntax.FuncCallNode)
-	source := value.ExpressionSource()
-	if standalone && strings.EqualFold(call.Callee, "always") && len(call.Args) == 0 && source.Present() && exprsyntax.ConditionSource(value.Value()) == value.Value() {
+	source := w.ScalarSource(value)
+	if standalone && strings.EqualFold(call.Callee, "always") && len(call.Args) == 0 && source != nil && exprsyntax.ConditionSource(value.Value) == value.Value {
 		span := exprsyntax.ExpressionSpan(expr)
 		startOffset, endOffset := offset+span.Start, offset+span.End
-		startLine, startColumn := decodedConditionPosition(value.Value(), startOffset)
-		endLine, endColumn := decodedConditionPosition(value.Value(), endOffset)
+		startLine, startColumn := decodedConditionPosition(value.Value, startOffset)
+		endLine, endColumn := decodedConditionPosition(value.Value, endOffset)
 		start, startOK := source.Position(startLine, startColumn)
 		end, endOK := source.EndPos(endLine, endColumn)
 		replacement := "!cancelled()"
@@ -44,7 +46,7 @@ func UncancellableCondition(value declaration.StringView) []reporting.Finding {
 			finding.Fixes = []results.Fix{{
 				Description: "Skip this job when cancelled (changes behavior)", Applicability: results.FixUnsafe,
 				Edits: []results.Edit{{
-					Start: reporting.Position(&start), End: reporting.Position(&end), Replacement: replacement,
+					Start: reporting.Position(start), End: reporting.Position(end), Replacement: replacement,
 				}},
 			}}
 		}
@@ -57,6 +59,6 @@ func decodedConditionPosition(value string, offset int) (line, column int) {
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 }
 
-func checkJobCancellationCondition(job declaration.JobView) []reporting.Finding {
-	return UncancellableCondition(job.If())
+func checkJobCancellationCondition(job declaration.Job) []reporting.Finding {
+	return UncancellableCondition(job.Workflow(), job.If)
 }

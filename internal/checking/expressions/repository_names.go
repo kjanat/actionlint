@@ -42,13 +42,13 @@ func unionNames(repository, environment []string) []string {
 	return names
 }
 
-func jobReferenceNames(facts repository.Snapshot, job workflowdecl.JobView) ReferenceNames {
+func jobReferenceNames(facts repository.Snapshot, job workflowdecl.Job) ReferenceNames {
 	names := ReferenceNames{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)}
-	environment := job.Environment()
-	if !environment.Present() {
+	environment := job.Environment
+	if environment == nil {
 		return names
 	}
-	if environment.Expression().Present() || !environment.Name().Present() || environment.Name().ContainsExpression() {
+	if environment.Expression != nil || environment.Name == nil || environment.Name.ContainsExpression() {
 		return environmentReferenceNames(nil, nil, nil)
 	}
 	environments, known := facts.Environments.Value()
@@ -56,7 +56,7 @@ func jobReferenceNames(facts repository.Snapshot, job workflowdecl.JobView) Refe
 		return environmentReferenceNames(nil, nil, nil)
 	}
 	for _, selected := range environments.Entries() {
-		if !strings.EqualFold(selected.Name, environment.Name().Value()) {
+		if !strings.EqualFold(selected.Name, environment.Name.Text()) {
 			continue
 		}
 		var variables, secrets []string

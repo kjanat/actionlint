@@ -34,9 +34,9 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 	}
 	adapter := New(rules, checkinputs.DeclarationCheck{
 		Declaration: declaration,
-		Workflow:    func(workflowdecl.WorkflowView) []reporting.Finding { return []reporting.Finding{{Finding: want}} },
+		Workflow:    func(workflowdecl.Workflow) []reporting.Finding { return []reporting.Finding{{Finding: want}} },
 	})
-	if err := adapter.VisitWorkflowPre(workflowdecl.WorkflowView{}); err != nil {
+	if err := adapter.VisitWorkflowPre(workflowdecl.Workflow{}); err != nil {
 		t.Fatal(err)
 	}
 	got := adapter.Errs()

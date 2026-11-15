@@ -24,7 +24,7 @@ func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
 			}
 			for index, want := range map[int]string{0: "echo before", 2: "echo after"} {
 				run, ok := steps[index].Run()
-				if !ok || !run.Run().Present() || run.Run().Value() != want || !run.Source().Present() {
+				if !ok || run.Run == nil || run.Run.Text() != want || run.Source == nil {
 					t.Fatalf("surrounding run %d lost its source: %+v", index, steps[index])
 				}
 			}

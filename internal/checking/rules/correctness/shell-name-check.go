@@ -12,7 +12,7 @@ import (
 // ShellNameCheck validates shell declarations against their declaring job's
 // prepared platform. Without a known job platform, it accepts any supported shell.
 func ShellNameCheck(runners *runnerlang.Knowledge, registries ...*commands.Registry) checkinputs.DeclarationCheck {
-	platform := func(job workflowdecl.JobView) runnerlang.Platform {
+	platform := func(job workflowdecl.Job) runnerlang.Platform {
 		if runners == nil || !job.Present() {
 			return runnerlang.Any
 		}
@@ -20,15 +20,15 @@ func ShellNameCheck(runners *runnerlang.Knowledge, registries ...*commands.Regis
 	}
 	return checkinputs.DeclarationCheck{
 		Declaration: ShellNameDeclaration(),
-		Workflow: func(workflow workflowdecl.WorkflowView) []reporting.Finding {
-			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflow.Defaults().Run().Semantic()), runnerlang.Any, registries...))
+		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(workflow.Defaults)), runnerlang.Any, registries...))
 		},
-		Job: func(job workflowdecl.JobView) []reporting.Finding {
-			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(job.Defaults().Run().Semantic()), platform(job), registries...))
+		Job: func(job workflowdecl.Job) []reporting.Finding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(job.Defaults)), platform(job), registries...))
 		},
-		Step: func(step workflowdecl.StepView) []reporting.Finding {
+		Step: func(step workflowdecl.Step) []reporting.Finding {
 			if run, present := step.Run(); present {
-				findings := reporting.FromDiagnostics(checkShell(run.Shell().Semantic(), platform(step.Job()), registries...))
+				findings := reporting.FromDiagnostics(checkShell(workflowdecl.Scalar(run.Shell), platform(step.Job()), registries...))
 				for i := range findings {
 					findings[i].Step = step
 				}

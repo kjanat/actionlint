@@ -13,7 +13,7 @@ import (
 func RunnerLabelCheck(runners *runnerlang.Knowledge, labels runnerlang.LabelSet) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: RunnerLabelDeclaration(),
-		Job: func(job workflowdecl.JobView) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.Finding {
 			var rejections []runnerapi.Rejection
 			if runners != nil {
 				rejections = runners.Job(job).Rejections

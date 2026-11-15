@@ -3,7 +3,6 @@ package expressions
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -58,19 +57,19 @@ func TestKP2BWMatrixExpressionTypes(t *testing.T) {
 			t.Fatalf("matrix.%s: got %v, want string", name, inferred)
 		}
 	}
-	resolution := checker.matrixResolution(job.Strategy())
+	resolution := checker.matrixResolution(job.Strategy)
 	if tools := resolution.Reachable("tools"); !tools.Complete || !tools.MayBeMissing || len(tools.Values) != 1 {
 		t.Fatalf("include-only tools knowledge lost: %+v", tools)
 	}
-	action, ok := testStep(t, job, 1).Exec().Action()
+	action, ok := testStep(t, job, 1).Action()
 	if !ok {
 		t.Fatal("mise action not recognized")
 	}
-	insertions := slices.Collect(action.InputInsertions())
+	insertions := action.InputInsertions
 	if len(insertions) != 1 {
 		t.Fatalf("input insertions: %v", insertions)
 	}
-	inferred, valid := checker.checkOneExpression(insertions[0].Expression(), "mise inputs", "jobs.<job_id>.steps.with")
+	inferred, valid := checker.checkOneExpression(insertions[0].Expression, "mise inputs", "jobs.<job_id>.steps.with")
 	object, isObject := inferred.Object()
 	if !valid || !isObject || !object.IsStrict() {
 		t.Fatalf("dynamic inputs lost their closed object type: %v", inferred)

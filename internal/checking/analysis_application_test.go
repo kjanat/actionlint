@@ -109,7 +109,7 @@ type analysisFailingRule struct {
 	err error
 }
 
-func (r *analysisFailingRule) VisitWorkflowPre(workflowdecl.WorkflowView) error { return r.err }
+func (r *analysisFailingRule) VisitWorkflowPre(workflowdecl.Workflow) error { return r.err }
 
 func TestAnalysisFailurePreservesCauseAndBatchContext(t *testing.T) {
 	t.Parallel()

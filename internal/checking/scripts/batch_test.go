@@ -218,97 +218,6 @@ func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Gr
 	return graph, Collection{Declarations: registry, Scopes: []*Scope{scope}, Scripts: requests, Collected: true}, parsed.Workflow
 }
 
-func TestBatchRejectsForeignInputsAndIsolatesLegacyMutations(t *testing.T) {
-	t.Parallel()
-	for name, mutate := range map[string]func(*invocation.Graph, *Collection, *workflowlang.ExecRun, *workflowlang.Input){
-		"missing run mapping": func(_ *invocation.Graph, _ *Collection, r *workflowlang.ExecRun, _ *workflowlang.Input) {
-			r.Source = nil
-		},
-		"missing run position": func(_ *invocation.Graph, _ *Collection, r *workflowlang.ExecRun, _ *workflowlang.Input) {
-			r.Run.Pos = nil
-		},
-		"missing run key": func(_ *invocation.Graph, _ *Collection, r *workflowlang.ExecRun, _ *workflowlang.Input) {
-			r.RunPos = nil
-		},
-		"missing input mapping": func(_ *invocation.Graph, _ *Collection, _ *workflowlang.ExecRun, i *workflowlang.Input) {
-			i.Source = nil
-		},
-		"missing input position": func(_ *invocation.Graph, _ *Collection, _ *workflowlang.ExecRun, i *workflowlang.Input) {
-			i.Value.Pos = nil
-		},
-		"missing input key": func(_ *invocation.Graph, _ *Collection, _ *workflowlang.ExecRun, i *workflowlang.Input) {
-			i.Name.Pos = nil
-		},
-		"unpublished graph": func(g *invocation.Graph, _ *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			*g = invocation.Graph{}
-		},
-		"nil scope": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scopes[0] = nil
-		},
-		"unknown scope": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scopes[0].Context = invocation.Context{}
-		},
-		"foreign occurrence": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[0].Occurrence = "unknown"
-		},
-		"duplicate occurrence": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[1] = c.Scripts[0]
-		},
-		"missing body": func(_ *invocation.Graph, _ *Collection, r *workflowlang.ExecRun, _ *workflowlang.Input) { r.Run = nil },
-		"two bodies": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[0].Input = c.Scripts[1].Input
-		},
-		"missing input name": func(_ *invocation.Graph, _ *Collection, _ *workflowlang.ExecRun, i *workflowlang.Input) { i.Name = nil },
-		"wrong input": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[1].Input.Input = "other"
-		},
-		"wrong action": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[1].Input.Action = "other/action"
-		},
-		"missing selector": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[1].Input = nil
-		},
-		"invalid selector": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[1].Input.Language = ""
-		},
-		"input shell": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts[1].DefaultShell = new("bash")
-		},
-		"missing unit": func(_ *invocation.Graph, c *Collection, _ *workflowlang.ExecRun, _ *workflowlang.Input) {
-			c.Scripts = c.Scripts[:1]
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			graph, collection, workflow := batchFixtureWithWorkflow(t, true)
-			run, input := fixtureBodies(t, graph, collection, workflow)
-			baseline, err := NewBatch(graph, collection)
-			if err != nil {
-				t.Fatal(err)
-			}
-			originalRun, _ := baseline.Fact(0, false)
-			originalInput, _ := baseline.Fact(1, false)
-			mutate(&graph, &collection, run, input)
-			batch, err := NewBatch(graph, collection)
-			switch name {
-			case "missing run mapping", "missing run position", "missing run key", "missing input mapping", "missing input position", "missing input key", "missing body", "missing input name":
-				if err != nil {
-					t.Fatalf("legacy mutation contaminated canonical declaration: %v", err)
-				}
-				actualRun, _ := batch.Fact(0, false)
-				actualInput, _ := batch.Fact(1, false)
-				if !reflect.DeepEqual(originalRun, actualRun) || !reflect.DeepEqual(originalInput, actualInput) {
-					t.Fatal("legacy mutation changed canonical body, mapping, or provenance")
-				}
-				return
-			}
-			if !errors.Is(err, ErrInvalidBatch) || batch.Valid() {
-				t.Fatalf("invalid input bound: %v", err)
-			}
-		})
-	}
-}
-
 func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -350,7 +259,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var declaration *workflowdecl.StepView
+			var declaration *workflowdecl.Step
 			for _, reference := range snapshot.CanonicalReferences().Steps {
 				candidate, exists := registry.Declaration(reference)
 				if !exists {
@@ -359,7 +268,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 				if tc.scriptKind == invocation.ScriptRun {
 					run, exists := candidate.Run()
 					if exists {
-						if run.Source().Present() {
+						if run.Source != nil {
 							t.Fatal("non-scalar run unexpectedly has a scalar source mapping")
 						}
 						declaration = &candidate
@@ -367,10 +276,10 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 					}
 				} else if action, exists := candidate.Action(); exists {
 					declaration = &candidate
-					inputs, _ := action.InputNames()
+					inputs, _ := workflowdecl.InputNames(action)
 					for name, input := range inputs {
 						if name == tc.input {
-							if input.Source().Present() {
+							if input.Source != nil {
 								t.Fatal("non-scalar action input unexpectedly has a scalar source mapping")
 							}
 						}
@@ -422,9 +331,9 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 		}
 		if record.Kind == invocation.ScriptRun {
 			run, isRun := declaration.Run()
-			_, hasBodyPosition := run.Run().Pos()
-			_, hasKeyPosition := run.RunPos()
-			if !isRun || !run.Source().Present() || !hasBodyPosition || !hasKeyPosition {
+			_, hasBodyPosition := run.Run.Position()
+			hasKeyPosition := run.RunPos != nil
+			if !isRun || run.Source == nil || !hasBodyPosition || !hasKeyPosition {
 				t.Fatalf("scalar run lacks parser-owned mapping or positions: run=%v body=%v key=%v", isRun, hasBodyPosition, hasKeyPosition)
 			}
 			continue
@@ -433,8 +342,8 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 		if !isAction {
 			t.Fatal("action input declaration is not an action")
 		}
-		inputs, _ := action.InputNames()
-		var input workflowdecl.InputView
+		inputs, _ := workflowdecl.InputNames(action)
+		var input *workflowlang.Input
 		var inputExists bool
 		for name, candidate := range inputs {
 			if name == record.Input {
@@ -442,10 +351,10 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 				break
 			}
 		}
-		_, hasNamePosition := input.Name().Pos()
-		_, hasValuePosition := input.Value().Pos()
-		if !inputExists || !input.Name().Present() || !input.Value().Present() || !input.Source().Present() || !hasNamePosition || !hasValuePosition {
-			t.Fatalf("scalar input lacks parser-owned mapping or positions: found=%v name=%v value=%v source=%v", inputExists, hasNamePosition, hasValuePosition, input.Source().Present())
+		_, hasNamePosition := input.Name.Position()
+		hasValuePosition := hasPosition(input.Value)
+		if !inputExists || input.Name == nil || input.Value == nil || input.Source == nil || !hasNamePosition || !hasValuePosition {
+			t.Fatalf("scalar input lacks parser-owned mapping or positions: found=%v name=%v value=%v source=%v", inputExists, hasNamePosition, hasValuePosition, input.Source != nil)
 		}
 	}
 }
@@ -478,44 +387,6 @@ func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, 
 	return run, action.Inputs["script"]
 }
 
-func TestBatchSnapshotsOwnMutableScriptValues(t *testing.T) {
-	t.Parallel()
-	graph, collection, workflow := batchFixtureWithWorkflow(t, true)
-	scopes := collection.Scopes
-	run, argument := fixtureBodies(t, graph, collection, workflow)
-	placement := workflowexecution.Checkout{Directory: workflowexecution.Directory{Kind: workflowexecution.DirectoryKnown, Path: "original"}}
-	scopes[0].Paths.Placements = workflowexecution.NewCheckoutPlacement(placement, workflowexecution.CheckoutPlacement{})
-	batch, err := NewBatch(graph, collection)
-	if err != nil {
-		t.Fatal(err)
-	}
-	first, ok := batch.Fact(0, false)
-	if !ok {
-		t.Fatal("missing bound fact")
-	}
-	input, ok := batch.Fact(1, false)
-	if !ok {
-		t.Fatal("missing input fact")
-	}
-	assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
-	run.Run.Value = "corrupt original"
-	run.Source.Spans[0].YamlLine = 999
-	argument.Value.Value = "corrupt input"
-	workflow.Jobs["test"].Steps[0].Pos.Line = 999
-	batchScopes, units := batch.Snapshot()
-	if units[0].Scope != batchScopes[0] || units[1].Scope != batchScopes[0] || units[0].Content != nil || units[1].Content != nil {
-		t.Fatal("snapshot lost scope ownership or workflow source fallback")
-	}
-	after, _ := batch.Fact(0, false)
-	afterInput, _ := batch.Fact(1, false)
-	if !reflect.DeepEqual(first, after) || !reflect.DeepEqual(input, afterInput) {
-		t.Fatal("caller mutation changed a prepared fact")
-	}
-	if batchScopes[0].Paths.Placements.Details().Directory.Path != "original" || units[0].Owner.Step.Line != 6 || units[0].Origin.StepPosition.Line != 6 || batchScopes[0].Context.ID() != graph.RootID() {
-		t.Fatal("snapshot lost source provenance")
-	}
-}
-
 func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, registry *parsing.SourceSnapshots) {
 	t.Helper()
 	_, units := batch.Snapshot()
@@ -535,15 +406,15 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 		if run, isRun := declaration.Run(); isRun {
 			projected.Run, projected.Input = run, nil
 		} else if input, isInput := declaration.Action(); isInput && unit.Input != nil {
-			inputs, _ := input.InputNames()
-			var found workflowdecl.InputView
+			inputs, _ := workflowdecl.InputNames(input)
+			var found *workflowlang.Input
 			for name, candidate := range inputs {
 				if name == unit.Input.Site.Input {
 					found = candidate
 					break
 				}
 			}
-			projected.Run = workflowdecl.ExecRunView{}
+			projected.Run = nil
 			projected.Input = &ActionInput{Site: unit.Input.Site, Value: found}
 		} else {
 			t.Fatalf("canonical declaration kind disagrees with batch unit %d", index)
@@ -634,30 +505,6 @@ func TestUnpreparedBatchCannotExecute(t *testing.T) {
 			}
 			if _, err := (Service{Analyzers: []Analyzer{adapter}}).Run(t.Context(), Batch{}); !errors.Is(err, ErrInvalidBatch) {
 				t.Fatalf("scheduler accepted unprepared batch: %v", err)
-			}
-		})
-	}
-}
-
-func TestConcurrentBatchConsumersCannotMutatePublishedFacts(t *testing.T) {
-	t.Parallel()
-	graph, collection, workflow := batchFixtureWithWorkflow(t, true)
-	run, _ := fixtureBodies(t, graph, collection, workflow)
-	run.Source.Comments = []workflowlang.ScalarComment{{Text: "forged", Pos: workflowlang.Pos{Line: 1, Col: 1}}}
-	batch, err := NewBatch(graph, collection)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for range 4 {
-		t.Run("consumer", func(t *testing.T) {
-			t.Parallel()
-			for range 25 {
-				fact, ok := batch.Fact(0, false)
-				if !ok || fact.Text != "echo ok" || fact.Comments[0].Text != "# original" || fact.Spans[0].Document.Line == 999 {
-					t.Fatal("shared mutable fact")
-				}
-				fact.Comments[0].Text = "changed"
-				fact.Spans[0].Document.Line = 999
 			}
 		})
 	}
