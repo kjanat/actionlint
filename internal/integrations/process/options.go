@@ -7,7 +7,7 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
-// Options supplies literal arguments and child environment overrides.
+// CommandOptions supplies literal arguments and child environment overrides.
 // A non-nil Executable replaces the command line with a literal executable path;
 // an empty executable disables the tool. Nil parses the configured command line.
 type CommandOptions struct {
@@ -36,7 +36,7 @@ func CommandEnabled(command string, options *CommandOptions) bool {
 	return command != ""
 }
 
-// ResolveOptions locates a configured tool without executing it.
+// ResolveCommandOptions locates a configured tool without executing it.
 func ResolveCommandOptions(command string, options *CommandOptions) (string, []string, error) {
 	if options == nil {
 		return ResolveExecutable(command)
@@ -56,7 +56,7 @@ func ResolveCommandOptions(command string, options *CommandOptions) (string, []s
 	return path, append(args, options.Arguments...), err
 }
 
-// Resolve locates an executable or parses a command with arguments without running it.
+// ResolveExecutable locates an executable or parses a command with arguments without running it.
 func ResolveExecutable(exe string) (string, []string, error) {
 	c, err := execabs.LookPath(exe)
 	if err == nil {

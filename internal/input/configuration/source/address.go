@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-// Remote reports whether name uses the HTTPS configuration source scheme.
+// IsRemoteAddress reports whether name uses the HTTPS configuration source scheme.
 // Normalize must still validate the complete address before it is read.
 func IsRemoteAddress(name string) bool {
 	return strings.HasPrefix(strings.ToLower(name), "https:")
 }
 
-// Normalize validates an HTTPS address or returns an absolute local filename.
+// NormalizeAddress validates an HTTPS address or returns an absolute local filename.
 // Queries belong to remote identity; fragments and credentials are forbidden.
 func NormalizeAddress(name string) (string, error) {
 	if strings.TrimSpace(name) == "" || strings.ContainsRune(name, 0) {
@@ -38,7 +38,7 @@ func NormalizeAddress(name string) (string, error) {
 	return filepath.Abs(name)
 }
 
-// Resolve interprets a dependency relative to its declaring source. Remote
+// ResolveAddress interprets a dependency relative to its declaring source. Remote
 // sources resolve URL references; they cannot reach local filesystem addresses.
 func ResolveAddress(origin, reference string) (string, error) {
 	if strings.TrimSpace(reference) == "" || strings.ContainsRune(reference, 0) {
@@ -80,7 +80,7 @@ func hasScheme(name string) bool {
 	return strings.Contains(name, ":") && filepath.VolumeName(name) == ""
 }
 
-// Extension selects a remote format from the URL path, independently of queries.
+// AddressExtension selects a remote format from the URL path, independently of queries.
 func AddressExtension(name string) string {
 	if IsRemoteAddress(name) {
 		if u, err := url.Parse(name); err == nil {

@@ -11,7 +11,7 @@ import (
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 )
 
-// Inspect records missing and present paths. Unrepresentable or otherwise
+// InspectReferencedFiles records missing and present paths. Unrepresentable or otherwise
 // unchecked paths are unknown. Cancellation and access denial stop acquisition.
 func InspectReferencedFiles(ctx context.Context, meta *actionmeta.Metadata, reader *inputfiles.Reader) (actionmeta.ReferencedFiles, error) {
 	if reader == nil {

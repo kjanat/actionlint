@@ -1,4 +1,4 @@
-// Package config owns the repository configuration document: its model, decoding,
+// Package configuration owns the repository configuration document: its model, decoding,
 // validation, inheritance, overlays and inspection.
 package configuration
 
