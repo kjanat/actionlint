@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
@@ -486,7 +488,7 @@ func TestActionGitHubAnnotationPaths(t *testing.T) {
 					t.Errorf("%s: wanted %q in %q", name, want, content)
 				}
 			}
-			var result persistedResult
+			var result resultreport.CheckResult
 			if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 				t.Fatal(err)
 			}

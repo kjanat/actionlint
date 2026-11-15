@@ -19,7 +19,8 @@ type InspectOptions struct {
 	Registry string
 }
 
-func Inspect(ctx context.Context, streams commandstreams.Streams, r InspectOptions, acquisition plugininstall.Acquisition) (int, error) {
+// Run reads plugin metadata without executing the plugin.
+func (r InspectOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition plugininstall.Acquisition) (int, error) {
 	info, err := inspectSource(ctx, r, acquisition)
 	if err != nil {
 		return 0, err

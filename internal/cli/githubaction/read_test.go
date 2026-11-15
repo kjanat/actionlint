@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
@@ -48,7 +50,7 @@ tools: {shellcheck: false}
 			if code := Main(getenv, &output, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessNoProblem {
 				t.Fatalf("analysis failed: %d %s", code, output.String())
 			}
-			var result persistedResult
+			var result resultreport.CheckResult
 			if err := json.Unmarshal([]byte(read(t, env["ACTIONLINT_ACTION_RESULT"])), &result); err != nil {
 				t.Fatal(err)
 			}
@@ -96,7 +98,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 			if code := Main(func(name string) string { return env[name] }, &output, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessProblemFound {
 				t.Fatalf("external workflow findings lost: %d %s", code, output.String())
 			}
-			var result persistedResult
+			var result resultreport.CheckResult
 			if err := json.Unmarshal([]byte(read(t, env["ACTIONLINT_ACTION_RESULT"])), &result); err != nil {
 				t.Fatal(err)
 			}

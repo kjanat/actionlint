@@ -120,7 +120,8 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 	return errors.Join(err, encoder.Close())
 }
 
-func Migrate(ctx context.Context, streams commandstreams.Streams, req MigrateOptions, acquisition plugininstall.Acquisition) (int, error) {
+// Run migrates the selected configuration.
+func (req MigrateOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition plugininstall.Acquisition) (int, error) {
 	path, err := repoconfig.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err

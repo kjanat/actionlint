@@ -49,7 +49,8 @@ type RegistryRequest struct {
 	JSON   bool
 }
 
-func Manage(ctx context.Context, streams commandstreams.Streams, r RegistryRequest, acquisition plugininstall.Acquisition) (int, error) {
+// Run executes the plugin registry operation.
+func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams, acquisition plugininstall.Acquisition) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
 		name = r.Paths[0]

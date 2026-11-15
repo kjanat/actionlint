@@ -8,7 +8,9 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
+	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -17,6 +19,20 @@ import (
 // commandRequest runs a command using the inputs stored in its request type.
 type commandRequest interface {
 	run(context.Context, Command) (int, error)
+}
+
+// streamCommand is a command whose package runs it over command streams.
+type streamCommand interface {
+	Run(context.Context, commandstreams.Streams, plugininstall.Acquisition) (int, error)
+}
+
+// streamRequest runs a streamCommand with the streams and plugin acquisition of a Command.
+type streamRequest[C streamCommand] struct{ command C }
+
+func newStreamRequest[C streamCommand](command C) commandRequest { return streamRequest[C]{command} }
+
+func (r streamRequest[C]) run(ctx context.Context, streams Command) (int, error) {
+	return r.command.Run(ctx, streams.commandStreams(), streams.Acquisition)
 }
 
 type checkRequest struct {
@@ -114,12 +130,6 @@ type configInitRequest struct {
 	JSON       bool
 	Hyperlinks hyperlinkMode
 	Format     repoconfig.FileFormat
-}
-
-type configMigrateRequest configcommand.MigrateOptions
-
-func (r configMigrateRequest) run(ctx context.Context, streams Command) (int, error) {
-	return configcommand.Migrate(ctx, streams.commandStreams(), configcommand.MigrateOptions(r), streams.Acquisition)
 }
 
 func (r configInitRequest) run(ctx context.Context, streams Command) (int, error) {
