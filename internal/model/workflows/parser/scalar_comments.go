@@ -7,7 +7,7 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 type scalarCommentNodes struct {
@@ -15,21 +15,21 @@ type scalarCommentNodes struct {
 	leading     []string
 	trailing    []string
 	block       bool
-	scalar      *syntax.Node
+	scalar      *codec.Node
 }
 
 // Index physical comment attachments before building the parser projection. Source
 // lines only recover positions of comments already classified by the YAML parser.
-func (p *Parser) indexScalarComments(root *syntax.Node) {
+func (p *Parser) indexScalarComments(root *codec.Node) {
 	p.scalarComments = make(map[workflowlang.Pos]scalarCommentNodes)
 	p.scalarDeclarations = make(map[workflowlang.Pos]scalarCommentNodes)
-	var visit func(*syntax.Node, []string)
-	visit = func(node *syntax.Node, inherited []string) {
+	var visit func(*codec.Node, []string)
+	visit = func(node *codec.Node, inherited []string) {
 		if node == nil {
 			return
 		}
 		switch node.Kind {
-		case syntax.MappingNode:
+		case codec.MappingNode:
 			for i := 0; i+1 < len(node.Content); i += 2 {
 				key, value := node.Content[i], node.Content[i+1]
 				leading := []string{key.HeadComment, value.HeadComment}
@@ -39,22 +39,22 @@ func (p *Parser) indexScalarComments(root *syntax.Node) {
 				} else {
 					leading = append(leading, node.Content[i-2].FootComment, node.Content[i-1].FootComment)
 				}
-				if value.Kind == syntax.ScalarNode || value.Kind == syntax.AliasNode {
+				if value.Kind == codec.ScalarNode || value.Kind == codec.AliasNode {
 					attachment := scalarCommentNodes{
 						declaration: key.Line,
 						leading:     leading,
 						trailing:    []string{key.LineComment, value.LineComment},
-						block:       value.Style&(syntax.LiteralStyle|syntax.FoldedStyle) != 0,
+						block:       value.Style&(codec.LiteralStyle|codec.FoldedStyle) != 0,
 						scalar:      value,
 					}
 					p.scalarDeclarations[*PosAt(key)] = attachment
-					if value.Kind == syntax.ScalarNode {
+					if value.Kind == codec.ScalarNode {
 						p.scalarComments[*PosAt(value)] = attachment
 					}
 				}
 				visit(value, leading)
 			}
-		case syntax.SequenceNode, syntax.DocumentNode:
+		case codec.SequenceNode, codec.DocumentNode:
 			for i, child := range node.Content {
 				leading := []string{child.HeadComment}
 				if i == 0 {
@@ -65,7 +65,7 @@ func (p *Parser) indexScalarComments(root *syntax.Node) {
 				}
 				visit(child, leading)
 			}
-		case syntax.ScalarNode, syntax.AliasNode:
+		case codec.ScalarNode, codec.AliasNode:
 		}
 	}
 	visit(root, nil)
@@ -73,13 +73,13 @@ func (p *Parser) indexScalarComments(root *syntax.Node) {
 
 // ScriptSourceForDeclaration attaches comments at the alias use to source spans
 // from the anchored scalar.
-func (p *Parser) ScriptSourceForDeclaration(node *syntax.Node, declaration *workflowlang.Pos) *workflowlang.ScriptSource {
+func (p *Parser) ScriptSourceForDeclaration(node *codec.Node, declaration *workflowlang.Pos) *workflowlang.ScriptSource {
 	source := p.ScriptSource(node)
 	if source == nil || declaration == nil {
 		return source
 	}
 	attachment, exists := p.scalarDeclarations[*declaration]
-	if !exists || attachment.scalar.Kind != syntax.AliasNode {
+	if !exists || attachment.scalar.Kind != codec.AliasNode {
 		return source
 	}
 	alias := attachment.scalar

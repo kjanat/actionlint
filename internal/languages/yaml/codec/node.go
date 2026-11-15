@@ -1,5 +1,4 @@
-// Package syntax defines YAML nodes independently of a parser implementation.
-package syntax
+package codec
 
 type Kind uint32
 

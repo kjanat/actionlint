@@ -8,7 +8,6 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -44,9 +43,9 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	return metadata, nil
 }
 
-func checkMetadataAliases(doc *syntax.Node) error {
+func checkMetadataAliases(doc *codec.Node) error {
 	var aliasErr error
-	workflowparser.ValidateYAMLAliases(doc, func(n *syntax.Node, kind workflowparser.YamlAliasDiagnostic, message string) {
+	workflowparser.ValidateYAMLAliases(doc, func(n *codec.Node, kind workflowparser.YamlAliasDiagnostic, message string) {
 		if kind != workflowparser.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, message)
 		}
@@ -61,7 +60,7 @@ func (d metadataDecoder) workflow(cursor codec.Cursor) (*Metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	if root.Node().Kind != syntax.MappingNode {
+	if root.Node().Kind != codec.MappingNode {
 		type workflow struct{}
 		var target workflow
 		if err := root.Decode(&target); err != nil {
@@ -77,7 +76,7 @@ func (d metadataDecoder) workflow(cursor codec.Cursor) (*Metadata, error) {
 			return nil, err
 		}
 		n := entered.Node()
-		if n.Kind != syntax.ScalarNode || n.Value == "" || n.Value == "<<" || workflowparser.RawYAMLTagError(n) != "" || seen[n.Value] {
+		if n.Kind != codec.ScalarNode || n.Value == "" || n.Value == "<<" || workflowparser.RawYAMLTagError(n) != "" || seen[n.Value] {
 			continue
 		}
 		seen[n.Value] = true
@@ -100,7 +99,7 @@ func (d metadataDecoder) event(event codec.Cursor) (*Metadata, error) {
 		return nil, err
 	}
 	switch on.Node().Kind {
-	case syntax.MappingNode:
+	case codec.MappingNode:
 		for key, value := range on.Pairs() {
 			entered, err := key.Enter()
 			if err != nil {
@@ -111,11 +110,11 @@ func (d metadataDecoder) event(event codec.Cursor) (*Metadata, error) {
 				return out, d.call(value, out)
 			}
 		}
-	case syntax.ScalarNode:
+	case codec.ScalarNode:
 		if strings.EqualFold(on.Node().Value, "workflow_call") {
 			return &Metadata{}, nil
 		}
-	case syntax.SequenceNode:
+	case codec.SequenceNode:
 		for item := range on.Items() {
 			entered, err := item.Enter()
 			if err != nil {
@@ -125,7 +124,7 @@ func (d metadataDecoder) event(event codec.Cursor) (*Metadata, error) {
 				return &Metadata{}, nil
 			}
 		}
-	case syntax.DocumentNode, syntax.AliasNode:
+	case codec.DocumentNode, codec.AliasNode:
 	}
 	n := on.Node()
 	return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", n.Line, n.Column)
@@ -143,7 +142,7 @@ func (d metadataDecoder) call(cursor codec.Cursor, out *Metadata) error {
 		if err != nil {
 			return err
 		}
-		if root.Node().Kind == syntax.ScalarNode && root.Node().Tag == "!!null" {
+		if root.Node().Kind == codec.ScalarNode && root.Node().Tag == "!!null" {
 			return nil
 		}
 		switch field {
@@ -159,7 +158,7 @@ func (d metadataDecoder) call(cursor codec.Cursor, out *Metadata) error {
 }
 
 func (d metadataDecoder) inputs(root codec.Entered, out *Metadata) error {
-	if root.Node().Kind != syntax.MappingNode {
+	if root.Node().Kind != codec.MappingNode {
 		return d.session.Wrap(root.Node(), expectedMapping("on.workflow_call.inputs", root.Node()))
 	}
 	inputs := Inputs{}
@@ -194,7 +193,7 @@ func (d metadataDecoder) inputs(root codec.Entered, out *Metadata) error {
 }
 
 func (d metadataDecoder) secrets(root codec.Entered, out *Metadata) error {
-	if root.Node().Kind != syntax.MappingNode {
+	if root.Node().Kind != codec.MappingNode {
 		return d.session.Wrap(root.Node(), expectedMapping("on.workflow_call.secrets", root.Node()))
 	}
 	secrets := Secrets{}
@@ -215,7 +214,7 @@ func (d metadataDecoder) secrets(root codec.Entered, out *Metadata) error {
 }
 
 func (d metadataDecoder) outputs(root codec.Entered, out *Metadata) error {
-	if root.Node().Kind != syntax.MappingNode {
+	if root.Node().Kind != codec.MappingNode {
 		return d.session.Wrap(root.Node(), expectedMapping("on.workflow_call.outputs", root.Node()))
 	}
 	outputs := Outputs{}

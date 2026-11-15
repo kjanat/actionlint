@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func expectedMapping(where string, n *syntax.Node) error {
+func expectedMapping(where string, n *codec.Node) error {
 	return fmt.Errorf(
 		"yaml: %s must be mapping node but %s node was found at line:%d, col:%d",
 		where,

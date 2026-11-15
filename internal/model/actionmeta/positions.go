@@ -8,7 +8,6 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -25,7 +24,7 @@ type parsedSource struct {
 	text    string
 	mu      sync.Mutex
 	indexed bool
-	scalars map[workflowlang.Pos]*syntax.Node
+	scalars map[workflowlang.Pos]*codec.Node
 	parser  *workflowparser.Parser
 }
 
@@ -68,19 +67,19 @@ func (s *parsedSource) source(value *ExprString) *workflowlang.ScriptSource {
 // callers may edit after Parse.
 func (s *parsedSource) index() {
 	s.indexed = true
-	s.scalars = make(map[workflowlang.Pos]*syntax.Node)
+	s.scalars = make(map[workflowlang.Pos]*codec.Node)
 	root, err := codec.Parse([]byte(s.text))
 	if err != nil {
 		return
 	}
 	s.parser = workflowparser.NewSourceParser([]byte(s.text))
 	s.parser.IndexScalarSources(root)
-	var visit func(*syntax.Node)
-	visit = func(node *syntax.Node) {
+	var visit func(*codec.Node)
+	visit = func(node *codec.Node) {
 		if node == nil {
 			return
 		}
-		if node.Kind == syntax.ScalarNode {
+		if node.Kind == codec.ScalarNode {
 			key := workflowlang.Pos{Line: node.Line, Col: node.Column}
 			if _, exists := s.scalars[key]; !exists {
 				s.scalars[key] = node

@@ -5,12 +5,12 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
-func resolveInsertedMapping(node *syntax.Node) mapping.Mapping {
+func resolveInsertedMapping(node *codec.Node) mapping.Mapping {
 	return mapping.Resolve(mappingInputsFromYAML(node))
 }
 
@@ -25,18 +25,18 @@ func emptyResolvedMappingKey(key value.Value) bool {
 	return stringValue && name == ""
 }
 
-func mappingInputsFromYAML(node *syntax.Node) *mapping.Inputs {
+func mappingInputsFromYAML(node *codec.Node) *mapping.Inputs {
 	if node == nil {
 		return nil
 	}
-	if node.Kind == syntax.ScalarNode {
+	if node.Kind == codec.ScalarNode {
 		text := newString(node)
 		if text != nil && text.ContainsExpression() {
 			return &mapping.Inputs{Expression: workflowlang.SemanticValue(text)}
 		}
 		return nil
 	}
-	if node.Kind != syntax.MappingNode {
+	if node.Kind != codec.MappingNode {
 		return nil
 	}
 	result := &mapping.Inputs{Values: map[string]mapping.Input{}}

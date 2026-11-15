@@ -16,7 +16,7 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 type State uint8
@@ -301,17 +301,17 @@ func YAMLScalar(text, tag string, origin Origin) Value {
 	value.p.spelling = text
 	switch tag {
 	case "!!bool":
-		if schema.IsCoreSchemaBool(text) {
+		if codec.IsCoreSchemaBool(text) {
 			value.p.kind = Bool
 			value.p.boolean = strings.EqualFold(text, "true")
 		}
 	case "!!null":
-		if schema.IsCoreSchemaNull(text) {
+		if codec.IsCoreSchemaNull(text) {
 			value.p.kind = Null
 			value.p.text = ""
 		}
 	case "!!int", "!!float":
-		if !schema.IsCoreSchemaNumber(text) {
+		if !codec.IsCoreSchemaNumber(text) {
 			break
 		}
 		value.p.kind = Number

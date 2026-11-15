@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestCursorWrapLocatesEachErrorWithoutChangingCauses(t *testing.T) {
 	t.Parallel()
-	node := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "value", Line: 4, Column: 3}
+	node := &codec.Node{Kind: codec.ScalarNode, Tag: "!!str", Value: "value", Line: 4, Column: 3}
 	session, _, err := codec.Open(node)
 	if err != nil {
 		t.Fatal(err)

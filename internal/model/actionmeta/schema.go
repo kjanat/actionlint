@@ -11,7 +11,6 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -37,8 +36,8 @@ type actionSchemaDefinition struct {
 }
 
 // Node resolves one YAML alias level without following recursive anchors.
-func Node(n *syntax.Node) *syntax.Node {
-	for n != nil && n.Kind == syntax.AliasNode && n.Alias != nil && n.Alias.Kind != syntax.AliasNode {
+func Node(n *codec.Node) *codec.Node {
+	for n != nil && n.Kind == codec.AliasNode && n.Alias != nil && n.Alias.Kind != codec.AliasNode {
 		n = n.Alias
 	}
 	return n
@@ -47,7 +46,7 @@ func Node(n *syntax.Node) *syntax.Node {
 // Scalar mirrors TemplateReader.Validate: null, booleans and
 // numbers are converted to strings when a string definition is expected.
 // Scalar returns the runner-compatible scalar value, including literal expressions.
-func Scalar(n *syntax.Node) *string {
+func Scalar(n *codec.Node) *string {
 	v := actionSchemaLiteralScalar(n)
 	if v != nil {
 		if literal := exprsyntax.LiteralExpressionValue(*v); literal != nil {
@@ -57,9 +56,9 @@ func Scalar(n *syntax.Node) *string {
 	return v
 }
 
-func actionSchemaLiteralScalar(n *syntax.Node) *string {
+func actionSchemaLiteralScalar(n *codec.Node) *string {
 	n = Node(n)
-	if n == nil || n.Kind != syntax.ScalarNode {
+	if n == nil || n.Kind != codec.ScalarNode {
 		return nil
 	}
 	v := n.Value
@@ -75,13 +74,13 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	}
 	// Inspect physical YAML nodes once. Alias targets already occur in this tree;
 	// following aliases here would recurse through self-referential anchors.
-	var checkSyntax func(*syntax.Node)
-	checkSyntax = func(n *syntax.Node) {
+	var checkSyntax func(*codec.Node)
+	checkSyntax = func(n *codec.Node) {
 		if n.Anchor != "" {
 			// Property diagnostics use the node start, including any preceding tag.
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLAnchor, "YAML anchors are not supported in action metadata; remove anchor %q", n.Anchor)
 		}
-		if n.Kind == syntax.AliasNode {
+		if n.Kind == codec.AliasNode {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLAlias, "YAML aliases are not supported in action metadata; replace alias %q", n.Value)
 		}
 		if message := workflowparser.RawYAMLTagError(n); message != "" {
@@ -98,16 +97,16 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemaPath{}, 0, false)
 }
 
-func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *syntax.Node, path schemaPath, code ProblemCode, message string) {
+func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *codec.Node, path schemaPath, code ProblemCode, message string) {
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, code, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
-func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *syntax.Node, definition string, location schemaPath, depth int, evaluated bool) {
+func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *codec.Node, definition string, location schemaPath, depth int, evaluated bool) {
 	rule.checkActionSchemaMappingValue(meta, node, definition, location, depth, evaluated, nil)
 }
 
 // Insertions share their enclosing mapping namespace; child values start a new one.
-func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *syntax.Node, definition string, location schemaPath, depth int, evaluated bool, seen map[string]bool) {
+func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *codec.Node, definition string, location schemaPath, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := Node(node)
 	if n == nil || definition == "any" {
@@ -215,11 +214,11 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 			rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a non-empty string")
 		}
 	case actionSchemaBoolean:
-		if n.Kind != syntax.ScalarNode || n.Tag != "!!bool" {
+		if n.Kind != codec.ScalarNode || n.Tag != "!!bool" {
 			rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a boolean or expression")
 		}
 	case actionSchemaSequence:
-		if n.Kind != syntax.SequenceNode {
+		if n.Kind != codec.SequenceNode {
 			// Missing or null composite steps already have a specific runtime finding.
 			if path != "runs.steps" {
 				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a sequence")
@@ -230,8 +229,8 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 			rule.checkActionSchemaValue(meta, value, d.item, location.Index(index), depth+1, evaluated)
 		}
 	case actionSchemaMapping:
-		if n.Kind != syntax.MappingNode {
-			if path != "runs.steps.*" && (path != "runs" || n.Kind != syntax.ScalarNode || n.Tag != "!!null") {
+		if n.Kind != codec.MappingNode {
+			if path != "runs.steps.*" && (path != "runs" || n.Kind != codec.ScalarNode || n.Tag != "!!null") {
 				rule.actionSchemaError(meta, n, location, CodeInvalidFieldType, "expected a mapping")
 			}
 			return
@@ -296,7 +295,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *s
 	}
 }
 
-func actionSchemaSetPosition(n *syntax.Node, line, column int) {
+func actionSchemaSetPosition(n *codec.Node, line, column int) {
 	n.Line, n.Column = line, column
 	for _, child := range n.Content {
 		actionSchemaSetPosition(child, line, column)
@@ -366,7 +365,7 @@ func Validate(meta *Metadata) MetadataValidation {
 }
 
 type actionSchemaVisit struct {
-	node       *syntax.Node
+	node       *codec.Node
 	definition string
 }
 

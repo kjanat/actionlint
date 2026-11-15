@@ -6,17 +6,15 @@ import (
 	"reflect"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
-
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func encodingValue(value any) (any, error) {
-	var node *syntax.Node
+	var node *Node
 	switch v := value.(type) {
-	case syntax.Node:
+	case Node:
 		node = &v
-	case *syntax.Node:
+	case *Node:
 		if v == nil {
 			return nil, nil
 		}

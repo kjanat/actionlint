@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 // Pos represents a position in the file.
@@ -883,15 +883,15 @@ func (s *RawYAMLString) Equals(other RawYAMLValue) bool {
 func (s *RawYAMLString) ScalarValue() any {
 	switch s.Tag {
 	case YamlTagBool:
-		if schema.IsCoreSchemaBool(s.Value) {
+		if codec.IsCoreSchemaBool(s.Value) {
 			return strings.EqualFold(s.Value, "true")
 		}
 	case YamlTagNull:
-		if schema.IsCoreSchemaNull(s.Value) {
+		if codec.IsCoreSchemaNull(s.Value) {
 			return nil
 		}
 	case YamlTagInt, YamlTagFloat:
-		if !schema.IsCoreSchemaNumber(s.Value) {
+		if !codec.IsCoreSchemaNumber(s.Value) {
 			break
 		}
 		switch strings.ToLower(s.Value) {

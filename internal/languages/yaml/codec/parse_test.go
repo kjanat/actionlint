@@ -2,8 +2,6 @@ package codec
 
 import (
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestParseEmptyInput(t *testing.T) {
@@ -23,16 +21,16 @@ func TestParsePreservesAliasTargetIdentityAndFirstDocument(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if node == nil || node.Kind != syntax.DocumentNode || len(node.Content) != 1 {
+	if node == nil || node.Kind != DocumentNode || len(node.Content) != 1 {
 		t.Fatalf("parsed document = %#v", node)
 	}
 	mapping := node.Content[0]
-	if mapping.Kind != syntax.MappingNode || len(mapping.Content) != 4 {
+	if mapping.Kind != MappingNode || len(mapping.Content) != 4 {
 		t.Fatalf("first document mapping = %#v", mapping)
 	}
 	anchorValue := mapping.Content[1]
 	alias := mapping.Content[3]
-	if alias.Kind != syntax.AliasNode || alias.Alias != anchorValue {
+	if alias.Kind != AliasNode || alias.Alias != anchorValue {
 		t.Fatalf("alias target %p, want original anchor node %p", alias.Alias, anchorValue)
 	}
 	if mapping.Content[0].Value != "first" || mapping.Content[2].Value != "copy" {

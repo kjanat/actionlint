@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 type admissionLimits struct {
@@ -36,7 +34,7 @@ func TestAdmissionCountsSharedOccurrencesAndStopsAtRejection(t *testing.T) {
 		}
 		limits := &admissionLimits{stopAt: stopAt}
 		session.limits = limits
-		err = session.Finish(admit(cursor, func(*syntax.Node, int) bool { return true }))
+		err = session.Finish(admit(cursor, func(*Node, int) bool { return true }))
 		session.Close()
 		want := [][2]int{{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {1, 8}, {2, 9}, {2, 10}, {2, 11}, {3, 12}, {4, 13}}
 		if stopAt != 0 {
@@ -71,7 +69,7 @@ func TestAdmissionSelectionUsesParentSlots(t *testing.T) {
 	defer session.Close()
 	limits := &admissionLimits{}
 	session.limits = limits
-	err = admit(cursor, func(parent *syntax.Node, index int) bool { return parent == mapping && index == 5 })
+	err = admit(cursor, func(parent *Node, index int) bool { return parent == mapping && index == 5 })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,10 +84,10 @@ func TestAdmissionOnlyFollowsSelectedRecursiveAliases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Admit(root, func(*syntax.Node, int) bool { return false }); err != nil {
+	if err := Admit(root, func(*Node, int) bool { return false }); err != nil {
 		t.Fatal(err)
 	}
-	err = Admit(root, func(*syntax.Node, int) bool { return true })
+	err = Admit(root, func(*Node, int) bool { return true })
 	if err == nil || !strings.Contains(err.Error(), "contains itself") {
 		t.Fatalf("accepted recursion must fail: %v", err)
 	}
@@ -109,7 +107,7 @@ func TestAdmissionFailuresAlwaysCarryRejectionType(t *testing.T) {
 	}
 	for _, failure := range []error{
 		Admit(root, nil),
-		Admit(nil, func(*syntax.Node, int) bool { return true }),
+		Admit(nil, func(*Node, int) bool { return true }),
 	} {
 		if _, ok := errors.AsType[*AdmissionError](failure); !ok {
 			t.Fatalf("failed admission lacked rejection type: %v", failure)

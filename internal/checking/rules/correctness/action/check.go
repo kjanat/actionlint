@@ -10,7 +10,7 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	identifier "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/id"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
@@ -556,10 +556,10 @@ func (rule *validator) metadataFieldPosition(fallback *workflowlang.Pos, fields 
 	node := actionmeta.Node(rule.standalone.Root)
 	pos := &workflowlang.Pos{Line: 1, Col: 1}
 	for _, field := range fields {
-		if node == nil || node.Kind != syntax.MappingNode {
+		if node == nil || node.Kind != codec.MappingNode {
 			break
 		}
-		var next *syntax.Node
+		var next *codec.Node
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			if strings.EqualFold(actionmeta.Key(key), field) {

@@ -7,13 +7,12 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // Decode populates action metadata from an owned YAML node graph.
-func Decode(root *syntax.Node, metadata *Metadata) error {
+func Decode(root *codec.Node, metadata *Metadata) error {
 	if metadata == nil {
 		return errors.New("action metadata target must not be nil")
 	}
@@ -44,7 +43,7 @@ func (d manifestDecoder) metadata(root codec.Entered, out *Metadata) error {
 	if isNull(n) {
 		return nil
 	}
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return d.session.Wrap(n, expectedMapping("action metadata", n))
 	}
 	err := d.fields(root, "action metadata", map[string]func(codec.Cursor) error{
@@ -123,7 +122,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 	if isNull(n) {
 		return nil, nil, nil
 	}
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return nil, nil, d.session.Wrap(n, expectedMapping("inputs", n))
 	}
 	md := make(Inputs, len(n.Content)/2)
@@ -150,7 +149,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 			}
 			continue
 		}
-		if definition.Node().Kind != syntax.MappingNode {
+		if definition.Node().Kind != codec.MappingNode {
 			if sectionErr == nil {
 				sectionErr = d.session.Wrap(n, expectedMapping("input definition", definition.Node()))
 			}
@@ -229,7 +228,7 @@ func (d manifestDecoder) outputs(root codec.Entered) (Outputs, error) {
 	if isNull(n) {
 		return nil, nil
 	}
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return nil, d.session.Wrap(n, expectedMapping("outputs", n))
 	}
 	md := make(Outputs, len(n.Content)/2)
@@ -253,7 +252,7 @@ func (d manifestDecoder) runs(root codec.Entered) (Runs, error) {
 	if isNull(n) {
 		return Runs{}, nil
 	}
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return Runs{}, d.session.Wrap(n, expectedMapping("runs", n))
 	}
 	var out Runs
@@ -288,7 +287,7 @@ func (d manifestDecoder) branding(root codec.Entered) (Branding, error) {
 	if isNull(n) {
 		return Branding{}, nil
 	}
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return Branding{}, d.session.Wrap(n, expectedMapping("branding", n))
 	}
 	var out Branding
@@ -305,7 +304,7 @@ func (d manifestDecoder) steps(root codec.Entered) (actionCompositeSteps, error)
 	if isNull(n) {
 		return nil, nil
 	}
-	if n.Kind != syntax.SequenceNode {
+	if n.Kind != codec.SequenceNode {
 		return nil, d.session.Wrap(n, fmt.Errorf("yaml: steps must be sequence node but %s node was found at line:%d, col:%d", workflowparser.NodeKindName(n.Kind), n.Line, n.Column))
 	}
 	steps := make(actionCompositeSteps, 0, len(n.Content))
@@ -326,7 +325,7 @@ func (d manifestDecoder) steps(root codec.Entered) (actionCompositeSteps, error)
 func (d manifestDecoder) step(root codec.Entered) (*Step, error) {
 	n := root.Node()
 	s := &Step{Line: n.Line, Column: n.Column, Node: n}
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return s, nil
 	}
 	s.IsMapping = true
@@ -386,7 +385,7 @@ func (d manifestDecoder) step(root codec.Entered) (*Step, error) {
 func (d manifestDecoder) keyValues(root codec.Entered) ([]*KeyValue, *ExprString, error) {
 	n := root.Node()
 	expression := yamlExprString(n)
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return nil, expression, nil
 	}
 	var out []*KeyValue
@@ -406,4 +405,4 @@ func (d manifestDecoder) keyValues(root codec.Entered) ([]*KeyValue, *ExprString
 	return out, expression, nil
 }
 
-func isNull(n *syntax.Node) bool { return n != nil && n.Kind == syntax.ScalarNode && n.Tag == "!!null" }
+func isNull(n *codec.Node) bool { return n != nil && n.Kind == codec.ScalarNode && n.Tag == "!!null" }

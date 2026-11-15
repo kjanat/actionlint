@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -24,11 +23,11 @@ func decodeCursorSource(data []byte, target any) error {
 	return session.Finish(cursor.Decode(target))
 }
 
-func mappingValue(node *syntax.Node, name string) *syntax.Node {
-	if node.Kind == syntax.DocumentNode && len(node.Content) > 0 {
+func mappingValue(node *codec.Node, name string) *codec.Node {
+	if node.Kind == codec.DocumentNode && len(node.Content) > 0 {
 		node = node.Content[0]
 	}
-	if node.Kind != syntax.MappingNode {
+	if node.Kind != codec.MappingNode {
 		return nil
 	}
 	for i := 0; i+1 < len(node.Content); i += 2 {
@@ -78,7 +77,7 @@ func TestCursorEnterKeepsCallerAliasTargetIdentity(t *testing.T) {
 	rootNode := mappingValue(root, "root")
 	anchor := mappingValue(rootNode, "anchor")
 	alias := mappingValue(rootNode, "item")
-	if anchor == nil || alias == nil || alias.Kind != syntax.AliasNode || alias.Alias != anchor {
+	if anchor == nil || alias == nil || alias.Kind != codec.AliasNode || alias.Alias != anchor {
 		t.Fatalf("invalid alias graph: anchor=%p alias=%#v", anchor, alias)
 	}
 	session, cursor, err := codec.Open(root)
@@ -253,11 +252,11 @@ func TestParseRecursiveAliasKeepsGraphAndCursorDecodeFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.Kind != syntax.DocumentNode || len(root.Content) != 1 {
+	if root.Kind != codec.DocumentNode || len(root.Content) != 1 {
 		t.Fatalf("root=%#v", root)
 	}
 	sequence := root.Content[0]
-	if sequence.Kind != syntax.SequenceNode || len(sequence.Content) != 1 || sequence.Content[0].Alias != sequence {
+	if sequence.Kind != codec.SequenceNode || len(sequence.Content) != 1 || sequence.Content[0].Alias != sequence {
 		t.Fatalf("recursive graph=%#v", sequence)
 	}
 	session, cursor, err := codec.Open(root)
@@ -272,7 +271,7 @@ func TestParseRecursiveAliasKeepsGraphAndCursorDecodeFails(t *testing.T) {
 	if !reflect.DeepEqual(value, baseline) {
 		t.Errorf("partial value=%#v upstream=%#v", value, baseline)
 	}
-	if root.Content[0] != sequence || sequence.Content[0].Kind != syntax.AliasNode || sequence.Content[0].Alias != sequence {
+	if root.Content[0] != sequence || sequence.Content[0].Kind != codec.AliasNode || sequence.Content[0].Alias != sequence {
 		t.Fatal("decode changed source graph")
 	}
 }
@@ -332,7 +331,7 @@ func TestExplicitVerbatimTagAndCoordinatesMatchUpstream(t *testing.T) {
 	if got.Tag != "!!str" || got.Tag != want.Tag || got.Value != want.Value || got.Line != want.Line || got.Column != want.Column {
 		t.Errorf("verbatim tag node = %#v, upstream = %#v; want normalized tag, value, and coordinates preserved", got, want)
 	}
-	if got.Style != syntax.TaggedStyle || want.Style != upstream.TaggedStyle {
+	if got.Style != codec.TaggedStyle || want.Style != upstream.TaggedStyle {
 		t.Errorf("verbatim tag style = %b, upstream = %b; want explicit tag style preserved", got.Style, want.Style)
 	}
 }
@@ -369,7 +368,7 @@ func TestCursorOpensAliasOccurrenceDirectly(t *testing.T) {
 	if value != "value" {
 		t.Errorf("decoded alias=%q", value)
 	}
-	if alias.Alias != anchor || alias.Kind != syntax.AliasNode {
+	if alias.Alias != anchor || alias.Kind != codec.AliasNode {
 		t.Fatal("alias changed")
 	}
 }
@@ -385,9 +384,9 @@ func TestParseCommentsMatchUpstreamThroughSelectedBoundary(t *testing.T) {
 	if err := upstream.Unmarshal([]byte(source), &baseline); err != nil {
 		t.Fatal(err)
 	}
-	var compare func(*syntax.Node, *upstream.Node)
+	var compare func(*codec.Node, *upstream.Node)
 	commentKinds := map[string]int{}
-	compare = func(got *syntax.Node, want *upstream.Node) {
+	compare = func(got *codec.Node, want *upstream.Node) {
 		if got.HeadComment != want.HeadComment || got.LineComment != want.LineComment || got.FootComment != want.FootComment || got.Tag != want.Tag || got.Line != want.Line || got.Column != want.Column {
 			t.Errorf("node=%#v upstream=%#v", got, want)
 		}

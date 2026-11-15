@@ -7,7 +7,6 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
@@ -58,7 +57,7 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 			if !reflect.DeepEqual(peer, wantPeer) {
 				t.Fatalf("caller mutation crossed alias occurrences: got %+v, want %+v", peer, wantPeer)
 			}
-			if root.Content[0].Content[3].Kind != syntax.AliasNode {
+			if root.Content[0].Content[3].Kind != codec.AliasNode {
 				t.Fatal("source lookup changed the physical alias")
 			}
 		})

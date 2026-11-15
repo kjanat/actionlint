@@ -10,7 +10,6 @@ import (
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -51,9 +50,9 @@ func Edit(content []byte, line int, rule string, allowed []string, names rulemod
 	if root, err := codec.Parse(content); err == nil {
 		parser := workflowparser.NewSourceParser(content)
 		parser.IndexScalarSources(root)
-		var visit func(*syntax.Node)
-		visit = func(node *syntax.Node) {
-			if node.Kind == syntax.ScalarNode && node.Line <= line {
+		var visit func(*codec.Node)
+		visit = func(node *codec.Node) {
+			if node.Kind == codec.ScalarNode && node.Line <= line {
 				if scalar := parser.ScriptSource(node); scalar != nil && line <= scalar.ScalarEnd.Line {
 					target = min(target, node.Line)
 				}

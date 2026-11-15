@@ -15,7 +15,6 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 // Input is input metadata in "inputs" section in action.yml metadata file.
@@ -88,19 +87,19 @@ type Step struct {
 	// With holds each "with" input value that is a string.
 	With []*KeyValue `json:"with"`
 	// Env holds each "env" variable value that is a string.
-	Env             []*KeyValue  `json:"env"`
-	Shell           *ExprString  `yaml:"-" json:"-"`
-	ContinueOnError *ExprString  `yaml:"-" json:"-"`
-	WithExpression  *ExprString  `yaml:"-" json:"-"`
-	EnvExpression   *ExprString  `yaml:"-" json:"-"`
-	ID              *ExprString  `yaml:"-" json:"-"`
-	Node            *syntax.Node `yaml:"-" json:"-"`
+	Env             []*KeyValue `json:"env"`
+	Shell           *ExprString `yaml:"-" json:"-"`
+	ContinueOnError *ExprString `yaml:"-" json:"-"`
+	WithExpression  *ExprString `yaml:"-" json:"-"`
+	EnvExpression   *ExprString `yaml:"-" json:"-"`
+	ID              *ExprString `yaml:"-" json:"-"`
+	Node            *codec.Node `yaml:"-" json:"-"`
 	// Uses is the value of "uses" key in the step. It is nil when the key is absent or its value
 	// is not a string.
 	Uses *string `json:"uses"`
 }
 
-func yamlActionExprString(n *syntax.Node) *ExprString {
+func yamlActionExprString(n *codec.Node) *ExprString {
 	n = Node(n)
 	if value := yamlExprString(n); value != nil {
 		return value
@@ -111,11 +110,11 @@ func yamlActionExprString(n *syntax.Node) *ExprString {
 	return nil
 }
 
-func yamlExprString(n *syntax.Node) *ExprString {
-	for n.Kind == syntax.AliasNode && n.Alias != nil && n.Alias.Kind != syntax.AliasNode {
+func yamlExprString(n *codec.Node) *ExprString {
+	for n.Kind == codec.AliasNode && n.Alias != nil && n.Alias.Kind != codec.AliasNode {
 		n = n.Alias
 	}
-	if n.Kind == syntax.ScalarNode && n.Tag == "!!str" {
+	if n.Kind == codec.ScalarNode && n.Tag == "!!str" {
 		return &ExprString{Value: n.Value, Line: n.Line, Column: n.Column}
 	}
 	return nil
@@ -164,7 +163,7 @@ type Branding struct {
 }
 
 // Key resolves a metadata key using the runner's literal-expression rules.
-func Key(n *syntax.Node) string {
+func Key(n *codec.Node) string {
 	if key := Scalar(n); key != nil {
 		return *key
 	}
@@ -172,19 +171,19 @@ func Key(n *syntax.Node) string {
 }
 
 // Fields copies a mapping's keys and normalizes their spelling for struct decoding.
-func Fields(node *syntax.Node) *syntax.Node {
+func Fields(node *codec.Node) *codec.Node {
 	n := Node(node)
-	if n.Kind != syntax.MappingNode {
+	if n.Kind != codec.MappingNode {
 		return n
 	}
 	normalized := *n
-	normalized.Content = append([]*syntax.Node(nil), n.Content...)
+	normalized.Content = append([]*codec.Node(nil), n.Content...)
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		key := *n.Content[i]
 		value := Scalar(&key)
 		key.Alias, key.Anchor = nil, ""
 		if value != nil {
-			key.Kind, key.Style, key.Tag, key.Value = syntax.ScalarNode, 0, "!!str", strings.ToLower(*value)
+			key.Kind, key.Style, key.Tag, key.Value = codec.ScalarNode, 0, "!!str", strings.ToLower(*value)
 			if key.Value == "deprecationmessage" {
 				key.Value = "deprecationMessage"
 			}
@@ -208,7 +207,7 @@ type Metadata struct {
 	Filename  string `yaml:"-" json:"-"`
 	Source    []byte `yaml:"-" json:"-"`
 	// Root is the original YAML tree used for schema checks and source mapping.
-	Root *syntax.Node `yaml:"-" json:"-"`
+	Root *codec.Node `yaml:"-" json:"-"`
 	// Name is "name" field of action.yaml.
 	Name string `yaml:"name" json:"name"`
 	// Description is "description" field of action.yaml.
@@ -242,7 +241,7 @@ func (md *Metadata) Path() string {
 	return filepath.Join(md.Directory, md.Filename)
 }
 
-func expectedMapping(where string, n *syntax.Node) error {
+func expectedMapping(where string, n *codec.Node) error {
 	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowparser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
