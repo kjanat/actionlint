@@ -12,7 +12,7 @@ func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 	t.Parallel()
 	input := outline.Outlines{
 		outline.Workflow{Path: "ci.yml", ParseStatus: "complete", Triggers: []string{"push"}, Jobs: []outline.Job{
-			outline.Job{ID: "build", Needs: []string{}, Steps: []outline.Step{outline.Step{Kind: "uses", Uses: "./action"}}},
+			{ID: "build", Needs: []string{}, Steps: []outline.Step{{Kind: "uses", Uses: "./action"}}},
 		}},
 		outline.Action{Path: "action.yml", ParseStatus: "complete", Inputs: []outline.Input{}, Outputs: []outline.Output{}, Runs: outline.CompositeRuns{Steps: []outline.Step{}}},
 	}
