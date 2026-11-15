@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	checkpasses "actionlint.kjanat.dev/v2/internal/checking/passes"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
@@ -28,6 +29,8 @@ import (
 )
 
 type Options struct {
+	Bindings        *binding.Scope
+	BindSource      func(*binding.Scope, string) (*binding.Scope, error)
 	Budget          *invocation.Budget
 	SourceSnapshots *parsing.SourceSnapshots
 	Captures        *capture.Store
@@ -37,19 +40,17 @@ type Options struct {
 	Runners       *runnerlang.Knowledge
 	// ScriptInputs merge with per-config selectors; conflicting languages are errors.
 	ScriptInputs []checkinputs.ScriptInput
-	// ScriptInputsForConfig loads lazily once per immutable config, including nil.
-	ScriptInputsForConfig func(*repoconfig.Config) ([]checkinputs.ScriptInput, error)
-	Context               context.Context
-	Actions               *workspaceactions.Resolver
-	Rules                 []workflowvisit.Rule
-	Scripts               scriptexecution.Service
-	Paths                 execution.Paths
-	Reader                *files.Reader // records reads made while resolving script paths
-	Config                *repoconfig.Config
+	// ScriptInputsForScope loads lazily once per immutable config, including nil.
+	ScriptInputsForScope func(*binding.Scope) ([]checkinputs.ScriptInput, error)
+	Context              context.Context
+	Actions              *workspaceactions.Resolver
+	Rules                []workflowvisit.Rule
+	Scripts              scriptexecution.Service
+	Paths                execution.Paths
+	Reader               *files.Reader // records reads made while resolving script paths
+
 	// ConfigProvenance is shared by the entry settings and per-file projections.
 	ConfigProvenance repoconfig.Provenance
-	// ConfigForFile resolves each logical manifest path once, including no-script scopes.
-	ConfigForFile func(string) (*repoconfig.Config, error)
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
 	CollectScripts, ResolveExecution bool
@@ -69,8 +70,6 @@ type Result struct {
 	ResolveExecution bool
 	Sources          map[string][]byte
 	SourceDocuments  map[string]SourceDocument
-	// Configs is keyed by logical manifest path.
-	Configs map[string]*repoconfig.Config
 }
 
 type SourceDocument interface {
@@ -141,45 +140,35 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 	for i, r := range options.Rules {
 		passes[i] = r
 	}
-	configs := map[string]*repoconfig.Config{}
 	c := &compositeAnalyzer{
-		scriptConfig: options.Config,
+		bindings:     options.Bindings,
+		scriptConfig: options.Bindings.Composite(),
 		actions:      options.Actions,
 		compositionSession: &compositionSession{
-			ctx: options.Context, passes: passes,
+			bindSource: options.BindSource,
+			ctx:        options.Context, passes: passes,
 			runners:          options.Runners,
 			scriptPaths:      options.Paths,
 			reader:           options.Reader,
 			configProvenance: options.ConfigProvenance,
 			collectScripts:   options.CollectScripts, resolveScriptExecution: options.ResolveExecution,
-			budget:                invocation.DefaultBudget(),
-			scriptInputs:          scriptInputs,
-			scriptInputsForConfig: options.ScriptInputsForConfig,
-			scriptCatalogues:      map[*repoconfig.Config][]checkinputs.ScriptInput{},
-			sourceSnapshots:       options.SourceSnapshots,
-			captures:              options.Captures,
-			remoteActions:         options.RemoteActions,
-			remoteDocuments:       map[string]remoteDocument{},
-			remoteLookups:         map[actions.Reference]struct{}{},
-			prepareSource:         options.PrepareSource,
+			budget:               invocation.DefaultBudget(),
+			scriptInputs:         scriptInputs,
+			scriptInputsForScope: options.ScriptInputsForScope,
+			scriptCatalogues:     map[*binding.Scope][]checkinputs.ScriptInput{},
+			sourceSnapshots:      options.SourceSnapshots,
+			captures:             options.Captures,
+			remoteActions:        options.RemoteActions,
+			remoteDocuments:      map[string]remoteDocument{},
+			metadataCopies:       findingmodel.NewCopier(),
+			remoteLookups:        map[actions.Reference]struct{}{},
+			prepareSource:        options.PrepareSource,
 		},
 	}
 	if options.Budget != nil {
 		c.budget = *options.Budget
 	}
-	if options.ConfigForFile != nil {
-		c.configForFile = func(path string) (*repoconfig.Config, error) {
-			if config, exists := configs[path]; exists {
-				return config, nil
-			}
-			config, err := options.ConfigForFile(path)
-			if err != nil {
-				return nil, fmt.Errorf("load configuration for action %q: %w", path, err)
-			}
-			configs[path] = config
-			return config, nil
-		}
-	}
+
 	err = visit(c)
 	err = c.interrupt(err)
 	var graph invocation.Graph
@@ -216,7 +205,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 	for path, document := range c.remoteDocuments {
 		documents[path], sources[path] = document, document.Content()
 	}
-	return Result{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents, Configs: configs}, err
+	return Result{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents}, err
 }
 
 func scriptInputCatalogue(additional []checkinputs.ScriptInput) ([]checkinputs.ScriptInput, error) {

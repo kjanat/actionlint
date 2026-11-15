@@ -36,7 +36,9 @@ func (w Workflow) DocumentPath() string { return w.path }
 
 // WithPath returns a detached copy with a different source path.
 func (w Workflow) WithPath(path string) Outline {
-	return Workflow{path: path, name: w.name, parseStatus: w.parseStatus, triggers: slices.Clone(w.triggers), jobs: cloneJobs(w.jobs)}
+	detached := copyOwnedWorkflow(w)
+	detached.path = path
+	return detached
 }
 
 // MarshalJSON derives the document kind from the concrete type.
@@ -240,18 +242,15 @@ func (r UnknownRuns) MarshalJSON() ([]byte, error) {
 func cloneRuns(runs ActionRuns) ActionRuns {
 	switch runs := runs.(type) {
 	case CompositeRuns:
-		return CompositeRuns{steps: cloneSteps(runs.steps)}
+		return copyOwnedCompositeRuns(runs)
 	case DockerRuns:
-		return DockerRuns{
-			image: runs.image, entrypoint: runs.entrypoint, preEntrypoint: runs.preEntrypoint,
-			postEntrypoint: runs.postEntrypoint, args: slices.Clone(runs.args),
-		}
+		return copyOwnedDockerRuns(runs)
 	case JavaScriptRuns:
-		return JavaScriptRuns{Using: runs.Using, Main: runs.Main, Pre: runs.Pre, Post: runs.Post, PreIf: runs.PreIf, PostIf: runs.PostIf}
+		return copyOwnedJavaScriptRuns(runs)
 	case PluginRuns:
-		return PluginRuns{Plugin: runs.Plugin}
+		return copyOwnedPluginRuns(runs)
 	case UnknownRuns:
-		return UnknownRuns{Using: runs.Using}
+		return copyOwnedUnknownRuns(runs)
 	default:
 		return nil
 	}

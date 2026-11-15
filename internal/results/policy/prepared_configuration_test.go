@@ -13,11 +13,12 @@ func TestSourcePolicyRequiresPreparedConfiguration(t *testing.T) {
 	t.Parallel()
 	processor := policy.Processor{RuleSet: checking.ConfigurationRules()}
 	sources := map[string][]byte{"inner/action.yml": []byte("name: inner\n")}
-	if _, err := processor.Apply(policy.Policy{Path: "workflow.yml"}, nil, sources, nil); err == nil || !strings.Contains(err.Error(), "configuration was not prepared") {
+	missing := preparePolicy(processor.RuleSet, nil, policy.Policy{Path: "workflow.yml"}, nil, nil)
+	if _, err := publishFindings(processor, missing, nil, sources); err == nil || !strings.Contains(err.Error(), "configuration was not prepared") {
 		t.Fatalf("missing configuration did not fail: %v", err)
 	}
-	prepared := policy.Policy{Path: "workflow.yml", SourceConfigurations: map[string]*repoconfig.Config{"inner/action.yml": nil}}
-	if _, err := processor.Apply(prepared, nil, sources, nil); err != nil {
+	prepared := preparePolicy(processor.RuleSet, nil, policy.Policy{Path: "workflow.yml"}, map[string]*repoconfig.Config{"inner/action.yml": nil}, nil)
+	if _, err := publishFindings(processor, prepared, nil, sources); err != nil {
 		t.Fatalf("explicit default configuration was rejected: %v", err)
 	}
 }

@@ -11,7 +11,6 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -65,7 +64,7 @@ func (r *invocationDeclarationRule) VisitOpaqueAction(step workflowdecl.StepView
 }
 
 // New invokes only the workflow, job and step checks supplied by the rule.
-func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) *declarationRule {
+func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) workflowvisit.Rule {
 	if check.Workflow == nil && check.Job == nil && check.Step == nil {
 		panic("rule " + check.Name + " supplies no declaration check")
 	}
@@ -73,16 +72,19 @@ func New(rules repoconfig.RuleSet, check checkinputs.DeclarationCheck) *declarat
 	if !found {
 		panic("unregistered rule: " + check.Name)
 	}
-	return &declarationRule{
+	adapter := &declarationRule{
 		Base: workflowvisit.NewBase(metadata.Name, metadata.Description), rules: rules,
 		workflowCheck: check.Workflow, jobCheck: check.Job, stepCheck: check.Step,
 	}
+	if metadata.SupportsActions {
+		return &invocationDeclarationRule{declarationRule: adapter}
+	}
+	return adapter
 }
 
 func (r *declarationRule) collect(input []reporting.Finding, job string) {
 	for _, d := range input {
-		finding := findingmodel.FromDiagnostic(d.Diagnostic)
-		finding.LifecycleEvidence = d.LifecycleEvidence
+		finding := new(d.Finding)
 		if descriptor, known := r.rules.FindRule(finding.Rule); known {
 			finding.Rule = descriptor.Name
 		}
@@ -121,13 +123,7 @@ func (r *declarationRule) VisitStep(s workflowdecl.StepView) error {
 
 // NewVendorLockIn checks URL-form references in jobs, steps and called composites.
 func NewVendorLockIn(rules repoconfig.RuleSet, runners *runnerlang.Knowledge) workflowvisit.Rule {
-	r := New(rules, correctness.VendorLockInCheck(runners.Target()))
-	return &invocationDeclarationRule{declarationRule: r}
-}
-
-// NewRuntimeLifecycle checks language selections in workflows and composite bodies.
-func NewRuntimeLifecycle(rules repoconfig.RuleSet, context actionmeta.LifecycleContext) workflowvisit.Rule {
-	return &invocationDeclarationRule{declarationRule: New(rules, correctness.RuntimeLifecycleCheck(context))}
+	return New(rules, correctness.VendorLockInCheck(runners.Target()))
 }
 
 func NewRuleRequireJobTimeout(rules repoconfig.RuleSet, policy *repoconfig.JobTimeoutPolicy) workflowvisit.Rule {

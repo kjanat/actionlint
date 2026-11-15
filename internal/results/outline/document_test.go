@@ -86,3 +86,18 @@ func TestOutlineAccessorsReturnDetachedCopies(t *testing.T) {
 		t.Fatalf("action storage leaked: %+v", moved.Inputs())
 	}
 }
+
+func TestMovedActionKeepsRuntimeStoragePrivate(t *testing.T) {
+	t.Parallel()
+	args := []string{"original"}
+	action := outline.NewAction(outline.ActionFields{Path: "action.yml", Runs: outline.NewDockerRuns(outline.DockerRunsFields{Image: "alpine", Args: args})})
+	moved := action.WithPath("moved/action.yml").(outline.Action)
+	args[0] = "constructor caller"
+	moved.Runs().(outline.DockerRuns).Args()[0] = "accessor caller"
+	for _, value := range []outline.Action{action, moved} {
+		got := value.Runs().(outline.DockerRuns).Args()
+		if len(got) != 1 || got[0] != "original" {
+			t.Fatalf("runtime storage escaped from %s: %v", value.DocumentPath(), got)
+		}
+	}
+}

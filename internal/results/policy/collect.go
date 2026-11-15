@@ -11,28 +11,19 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// File carries completed document findings and their diagnostic identity scope.
-type File struct {
-	Project, InputPath string
-	Source             sourcepos.Revision
-	Content            []byte
-	Action             bool
-	Findings           []*findingmodel.Finding
-}
-
-// Collect completes and deduplicates findings across documents in source order.
-func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagnostic, sources []report.DiagnosticSource) {
+// retain makes the only visibility and duplicate decision across evaluated batches.
+func retain(files []evaluatedBatch, authority map[*findingmodel.Finding]obligation) (diagnostics []diagmodel.Diagnostic, sources []report.DiagnosticSource) {
 	type location struct {
 		project, path, rule string
 		start               sourcepos.Position
 	}
 	seen := make(map[location][]int)
 	var retained []*findingmodel.Finding
-	mergeFinding := func(index int, diagnostic diagmodel.Diagnostic, finding *findingmodel.Finding) {
+	var retainedBatch []int
+	mergeFinding := func(index int, diagnostic diagmodel.Diagnostic) {
 		diagnostics[index].NonBlocking = diagnostics[index].NonBlocking && diagnostic.NonBlocking
 		retained[index].NonBlocking = diagnostics[index].NonBlocking
-		retained[index].RequiredLifecycle = retained[index].RequiredLifecycle || finding.RequiredLifecycle
-		if retained[index].RequiredLifecycle {
+		if _, required := authority[retained[index]]; required {
 			retained[index].SuppressionTarget = nil
 			sources[index].Suppression = nil
 		}
@@ -63,37 +54,61 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 	for i := range files {
 		file := &files[i]
 		project := file.Project
+		type invocationIdentity struct {
+			metadata  metadataLocation
+			authority obligation
+		}
+		preferred := make(map[invocationIdentity]*findingmodel.Finding)
+		for _, candidate := range file.Findings {
+			if identity := candidate.MetadataIdentity; identity != nil && candidate.Rule == "action" {
+				key := invocationIdentity{metadataLocation{project, candidate.Rule, candidate.Severity, identity.Key}, authority[candidate]}
+				prior := preferred[key]
+				if prior == nil {
+					preferred[key] = candidate
+					continue
+				}
+				blocking := prior.NonBlocking && candidate.NonBlocking
+				if identity.Visit < prior.MetadataIdentity.Visit {
+					preferred[key] = candidate
+				}
+				preferred[key].NonBlocking = blocking
+			}
+		}
 		unique := file.Findings[:0]
 		for _, finding := range file.Findings {
-			if finding.Rule == "action" && finding.MetadataParseSource.Valid() && parseDeclarations[finding.MetadataParseSource] {
+			if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
+				key := invocationIdentity{metadataLocation{project, finding.Rule, finding.Severity, identity.Key}, authority[finding]}
+				if preferred[key] != finding {
+					continue
+				}
+			}
+			_, required := authority[finding]
+			if !required && finding.Rule == "action" && finding.MetadataParseSource.Valid() && parseDeclarations[finding.MetadataParseSource] {
 				continue
 			}
-			diagnostic := finding.Canonical(file.Content)
+			diagnostic := finding.Canonical(file.Policy.Content)
 			identityPath := file.InputPath
 			if finding.Source != nil {
 				identityPath = diagnostic.Path
 			}
-			content := file.Content
-			if finding.Foreign(file.Content) {
+			content := file.Policy.Content
+			if finding.Foreign(file.Policy.Content) {
 				content = copies.of(finding.Source)
 			}
-			processor.CompleteDiagnostic(&diagnostic, content, identityPath, finding.UnavailableSource.Present())
+			file.Processor.completeDiagnostic(&diagnostic, content, identityPath, finding.UnavailableSource.Present())
 			var metadataKey metadataLocation
 			isMetadata := finding.MetadataIdentity != nil && finding.Rule == "action"
 			if identity := finding.MetadataIdentity; isMetadata {
 				metadataKey = metadataLocation{project, finding.Rule, finding.Severity, identity.Key}
-				if !finding.RequiredLifecycle && !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
+				if _, required := authority[finding]; !required && !identity.Declaration && declarations[declarationLocation{project, identity.Key}] {
 					continue
 				}
 				duplicate := slices.IndexFunc(seenMetadata[metadataKey], func(index int) bool {
 					previous := retained[index]
-					if previous.RequiredLifecycle || finding.RequiredLifecycle {
-						return previous.RequiredLifecycle == finding.RequiredLifecycle && reflect.DeepEqual(diagnostics[index].Lifecycle, diagnostic.Lifecycle)
-					}
-					return true
+					return authority[previous] == authority[finding]
 				})
 				if duplicate >= 0 {
-					mergeFinding(seenMetadata[metadataKey][duplicate], diagnostic, finding)
+					mergeFinding(seenMetadata[metadataKey][duplicate], diagnostic)
 					continue
 				}
 			}
@@ -101,11 +116,14 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 			duplicate := slices.IndexFunc(seen[key], func(index int) bool {
 				previous, current := diagnostics[index], diagnostic
 				previous.NonBlocking, current.NonBlocking = false, false
-				return reflect.DeepEqual(previous, current)
+				if retainedBatch[index] == i && retained[index].InferredReference && finding.InferredReference {
+					previous.Reference, current.Reference = nil, nil
+				}
+				return authority[retained[index]] == authority[finding] && reflect.DeepEqual(previous, current)
 			})
 			if duplicate >= 0 {
 				index := seen[key][duplicate]
-				mergeFinding(index, diagnostic, finding)
+				mergeFinding(index, diagnostic)
 				if isMetadata {
 					seenMetadata[metadataKey] = append(seenMetadata[metadataKey], index)
 				}
@@ -116,9 +134,10 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 			}
 			seen[key] = append(seen[key], len(diagnostics))
 			retained = append(retained, finding)
+			retainedBatch = append(retainedBatch, i)
 			diagnostics = append(diagnostics, diagnostic)
 			var target *report.SuppressionTarget
-			if suppression := finding.SuppressionTarget; suppression != nil && !finding.RequiredLifecycle {
+			if suppression := finding.SuppressionTarget; suppression != nil && !required {
 				path := suppression.Path
 				if path == "" {
 					path = file.InputPath
@@ -134,7 +153,7 @@ func (processor Processor) Collect(files []File) (diagnostics []diagmodel.Diagno
 	return diagnostics, sources
 }
 
-// sourceCopies copies each foreign source once per Collect call. Findings in
+// sourceCopies copies each foreign source once per publication. Findings in
 // the same action.yml or sourced script share one Source array, so their
 // diagnostics share one copy instead of each holding the whole file.
 type sourceCopies map[sourceKey][]byte

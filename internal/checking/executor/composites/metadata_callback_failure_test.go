@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
@@ -22,13 +23,21 @@ func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadat
 	return nil
 }
 
-func (p *failingMetadataParticipant) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule {
+func (p *failingMetadataParticipant) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
 	return &failingMetadataCallback{Base: workflowvisit.NewBase(p.Name(), ""), failure: p.failure}
 }
 
 type failingMetadataCallback struct {
 	workflowvisit.Base
 	failure error
+}
+
+func (p *failingMetadataCallback) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+	return p
+}
+
+func (p *failingMetadataCallback) CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot, actionmeta.ReferencedFiles) error {
+	return p.failure
 }
 
 func (p *failingMetadataCallback) VisitStep(step declaration.StepView) error {

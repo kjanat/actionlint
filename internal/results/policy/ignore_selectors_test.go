@@ -3,6 +3,7 @@ package policy
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -39,7 +40,12 @@ func TestIgnoreSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings, err := (Processor{RuleSet: rules}).Apply(Policy{Path: "workflow.yml", IgnoreSelectors: selectors}, []*findingmodel.Finding{{Rule: tc.name, Code: tc.code, Message: "some message"}}, nil, nil)
+			registry := binding.NewRegistry(rules)
+			scope := registry.Prepare(nil, nil, nil)
+			input := []*findingmodel.Finding{{Rule: tc.name, Code: tc.code, Message: "some message"}}
+			input[0].Binding = scope.Rule(tc.name).ID()
+			published, err := Publish([]Batch{{Processor: Processor{RuleSet: rules}, Policy: Policy{Path: "workflow.yml", IgnoreSelectors: selectors, Scope: scope, Bindings: registry.Seal()}, Findings: input}}, nil)
+			findings := published.Findings[0]
 			if err != nil || (len(findings) == 0) != tc.ignored {
 				t.Fatalf("findings=%+v err=%v, want ignored=%t", findings, err, tc.ignored)
 			}

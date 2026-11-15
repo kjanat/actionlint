@@ -1094,9 +1094,10 @@ with every host. Run the candidate fixture against the exact artifact and intend
 providers also require the user's execution opt-in. Open an issue here to add a plugin to the documentation.
 
 Built-in rule declarations, implementations and tests live in their category under
-[`internal/checking/rules`](../internal/checking/rules). The index in
-[`internal/checking/rule_index.go`](../internal/checking/rule_index.go) reads those
-declarations; `internal/input/configuration` maps rule declarations to configuration settings.
+[`internal/checking/rules`](../internal/checking/rules). The catalogue in
+[`internal/checking/executor/registration`](../internal/checking/executor/registration)
+pairs each declaration with its implementation. The public rule index derives from
+that catalogue; `internal/input/configuration` maps declarations to configuration settings.
 Workflow adapters in `internal/checking/executor/declarations` supply inputs to
 the checks. The index generates [`docs/rules.md`](rules.md);
 [`docs/checks.md`](checks.md) provides behavior examples. External plugins use the

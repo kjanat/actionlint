@@ -12,7 +12,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -29,7 +28,7 @@ func scriptDefaultShell(defaults workflowdecl.DefaultsView) *string {
 	return new(shell)
 }
 
-func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepView, cfg *repoconfig.Config, jobShell, workflowShell *string) error {
+func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepView, jobShell, workflowShell *string) error {
 	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
 		return err
 	}
@@ -37,7 +36,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 		return errors.New("script source snapshot is unavailable")
 	}
 	if action, ok := declaration.Action(); ok {
-		return analysis.collectActionInputs(declaration, action, cfg)
+		return analysis.collectActionInputs(declaration, action)
 	}
 	run, ok := declaration.Run()
 	if !ok || !run.Run().Present() {
@@ -86,7 +85,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflowdecl.StepVi
 	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepView, action workflowdecl.ExecActionView, cfg *repoconfig.Config) error {
+func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepView, action workflowdecl.ExecActionView) error {
 	name, valid := scriptexecution.ScriptInputAction(action)
 	if !valid {
 		return nil
@@ -101,7 +100,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflowdecl.StepVie
 		}
 		if catalogue == nil {
 			var err error
-			catalogue, err = analysis.actionInputCatalogue(cfg)
+			catalogue, err = analysis.actionInputCatalogue()
 			if err != nil {
 				return err
 			}
@@ -145,14 +144,14 @@ func (analysis *compositeAnalyzer) scriptEnvironment(step workflowdecl.StepView,
 	return scriptmodel.EnvironmentAlternatives(shell, analysis.operatingSystems, layers...)
 }
 
-func (analysis *compositeAnalyzer) actionInputCatalogue(cfg *repoconfig.Config) ([]checkinputs.ScriptInput, error) {
-	if analysis.scriptInputsForConfig == nil {
+func (analysis *compositeAnalyzer) actionInputCatalogue() ([]checkinputs.ScriptInput, error) {
+	if analysis.scriptInputsForScope == nil {
 		return analysis.scriptInputs, nil
 	}
-	if catalogue, exists := analysis.scriptCatalogues[cfg]; exists {
+	if catalogue, exists := analysis.scriptCatalogues[analysis.bindings]; exists {
 		return catalogue, nil
 	}
-	additional, err := analysis.scriptInputsForConfig(cfg)
+	additional, err := analysis.scriptInputsForScope(analysis.bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +159,6 @@ func (analysis *compositeAnalyzer) actionInputCatalogue(cfg *repoconfig.Config) 
 	if err != nil {
 		return nil, err
 	}
-	analysis.scriptCatalogues[cfg] = catalogue
+	analysis.scriptCatalogues[analysis.bindings] = catalogue
 	return catalogue, nil
 }

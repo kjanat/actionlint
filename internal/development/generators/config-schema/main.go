@@ -233,17 +233,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			}},
 		}
 	case reflect.TypeFor[actionlint.RepositoryConfig]():
-		mapping := reflectMapping(struct {
-			Service      any                `yaml:"service"`
-			Permissions  *string            `yaml:"default-workflow-permissions" jsonschema:"nullable,enum=read,enum=write,description=Repository default workflow token permissions. Omission inherits host knowledge; null makes the default unknown."`
-			Runners      []string           `yaml:"runners" jsonschema:"nullable,description=Additional runner labels or Go path.Match patterns. Empty permits no additional labels."`
-			Variables    map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values. Null values retain known names without assuming values. Values are never included in diagnostics."`
-			Secrets      []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names. Values are never accepted. Empty permits only built-in and workflow_call secrets."`
-			Environments map[string]struct {
-				Variables map[string]*string `yaml:"variables" jsonschema:"nullable,description=Available variable names with optional string values for this environment. Null values retain known names without assuming values. Values are never included in diagnostics."`
-				Secrets   []string           `yaml:"secrets" jsonschema:"nullable,description=Available secret names for this environment. Values are never accepted."`
-			} `yaml:"environments" jsonschema:"nullable,description=Known deployment environments and their variable and secret names."`
-		}{})
+		mapping := reflectMapping(actionlint.RepositoryWire{})
 		mapping.Version, mapping.ID = "", ""
 		enterprise := reflectMapping(struct {
 			Kind    string `yaml:"kind" jsonschema:"required,enum=ghes,description=Identifies GitHub Enterprise Server."`

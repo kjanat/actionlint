@@ -8,13 +8,14 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
+	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
-// FilterConfigured applies resolved ignore selectors to the same logical invocation.
-func (processor Processor) FilterConfigured(path, root string, source []byte, findings []*findingmodel.Finding, cfg *repoconfig.Config, foreign bool, level func(string) repoconfig.Level, additional ...string) []*findingmodel.Finding {
+// filterConfigured applies resolved ignore selectors to the same logical invocation.
+func (processor Processor) filterConfigured(path, root string, source []byte, findings []*findingmodel.Finding, cfg *repoconfig.Config, foreign bool, level func(string) repoconfig.Level, additional ...string) []*findingmodel.Finding {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
@@ -58,6 +59,7 @@ func (processor Processor) FilterConfigured(path, root string, source []byte, fi
 				if mode == repoconfig.ReportSuppression || mode == repoconfig.ReportAll {
 					policyError := *finding
 					policyError.Rule = "forbidden-suppression"
+					policyError.Binding = bindingmodel.ID{}
 					policyError.Message = fmt.Sprintf("configured suppression of %s is disallowed by policy.forbidden-suppression", ignore.Rule)
 					policyError.Code, policyError.Severity, policyError.Fixes = "", "", nil
 					filtered = append(filtered, &policyError)
@@ -73,7 +75,7 @@ func (processor Processor) FilterConfigured(path, root string, source []byte, fi
 	return filtered
 }
 
-// Levels projects resolved rule severity lookup without exposing traversal.
-func (processor Processor) Levels(cfg *repoconfig.Config) func(string) repoconfig.Level {
+// levels projects resolved rule severity lookup without exposing traversal.
+func (processor Processor) levels(cfg *repoconfig.Config) func(string) repoconfig.Level {
 	return func(name string) repoconfig.Level { return processor.RuleSet.DiagnosticLevel(cfg, name) }
 }

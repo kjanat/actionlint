@@ -51,7 +51,7 @@ func (c *LintRulesConfig) RuleOptions(name string) (map[string]any, error) {
 	}
 	setting, found := ruleSet.canonicalSetting(c.Groups()[category], name)
 	if boundSetting, bound := c.boundSettings[name]; bound {
-		setting, found = boundSetting, true
+		setting, found = boundSetting.Setting, true
 	}
 	if !found {
 		// Legacy registrations remain readable until migration has metadata.

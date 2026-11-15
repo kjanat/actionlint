@@ -21,11 +21,6 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 	return append(names, additional...)
 }
 
-// FilterInline applies inline directives to findings owned by this source.
-func (processor Processor) FilterInline(source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, additional ...string) []*findingmodel.Finding {
-	return processor.filterInlineSuppressionsAt(source, findings, policy, "", nil, additional...)
-}
-
 type inlineAudit struct {
 	level func(string) repoconfig.Level
 	used  func(sourcepos.Position, string)
@@ -102,11 +97,6 @@ func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []
 		}
 	}
 	return filtered
-}
-
-// FilterForeignInline applies suppression directives from the declaring YAML.
-func (processor Processor) FilterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, additional ...string) []*findingmodel.Finding {
-	return processor.filterForeignInline(path, source, findings, policy, nil, additional...)
 }
 
 func (processor Processor) filterForeignInline(path string, source []byte, findings []*findingmodel.Finding, policy *repoconfig.SuppressionsPolicy, audit *inlineAudit, additional ...string) []*findingmodel.Finding {

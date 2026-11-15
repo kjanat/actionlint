@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"strconv"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 
 	configaddress "actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
@@ -328,7 +330,7 @@ type Config struct {
 	// Lint configures rule selection separately from repository policy.
 	Lint LintConfig `yaml:"lint" jsonschema:"nullable"`
 	// Repository supplies overrides for repository knowledge obtained by the host.
-	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
+	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable" merge:"atomic-members"`
 	// Overrides applies per-file lint settings in declaration order. Later matching
 	// settings win; mappings merge and arrays replace. Paths are repository-relative.
 	Overrides []Override `yaml:"overrides" jsonschema:"nullable"`
@@ -484,21 +486,18 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]Input, bindRules
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return Resolved{}, err
 	}
-	for name, tool := range c.Tools {
-		if tool.Config != nil {
-			tool.Config.fromInput = origins["/tools/"+configPointerPart(name)+"/config"].Source == "input"
-		}
-	}
+	c.Tools.setInputOrigins(inputs, "/tools")
 	for i := range c.Overrides {
+		if c.Overrides[i].partial != nil {
+			origins := configtree.Prefix(inputs, fmt.Sprintf("/overrides/%d", i))
+			c.Overrides[i].partial = configtree.Capture(c.Overrides[i].partial.Value(), origins)
+		}
 		if tools := c.Overrides[i].Tools; tools != nil {
-			for _, tool := range *tools {
-				if tool.Config != nil {
-					tool.Config.fromInput = origins["/overrides"].Source == "input"
-				}
-			}
+			tools.setInputOrigins(inputs, fmt.Sprintf("/overrides/%d/tools", i))
 		}
 	}
 	c.Lint.Rules.bindingSources = ruleBindingSources("", &c, inputs)
+	c.Lint.locations = maps.Clone(inputs)
 	return Resolved{Value: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
@@ -573,7 +572,6 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
-	resolved.Config.setLifecycleOrigins(loaded.Origins)
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
 	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], documents: documents}

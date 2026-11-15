@@ -100,9 +100,17 @@ env      = { GOOS = "js", GOARCH = "wasm" }
 ["lint:vulnerabilities"]
 run = "go run golang.org/x/vuln/cmd/govulncheck@latest ./..."
 
+["lint:owned-copies"]
+run = "go generate -run owned-copies ./..."
+env = { OWNED_COPIES_CHECK = "1" }
+
+["lint:analysis-merge"]
+run = "go generate -run analysis-merge ./..."
+env = { ANALYSIS_MERGE_CHECK = "1" }
+
 ["lint"]
-depends     = ["lint:golangci", "lint:vulnerabilities", "lint:playground"]
-description = "Run Go, vulnerability and browser checks"
+depends     = ["lint:golangci", "lint:vulnerabilities", "lint:playground", "lint:owned-copies", "lint:analysis-merge"]
+description = "Run Go, generated-code, vulnerability and browser checks"
 
 ["lint-docs"]
 run = "go run ./internal/development/tests/integration/documentation -quiet ./docs/checks.md"
@@ -116,8 +124,7 @@ run     = "node ./tools/generate/webhook-payloads/main.mts"
 sources = [
   "internal/development/generators/{config-schema,files}/**",
   "internal/input/configuration/**/*.go",
-  "internal/checking/{rule_*,config_rules}.go",
-  "internal/checking/rules/**/*.go",
+  "internal/checking/**/*.go",
   "internal/plugins/manifests/bundled/**",
   "internal/plugins/execution/preparation/**/*.go",
   "schemas/**"
@@ -126,7 +133,7 @@ outputs = ["actionlint.schema.json", "internal/input/configuration/schema/assets
 run     = "go run ./internal/development/generators/config-schema"
 
 ["generate:rules"]
-sources = ["internal/development/generators/{rule-docs,files}/**", "internal/checking/rule_*.go", "internal/checking/rules/**/*.go"]
+sources = ["internal/development/generators/{rule-docs,files}/**", "internal/checking/**/*.go"]
 outputs = ["docs/rules.md"]
 run     = "go run ./internal/development/generators/rule-docs"
 
@@ -154,6 +161,12 @@ sources = ["internal/development/generators/workflow-views/**", "internal/model/
 outputs = ["internal/model/workflows/*.gen.go"]
 run     = "go run ./internal/development/generators/workflow-views . internal/model/workflows"
 
+["generate:owned-copies"]
+run = "go generate -run owned-copies ./..."
+
+["generate:analysis-merge"]
+run = "go generate -run analysis-merge ./..."
+
 ["generate:go"]
 depends = [
   "generate:config-schema",
@@ -161,7 +174,9 @@ depends = [
   "generate:contexts",
   "generate:events",
   "generate:actions",
-  "generate:workflow-views"
+  "generate:workflow-views",
+  "generate:owned-copies",
+  "generate:analysis-merge"
 ]
 
 ["contract"]

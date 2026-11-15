@@ -206,7 +206,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			}
 			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 			err = result.revalidateCaptures(store, rows, root, errors.Join(sourceErr, admissionErr))
-			result.collectDiagnostics()
+			publishTestDiagnostics(t, &result)
 			rejection, ok := errors.AsType[*admissionRejectedError](err)
 			if !ok || rejection.Count() != 1 || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != retained.Message {
 				t.Fatalf("failed source leaked its real parse finding: diagnostics=%+v error=%v", result.Diagnostics, err)

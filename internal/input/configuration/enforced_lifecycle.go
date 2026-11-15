@@ -73,10 +73,7 @@ func ReadEnforcedLifecyclePolicies(paths []string, read func(string) ([]byte, er
 		if len(file.Lint.Lifecycle.Policies) == 0 {
 			return nil, fmt.Errorf("enforced lifecycle policy %q contains no policies", path)
 		}
-		for i := range file.Lint.Lifecycle.Policies {
-			file.Lint.Lifecycle.Policies[i].origin = loaded.Origins[fmt.Sprintf("/lint/lifecycle/policies/%d/id", i)].File
-		}
-		policies, err := file.Lint.Lifecycle.Compile(path)
+		policies, err := file.Lint.Lifecycle.compile(path, loaded.Origins, "/lint/lifecycle/policies")
 		if err != nil {
 			return nil, fmt.Errorf("enforced lifecycle policy %q: %w", path, err)
 		}

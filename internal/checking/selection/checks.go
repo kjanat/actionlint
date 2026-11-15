@@ -1,40 +1,31 @@
 package selection
 
 import (
-	jsonv2 "encoding/json/v2"
 	"errors"
-	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // ConfigureAnalyzers applies presets and per-rule settings to explicit registrations.
 // Library registration options take precedence over repository options.
-func ConfigureAnalyzers(config *repoconfig.Config, registrations []checkinputs.Registration) ([]checkinputs.Registration, error) {
+func ConfigureAnalyzers(scope *binding.Scope, registrations []checkinputs.Registration) ([]checkinputs.Registration, error) {
 	selected := make([]checkinputs.Registration, 0, len(registrations))
 	for _, registration := range registrations {
 		if validation.IsNil(registration.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
 		name := registration.Checker.Descriptor().Name
+		config := scope.Rule(name).Config()
 		if config.RuleSet().DiagnosticLevel(config, name) == "off" {
 			continue
 		}
-		if config != nil && len(registration.Options) == 0 {
-			options, err := config.Lint.Rules.RuleOptions(name)
-			if err != nil {
-				return nil, err
-			}
-			if options != nil {
-				data, err := jsonv2.Marshal(options)
-				if err != nil {
-					return nil, fmt.Errorf("options for analyzer %q: %w", name, err)
-				}
-				registration.Options = data
-			}
+		options, err := scope.Rule(name).Options(registration.Options)
+		if err != nil {
+			return nil, err
 		}
+		registration.Options = options
 		selected = append(selected, registration)
 	}
 	return selected, nil

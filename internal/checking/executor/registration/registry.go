@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
@@ -53,6 +54,7 @@ import (
 // It contains no process pool, application session or engine implementation.
 // Context controls cancellation for rule work, including filesystem reads.
 type Inputs struct {
+	Bindings                    *binding.Scope
 	RequiredPermissionLocations []repoconfig.PermissionLocation
 	Lifecycle                   actionmeta.LifecycleContext
 
@@ -93,78 +95,99 @@ type implementation struct {
 	Enabled func(Inputs) bool
 }
 
-var ruleImplementations = sync.OnceValue(func() map[string]implementation {
-	return map[string]implementation{
-		"missing-action-metadata": {Build: func(c Inputs) workflowvisit.Rule {
+var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
+	return []ruleSpec{
+		newSpec(correctness.VendorLockInDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.NewVendorLockIn(c.Rules, c.Runners) }}),
+		newSpec(correctness.ContainerRunnerDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.NewContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
+		}}),
+		declarationSpec(suspicious.UncancellableConditionCheck()),
+		newSpec(security.MissingPermissionsDeclaration(), implementation{Prepare: preparePermissionRequirements, Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.New(c.Rules, security.MissingPermissionsCheck(c.RequiredPermissionLocations))
+		}}),
+		newSpec(conventions.MissingActionMetadataDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.New(c.Rules, conventions.MissingActionMetadataCheck(c.RemoteActions))
 		}, Enabled: func(c Inputs) bool {
 			return c.Config != nil && c.Config.Policy.RequireActionMetadata != nil && *c.Config.Policy.RequireActionMetadata
-		}},
-		"workflow-run-names": {Prepare: prepareWorkflowRunNames, Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		declarationOnly(correctness.ExpressionSyntaxDeclaration()),
+		declarationOnly(correctness.ExpressionReferenceDeclaration()),
+		declarationOnly(correctness.ContextAvailabilityDeclaration()),
+		declarationOnly(correctness.ExpressionTypeDeclaration()),
+		declarationOnly(correctness.ExpressionCallDeclaration()),
+		declarationOnly(correctness.EventPayloadDeclaration()),
+		declarationOnly(security.ScriptInjectionDeclaration()),
+		declarationOnly(correctness.ScriptInterpolationDeclaration()),
+		newSpec(correctness.WorkflowRunNamesDeclaration(), implementation{Prepare: prepareWorkflowRunNames, Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.New(c.Rules, correctness.WorkflowRunNamesCheck(c.WorkflowNameInventory))
-		}, Enabled: workflowRunNamesAvailable},
-		"matrix": {Build: func(c Inputs) workflowvisit.Rule {
+		}, Enabled: workflowRunNamesAvailable}),
+		declarationOnly(correctness.UnsoundTernaryDeclaration()),
+		declarationOnly(correctness.SyntaxCheckDeclaration()),
+		declarationOnly(correctness.InlineSuppressionDeclaration()),
+		declarationOnly(correctness.UnusedSuppressionDeclaration()),
+		declarationOnly(correctness.MissingLocalActionDeclaration()),
+		declarationOnly(suspicious.StringConditionsDeclaration()),
+		declarationOnly(suspicious.JoinLiteralDeclaration()),
+		declarationOnly(suspicious.CollectionComparisonDeclaration()),
+		declarationOnly(suspicious.CoercionDeclaration()),
+		declarationOnly(suspicious.MixedTypeComparisonsDeclaration()),
+		declarationOnly(suspicious.CaseInsensitiveConditionsDeclaration()),
+		declarationOnly(suspicious.MixedTypeMatrixFiltersDeclaration()),
+		declarationOnly(conventions.ForbiddenSuppressionDeclaration()),
+		newSpec(correctness.MatrixDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.New(c.Rules, correctness.MatrixCheck(c.Config.RuleSet().DiagnosticLevel(c.Config, "mixed-type-matrix-filters") != "off"))
-		}},
-		"credentials": declarationImplementation(security.CredentialsCheck()),
-		"shell-name": {Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		declarationSpec(security.CredentialsCheck()),
+		newSpec(correctness.ShellNameDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.New(c.Rules, correctness.ShellNameCheck(c.Runners, commands.FromContext(c.Context)))
-		}},
-		"runner-label": {Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		newSpec(correctness.RunnerLabelDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			labels := runnerlang.LabelSet{}
 			if known, available := repoconfig.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
 				labels = runnerlang.KnownLabels(known.Values())
 			}
 			return declarationchecks.New(c.Rules, correctness.RunnerLabelCheck(c.Runners, labels))
-		}},
-		"runner-support": {Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		newSpec(correctness.RunnerSupportDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.New(c.Rules, correctness.RunnerSupportCheck(c.Runners))
-		}},
-		"container-runner": {Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.NewContainerRunner(c.Context, c.Runners, c.Actions, c.RemoteActions)
-		}},
-		"vendor-lock-in": {Build: func(c Inputs) workflowvisit.Rule { return declarationchecks.NewVendorLockIn(c.Rules, c.Runners) }},
-		"events":         declarationImplementation(correctness.EventsCheck()),
-		"job-needs":      declarationImplementation(correctness.JobNeedsCheck()),
-		"parallel-steps": declarationImplementation(correctness.ParallelStepsCheck()),
-		"action": {Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		declarationSpec(correctness.EventsCheck()),
+		declarationSpec(correctness.JobNeedsCheck()),
+		declarationSpec(correctness.ParallelStepsCheck()),
+		newSpec(correctness.ActionDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleAction(c.Context, c.Actions.Prepared(), c.RemoteActions).WithLifecycle(c.Lifecycle)
-		}},
-		"runtime-lifecycle": {Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.NewRuntimeLifecycle(c.Rules, c.Lifecycle)
-		}},
-		"executable-bit": {Prepare: prepareExecutableIndex, Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		newSpec(correctness.RuntimeLifecycleDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
+			return declarationchecks.New(c.Rules, correctness.RuntimeLifecycleCheck(c.Lifecycle))
+		}}),
+		newSpec(correctness.ExecutableBitDeclaration(), implementation{Prepare: prepareExecutableIndex, Build: func(c Inputs) workflowvisit.Rule {
 			return correctness.NewRuleExecutableBit(correctness.ExecutableContext{
 				ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
 				Index: c.ExecutableIndex, Runners: c.Runners,
 			})
-		}, Enabled: func(c Inputs) bool { return c.ProjectRoot != "" && c.Index != nil }},
-		"env-var":     declarationImplementation(correctness.EnvVarCheck()),
-		"id":          declarationImplementation(correctness.IdCheck()),
-		"glob":        declarationImplementation(correctness.GlobCheck()),
-		"permissions": declarationImplementation(correctness.PermissionsCheck()),
-		"missing-permissions": {Prepare: preparePermissionRequirements, Build: func(c Inputs) workflowvisit.Rule {
-			return declarationchecks.New(c.Rules, security.MissingPermissionsCheck(c.RequiredPermissionLocations))
-		}},
-		"workflow-call": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
+		}, Enabled: func(c Inputs) bool { return c.ProjectRoot != "" && c.Index != nil }}),
+		declarationSpec(correctness.EnvVarCheck()),
+		declarationSpec(correctness.IdCheck()),
+		declarationSpec(correctness.GlobCheck()),
+		declarationSpec(correctness.PermissionsCheck()),
+		newSpec(correctness.WorkflowCallDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			logger := reporting.Logger{Tag: "workflow-call", Writer: c.Debug}
 			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
-		}},
-		"expression": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		newSpec(correctness.ExpressionDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
-		}},
-		"deprecated-commands":     {Script: workflowcommands.Checker{}},
-		"errexit-status":          {Script: runtimechecks.Errexit()},
-		"workflow-command-syntax": {Script: runtimechecks.WorkflowCommand()},
-		"invalid-output-file":     {Script: correctness.InvalidOutputFileChecker{}},
-		"if-cond":                 declarationImplementation(correctness.IfCondCheck()),
-		"uncancellable-condition": declarationImplementation(suspicious.UncancellableConditionCheck()),
-		"numeric-values":          declarationImplementation(correctness.NumericValuesCheck()),
-		"empty-triggers":          declarationImplementation(suspicious.EmptyTriggersCheck()),
-		"empty-job":               declarationImplementation(correctness.EmptyJobCheck()),
-		"empty-run":               declarationImplementation(suspicious.EmptyRunCheck()),
-		"unpinned-reference": {Build: func(c Inputs) workflowvisit.Rule {
+		}}),
+		newSpec(correctness.DeprecatedCommandsDeclaration(), implementation{Script: workflowcommands.Checker{}}),
+		newSpec(suspicious.ErrexitStatusDeclaration(), implementation{Script: runtimechecks.Errexit()}),
+		newSpec(suspicious.WorkflowCommandSyntaxDeclaration(), implementation{Script: runtimechecks.WorkflowCommand()}),
+		newSpec(correctness.InvalidOutputFileDeclaration(), implementation{Script: correctness.InvalidOutputFileChecker{}}),
+		declarationSpec(correctness.IfCondCheck()),
+		declarationSpec(correctness.NumericValuesCheck()),
+		declarationSpec(suspicious.EmptyTriggersCheck()),
+		declarationSpec(correctness.EmptyJobCheck()),
+		declarationSpec(suspicious.EmptyRunCheck()),
+		newSpec(security.UnpinnedReferenceDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			options := new(lintconfig.CommitHashOptions)
 			if c.Config != nil {
 				// Parsing and ValidateRuleNames reject options that do not load
@@ -175,22 +198,22 @@ var ruleImplementations = sync.OnceValue(func() map[string]implementation {
 				}
 			}
 			return declarationchecks.NewRuleRequireCommitHash(c.Rules, options.Excludes)
-		}, Enabled: func(c Inputs) bool { return c.Config.RequiresCommitHash() }},
-		"job-timeout": {Build: func(c Inputs) workflowvisit.Rule {
+		}, Enabled: func(c Inputs) bool { return c.Config.RequiresCommitHash() }}),
+		newSpec(conventions.JobTimeoutDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			return declarationchecks.NewRuleRequireJobTimeout(c.Rules, c.Config.RequiresJobTimeout())
-		}, Enabled: func(c Inputs) bool { return c.Config.RequiresJobTimeout().Enabled() }},
-		"cache-write-untrusted": {Build: func(c Inputs) workflowvisit.Rule {
+		}, Enabled: func(c Inputs) bool { return c.Config.RequiresJobTimeout().Enabled() }}),
+		newSpec(security.CacheWriteUntrustedDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			return declarationchecks.New(c.Rules, security.CacheWriteUntrustedCheck(workflow))
-		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") }},
-		"cache-call-unrestricted": {Build: func(c Inputs) workflowvisit.Rule {
+		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-write-untrusted") }}),
+		newSpec(security.CacheCallUnrestrictedDeclaration(), implementation{Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			return declarationchecks.New(c.Rules, security.CacheCallUnrestrictedCheck(workflow))
-		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }},
-		"cache-operation": {Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
+		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") }}),
+		newSpec(correctness.CacheOperationDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			workflow, _ := c.SourceSnapshot.WorkflowView()
 			return declarationchecks.New(c.Rules, correctness.CacheOperationCheck(workflow, c.Workflows))
-		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") }},
+		}, Enabled: func(c Inputs) bool { return c.Config.CachePolicyEnabled("cache-operation") }}),
 	}
 })
 
@@ -200,11 +223,17 @@ func declarationImplementation(check checkinputs.DeclarationCheck) implementatio
 
 // Registrations returns check implementations in rule-declaration order.
 func Registrations(rules repoconfig.RuleSet) []Registration {
-	behaviors := ruleImplementations()
-	for name := range behaviors {
+	behaviors := make(map[string]implementation)
+	for _, spec := range nativeRuleCatalog() {
+		behavior := spec.behavior
+		if behavior.Build == nil && behavior.Script == nil {
+			continue
+		}
+		name := spec.declaration.Name
 		if _, found := rules.FindRule(name); !found {
 			panic("check implementation " + name + " has no rule declaration")
 		}
+		behaviors[name] = behavior
 	}
 	catalog := rules.Rules()
 	out := make([]Registration, len(catalog))
@@ -217,8 +246,12 @@ func Registrations(rules repoconfig.RuleSet) []Registration {
 
 // HasRule reports whether a check implementation uses this registration name.
 func HasRule(name string) bool {
-	behavior := ruleImplementations()[name]
-	return behavior.Build != nil || behavior.Script != nil
+	for _, spec := range nativeRuleCatalog() {
+		if spec.declaration.Name == name {
+			return spec.behavior.Build != nil || spec.behavior.Script != nil
+		}
+	}
+	return false
 }
 
 func absolutePath(path string) string {

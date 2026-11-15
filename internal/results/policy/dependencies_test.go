@@ -38,7 +38,9 @@ func TestDependencyFindingsAndExitStatus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := (policy.Processor{RuleSet: rules}).Apply(policy.Policy{Path: tc.entry, Config: cfg}, []*finding.Finding{{Path: tc.path, Rule: tc.rule, Code: tc.code, Severity: tc.severity}}, nil, nil)
+			findings := []*finding.Finding{{Path: tc.path, Rule: tc.rule, Code: tc.code, Severity: tc.severity}}
+			p := preparePolicy(rules, cfg, policy.Policy{Path: tc.entry}, nil, findings)
+			got, err := publishFindings(policy.Processor{RuleSet: rules}, p, findings, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -60,12 +62,25 @@ func TestDependencyFindingsAndExitStatus(t *testing.T) {
 func TestDuplicateDependencyFindingUsesStricterCaller(t *testing.T) {
 	t.Parallel()
 	for _, firstNonBlocking := range []bool{false, true} {
-		files := []policy.File{
-			{InputPath: "one.yml", Content: []byte("on: push"), Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: []byte("name: action"), Message: "same finding", NonBlocking: firstNonBlocking}}},
-			{InputPath: "two.yml", Content: []byte("on: push"), Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: []byte("name: action"), Message: "same finding", NonBlocking: !firstNonBlocking}}},
+		files := []policy.Batch{
+			{InputPath: "one.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: []byte("name: action"), Message: "same finding", NonBlocking: firstNonBlocking}}},
+			{InputPath: "two.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: []byte("name: action"), Message: "same finding", NonBlocking: !firstNonBlocking}}},
 		}
-		diagnostics, sources := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Collect(files)
-		if len(diagnostics) != 1 || len(sources) != 1 || diagnostics[0].NonBlocking || files[0].Findings[0].NonBlocking {
+		for i := range files {
+			cfgText := "{}"
+			if !files[i].Findings[0].NonBlocking {
+				cfgText = "lint: {dependencies: {fail-on-all: true}}"
+			}
+			cfg := lifecycleRulesConfig(t, cfgText)
+			files[i].Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
+			files[i].Policy = preparePolicy(files[i].Processor.RuleSet, cfg, policy.Policy{Path: files[i].InputPath, Content: files[i].Policy.Content}, nil, files[i].Findings)
+		}
+		published, err := policy.Publish(files, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diagnostics, sources := published.Diagnostics, published.Sources
+		if len(diagnostics) != 1 || len(sources) != 1 || diagnostics[0].NonBlocking || published.Findings[0][0].NonBlocking {
 			t.Fatalf("first non-blocking=%v: got %+v and %d sources, want one blocking finding", firstNonBlocking, diagnostics, len(sources))
 		}
 	}
@@ -74,19 +89,32 @@ func TestDuplicateDependencyFindingUsesStricterCaller(t *testing.T) {
 func TestDuplicateDependencyMetadataUsesStricterCaller(t *testing.T) {
 	t.Parallel()
 	for _, firstNonBlocking := range []bool{false, true} {
-		files := []policy.File{
-			{InputPath: "one.yml", Content: []byte("uses: example/action@v1")},
-			{InputPath: "two.yml", Content: []byte("uses: example/action@v1")},
+		files := []policy.Batch{
+			{InputPath: "one.yml", Policy: policy.Policy{Content: []byte("uses: example/action@v1")}},
+			{InputPath: "two.yml", Policy: policy.Policy{Content: []byte("uses: example/action@v1")}},
 		}
 		for i := range files {
 			files[i].Findings = []*finding.Finding{{
-				Rule: "action", Path: files[i].InputPath, Message: "invalid metadata",
+				Rule: "action", Path: "https://example.test/action.yml", Message: "invalid metadata",
 				NonBlocking:      (i == 0) == firstNonBlocking,
 				MetadataIdentity: &finding.MetadataIdentity{Key: finding.MetadataKey{Path: "https://example.test/action.yml", Message: "invalid metadata"}},
 			}}
 		}
-		diagnostics, sources := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Collect(files)
-		if len(diagnostics) != 1 || len(sources) != 1 || diagnostics[0].NonBlocking || files[0].Findings[0].NonBlocking {
+		for i := range files {
+			cfgText := "{}"
+			if !files[i].Findings[0].NonBlocking {
+				cfgText = "lint: {dependencies: {fail-on-all: true}}"
+			}
+			cfg := lifecycleRulesConfig(t, cfgText)
+			files[i].Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
+			files[i].Policy = preparePolicy(files[i].Processor.RuleSet, cfg, policy.Policy{Path: files[i].InputPath, Content: files[i].Policy.Content}, nil, files[i].Findings)
+		}
+		published, err := policy.Publish(files, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diagnostics, sources := published.Diagnostics, published.Sources
+		if len(diagnostics) != 1 || len(sources) != 1 || diagnostics[0].NonBlocking || published.Findings[0][0].NonBlocking {
 			t.Fatalf("first non-blocking=%v: got %+v and %d sources, want one blocking metadata finding", firstNonBlocking, diagnostics, len(sources))
 		}
 	}

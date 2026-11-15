@@ -121,8 +121,8 @@ func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resol
 	inputs := make(map[string]Input)
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
-		markOverlay(node, overlay.node, overlay.name, inputs, overlay.inputs)
-		node = MergeDocuments(node, overlay.node)
+		merged := configtree.Overlay(configtree.Capture(node, inputs), configtree.Capture(overlay.node, overlay.inputs), MergePlan())
+		node, inputs = merged.Value(), merged.Origins()
 		names = append(names, overlay.name)
 	}
 	resolved, err := ruleSet.resolveValue(node, inputs, false)
@@ -138,49 +138,6 @@ type Loaded struct {
 }
 
 type Input = configtree.Input
-
-func MarkInput(value any, name string, inputs map[string]Input) {
-	markOverlay(nil, value, name, inputs)
-}
-
-func markOverlay(base, overlay any, name string, inputs map[string]Input, locations ...map[string]Input) {
-	var supplied map[string]Input
-	if len(locations) > 0 {
-		supplied = locations[0]
-	}
-	var mark func(any, bool, any, string)
-	mark = func(base any, basePresent bool, value any, path string) {
-		previous, hasSource := inputs[path]
-		selected := supplied[path]
-		if _, declared := supplied[path]; declared || supplied == nil {
-			selected.Name = name
-		}
-		if isMapping(value) {
-			if basePresent && base == nil && hasSource {
-				reset := previous
-				selected.Reset = &reset
-			} else {
-				selected.Reset = previous.Reset
-			}
-		} else {
-			for key := range inputs {
-				if strings.HasPrefix(key, path+"/") {
-					delete(inputs, key)
-				}
-			}
-		}
-		inputs[path] = selected
-		for key, child := range members(value) {
-			prior, found := members(base)[key]
-			mark(prior, found, child, document.Path(path, key))
-		}
-		for i, child := range elements(value) {
-			mark(nil, false, child, document.Index(path, i))
-		}
-	}
-	_, found := inputs[""]
-	mark(base, found, overlay, "")
-}
 
 // Name returns the input that supplied this overlay.
 func (o Overlay) Name() string { return o.name }
@@ -229,8 +186,8 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *Loaded, overlays []Overlay,
 			return nil, Resolved{}, err
 		}
 		bindingSources = append(bindingSources, ruleBindingSources(overlay.name, &settings, overlay.inputs)...)
-		markOverlay(node, overlay.node, overlay.name, inputs, overlay.inputs)
-		node = MergeDocuments(node, overlay.node)
+		merged := configtree.Overlay(configtree.Capture(node, inputs), configtree.Capture(overlay.node, overlay.inputs), MergePlan())
+		node, inputs = merged.Value(), merged.Origins()
 		names = append(names, overlay.name)
 	}
 	if len(overlays) > 0 {

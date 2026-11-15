@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	fixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -36,7 +37,8 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		t.Fatal(err)
 	}
 	return ruleexec.Inputs{
-		Rules: rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
+		Bindings: binding.NewRegistry(rules).Prepare(config, config, config),
+		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
 		WorkflowNames: nameinput.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),
 	}

@@ -12,14 +12,13 @@ import (
 )
 
 type LifecycleConfig struct {
-	Policies []LifecyclePolicy `yaml:"policies" jsonschema:"nullable,description=Named lifecycle notification policies."`
+	Policies []LifecyclePolicy `yaml:"policies" jsonschema:"nullable,description=Named lifecycle notification policies." merge:"key=id"`
 }
 type LifecyclePolicy struct {
 	ID            string                  `yaml:"id" jsonschema:"required,minLength=1,description=Stable policy identifier."`
 	Description   string                  `yaml:"description" jsonschema:"required,minLength=1,description=Explains the policy purpose."`
 	Match         LifecycleMatch          `yaml:"match" jsonschema:"required,description=Selects events covered by the policy."`
 	Notifications []LifecycleNotification `yaml:"notifications" jsonschema:"required,minItems=1,description=Notification stages for matching events."`
-	origin        string
 }
 type LifecycleMatch struct {
 	Subjects []lifecycle.Subject   `yaml:"subjects" jsonschema:"required,minItems=1,description=Subject kinds matched by this policy."`
@@ -52,6 +51,10 @@ func (s *LifecycleStart) DecodeConfig(value any) error {
 
 // Compile validates the complete policy list and returns immutable domain policies.
 func (c LifecycleConfig) Compile(origin string) ([]lifecycle.Policy, error) {
+	return c.compile(origin, nil, "")
+}
+
+func (c LifecycleConfig) compile(origin string, inputs map[string]Input, prefix string) ([]lifecycle.Policy, error) {
 	out := make([]lifecycle.Policy, 0, len(c.Policies))
 	ids := map[string]bool{}
 	for i, p := range c.Policies {
@@ -77,7 +80,7 @@ func (c LifecycleConfig) Compile(origin string) ([]lifecycle.Policy, error) {
 			}
 			ns = append(ns, lifecycle.Notification{Starts: start, Severity: n.Severity})
 		}
-		source := p.origin
+		source := inputs[fmt.Sprintf("%s/%d/id", prefix, i)].File
 		if source == "" {
 			source = origin
 		}
@@ -107,19 +110,5 @@ func (cfg *Config) LifecyclePolicies() ([]lifecycle.Policy, error) {
 	if cfg == nil {
 		return nil, nil
 	}
-	return cfg.Lint.Lifecycle.Compile("")
-}
-
-func (cfg *Config) setLifecycleOrigins(inputs map[string]Input) {
-	for i := range cfg.Lint.Lifecycle.Policies {
-		cfg.Lint.Lifecycle.Policies[i].origin = inputs[fmt.Sprintf("/lint/lifecycle/policies/%d/id", i)].File
-	}
-	for i := range cfg.Overrides {
-		if cfg.Overrides[i].Lint == nil {
-			continue
-		}
-		for j := range cfg.Overrides[i].Lint.Lifecycle.Policies {
-			cfg.Overrides[i].Lint.Lifecycle.Policies[j].origin = inputs[fmt.Sprintf("/overrides/%d/lint/lifecycle/policies/%d/id", i, j)].File
-		}
-	}
+	return cfg.Lint.Lifecycle.compile("", cfg.Lint.locations, "/lint/lifecycle/policies")
 }

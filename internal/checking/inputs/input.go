@@ -64,7 +64,7 @@ type Input struct {
 	Scripts         []Script
 	Invoked         []Script
 	ActionInputs    []ActionInput
-	CallGraph       CallGraph
+	CallGraph       CallGraph `clone:"shared"`
 	// SelectedScripts limits materialized text to these occurrences. Nil selects
 	// every graph script; an empty non-nil slice selects none.
 	SelectedScripts []OccurrenceID
@@ -78,14 +78,14 @@ type Input struct {
 	// descriptor-relative read operations when used by a component host.
 	Files                 []FileSystem
 	SourceRoots           []SourceRoot
-	BuildShellScriptInput ShellScriptInputBuilder
+	BuildShellScriptInput ShellScriptInputBuilder `clone:"shared"`
 }
 
 // FileSystem mounts a read-only filesystem at a guest path for one Analyze call.
 // The caller must keep FS open until Analyze returns.
 type FileSystem struct {
 	Path string
-	FS   fs.FS
+	FS   fs.FS `clone:"shared"`
 }
 
 // ActionInput supplies mapped source from an action input.
@@ -105,5 +105,5 @@ type Script struct {
 	Occurrence   ScriptOccurrence
 	Runtime      *scriptmodel.Execution
 	Environment  []scriptmodel.EnvironmentNames
-	Interpreters *commands.Registry
+	Interpreters *commands.Registry `clone:"shared"`
 }

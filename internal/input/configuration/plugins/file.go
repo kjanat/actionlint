@@ -113,7 +113,7 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 			doc.Value, err = rules.NormalizeForMerge(doc.Value)
 		}
 		return doc, err
-	}, config.MergeDocuments)
+	}, config.MergePlan())
 	if err != nil {
 		return nil, err
 	}

@@ -103,6 +103,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 			missing[originalPath] = struct{}{}
 			continue
 		}
+		d = d.Clone()
 		d.Path = path
 		keptRelated := make([]results.Related, 0, len(d.Related))
 		for _, related := range d.Related {
@@ -120,10 +121,8 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 			keptRelated = append(keptRelated, related)
 		}
 		d.Related = keptRelated
-		d.Fixes = slices.Clone(d.Fixes)
 		for j := range d.Fixes {
 			f := &d.Fixes[j]
-			f.Edits = slices.Clone(f.Edits)
 			revisions := make(map[string]string, len(f.Revisions))
 			consistent := true
 			for editedPath, digest := range f.Revisions {

@@ -16,6 +16,7 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestReusableWorkflowDuplicateRootCacheModeMetadataOrder(t *testing.T) {
@@ -109,7 +110,8 @@ permissions: {}
 						t.Fatalf("AST=%v pass=%d: wanted %d caller diagnostics, got %v", fromAST, pass, want, errs)
 					}
 					if fromAST {
-						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
+						// Each analysis owns its configuration bindings.
+						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{}), cmpopts.IgnoreFields(findingmodel.Finding{}, "Binding")); diff != "" {
 							t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 						}
 					}
@@ -222,7 +224,8 @@ permissions: {}
 							t.Fatalf("AST=%v pass=%d: wanted %d caller diagnostics, got %v", fromAST, pass, want, errs)
 						}
 						if fromAST {
-							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
+							// Each analysis owns its configuration bindings.
+							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{}), cmpopts.IgnoreFields(findingmodel.Finding{}, "Binding")); diff != "" {
 								t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 							}
 						}

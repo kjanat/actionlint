@@ -53,7 +53,7 @@ func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.StepView) error
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule {
+func (r *sourceMutationRule) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
 	r.metadata++
 	return r
 }

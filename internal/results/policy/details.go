@@ -1,14 +1,13 @@
 package policy
 
 import (
-	"maps"
 	"path/filepath"
 
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
-func (processor Processor) CompleteDiagnostic(d *diagmodel.Diagnostic, content []byte, path string, unavailable bool) {
+func (processor Processor) completeDiagnostic(d *diagmodel.Diagnostic, content []byte, path string, unavailable bool) {
 	if descriptor, ok := processor.RuleSet.FindRule(d.Rule); ok {
 		if d.Help == "" {
 			d.Help = descriptor.Help
@@ -30,7 +29,6 @@ func (processor Processor) CompleteDiagnostic(d *diagmodel.Diagnostic, content [
 	}
 	for i := range d.Fixes {
 		f := &d.Fixes[i]
-		f.Revisions = maps.Clone(f.Revisions)
 		if f.Revisions == nil {
 			f.Revisions = map[string]string{}
 		}

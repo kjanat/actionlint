@@ -19,6 +19,14 @@ import (
 // implements. Bundled providers and providers registered by plugins share it.
 type ToolsConfig map[string]ToolConfig
 
+func (tools ToolsConfig) setInputOrigins(inputs map[string]Input, prefix string) {
+	for name, tool := range tools {
+		if tool.Config != nil {
+			tool.Config.fromInput = inputs[prefix+"/"+configPointerPart(name)+"/config"].Name != ""
+		}
+	}
+}
+
 // ToolConfig configures one tool provider.
 type ToolConfig struct {
 	// Enabled turns the tool on or off. Omission or null keeps it enabled.
@@ -135,6 +143,28 @@ func (s *ToolSettings) FromInput() bool {
 	return s != nil && s.fromInput
 }
 
+// CopyConfig detaches inline values and retains configuration provenance.
+func (s *ToolSettings) CopyConfig() (any, error) {
+	next := *s
+	switch value := s.value.(type) {
+	case toolSettingsPath:
+	case toolSettingsInline:
+		detached, err := binding.DetachValue(value)
+		if err != nil {
+			return nil, err
+		}
+		copied, ok := detached.(toolSettingsInline)
+		if !ok {
+			return nil, fmt.Errorf("invalid detached tool settings type %T", detached)
+		}
+		next.value = copied
+	case nil:
+	default:
+		return nil, fmt.Errorf("unsupported tool settings value %T", value)
+	}
+	return next, nil
+}
+
 // EncodeConfig preserves the selected path or inline mapping in resolved output.
 func (s *ToolSettings) EncodeConfig() (any, error) {
 	if s == nil {
@@ -217,6 +247,8 @@ func decodeToolSettings(name string, value any, known toolProvider, registered b
 	switch selected := value.(type) {
 	case nil:
 		return nil, nil
+	case *ToolSettings:
+		return selected, nil
 	case string:
 		if registered && !known.configFiles {
 			return nil, fmt.Errorf("tools.%s.config must be a mapping; this tool reads no configuration files", name)

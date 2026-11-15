@@ -1,9 +1,6 @@
 package scripts
 
-import (
-	"bytes"
-	"slices"
-)
+//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/checking/scripts -type Unit -output internal/checking/scripts/owned_copy.gen.go
 
 func copyValue[T any](value *T) *T {
 	if value == nil {
@@ -20,32 +17,14 @@ func cloneInputs(scopes []*Scope, units []Unit) ([]*Scope, []Unit) {
 		clonedScopes[i] = copyValue(scope)
 		byScope[scope] = clonedScopes[i]
 	}
-	clonedUnits := slices.Clone(units)
-	// Repeated invocations share one copy of each supplied document buffer.
-	contents := make(map[*byte][]byte)
-	for i := range clonedUnits {
-		unit := &clonedUnits[i]
-		unit.Environment = slices.Clone(unit.Environment)
-		unit.Scope = byScope[unit.Scope]
-		unit.Shell = copyValue(unit.Shell)
-		unit.Owner = copyValue(unit.Owner)
-		if unit.Owner != nil {
-			unit.Owner.Step = copyValue(unit.Owner.Step)
-		}
-		unit.Origin = copyValue(unit.Origin)
-		if unit.Origin != nil {
-			unit.Origin.StepPosition = copyValue(unit.Origin.StepPosition)
-		}
-		if len(unit.Content) != 0 {
-			key := &unit.Content[0]
-			if content, exists := contents[key]; exists && len(content) == len(unit.Content) {
-				unit.Content = content
-			} else {
-				unit.Content = bytes.Clone(unit.Content)
-				contents[key] = unit.Content
-			}
-		}
-		unit.Input = copyValue(unit.Input)
+	var clonedUnits []Unit
+	if units != nil {
+		clonedUnits = make([]Unit, len(units))
+	}
+	copier := new(ownedCopyContext)
+	for i, unit := range units {
+		clonedUnits[i] = copier.copyOwnedUnit(unit)
+		clonedUnits[i].Scope = byScope[unit.Scope]
 	}
 	return clonedScopes, clonedUnits
 }

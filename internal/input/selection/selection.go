@@ -129,3 +129,6 @@ func matchPatterns(includes, excludes []string, path string, match bool) bool {
 func normalizePattern(pattern string) string {
 	return path.Clean(strings.TrimPrefix(pattern, "!"))
 }
+
+// CopyConfig shares immutable selection patterns. DecodeConfig replaces the selection.
+func (s Selection) CopyConfig() (any, error) { return s, nil }

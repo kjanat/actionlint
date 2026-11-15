@@ -18,6 +18,7 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 		Start:     sourcepos.Position{Line: 1, Column: 1},
 		Reference: &sourcepos.Reference{Document: "doc", Revision: "rev"},
 		Related:   []results.Related{{Message: "related", Path: "other.yml"}},
+		Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
 		Fixes: []results.Fix{{
 			Revisions: map[string]string{"workflow.yml": "sha"},
 			Edits:     []results.Edit{{Path: "workflow.yml", Replacement: "new"}},
@@ -27,6 +28,7 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 	d := f.Canonical([]byte("on: push\n"))
 	d.Reference.Document = "changed"
 	d.Related[0].Message = "changed"
+	d.Lifecycle.Policies[0].ID = "changed"
 	d.Fixes[0].Revisions["workflow.yml"] = "changed"
 	d.Fixes[0].Edits[0].Replacement = "changed"
 
@@ -35,6 +37,9 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 	}
 	if f.Related[0].Message != "related" {
 		t.Errorf("Related shared: %q", f.Related[0].Message)
+	}
+	if f.Lifecycle.Policies[0].ID != "original" {
+		t.Errorf("lifecycle report shared: %+v", f.Lifecycle)
 	}
 	if f.Fixes[0].Revisions["workflow.yml"] != "sha" {
 		t.Errorf("fix Revisions shared: %q", f.Fixes[0].Revisions["workflow.yml"])

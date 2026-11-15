@@ -1,34 +1,16 @@
 package policy
 
 import (
+	"encoding/json/v2"
 	"fmt"
 
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func (processor Processor) lifecycleConfiguration(p Policy, sourceConfig *repoconfig.Config, sourcePath, rule string, compositeConfigs map[string]*repoconfig.Config) *repoconfig.Config {
-	if p.Config != nil && p.Config.Lint.Enabled != nil && !*p.Config.Lint.Enabled {
-		return p.Config
-	}
-	descriptor, _ := processor.RuleSet.FindRule(rule)
-	switch descriptor.Scope {
-	case rulescope.SourceConfiguration:
-		return sourceConfig
-	case rulescope.CompositeConfiguration:
-		if config, ok := compositeConfigs[sourcePath]; ok {
-			return config
-		}
-	case rulescope.CallerConfiguration:
-	}
-	return p.Config
-}
-
 // assessLifecycle separates required findings before project suppressions run.
-func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Finding, sources map[string][]byte, compositeConfigs map[string]*repoconfig.Config) ([]*findingmodel.Finding, []*findingmodel.Finding, error) {
+func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Finding, authority map[*findingmodel.Finding]obligation) ([]*findingmodel.Finding, []*findingmodel.Finding, error) {
 	optional := make([]*findingmodel.Finding, 0, len(findings))
 	var required []*findingmodel.Finding
 	for _, finding := range findings {
@@ -37,15 +19,11 @@ func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Fi
 			optional = append(optional, finding)
 			continue
 		}
-		sourceConfig := p.Config
-		if _, foreign := sources[finding.Path]; foreign {
-			var prepared bool
-			sourceConfig, prepared = p.SourceConfigurations[finding.Path]
-			if !prepared {
-				return nil, nil, fmt.Errorf("lifecycle configuration was not prepared for source %q", finding.Path)
-			}
+		prepared, exists := p.Bindings.Lookup(finding.Binding)
+		if !exists {
+			return nil, nil, fmt.Errorf("finding %q has no prepared configuration binding", finding.Rule)
 		}
-		config := processor.lifecycleConfiguration(p, sourceConfig, finding.Path, finding.Rule, compositeConfigs)
+		config := prepared.Policy()
 		policies, err := config.LifecyclePolicies()
 		if err != nil {
 			return nil, nil, err
@@ -83,7 +61,12 @@ func (processor Processor) assessLifecycle(p Policy, findings []*findingmodel.Fi
 		finding.Severity = string(severity)
 		finding.Lifecycle = lifecycleReport(*evidence, project.Active, mandatory.Active)
 		if mandatoryActive {
-			finding.RequiredLifecycle = true
+			identity, err := json.Marshal(finding.Lifecycle)
+			if err != nil {
+				return nil, nil, err
+			}
+			authority[finding] = obligation{domain: "lifecycle", identity: string(identity)}
+			finding.SuppressionTarget = nil
 			finding.NonBlocking = false
 			required = append(required, finding)
 		} else {

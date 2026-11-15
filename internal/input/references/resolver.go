@@ -4,7 +4,6 @@ package references
 import (
 	"context"
 	"encoding/json"
-	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
@@ -57,14 +56,10 @@ type RequestReport struct {
 	Requests            []RequestCounts `json:"requests"`
 }
 
+//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/input/references -type Result -output internal/input/references/owned_copy.gen.go
+
 // Clone detaches every mutable field, including optional network receipts.
-func (r Result) Clone() Result {
-	r.FetchLog = slices.Clone(r.FetchLog)
-	if r.Network != nil {
-		r.Network = &RequestReport{AllRequestsReported: r.Network.AllRequestsReported, Requests: slices.Clone(r.Network.Requests)}
-	}
-	return r
-}
+func (r Result) Clone() Result { return copyOwnedResult(r) }
 
 type Resolver interface {
 	Resolve(context.Context, Request) (Result, error)

@@ -3,8 +3,6 @@ package calls
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
@@ -158,40 +156,15 @@ func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflow
 	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
 }
 
+//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/model/calls -type Metadata -output internal/model/calls/owned_copy.gen.go
+
 // Clone returns a copy that shares no map or slice storage with m.
 func (m *Metadata) Clone() *Metadata {
 	if m == nil {
 		return nil
 	}
-	return &Metadata{
-		Inputs:         maps.Clone(m.Inputs),
-		Outputs:        maps.Clone(m.Outputs),
-		Secrets:        maps.Clone(m.Secrets),
-		JobPermissions: cloneJobPermissions(m.JobPermissions),
-		JobCacheAccess: cloneJobCacheAccess(m.JobCacheAccess),
-	}
-}
-
-func cloneJobPermissions(jobs map[string]PermissionScopeLevels) map[string]PermissionScopeLevels {
-	if jobs == nil {
-		return nil
-	}
-	out := make(map[string]PermissionScopeLevels, len(jobs))
-	for id, levels := range jobs {
-		out[id] = maps.Clone(levels)
-	}
-	return out
-}
-
-func cloneJobCacheAccess(jobs map[string]CacheAccess) map[string]CacheAccess {
-	if jobs == nil {
-		return nil
-	}
-	out := make(map[string]CacheAccess, len(jobs))
-	for id, access := range jobs {
-		out[id] = CacheAccess{Mode: access.Mode, Uses: access.Uses, SourceUses: access.SourceUses, Operations: slices.Clone(access.Operations)}
-	}
-	return out
+	result := copyOwnedMetadata(*m)
+	return &result
 }
 
 func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {

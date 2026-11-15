@@ -1,6 +1,8 @@
 // Package report carries completed analysis values for application consumers.
 package report
 
+//go:generate go run ../../development/generators/analysis-merge -root ../../..
+
 import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
@@ -16,19 +18,19 @@ import (
 // values only: no live rules, parser nodes, process handles, or rendering policy.
 // Sources aligns with Diagnostics and contains the analyzed text for each finding.
 type Analysis struct {
-	IncompleteChecks []IncompleteCheck
-	ActionMetadata   []actions.Coverage
-	RunnerResults    []runner.Report
-	FileCount        int
-	Diagnostics      []results.Diagnostic
-	Sources          []DiagnosticSource
+	IncompleteChecks []IncompleteCheck    `merge:"append"`
+	ActionMetadata   []actions.Coverage   `merge:"append"`
+	RunnerResults    []runner.Report      `merge:"append"`
+	FileCount        int                  `merge:"sum"`
+	Diagnostics      []results.Diagnostic `merge:"append"`
+	Sources          []DiagnosticSource   `merge:"append"`
 	// CapturedSources projects only admitted rows after capture teardown joins.
 	// Keys are captured aliases; values and byte slices belong to this result.
-	CapturedSources map[string]CapturedSource
-	Documents       documentmodel.Outlines
-	Configurations  []configreport.Report
-	Inputs          []string
-	Rules           []rule.Descriptor
+	CapturedSources map[string]CapturedSource `merge:"captured"`
+	Documents       documentmodel.Outlines    `merge:"append"`
+	Configurations  []configreport.Report     `merge:"append"`
+	Inputs          []string                  `merge:"append"`
+	Rules           []rule.Descriptor         `merge:"rules"`
 }
 
 // IncompleteCheck identifies work that could not finish for a captured source.

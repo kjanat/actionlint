@@ -2,6 +2,7 @@ package scripts
 
 import (
 	"context"
+	"fmt"
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -9,7 +10,10 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-type Tool struct{ Runner tools.Runner }
+type Tool struct {
+	Name   string
+	Runner tools.Runner
+}
 
 func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
 	if !batch.Valid() {
@@ -19,12 +23,20 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 	prepared := tools.Batch{CallGraph: batch.CallGraph()}
 	scopes := map[*Scope]*tools.Scope{}
 	for _, scope := range batchScopes {
-		item := &tools.Scope{Config: scope.Config, ConfigProvenance: scope.ConfigProvenance, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.Deployment.ActionPath(), Reader: scope.Reader, Composite: scope.Composite}
+		config := scope.Config
+		if scope.Bindings != nil {
+			config = scope.Bindings.Rule(tool.Name).Config()
+		}
+		config, err := config.Detached()
+		if err != nil {
+			return nil, fmt.Errorf("prepare tool %q configuration: %w", tool.Name, err)
+		}
+		item := &tools.Scope{Config: config, ConfigProvenance: scope.ConfigProvenance, AnalysisDir: scope.Paths.Analysis, Workspace: scope.Paths.Workspace, ActionPath: scope.Deployment.ActionPath(), Reader: scope.Reader, Composite: scope.Composite}
 		scopes[scope] = item
 		prepared.Scopes = append(prepared.Scopes, item)
 	}
 	for index, s := range batchScripts {
-		script := tools.Script{Shell: s.Shell, Config: s.Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}}
+		script := tools.Script{Shell: s.Shell, Config: scopes[s.Scope].Config, Path: s.Path, Content: s.Content, Scope: scopes[s.Scope], Execution: tools.Execution{Shell: s.Execution.Shell.Name, ImplicitShell: s.Execution.Shell.Implicit, Directory: s.Execution.Directory.Path, DirectoryKnown: s.Execution.Directory.Kind != workflowexecution.DirectoryUnknown}}
 		fact, exists := batch.Fact(index, true)
 		if !exists {
 			return nil, ErrInvalidBatch
@@ -47,6 +59,9 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 		finding.Source, finding.RawScriptSource = result.Content, result.RawScript
 		finding.UnavailableSource = result.UnavailableSource
 		if result.Script >= 0 && result.Script < len(batchScripts) {
+			if scope := batchScripts[result.Script].Scope.Bindings; scope != nil {
+				finding.Binding = scope.Rule(finding.Rule).ID()
+			}
 			finding.IgnoreOrigin = batchScripts[result.Script].Origin
 			finding.Owner = batchScripts[result.Script].Owner
 		}

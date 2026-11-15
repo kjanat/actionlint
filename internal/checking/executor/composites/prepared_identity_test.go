@@ -211,7 +211,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	}
 	for _, unit := range rebuilt.Scripts() {
 		record, _ := graph.Script(unit.Occurrence)
-		if unit.Config != configByOwner[record.Owner] || unit.Config != unit.Scope.Config {
+		if unit.Scope.Config != configByOwner[record.Owner] {
 			t.Fatalf("request for owner %q used another invocation config", record.Owner)
 		}
 		if unit.Execution.Shell != executionByOccurrence[unit.Occurrence] {
@@ -235,7 +235,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 					t.Fatal(err)
 				}
 				registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-				options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
+				options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
 				result, err := standaloneActionForTest(t, options, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
@@ -274,7 +274,8 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	joined := false
 	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
 	options := Options{
-		Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
+		Bindings: testBindings(nil),
+		Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 		Join: func() error { joined = true; return joinFailure },
 	}

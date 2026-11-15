@@ -9,6 +9,7 @@ package manifests
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
@@ -55,6 +56,18 @@ const (
 	// ScopeComposite findings may also belong to composite action inputs.
 	ScopeComposite Scope = "composite"
 )
+
+// ConfigurationScope maps a manifest scope to its rule configuration scope.
+func (s Scope) ConfigurationScope() (rulemeta.ConfigurationScope, error) {
+	switch s {
+	case ScopeSource:
+		return rulemeta.SourceConfiguration, nil
+	case ScopeComposite:
+		return rulemeta.CompositeConfiguration, nil
+	default:
+		return 0, fmt.Errorf("unknown configuration scope %q", s)
+	}
+}
 
 // Manifest is one tool provider. Rule.Name is the tool id used by
 // configuration (tools.<name>), rule policy and the command line.

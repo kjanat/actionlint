@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
+	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -12,13 +14,45 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
+	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type remoteDocument struct {
 	parsing.SourceSnapshot
-	document parsing.Document
-	identity actions.Identity
-	valid    bool
+	document         parsing.Document
+	identity         actions.Identity
+	valid            bool
+	metadataChecked  bool
+	metadataFindings []*findingmodel.Finding
+}
+
+func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *binding.Scope, actions *workspaceactions.Resolver) error {
+	document, remote := analysis.remoteDocuments[address]
+	if !remote {
+		return nil
+	}
+	if !document.metadataChecked {
+		for _, pass := range analysis.passes {
+			participant, checksMetadata := pass.(checkcalls.MetadataParticipant)
+			if !checksMetadata {
+				continue
+			}
+			validation := participant.ForMetadata(actions)
+			err := validation.CheckStandaloneMetadata(meta, snapshot, actionmeta.ReferencedFiles{})
+			if err != nil {
+				return err
+			}
+			document.metadataFindings = append(document.metadataFindings, validation.Errs()...)
+		}
+		document.metadataChecked = true
+		analysis.remoteDocuments[address] = document
+	}
+	for _, template := range document.metadataFindings {
+		finding := analysis.metadataCopies.Clone(template)
+		finding.Binding = bindings.Rule(finding.Rule).ID()
+		analysis.metadataFindings = append(analysis.metadataFindings, finding)
+	}
+	return nil
 }
 
 var errRemoteMetadataLookupLimit = errors.New("remote action metadata lookup limit exceeded")
@@ -97,7 +131,7 @@ func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta
 		if err != nil {
 			return nil, address, invocation.Outcome{}, err
 		}
-		document = remoteDocument{snapshot, parsed, manifest.Identity(), result.Availability().State() != actions.MetadataInvalid}
+		document = remoteDocument{SourceSnapshot: snapshot, document: parsed, identity: manifest.Identity(), valid: result.Availability().State() != actions.MetadataInvalid}
 		analysis.remoteDocuments[address] = document
 	}
 	if !document.valid || !document.document.CanAnalyze() {

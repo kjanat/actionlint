@@ -46,8 +46,8 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 				"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 			}, nil)
 			rootConfig := &repoconfig.Config{}
-			f.options.Config = rootConfig
-			f.options.ConfigForFile = func(string) (*repoconfig.Config, error) { return &repoconfig.Config{}, nil }
+			f.options.Bindings = testBindings(rootConfig)
+			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return &repoconfig.Config{}, nil })
 			entered, visited := 0, 0
 			_, err := analyze(f.options, func(parent *compositeAnalyzer) error {
 				if err := parent.startEntry(invocation.EntryWorkflow, f.root); err != nil {

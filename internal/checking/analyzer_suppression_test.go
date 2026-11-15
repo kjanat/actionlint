@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -130,8 +133,21 @@ func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	const path = "actions/check/action.yml"
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
 	finding := &findingmodel.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
-	if got := (policy.Processor{RuleSet: ConfigurationRules()}).FilterForeignInline(path, source, []*findingmodel.Finding{finding}, nil, "no-sudo"); len(got) != 0 {
-		t.Fatalf("registered plugin finding escaped composite suppression: %+v", got)
+	rules := ConfigurationRules()
+	registry := binding.NewRegistry(rules)
+	scope := registry.Prepare(nil, nil, nil)
+	finding.Binding = scope.Rule(finding.Rule).ID()
+	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*binding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
+	_, fixture := capturefixture.NewCapturedSources(t, t.TempDir())
+	snapshot, err := fixture.Capture(path, source, sourcepos.YAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revision := snapshot.Revision()
+	refs := map[string]facts.SourceIndex{path: {Document: sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}}}
+	got, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, InputPath: "workflow.yml", Findings: []*findingmodel.Finding{finding}, Sources: map[string][]byte{path: source}, References: refs}}, nil)
+	if err != nil || len(got.Findings[0]) != 0 {
+		t.Fatalf("registered plugin finding escaped composite suppression: %+v %v", got.Findings, err)
 	}
 }
 

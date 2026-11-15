@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"strconv"
 	"strings"
 
@@ -23,20 +22,14 @@ type Override struct {
 	// Excludes removes files from this override; exclusions always win.
 	Excludes []string `yaml:"excludes,omitempty" jsonschema:"nullable"`
 	// Lint overlays only explicitly supplied lint fields. Null resets lint defaults.
-	Lint     *LintConfig `yaml:"lint" jsonschema:"nullable"`
-	lintNode any
-	lintSet  bool
+	Lint *LintConfig `yaml:"lint" jsonschema:"nullable"`
 	// Tools overlays external checker settings for the selected files.
-	Tools     *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
-	toolsNode any
-	toolsSet  bool
+	Tools *ToolsConfig `yaml:"tools" jsonschema:"nullable"`
 	// Repository overlays facts for matching files without changing rule selection.
-	Repository     RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
-	repositoryNode any
-	repositorySet  bool
+	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
 	// LocalActions overlays generated action source mappings for matching files.
-	LocalActions    LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
-	localActionsSet bool
+	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
+	partial      *configtree.Node
 }
 
 // DecodeConfig validates paths and records which fields were omitted or reset.
@@ -65,43 +58,47 @@ func (o *Override) DecodeConfig(value any) error {
 	if !positive {
 		return binding.At("includes", errors.New("overrides.includes requires at least one positive file glob"))
 	}
-	next.lintNode, next.lintSet = object["lint"]
-	next.toolsNode, next.toolsSet = object["tools"]
-	next.repositoryNode, next.repositorySet = object["repository"]
-	_, next.localActionsSet = object["local-actions"]
+	next.partial = configtree.Capture(object, nil)
 	*o = Override(next)
 	return nil
 }
 
+// CopyConfig copies typed settings and their captured partial independently.
+func (o Override) CopyConfig() (any, error) {
+	type plain Override
+	copied, err := binding.DetachPublicFields(plain(o))
+	if err != nil {
+		return nil, err
+	}
+	next := copied
+	if o.partial != nil {
+		value, err := binding.DetachValue(o.partial.Value())
+		if err != nil {
+			return nil, err
+		}
+		next.partial = configtree.Capture(value, o.partial.Origins())
+	}
+	return Override(next), nil
+}
+
 // EncodeConfig preserves omitted fields in partial overlays during round trips.
 func (o Override) EncodeConfig() (any, error) {
-	value := map[string]any{"includes": o.Includes}
-	if o.repositorySet {
-		value["repository"] = o.repositoryNode
+	var value any
+	if o.partial != nil {
+		value = o.partial.Value()
+	} else {
+		type plain Override
+		var err error
+		value, err = binding.EncodePartial(plain(o))
+		if err != nil {
+			return nil, err
+		}
 	}
-	if o.localActionsSet || o.LocalActions != nil {
-		value["local-actions"] = o.LocalActions
-	}
+	setField(value, "includes", o.Includes)
 	if o.Excludes != nil {
-		value["excludes"] = o.Excludes
-	}
-	if o.lintSet {
-		value["lint"] = o.lintNode
-	} else if o.Lint != nil {
-		selected, err := lintConfigValue(*o.Lint)
-		if err != nil {
-			return nil, err
-		}
-		value["lint"] = selected
-	}
-	if o.toolsSet {
-		value["tools"] = o.toolsNode
-	} else if o.Tools != nil {
-		selected, err := programmaticToolsValue(o.Tools)
-		if err != nil {
-			return nil, err
-		}
-		value["tools"] = selected
+		setField(value, "excludes", o.Excludes)
+	} else {
+		removeField(value, "excludes")
 	}
 	return value, nil
 }
@@ -114,27 +111,19 @@ func lintConfigValue(config LintConfig) (any, error) {
 	if config.source != nil {
 		return cloneValue(config.source), nil
 	}
-	rules, err := binding.Encode(config.Rules)
+	type plain LintConfig
+	value, err := binding.Encode(plain(config))
 	if err != nil {
 		return nil, err
 	}
+	rules := field(value, "rules")
 	if config.Rules.Disable == nil {
 		removeField(rules, "disable")
 	}
-	value := map[string]any{}
-	if config.Dependencies.FailOnAll != nil || config.Dependencies.FailOnCategories != nil || config.Dependencies.FailOnRules != nil {
-		value["dependencies"] = config.Dependencies
+	if len(members(rules)) == 0 {
+		removeField(value, "rules")
 	}
-	if config.MessageIgnores != nil {
-		value["message-ignores"] = config.MessageIgnores
-	}
-	if config.Enabled != nil {
-		value["enabled"] = config.Enabled
-	}
-	if len(members(rules)) != 0 {
-		value["rules"] = rules
-	}
-	return binding.Encode(value)
+	return value, nil
 }
 
 // ForFile gives each checked file its own effective settings.
@@ -173,150 +162,62 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	if err != nil {
 		return nil, err
 	}
-	policyOrigins := map[string]string{}
-	for _, p := range config.Lint.Lifecycle.Policies {
-		policyOrigins[p.ID] = p.origin
-	}
-	tools := config.Tools
-	repository, err := binding.Encode(config.Repository)
+
+	encoded, err := ruleSet.EncodeValue(config)
 	if err != nil {
 		return nil, err
 	}
-	if repository == nil {
-		repository = explicitNull{}
-	}
-	localActions := config.LocalActions
+	setField(encoded, "lint", ruleSet.expandLintShorthands(value))
+	delete(members(encoded), "overrides")
+	current := configtree.Capture(ruleSet.normalizeToolSwitch(encoded), config.Lint.locations)
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
 			continue
 		}
-		if override.repositorySet {
-			repository = mergeRepositoryNodes(repository, override.repositoryNode)
-		}
-		if override.localActionsSet || override.LocalActions != nil {
-			if override.LocalActions == nil {
-				localActions = nil
-			} else {
-				overlay, err := normalizedLocalActionSources(override.LocalActions)
-				if err != nil {
-					return nil, err
-				}
-				next := make(LocalActionSources)
-				maps.Copy(next, localActions)
-				maps.Copy(next, overlay)
-				localActions = next
-			}
-		}
-		if override.toolsSet || override.Tools != nil {
-			tools, err = ruleSet.mergeToolsOverride(tools, override)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if override.Lint != nil {
-			for _, p := range override.Lint.Lifecycle.Policies {
-				policyOrigins[p.ID] = p.origin
-			}
-		}
-		overlay := override.lintNode
-		if !override.lintSet {
-			if override.Lint == nil {
-				continue
-			}
-			overlay, err = lintConfigValue(*override.Lint)
-			if err != nil {
-				return nil, err
-			}
-		}
-		overlay, err = ruleSet.normalizeRuleLocations(overlay)
+		patch, err := override.EncodeConfig()
 		if err != nil {
 			return nil, err
 		}
-		value = mergeLifecycleLint(ruleSet.expandLintShorthands(value), overlay)
+		delete(members(patch), "includes")
+		delete(members(patch), "excludes")
+		if local := field(patch, "local-actions"); local != nil {
+			normalizeLocalActionSourceNode(local)
+		}
+		if lint := field(patch, "lint"); lint != nil {
+			lint, err = ruleSet.normalizeRuleLocations(rawValue(lint))
+			if err != nil {
+				return nil, err
+			}
+			setField(patch, "lint", ruleSet.expandLintShorthands(lint))
+		}
+		var origins map[string]Input
+		if override.partial != nil {
+			origins = override.partial.Origins()
+		}
+		current = configtree.Overlay(current, configtree.Capture(ruleSet.normalizeToolSwitch(patch), origins), MergePlan())
 	}
-	next := *config
-	if err := binding.Decode(rawValue(repository), &next.Repository); err != nil {
+	merged := current.Value()
+	if err := ruleSet.validateToolSettings(merged); err != nil {
 		return nil, err
 	}
-	next.Tools, next.LocalActions, next.Overrides = tools, localActions, nil
-	next.Lint = LintConfig{}
-	if err := binding.Decode(value, &next.Lint); err != nil {
+	var next Config
+	if err := ruleSet.DecodeValue(merged, &next); err != nil {
 		return nil, err
 	}
-	for i := range next.Lint.Lifecycle.Policies {
-		next.Lint.Lifecycle.Policies[i].origin = policyOrigins[next.Lint.Lifecycle.Policies[i].ID]
+	origins := current.Origins()
+	next.Tools.setInputOrigins(origins, "/tools")
+	if next.LocalActions != nil {
+		next.LocalActions, err = normalizedLocalActionSources(next.LocalActions)
+		if err != nil {
+			return nil, err
+		}
 	}
+	next.Overrides = nil
+	next.Lint.locations = origins
 	next.Lint.Rules.bindingSources = config.Lint.Rules.bindingSources
 	next.Paths, next.Policy = nil, Policy{}
 	ruleSet.projectSettings(&next)
 	return &next, nil
-}
-
-func (ruleSet RuleSet) mergeToolsOverride(base ToolsConfig, override Override) (ToolsConfig, error) {
-	encoded, err := binding.Encode(map[string]any{"tools": base})
-	if err != nil {
-		return nil, err
-	}
-	var value any
-	if override.toolsSet {
-		value = override.toolsNode
-	} else {
-		value, err = programmaticToolsValue(override.Tools)
-		if err != nil {
-			return nil, err
-		}
-	}
-	merged := configtree.Merge(ruleSet.normalizeToolSwitch(encoded), ruleSet.normalizeToolSwitch(map[string]any{"tools": value}))
-	if err := ruleSet.validateToolSettings(merged); err != nil {
-		return nil, err
-	}
-	var decoded struct {
-		Tools ToolsConfig `yaml:"tools"`
-	}
-	if err := binding.Decode(merged, &decoded); err != nil {
-		return nil, err
-	}
-	for name, tool := range decoded.Tools {
-		if tool.Config == nil {
-			continue
-		}
-		source := base[name].Config
-		if override.Tools != nil {
-			if selected := (*override.Tools)[name].Config; selected != nil {
-				source = selected
-			}
-		}
-		if source != nil {
-			tool.Config.fromInput = source.fromInput
-		}
-	}
-	return decoded.Tools, nil
-}
-
-// Nil fields in programmatic settings are omitted. Parsed settings record resets separately.
-func programmaticToolsValue(tools *ToolsConfig) (any, error) {
-	value, err := binding.Encode(tools)
-	if err != nil {
-		return nil, err
-	}
-	var prune func(any)
-	prune = func(value any) {
-		if object, ok := value.(map[string]any); ok {
-			for key, child := range object {
-				if child == nil {
-					delete(object, key)
-				} else {
-					prune(child)
-				}
-			}
-		} else {
-			for _, child := range elements(value) {
-				prune(child)
-			}
-		}
-	}
-	prune(value)
-	return value, nil
 }
 
 func (ruleSet RuleSet) expandLintShorthands(value any) any {

@@ -100,7 +100,7 @@ type Setting struct {
 	level Level
 	// options is an owned mapping, or nil when the setting has no options.
 	// options: null also leaves it nil, which resets the rule's options.
-	options map[string]any
+	options map[string]any `clone:"shared"`
 }
 
 // NewSetting returns a setting with the given level and options. An empty
@@ -242,6 +242,8 @@ func (s Setting) EncodeConfig() (any, error) {
 	return wire, nil
 }
 
+//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/rules -type Group -output internal/input/configuration/rules/owned_group.gen.go
+
 // Group contains a concern-wide baseline and individual exceptions.
 type Group struct {
 	preset Preset
@@ -322,3 +324,6 @@ func (g Group) EncodeConfig() (any, error) {
 	}
 	return groupWire{Preset: g.preset, Level: g.level, Rules: maps.Clone(g.rules)}, nil
 }
+
+// CopyConfig copies the owned configuration state.
+func (g Group) CopyConfig() (any, error) { return copyOwnedGroup(g), nil }

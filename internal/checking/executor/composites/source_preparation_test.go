@@ -51,7 +51,9 @@ func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, sn
 	return nil
 }
 
-func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule { return r }
+func (r *preparationObserver) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+	return r
+}
 
 func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	t.Parallel()
@@ -61,7 +63,7 @@ func TestSourcePreparationPrecedesStandaloneMetadataChecks(t *testing.T) {
 	}
 	prepared := map[string]bool{}
 	observer := &preparationObserver{Base: workflowvisit.NewBase("preparation-observer", ""), t: t, prepared: prepared}
-	options := Options{Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot, _ []string) error {
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{observer}, PrepareSource: func(snapshot parsing.SourceSnapshot, _ []string) error {
 		prepared[snapshot.Reference().Document] = true
 		return nil
 	}}

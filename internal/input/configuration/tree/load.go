@@ -6,7 +6,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
@@ -17,13 +16,14 @@ type Loaded struct {
 	Value   any
 	Files   []string
 	Origins map[string]Input
+	Node    *Node
 }
 
 func Load(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error)) (Loaded, error) {
-	return LoadWithMerge(path, read, normalize, Merge)
+	return LoadWithMerge(path, read, normalize, nil)
 }
 
-func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error), merge func(any, any) any) (Loaded, error) {
+func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error), plan Plan) (Loaded, error) {
 	active := map[string]bool{}
 	cache := map[string]Loaded{}
 	var files []string
@@ -95,8 +95,7 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 				}
 				return Loaded{}, extendsError{origin: path, cause: cause}
 			}
-			mergeLifecycleOrigins(result.Origins, inherited.Origins, result.Value, inherited.Value)
-			result.Value = merge(result.Value, inherited.Value)
+			result.Node = Overlay(result.Node, inherited.Node, plan)
 		}
 		source := map[string]Input{}
 		for pointer, loc := range doc.ValueLocations {
@@ -108,8 +107,8 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 			delete(object, "extends")
 			doc.Value = object
 		}
-		mergeLifecycleOrigins(result.Origins, source, result.Value, doc.Value)
-		result.Value = merge(result.Value, doc.Value)
+		result.Node = Overlay(result.Node, Capture(doc.Value, source), plan)
+		result.Value, result.Origins = result.Node.Value(), result.Node.Origins()
 		cache[path] = result
 		files = append(files, path)
 		return result, nil
@@ -117,42 +116,6 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 	result, err := load(path, 0)
 	result.Files = files
 	return result, err
-}
-
-// MergeOrigins updates dst to describe Merge(base, value), removing locations
-// for values replaced by the overlay and retaining locations for inherited values.
-func MergeOrigins(dst, src map[string]Input, base, value any) {
-	mergeOrigins(dst, src, base, value, "")
-}
-
-func mergeOrigins(dst, src map[string]Input, base, value any, path string) {
-	if object, ok := value.(map[string]any); ok {
-		old, existed := dst[path]
-		if in, found := src[path]; found {
-			if existed && base == nil {
-				reset := old
-				in.Reset = &reset
-			} else if existed && old.Reset != nil {
-				in.Reset = old.Reset
-			}
-			dst[path] = in
-		}
-		baseObject, _ := base.(map[string]any)
-		for key, child := range object {
-			mergeOrigins(dst, src, baseObject[key], child, document.Path(path, key))
-		}
-		return
-	}
-	for key := range dst {
-		if key == path || strings.HasPrefix(key, path+"/") {
-			delete(dst, key)
-		}
-	}
-	for key, input := range src {
-		if key == path || strings.HasPrefix(key, path+"/") {
-			dst[key] = input
-		}
-	}
 }
 
 type extendsError struct {

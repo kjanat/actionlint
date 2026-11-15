@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
+
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rulemetadata "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -202,8 +204,17 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 							if err != nil {
 								t.Fatal(err)
 							}
-							policy := resultpolicy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), SourceConfigurations: map[string]*repoconfig.Config{path: cfg}}
-							filtered, err := processor.Apply(policy, findings, map[string][]byte{path: content}, map[string]*repoconfig.Config{path: cfg})
+							registry := binding.NewRegistry(rules)
+							scope := registry.Prepare(nil, cfg, cfg)
+							for _, finding := range findings {
+								finding.Binding = scope.Rule(finding.Rule).ID()
+							}
+							policy := resultpolicy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*binding.Scope{path: scope}}
+							published, err := resultpolicy.Publish([]resultpolicy.Batch{{Processor: processor, Policy: policy, InputPath: "workflow.yml", Findings: findings, Sources: map[string][]byte{path: content}}}, nil)
+							var filtered []*findingmodel.Finding
+							if len(published.Findings) > 0 {
+								filtered = published.Findings[0]
+							}
 							want := 2
 							if disabled {
 								want = 0

@@ -12,6 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
+//go:generate go run ../../../development/generators/owned-copies -root ../../../.. -package ./internal/input/configuration/tools -type Backend -output internal/input/configuration/tools/owned_backend.gen.go
+
 // Backend selects one transport: a native process or a core WebAssembly engine.
 // Executable names and argv are never the general backend contract.
 //
@@ -19,7 +21,7 @@ import (
 // zero Backend selects neither and behaves as an omitted backend.
 type Backend struct {
 	// transport is a Command or a Module.
-	transport interface{ backendTransport() }
+	transport interface{ backendTransport() } `clone:"shared"`
 }
 
 // ProcessBackend selects native invocation of command.
@@ -196,3 +198,6 @@ func NormalizePaths(value any, directory string) {
 		NormalizePaths(override, directory)
 	}
 }
+
+// CopyConfig copies the owned configuration state.
+func (b *Backend) CopyConfig() (any, error) { return copyOwnedBackend(*b), nil }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"maps"
 	"strings"
 )
@@ -78,6 +79,23 @@ func (ruleSet RuleSet) EffectiveValues(cfg *Config) (map[string]any, error) {
 		return nil, err
 	}
 	return members(value), nil
+}
+
+// CopyConfig preserves regexp matching mode and detaches each expression.
+func (pats IgnorePatterns) CopyConfig() (any, error) {
+	if pats == nil {
+		return IgnorePatterns(nil), nil
+	}
+	next := make(IgnorePatterns, len(pats))
+	for i, pattern := range pats {
+		if pattern == nil {
+			return nil, fmt.Errorf("ignore pattern %d is nil", i)
+		}
+		// Regexp.Copy performs the same value copy; its compiled program is immutable.
+		copied := *pattern
+		next[i] = &copied
+	}
+	return next, nil
 }
 
 // EncodeConfig serializes regular expressions as pattern strings.

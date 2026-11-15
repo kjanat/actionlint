@@ -73,7 +73,7 @@ func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.
 	return nil
 }
 
-func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) workflowvisit.Rule {
+func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
 	return rule
 }
 
@@ -96,7 +96,8 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	}
 	rule := &mutatingStandaloneMetadata{Base: workflowvisit.NewBase("mutate", "")}
 	options := Options{
-		Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
+		Bindings: testBindings(nil),
+		Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 	}
 	result, err := Action(options, snapshot, deployment, document.Metadata)
@@ -135,7 +136,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
 			resolver := workspaceactions.NewResolver(nil, nil)
-			options := Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
+			options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
 			result, err := standaloneActionForTest(t, options, metadata)
 			if err != nil {
 				t.Fatal(err)
@@ -166,7 +167,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolver := workspaceactions.NewResolver(nil, nil)
-	options := Options{Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
 	result, err := standaloneActionForTest(t, options, metadata)
 	if err != nil {
 		t.Fatal(err)

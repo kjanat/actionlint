@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
@@ -12,31 +13,27 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-// Policy supplies source text, prepared rule settings and suppression reporting hooks.
+// Policy supplies source text and the rule bindings prepared for this analysis.
 type Policy struct {
 	Path, ConfigPath, Root, WorkingDir string
 	ProjectRoot                        string
 	Content                            []byte
-	Config                             *repoconfig.Config
-	EnforcedLifecycle                  []lifecycle.Policy
-	// SourceConfigurations uses the source paths passed to Processor.Apply.
-	// A present nil entry selects defaults; a missing entry is an error.
-	SourceConfigurations map[string]*repoconfig.Config
-	Metadata             *actionmeta.Metadata
-	AdditionalRules      []string
-	IgnorePatterns       repoconfig.IgnorePatterns
-	IgnoreSelectors      IgnoreSelectors
-	Log                  func(...any)
-	Debug                func(string, ...any)
-	// UsedSuppression records a matched selector for invocation-wide reconciliation.
-	UsedSuppression func(string, sourcepos.Position, string)
+
+	EnforcedLifecycle []lifecycle.Policy
+	Bindings          *binding.Snapshot
+	Scope             *binding.Scope
+	SourceBindings    map[string]*binding.Scope
+	Metadata          *actionmeta.Metadata
+	AdditionalRules   []string
+	IgnorePatterns    repoconfig.IgnorePatterns
+	IgnoreSelectors   IgnoreSelectors
+	Log               func(...any)
+	Debug             func(string, ...any)
+	usedSuppression   func(string, sourcepos.Position, string)
 }
 
-// Apply filters completed findings using each source's resolved policy and normalizes their output order.
-// It updates the caller-owned findings and metadataSources in place; findings
-// without a path take p's path and, for action metadata, share p.Content.
-func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadataSources map[string][]byte, compositeConfigs map[string]*repoconfig.Config) ([]*findingmodel.Finding, error) {
-	path, configPath, root, content, cfg, metadata := p.Path, p.ConfigPath, p.Root, p.Content, p.Config, p.Metadata
+func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metadataSources map[string][]byte, authority map[*findingmodel.Finding]obligation) ([]*findingmodel.Finding, error) {
+	path, configPath, root, content, cfg, metadata := p.Path, p.ConfigPath, p.Root, p.Content, p.Scope.Caller(), p.Metadata
 	additionalRules := p.AdditionalRules
 	var suppressionPolicy *repoconfig.SuppressionsPolicy
 	if cfg != nil {
@@ -50,15 +47,20 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 			}
 		}
 	}
-	all, requiredLifecycle, err := processor.assessLifecycle(p, all, metadataSources, compositeConfigs)
+	all, requiredLifecycle, err := processor.assessLifecycle(p, all, authority)
 	if err != nil {
 		return nil, err
 	}
 	if metadata == nil {
-		all = processor.filterInlineSuppressionsAt(content, all, suppressionPolicy, "", p.inlineAudit(configPath, processor.Levels(cfg)), additionalRules...)
-		all = processor.FilterConfigured(configPath, root, content, all, cfg, false, processor.Levels(cfg), additionalRules...)
+		all = processor.filterInlineSuppressionsAt(content, all, suppressionPolicy, "", p.inlineAudit(configPath, processor.levels(cfg)), additionalRules...)
+		all = processor.filterConfigured(configPath, root, content, all, cfg, false, processor.levels(cfg), additionalRules...)
 	}
-	byPath := make(map[string][]*findingmodel.Finding)
+	type occurrenceScope struct {
+		path    string
+		binding *binding.Scope
+	}
+	byPath := make(map[occurrenceScope][]*findingmodel.Finding)
+	seenSources := make(map[string]bool)
 	findingKey := func(findingPath string) string {
 		if findingPath == "" {
 			findingPath = path
@@ -68,50 +70,71 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 		return findingPath
 	}
 	for _, finding := range all {
+		if !finding.Binding.Valid() {
+			finding.Binding = p.Scope.Rule(finding.Rule).ID()
+		}
 		key := findingKey(finding.Path)
 		if origin := finding.SuppressionOrigin; origin != nil && origin.Path != "" {
 			key = origin.Path
 		} else if _, isMetadata := metadataSources[finding.Path]; isMetadata {
 			key = finding.Path
 		}
-		byPath[key] = append(byPath[key], finding)
+		prepared, exists := p.Bindings.Lookup(finding.Binding)
+		if !exists {
+			return nil, fmt.Errorf("finding %q has no prepared configuration binding", finding.Rule)
+		}
+		group := occurrenceScope{key, prepared.Scope()}
+		byPath[group] = append(byPath[group], finding)
+		seenSources[key] = true
 	}
 	foreignSources := map[string]string{}
 	for sourcePath := range metadataSources {
 		key := sourcePath
 		foreignSources[key] = sourcePath
-		if _, exists := byPath[key]; !exists {
-			byPath[key] = nil
+		if !seenSources[key] {
+			scope, exists := p.SourceBindings[sourcePath]
+			if !exists {
+				return nil, fmt.Errorf("rule configuration was not prepared for source %q", sourcePath)
+			}
+			byPath[occurrenceScope{key, scope}] = nil
 		}
 	}
 	all = nil
-	for scopePath, findings := range byPath {
-		sourcePath, isMetadata := foreignSources[scopePath]
+	for group, findings := range byPath {
+		sourcePath, isMetadata := foreignSources[group.path]
 		source := metadataSources[sourcePath]
-		findingConfig := cfg
+		scope := group.binding
 		diagnosticLevel := func(kind string) repoconfig.Level {
-			levelConfig := processor.lifecycleConfiguration(p, findingConfig, sourcePath, kind, compositeConfigs)
-			return processor.RuleSet.DiagnosticLevel(levelConfig, kind)
+			return scope.DiagnosticLevel(kind)
 		}
 		if isMetadata && source != nil {
-			var prepared bool
-			findingConfig, prepared = p.SourceConfigurations[sourcePath]
-			if !prepared {
+			prepared, exists := p.SourceBindings[sourcePath]
+			if !exists {
 				return nil, fmt.Errorf("rule configuration was not prepared for source %q", sourcePath)
 			}
+			findingConfig := prepared.Source()
 			var policy *repoconfig.SuppressionsPolicy
 			if findingConfig != nil {
 				policy = findingConfig.Policy.DisallowSuppressions
 			}
 			findings = processor.filterForeignInline(sourcePath, source, findings, policy, p.inlineAudit(sourcePath, diagnosticLevel), additionalRules...)
-			findings = processor.FilterConfigured(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
+			findings = processor.filterConfigured(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
+		}
+		for _, finding := range findings {
+			if !finding.Binding.Valid() {
+				finding.Binding = scope.Rule(finding.Rule).ID()
+			}
+			if _, exists := p.Bindings.Lookup(finding.Binding); !exists {
+				return nil, fmt.Errorf("finding %q has a foreign configuration binding", finding.Rule)
+			}
 		}
 		findings = slices.DeleteFunc(findings, func(e *findingmodel.Finding) bool {
 			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
 			executionFailure := descriptor.ExecutionFailure && (e.Severity == "" || e.Severity == "error")
 			e.NonBlocking = sourcepos.RemoteAddress(e.Path) && e.Path != p.Path &&
 				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
-			level := diagnosticLevel(e.Rule)
+			prepared, _ := p.Bindings.Lookup(e.Binding)
+			level := prepared.Scope().DiagnosticLevel(e.Rule)
 			if e.LifecycleEvidence != nil && e.Lifecycle != nil && level != "off" {
 				return false
 			}
@@ -135,7 +158,7 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 		}
 	}
 
-	all = findingmodel.FirstVisibleMetadata(append(requiredLifecycle, all...))
+	all = append(requiredLifecycle, all...)
 	for _, err := range all {
 		if err.Path == "" {
 			err.Path = path // Populate filename in the error
@@ -145,15 +168,14 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 	}
 
 	slices.SortFunc(all, findingmodel.Compare)
-	all = slices.CompactFunc(all, findingmodel.Equal) // Alias may duplicate errors
 
 	return all, nil
 }
 
 func (p Policy) inlineAudit(path string, level func(string) repoconfig.Level) *inlineAudit {
 	return &inlineAudit{level: level, used: func(position sourcepos.Position, rule string) {
-		if p.UsedSuppression != nil {
-			p.UsedSuppression(path, position, rule)
+		if p.usedSuppression != nil {
+			p.usedSuppression(path, position, rule)
 		}
 	}}
 }

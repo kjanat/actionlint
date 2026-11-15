@@ -60,11 +60,18 @@ func lifecycleRulesConfig(t *testing.T, text string) *config.Config {
 
 func lifecycleApply(t *testing.T, cfg *config.Config, f *finding.Finding, edit func(*policy.Policy)) []*finding.Finding {
 	t.Helper()
-	p := policy.Policy{Path: "workflow.yml", Content: []byte("# actionlint-ignore-next-line runner-support -- intentional\nruns-on: old\n"), Config: cfg}
+	p := policy.Policy{Path: "workflow.yml", Content: []byte("# actionlint-ignore-next-line runner-support -- intentional\nruns-on: old\n")}
 	if edit != nil {
 		edit(&p)
 	}
-	got, err := (policy.Processor{RuleSet: checking.ConfigurationRules()}).Apply(p, []*finding.Finding{f}, nil, nil)
+	rules := checking.ConfigurationRules()
+	var sources map[string]*config.Config
+	if f.Path != "" && f.Path != p.Path {
+		sources = map[string]*config.Config{f.Path: cfg}
+	}
+	input := []*finding.Finding{f}
+	p = preparePolicy(rules, cfg, p, sources, input)
+	got, err := publishFindings(policy.Processor{RuleSet: rules}, p, input, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +224,6 @@ func TestRequiredRemoteLifecycleIsBlocking(t *testing.T) {
 	got := lifecycleApply(t, cfg, f, func(p *policy.Policy) {
 		p.Content = []byte("on: push\n")
 		p.EnforcedLifecycle = lifecycleRequired(t)
-		p.SourceConfigurations = map[string]*config.Config{remote: cfg}
 	})
 	if len(got) != 1 || got[0].NonBlocking {
 		t.Fatalf("required remote finding must block: %+v", got)
@@ -239,9 +245,8 @@ func TestPublicLifecycleMetadataCannotCreateAuthority(t *testing.T) {
 func TestInactiveLifecycleDoesNotUseSuppression(t *testing.T) {
 	t.Parallel()
 	cfg := lifecycleRulesConfig(t, lifecycleConfig)
-	used := 0
-	got := lifecycleApply(t, cfg, lifecycleFinding(t, "2026-04-01", false), func(p *policy.Policy) { p.UsedSuppression = func(string, source.Position, string) { used++ } })
-	if len(got) != 1 || got[0].Rule != "unused-suppression" || used != 0 {
-		t.Fatalf("inactive finding=%+v suppression uses=%d", got, used)
+	got := lifecycleApply(t, cfg, lifecycleFinding(t, "2026-04-01", false), nil)
+	if len(got) != 1 || got[0].Rule != "unused-suppression" {
+		t.Fatalf("inactive finding=%+v", got)
 	}
 }

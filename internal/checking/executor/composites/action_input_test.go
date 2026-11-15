@@ -37,7 +37,7 @@ func TestScriptInputActionSubpathIsCaseSensitive(t *testing.T) {
 				if !present {
 					t.Fatal("fixture has no action")
 				}
-				if err := analysis.collectActionInputs(step, action, nil); err != nil {
+				if err := analysis.collectActionInputs(step, action); err != nil {
 					t.Fatal(err)
 				}
 				graph, err := analysis.invocations.Publish()

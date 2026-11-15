@@ -79,7 +79,7 @@ type Call struct {
 	Uses       string
 	HasUses    bool
 	Condition  CallCondition
-	Outcome    CallOutcome
+	Outcome    CallOutcome `clone:"shared"`
 }
 
 type StopLimit string
@@ -110,22 +110,18 @@ type CallGraphData struct {
 }
 
 func (graph CallGraphData) clone() CallGraphData {
-	graph.Calls = detachedCalls(graph.Calls)
-	graph.Scripts = detachedScripts(graph.Scripts)
-	return graph
+	return copyOwnedCallGraphData(graph)
 }
 
 // detached copies call with its own Ancestry. Outcome is an immutable value
 // handle and stays shared.
 func (call Call) detached() Call {
-	call.Ancestry = slices.Clone(call.Ancestry)
-	return call
+	return copyOwnedCall(call)
 }
 
 // detached copies script with its own Ancestry.
 func (script ScriptOccurrence) detached() ScriptOccurrence {
-	script.Ancestry = slices.Clone(script.Ancestry)
-	return script
+	return copyOwnedScriptOccurrence(script)
 }
 
 // detachedCalls copies calls and each call's Ancestry, keeping nil as nil.

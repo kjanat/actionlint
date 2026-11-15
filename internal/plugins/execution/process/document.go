@@ -56,9 +56,9 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 			return nil, fmt.Errorf("unsupported document selector %q", kind)
 		}
 	}
-	scope := rulemeta.SourceConfiguration
-	if manifest.Scope == manifests.ScopeComposite {
-		scope = rulemeta.CompositeConfiguration
+	scope, err := manifest.Scope.ConfigurationScope()
+	if err != nil {
+		return nil, fmt.Errorf("document provider %s: %w", manifest.Rule.Name, err)
 	}
 	descriptor := manifest.Rule.Clone()
 	descriptor.RequiredInputs = requires
@@ -66,10 +66,7 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 }
 
 func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {
-	descriptor := d.descriptor
-	descriptor.Descriptor = descriptor.Clone()
-	descriptor.InvocationDefinitions = commands.CloneDefinitions(descriptor.InvocationDefinitions)
-	return descriptor
+	return d.descriptor.Detached()
 }
 
 func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {

@@ -13,7 +13,7 @@ import (
 
 // LintConfig configures built-in and registered analysis rules.
 type LintConfig struct {
-	source any
+	lintState
 	// Enabled controls lint diagnostics only, leaving other features independent.
 	Enabled *bool `yaml:"enabled,omitempty" jsonschema:"nullable,default=true"`
 	// Experimental enables nursery rules unless an explicit invocation overrides it.
@@ -31,31 +31,50 @@ type LintConfig struct {
 
 // LintRulesConfig groups checks independently of their recommended defaults.
 type LintRulesConfig struct {
-	ruleSet RuleSet
+	ruleState
 	// Preset selects recommended, all stable, or no rules before explicit settings.
 	Preset Preset `yaml:"preset,omitempty"`
 	// Concern groups accept a level or a mapping of rule IDs to settings.
-	Correctness Group `yaml:"correctness,omitempty"`
-	Suspicious  Group `yaml:"suspicious,omitempty"`
-	Security    Group `yaml:"security,omitempty"`
-	Conventions Group `yaml:"conventions,omitempty"`
+	Correctness Group `yaml:"correctness,omitempty" clone:"shared"`
+	Suspicious  Group `yaml:"suspicious,omitempty" clone:"shared"`
+	Security    Group `yaml:"security,omitempty" clone:"shared"`
+	Conventions Group `yaml:"conventions,omitempty" clone:"shared"`
 	// Legacy groups remain readable until installed metadata permits migration.
-	Style           Group `yaml:"style,omitempty"`
-	Policy          Group `yaml:"policy,omitempty"`
-	External        Group `yaml:"external,omitempty"`
-	Plugins         Group `yaml:"plugins,omitempty"`
-	Nursery         Group `yaml:"nursery,omitempty"`
-	resolved        map[string]Level
-	resolvedFixed   map[string]bool
-	boundCategories map[string]string
-	boundSettings   map[string]Setting
-	sources         *ruleSources
-	// bindingSources retain settings until descriptors arrive, including
-	// invalid settings hidden by later inheritance or overrides.
-	bindingSources []bindingSource
+	Style    Group `yaml:"style,omitempty" clone:"shared"`
+	Policy   Group `yaml:"policy,omitempty" clone:"shared"`
+	External Group `yaml:"external,omitempty" clone:"shared"`
+	Plugins  Group `yaml:"plugins,omitempty" clone:"shared"`
+	Nursery  Group `yaml:"nursery,omitempty" clone:"shared"`
 	// Disable suppresses named diagnostic rule IDs. Omission or [] disables none.
 	// This applies to every diagnostic severity, including external tool warnings.
 	Disable []string `yaml:"disable" jsonschema:"nullable"`
+}
+
+//go:generate go run ../../development/generators/owned-copies -root ../../.. -package ./internal/input/configuration -type ruleState,lintState,NetworkConfig,RepositoryConfig,SuppressionsPolicy -output internal/input/configuration/owned_state.gen.go
+
+// lintState owns private source data. Captured source is detached at decode and
+// is only read through copying projections.
+type lintState struct {
+	source    any `clone:"shared"`
+	locations map[string]Input
+}
+
+// ruleState owns prepared rule decisions. The shared handles are immutable:
+// RuleSet exposes detached descriptors, Settings expose detached options, and
+// captured rule sources and binding sources are only read after preparation.
+type ruleState struct {
+	ruleSet         RuleSet `clone:"shared"`
+	resolved        map[string]Level
+	resolvedFixed   map[string]bool
+	boundCategories map[string]string
+	boundSettings   map[string]boundSetting
+	sources         *ruleSources `clone:"shared"`
+	bindingSources  []bindingSource
+}
+
+// boundSetting shares an immutable Setting; its options can only be read as copies.
+type boundSetting struct {
+	Setting `clone:"shared"`
 }
 
 type bindingSource struct {
@@ -79,6 +98,29 @@ func ruleBindingSources(origin string, config *Config, locations ...map[string]I
 	return sources
 }
 
+// CopyConfig detaches public lint settings and the complete private owner state.
+func (c LintConfig) CopyConfig() (any, error) {
+	type plain LintConfig
+	copied, err := binding.DetachPublicFields(plain(c))
+	if err != nil {
+		return nil, err
+	}
+	next := copied
+	next.lintState = copyOwnedlintState(c.lintState)
+	return LintConfig(next), nil
+}
+
+func (c *LintRulesConfig) CopyConfig() (any, error) {
+	type plain LintRulesConfig
+	copied, err := binding.DetachPublicFields(plain(*c))
+	if err != nil {
+		return nil, err
+	}
+	next := copied
+	next.ruleState = copyOwnedruleState(c.ruleState)
+	return LintRulesConfig(next), nil
+}
+
 // DecodeConfig rejects misspelled lint settings.
 func (c *LintConfig) DecodeConfig(value any) error {
 	type plain LintConfig
@@ -91,8 +133,12 @@ func (c *LintConfig) DecodeConfig(value any) error {
 			return binding.At("message-ignores", binding.At(pattern, fmt.Errorf("invalid glob pattern %q", pattern)))
 		}
 	}
+	detached, err := binding.DetachValue(value)
+	if err != nil {
+		return err
+	}
 	*c = LintConfig(next)
-	c.source = value
+	c.source = detached
 	return nil
 }
 
@@ -178,3 +224,6 @@ func (c *LintRulesConfig) ResolvedLevel(name string) (Level, bool) {
 func (c *LintRulesConfig) SetResolved(levels map[string]Level) {
 	c.resolved = levels
 }
+
+// CopyConfig copies the owned configuration state.
+func (v NetworkConfig) CopyConfig() (any, error) { return copyOwnedNetworkConfig(v), nil }

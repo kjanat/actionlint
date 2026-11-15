@@ -32,7 +32,9 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 				t.Fatal(err)
 			}
 			processor := policy.Processor{RuleSet: rules}
-			findings, err := processor.Apply(policy.Policy{Path: "workflow.yml", Config: cfg}, []*findingmodel.Finding{{Rule: "example", Severity: test.reported, Message: "example"}}, nil, nil)
+			input := []*findingmodel.Finding{{Rule: "example", Severity: test.reported, Message: "example"}}
+			p := preparePolicy(rules, cfg, policy.Policy{Path: "workflow.yml"}, nil, input)
+			findings, err := publishFindings(processor, p, input, nil)
 			if err != nil || len(findings) != 1 || findings[0].Severity != test.severity {
 				t.Fatalf("findings=%+v, error=%v; want severity %s", findings, err, test.severity)
 			}

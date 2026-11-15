@@ -39,7 +39,9 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 	if err != nil {
 		return err
 	}
-	analysis.recordUncheckedFiles(meta, files, snapshot.Reference(), analysis.invocations.RootContext())
+	if err := analysis.recordUncheckedFiles(meta, files, snapshot.Reference(), analysis.invocations.RootContext()); err != nil {
+		return err
+	}
 	var scripts []checkcalls.InvocationParticipant
 	for _, rule := range rules {
 		if participant, ok := rule.(checkcalls.MetadataParticipant); ok {

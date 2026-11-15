@@ -23,6 +23,7 @@ import (
 // Its templates contain no caller state and are also shared with nested composites.
 type actionMetadataValidation struct {
 	templates map[string][]*findingmodel.Finding
+	copies    *findingmodel.Copier
 	visits    uint64
 }
 
@@ -41,7 +42,7 @@ func metadataFindingKey(meta *actionmeta.Metadata, document string, finding *fin
 }
 
 func newActionMetadataValidation() *actionMetadataValidation {
-	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding)}
+	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding), copies: findingmodel.NewCopier()}
 }
 
 func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source workspaceactions.SourceDocument, action workflowdecl.ExecActionView, displaySpec string) error {
@@ -62,21 +63,13 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 	document := source.Capture().Revision().Document()
 	store.visits++
 	for _, template := range templates {
-		finding := *template
-		key := metadataFindingKey(meta, document, &finding)
+		finding := store.copies.Clone(template)
+		key := metadataFindingKey(meta, document, finding)
 		if finding.Source == nil {
 			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses()).Line, reporting.SourcePosition(action.Uses()).Col
 		}
-		if finding.IgnoreOrigin != nil {
-			origin := *finding.IgnoreOrigin
-			finding.IgnoreOrigin = &origin
-		}
-		if finding.EndPosition != nil {
-			end := *finding.EndPosition
-			finding.EndPosition = &end
-		}
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}
-		rule.Report(&finding)
+		rule.Report(finding)
 	}
 	return nil
 }

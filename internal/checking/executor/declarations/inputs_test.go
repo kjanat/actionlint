@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -11,6 +12,27 @@ import (
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
+
+func TestActionSupportComesFromDeclaration(t *testing.T) {
+	t.Parallel()
+	for _, supportsActions := range []bool{false, true} {
+		t.Run(map[bool]string{false: "workflow", true: "workflow and actions"}[supportsActions], func(t *testing.T) {
+			t.Parallel()
+			check := checkinputs.DeclarationCheck{
+				Name: "new-native-check", Category: "correctness", SupportsActions: supportsActions,
+				Step: func(declaration.StepView) []reporting.Finding { return nil },
+			}
+			rules, err := repoconfig.NewRuleSet([]rule.Declaration{check.Declaration})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, participates := New(rules, check).(checkcalls.InvocationParticipant)
+			if participates != supportsActions {
+				t.Fatalf("check declares action support %t, but composite participation is %t", supportsActions, participates)
+			}
+		})
+	}
+}
 
 func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	t.Parallel()

@@ -2,6 +2,7 @@ package checking
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
@@ -20,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 const commandGoodWorkflow = `on: push
@@ -109,8 +112,13 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		provenance = source.Project.ConfigProvenance()
 	}
 	var rules []rule.Descriptor
-	findings, _, err := session.check(source.Path, address, captured, source.Project, cfg, provenance, proc, actions, workflowCache, &rules)
-	return findings, err
+	findings, _, batch, err := session.check(source.Path, address, captured, source.Project, cfg, provenance, proc, actions, workflowCache, &rules)
+	if batch == nil {
+		return nil, err
+	}
+	batch.Findings, batch.InputPath = findings, address
+	publication, publishErr := policy.Publish([]policy.Batch{*batch}, session.checkCompletion.incompleteChecks())
+	return publication.Findings[0], errors.Join(err, publishErr)
 }
 
 // readFixtureSources reads snapshots for tests that supply their own project and config.
@@ -177,4 +185,26 @@ func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*findingmo
 		t.Fatal(err)
 	}
 	return errs
+}
+
+// publishTestDiagnostics supplies prepared settings for admission-only fixtures.
+func publishTestDiagnostics(tb testing.TB, result *analysisResult) {
+	tb.Helper()
+	for i := range result.files {
+		file := &result.files[i]
+		if file.publication != nil {
+			continue
+		}
+		rules := ConfigurationRules()
+		registry := binding.NewRegistry(rules)
+		cfg := file.source.Config
+		scope := registry.Prepare(cfg, cfg, cfg)
+		for _, finding := range file.errors {
+			finding.Binding = scope.Rule(finding.Rule).ID()
+		}
+		file.publication = &policy.Batch{Processor: policy.Processor{RuleSet: rules}, Policy: policy.Policy{Path: file.source.Path, ConfigPath: file.source.InputPath, Content: file.source.Content, Scope: scope, Bindings: registry.Seal()}}
+	}
+	if err := result.publishDiagnostics(); err != nil {
+		tb.Fatal(err)
+	}
 }

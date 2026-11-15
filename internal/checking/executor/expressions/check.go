@@ -3,6 +3,8 @@ package expressions
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/checking/binding"
+
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/checking/expressions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -25,7 +27,7 @@ import (
 type ruleExpression struct {
 	*workflowexpr.Checker
 	reporting.Logger
-	config   *repoconfig.Config
+	bindings *binding.Scope
 	host     repository.Snapshot
 	frames   []expressionInvocation
 	findings workflowvisit.Findings
@@ -43,7 +45,7 @@ func (r *ruleExpression) EnterInvocation(scope checkcalls.Invocation) error {
 		return invocation.ErrForeignContext
 	}
 	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
-	r.Checker = workflowexpr.New(workflowexpr.Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Config, r.host))
+	r.Checker = workflowexpr.New(workflowexpr.Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Bindings, r.host))
 	if body, available := scope.Source.ActionView(); available {
 		r.BeginComposite(body)
 	}
@@ -138,32 +140,43 @@ func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Fin
 	r.findings.AnnotateSince(mark, annotate)
 }
 
-func (r *ruleExpression) SetConfig(config *repoconfig.Config) {
-	r.config = config
-	r.Configure(workflowExpressionOptionsWithFacts(config, r.host))
+func (r *ruleExpression) SetBindings(scope *binding.Scope) {
+	r.bindings = scope
+	r.Configure(workflowExpressionOptionsWithFacts(scope, r.host))
 }
 
 func (r *ruleExpression) SetRepository(facts repository.Snapshot) {
 	r.host = facts
-	r.Configure(workflowExpressionOptionsWithFacts(r.config, facts))
+	r.Configure(workflowExpressionOptionsWithFacts(r.bindings, facts))
 }
 
-func workflowExpressionOptions(config *repoconfig.Config) workflowexpr.Options {
-	return workflowExpressionOptionsWithFacts(config, repository.Snapshot{})
+func workflowExpressionOptions(scope *binding.Scope) workflowexpr.Options {
+	return workflowExpressionOptionsWithFacts(scope, repository.Snapshot{})
 }
 
-func workflowExpressionOptionsWithFacts(config *repoconfig.Config, host repository.Snapshot) workflowexpr.Options {
+func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Snapshot) workflowexpr.Options {
+	var config *repoconfig.Config
+	if scope != nil {
+		config = scope.Composite()
+	}
 	facts := repoconfig.RepositoryFacts(config, host)
+	level := func(name string) repoconfig.Level {
+		selected := config
+		if scope != nil {
+			selected = scope.Rule(name).Config()
+		}
+		return selected.RuleSet().DiagnosticLevel(selected, name)
+	}
 	return workflowexpr.Options{
 		Semantics:                 exprlang.Options{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)},
-		SuspiciousCoercion:        config.RuleSet().DiagnosticLevel(config, "coercion") != "off",
-		CaseInsensitiveConditions: config.RuleSet().DiagnosticLevel(config, "case-insensitive-conditions") != "off",
-		StringConditions:          config.RuleSet().DiagnosticLevel(config, "string-conditions") != "off",
-		JoinLiteral:               config.RuleSet().DiagnosticLevel(config, "join-literal") != "off",
-		CollectionComparison:      config.RuleSet().DiagnosticLevel(config, "collection-comparison") != "off",
-		MixedTypeComparisons:      config.RuleSet().DiagnosticLevel(config, "mixed-type-comparisons") != "off",
+		SuspiciousCoercion:        level("coercion") != "off",
+		CaseInsensitiveConditions: level("case-insensitive-conditions") != "off",
+		StringConditions:          level("string-conditions") != "off",
+		JoinLiteral:               level("join-literal") != "off",
+		CollectionComparison:      level("collection-comparison") != "off",
+		MixedTypeComparisons:      level("mixed-type-comparisons") != "off",
 		JobReferences:             func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
-		UnsoundTernary:            config.RuleSet().DiagnosticLevel(config, "unsound-ternary") != "off",
-		ScriptInjectionDisabled:   config.RuleSet().DiagnosticLevel(config, "script-injection") == "off",
+		UnsoundTernary:            level("unsound-ternary") != "off",
+		ScriptInjectionDisabled:   level("script-injection") == "off",
 	}
 }
