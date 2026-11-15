@@ -5,24 +5,24 @@ package scripts
 import (
 	slices "slices"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	process "actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func copyOwnedSelection(in Selection) Selection {
 	out := in
-	out.Process = copyOwnedValue_8dabd9f0ba9772cd3ec0be62c315a9c0(in.Process)
+	out.Process = copyOwnedValue_51b7d7f62a7193f798c9a278e51cd87f(in.Process)
 	return out
 }
 
-func copyOwnedValue_8dabd9f0ba9772cd3ec0be62c315a9c0(in *process.CommandOptions) *process.CommandOptions {
+func copyOwnedValue_51b7d7f62a7193f798c9a278e51cd87f(in *process.CommandOptions) *process.CommandOptions {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedOptions_87062cdf34e489a1b65af0562cf2fa13(*in)
+	out := copyOwnedCommandOptions_fea4e7b6347962511c63412ede6c888b(*in)
 	return (*process.CommandOptions)(&out)
 }
 
-func copyOwnedOptions_87062cdf34e489a1b65af0562cf2fa13(in process.CommandOptions) process.CommandOptions {
+func copyOwnedCommandOptions_fea4e7b6347962511c63412ede6c888b(in process.CommandOptions) process.CommandOptions {
 	out := in
 	out.Executable = copyOwnedValue_3e89801b52bf7f986e27b0847ce327c5(in.Executable)
 	out.Arguments = slices.Clone(in.Arguments)
