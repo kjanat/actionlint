@@ -10,7 +10,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestReusableIgnoreCompositeJob(t *testing.T) {
@@ -48,7 +48,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 				}
 				source.WriteString("permissions: {}\n")
 				path := fixturefiles.Write(t, root, ".github/workflows/ci.yml", source.String())
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}})}, []workspace.Source{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}, []workspace.Source{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
 				if err != nil {
 					t.Fatal(err)
 				}

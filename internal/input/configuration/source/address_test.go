@@ -1,4 +1,4 @@
-package address
+package source
 
 import (
 	"path/filepath"
@@ -8,7 +8,7 @@ import (
 func TestNormalizeLocalPercentFilename(t *testing.T) {
 	t.Parallel()
 	name := filepath.Join(t.TempDir(), "100%preset.yaml")
-	got, err := Normalize(name)
+	got, err := NormalizeAddress(name)
 	if err != nil || got != name {
 		t.Fatalf("local source = %q, %v", got, err)
 	}
@@ -16,7 +16,7 @@ func TestNormalizeLocalPercentFilename(t *testing.T) {
 
 func TestNormalizeHTTPSIdentity(t *testing.T) {
 	t.Parallel()
-	got, err := Normalize("HTTPS://EXAMPLE.TEST/base.toml?version=1")
+	got, err := NormalizeAddress("HTTPS://EXAMPLE.TEST/base.toml?version=1")
 	if err != nil || got != "https://example.test/base.toml?version=1" {
 		t.Fatalf("HTTPS identity = %q, %v", got, err)
 	}
@@ -25,7 +25,7 @@ func TestNormalizeHTTPSIdentity(t *testing.T) {
 func TestRejectInvalidSchemeAndEmptyFragment(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"https://example.test/a.yaml#", "https://:443/a.yaml", "http:/example.test/a.yaml", "file:/tmp/a.yaml"} {
-		if got, err := Resolve(filepath.Join(t.TempDir(), "config.yaml"), name); err == nil {
+		if got, err := ResolveAddress(filepath.Join(t.TempDir(), "config.yaml"), name); err == nil {
 			t.Errorf("accepted %q as %q", name, got)
 		}
 	}
@@ -33,7 +33,7 @@ func TestRejectInvalidSchemeAndEmptyFragment(t *testing.T) {
 
 func TestRemoteRelativeFragment(t *testing.T) {
 	t.Parallel()
-	if got, err := Resolve("https://example.test/base.yaml", "child.yaml#"); err == nil {
+	if got, err := ResolveAddress("https://example.test/base.yaml", "child.yaml#"); err == nil {
 		t.Fatalf("accepted fragment as %q", got)
 	}
 }

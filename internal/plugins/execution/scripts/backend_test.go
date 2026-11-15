@@ -12,7 +12,6 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -61,7 +60,7 @@ func TestProcessShellCatalogueIsCapturedBeforeDocumentBuilds(t *testing.T) {
 	shells := []string{"python"}
 	registration, err := RegisterProvider(Provider{
 		Manifest: envelopeManifest("catalogue", shells),
-		Selection: Selection{Process: &processconfig.Options{
+		Selection: Selection{Process: &process.CommandOptions{
 			Executable: &executable, LauncherArguments: []string{"-test.run=^TestShellSelectorProcessHelper$"},
 			Environment: []string{"ACTIONLINT_SELECTOR_HELPER=1"},
 		}},

@@ -11,8 +11,8 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
@@ -275,7 +275,7 @@ func (s Selection) prepareProject(project *Project) (*config.Config, error) {
 		// Check the complete source graph only after overlays determine whether
 		// this invocation activates plugins. Ordinary config reads allow links.
 		for path := range project.Manifest.SourceContents() {
-			if address.Remote(path) {
+			if source.IsRemoteAddress(path) {
 				continue
 			}
 			if err := configplugins.ValidateLocalPath(path); err != nil {

@@ -13,7 +13,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -132,7 +132,7 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := managedTestOptions(guest, nil)
 		if disabled {
-			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &processconfig.Options{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: new("")}}})
 		}
 		result, err := checking.Analyze(t.Context(), options, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
 		if err != nil {

@@ -18,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 
-	configaddress "actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
@@ -617,7 +616,7 @@ func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, r
 }
 
 func absPath(path string) string {
-	if configaddress.Remote(path) {
+	if configsource.IsRemoteAddress(path) {
 		return path
 	}
 	if p, err := filepath.Abs(path); err == nil {

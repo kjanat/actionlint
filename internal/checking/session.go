@@ -22,7 +22,6 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -179,7 +178,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		}
 		backing := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
 		selectionReader = func(path string) ([]byte, error) {
-			if address.Remote(path) {
+			if configsource.IsRemoteAddress(path) {
 				return backing.ReadFile(path)
 			}
 			alias := path

@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestRuffProjectCatchAllOverrides(t *testing.T) {
@@ -61,7 +61,7 @@ runs:
 			if !tc.enabled {
 				command = filepath.Join(root, "missing-ruff")
 			}
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, LauncherArguments: []string{"-test.run=^TestRuffPlanningHelper$", "--"}, Environment: []string{"ACTIONLINT_RUFF_PLANNING_HELPER=1"}}}})}
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, LauncherArguments: []string{"-test.run=^TestRuffPlanningHelper$", "--"}, Environment: []string{"ACTIONLINT_RUFF_PLANNING_HELPER=1"}}}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 			if err != nil || needed["ruff"] != tc.enabled {
 				t.Fatalf("needed=%+v, error=%v", needed, err)

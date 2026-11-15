@@ -10,7 +10,7 @@ import (
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptpreparation "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -443,7 +443,7 @@ func PathContext(scope *tools.Scope) config.PathContext {
 // context is the path interpolation context of a scope's configuration.
 func (paths runPaths) context() config.PathContext {
 	configDir := paths.workspace
-	if paths.configPath != "" && !address.Remote(paths.configPath) {
+	if paths.configPath != "" && !source.IsRemoteAddress(paths.configPath) {
 		configDir = filepath.Dir(paths.configPath)
 	}
 	return config.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shellprofile.RunnerWorkspace(paths.workspace), ActionPath: shellprofile.RunnerActionPath(paths.actionPath)}

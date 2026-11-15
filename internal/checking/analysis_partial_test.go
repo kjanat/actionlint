@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
@@ -71,8 +71,8 @@ permissions: {}
 			t.Fatal(err)
 		}
 	}
-	options := func(tool string) *processconfig.Options {
-		return &processconfig.Options{
+	options := func(tool string) *process.CommandOptions {
+		return &process.CommandOptions{
 			Executable: &executable,
 			Arguments:  []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", tool},
 		}

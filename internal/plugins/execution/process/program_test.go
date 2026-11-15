@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -40,7 +39,7 @@ func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *proces
 		t.Fatal("standalone manifest rejected", err)
 	}
 	pool := process.NewProcessPool(t.Context(), 1)
-	command, err := pool.ConfiguredCommandRunner("", &processconfig.Options{Executable: &bun}, false)
+	command, err := pool.ConfiguredCommandRunner("", &process.CommandOptions{Executable: &bun}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

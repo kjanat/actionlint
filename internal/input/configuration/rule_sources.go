@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
@@ -61,7 +61,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		}
 		var base *configtree.Node
 		for _, parent := range parents {
-			path, err := address.Resolve(path, parent)
+			path, err := source.ResolveAddress(path, parent)
 			if err != nil {
 				return nil, err
 			}

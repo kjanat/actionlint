@@ -24,7 +24,7 @@ import (
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -172,9 +172,9 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 		t.Fatalf("no parity snapshot for %q", key)
 	}
 	want = hostSeverities(t, want)
-	var options *processconfig.Options
+	var options *process.CommandOptions
 	if len(arguments) != 0 {
-		options = &processconfig.Options{Arguments: arguments}
+		options = &process.CommandOptions{Arguments: arguments}
 	}
 	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
 	compareParity(t, want, got)

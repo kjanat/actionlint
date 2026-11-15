@@ -13,12 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/network"
-
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 // MaxBytes bounds each remote configuration document independently of its format.
@@ -59,7 +57,7 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	if _, err := address.Normalize(name); err != nil {
+	if _, err := NormalizeAddress(name); err != nil {
 		return nil, err
 	}
 	return r.readFile(name)
@@ -71,7 +69,7 @@ func (r *Reader) ReadConfig(name string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	key, err := address.Normalize(name)
+	key, err := NormalizeAddress(name)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +85,7 @@ func (r *Reader) readFile(name string) ([]byte, error) {
 	switch {
 	case r.contents != nil:
 		content, err = r.contents(name)
-	case !address.Remote(name):
+	case !IsRemoteAddress(name):
 		content, err = files.New(r.ctx, nil, nil).ReadFile(name)
 	default:
 		content, err = r.readHTTPS(r.ctx, name)
@@ -98,7 +96,7 @@ func (r *Reader) readFile(name string) ([]byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return nil, err
 	}
-	if address.Remote(name) && len(content) > MaxBytes {
+	if IsRemoteAddress(name) && len(content) > MaxBytes {
 		return nil, fmt.Errorf("HTTPS config %q exceeds %d bytes", name, MaxBytes)
 	}
 	return bytes.Clone(content), nil

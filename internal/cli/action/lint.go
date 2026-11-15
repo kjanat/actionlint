@@ -27,7 +27,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -45,7 +45,7 @@ type lintRequest struct {
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
 	// Tests use it to select executables.
-	processes    map[string]*processconfig.Options
+	processes    map[string]*process.CommandOptions
 	workingDir   string
 	workspaceDir string
 	configFile   string
@@ -294,7 +294,7 @@ func (req *lintRequest) toolSelections() registry.Selections {
 			selections[id] = scripts.Selection{}
 			continue
 		}
-		options := processconfig.Options{Optional: true}
+		options := process.CommandOptions{Optional: true}
 		if replaced := req.processes[id]; replaced != nil {
 			options = *replaced
 		}

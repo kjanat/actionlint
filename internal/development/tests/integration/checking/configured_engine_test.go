@@ -18,7 +18,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	scriptbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
@@ -51,7 +51,7 @@ func (b *configuredBackend) Close(ctx context.Context) error {
 func configuredEngineSelections() registry.Selections {
 	selections := registry.Defaults()
 	for name, selection := range selections {
-		selection.Process = &processconfig.Options{Executable: new(""), AllowWasm: true}
+		selection.Process = &process.CommandOptions{Executable: new(""), AllowWasm: true}
 		selections[name] = selection
 	}
 	return selections
@@ -167,7 +167,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); !errors.Is(err, failure) {
 				t.Fatalf("loader error lost: %v", err)
 			}
-			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: new("")}}})
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); err != nil {
 				t.Fatalf("explicit disable ignored: %v", err)
 			}
@@ -265,7 +265,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				if result.Diagnostics[0].Rule != tool.name || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
 					t.Fatalf("unexpected diagnostic: %+v", result.Diagnostics[0])
 				}
-				disabled := scriptbackend.Selection{Process: &processconfig.Options{Executable: new("")}}
+				disabled := scriptbackend.Selection{Process: &process.CommandOptions{Executable: new("")}}
 				options.Tools = registry.Registrations(registry.Selections{tool.name: disabled})
 				result, err = runConfiguredAnalysis(t, mode, root, paths[:1], cfg, options)
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || loads.Load() != 1 || backend.checks.Load() != wantChecks || backend.closes.Load() != 1 {

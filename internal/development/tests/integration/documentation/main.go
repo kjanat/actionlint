@@ -23,7 +23,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 
@@ -79,7 +79,7 @@ func Actionlint(src []byte) ([]byte, error) {
 		WorkingDir: root,
 		ReadFile:   readDocumentationFile,
 		Repository: func(context.Context, string) repository.Snapshot { return repository.Snapshot{RunnerLabels: labels} },
-		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &processconfig.Options{Optional: true}}}),
+		Tools:      registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}}),
 	}, []workspace.Source{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {
 		return nil, err

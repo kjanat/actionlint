@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
 // Loaded contains merged values, source files, and source locations by JSON pointer.
@@ -30,12 +30,12 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 	var load func(string, int) (Loaded, error)
 	load = func(path string, depth int) (Loaded, error) {
 		readPath := path
-		path, err := address.Normalize(path)
+		path, err := source.NormalizeAddress(path)
 		if err != nil {
 			return Loaded{}, err
 		}
 		identity := path
-		if !address.Remote(path) {
+		if !source.IsRemoteAddress(path) {
 			if actual, e := filepath.EvalSymlinks(path); e == nil {
 				identity = actual
 			}
@@ -83,7 +83,7 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 		}
 		result := Loaded{Origins: map[string]Input{}}
 		for _, name := range bases {
-			resolved, err := address.Resolve(path, name)
+			resolved, err := source.ResolveAddress(path, name)
 			if err != nil {
 				return Loaded{}, fmt.Errorf("extends in %q: %w", path, err)
 			}

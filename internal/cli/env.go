@@ -11,7 +11,7 @@ import (
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/mattn/go-shellwords"
@@ -174,8 +174,8 @@ func (a *commandApp) checkEnvironment() error {
 // externalToolEnvironment reads a tool's _BIN, _FLAGS and _ENV variables
 // through lookup, which returns the name and value of the variable that
 // holds a suffix. It returns nil when none is set.
-func externalToolEnvironment(lookup func(suffix string) (name, value string, ok bool)) (*processconfig.Options, error) {
-	options := &processconfig.Options{}
+func externalToolEnvironment(lookup func(suffix string) (name, value string, ok bool)) (*process.CommandOptions, error) {
+	options := &process.CommandOptions{}
 	if name, bin, ok := lookup("_BIN"); ok {
 		if strings.ContainsRune(bin, 0) {
 			return nil, commandargs.UsageError{Cause: fmt.Errorf("%s cannot contain NUL", name)}

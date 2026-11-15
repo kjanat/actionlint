@@ -13,7 +13,6 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
@@ -30,7 +29,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := text.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := sourcepos.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}

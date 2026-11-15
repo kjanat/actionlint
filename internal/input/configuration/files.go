@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
 func (cfg *Config) IncludesFile(path, root string) bool {
@@ -56,7 +56,7 @@ func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs ma
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}
-	if address.Remote(path) {
+	if source.IsRemoteAddress(path) {
 		if err := ValidateSourcePaths(path, value); err != nil {
 			return nil, nil, err
 		}
@@ -110,7 +110,7 @@ func normalizeSourcePaths(value any, directory string, inherited bool) {
 
 // ValidateSourcePaths rejects local paths in an HTTPS source.
 func ValidateSourcePaths(origin string, value any) error {
-	if !address.Remote(origin) {
+	if !source.IsRemoteAddress(origin) {
 		return nil
 	}
 	if err := validateRemoteToolPaths(value); err != nil {

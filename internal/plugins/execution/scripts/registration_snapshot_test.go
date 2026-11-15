@@ -10,7 +10,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -20,7 +19,7 @@ func TestSelectionCopyPreservesCapabilitiesAndDetachesOptions(t *testing.T) {
 	backend := &selectorBackend{}
 	calls := 0
 	original := Selection{
-		Process: &processconfig.Options{Executable: &executable, Arguments: []string{"original"}},
+		Process: &process.CommandOptions{Executable: &executable, Arguments: []string{"original"}},
 		Backend: backend,
 		Runner:  func([]string, string) ([]byte, error) { calls++; return nil, nil },
 	}
@@ -50,7 +49,7 @@ func TestRegisteredProviderOwnsManifestAndProcessOptions(t *testing.T) {
 	manifest.Process.Env = map[string]string{"SNAPSHOT_MANIFEST": "original"}
 	manifest.Capabilities.Severities = map[string]manifests.Severity{"notice": manifests.SeverityWarning}
 	manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
-	options := &processconfig.Options{LauncherArguments: []string{"-test.run=^TestSnapshotProviderHelper$"}, Environment: []string{"ACTIONLINT_SNAPSHOT_HELPER=original"}}
+	options := &process.CommandOptions{LauncherArguments: []string{"-test.run=^TestSnapshotProviderHelper$"}, Environment: []string{"ACTIONLINT_SNAPSHOT_HELPER=original"}}
 	var retained Provider
 	registration, err := RegisterProvider(Provider{Manifest: manifest, Selection: Selection{Command: "snapshot", Process: options}, Bind: func(r tools.Registration, p Provider) tools.Registration { retained = p; return r }})
 	if err != nil {

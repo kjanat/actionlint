@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
@@ -168,8 +167,8 @@ func (proc *ProcessPool) NewCommandRunner(exe string, combineOutput bool) (*Comm
 	return proc.ConfiguredCommandRunner(exe, nil, combineOutput)
 }
 
-func (proc *ProcessPool) ConfiguredCommandRunner(exe string, options *processconfig.Options, combineOutput bool) (*Command, error) {
-	p, args, err := processconfig.ResolveOptions(exe, options)
+func (proc *ProcessPool) ConfiguredCommandRunner(exe string, options *CommandOptions, combineOutput bool) (*Command, error) {
+	p, args, err := ResolveCommandOptions(exe, options)
 	if err != nil {
 		return nil, err
 	}

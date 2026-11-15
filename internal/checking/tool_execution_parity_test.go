@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -89,7 +89,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			writeFixture(t, root, ".github/actionlint.yaml", tc.config)
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", goodWorkflow)
 
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &processconfig.Options{Executable: &executable, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 			if err != nil || needed["shellcheck"] != tc.enabled {
 				t.Fatalf("tool requirement: %+v, %v", needed, err)

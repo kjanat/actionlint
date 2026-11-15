@@ -13,7 +13,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
@@ -29,8 +29,8 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 		name         string
 		registration tools.Registration
 	}{
-		{"ruff", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})},
-		{"shellcheck", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
+		{"ruff", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
+		{"shellcheck", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -85,8 +85,8 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		name, shell, source, filename string
 		registration                  tools.Registration
 	}{
-		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &processconfig.Options{Optional: true}})},
-		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &processconfig.Options{Optional: true}})},
+		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
+		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", scripts.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

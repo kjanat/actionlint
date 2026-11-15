@@ -11,7 +11,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -95,7 +95,7 @@ jobs:
         run: print(missing)
 permissions: {}
 `
-	_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--statistics"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: []string{"--statistics"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err == nil || !strings.Contains(err.Error(), "statistics output is not supported") {
 		t.Fatalf("statistics mode not rejected before invocation: %v", err)
 	}
@@ -156,7 +156,7 @@ jobs:
         run: print(missing)
 permissions: {}
 `
-		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+		_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: []string{flag}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err == nil || !strings.Contains(err.Error(), "silent output is not supported") {
 			t.Fatalf("silent mode not rejected before invocation: %v", err)
 		}
@@ -251,7 +251,7 @@ jobs:
         run: print(missing)
 permissions: {}
 `
-			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+			_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: flags}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 			if err == nil || !strings.Contains(err.Error(), "output redirection") {
 				t.Errorf("redirection not rejected: %v", err)
 			}

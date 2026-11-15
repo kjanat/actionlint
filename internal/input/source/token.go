@@ -1,5 +1,4 @@
-// Package text handles Unicode columns and LF-delimited source lines.
-package text
+package source
 
 // TokenEndColumn returns the exclusive rune column of the token delimited by
 // space, tab, CR or LF at column, with a minimum span of one character.

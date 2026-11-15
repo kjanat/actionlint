@@ -1,5 +1,4 @@
-// Package files acquires filesystem facts for action execution files.
-package files
+package workspace
 
 import (
 	"context"
@@ -14,7 +13,7 @@ import (
 
 // Inspect records missing and present paths. Unrepresentable or otherwise
 // unchecked paths are unknown. Cancellation and access denial stop acquisition.
-func Inspect(ctx context.Context, meta *actionmeta.Metadata, reader *inputfiles.Reader) (actionmeta.ReferencedFiles, error) {
+func InspectReferencedFiles(ctx context.Context, meta *actionmeta.Metadata, reader *inputfiles.Reader) (actionmeta.ReferencedFiles, error) {
 	if reader == nil {
 		reader = inputfiles.New(ctx, nil, nil)
 	}

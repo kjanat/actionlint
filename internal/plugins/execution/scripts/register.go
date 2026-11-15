@@ -13,7 +13,6 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
@@ -30,7 +29,7 @@ type Selection struct {
 	// Process adds arguments and environment to Command, or replaces it with
 	// Process.Executable. Optional makes the selection a default that is
 	// skipped, with a warning, when it cannot run.
-	Process *processconfig.Options
+	Process *hostprocess.CommandOptions
 	// Backend replaces the process with a snippet engine.
 	Backend checkinputs.ScriptBackend `clone:"shared"`
 	// Runner replaces the process with an in-process function that has no
@@ -74,20 +73,20 @@ func (s selection) defaultCommand(name string) bool {
 	}
 	options := *s.Process
 	options.WorkingDir = ""
-	return reflect.DeepEqual(options, processconfig.Options{Optional: true})
+	return reflect.DeepEqual(options, hostprocess.CommandOptions{Optional: true})
 }
 
 // forConfig lets a repository backend replace a default plugin.
 func (s selection) forConfig(name string, cfg *config.Config) Selection {
 	if s.fallback && cfg != nil && cfg.Tools[name].Backend != nil {
-		s.Backend, s.Command, s.Process = nil, name, &processconfig.Options{Optional: true}
+		s.Backend, s.Command, s.Process = nil, name, &hostprocess.CommandOptions{Optional: true}
 	}
 	return s.Selection
 }
 
 // selected reports whether the selection can run the provider at all.
 func (s selection) selected(name string) bool {
-	return s.Backend != nil || s.Runner != nil || AllowsModule(name, s.Command, s.Process) || processconfig.Enabled(s.Command, s.Process)
+	return s.Backend != nil || s.Runner != nil || AllowsModule(name, s.Command, s.Process) || hostprocess.CommandEnabled(s.Command, s.Process)
 }
 
 // RegisterProvider registers a script tool provider from its process manifest and
@@ -158,7 +157,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 		NeedsProcess: func(_ context.Context, cfg, project *config.Config) (bool, error) {
 			return ProjectMayNeedProcessFor(name, cfg, project, func(candidate *config.Config) bool {
 				o := sel.forConfig(name, candidate)
-				return o.Backend == nil && o.Runner == nil && processconfig.Enabled(o.Command, o.Process) && Module(name, o.Command, o.Process, candidate) == nil
+				return o.Backend == nil && o.Runner == nil && hostprocess.CommandEnabled(o.Command, o.Process) && Module(name, o.Command, o.Process, candidate) == nil
 			})
 		},
 		Validate: func() error {
@@ -293,7 +292,7 @@ func (t *transports) build(cfg *config.Config) (string, error) {
 		}
 		return t.engine(key, engine)
 	}
-	if !processconfig.Enabled(o.Command, o.Process) {
+	if !hostprocess.CommandEnabled(o.Command, o.Process) {
 		return "", nil
 	}
 	if err := RequireProcessOptIn(name, o.Command, o.Process, cfg, c.AllowConfigProcesses); err != nil {
@@ -306,7 +305,7 @@ func (t *transports) build(cfg *config.Config) (string, error) {
 	}
 	encoded, err := json.Marshal(struct {
 		Command string
-		Options *processconfig.Options
+		Options *hostprocess.CommandOptions
 	}{command, options})
 	if err != nil {
 		return "", err

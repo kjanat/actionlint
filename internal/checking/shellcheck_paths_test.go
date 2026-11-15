@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -64,7 +64,7 @@ jobs:
 			}
 			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})

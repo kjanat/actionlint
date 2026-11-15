@@ -16,7 +16,6 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
@@ -65,7 +64,7 @@ func helperCommand(t *testing.T, mode string, env ...string) *process.Command {
 		t.Fatal(err)
 	}
 	pool := process.NewProcessPool(t.Context(), 2)
-	command, err := pool.ConfiguredCommandRunner("", &processconfig.Options{
+	command, err := pool.ConfiguredCommandRunner("", &process.CommandOptions{
 		Executable:        &executable,
 		LauncherArguments: []string{"-test.run=^TestProcessHelper$"},
 		Environment:       append([]string{"ACTIONLINT_PROCESS_HELPER=" + mode}, env...),

@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -242,7 +241,7 @@ func (c *Cache) LookupMetadata(spec string) (MetadataResult, bool) {
 		c.debug("New metadata parsed from action %s: %s action %q", dir, meta.Runs.Using, meta.Name)
 	}
 	if parseErr == nil {
-		facts, err := actionfiles.Inspect(c.ctx, meta, c.reader)
+		facts, err := InspectReferencedFiles(c.ctx, meta, c.reader)
 		if err != nil {
 			return c.writeCache(spec, MetadataResult{status: MetadataReadFailed, cause: err}, loadedSource)
 		}

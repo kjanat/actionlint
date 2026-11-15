@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestWorkflowCallOutputContextUsesCapturedCalleeMetadata(t *testing.T) {
@@ -61,8 +61,8 @@ jobs:
 				t.Fatal(err)
 			}
 			options := Options{WorkingDir: root, SkipProjectConfig: true, Tools: registry.Registrations(registry.Selections{
-				"shellcheck": {Process: &processconfig.Options{Executable: new("")}},
-				"ruff":       {Process: &processconfig.Options{Executable: new("")}},
+				"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
+				"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 			})}
 			result, err := Analyze(t.Context(), options, []workspace.Source{{Path: path, Content: []byte(caller)}})
 			if err != nil {

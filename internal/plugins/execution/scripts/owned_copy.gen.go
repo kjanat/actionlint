@@ -5,7 +5,7 @@ package scripts
 import (
 	slices "slices"
 
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func copyOwnedSelection(in Selection) Selection {
@@ -14,15 +14,15 @@ func copyOwnedSelection(in Selection) Selection {
 	return out
 }
 
-func copyOwnedValue_8dabd9f0ba9772cd3ec0be62c315a9c0(in *processconfig.Options) *processconfig.Options {
+func copyOwnedValue_8dabd9f0ba9772cd3ec0be62c315a9c0(in *process.CommandOptions) *process.CommandOptions {
 	if in == nil {
 		return nil
 	}
 	out := copyOwnedOptions_87062cdf34e489a1b65af0562cf2fa13(*in)
-	return (*processconfig.Options)(&out)
+	return (*process.CommandOptions)(&out)
 }
 
-func copyOwnedOptions_87062cdf34e489a1b65af0562cf2fa13(in processconfig.Options) processconfig.Options {
+func copyOwnedOptions_87062cdf34e489a1b65af0562cf2fa13(in process.CommandOptions) process.CommandOptions {
 	out := in
 	out.Executable = copyOwnedValue_3e89801b52bf7f986e27b0847ce327c5(in.Executable)
 	out.Arguments = slices.Clone(in.Arguments)

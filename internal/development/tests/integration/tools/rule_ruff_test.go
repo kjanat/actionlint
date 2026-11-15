@@ -14,7 +14,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestRuffPythonScripts(t *testing.T) {
@@ -157,7 +157,7 @@ func TestRuffCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
-	options := &processconfig.Options{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
+	options := &process.CommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_WAIT=1"}}
 	src := `on: push
 jobs:
   test:
@@ -197,7 +197,7 @@ func TestRuffMissingExecutable(t *testing.T) {
 			_, err = checking.Analyze(t.Context(), checking.Options{
 				WorkingDir: t.TempDir(),
 
-				Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &missing, Optional: tc.optional}}}),
+				Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &missing, Optional: tc.optional}}}),
 			}, []workspace.Source{{Path: "ci.yml", Config: config, Content: []byte(`on: push
 jobs:
   test:
@@ -327,7 +327,7 @@ func TestRuffProcessFailures(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			options := &processconfig.Options{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
+			options := &process.CommandOptions{Executable: &exe, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=" + tc.output, "ACTIONLINT_TEST_RUFF_EXIT=" + strconv.Itoa(tc.code)}}
 			src := `on: push
 jobs:
   test:
@@ -354,7 +354,7 @@ func TestRuffConfiguredFlagsAndEnvironment(t *testing.T) {
 	for _, legacy := range []bool{false, true} {
 		t.Run(strconv.FormatBool(legacy), func(t *testing.T) {
 			t.Parallel()
-			options := &processconfig.Options{
+			options := &process.CommandOptions{
 				Executable:  &executable,
 				Arguments:   []string{"--preview", "--exclude", "vendor/**"},
 				Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_FLAGS=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "RUFF_OUTPUT_FILE=explicit-output.json"},
@@ -395,7 +395,7 @@ jobs:
         run: 'if:'
 permissions: {}
 `
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &processconfig.Options{Executable: &command, Arguments: []string{"--preview"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: &command, Arguments: []string{"--preview"}}}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +425,7 @@ jobs:
 permissions: {}
 `
 	for _, language := range []string{"ipynb", "pyi"} {
-		options := &processconfig.Options{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
+		options := &process.CommandOptions{Executable: &command, Arguments: []string{"--config", "extension = { py = " + strconv.Quote(language) + " }"}}
 		result, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)

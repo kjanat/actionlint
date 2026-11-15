@@ -11,7 +11,6 @@ import (
 	"slices"
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
@@ -57,11 +56,11 @@ func Open(ctx context.Context, rules config.RuleSet, path string, connections ac
 
 // Read loads plugin declarations with the supplied source reader and normalization mode.
 func Read(ctx context.Context, rules config.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode) (*File, error) {
-	absolute, err := address.Normalize(path)
+	absolute, err := configsource.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
 	}
-	if address.Remote(absolute) {
+	if configsource.IsRemoteAddress(absolute) {
 		// Pass the declared URL spelling to caller-supplied readers.
 		absolute = path
 	} else {
@@ -85,7 +84,7 @@ func Read(ctx context.Context, rules config.RuleSet, path string, read func(cont
 		if name == absolute {
 			return bytes.Clone(data), nil
 		}
-		if !address.Remote(name) {
+		if !configsource.IsRemoteAddress(name) {
 			name, err = filepath.Abs(name)
 			if err != nil {
 				return nil, err
@@ -270,7 +269,7 @@ func ValidateLocalPath(path string) error {
 }
 
 func readPluginManifest(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
-	if address.Remote(path) {
+	if configsource.IsRemoteAddress(path) {
 		return configsource.New(ctx, nil, connections).ReadConfig(path)
 	}
 	if err := ValidateLocalPath(path); err != nil {
@@ -281,7 +280,7 @@ func readPluginManifest(ctx context.Context, path string, connections acquisitio
 
 // ReadSource reads a local or remote configuration source within the file-size limit.
 func ReadSource(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
-	if address.Remote(path) {
+	if configsource.IsRemoteAddress(path) {
 		return configsource.New(ctx, nil, connections).ReadConfig(path)
 	}
 	reader := files.New(ctx, nil, nil)
@@ -348,7 +347,7 @@ func (m *File) OriginalBytes() []byte {
 // Save writes an explicit leaf-level list, including [] when removing the last
 // plugin.
 func (m *File) Save(ctx context.Context, refs []pluginref.Reference) (err error) {
-	if address.Remote(m.Path) {
+	if configsource.IsRemoteAddress(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
 	}
 	data, err := EditManifest(m.Path, m.original, refs)

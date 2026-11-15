@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 // ProjectMayEnable preserves a tool when a calling workflow or composite can enable it.
@@ -13,9 +13,9 @@ func ProjectMayEnable(name string, config, projectConfig *repoconfig.Config) (bo
 }
 
 // ProjectMayNeedProcess checks possible composite overrides without parsing workflow inputs.
-func ProjectMayNeedProcess(name string, config, projectConfig *repoconfig.Config, command string, explicit *processconfig.Options) (bool, error) {
+func ProjectMayNeedProcess(name string, config, projectConfig *repoconfig.Config, command string, explicit *process.CommandOptions) (bool, error) {
 	return ProjectMayNeedProcessFor(name, config, projectConfig, func(candidate *repoconfig.Config) bool {
-		return processconfig.Enabled(command, explicit) && Module(name, command, explicit, candidate) == nil
+		return process.CommandEnabled(command, explicit) && Module(name, command, explicit, candidate) == nil
 	})
 }
 

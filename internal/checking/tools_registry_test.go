@@ -11,7 +11,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -37,7 +37,7 @@ func TestIndependentProcessTool(t *testing.T) {
 					Output:         manifests.Output{Format: manifests.FormatEnvelope},
 				},
 			},
-			Selection: scripts.Selection{Process: &processconfig.Options{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
+			Selection: scripts.Selection{Process: &process.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
 		})
 		if err != nil {
 			t.Fatal(err)

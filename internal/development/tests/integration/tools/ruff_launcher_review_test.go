@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestRuffLauncherArguments(t *testing.T) {
@@ -72,7 +72,7 @@ permissions: {}
 					if launcher == "env" {
 						args = []string{"RUFF_OUTPUT_FILE=" + output, "ruff"}
 					}
-					options := &processconfig.Options{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+					options := &process.CommandOptions{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 					input := source
 					var config *repoconfig.Config
 					switch disabled {
@@ -102,7 +102,7 @@ permissions: {}
 				t.Run(launcher+strconv.FormatBool(literal)+strings.Join(flags, " "), func(t *testing.T) {
 					t.Parallel()
 					calls := filepath.Join(t.TempDir(), "calls")
-					options := &processconfig.Options{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+					options := &process.CommandOptions{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 					command := strconv.Quote(tool)
 					if literal {
 						options.Executable = &tool

@@ -11,7 +11,6 @@ import (
 	"slices"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -117,7 +116,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	}
 	if opts.ConfigFile != "" {
 		path := opts.ConfigFile
-		if !address.Remote(path) && !filepath.IsAbs(path) {
+		if !configsource.IsRemoteAddress(path) && !filepath.IsAbs(path) {
 			path = filepath.Join(a.cwd, path)
 		}
 		source, err := a.rules.ReadContext(ctx, path, a.readFile, a.ruleNames...)

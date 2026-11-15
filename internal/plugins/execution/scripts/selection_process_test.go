@@ -6,7 +6,7 @@ import (
 
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestProjectToolBackendPrecedence(t *testing.T) {
@@ -17,12 +17,12 @@ func TestProjectToolBackendPrecedence(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Tools = config.ToolsConfig{"ruff": {Backend: toolconfig.ProcessBackend(command)}}
-	automatic := &processconfig.Options{Optional: true, Arguments: []string{"--select", "F"}}
+	automatic := &process.CommandOptions{Optional: true, Arguments: []string{"--select", "F"}}
 	selected := ProcessOptions("ruff", "ruff", automatic, cfg, "/analysis")
 	if selected.Executable == nil || *selected.Executable != "mise" || !reflect.DeepEqual(selected.LauncherArguments, command.Args()) || !reflect.DeepEqual(selected.Arguments, automatic.Arguments) || !reflect.DeepEqual(selected.Environment, []string{"CUSTOM=literal $value"}) {
 		t.Fatalf("wrong projection: %+v", selected)
 	}
-	explicit := &processconfig.Options{IgnoreConfig: true}
+	explicit := &process.CommandOptions{IgnoreConfig: true}
 	if got := ProcessOptions("ruff", "ruff", explicit, cfg, "/analysis"); got != explicit {
 		t.Fatal("explicit selection overridden")
 	}
@@ -47,13 +47,13 @@ func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
 			t.Parallel()
 			for _, tc := range []struct {
 				name    string
-				options *processconfig.Options
+				options *process.CommandOptions
 				want    bool
 			}{
-				{"automatic", &processconfig.Options{Optional: true}, true},
-				{"explicit process", &processconfig.Options{}, false},
-				{"provisioned process", &processconfig.Options{AllowWasm: true}, true},
-				{"explicit override", &processconfig.Options{AllowWasm: true, IgnoreConfig: true}, false},
+				{"automatic", &process.CommandOptions{Optional: true}, true},
+				{"explicit process", &process.CommandOptions{}, false},
+				{"provisioned process", &process.CommandOptions{AllowWasm: true}, true},
+				{"explicit override", &process.CommandOptions{AllowWasm: true, IgnoreConfig: true}, false},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					t.Parallel()
@@ -69,7 +69,7 @@ func TestProvisionedProcessAllowsOnlyConfiguredWasm(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg.Tools[name] = config.ToolConfig{Backend: toolconfig.ProcessBackend(command)}
-			if got := processCommand(name, name, &processconfig.Options{AllowWasm: true}, cfg); got != nil {
+			if got := processCommand(name, name, &process.CommandOptions{AllowWasm: true}, cfg); got != nil {
 				t.Fatalf("repository process replaced provisioned command: %+v", got)
 			}
 		})

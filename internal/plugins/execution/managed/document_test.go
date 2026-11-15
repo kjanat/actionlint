@@ -22,7 +22,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -214,7 +214,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		name, config string
 		disabled     bool
 		partial      bool
-		process      *processconfig.Options
+		process      *process.CommandOptions
 	}{
 		{"enabled", "{}", false, false, nil},
 		{"tool disabled", "tools: {shellcheck: false}", true, false, nil},
@@ -222,8 +222,8 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		{"inline options", "tools: {shellcheck: {config: {disable: [SC2001], enable: [quote-safe-variables], shell: bash, extended-analysis: false}}}", false, false, nil},
 		{"override disabled", "overrides: [{includes: ['ci.yml'], tools: {shellcheck: false}}]", true, false, nil},
 		{"partial findings", "{}", false, true, nil},
-		{"working directory", "{}", false, false, &processconfig.Options{Optional: true, WorkingDir: t.TempDir()}},
-		{"wasm permitted", "{}", false, false, &processconfig.Options{Optional: true, AllowWasm: true, WorkingDir: t.TempDir()}},
+		{"working directory", "{}", false, false, &process.CommandOptions{Optional: true, WorkingDir: t.TempDir()}},
+		{"wasm permitted", "{}", false, false, &process.CommandOptions{Optional: true, AllowWasm: true, WorkingDir: t.TempDir()}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -313,7 +313,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 	}
 	for _, options := range []scripts.Selection{
 		{Command: "custom-shellcheck"},
-		{Command: "shellcheck", Process: &processconfig.Options{Arguments: []string{"--norc"}}},
+		{Command: "shellcheck", Process: &process.CommandOptions{Arguments: []string{"--norc"}}},
 	} {
 		registration, err := shellcheckRegistration(options).WithAnalyzer(&documentGuest{})
 		if err != nil {

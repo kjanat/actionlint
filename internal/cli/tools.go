@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -195,7 +195,7 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 		case slices.Contains(resolved.disabled, id):
 			resolved.tools[id] = scripts.Selection{}
 		case explicit:
-			resolved.tools[id] = scripts.Selection{Command: command, Process: &processconfig.Options{IgnoreConfig: true}}
+			resolved.tools[id] = scripts.Selection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
 		default:
 			options, err := toolEnvironment(id)
 			if err != nil {
@@ -230,7 +230,7 @@ type resolvedTools struct {
 // last deprecated flag with an ignored value used for id. It also reports
 // whether that flag disabled the tool.
 func defaultSelection(id string, used []deprecatedToolFlag) (scripts.Selection, bool) {
-	selection := scripts.Selection{Command: id, Process: &processconfig.Options{Optional: true}}
+	selection := scripts.Selection{Command: id, Process: &process.CommandOptions{Optional: true}}
 	for _, flag := range slices.Backward(used) {
 		if flag.id != id {
 			continue
@@ -248,7 +248,7 @@ func defaultSelection(id string, used []deprecatedToolFlag) (scripts.Selection, 
 // variables of the tool id, where <ID> is id upper-cased with dashes
 // replaced by underscores. It returns nil options when none of the
 // variables is set.
-func toolEnvironment(id string) (*processconfig.Options, error) {
+func toolEnvironment(id string) (*process.CommandOptions, error) {
 	prefix := "ACTIONLINT_TOOL_" + strings.ToUpper(strings.ReplaceAll(id, "-", "_"))
 	return externalToolEnvironment(func(suffix string) (string, string, bool) {
 		value, ok := os.LookupEnv(prefix + suffix)

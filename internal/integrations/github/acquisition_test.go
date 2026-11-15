@@ -20,7 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
@@ -265,7 +264,7 @@ func TestNewAnalysisSeesMovedBranchWithCachedManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := repository.Bind(&listingResolver{}, base)
+	resolver := references.BindRepositoryAccess(&listingResolver{}, base)
 	for analysis, expected := range []struct{ commit, content string }{{sha, actionSource}, {branchTip, updated}} {
 		tip = expected.commit
 		provider := base.WithResolver(resolver)
@@ -293,7 +292,7 @@ func TestParseRefAdvertisement(t *testing.T) {
 	if parsed.refs["HEAD"] != branchTip || parsed.refs["refs/tags/v1"] != tagObject || parsed.refs["refs/pull/1/head"] != sha || len(parsed.refs) != 4 {
 		t.Fatalf("refs=%v", parsed.refs)
 	}
-	if parsed.objects[tagObject] != nil || parsed.objects[sha] != nil || parsed.objects[branchTip] != (repository.Commit{}) || len(parsed.digest) != 64 {
+	if parsed.objects[tagObject] != nil || parsed.objects[sha] != nil || parsed.objects[branchTip] != (references.RepositoryCommit{}) || len(parsed.digest) != 64 {
 		t.Fatalf("objects=%v digest=%s", parsed.objects, parsed.digest)
 	}
 	empty, err := parseRefAdvertisement(gitwire.RefAdvertisement("", ""))
@@ -364,7 +363,7 @@ func TestListingSessionFinishMakesNoRequests(t *testing.T) {
 	if _, _, err := session.Reference(t.Context(), "v1"); err == nil {
 		t.Fatal("short reference name accepted")
 	}
-	if object, found, err := session.Object(t.Context(), strings.ToUpper(tagObject)); err != nil || !found || object != (repository.PeeledTag{Commit: sha}) {
+	if object, found, err := session.Object(t.Context(), strings.ToUpper(tagObject)); err != nil || !found || object != (references.RepositoryPeeledTag{Commit: sha}) {
 		t.Fatalf("tag object=%v,%t,%v", object, found, err)
 	}
 	for _, id := range []string{strings.Repeat("a", 64), "abc"} {

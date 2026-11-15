@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
@@ -26,7 +25,7 @@ func prepareEnforcedLifecycle(ctx context.Context, options Options) (Options, er
 	}
 	paths := make([]string, 0, len(options.EnforcePolicies))
 	for _, path := range options.EnforcePolicies {
-		if strings.TrimSpace(path) != "" && !address.Remote(path) && (!strings.Contains(path, ":") || filepath.VolumeName(path) != "") && !filepath.IsAbs(path) && options.WorkingDir != "" {
+		if strings.TrimSpace(path) != "" && !configsource.IsRemoteAddress(path) && (!strings.Contains(path, ":") || filepath.VolumeName(path) != "") && !filepath.IsAbs(path) && options.WorkingDir != "" {
 			path = filepath.Join(options.WorkingDir, path)
 		}
 		paths = append(paths, path)

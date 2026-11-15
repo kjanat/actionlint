@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
@@ -38,7 +37,7 @@ type refListing struct {
 	observedAt string
 	digest     string
 	refs       map[string]string
-	objects    map[string]repository.Object
+	objects    map[string]references.RepositoryObject
 	peeled     map[string]string
 }
 
@@ -221,10 +220,10 @@ func parseRefAdvertisement(body []byte) (*refListing, error) {
 	if len(lines.data) != 0 {
 		return nil, fmt.Errorf("%w: data after the final flush", errInvalidRefAdvertisement)
 	}
-	objects := make(map[string]repository.Object, len(refs)+len(peeled))
+	objects := make(map[string]references.RepositoryObject, len(refs)+len(peeled))
 	for name, id := range refs {
 		if name == "HEAD" || strings.HasPrefix(name, "refs/heads/") {
-			objects[id] = repository.Commit{}
+			objects[id] = references.RepositoryCommit{}
 		}
 	}
 	for tag, commit := range peeled {
@@ -232,7 +231,7 @@ func parseRefAdvertisement(body []byte) (*refListing, error) {
 			return nil, fmt.Errorf("%w: peeled object is a tag", errInvalidRefAdvertisement)
 		}
 		if _, known := objects[commit]; known {
-			objects[tag] = repository.PeeledTag{Commit: commit}
+			objects[tag] = references.RepositoryPeeledTag{Commit: commit}
 		}
 	}
 	sum := sha256.Sum256(body)
@@ -312,15 +311,15 @@ type listingSession struct {
 	finished bool
 	github   *GitHub
 	request  references.Request
-	verified repository.Session
+	verified references.RepositorySession
 }
 
 func newListingSession(github *GitHub, listing *refListing, request references.Request) *listingSession {
 	return &listingSession{github: github, request: request, listing: listing, name: request.Repository, log: []string{"listing sha256:" + listing.digest}}
 }
 
-func (s *listingSession) Repository() repository.Identity {
-	return repository.Identity{Host: "github.com", Name: s.name, ObservedAt: s.listing.observedAt}
+func (s *listingSession) Repository() references.RepositoryIdentity {
+	return references.RepositoryIdentity{Host: "github.com", Name: s.name, ObservedAt: s.listing.observedAt}
 }
 
 func (s *listingSession) Reference(ctx context.Context, name string) (string, bool, error) {
@@ -338,7 +337,7 @@ func (s *listingSession) Reference(ctx context.Context, name string) (string, bo
 	return id, found, nil
 }
 
-func (s *listingSession) Object(ctx context.Context, id string) (repository.Object, bool, error) {
+func (s *listingSession) Object(ctx context.Context, id string) (references.RepositoryObject, bool, error) {
 	if s.finished {
 		return nil, false, errors.New("repository session is finished")
 	}

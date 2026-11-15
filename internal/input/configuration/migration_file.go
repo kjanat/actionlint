@@ -10,7 +10,6 @@ import (
 	"reflect"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
@@ -51,11 +50,11 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	absolute, err := address.Normalize(path)
+	absolute, err := configsource.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
 	}
-	if address.Remote(absolute) {
+	if configsource.IsRemoteAddress(absolute) {
 		return nil, errors.New("remote config sources are read-only; select a local file to migrate")
 	}
 	parent, err := filepath.EvalSymlinks(filepath.Dir(absolute))
@@ -77,7 +76,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 		if err != nil {
 			return nil, err
 		}
-		if address.Remote(path) {
+		if configsource.IsRemoteAddress(path) {
 			snapshots[path] = remoteConfigSnapshot{content: bytes.Clone(content)}
 		} else {
 			target, err := filepath.EvalSymlinks(path)
