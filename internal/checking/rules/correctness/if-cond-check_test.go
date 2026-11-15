@@ -1,4 +1,4 @@
-package condition
+package correctness
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
-func TestCheck(t *testing.T) {
+func TestConditionDiagnostics(t *testing.T) {
 	t.Parallel()
 	start := sourcepos.Position{Line: 3, Column: 9}
 	for _, test := range []struct {
@@ -23,7 +23,7 @@ func TestCheck(t *testing.T) {
 	} {
 		t.Run(test.value, func(t *testing.T) {
 			t.Parallel()
-			findings := Check(test.value, start)
+			findings := conditionDiagnostics(test.value, start)
 			if test.message == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected findings: %+v", findings)

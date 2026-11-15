@@ -18,7 +18,6 @@ import (
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	namecheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-run-names"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
@@ -277,7 +276,7 @@ func prepareWorkflowRunNames(c Inputs) (InputPreparation, error) {
 		return PreparedInputs{Inputs: c}, nil
 	}
 	workflow, available := c.SourceSnapshot.WorkflowView()
-	if !available || len(namecheck.WorkflowRunFilters(workflow)) == 0 {
+	if !available || len(correctness.WorkflowRunFilters(workflow)) == 0 {
 		return PreparedInputs{Inputs: c}, nil
 	}
 	inventory, err := c.WorkflowNames.ForRoot(absolutePath(c.ProjectRoot))

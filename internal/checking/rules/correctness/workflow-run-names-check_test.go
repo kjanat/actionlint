@@ -1,10 +1,9 @@
-package workflownames_test
+package correctness
 
 import (
 	"strings"
 	"testing"
 
-	namecheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflow-run-names"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -33,7 +32,7 @@ func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
 			}
 			workflow := declaration.Publish(text, parsed, false, "").Bind("consumer").Workflow()
 			inventory := names.NewInventory([]string{"Build docs"}, tc.complete)
-			findings := namecheck.Check(inventory, namecheck.WorkflowRunFilters(workflow))
+			findings := workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow))
 			if tc.message == "" {
 				if len(findings) != 0 {
 					t.Fatal(findings)

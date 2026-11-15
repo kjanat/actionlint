@@ -1,4 +1,4 @@
-package envname
+package correctness
 
 import (
 	"testing"
@@ -7,10 +7,10 @@ import (
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
-func TestCheck(t *testing.T) {
+func TestEnvironmentNameDiagnostics(t *testing.T) {
 	t.Parallel()
 	position := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 7} }
-	findings := Check([]workflowfacts.Entry{
+	findings := environmentNameDiagnostics([]workflowfacts.Entry{
 		{Name: "GOOD_NAME", State: workflowfacts.KnownKey, Start: position(1)},
 		{Name: "BAD NAME", State: workflowfacts.KnownKey, Start: position(2)},
 		{Name: "A=B", State: workflowfacts.KnownKey, Start: position(3)},
@@ -35,7 +35,7 @@ func TestCheck(t *testing.T) {
 			t.Fatalf("finding %d: %+v", i, finding)
 		}
 	}
-	if findings := Check(nil); findings != nil {
+	if findings := environmentNameDiagnostics(nil); findings != nil {
 		t.Fatal(findings)
 	}
 }
