@@ -444,7 +444,7 @@
   {
     "cases": {
       "runner/src/Test/TestData/node16action.yml": "b86db1b9adf7063051ed545b179583d12af03ff8fbc16f0870faa96209a9b01c",
-      "runner/src/Test/TestData/node20action.yml": "01817c26d6ec933cc8a899c44b3c7906a1933232e37315f1b147f2e28b4459a2",
+      "runner/src/Test/TestData/node20action.yml": "d65e605abd0ddc44e0ee3fc979ccd0fbf840ea6e0b9c4a50adb809ec5b52dec0",
       "runner/src/Test/TestData/nodeaction.yml": "572831f9710dc754f8a1df680e09da734e760dcca69331a75ed650a4f62be99e",
       "runner/src/Test/TestData/nodeaction_cleanup.yml": "3e9bdb90766c52baa5f86d21ee2a350f64ecdca42398b9fe72327c1d995b9211",
       "runner/src/Test/TestData/nodeaction_cleanup_default.yml": "95e48bd89ab47e548a4b8913a38b2c1bb39fcc376051fbf0b7bf454f23457a61",
@@ -552,13 +552,13 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/concurrency.yml": "335ccd036c6f90da68b6236f09edc14096ff9ba0990689092f7cb535a37a152f"
+      "languageservices/workflow-parser/testdata/reader/concurrency.yml": "e5a85f73dd73b8fc14e1aeca4f112b961bcd1d62d57be3b2c12f3ba9d00a8ff7"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "The fixture contains incomplete jobs and string coercion in cancel-in-progress; actionlint reports these independently. The adapter does not provide remote action metadata, so action lifecycle findings are unavailable.",
+        "rationale": "The fixture contains incomplete jobs and string coercion in cancel-in-progress; actionlint reports these independently. The upstream reader acceptance label does not establish whether GitHub rejects the workflow.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/concurrency.yml"
         ]
@@ -622,7 +622,7 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "1f266104a829ff2bfd74644e63a74e87c7ae67871abda72371430f17e58c8505"
+      "languageservices/workflow-parser/testdata/reader/misc-jobs.yml": "041c4c7ade37db1c2bee6db61b47c7a37cecc131718efc53b8635cb00e19757f"
     },
     "findings": [
       {
@@ -632,8 +632,8 @@
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/misc-jobs.yml",
           "internal/model/contexts/events/payload/catalogue.json (@octokit/openapi-webhooks, revision 592754e9bee3fab1f3c11f51bcde825eb2d19112, push)",
-          "source:internal/checking/workflows/shape.go",
-          "source:internal/checking/expressions/fields.go"
+          "source:internal/checking/rules/correctness/empty-job-check.go",
+          "source:internal/languages/expressions/typecheck/name_diagnostics.go"
         ]
       }
     ]
@@ -703,14 +703,14 @@
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-required.yml": "2b668669fcb8b5b786006f4d722afba00d2983f40f81ac6236637099591fd66b",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-type-mismatch.yml": "e8b2e96799e08d0583ff54aba438834cd30e42eb6489b336458894a46c0ab3bd",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-inputs-undefined.yml": "9327e90b7d613b1fc981605d3066b5a41bcdaff3b7973f51cd5a5fc027cc996a",
-      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-depth-exceeded.yml": "2d22f5b92e45279edf38ec7775c1aa36ff489db8de39508ecc6943e734f661eb",
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-depth-exceeded.yml": "848648088c1f2c0b78ec5d148d41d7e9446a9db8036a1b92ae858448924dbf06",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-job-level-from-caller-job-level.yml": "3d4bd6a85653c063f3bf60d6320f3b0e17054dd3d54a0b9817a5457668ba6e91",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-job-level-from-caller-workflow-level.yml": "bd8fc0545eadcd1be05bf5c9547134b35aa6d63f6525b42abf9366029260cb8c",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-workflow-level-from-caller-job-level.yml": "2c88090ff9c9451d4b55205da37bd0c8ba0761c14d74942ca1349519aa4c8a37",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-nested-permissions-not-allowed-workflow-level-from-caller-workflow-level.yml": "dd76a5b6c715a2c3eb1eefc02066f9afa36a23c901c4574f597e4fac85e906ad",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-secrets-required.yml": "c53ae4f6788ef1f5558d0b44ce5824d4b6e355fbb8bb6c0dd80ec5819bda623e",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-job-secrets-undefined.yml": "c6f64e495c43c4b25a7c9f6d2c8f977c6fa15283e81b8d1d0ce80f443c7e1f18",
-      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-max-result-size.yml": "f66b7c80f97698f50d52336204b7076d7571009be6f7c732600daf348e720c33",
+      "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-max-result-size.yml": "9550e557705bdfb0723a92a859cf9947e4fc2c4e0d1aeb3250ca5e5365a35490",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-job-level-from-caller-default.yml": "4a6f517a33324664e84f48b7e75b23857179f76d597bd31291950813c82d6427",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-job-level-from-caller-job-level.yml": "7fa36700e37b688530fcc66f0656ca58854f6904199c5576a889f0098776ff88",
       "languageservices/workflow-parser/testdata/reader/errors-reusable-workflow-permissions-not-allowed-job-level-from-caller-workflow-level.yml": "ed004ac56d95ca1ec19641571dec30ce970c878909563e51c863bfce1b3f84dd",
@@ -779,10 +779,9 @@
   },
   {
     "cases": {
-      "languageservices/workflow-parser/testdata/reader/errors-max-depth.yml": "6b1ae5fd45181160cd679a2c4c5b9a71efeecd2c5b70a7da985b1a46f33fa348",
-      "languageservices/workflow-parser/testdata/reader/errors-max-file-size.yml": "2be335404185eaed2055e1f0601ca87450b5d0dfaf409f3574a66f612ebd6bf7",
-      "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": "cbb3e2b33dab8fb9556dcc0a9ac5b1601e974a34ab7cb14205f2b69fd4d0b03a",
-      "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": "0014931cdd548d2d1b1b2af660264b769785654a1040d50dd1287014a39d0162",
+      "languageservices/workflow-parser/testdata/reader/errors-max-file-size.yml": "b5e17fba6e7d1a4e6facd49ac8f6a685e84b94bf445fc4111b8fffaed035f611",
+      "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": "82b0b61117e6e58fa1c36ee5e255fca80c8b6538f465bca55531377022fd597f",
+      "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": "30410f8d3b7ad9b2fa4b276215f6519086af7a748a30f72d56fa9f047f78bd98",
       "languageservices/workflow-parser/testdata/reader/errors-step-run-exceeds-length.yml": "ce5540023b8ee016de3b361144d8c59765a495a665a42d3e6fa4c05f7dff4c71"
     },
     "findings": [
@@ -824,7 +823,20 @@
       {
         "category": "extra-lint",
         "scope": "diagnostic",
-        "diagnostic_indices": [0, 1, 2, 3, 5, 7, 8, 10, 12, 14, 15, 21],
+        "diagnostic_indices": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          7,
+          8,
+          10,
+          12,
+          14,
+          15,
+          21
+        ],
         "rationale": "Actionlint reports deprecated set-output workflow commands independently of SchemaStore's labels. Remote action and runner-label checks are unavailable without metadata and inventory.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/issue_2463_file_2.yaml"
@@ -876,17 +888,19 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/918.yaml": "13448d3a483d2a433919815a50823c7fcf197dc23266db4b4964312748fccd2f",
-      "schemastore/src/test/github-workflow/event-trigger.yaml": "ad484ae81c870776f8d69242a83385d0531b9aa234ac71aa26a6f955fb4fc487"
+      "schemastore/src/test/github-workflow/918.yaml": "9a514fb61caf4d0039c9d6543b56176e8091a5ce923e4ce20e81f86f1ccdded8",
+      "schemastore/src/test/github-workflow/event-trigger.yaml": "2f952705a011267a73b25db36c7ea9ae7ec2b4b5328f2b9cce24a4d8b2842e5b"
     },
     "findings": [
       {
         "category": "extra-lint",
         "scope": "fixture",
-        "rationale": "These fixtures exercise actionlint event checks, including the unsupported create-event tags filter and one-minute schedules. The adapter does not provide remote action metadata, so action lifecycle findings are unavailable.",
+        "rationale": "These fixtures exercise actionlint event checks, including the unsupported create-event tags filter and one-minute schedules. They also select Node.js 10 or 12 with actions/setup-node; actionlint reports their Node.js support deadlines as advisory findings. Schema acceptance does not establish that GitHub rejects either workflow.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/918.yaml",
-          "fixture:schemastore/src/test/github-workflow/event-trigger.yaml"
+          "fixture:schemastore/src/test/github-workflow/event-trigger.yaml",
+          "source:internal/checking/rules/correctness/runtime-lifecycle.go",
+          "https://raw.githubusercontent.com/nodejs/Release/6065a837c0c151577f449c666fec019069ffba77/schedule.json"
         ]
       }
     ]
@@ -935,7 +949,10 @@
       {
         "category": "extra-lint",
         "scope": "diagnostic",
-        "diagnostic_indices": [0, 1],
+        "diagnostic_indices": [
+          0,
+          1
+        ],
         "rationale": "Actionlint reports one-minute schedules independently of SchemaStore's labels. Runner-label validity is unavailable without a repository inventory.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/runs-on.yaml"
@@ -1034,8 +1051,8 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/2579-2.yaml": "0b910d43f9fc01c9d9acf90ce92ffdd03729db37bd84dd360f8758ca5df7ffe4",
-      "schemastore/src/test/github-workflow/issue-3208.yaml": "42afae34e6126b1bee7d74eefd986da57fbdbf64b22fa52c3c324c44822b5624"
+      "schemastore/src/test/github-workflow/2579-2.yaml": "3c2fdea0ab6227f0381dd6737a9d018c4b0bf28a581a887f160bd8bc07333439",
+      "schemastore/src/test/github-workflow/issue-3208.yaml": "b742fac79f573fbb777546017fb887bd22e35670335eb888187f34f7a74d5c75"
     },
     "findings": [
       {
@@ -1051,11 +1068,11 @@
   },
   {
     "cases": {
-      "schemastore/src/test/github-workflow/1162.yaml": "f76ffb295efa24e5b426571115e79339e286c2f0c08bf91660971e0186ca2f98",
-      "schemastore/src/test/github-workflow/concurrency.yaml": "35a783fd43bf936e6f733f5e06127665618b9a2ed61b743333a4d48f7e301a01",
-      "schemastore/src/test/github-workflow/containers.yaml": "4b60f579ac898096acb490b418296d877c9810b57bd4338f48b0183a25c7c3fd",
-      "schemastore/src/test/github-workflow/environments.yaml": "b2cb663ef5c8b3160319cb18111aa45124f32e7677f8b3ce95e0e03f52c238f0",
-      "schemastore/src/test/github-workflow/fail-fast.yaml": "6ea03431de2bbca9b2892f1f6a9084659b326414525f24f7bce11ce542be8c66"
+      "schemastore/src/test/github-workflow/1162.yaml": "7ee37dfd16fb0724e144febfa5fca041af585cb7d4ea92b96626818ac88dd39c",
+      "schemastore/src/test/github-workflow/concurrency.yaml": "423fb147e51e916af05bdc92310e3e515f38a8cd4d033f1753dcc6063ba00215",
+      "schemastore/src/test/github-workflow/containers.yaml": "bea02c76c9f8c5ddca1418230692c232531d48d9d4f661d3a0d75512f954f87b",
+      "schemastore/src/test/github-workflow/environments.yaml": "99adf8454654bda63711929f3c6de7c1f721b264cbc7cd01b206c1c9a904aab9",
+      "schemastore/src/test/github-workflow/fail-fast.yaml": "abe244b4d0bafa3d1fd941e13fccf93a6a5bc4584c3fce5d56c7d4f98edf8261"
     },
     "findings": [
       {
@@ -1068,7 +1085,8 @@
           "fixture:schemastore/src/test/github-workflow/containers.yaml",
           "fixture:schemastore/src/test/github-workflow/environments.yaml",
           "fixture:schemastore/src/test/github-workflow/fail-fast.yaml",
-          "source:internal/checking/workflows/shape.go"
+          "source:internal/checking/rules/correctness/empty-job-check.go",
+          "source:internal/checking/rules/suspicious/empty-run-check.go"
         ]
       }
     ]
@@ -2118,6 +2136,58 @@
           "fixture:schemastore/src/test/github-workflow/issues-activity-types.yaml",
           "source:internal/languages/expressions/typecheck/script_interpolation.go",
           "source:internal/checking/expressions/script_values.go"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "languageservices/workflow-parser/testdata/reader/errors-max-depth.yml": "78f9efd6906e98732ecf467b8f51a5b5d985cac8d40e08be9f94cfac600992ae"
+    },
+    "findings": [
+      {
+        "category": "adapter-limit",
+        "scope": "feature",
+        "rationale": "The fixture specifies max-depth: 5 and expects a maximum-depth error. The adapter does not apply this limit, and the observed Node.js advisory does not demonstrate that the limit was enforced.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/errors-max-depth.yml",
+          "source:internal/development/tests/conformance/conformance_test.go"
+        ]
+      },
+      {
+        "category": "extra-lint",
+        "scope": "diagnostic",
+        "diagnostic_indices": [
+          0
+        ],
+        "rationale": "The workflow selects Node.js 14 with actions/setup-node. The lifecycle advisory reports the Node.js release support deadline; it is unrelated to the expected depth error.",
+        "evidence": [
+          "fixture:languageservices/workflow-parser/testdata/reader/errors-max-depth.yml",
+          "source:internal/checking/rules/correctness/runtime-lifecycle.go",
+          "https://raw.githubusercontent.com/nodejs/Release/6065a837c0c151577f449c666fec019069ffba77/schedule.json"
+        ]
+      }
+    ]
+  },
+  {
+    "cases": {
+      "schemastore/src/test/github-workflow/2579-1.yaml": "a0715644ae1e167b5a84be55a3771707beb1718d8a86d0b7e996ab0fdd5ab255",
+      "schemastore/src/test/github-workflow/919.yaml": "8407f77605b4d5e7ffaf7fb81df420ff5718107c123a4219517a5ee841176e43",
+      "schemastore/src/test/github-workflow/env-from-json.yaml": "6c6558186bb7782245c6639a491c01ffa768d0fdf0d785889f6b69c21da7cce1",
+      "schemastore/src/test/github-workflow/npm-publish.yaml": "0b46ffc38e9bead08cdd9f6bd81e7a3afd8d15f10487e1a31b4f19bcebd57c65"
+    },
+    "findings": [
+      {
+        "category": "extra-lint",
+        "scope": "fixture",
+        "rationale": "These accepted SchemaStore workflows select Node.js 10, 12, or 14 with actions/setup-node. Actionlint reports that those Node.js release lines have reached their support deadlines. This advisory does not establish that GitHub rejects the workflows.",
+        "evidence": [
+          "fixture:schemastore/src/test/github-workflow/2579-1.yaml",
+          "fixture:schemastore/src/test/github-workflow/919.yaml",
+          "fixture:schemastore/src/test/github-workflow/env-from-json.yaml",
+          "fixture:schemastore/src/test/github-workflow/npm-publish.yaml",
+          "source:internal/checking/rules/correctness/runtime-lifecycle.go",
+          "https://raw.githubusercontent.com/nodejs/Release/6065a837c0c151577f449c666fec019069ffba77/schedule.json"
         ]
       }
     ]

@@ -109,6 +109,26 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			mapping.AnyOf = append(mapping.AnyOf, &jsonschema.Schema{Required: []string{selector}})
 		}
 		return mapping
+	case reflect.TypeFor[actionlint.LifecycleMatch]():
+		mapping := reflectMapping(struct {
+			Subjects []string `yaml:"subjects" jsonschema:"required,minItems=1,description=Subject kinds matched by this policy."`
+			Events   []string `yaml:"events" jsonschema:"required,minItems=1,description=Event kinds matched by this policy."`
+			Services []string `yaml:"services,omitempty" jsonschema:"description=Services matched by this policy. Omit to match all services."`
+		}{})
+		subjects, _ := mapping.Properties.Get("subjects")
+		subjects.Items.Enum = []any{"runners", "action-runtimes", "language-runtimes"}
+		events, _ := mapping.Properties.Get("events")
+		events.Items.Enum = []any{"support-ends", "support-starts", "runtime-replaced"}
+		services, _ := mapping.Properties.Get("services")
+		services.Items.Enum = []any{"github.com", "github-data-residency", "ghes"}
+		return mapping
+	case reflect.TypeFor[actionlint.LifecycleStart]():
+		mapping := reflectMapping(struct {
+			Before string `yaml:"before,omitempty" jsonschema:"pattern=^[0-9]+d$,description=Calendar days before the effective date."`
+			On     string `yaml:"on,omitempty" jsonschema:"enum=effective-date,description=Start on the effective date."`
+		}{})
+		mapping.OneOf = []*jsonschema.Schema{{Required: []string{"before"}}, {Required: []string{"on"}}}
+		return mapping
 	case reflect.TypeFor[actionlint.FilesConfig]():
 		mapping := reflectMapping(struct {
 			Includes []string `yaml:"includes" jsonschema:"nullable,description=Repository-relative doublestar globs. Omitted or null selects all files; an empty array selects none. A leading ! excludes a match."`
@@ -371,6 +391,7 @@ func documentFields(s *jsonschema.Schema) {
 	if s == nil {
 		return
 	}
+	slices.Sort(s.Required)
 	if len(s.OneOf) == 2 && s.OneOf[1].Type == "null" && s.Description == "" {
 		s.Description = s.OneOf[0].Description
 		s.OneOf[0].Description = ""

@@ -109,7 +109,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 			}
 			for step := range job.Steps() {
 				if action, ok := step.Action(); ok {
-					if findings := actioncheck.Repository(action, definition); len(findings) != 0 {
+					if findings := actioncheck.Repository(action, definition, actionmeta.LifecycleContext{}); len(findings) != 0 {
 						t.Fatalf("dynamic API parameters rejected: %v", findings)
 					}
 				}

@@ -12,6 +12,11 @@ func loadConfigTree(path string, read func(string) ([]byte, error), normalize fu
 // MergeDocuments applies inheritance rules, including atomic repository facts.
 func MergeDocuments(base, overlay any) any {
 	merged := configtree.Merge(base, overlay)
+	if selected := field(overlay, "lint"); selected != nil && isMapping(merged) {
+		next := cloneMapping(merged)
+		setField(next, "lint", mergeLifecycleLint(field(base, "lint"), selected))
+		merged = next
+	}
 	if selected := field(overlay, "repository"); selected != nil && isMapping(merged) {
 		next := cloneMapping(merged)
 		setField(next, "repository", mergeRepositoryNodes(field(base, "repository"), selected))

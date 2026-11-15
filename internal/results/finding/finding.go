@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -14,6 +15,9 @@ import (
 // producers and plugins share Diagnostic; policy changes it in place.
 type Finding struct {
 	results.Diagnostic
+	LifecycleEvidence *lifecycle.Evidence
+	// RequiredLifecycle is set only by the host after evaluating required policy.
+	RequiredLifecycle bool
 	// inferredReference is traversal provenance, not a distinct analyzer finding.
 	InferredReference bool
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter

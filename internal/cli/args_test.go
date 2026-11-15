@@ -52,6 +52,27 @@ func TestRootUsesCommandFlagDefinitions(t *testing.T) {
 	}
 }
 
+func TestEnforcePoliciesAcrossCommandBoundary(t *testing.T) {
+	t.Parallel()
+	for _, command := range []string{"check", "fix", "pre-commit"} {
+		t.Run(command, func(t *testing.T) {
+			t.Parallel()
+			app := newCommandApp(t.Context(), &Command{})
+			rest, _, err := app.parseRoot([]string{"--enforce-policy", "required.yml", command, "--enforce-policy", "extra.yml", "--enforce-policy", "last.yml"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			app.root.SetArgs(rest)
+			if err := app.root.ExecuteContext(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if want := []string{"required.yml", "extra.yml", "last.yml"}; !slices.Equal(app.inv.Check.EnforcePolicies, want) {
+				t.Fatalf("got policies %q, want %q", app.inv.Check.EnforcePolicies, want)
+			}
+		})
+	}
+}
+
 func TestCheckVersionFlags(t *testing.T) {
 	t.Chdir(t.TempDir())
 	for _, command := range []string{"check", "fix", "pre-commit"} {

@@ -22,7 +22,7 @@ func FirstVisibleMetadata(findings []*Finding) []*Finding {
 	for _, finding := range findings {
 		if identity := finding.MetadataIdentity; identity != nil && finding.Rule == "action" {
 			k := key{identity.Key, finding.Rule, finding.Severity}
-			if previous := first[k]; previous == nil || identity.Visit < previous.MetadataIdentity.Visit {
+			if previous := first[k]; previous == nil || finding.RequiredLifecycle && !previous.RequiredLifecycle || finding.RequiredLifecycle == previous.RequiredLifecycle && identity.Visit < previous.MetadataIdentity.Visit {
 				first[k] = finding
 			}
 		}

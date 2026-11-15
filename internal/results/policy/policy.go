@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"slices"
 
-	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -18,6 +18,7 @@ type Policy struct {
 	ProjectRoot                        string
 	Content                            []byte
 	Config                             *repoconfig.Config
+	EnforcedLifecycle                  []lifecycle.Policy
 	// SourceConfigurations uses the source paths passed to Processor.Apply.
 	// A present nil entry selects defaults; a missing entry is an error.
 	SourceConfigurations map[string]*repoconfig.Config
@@ -48,7 +49,12 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 				finding.Path, finding.Source = metadata.Path(), content
 			}
 		}
-	} else {
+	}
+	all, requiredLifecycle, err := processor.assessLifecycle(p, all, metadataSources, compositeConfigs)
+	if err != nil {
+		return nil, err
+	}
+	if metadata == nil {
 		all = processor.filterInlineSuppressionsAt(content, all, suppressionPolicy, "", p.inlineAudit(configPath, processor.Levels(cfg)), additionalRules...)
 		all = processor.FilterConfigured(configPath, root, content, all, cfg, false, processor.Levels(cfg), additionalRules...)
 	}
@@ -84,20 +90,7 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 		source := metadataSources[sourcePath]
 		findingConfig := cfg
 		diagnosticLevel := func(kind string) repoconfig.Level {
-			levelConfig := cfg
-			if cfg == nil || cfg.Lint.Enabled == nil || *cfg.Lint.Enabled {
-				descriptor, _ := processor.RuleSet.FindRule(kind)
-				switch descriptor.Scope {
-				case rulescope.SourceConfiguration:
-					levelConfig = findingConfig
-				case rulescope.CompositeConfiguration:
-					if compositeConfig, ok := compositeConfigs[sourcePath]; ok {
-						levelConfig = compositeConfig
-					}
-				case rulescope.CallerConfiguration:
-					// Caller-scoped rules use the caller configuration.
-				}
-			}
+			levelConfig := processor.lifecycleConfiguration(p, findingConfig, sourcePath, kind, compositeConfigs)
 			return processor.RuleSet.DiagnosticLevel(levelConfig, kind)
 		}
 		if isMetadata && source != nil {
@@ -119,6 +112,9 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 			e.NonBlocking = sourcepos.RemoteAddress(e.Path) && e.Path != p.Path &&
 				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
 			level := diagnosticLevel(e.Rule)
+			if e.LifecycleEvidence != nil && e.Lifecycle != nil && level != "off" {
+				return false
+			}
 			switch level {
 			case "off":
 				return true
@@ -139,7 +135,7 @@ func (processor Processor) Apply(p Policy, all []*findingmodel.Finding, metadata
 		}
 	}
 
-	all = findingmodel.FirstVisibleMetadata(all)
+	all = findingmodel.FirstVisibleMetadata(append(requiredLifecycle, all...))
 	for _, err := range all {
 		if err.Path == "" {
 			err.Path = path // Populate filename in the error

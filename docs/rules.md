@@ -987,6 +987,19 @@ Select a supported runner architecture or update the runner inventory. Set repos
 
 Configure this rule with `lint.rules.correctness.runner-support`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
+## runtime-lifecycle
+
+Check Node.js release schedules for static node-version inputs to actions/setup-node. Support dates come from the Node.js Release schedule. Named lifecycle policies can notify before a known support deadline. Dynamic values, broad version ranges, release aliases, prereleases and node-version-file inputs are not resolved by this check. Node.js release support does not determine which JavaScript runtimes GitHub Actions accepts in action metadata.
+
+Select a supported Node.js release. Configure lint.lifecycle.policies to choose when support deadlines should produce notifications.
+
+- Category: `correctness/actions`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.correctness.runtime-lifecycle`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+
 ## script-injection
 
 Detect untrusted values and secrets interpolated into scripts.

@@ -317,9 +317,16 @@ an absent host value leaves the service unknown. Also available on **lsp**.
 An omitted version remains unknown. Cloud retirement dates do not apply to GHES.
 Also available on **lsp**.
 
+**--as-of** *DATE*
+: Assess lifecycle events on `YYYY-MM-DD`. Defaults to today's UTC date, captured
+once per invocation. Also available on **lsp**.
+
 **--runner-as-of** *DATE*
-: Assess runner support on `YYYY-MM-DD`. Defaults to today's UTC date, captured
-once per analysis. Also available on **lsp**.
+: Alias for **--as-of**. If both are supplied, their dates must match.
+
+**--enforce-policy** *FILE* or *URL*
+: Require lifecycle policies from an explicit local file or HTTPS URL. Repeat to
+load multiple policy files. Also available on **lsp** and **cache warm**.
 
 **--stdin-filename** *PATH*
 : Set the path used for stdin diagnostics and project detection. The default is

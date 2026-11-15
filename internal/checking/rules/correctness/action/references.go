@@ -1,6 +1,7 @@
 package action
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -13,11 +14,11 @@ import (
 )
 
 // Repository checks a repository action reference against available metadata.
-func Repository(exec workflowdecl.ExecActionView, metadata actionmeta.Definition) []*findingmodel.Finding {
+func Repository(exec workflowdecl.ExecActionView, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*findingmodel.Finding {
 	if !exec.Present() || !exec.Uses().Present() {
 		return nil
 	}
-	rule := validator{}
+	rule := validator{lifecycle: context}
 	rule.checkRepoAction(exec.Uses().Value(), exec, metadata)
 	return rule.errs
 }
@@ -100,10 +101,19 @@ func (rule *validator) checkRepoAction(spec string, exec workflowdecl.ExecAction
 	if !meta.Present() {
 		return
 	}
-	if code, message := actionmeta.RuntimeProblem(meta.Using()); code != "" {
-		rule.Errorf(positionPointer(exec.Uses().Pos()), code, "%s. update the version of action %q", message, spec)
+	if problem := actionmeta.RuntimeProblem(meta.Using(), rule.lifecycle); problem.Code != "" {
+		rule.runtimeFinding(positionPointer(exec.Uses().Pos()), problem, fmt.Sprintf("update the version of action %q", spec))
 	}
 	rule.checkAction(meta, exec, strconv.Quote(spec))
+}
+
+func (rule *validator) runtimeFinding(pos *workflowlang.Pos, problem actionmeta.RuntimeFinding, help string) {
+	rule.Error(pos, problem.Code, problem.Message+". "+help)
+	finding := rule.errs[len(rule.errs)-1]
+	finding.LifecycleEvidence = problem.Evidence
+	if problem.Evidence != nil {
+		finding.DocumentationURL = problem.Evidence.Source
+	}
 }
 
 func (rule *validator) checkRepositoryReference(spec string, pos *workflowlang.Pos) bool {

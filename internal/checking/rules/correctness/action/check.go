@@ -31,18 +31,19 @@ type validator struct {
 	errs       []*findingmodel.Finding
 	advisories bool
 	files      actionmeta.ReferencedFiles
+	lifecycle  actionmeta.LifecycleContext
 }
 
 // CheckWithAdvisories includes optional expression findings for host policy.
-func CheckWithAdvisories(meta *actionmeta.Metadata, caller *workflowlang.Pos, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
-	rule := validator{advisories: true, files: files}
+func CheckWithAdvisories(meta *actionmeta.Metadata, caller *workflowlang.Pos, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+	rule := validator{advisories: true, files: files, lifecycle: context}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
 }
 
 // StandaloneWithAdvisories includes optional expression findings for host policy.
-func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
-	rule := validator{files: files, standalone: meta, advisories: true}
+func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+	rule := validator{files: files, standalone: meta, advisories: true, lifecycle: context}
 	rule.checkLocalActionMetadata(meta, &workflowlang.Pos{Line: 1, Col: 1})
 	return rule.errs
 }
@@ -397,8 +398,8 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *work
 	default:
 		if _, ok := actionmeta.Runtimes[using]; !ok {
 			rule.Errorf(pos, actionmeta.CodeRuntimeUnsupported, `invalid runner name %q at runs.using in %q action defined at %q. valid runners are %s. see https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs`, r.Using, meta.Name, meta.Dir(), actionmeta.ValidRuntimes())
-		} else if code, message := actionmeta.RuntimeProblem(using); code != "" {
-			rule.Errorf(pos, code, "%s. update runs.using in local action %q to a current runtime", message, meta.Name)
+		} else if problem := actionmeta.RuntimeProblem(using, rule.lifecycle); problem.Code != "" {
+			rule.runtimeFinding(pos, problem, fmt.Sprintf("update runs.using in local action %q to a current runtime", meta.Name))
 		}
 
 		// Validate JavaScript fields even when the runtime declaration has a finding.

@@ -20,6 +20,8 @@ type LintConfig struct {
 	Experimental *bool `yaml:"experimental,omitempty" jsonschema:"nullable"`
 	// Rules selects diagnostic groups, individual levels and options.
 	Rules LintRulesConfig `yaml:"rules" jsonschema:"nullable"`
+	// Lifecycle configures dated support notifications.
+	Lifecycle LifecycleConfig `yaml:"lifecycle,omitempty" jsonschema:"nullable"`
 	// Dependencies selects additional findings in remote dependencies that fail the check.
 	Dependencies DependencyFindings `yaml:"dependencies,omitempty"`
 	// MessageIgnores maps repository-relative globs to diagnostic message regular
@@ -44,6 +46,7 @@ type LintRulesConfig struct {
 	Plugins         Group `yaml:"plugins,omitempty"`
 	Nursery         Group `yaml:"nursery,omitempty"`
 	resolved        map[string]Level
+	resolvedFixed   map[string]bool
 	boundCategories map[string]string
 	boundSettings   map[string]Setting
 	sources         *ruleSources

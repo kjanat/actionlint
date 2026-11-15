@@ -14,6 +14,36 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestUpstreamRejectionRequiresLimitWitness(t *testing.T) {
+	t.Parallel()
+	advisory := []string{"Support for Node.js 14 ended on 2023-04-30. [runtime-lifecycle]"}
+	if upstreamRejected(advisory, "Maximum object depth exceeded") {
+		t.Fatal("an unrelated advisory satisfied the depth limit")
+	}
+	if !upstreamRejected(append(advisory, "Maximum object depth exceeded"), "Maximum object depth exceeded") {
+		t.Fatal("the expected depth diagnostic was not recognized")
+	}
+	if !upstreamRejected(advisory, "") {
+		t.Fatal("ordinary acceptance comparison changed")
+	}
+}
+
+func TestUpstreamLimitMetadataSelectsRejectionWitness(t *testing.T) {
+	t.Parallel()
+	root := fstest.MapFS{
+		"workflow-parser/testdata/reader/limit.yml": &fstest.MapFile{Data: []byte(`max-depth: 5
+---
+on: push
+---
+{"errors":[{"Message":".github/workflows/example.yml: Maximum object depth exceeded"}]}
+`)},
+	}
+	cases := loadUpstreamWorkflows(t, root)
+	if len(cases) != 1 || cases[0].RejectionDiagnostic != "Maximum object depth exceeded" {
+		t.Fatalf("unexpected rejection witness: %+v", cases)
+	}
+}
+
 func reviewedUpstreamCase(id string) (upstreamResult, upstreamAssessmentGroup) {
 	result := upstreamResult{ID: id, Difference: true, Actual: []string{"diagnostic one", "diagnostic two"}}
 	result.Fingerprint = upstreamFingerprint(conformance.Source{Name: "test"}, result)
@@ -24,6 +54,7 @@ func reviewedUpstreamCase(id string) (upstreamResult, upstreamAssessmentGroup) {
 }
 
 func TestUpstreamConformanceScore(t *testing.T) {
+	t.Parallel()
 	mixed, group := reviewedUpstreamCase("mixed")
 	group.Findings = append(group.Findings,
 		upstreamFinding{Category: "extra-lint", Scope: "diagnostic", Diagnostics: []int{1}, Rationale: "Another lint finding", Evidence: []string{"fixture:mixed"}},
@@ -80,6 +111,7 @@ func TestUpstreamConformanceScore(t *testing.T) {
 }
 
 func TestUpstreamConformanceObservationSeparation(t *testing.T) {
+	t.Parallel()
 	result, group := reviewedUpstreamCase("case")
 	observations := upstreamObservationReport{Observations: []upstreamResult{result}}
 	before, err := json.Marshal(observations)
@@ -114,6 +146,7 @@ func TestUpstreamConformanceObservationSeparation(t *testing.T) {
 }
 
 func TestUpstreamConformanceAssessmentStaleness(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(*conformance.Source, *upstreamResult){
 		"source revision": func(s *conformance.Source, _ *upstreamResult) { s.Revision = "new" },
 		"input":           func(_ *conformance.Source, r *upstreamResult) { r.InputSHA256 = "new" },
@@ -123,6 +156,7 @@ func TestUpstreamConformanceAssessmentStaleness(t *testing.T) {
 		"contract":        func(_ *conformance.Source, r *upstreamResult) { r.Contract = "new" },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			result, group := reviewedUpstreamCase("case")
 			source := conformance.Source{Name: "test"}
 			change(&source, &result)
@@ -139,6 +173,7 @@ func TestUpstreamConformanceAssessmentStaleness(t *testing.T) {
 }
 
 func TestUpstreamConformanceInvalidAssessments(t *testing.T) {
+	t.Parallel()
 	for name, change := range map[string]func(*upstreamAssessmentGroup){
 		"missing cases":       func(g *upstreamAssessmentGroup) { g.Cases = nil },
 		"missing findings":    func(g *upstreamAssessmentGroup) { g.Findings = nil },
@@ -156,6 +191,7 @@ func TestUpstreamConformanceInvalidAssessments(t *testing.T) {
 		"duplicate index":     func(g *upstreamAssessmentGroup) { g.Findings[0].Diagnostics = []int{0, 0} },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			result, group := reviewedUpstreamCase("case")
 			change(&group)
 			if _, err := assessUpstreamResults([]upstreamResult{result}, nil, []upstreamAssessmentGroup{group}); err == nil {
@@ -170,6 +206,7 @@ func TestUpstreamConformanceInvalidAssessments(t *testing.T) {
 }
 
 func TestUpstreamConformanceScoreSummary(t *testing.T) {
+	t.Parallel()
 	filename := filepath.Join(t.TempDir(), "summary.md")
 	result, group := reviewedUpstreamCase("languageservices/insert")
 	group.Findings[0].Rationale = "Check <value> & </pre> safely"
@@ -199,6 +236,7 @@ func TestUpstreamConformanceScoreSummary(t *testing.T) {
 }
 
 func TestUpstreamConformanceReaderSkips(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{
 		"workflow-parser/testdata/reader/insert.yml": &fstest.MapFile{Data: []byte(`skip:
   - TypeScript

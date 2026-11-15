@@ -41,10 +41,16 @@ func defaultLevel(d Rule) Level {
 }
 
 func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
+	setting, _ := ruleSet.settingFor(cfg, d, p, selected)
+	return setting
+}
+
+func (ruleSet RuleSet) settingFor(cfg *Config, d Rule, p Presets, selected bool) (Setting, bool) {
 	if p.Experimental == nil && cfg != nil {
 		p.Experimental = cfg.Lint.Experimental
 	}
 	level := defaultLevel(d)
+	fixed := false
 	if d.Experimental() || !d.Recommended && !selected {
 		level = "off"
 	}
@@ -63,10 +69,12 @@ func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool)
 		level = "on"
 		if d.DefaultLevel != "" {
 			level = "error"
+			fixed = true
 		}
 	}
 	if p.Experimental != nil && *p.Experimental && d.Experimental() {
 		level = "on"
+		fixed = false
 	}
 	// Retained legacy controls apply only to their original membership. The
 	// semantic category then supplies the current baseline and exception.
@@ -102,11 +110,15 @@ func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool)
 		// an individual enable or the invocation's experimental switch.
 		if !d.Experimental() {
 			level = presetLevel(group.Preset(), d, level)
+			if group.Preset() == "recommended" || group.Preset() == "all" || group.Preset() == "none" {
+				fixed = false
+			}
 		} else if group.Preset() == "none" {
 			level = "off"
 		}
 		if group.Level() != "" && group.Level() != "default" && (!d.Experimental() || level != "off" || group.Level() == "off") {
 			level = group.Level()
+			fixed = level == "warn" || level == "info" || level == "error"
 		}
 		// An explicit setting supplies the options and, unless it defers to the
 		// default, the level.
@@ -119,6 +131,7 @@ func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool)
 	}
 	if explicitLevel != "" {
 		level = explicitLevel
+		fixed = level == "warn" || level == "info" || level == "error"
 	}
 	if d.Experimental() && p.Experimental != nil && !*p.Experimental {
 		level = "off"
@@ -129,7 +142,22 @@ func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool)
 	if level == "on" {
 		level = defaultLevel(d)
 	}
-	return explicit.WithLevel(level)
+	return explicit.WithLevel(level), fixed
+}
+
+// FixedDiagnosticLevel distinguishes a selected severity from a rule's default.
+func (ruleSet RuleSet) FixedDiagnosticLevel(cfg *Config, name string) (Level, bool) {
+	name = ruleSet.ResolveAlias(name)
+	if cfg != nil {
+		if level, ok := cfg.Lint.Rules.ResolvedLevel(name); ok {
+			return level, cfg.Lint.Rules.resolvedFixed[name]
+		}
+	}
+	if descriptor, ok := ruleSet.FindRule(name); ok {
+		setting, fixed := ruleSet.settingFor(cfg, descriptor, Presets{}, false)
+		return setting.Level(), fixed
+	}
+	return "on", false
 }
 
 func (ruleSet RuleSet) DiagnosticLevel(cfg *Config, name string) Level {
@@ -190,6 +218,7 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 	}
 	resolved := make(map[string]Level)
 	next.Lint.Rules.SetResolved(resolved)
+	next.Lint.Rules.resolvedFixed = make(map[string]bool)
 	next.Lint.Rules.boundSettings = make(map[string]Setting)
 	next.Lint.Rules.ruleSet = ruleSet
 	descriptors := ruleSet.Rules()
@@ -198,8 +227,9 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 		return nil, err
 	}
 	for _, d := range descriptors {
-		setting := ruleSet.SettingFor(config, d, p, seen[d.Name])
+		setting, fixed := ruleSet.settingFor(config, d, p, seen[d.Name])
 		resolved[d.Name] = setting.Level()
+		next.Lint.Rules.resolvedFixed[d.Name] = fixed
 		next.Lint.Rules.boundSettings[d.Name] = setting
 		if d.Configure != nil {
 			d.Configure(&next, setting)

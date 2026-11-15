@@ -38,6 +38,16 @@ type ruleAction struct {
 	validation *actionMetadataValidation
 	remote     *actionremote.ResolvedActions
 	context    context.Context
+	lifecycle  actionmeta.LifecycleContext
+}
+
+// WithLifecycle supplies the execution facts shared by workflow and action checks.
+func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *ruleAction {
+	if rule.lifecycle != context {
+		rule.validation = newActionMetadataValidation()
+	}
+	rule.lifecycle = context
+	return rule
 }
 
 // NewRuleAction checks references using local metadata and acquired remote definitions.
@@ -111,7 +121,7 @@ func (rule *ruleAction) VisitStep(n workflowdecl.StepView) error {
 			rule.Report(finding)
 		}
 	}
-	rule.Report(actioncheck.Repository(e, inspection.Definition())...)
+	rule.Report(actioncheck.Repository(e, inspection.Definition(), rule.lifecycle)...)
 	return nil
 }
 
@@ -157,7 +167,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action w
 }
 
 func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflowvisit.Rule {
-	child := NewRuleAction(rule.context, actions.Prepared(), rule.remote)
+	child := NewRuleAction(rule.context, actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
 	child.validation = rule.validation
 	return child
 }
@@ -169,7 +179,7 @@ func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 	if original, parsed := meta.OriginalSource(); !parsed || original != string(snapshot.Content()) {
 		return errors.New("standalone metadata does not belong to its source snapshot")
 	}
-	rule.Report(actioncheck.StandaloneWithAdvisories(meta, files)...)
+	rule.Report(actioncheck.StandaloneWithAdvisories(meta, files, rule.lifecycle)...)
 	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, snapshot.Reference().Document, finding), Declaration: true}
 	})

@@ -131,7 +131,7 @@ func TestPrettyHyperlinks(t *testing.T) {
 	if err := os.WriteFile("index.js", nil, 0600); err != nil {
 		t.Fatal(err)
 	}
-	const target = "https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/"
+	const target = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/"
 	osc := regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\`)
 	for _, modern := range []bool{false, true} {
 		for _, tc := range []struct {
@@ -147,7 +147,7 @@ func TestPrettyHyperlinks(t *testing.T) {
 			t.Run(fmtTestName(modern, tc.name), func(t *testing.T) {
 				t.Setenv("NO_HYPERLINKS", tc.no)
 				t.Setenv("FORCE_HYPERLINKS", tc.force)
-				args := []string{"--no-config", "-o", "pretty", "--diagnostic-width=40", "--hyperlinks=" + tc.mode, "--stdin-filename=action.yml", "-"}
+				args := []string{"--no-config", "--runner-service=github.com", "--as-of=2026-11-15", "-o", "pretty", "--diagnostic-width=40", "--hyperlinks=" + tc.mode, "--stdin-filename=action.yml", "-"}
 				if modern {
 					args = append([]string{"check"}, args...)
 				}

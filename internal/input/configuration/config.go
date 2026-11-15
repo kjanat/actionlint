@@ -573,6 +573,7 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config file %q: %w", path, err)
 	}
+	resolved.Config.setLifecycleOrigins(loaded.Origins)
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
 	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], documents: documents}

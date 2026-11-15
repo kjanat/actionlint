@@ -47,6 +47,8 @@ func (r lspRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, err
 	}
 	options := checking.Options{RemoteActions: metadata, AllowConfigProcesses: c.AllowConfigProcesses, Runners: runners, Resolver: provider, SuggestCommitPins: c.ResolverCommand != "", WorkingDir: cwd, ConfigFile: c.Config.Path, SkipProjectConfig: c.Config.Disabled || c.Config.Path != "", LogWriter: streams.Stderr, Tools: registry.Registrations(c.Tools)}
+	options.EnforcePolicies = c.EnforcePolicies
+	options.ConfigConnections = streams.Acquisition.Connections
 	options.Service = service
 	return 0, lsp.LanguageServer(ctx, streams.Stdin, streams.Stdout, options, plugins)
 }

@@ -12,6 +12,7 @@ type Diagnostic struct {
 	Help             string               `json:"help,omitempty"`
 	DocumentationURL string               `json:"documentation_url,omitempty"`
 	Related          []Related            `json:"related,omitempty"`
+	Lifecycle        *LifecycleReport     `json:"lifecycle,omitempty"`
 
 	Rule string `json:"rule"`
 	// Code identifies a diagnostic kind within Rule, for native and external checks.
@@ -24,6 +25,28 @@ type Diagnostic struct {
 	End      sourcepos.Position `json:"end"`
 	Snippet  string             `json:"snippet,omitempty"`
 	Fixes    []Fix              `json:"fixes,omitempty"`
+}
+
+// LifecycleReport describes the lifecycle event and the policies that matched it.
+type LifecycleReport struct {
+	Subject     string                  `json:"subject"`
+	Name        string                  `json:"name"`
+	Event       string                  `json:"event"`
+	Source      string                  `json:"source"`
+	AnnouncedOn string                  `json:"announced_on,omitempty"`
+	EffectiveOn string                  `json:"effective_on,omitempty"`
+	AsOf        string                  `json:"as_of"`
+	Policies    []LifecyclePolicyReport `json:"policies"`
+}
+
+// LifecyclePolicyReport describes a policy that matched a lifecycle event.
+type LifecyclePolicyReport struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+	Origin      string `json:"origin"`
+	Severity    string `json:"severity"`
+	StartsOn    string `json:"starts_on"`
+	Enforced    bool   `json:"enforced"`
 }
 
 // Fix is one complete suggested change. Apply all edits together.

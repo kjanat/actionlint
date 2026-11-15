@@ -57,6 +57,30 @@ func (f Finding) printPretty(out io.Writer, width int, hyperlinks, colored bool,
 			writeWrapped(&b, "  = ", item.label+": "+item.text, width, nil, hyperlinks)
 		}
 	}
+	if lifecycle := d.Lifecycle; lifecycle != nil {
+		event := "lifecycle: " + lifecycle.Event
+		if lifecycle.EffectiveOn != "" {
+			event += " on " + lifecycle.EffectiveOn
+		}
+		if lifecycle.Source != "" {
+			event += " (" + lifecycle.Source + ")"
+		}
+		writeWrapped(&b, "  = ", event, width, nil, hyperlinks)
+		for _, policy := range lifecycle.Policies {
+			status := "optional"
+			if policy.Enforced {
+				status = "required"
+			}
+			text := "policy: " + policy.ID + " (" + status + ")"
+			if policy.StartsOn != "" {
+				text += ", starts " + policy.StartsOn
+			}
+			if policy.Origin != "" {
+				text += ", from " + policy.Origin
+			}
+			writeWrapped(&b, "  = ", text, width, nil, hyperlinks)
+		}
+	}
 	for _, related := range d.Related {
 		writeWrapped(&b, "  = ", "related: "+related.Message, width, nil, hyperlinks)
 		writePrettyLocation(&b, "    --> ", related.Path, related.Start, width, hyperlinks)

@@ -432,7 +432,9 @@
     "languageservices/workflow-parser/testdata/reader/errors-job-id-leading-underscores.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-job-runs-on-group-invalid-prefix.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-matrix-max-depth.yml": [],
-    "languageservices/workflow-parser/testdata/reader/errors-max-depth.yml": [],
+    "languageservices/workflow-parser/testdata/reader/errors-max-depth.yml": [
+      "<stdin>:9:25: Support for Node.js 14 ended on 2023-04-30. [runtime-lifecycle]"
+    ],
     "languageservices/workflow-parser/testdata/reader/errors-max-file-size.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-max-job-limit-with-reusable-workflow.yml": [],
     "languageservices/workflow-parser/testdata/reader/errors-max-result-size.yml": [],
@@ -673,7 +675,7 @@
       ":1:1: runtime \"node16\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/node20action.yml": [
-      ":1:1: runtime \"node20\" is deprecated; GitHub.com now runs JavaScript actions with Node 24 and no longer supports the Node 20 opt-out. see https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/. update runs.using in local action \"Hello World\" to a current runtime [action]"
+      ":1:1: runtime \"node20\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
     ],
     "runner/src/Test/TestData/nodeaction.yml": [
       ":1:1: runtime \"node12\" is deprecated; current GitHub Actions runners use \"node24\" instead. update runs.using in local action \"Hello World\" to a current runtime [action]"
@@ -709,7 +711,9 @@
       "<stdin>:5:3: job \"check-bats-version\" must define at least one step or call a reusable workflow with uses [empty-job]"
     ],
     "schemastore/src/test/github-workflow/918.yaml": [
-      "<stdin>:5:5: \"tags\" filter is not available for create event. it is only for push event [events]"
+      "<stdin>:5:5: \"tags\" filter is not available for create event. it is only for push event [events]",
+      "<stdin>:14:25: Support for Node.js 12 ended on 2022-04-30. [runtime-lifecycle]",
+      "<stdin>:24:25: Support for Node.js 12 ended on 2022-04-30. [runtime-lifecycle]"
     ],
     "schemastore/src/test/github-workflow/concurrency.yaml": [
       "<stdin>:7:3: job \"build\" must define at least one step or call a reusable workflow with uses [empty-job]",
@@ -743,7 +747,8 @@
       "<stdin>:11:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
       "<stdin>:12:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
       "<stdin>:13:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
-      "<stdin>:14:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]"
+      "<stdin>:14:13: scheduled job runs too frequently. it runs once per 60 seconds. the shortest interval is once every 5 minutes [events]",
+      "<stdin>:24:25: Support for Node.js 10 ended on 2021-04-30. [runtime-lifecycle]"
     ],
     "schemastore/src/test/github-workflow/fail-fast.yaml": [
       "<stdin>:6:3: job \"boolean\" must define at least one step or call a reusable workflow with uses [empty-job]",
@@ -996,6 +1001,20 @@
     "yaml-test-suite/Y79Y/010/in.yaml": [
       "go-yaml load error in scanner (while scanning for the next token) at L1.C2: found character that cannot start any token"
     ],
-    "yaml-test-suite/YJV2/in.yaml": []
+    "yaml-test-suite/YJV2/in.yaml": [],
+    "schemastore/src/test/github-workflow/2579-1.yaml": [
+      "<stdin>:13:25: Support for Node.js 14 ended on 2023-04-30. [runtime-lifecycle]"
+    ],
+    "schemastore/src/test/github-workflow/919.yaml": [
+      "<stdin>:14:25: Support for Node.js 10 ended on 2021-04-30. [runtime-lifecycle]"
+    ],
+    "schemastore/src/test/github-workflow/env-from-json.yaml": [
+      "<stdin>:14:25: Support for Node.js 12 ended on 2022-04-30. [runtime-lifecycle]"
+    ],
+    "schemastore/src/test/github-workflow/npm-publish.yaml": [
+      "<stdin>:17:25: Support for Node.js 12 ended on 2022-04-30. [runtime-lifecycle]",
+      "<stdin>:27:25: Support for Node.js 12 ended on 2022-04-30. [runtime-lifecycle]",
+      "<stdin>:43:25: Support for Node.js 12 ended on 2022-04-30. [runtime-lifecycle]"
+    ]
   }
 }

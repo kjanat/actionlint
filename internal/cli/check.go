@@ -68,6 +68,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	options := checking.Options{
+		EnforcePolicies:      c.EnforcePolicies,
 		NoIgnore:             c.NoIgnore,
 		AllowConfigProcesses: c.AllowConfigProcesses,
 		WorkingDir:           workingDir, ConfigFile: c.Config.Path,
