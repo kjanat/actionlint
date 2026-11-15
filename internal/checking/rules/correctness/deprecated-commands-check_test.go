@@ -1,4 +1,4 @@
-package commands
+package correctness_test
 
 import (
 	"reflect"
@@ -10,19 +10,19 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 )
 
-func TestCheckerUsesItsRuleDeclaration(t *testing.T) {
+func TestDeprecatedCommandsCheckerUsesItsRuleDeclaration(t *testing.T) {
 	t.Parallel()
 	declaration := correctness.DeprecatedCommandsDeclaration()
-	descriptor := (Checker{}).Descriptor()
+	descriptor := (correctness.DeprecatedCommandsChecker{}).Descriptor()
 	if !reflect.DeepEqual(descriptor.Descriptor, declaration.Descriptor) ||
 		descriptor.Scope != declaration.Scope || descriptor.SupportsActions != declaration.SupportsActions {
 		t.Fatalf("checker metadata differs from its rule declaration: %+v", descriptor)
 	}
 	descriptor.RequiredInputs[0] = rule.Source
-	if (Checker{}).Descriptor().RequiredInputs[0] != rule.Scripts {
+	if (correctness.DeprecatedCommandsChecker{}).Descriptor().RequiredInputs[0] != rule.Scripts {
 		t.Fatal("caller changed the checker's input requirements")
 	}
-	registration := checkinputs.Registration{Checker: Checker{}}
+	registration := checkinputs.Registration{Checker: correctness.DeprecatedCommandsChecker{}}
 	if _, err := executor.Prepare(registration, []rule.InputKind{rule.Scripts}); err == nil {
 		t.Fatal("prepared deprecated-command checking without invoked-script facts")
 	}

@@ -1,4 +1,4 @@
-package commands_test
+package correctness_test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowcommands "actionlint.kjanat.dev/v2/internal/checking/commands"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -33,7 +33,7 @@ func TestDeprecatedReplacementsAppendToQuotedDestination(t *testing.T) {
 			if err := os.WriteFile(destination, []byte("existing\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			findings := workflowcommands.Deprecated(tc.command)
+			findings := correctness.DeprecatedCommands(tc.command)
 			if len(findings) != 1 {
 				t.Fatalf("got %d findings, want 1", len(findings))
 			}
@@ -143,7 +143,7 @@ func TestRuleDeprecatedCommandsDetectTargetCommands(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			have := []string{}
-			for _, finding := range workflowcommands.Deprecated(tc.run) {
+			for _, finding := range correctness.DeprecatedCommands(tc.run) {
 				have = append(have, finding.Command)
 				if got := tc.run[finding.Start:finding.End]; got != finding.Command {
 					t.Fatalf("range contains %q", got)

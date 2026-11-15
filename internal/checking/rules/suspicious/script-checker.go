@@ -1,5 +1,4 @@
-// Package runtimechecks reports source-mapped findings from shared script models.
-package runtimechecks
+package suspicious
 
 import (
 	"context"
@@ -9,22 +8,23 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-type Checker struct{ declaration rule.Declaration }
+type RuntimeScriptChecker struct{ declaration rule.Declaration }
 
-func Errexit() Checker         { return Checker{suspicious.ErrexitStatusDeclaration()} }
-func WorkflowCommand() Checker { return Checker{suspicious.WorkflowCommandSyntaxDeclaration()} }
+func ErrexitChecker() RuntimeScriptChecker { return RuntimeScriptChecker{ErrexitStatusDeclaration()} }
+func WorkflowCommandChecker() RuntimeScriptChecker {
+	return RuntimeScriptChecker{WorkflowCommandSyntaxDeclaration()}
+}
 
-func (c Checker) Descriptor() checkinputs.Descriptor {
+func (c RuntimeScriptChecker) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Descriptor: c.declaration.Clone(), Scope: c.declaration.Scope, SupportsActions: c.declaration.SupportsActions}
 }
 
-func (c Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (c RuntimeScriptChecker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {
@@ -47,8 +47,8 @@ func (c Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]
 			continue
 		}
 		report := func(span scripts.ScriptRange, message string) {
-			start, startOK := script.Position(position(script.Text, span.Start, false))
-			end, endOK := script.Position(position(script.Text, span.End, true))
+			start, startOK := script.Position(scriptTextPosition(script.Text, span.Start, false))
+			end, endOK := script.Position(scriptTextPosition(script.Text, span.End, true))
 			if !startOK || !endOK {
 				return
 			}
@@ -86,7 +86,7 @@ func (c Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]
 	return diagnostics, nil
 }
 
-func position(text string, offset int, exclusive bool) (int, int, bool) {
+func scriptTextPosition(text string, offset int, exclusive bool) (int, int, bool) {
 	prefix := text[:offset]
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1, exclusive
 }

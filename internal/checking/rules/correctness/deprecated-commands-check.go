@@ -1,4 +1,4 @@
-package commands
+package correctness
 
 import (
 	"context"
@@ -8,32 +8,31 @@ import (
 	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Checker reports deprecated workflow commands in declared and invoked scripts
+// DeprecatedCommandsChecker reports deprecated workflow commands in declared and invoked scripts
 // through the public analyzer contract.
-type Checker struct{}
+type DeprecatedCommandsChecker struct{}
 
 // Descriptor names the rule and the facts it consumes.
-func (Checker) Descriptor() checkinputs.Descriptor {
-	declaration := correctness.DeprecatedCommandsDeclaration()
+func (DeprecatedCommandsChecker) Descriptor() checkinputs.Descriptor {
+	declaration := DeprecatedCommandsDeclaration()
 	return checkinputs.Descriptor{Descriptor: declaration.Clone(), Scope: declaration.Scope, SupportsActions: declaration.SupportsActions}
 }
 
 // CheckDocument maps each command to its declaring document. A command whose text
 // has no source position is reported at the script start without a range.
-func (Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
+func (DeprecatedCommandsChecker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {
 			return findings, err
 		}
-		for _, command := range Deprecated(script.Text) {
-			start, startOK := script.Position(textPosition(script.Text, command.Start, false))
-			end, endOK := script.Position(textPosition(script.Text, command.End, true))
+		for _, command := range DeprecatedCommands(script.Text) {
+			start, startOK := script.Position(scriptTextPosition(script.Text, command.Start, false))
+			end, endOK := script.Position(scriptTextPosition(script.Text, command.End, true))
 			if !startOK || !endOK {
 				start, end = script.Start, sourcepos.Position{}
 			}
@@ -49,7 +48,7 @@ func (Checker) CheckDocument(ctx context.Context, input checkinputs.Input) ([]re
 	return findings, nil
 }
 
-func textPosition(text string, offset int, exclusive bool) (int, int, bool) {
+func scriptTextPosition(text string, offset int, exclusive bool) (int, int, bool) {
 	prefix := text[:offset]
 	line := strings.Count(prefix, "\n") + 1
 	column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1

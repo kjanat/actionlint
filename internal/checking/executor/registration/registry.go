@@ -20,9 +20,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
-	workflowcommands "actionlint.kjanat.dev/v2/internal/checking/commands"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/runtimechecks"
-
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -176,9 +173,9 @@ var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
 		newSpec(correctness.ExpressionDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
 			return expressions.NewExpressionRule(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 		}}),
-		newSpec(correctness.DeprecatedCommandsDeclaration(), implementation{Script: workflowcommands.Checker{}}),
-		newSpec(suspicious.ErrexitStatusDeclaration(), implementation{Script: runtimechecks.Errexit()}),
-		newSpec(suspicious.WorkflowCommandSyntaxDeclaration(), implementation{Script: runtimechecks.WorkflowCommand()}),
+		newSpec(correctness.DeprecatedCommandsDeclaration(), implementation{Script: correctness.DeprecatedCommandsChecker{}}),
+		newSpec(suspicious.ErrexitStatusDeclaration(), implementation{Script: suspicious.ErrexitChecker()}),
+		newSpec(suspicious.WorkflowCommandSyntaxDeclaration(), implementation{Script: suspicious.WorkflowCommandChecker()}),
 		newSpec(correctness.InvalidOutputFileDeclaration(), implementation{Script: correctness.InvalidOutputFileChecker{}}),
 		declarationSpec(correctness.IfCondCheck()),
 		declarationSpec(correctness.NumericValuesCheck()),
