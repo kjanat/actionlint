@@ -506,7 +506,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			Correctness: configuration.NewGroup("recommended", "", nil),
 			Suspicious:  configuration.NewGroup("recommended", "", nil),
 		}}}
-		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runner.Options{AsOf: asOf}}, []workspace.Source{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
+		result, err := checking.Analyze(t.Context(), checking.Options{Runners: runner.Options{AsOf: asOf}}, []workspace.InputFile{{Path: "<stdin>", Content: []byte(c.Input), Config: config}})
 		if err != nil {
 			t.Fatal(err)
 		}
