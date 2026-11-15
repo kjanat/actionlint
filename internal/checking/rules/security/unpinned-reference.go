@@ -39,7 +39,8 @@ var UnpinnedReferenceRule = &define.Rule{
 
 // UnpinnedReferenceChecks binds reference exclusions to job and step declarations.
 func UnpinnedReferenceChecks(excluded func(string) bool) define.Checks {
-	return define.Checks{Job: func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
+	return define.Checks{
+		Job:  func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
 		Step: func(step declaration.Step) []reporting.Finding { return CommitHashStep(step, excluded) },
 	}
 }

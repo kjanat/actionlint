@@ -24,8 +24,9 @@ var MatrixRule = &define.Rule{
 // caller supplies whether the mixed-type filter rule is enabled; callbacks do
 // not load configuration or depend on earlier jobs.
 func MatrixChecks(checkMixedTypeFilters bool) define.Checks {
-	return define.Checks{Job: func(job workflowdecl.Job) []reporting.Finding {
-		return reporting.FromDiagnostics(matrixcheck.Check(workflowdecl.MatrixResolution(job.Strategy), checkMixedTypeFilters))
-	},
+	return define.Checks{
+		Job: func(job workflowdecl.Job) []reporting.Finding {
+			return reporting.FromDiagnostics(matrixcheck.Check(workflowdecl.MatrixResolution(job.Strategy), checkMixedTypeFilters))
+		},
 	}
 }

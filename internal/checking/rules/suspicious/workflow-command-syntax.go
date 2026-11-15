@@ -1,13 +1,14 @@
 package suspicious
 
 import (
+	"context"
+
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"context"
 )
 
 // WorkflowCommandSyntaxRule is the single definition of the workflow-command-syntax rule.

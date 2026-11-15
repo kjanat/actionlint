@@ -31,9 +31,10 @@ var WorkflowRunNamesRule = &define.Rule{
 // WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
 // It does not read files or depend on prior callbacks.
 func WorkflowRunNamesChecks(inventory namemodel.Inventory) define.Checks {
-	return define.Checks{Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
-		return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
-	},
+	return define.Checks{
+		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
+		},
 	}
 }
 

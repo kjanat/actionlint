@@ -27,8 +27,9 @@ var CacheCallUnrestrictedRule = &define.Rule{
 // reusable calls, using the supplied workflow's triggering events.
 func CacheCallUnrestrictedChecks(workflow workflowdecl.Workflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
-	return define.Checks{Job: func(job workflowdecl.Job) []reporting.Finding {
-		return reporting.FromDiagnostics(access.CheckCall(job))
-	},
+	return define.Checks{
+		Job: func(job workflowdecl.Job) []reporting.Finding {
+			return reporting.FromDiagnostics(access.CheckCall(job))
+		},
 	}
 }

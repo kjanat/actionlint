@@ -44,7 +44,6 @@ func checkDeprecatedCommands(ctx context.Context, input checkinputs.Input) ([]re
 				start, end = script.Start, sourcepos.Position{}
 			}
 			findings = append(findings, results.Diagnostic{
-
 				Message: fmt.Sprintf("workflow command %q was deprecated. use `%s` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions", command.Command, command.Replacement),
 				Path:    script.Path,
 				Start:   start,

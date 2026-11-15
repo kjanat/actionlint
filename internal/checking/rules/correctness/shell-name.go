@@ -35,9 +35,10 @@ func ShellNameChecks(runners *runnerlang.Knowledge, registries ...*commands.Regi
 		}
 		return runners.Job(job).Platform
 	}
-	return define.Checks{Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
-		return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(workflow.Defaults)), runnerlang.Any, registries...))
-	},
+	return define.Checks{
+		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(workflow.Defaults)), runnerlang.Any, registries...))
+		},
 		Job: func(job workflowdecl.Job) []reporting.Finding {
 			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(job.Defaults)), platform(job), registries...))
 		},
