@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
@@ -24,7 +24,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}
+			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}
 			rules, err := ConfigurationRules().WithRegisteredRules(registration)
 			if err != nil {
 				t.Fatal(err)
@@ -33,7 +33,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, rules, []repoconfig.RuleRegistration{registration})
+			settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, rules, []configuration.RuleRegistration{registration})
 			source, err := settings.source("inner/action.yml")
 			if err != nil {
 				t.Fatal(err)
@@ -43,7 +43,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, result := range []struct {
-				config *repoconfig.Config
+				config *configuration.Config
 				want   string
 			}{{source, tc.wantSource}, {action, tc.wantAction}} {
 				if got := result.config.RuleSet().DiagnosticLevel(result.config, "plugin-check"); string(got) != result.want {
@@ -60,23 +60,23 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 
 func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 	t.Parallel()
-	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}
-	setting, err := repoconfig.NewSetting("error", nil)
+	registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}
+	setting, err := configuration.NewSetting("error", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := &repoconfig.Config{Overrides: []repoconfig.Override{{
+	config := &configuration.Config{Overrides: []configuration.Override{{
 		Includes: []string{"inner/**"},
-		Lint: &repoconfig.LintConfig{Rules: repoconfig.LintRulesConfig{
-			Correctness: repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"plugin-check": setting}),
+		Lint: &configuration.LintConfig{Rules: configuration.LintRulesConfig{
+			Correctness: configuration.NewGroup("", "", map[string]configuration.Setting{"plugin-check": setting}),
 		}},
 	}}}
 	rules, err := ConfigurationRules().WithRegisteredRules(registration)
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(config, t.TempDir(), repoconfig.Presets{}, rules, []repoconfig.RuleRegistration{registration})
-	for _, resolve := range []func(string) (*repoconfig.Config, error){settings.source, settings.action} {
+	settings := newRuleConfigurations(config, t.TempDir(), configuration.Presets{}, rules, []configuration.RuleRegistration{registration})
+	for _, resolve := range []func(string) (*configuration.Config, error){settings.source, settings.action} {
 		selected, err := resolve("inner/action.yml")
 		if err != nil {
 			t.Fatal(err)
@@ -89,7 +89,7 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 
 func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
 	t.Parallel()
-	registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
+	registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
 	if _, err := ConfigurationRules().WithRegisteredRules(registration); err == nil {
 		t.Fatal("unknown configuration scope was accepted")
 	}
@@ -109,8 +109,8 @@ func TestExplicitPluginOptionsUseTheirJSONSchema(t *testing.T) {
 	} {
 		t.Run(tc.schema+"/"+tc.options, func(t *testing.T) {
 			t.Parallel()
-			registration := repoconfig.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}, Options: json.RawMessage(tc.options)}
-			_, err := ConfigurationRules().ResolveRegisteredRules(repoconfig.Presets{}, &repoconfig.Config{}, registration)
+			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}, Options: json.RawMessage(tc.options)}
+			_, err := ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, &configuration.Config{}, registration)
 			if (err == nil) != tc.valid {
 				t.Fatalf("options=%s schema=%s: %v", tc.options, tc.schema, err)
 			}
@@ -128,7 +128,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
+				settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, ConfigurationRules(), nil)
 				config, err := settings.source("inner/action.yml")
 				if err != nil {
 					t.Fatal(err)
@@ -143,7 +143,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 
 func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
 	t.Parallel()
-	settings := newRuleConfigurations(nil, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
+	settings := newRuleConfigurations(nil, t.TempDir(), configuration.Presets{}, ConfigurationRules(), nil)
 	config, err := settings.workflow("ci.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, ConfigurationRules(), nil)
+	settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, ConfigurationRules(), nil)
 	const path = "inner/action.yml"
 	action, err := settings.action(path)
 	if err != nil {
@@ -185,7 +185,7 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	if err != nil || again != source {
 		t.Fatalf("source scope was resolved again: %p != %p, %v", again, source, err)
 	}
-	for _, config := range []*repoconfig.Config{action, source} {
+	for _, config := range []*configuration.Config{action, source} {
 		if got := ConfigurationRules().DiagnosticLevel(config, "shellcheck"); got != "error" {
 			t.Fatalf("source override was not resolved before consumption: %s", got)
 		}
@@ -200,7 +200,7 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 
 func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	t.Parallel()
-	registration := repoconfig.RuleRegistration{
+	registration := configuration.RuleRegistration{
 		Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true},
 		Scope:      rule.SourceConfiguration, SupportsActions: true,
 		ToolSettings: &configschema.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
@@ -222,7 +222,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(project, t.TempDir(), repoconfig.Presets{}, rules, []repoconfig.RuleRegistration{registration})
+	settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, rules, []configuration.RuleRegistration{registration})
 	entry, err := settings.workflow("ci.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +233,7 @@ overrides:
 		t.Fatal(err)
 	}
 	prepared := scope.Rule("custom-script")
-	for _, cfg := range []*repoconfig.Config{prepared.Config(), prepared.Policy()} {
+	for _, cfg := range []*configuration.Config{prepared.Config(), prepared.Policy()} {
 		module, ok := cfg.Tools["custom-script"].Backend.Wasm()
 		if !ok || module.Path() != "action.wasm" {
 			t.Fatalf("source tool lost its backend override: module=%+v selected=%v", module, ok)

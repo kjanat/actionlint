@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -14,7 +14,7 @@ import (
 
 // publishSuppressionFixture enables the tested rules so publication exercises
 // suppression independently of their recommendation and default levels.
-func publishSuppressionFixture(t *testing.T, p policy.Policy, cfg *config.Config, findings []*finding.Finding, sources map[string][]byte) []*finding.Finding {
+func publishSuppressionFixture(t *testing.T, p policy.Policy, cfg *configuration.Config, findings []*finding.Finding, sources map[string][]byte) []*finding.Finding {
 	t.Helper()
 	rules := checking.ConfigurationRules()
 	groups := map[string]any{}
@@ -42,19 +42,19 @@ func publishSuppressionFixture(t *testing.T, p policy.Policy, cfg *config.Config
 		t.Fatal(err)
 	}
 	if cfg == nil {
-		cfg = &config.Config{}
+		cfg = &configuration.Config{}
 	} else {
 		owned := *cfg
 		cfg = &owned
 	}
 	cfg.Lint.Rules = enabled.Lint.Rules
 	originalRestrictions := cfg.Policy.DisallowSuppressions
-	cfg, err = rules.ResolveRules(config.Presets{}, cfg)
+	cfg, err = rules.ResolveRules(configuration.Presets{}, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg.Policy.DisallowSuppressions = originalRestrictions
-	sourceConfigs := map[string]*config.Config{}
+	sourceConfigs := map[string]*configuration.Config{}
 	for path := range sources {
 		sourceConfigs[path] = cfg
 	}
@@ -91,21 +91,21 @@ func fixtureRuleNames(findings []*finding.Finding) []string {
 	return out
 }
 
-func fixtureInline(t *testing.T, source []byte, findings []*finding.Finding, restrictions *config.SuppressionsPolicy, additional ...string) []*finding.Finding {
+func fixtureInline(t *testing.T, source []byte, findings []*finding.Finding, restrictions *configuration.SuppressionsPolicy, additional ...string) []*finding.Finding {
 	t.Helper()
-	cfg := &config.Config{}
+	cfg := &configuration.Config{}
 	cfg.Policy.DisallowSuppressions = restrictions
 	return publishSuppressionFixture(t, policy.Policy{Path: "fixture.yml", ConfigPath: "fixture.yml", Content: source, AdditionalRules: additional}, cfg, findings, nil)
 }
 
-func fixtureForeign(t *testing.T, path string, source []byte, findings []*finding.Finding, restrictions *config.SuppressionsPolicy) []*finding.Finding {
+func fixtureForeign(t *testing.T, path string, source []byte, findings []*finding.Finding, restrictions *configuration.SuppressionsPolicy) []*finding.Finding {
 	t.Helper()
-	cfg := &config.Config{}
+	cfg := &configuration.Config{}
 	cfg.Policy.DisallowSuppressions = restrictions
 	return publishSuppressionFixture(t, policy.Policy{Path: "caller.yml", ConfigPath: "caller.yml"}, cfg, findings, map[string][]byte{path: source})
 }
 
-func fixtureConfigured(t *testing.T, path, root string, source []byte, findings []*finding.Finding, cfg *config.Config) []*finding.Finding {
+func fixtureConfigured(t *testing.T, path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config) []*finding.Finding {
 	t.Helper()
 	return publishSuppressionFixture(t, policy.Policy{Path: path, ConfigPath: path, Root: root, Content: source}, cfg, findings, nil)
 }

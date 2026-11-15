@@ -41,7 +41,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: sudoAnalyzer{}}}}, []workspace.Source{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: sudoAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)

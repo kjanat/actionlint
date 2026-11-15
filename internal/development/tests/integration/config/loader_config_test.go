@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -55,7 +55,7 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(repoconfig.RunnerLabels(c.Facts()), tc.labels); diff != "" {
+			if diff := cmp.Diff(configuration.RunnerLabels(c.Facts()), tc.labels); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -99,7 +99,7 @@ func TestConfigParseConfigSecrets(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(repoconfig.SecretNames(c.Facts()), tc.secrets); diff != "" {
+			if diff := cmp.Diff(configuration.SecretNames(c.Facts()), tc.secrets); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -160,7 +160,7 @@ paths:
 				t.Fatalf("wanted error message %q to contain %q", err.Error(), tc.want)
 			}
 			if strings.HasPrefix(tc.in, "assume-default-permissions:") {
-				var source *repoconfig.SourceError
+				var source *configuration.SourceError
 				if !errors.As(err, &source) || source.Line != 1 || source.Column != 29 {
 					t.Fatalf("wrong source position: %v", err)
 				}
@@ -206,7 +206,7 @@ func TestConfigPathConfigIgnores(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.input+"_"+tc.msg, func(t *testing.T) {
 			t.Parallel()
-			var c repoconfig.PathConfig
+			var c configuration.PathConfig
 			if err := decodeConfigYAML([]byte(tc.input), &c); err != nil {
 				t.Fatal(err)
 			}
@@ -238,7 +238,7 @@ paths:
     ignore: [ttt]
 `
 
-	var cfg repoconfig.Config
+	var cfg configuration.Config
 	if err := checking.ConfigurationRules().Unmarshal([]byte(src), &cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestConfigReadFileOK(t *testing.T) {
 		t.Fatal(err)
 	}
 	labels := []string{"foo", "bar"}
-	if diff := cmp.Diff(repoconfig.RunnerLabels(c.Facts()), labels); diff != "" {
+	if diff := cmp.Diff(configuration.RunnerLabels(c.Facts()), labels); diff != "" {
 		t.Fatal(diff)
 	}
 }
@@ -404,7 +404,7 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(repoconfig.Policy{}, c.Policy); diff != "" {
+			if diff := cmp.Diff(configuration.Policy{}, c.Policy); diff != "" {
 				t.Fatal(diff)
 			}
 			if c.RequiresCommitHash() {
@@ -422,7 +422,7 @@ func TestConfigParsePolicyUnknownKey(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error occurred")
 	}
-	var source *repoconfig.SourceError
+	var source *configuration.SourceError
 	if !errors.As(err, &source) || source.Line != 2 || source.Column != 3 || !strings.Contains(err.Error(), "require-commit-hashes") || !strings.Contains(err.Error(), "unknown key") {
 		t.Fatalf("unexpected positioned unknown key error: %v", err)
 	}
@@ -434,7 +434,7 @@ func TestConfigParsePolicyNotAMapping(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error occurred")
 	}
-	var source *repoconfig.SourceError
+	var source *configuration.SourceError
 	if !errors.As(err, &source) || source.Line != 1 || source.Column != 9 || !strings.Contains(err.Error(), "expected a map") {
 		t.Fatalf("unexpected positioned mapping error: %v", err)
 	}
@@ -494,7 +494,7 @@ func TestConfigParsePolicyTriState(t *testing.T) {
 
 func TestConfigPolicyNilConfig(t *testing.T) {
 	t.Parallel()
-	var c *repoconfig.Config
+	var c *configuration.Config
 	if c.RequiresCommitHash() {
 		t.Fatal("\"require-commit-hash\" is enabled for a nil config")
 	}
@@ -627,7 +627,7 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 			if ok != tc.wantHasMax || limit != tc.wantMax {
 				t.Fatalf("MaxMinutes() is (%v, %v) but wanted (%v, %v)", limit, ok, tc.wantMax, tc.wantHasMax)
 			}
-			if got := c.RequiresJobTimeout(); !cmp.Equal(got, p, cmp.AllowUnexported(repoconfig.JobTimeoutPolicy{})) {
+			if got := c.RequiresJobTimeout(); !cmp.Equal(got, p, cmp.AllowUnexported(configuration.JobTimeoutPolicy{})) {
 				t.Fatalf("RequiresJobTimeout() is %v but wanted %v", got, p)
 			}
 		})
@@ -721,7 +721,7 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 			if _, scanErr := fmt.Sscanf(matched[0], "line:%d,col:%d", &line, &column); scanErr != nil {
 				t.Fatal(scanErr)
 			}
-			var source *repoconfig.SourceError
+			var source *configuration.SourceError
 			if !errors.As(err, &source) || source.Line != line || source.Column != column {
 				t.Fatalf("source location: %v, want %d:%d", err, line, column)
 			}

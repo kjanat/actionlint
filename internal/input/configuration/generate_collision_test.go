@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestGeneratePreservesExistingConfig(t *testing.T) {
 	t.Parallel()
-	for _, name := range repoconfig.RepositoryConfigNames {
+	for _, name := range configuration.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()

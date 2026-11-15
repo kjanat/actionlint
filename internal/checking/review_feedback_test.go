@@ -12,7 +12,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
@@ -122,7 +122,7 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 				t.Fatal(err)
 			}
 			backend := toolconfig.ProcessBackend(command)
-			cfg := &config.Config{Tools: config.ToolsConfig{tool: {Backend: backend}}}
+			cfg := &configuration.Config{Tools: configuration.ToolsConfig{tool: {Backend: backend}}}
 			options := registry.Selections{tool: {Command: tool}}
 			shell := "python"
 			if tool == "shellcheck" {

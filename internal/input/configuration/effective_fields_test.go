@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"reflect"
@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestEffectiveConfigFieldCoverage(t *testing.T) {
 	t.Parallel()
-	resolved, err := checking.ConfigurationRules().EffectiveValues(&repoconfig.Config{})
+	resolved, err := checking.ConfigurationRules().EffectiveValues(&configuration.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,5 +47,5 @@ func TestEffectiveConfigFieldCoverage(t *testing.T) {
 			}
 		}
 	}
-	check(reflect.TypeFor[repoconfig.Config](), resolved)
+	check(reflect.TypeFor[configuration.Config](), resolved)
 }

@@ -3,7 +3,7 @@ package policy
 import (
 	"path/filepath"
 
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -24,7 +24,7 @@ func (processor Processor) completeDiagnostic(d *diagmodel.Diagnostic, content [
 		return
 	}
 	if d.Reference == nil {
-		ref := sourceid.New(path, content).Ref("", "document", "", "$")
+		ref := source.NewReferenceIndex(path, content).Ref("", "document", "", "$")
 		d.Reference = &ref
 	}
 	for i := range d.Fixes {
@@ -34,7 +34,7 @@ func (processor Processor) completeDiagnostic(d *diagmodel.Diagnostic, content [
 		}
 		for _, edit := range f.Edits {
 			if filepath.Clean(edit.Path) == filepath.Clean(d.Path) && f.Revisions[edit.Path] == "" {
-				f.Revisions[edit.Path] = sourceid.Digest(content)
+				f.Revisions[edit.Path] = source.ContentDigest(content)
 			}
 		}
 	}

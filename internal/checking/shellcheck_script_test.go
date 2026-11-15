@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestShellcheckScriptSemantics(t *testing.T) {
@@ -57,7 +57,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			options := checking.Options{WorkingDir: t.TempDir()}
-			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &processconfig.Options{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
+			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
 			if tc.config != "" {
 				options.ConfigFile = writeFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
 			}

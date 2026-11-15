@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -68,7 +68,7 @@ func projectConfigPath(directory, selected string) (string, error) {
 	return configplugins.FindOrDefaultPath(directory)
 }
 
-func OpenProject(ctx context.Context, rules config.RuleSet, acquisition Acquisition, directory, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, directory, configPath string) (*Project, error) {
 	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err

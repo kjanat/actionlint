@@ -13,7 +13,7 @@ import (
 func Example_dependencyFacts() {
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: dependencypins.Checker{}}}}, []workspace.Source{{Path: "workflow.yml", Content: []byte(`on: push
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: dependencypins.Checker{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

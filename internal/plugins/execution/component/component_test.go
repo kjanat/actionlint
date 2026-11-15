@@ -404,7 +404,7 @@ func TestPartialOutcomePreservesFindings(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: plugin, Options: json.RawMessage(`"partial"`)}}}, []workspace.Source{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: plugin, Options: json.RawMessage(`"partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
 	)
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
 		t.Fatalf("application error=%v", err)
@@ -443,7 +443,7 @@ func TestPartialOutcomeRetainsValidRulesAndAllErrors(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}}, []workspace.Source{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
 	)
 	checkError(err)
 	if result == nil || len(result.Diagnostics) != len(wantMessages) {

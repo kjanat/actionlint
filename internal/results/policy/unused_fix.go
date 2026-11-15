@@ -2,7 +2,6 @@ package policy
 
 import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
@@ -10,7 +9,7 @@ import (
 // unusedSuppressionFix removes selectors after invocation-wide usage is known.
 // The edit is range-checked and bound to the exact admitted document revision.
 func (processor Processor) unusedSuppressionFix(content []byte, path string, ref sourcepos.Reference, position sourcepos.Position, rules, allowed []string) (results.Fix, bool) {
-	if path == "" || ref.Document == "" || ref.Revision != sourceid.Digest(content) {
+	if path == "" || ref.Document == "" || ref.Revision != sourcepos.ContentDigest(content) {
 		return results.Fix{}, false
 	}
 	edit, ok := suppression.Remove(content, position, rules, allowed, processor.RuleSet.Names())

@@ -1,4 +1,4 @@
-package config
+package configuration
 
 import (
 	"errors"
@@ -6,13 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	"actionlint.kjanat.dev/v2/internal/input/selection"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
-
-// FilesConfig is the shared include/exclude scope for input files.
-type FilesConfig = selection.Selection
 
 func (cfg *Config) IncludesFile(path, root string) bool {
 	if cfg == nil {
@@ -50,7 +47,7 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]Input, inherited, bindRules bool, capture func(any), additional ...string) (any, []Warning, error) {
+func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]Input, inherited, bindRules bool, capture func(any), additional ...string) (any, []configreport.Warning, error) {
 	resolved, err := ruleSet.resolveValue(value, inputs, bindRules, additional...)
 	if err != nil {
 		return nil, nil, err
@@ -59,7 +56,7 @@ func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs ma
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}
-	if address.Remote(path) {
+	if source.IsRemoteAddress(path) {
 		if err := ValidateSourcePaths(path, value); err != nil {
 			return nil, nil, err
 		}
@@ -113,7 +110,7 @@ func normalizeSourcePaths(value any, directory string, inherited bool) {
 
 // ValidateSourcePaths rejects local paths in an HTTPS source.
 func ValidateSourcePaths(origin string, value any) error {
-	if !address.Remote(origin) {
+	if !source.IsRemoteAddress(origin) {
 		return nil
 	}
 	if err := validateRemoteToolPaths(value); err != nil {

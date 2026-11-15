@@ -8,9 +8,8 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
@@ -18,7 +17,7 @@ import (
 func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	invalid, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: missing.shellcheckrc}}"))
+	invalid, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: missing.shellcheckrc}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,12 +29,12 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 		t.Fatal(err)
 	}
 	nativeCalls := 0
-	r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func(selected *config.Config) (tools.Runner, error) {
+	r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func(selected *configuration.Config) (tools.Runner, error) {
 		if selected != invalid {
 			t.Fatal("fallback initialized without the declined scope configuration")
 		}
 		nativeCalls++
-		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: shellcheckManifest, Programs: bundled.Program, Selection: scripts.Selection{Process: &processconfig.Options{Executable: &executable}}})
+		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: shellcheckManifest, Programs: bundled.Program, Selection: scripts.Selection{Process: &hostprocess.CommandOptions{Executable: &executable}}})
 		if err != nil {
 			return nil, err
 		}
@@ -50,14 +49,14 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 
 func TestDocumentPluginScopesOnlyNegotiationAndDisable(t *testing.T) {
 	t.Parallel()
-	disabled, err := (config.RuleSet{}).Parse([]byte("tools: {shellcheck: {enabled: false}}"))
+	disabled, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {enabled: false}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, cfg := range []*config.Config{nil, disabled} {
+	for _, cfg := range []*configuration.Config{nil, disabled} {
 		failure := errors.New("configuration rejected")
 		guest := &partialGuest{failAt: 0, failure: failure}
-		r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func(*config.Config) (tools.Runner, error) {
+		r := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, native: func(*configuration.Config) (tools.Runner, error) {
 			t.Fatal("failed or disabled negotiation reached native fallback")
 			return nil, nil
 		}}

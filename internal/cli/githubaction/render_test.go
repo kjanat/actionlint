@@ -29,7 +29,7 @@ func analysisForRenderSource(t *testing.T, source string) *checking.Result {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source), Config: config}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source), Config: config}})
 	if err != nil {
 		t.Fatal(err)
 	}

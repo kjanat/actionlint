@@ -15,7 +15,7 @@ import (
 
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 

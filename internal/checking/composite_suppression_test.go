@@ -9,7 +9,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
@@ -62,7 +62,7 @@ permissions: {}
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, _, batch, err := session.check(workflow, workflow, captured, project, nil, repoconfig.Provenance{}, process, actions, workflows, &rules)
+		findings, _, batch, err := session.check(workflow, workflow, captured, project, nil, configuration.Provenance{}, process, actions, workflows, &rules)
 		if err != nil {
 			t.Fatal(err)
 		}

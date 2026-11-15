@@ -22,7 +22,7 @@ func TestCatalogueWorkflowExamples(t *testing.T) {
 					content string
 					before  bool
 				}{{example.Before, true}, {example.After, false}} {
-					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "example.yml", Content: []byte(sample.content), Config: cfg}})
+					result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "example.yml", Content: []byte(sample.content), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -1,11 +1,11 @@
-package config_test
+package configuration_test
 
 import (
 	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestMovedRuleMigration(t *testing.T) {
@@ -23,7 +23,7 @@ func TestMovedRuleMigration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resolved, err := rules.ResolveRules(config.Presets{}, cfg)
+			resolved, err := rules.ResolveRules(configuration.Presets{}, cfg)
 			if err != nil {
 				t.Fatal(err)
 			}

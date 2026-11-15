@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -141,7 +141,7 @@ func TestNoIgnoreIncludesExcludedFilesWhenPlanningTools(t *testing.T) {
 				t.Fatal(err)
 			}
 			needed, err := session.RequiredTools(t.Context(), paths, workspace.ToolOptions{
-				Required: func(_, _ *repoconfig.Config) ([]string, error) { return []string{"fixture-tool"}, nil },
+				Required: func(_, _ *configuration.Config) ([]string, error) { return []string{"fixture-tool"}, nil },
 			})
 			if err != nil || needed["fixture-tool"] != noIgnore {
 				t.Fatalf("paths=%v no-ignore=%v: tools=%v, error=%v", paths, noIgnore, needed, err)

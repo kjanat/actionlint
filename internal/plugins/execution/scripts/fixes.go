@@ -7,7 +7,6 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -44,8 +43,8 @@ func scriptFix(source workflowdecl.ScriptSourceView, prepared preparation.Prepar
 		if original != seen[replacement.Row-1] {
 			return results.Fix{}, false
 		}
-		startOffset, startOK := text.ByteOffsetAtColumn(original, replacement.Column)
-		endOffset, endOK := text.ByteOffsetAtColumn(original, replacement.EndColumn)
+		startOffset, startOK := sourcepos.ByteOffsetAtColumn(original, replacement.Column)
+		endOffset, endOK := sourcepos.ByteOffsetAtColumn(original, replacement.EndColumn)
 		if !startOK || !endOK || startOffset > endOffset {
 			return results.Fix{}, false
 		}
@@ -99,8 +98,8 @@ func fixPreservesIndent(source workflowdecl.ScriptSourceView, edits []results.Ed
 			if edit.Start.Line != span.YamlLine {
 				continue
 			}
-			start, startOK := text.ByteOffsetAtColumn(original, edit.Start.Column-span.YamlColumn+1)
-			end, endOK := text.ByteOffsetAtColumn(original, edit.End.Column-span.YamlColumn+1)
+			start, startOK := sourcepos.ByteOffsetAtColumn(original, edit.Start.Column-span.YamlColumn+1)
+			end, endOK := sourcepos.ByteOffsetAtColumn(original, edit.End.Column-span.YamlColumn+1)
 			if !startOK || !endOK {
 				return false
 			}

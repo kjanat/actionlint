@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
 func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
 	t.Parallel()
-	groups := (&repoconfig.LintRulesConfig{}).Groups()
+	groups := (&configuration.LintRulesConfig{}).Groups()
 	seen := map[string]bool{}
 	for _, rule := range checking.ConfigurationRules().Rules() {
 		if seen[rule.Name] {

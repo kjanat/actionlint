@@ -8,7 +8,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
@@ -18,7 +18,7 @@ import (
 
 func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 	t.Parallel()
-	settings, err := config.ToolConfigInline("example", map[string]any{"limit": 7})
+	settings, err := configuration.ToolConfigInline("example", map[string]any{"limit": 7})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 				ConfigSchema:         json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`),
 				PreparationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond",config:{threshold:.settings.options.limit},variables:{mode:.language},excluded:["X1"]}`},
 			}
-			script := tools.Script{Text: "print(1)\n", Shell: new("python"), Config: &config.Config{Tools: config.ToolsConfig{"example": {Config: settings}}}}
+			script := tools.Script{Text: "print(1)\n", Shell: new("python"), Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}
 			prepared, err := newPreparation(manifest, routeEngine, nil).input(t.Context(), script)
 			if err != nil {
 				t.Fatal(err)

@@ -1,5 +1,5 @@
-// Package process runs dependency resolvers through the process protocol.
-package process
+// Package execprotocol runs dependency resolvers through the process protocol.
+package execprotocol
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 )
 
 // Process invokes a literal executable using the bounded JSON protocol. No shell

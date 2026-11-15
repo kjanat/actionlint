@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestReusableIgnoreConfig(t *testing.T) {
@@ -20,7 +20,7 @@ func TestReusableIgnoreConfig(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := repoconfig.IgnoreConfigs{{Rule: "expression", Uses: "./generated", File: ".github/workflows/*.yml", Job: "build", Step: "lint", Reason: "generated"}}
+		want := configuration.IgnoreConfigs{{Rule: "expression", Uses: "./generated", File: ".github/workflows/*.yml", Job: "build", Step: "lint", Reason: "generated"}}
 		if !reflect.DeepEqual(cfg.Ignores, want) {
 			t.Fatalf("got %#v", cfg.Ignores)
 		}

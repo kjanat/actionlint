@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestFmtCompositeArgumentInterpolation(t *testing.T) {
@@ -57,7 +57,7 @@ func TestFmtCompositeUnusedSuppression(t *testing.T) {
 	source := strings.Replace(string(fixture), "${{ env.cmd }}", "${{ env.cmd }} # ignore script-interpolation", 1)
 	fixturefiles.Write(t, root, "fmt/action.yml", source)
 	for _, strict := range []bool{false, true} {
-		result := testutil.Composite(t, root, "- uses: ./fmt", checking.Options{Presets: repoconfig.Presets{Strict: strict}})
+		result := testutil.Composite(t, root, "- uses: ./fmt", checking.Options{Presets: configuration.Presets{Strict: strict}})
 		found := false
 		for _, finding := range result.Diagnostics {
 			if finding.Rule != "unused-suppression" {

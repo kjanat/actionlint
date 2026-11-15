@@ -5,14 +5,13 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // CapturedSource binds test content to its source revision and coordinate system.
 func CapturedSource(tb testing.TB, path string, content []byte, model source.Coordinates) report.CapturedSource {
 	tb.Helper()
-	revision, err := source.NewRevision(sourceid.Document(path), sourceid.Digest(content))
+	revision, err := source.NewRevision(source.DocumentID(path), source.ContentDigest(content))
 	if err != nil {
 		tb.Fatal(err)
 	}

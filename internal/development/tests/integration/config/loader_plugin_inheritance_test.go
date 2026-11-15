@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
@@ -33,8 +33,8 @@ func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(config.VariableNames(resolved.Config.Facts()), []string{"LEAF"}) {
-		t.Fatalf("inherited legacy input overrode leaf: %#v", config.VariableNames(resolved.Config.Facts()))
+	if !slices.Equal(configuration.VariableNames(resolved.Config.Facts()), []string{"LEAF"}) {
+		t.Fatalf("inherited legacy input overrode leaf: %#v", configuration.VariableNames(resolved.Config.Facts()))
 	}
 	if !manifest.Declared || len(manifest.References) != 0 {
 		t.Fatalf("empty plugin opt-out lost: %+v", manifest)

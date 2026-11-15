@@ -10,14 +10,13 @@ import (
 	"strings"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
+	"actionlint.kjanat.dev/v2/internal/input/references"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 
@@ -133,8 +132,8 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 		options.Resolver = nil
 	}
 	if options.Resolver != nil {
-		if access, ok := options.RemoteActions.(repository.Access); ok {
-			options.Resolver = repository.Bind(options.Resolver, access)
+		if access, ok := options.RemoteActions.(references.RepositoryAccess); ok {
+			options.Resolver = references.BindRepositoryAccess(options.Resolver, access)
 		}
 	}
 	seen := map[string]bool{}
@@ -199,7 +198,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 				options.Processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 			}
 			l.Processes = options.Processes
-			commandOptions := &processconfig.Options{WorkingDir: options.WorkingDir}
+			commandOptions := &hostprocess.CommandOptions{WorkingDir: options.WorkingDir}
 			if local.Files.Executable != "" {
 				commandOptions.Executable = &local.Files.Executable
 			}
@@ -216,7 +215,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 		}
 		selection := scripts.Selection{Command: name}
 		if local.Files.Executable != "" {
-			selection.Process = &processconfig.Options{Executable: &local.Files.Executable}
+			selection.Process = &hostprocess.CommandOptions{Executable: &local.Files.Executable}
 		}
 		// An explicitly selected manifest replaces the tool's default route.
 		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: local.Files.Manifest, Programs: local.Files.Programs, Selection: selection})

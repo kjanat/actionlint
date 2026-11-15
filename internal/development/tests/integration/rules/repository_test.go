@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-func permissionsConfig(t *testing.T, permissions string) *repoconfig.Config {
+func permissionsConfig(t *testing.T, permissions string) *configuration.Config {
 	t.Helper()
 	config, err := checking.ConfigurationRules().Parse([]byte("repository: {default-workflow-permissions: " + permissions + "}"))
 	if err != nil {

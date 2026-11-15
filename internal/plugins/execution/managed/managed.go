@@ -17,7 +17,7 @@ import (
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -71,7 +71,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	next.Descriptor = guest.Descriptor().Descriptor
 	integration := *integrator.ToolIntegration()
 	next.ToolIntegration = &integration
-	next.NeedsProcess = func(ctx context.Context, cfg, project *config.Config) (bool, error) {
+	next.NeedsProcess = func(ctx context.Context, cfg, project *configuration.Config) (bool, error) {
 		if !base.Enabled(tools.Context{Config: cfg}) {
 			return false, nil
 		}
@@ -84,7 +84,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 		// provider's transport. Variants differ by what the guest negotiates,
 		// not only by tool gates as in backend.ConfigCandidates.
 		if declined == nil && project != nil && len(project.Overrides) != 0 {
-			candidates, err := config.ConfigVariants(project, func(candidate *config.Config) (string, error) {
+			candidates, err := configuration.ConfigVariants(project, func(candidate *configuration.Config) (string, error) {
 				return route.negotiationKey(ctx, candidate, base.Enabled(tools.Context{Config: candidate}))
 			})
 			if err != nil {
@@ -112,7 +112,7 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	}
 	next.Required = func(tools.Context) bool { return true }
 	next.Build = func(c tools.Context) (tools.Runner, error) {
-		return documentRunner{documentRoute: route, guest: guest, integrator: integrator, context: c, native: func(cfg *config.Config) (tools.Runner, error) {
+		return documentRunner{documentRoute: route, guest: guest, integrator: integrator, context: c, native: func(cfg *configuration.Config) (tools.Runner, error) {
 			if sel.ManagedOnly {
 				return nil, errors.New("plugin declined configuration; native fallback is not enabled")
 			}
@@ -132,13 +132,13 @@ type documentRoute struct {
 }
 
 // enabled reports whether configuration leaves the provider on.
-func (r documentRoute) enabled(cfg *config.Config) bool {
+func (r documentRoute) enabled(cfg *configuration.Config) bool {
 	return cfg.RuleSet().DiagnosticLevel(cfg, r.name) != "off" && (cfg == nil || cfg.Tools[r.name].Enabled == nil || *cfg.Tools[r.name].Enabled)
 }
 
 // declined reports the guest's refusal of cfg. Other negotiation failures
 // are returned as errors.
-func (r documentRoute) declined(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *config.Config) (*checkinputs.UnsupportedToolConfigurationError, error) {
+func (r documentRoute) declined(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *configuration.Config) (*checkinputs.UnsupportedToolConfigurationError, error) {
 	_, err := r.negotiate(ctx, guest, cfg, nil)
 	if err == nil {
 		return nil, nil
@@ -151,7 +151,7 @@ func (r documentRoute) declined(ctx context.Context, guest checkinputs.ToolInteg
 
 // negotiationKey identifies everything about cfg that the guest's
 // negotiation can depend on before a script is known.
-func (r documentRoute) negotiationKey(ctx context.Context, cfg *config.Config, enabled bool) (string, error) {
+func (r documentRoute) negotiationKey(ctx context.Context, cfg *configuration.Config, enabled bool) (string, error) {
 	options, err := r.options(ctx, cfg, nil)
 	if err != nil {
 		return "", err
@@ -173,7 +173,7 @@ func (r documentRoute) negotiationKey(ctx context.Context, cfg *config.Config, e
 
 // options validates configuration through the integration's schema and transforms
 // it without interpreting tool-specific property names.
-func (r documentRoute) options(ctx context.Context, cfg *config.Config, expand func(string) (string, error)) (integrationconfig.Settings, error) {
+func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, expand func(string) (string, error)) (integrationconfig.Settings, error) {
 	var inline json.RawMessage
 	file := ""
 	if cfg != nil {
@@ -194,7 +194,7 @@ func (r documentRoute) options(ctx context.Context, cfg *config.Config, expand f
 	return options, nil
 }
 
-func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *config.Config, script *tools.Script) (*checkinputs.ToolNegotiation, error) {
+func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolIntegrator, cfg *configuration.Config, script *tools.Script) (*checkinputs.ToolNegotiation, error) {
 	if cfg != nil && cfg.Tools[r.name].Backend != nil {
 		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "explicit backend selected"}
 	}
@@ -233,7 +233,7 @@ type documentRunner struct {
 	guest      checkinputs.Checker
 	integrator checkinputs.ToolIntegrator
 	context    tools.Context
-	native     func(*config.Config) (tools.Runner, error)
+	native     func(*configuration.Config) (tools.Runner, error)
 }
 
 func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
@@ -327,7 +327,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch tools.Batch) ([]tools
 		}
 	}
 	if len(nativeIndices) != 0 || len(nativeBatch.Scopes) != 0 {
-		var cfg *config.Config
+		var cfg *configuration.Config
 		if len(nativeBatch.Scripts) != 0 {
 			cfg = nativeBatch.Scripts[0].Config
 		} else {

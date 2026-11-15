@@ -13,7 +13,7 @@ import (
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
@@ -58,7 +58,7 @@ type compositionSession struct {
 	metadataCopies         *findingmodel.Copier
 	incompleteChecks       []report.IncompleteCheck
 
-	configProvenance repoconfig.Provenance
+	configProvenance configuration.Provenance
 	sourceSnapshots  *parsing.SourceSnapshots
 	captures         *capture.Store
 	remoteActions    *remote.Service
@@ -78,7 +78,7 @@ type compositeAnalyzer struct {
 	actions                           *workspaceactions.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
 	scriptScope                       *scriptexecution.Scope
-	scriptConfig                      *repoconfig.Config
+	scriptConfig                      *configuration.Config
 	context                           invocation.Context
 	scriptJobShell, scriptRunnerShell value.Value
 	scriptWorkflowDir, scriptJobDir   execution.Directory

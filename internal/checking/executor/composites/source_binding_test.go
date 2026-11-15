@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -123,10 +123,10 @@ func TestPreparedNestedScriptsUseDeclaringJobAndDeploymentPath(t *testing.T) {
 	outerSource := "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n"
 	innerSource := "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": outerSource, "inner/action.yml": innerSource}, nil)
-	outerConfig, innerConfig := &repoconfig.Config{}, &repoconfig.Config{}
+	outerConfig, innerConfig := &configuration.Config{}, &configuration.Config{}
 	outerPath := filepath.Join(f.options.Paths.Workspace, "outer", "action.yml")
 	innerPath := filepath.Join(f.options.Paths.Workspace, "inner", "action.yml")
-	f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
+	f.options.BindSource = testSourceBindings(func(path string) (*configuration.Config, error) {
 		if path == outerPath {
 			return outerConfig, nil
 		}

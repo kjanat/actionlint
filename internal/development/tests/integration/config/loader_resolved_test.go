@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -40,8 +40,8 @@ paths: {'**': {ignore: ['a.*b']}}
 			if !reflect.DeepEqual(resolved.Values, roundTrip.Values) {
 				t.Fatalf("effective configuration changed after roundtrip: %#v != %#v", resolved.Values, roundTrip.Values)
 			}
-			if (repoconfig.VariableNames(resolved.Config.Facts()) == nil) != (repoconfig.VariableNames(roundTrip.Config.Facts()) == nil) ||
-				(repoconfig.SecretNames(resolved.Config.Facts()) == nil) != (repoconfig.SecretNames(roundTrip.Config.Facts()) == nil) {
+			if (configuration.VariableNames(resolved.Config.Facts()) == nil) != (configuration.VariableNames(roundTrip.Config.Facts()) == nil) ||
+				(configuration.SecretNames(resolved.Config.Facts()) == nil) != (configuration.SecretNames(roundTrip.Config.Facts()) == nil) {
 				t.Fatal("serialization changed whether variable or secret checking is enabled")
 			}
 			if source == "" {

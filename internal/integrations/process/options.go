@@ -1,5 +1,4 @@
-// Package processconfig resolves native tool invocations without running analysis.
-package processconfig
+package process
 
 import (
 	"path/filepath"
@@ -8,10 +7,10 @@ import (
 	"golang.org/x/sys/execabs"
 )
 
-// Options supplies literal arguments and child environment overrides.
+// CommandOptions supplies literal arguments and child environment overrides.
 // A non-nil Executable replaces the command line with a literal executable path;
 // an empty executable disables the tool. Nil parses the configured command line.
-type Options struct {
+type CommandOptions struct {
 	// IgnoreConfig marks an explicit application invocation that overrides the
 	// repository's command settings, even when it names the default executable.
 	IgnoreConfig bool
@@ -30,19 +29,19 @@ type Options struct {
 	WorkingDir string
 }
 
-func Enabled(command string, options *Options) bool {
+func CommandEnabled(command string, options *CommandOptions) bool {
 	if options != nil && options.Executable != nil {
 		return *options.Executable != ""
 	}
 	return command != ""
 }
 
-// ResolveOptions locates a configured tool without executing it.
-func ResolveOptions(command string, options *Options) (string, []string, error) {
+// ResolveCommandOptions locates a configured tool without executing it.
+func ResolveCommandOptions(command string, options *CommandOptions) (string, []string, error) {
 	if options == nil {
-		return Resolve(command)
+		return ResolveExecutable(command)
 	}
-	if !Enabled(command, options) {
+	if !CommandEnabled(command, options) {
 		return "", nil, nil
 	}
 	if options.Executable != nil {
@@ -53,12 +52,12 @@ func ResolveOptions(command string, options *Options) (string, []string, error) 
 		path, err := execabs.LookPath(executable)
 		return path, append([]string(nil), options.Arguments...), err
 	}
-	path, args, err := Resolve(command)
+	path, args, err := ResolveExecutable(command)
 	return path, append(args, options.Arguments...), err
 }
 
-// Resolve locates an executable or parses a command with arguments without running it.
-func Resolve(exe string) (string, []string, error) {
+// ResolveExecutable locates an executable or parses a command with arguments without running it.
+func ResolveExecutable(exe string) (string, []string, error) {
 	c, err := execabs.LookPath(exe)
 	if err == nil {
 		return c, nil, nil

@@ -10,7 +10,7 @@ import (
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -19,7 +19,7 @@ import (
 
 func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {
 	t.Parallel()
-	locations := []repoconfig.PermissionLocation{repoconfig.WorkflowPermissions}
+	locations := []configuration.PermissionLocation{configuration.WorkflowPermissions}
 	for _, tc := range []struct {
 		prefix string
 		line   int

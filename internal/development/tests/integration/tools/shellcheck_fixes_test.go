@@ -13,7 +13,6 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/text"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
@@ -30,7 +29,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := text.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := sourcepos.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -48,7 +47,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\npermissions: {}\n"
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +67,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if changed != strings.Replace(workflow, "$VALUE", `"$VALUE"`, 1) {
 		t.Fatalf("wrong ShellCheck edit: %q", changed)
 	}
-	rechecked, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: "workflow.yml", Content: []byte(changed)}})
+	rechecked, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(changed)}})
 	if err != nil || len(rechecked.Diagnostics) != 0 {
 		t.Fatalf("fixed workflow findings: %+v, %v", rechecked, err)
 	}

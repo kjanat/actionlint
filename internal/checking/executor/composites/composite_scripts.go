@@ -12,7 +12,7 @@ import (
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
@@ -263,7 +263,7 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflowdecl.StepVie
 	return nil
 }
 
-func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepView, config *repoconfig.Config) error {
+func (analysis *compositeAnalyzer) validateMetadataStep(step workflowdecl.StepView, config *configuration.Config) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}

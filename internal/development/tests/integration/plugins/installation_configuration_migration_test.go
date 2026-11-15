@@ -11,9 +11,9 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 )
 
@@ -53,7 +53,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg, err := checking.ConfigurationRules().Load(path)
-	if err != nil || len(cfg.Plugins) != 2 || config.VariableNames(cfg.Facts()) == nil {
+	if err != nil || len(cfg.Plugins) != 2 || configuration.VariableNames(cfg.Facts()) == nil {
 		t.Fatalf("migrated config: %+v %v", cfg, err)
 	}
 	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
@@ -333,7 +333,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
 	acquisition := registryAcquisition(registry)
 	root := repositoryfixture.Directory(t)
-	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML)
+	path, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", configuration.FormatYAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}
 	registry.SetOffline(true)
-	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", config.FormatYAML); err == nil || !strings.Contains(err.Error(), "already exists") {
+	if _, err := plugininstall.InitializeConfiguration(t.Context(), checking.ConfigurationRules(), acquisition, root, "2.0.0", configuration.FormatYAML); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("existing config not protected: %v", err)
 	}
 }

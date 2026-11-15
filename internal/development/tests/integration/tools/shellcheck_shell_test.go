@@ -57,9 +57,9 @@ jobs:
       - run: '[[ -n "$HOME" ]]'
 `
 			request := checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
 			findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)

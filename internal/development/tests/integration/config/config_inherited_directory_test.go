@@ -7,7 +7,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestInheritedConfigDirectorySpellings(t *testing.T) {
@@ -37,13 +37,13 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				context := repoconfig.PathContext{ConfigDir: filepath.Dir(leaf)}
+				context := configuration.PathContext{ConfigDir: filepath.Dir(leaf)}
 				got, err := context.Resolve(effective.Tools["shellcheck"].Config.Path())
 				want := filepath.Join(filepath.Dir(base), ".shellcheckrc")
 				if err != nil || got != want {
 					t.Fatalf("inherited rc path = %q, %v; want %q", got, err, want)
 				}
-				inspection, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: leaf}, true)
+				inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: leaf}, true)
 				if err != nil {
 					t.Fatal(err)
 				}

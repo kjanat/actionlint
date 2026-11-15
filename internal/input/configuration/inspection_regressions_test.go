@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"path/filepath"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestFileOverrideExplicitToolResets(t *testing.T) {
@@ -58,7 +58,7 @@ func TestInspectConfigErrorClassification(t *testing.T) {
 					path = writeOverrideFixture(t, root, "actionlint.yml", "extends: [invalid.yml]\n")
 				}
 				_, want := checking.ConfigurationRules().Load(path)
-				got, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: path}, true)
+				got, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
 				if want == nil || err == nil || err.Error() != want.Error() || !strings.Contains(err.Error(), "could not parse config file") || strings.Contains(err.Error(), "could not read config file") || got.Path != path {
 					t.Fatalf("inspection=%+v error=%v, want %v", got, err, want)
 				}
@@ -67,7 +67,7 @@ func TestInspectConfigErrorClassification(t *testing.T) {
 	}
 	path := filepath.Join(t.TempDir(), "missing.yml")
 	_, want := checking.ConfigurationRules().Load(path)
-	_, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: path}, true)
+	_, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
 	if err == nil || err.Error() != want.Error() || strings.Count(err.Error(), "could not read config file") != 1 {
 		t.Fatalf("read error=%v, want %v", err, want)
 	}

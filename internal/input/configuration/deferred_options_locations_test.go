@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"encoding/json"
@@ -9,12 +9,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 )
 
-func deferredOptionsRegistration() config.RuleRegistration {
-	return config.RuleRegistration{
+func deferredOptionsRegistration() configuration.RuleRegistration {
+	return configuration.RuleRegistration{
 		Descriptor: rule.Descriptor{Name: "custom-check", Category: "security", Provider: "community", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
 		Scope:      rule.SourceConfiguration,
 	}
@@ -45,7 +45,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = checking.ConfigurationRules().ResolveRegisteredRules(config.Presets{}, settings, deferredOptionsRegistration())
+			_, err = checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, settings, deferredOptionsRegistration())
 			assertNeutralSource(t, err, base, test.line, test.column, test.path)
 		})
 	}
@@ -57,7 +57,7 @@ func TestDeferredPluginOptionsKeepByteSourceLocations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.ConfigurationRules().ResolveRegisteredRules(config.Presets{}, settings, deferredOptionsRegistration())
+	_, err = checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, settings, deferredOptionsRegistration())
 	assertNeutralSource(t, err, "", 7, 18, "/lint/rules/plugins/custom-check/options/count")
 }
 
@@ -76,11 +76,11 @@ func TestDeferredPluginOptionsKeepOverlaySourceLocations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			settings, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []config.Overlay{overlay}, "custom-check")
+			settings, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay}, "custom-check")
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = checking.ConfigurationRules().ResolveRegisteredRules(config.Presets{}, settings, deferredOptionsRegistration())
+			_, err = checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, settings, deferredOptionsRegistration())
 			assertNeutralSource(t, err, "", line, column, "/lint/rules/plugins/custom-check/options/count")
 		})
 	}
@@ -94,11 +94,11 @@ func TestCallerPluginOptionsAreNotAttributedToConfig(t *testing.T) {
 	}
 	registration := deferredOptionsRegistration()
 	registration.Options = json.RawMessage(`{"count":0}`)
-	_, err = checking.ConfigurationRules().ResolveRegisteredRules(config.Presets{}, settings, registration)
+	_, err = checking.ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, settings, registration)
 	if err == nil {
 		t.Fatal("invalid caller options accepted")
 	}
-	if location, ok := errors.AsType[*config.SourceError](err); ok {
+	if location, ok := errors.AsType[*configuration.SourceError](err); ok {
 		t.Fatalf("caller options were attributed to config: %v", location)
 	}
 	failure, ok := errors.AsType[*binding.Error](err)

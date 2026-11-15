@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	repository "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
-func configuredWorkflowPermissions(cfg *repoconfig.Config) string {
+func configuredWorkflowPermissions(cfg *configuration.Config) string {
 	permissions, known := cfg.Facts().DefaultWorkflowPermissions.Value()
 	if !known {
 		return ""
@@ -102,7 +102,7 @@ func TestRepositoryOverrideAvailability(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			fact, known := repoconfig.RepositoryFacts(cfg, host).Secrets.Value()
+			fact, known := configuration.RepositoryFacts(cfg, host).Secrets.Value()
 			if known != test.known || known && !reflect.DeepEqual(fact.Values(), test.names) {
 				t.Fatalf("override lost absence/reset/empty: %+v", cfg.Repository)
 			}
@@ -125,7 +125,7 @@ func TestRepositoryResetSurvivesPartialFileOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	facts := repoconfig.RepositoryFacts(effective, host)
+	facts := configuration.RepositoryFacts(effective, host)
 	if _, known := facts.DefaultWorkflowPermissions.Value(); known {
 		t.Fatal("partial override resurrected a reset host fact")
 	}

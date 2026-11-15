@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -44,7 +44,7 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &repoconfig.Config{}}
+	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &configuration.Config{}}
 	workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
 	collection := Collection{Declarations: registry, Scopes: []*Scope{scope}, Collected: true}
 	body, available := snapshot.ActionView()

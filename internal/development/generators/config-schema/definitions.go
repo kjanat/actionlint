@@ -5,7 +5,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 
@@ -45,8 +45,8 @@ func levelSchema() *jsonschema.Schema {
 
 func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.Definitions, error) {
 	setting := reflectMapping(struct {
-		Level   actionlint.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule."`
-		Options map[string]any   `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the rule's schema; null resets its defaults."`
+		Level   configuration.Level `yaml:"level" jsonschema:"required,description=Diagnostic level for this rule."`
+		Options map[string]any      `yaml:"options,omitempty" jsonschema:"nullable,description=Options validated against the rule's schema; null resets its defaults."`
 	}{})
 	options, _ := setting.Properties.Get("options")
 	options.AdditionalProperties = jsonschema.TrueSchema

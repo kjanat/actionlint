@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -52,7 +52,7 @@ func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	finding.Path = "action.yml"
 	finding.Source = []byte("name: action\nrun: echo hi\n")
 	finding.SuppressionOrigin.Path = "action.yml"
-	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: workflow\n")}, Findings: []*findingmodel.Finding{finding}, Sources: map[string][]byte{"action.yml": finding.Source}}, nil, map[string]*repoconfig.Config{"action.yml": nil})
+	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: workflow\n")}, Findings: []*findingmodel.Finding{finding}, Sources: map[string][]byte{"action.yml": finding.Source}}, nil, map[string]*configuration.Config{"action.yml": nil})
 	published, err := policy.Publish([]policy.Batch{batch}, nil)
 	if err != nil {
 		t.Fatal(err)

@@ -14,7 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -123,12 +123,12 @@ func AssertSourceFile(t *testing.T, got, want string) {
 	}
 }
 
-func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *repoconfig.Config) []workspace.Source {
+func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []workspace.InputFile {
 	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
-	sources := make([]workspace.Source, 0, len(paths))
+	sources := make([]workspace.InputFile, 0, len(paths))
 	reader := files.New(tb.Context(), nil, nil)
 	for _, path := range paths {
 		content, err := reader.ReadFile(path)
@@ -141,7 +141,7 @@ func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, c
 				display = relative
 			}
 		}
-		sources = append(sources, workspace.Source{Path: display, InputPath: path, Content: content, Project: project, Config: cfg})
+		sources = append(sources, workspace.InputFile{Path: display, InputPath: path, Content: content, Project: project, Config: cfg})
 	}
 	return sources
 }
@@ -211,7 +211,7 @@ func WorkflowDiagnostics(t *testing.T, source, config string) []results.Diagnost
 
 func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options checking.Options) []results.Diagnostic {
 	t.Helper()
-	var cfg *repoconfig.Config
+	var cfg *configuration.Config
 	if config != "" {
 		var err error
 		cfg, err = checking.ConfigurationRules().Parse([]byte(config))
@@ -219,7 +219,7 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 			t.Fatal(err)
 		}
 	}
-	result, err := checking.Analyze(t.Context(), options, []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Config: cfg}})
+	result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}

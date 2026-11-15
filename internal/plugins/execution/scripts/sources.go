@@ -37,7 +37,7 @@ type reportedFile struct {
 func (r runner) checkGranted(ctx context.Context, c check) outcome {
 	request := c.request
 	result := outcome{copies: map[string]reportedFile{}}
-	var grant *inputfiles.SnapshotFS
+	var grant *inputfiles.BoundedFS
 	if r.directory && request.Directory != "" {
 		var err error
 		if grant, err = directoryGrant(ctx, c.scope, request.Directory); err != nil {
@@ -77,7 +77,7 @@ func (r runner) checkGranted(ctx context.Context, c check) outcome {
 // scope, so neither the path nor a symlink below it leaves the workspace.
 // Reads through the grant are recorded with the scope's reader. A missing
 // directory gets no grant; one outside the workspace fails the check.
-func directoryGrant(ctx context.Context, scope *tools.Scope, directory string) (*inputfiles.SnapshotFS, error) {
+func directoryGrant(ctx context.Context, scope *tools.Scope, directory string) (*inputfiles.BoundedFS, error) {
 	if scope == nil || scope.Workspace == "" && scope.AnalysisDir == "" {
 		return nil, errors.New("directory access requires a workspace root")
 	}

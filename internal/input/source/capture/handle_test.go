@@ -16,7 +16,7 @@ func TestVerifyHandleRejectsForeignAndQuarantinedEvidence(t *testing.T) {
 	store, other := newStore(t, overlays, reader), newStore(t, overlays, reader)
 	snapshot := readSnapshot(t, store, path, source.YAML)
 	foreign := readSnapshot(t, other, path, source.YAML)
-	for _, invalid := range []Snapshot{{}, foreign} {
+	for _, invalid := range []CapturedDocument{{}, foreign} {
 		if err := store.VerifyHandle(invalid); !errors.Is(err, ErrInvalidSnapshot) {
 			t.Fatalf("invalid snapshot check = %v", err)
 		}

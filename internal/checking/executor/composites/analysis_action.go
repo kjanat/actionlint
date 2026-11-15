@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
@@ -33,7 +33,7 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptexecution
 	if err := analysis.beginAction(deployment); err != nil {
 		return err
 	}
-	files, err := actionfiles.Inspect(analysis.ctx, meta, analysis.reader)
+	files, err := workspace.InspectReferencedFiles(analysis.ctx, meta, analysis.reader)
 	if err != nil {
 		return err
 	}

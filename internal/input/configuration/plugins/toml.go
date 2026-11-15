@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"github.com/pelletier/go-toml/v2/unstable"
 )
@@ -150,7 +150,7 @@ func editTOMLPlugins(original []byte, sequence []any) ([]byte, error) {
 func pluginTOMLTables(sequence []any, newline string) ([]byte, error) {
 	var tables []byte
 	for index, entry := range sequence {
-		var declarations config.PluginDeclarations
+		var declarations configuration.PluginDeclarations
 		if err := declarations.DecodeConfig([]any{entry}); err != nil {
 			return nil, err
 		}

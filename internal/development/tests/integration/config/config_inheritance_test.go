@@ -10,7 +10,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestConfigExtends(t *testing.T) {
@@ -32,19 +32,19 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 		t.Fatal(err)
 	}
 	cfg := loaded.Config
-	resolved, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg)
+	resolved, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	minimum, _ := resolved.RequiresJobTimeout().MinMinutes()
 	maximum, _ := resolved.RequiresJobTimeout().MaxMinutes()
-	if minimum != 5 || maximum != 60 || checking.ConfigurationRules().DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(repoconfig.VariableNames(cfg.Facts()), []string{"second"}) {
+	if minimum != 5 || maximum != 60 || checking.ConfigurationRules().DiagnosticLevel(resolved, "if-cond") != "warn" || !slices.Equal(configuration.VariableNames(cfg.Facts()), []string{"second"}) {
 		t.Fatalf("%+v", resolved)
 	}
 	if len(loaded.Provenance.Sources()) != 3 {
 		t.Fatal(loaded.Provenance.Sources())
 	}
-	inspection, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: path}, true)
+	inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

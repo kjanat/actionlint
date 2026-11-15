@@ -3,7 +3,7 @@ package registration
 import (
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestNativeCatalogOwnsDeclarationsAndRegistrationOrder(t *testing.T) {
@@ -12,7 +12,7 @@ func TestNativeCatalogOwnsDeclarationsAndRegistrationOrder(t *testing.T) {
 	if len(declarations) == 0 {
 		t.Fatal("native catalog is empty")
 	}
-	rules, err := repoconfig.NewRuleSet(declarations)
+	rules, err := configuration.NewRuleSet(declarations)
 	if err != nil {
 		t.Fatal(err)
 	}

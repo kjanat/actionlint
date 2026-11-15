@@ -39,7 +39,7 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(separatedExpressionWorkflow), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(separatedExpressionWorkflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +58,7 @@ func TestExpressionRuleSelectionIsIndependent(t *testing.T) {
 func TestPayloadSuppressionDoesNotSuppressInjection(t *testing.T) {
 	t.Parallel()
 	content := strings.ReplaceAll(separatedExpressionWorkflow, "PAYLOAD: ${{ github.event.issue.titel }}", "PAYLOAD: ${{ github.event.issue.titel }} # actionlint:ignore event-payload -- test independent rules")
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(content)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(content)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestUnusedFormatArgumentRuleSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			content := fmt.Sprintf(source, tc.comment)
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}

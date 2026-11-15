@@ -14,11 +14,12 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	genfile "actionlint.kjanat.dev/v2/internal/development/generators/files"
-	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/output"
 
+	"actionlint.kjanat.dev/v2/internal/input/selection"
 	"github.com/invopop/jsonschema"
 )
 
@@ -47,21 +48,21 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return schema
 	}
 	switch t {
-	case reflect.TypeFor[actionlint.DependencyCategories]():
+	case reflect.TypeFor[configuration.DependencyCategories]():
 		values := make([]any, 0, len(lintconfig.Categories()))
 		for _, category := range lintconfig.Categories() {
 			values = append(values, category)
 		}
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
-	case reflect.TypeFor[actionlint.DependencyRules]():
+	case reflect.TypeFor[configuration.DependencyRules]():
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{definitionRef("rule-name"), {Type: "string", Pattern: `^[^/\s]+/[^/\s]+$`}}}}
-	case reflect.TypeFor[actionlint.MetadataMirrorServices]():
+	case reflect.TypeFor[configuration.MetadataMirrorServices]():
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: []any{"jsdelivr"}}}
 	case reflect.TypeFor[map[string]*string]():
 		return &jsonschema.Schema{Type: "object", PropertyNames: definitionRef("non-blank-string"), AdditionalProperties: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{{Type: "string"}, {Type: "null"}}}, Extras: map[string]any{"x-tombi-additional-key-label": "variable_name"}}
-	case reflect.TypeFor[actionlint.LocalActionSources]():
+	case reflect.TypeFor[configuration.LocalActionSources]():
 		return &jsonschema.Schema{Type: "object", PropertyNames: definitionRef("local-action-directory"), AdditionalProperties: definitionRef("local-action-directory"), Extras: map[string]any{"x-tombi-additional-key-label": "action_directory"}}
-	case reflect.TypeFor[actionlint.PluginDeclarations]():
+	case reflect.TypeFor[configuration.PluginDeclarations]():
 		mapping := reflectMapping(struct {
 			Name     string `yaml:"name" jsonschema:"required,minLength=1,description=Registry-assigned alias or plugin repository: owner/repo or github.com/owner/repo or gitlab.com/group/repo."`
 			Version  string `yaml:"version,omitempty" jsonschema:"minLength=1,description=Exact release tag or latest stable. Omission selects latest."`
@@ -82,7 +83,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				direct,
 			}},
 		}
-	case reflect.TypeFor[actionlint.IgnoreConfig]():
+	case reflect.TypeFor[configuration.IgnoreConfig]():
 		mapping := reflectMapping(struct {
 			Rule   string `yaml:"rule" jsonschema:"required,minLength=1,description=Built-in or registered plugin diagnostic rule to suppress. Registration is validated when loading configuration."`
 			File   string `yaml:"file,omitempty" jsonschema:"minLength=1,description=Reported file path or doublestar glob relative to the repository. Matches sourced scripts when diagnostics point to them."`
@@ -109,7 +110,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			mapping.AnyOf = append(mapping.AnyOf, &jsonschema.Schema{Required: []string{selector}})
 		}
 		return mapping
-	case reflect.TypeFor[actionlint.LifecycleMatch]():
+	case reflect.TypeFor[configuration.LifecycleMatch]():
 		mapping := reflectMapping(struct {
 			Subjects []string `yaml:"subjects" jsonschema:"required,minItems=1,description=Subject kinds matched by this policy."`
 			Events   []string `yaml:"events" jsonschema:"required,minItems=1,description=Event kinds matched by this policy."`
@@ -122,28 +123,28 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		services, _ := mapping.Properties.Get("services")
 		services.Items.Enum = []any{"github.com", "github-data-residency", "ghes"}
 		return mapping
-	case reflect.TypeFor[actionlint.LifecycleStart]():
+	case reflect.TypeFor[configuration.LifecycleStart]():
 		mapping := reflectMapping(struct {
 			Before string `yaml:"before,omitempty" jsonschema:"pattern=^[0-9]+d$,description=Calendar days before the effective date."`
 			On     string `yaml:"on,omitempty" jsonschema:"enum=effective-date,description=Start on the effective date."`
 		}{})
 		mapping.OneOf = []*jsonschema.Schema{{Required: []string{"before"}}, {Required: []string{"on"}}}
 		return mapping
-	case reflect.TypeFor[actionlint.FilesConfig]():
+	case reflect.TypeFor[selection.Selection]():
 		mapping := reflectMapping(struct {
 			Includes []string `yaml:"includes" jsonschema:"nullable,description=Repository-relative doublestar globs. Omitted or null selects all files; an empty array selects none. A leading ! excludes a match."`
 			Excludes []string `yaml:"excludes" jsonschema:"nullable,description=Repository-relative exclusions. Exclusions always win over includes."`
 		}{})
 		mapping.Version, mapping.ID = "", ""
 		return mapping
-	case reflect.TypeFor[actionlint.Level]():
+	case reflect.TypeFor[configuration.Level]():
 		return definitionRef("level")
-	case reflect.TypeFor[actionlint.Preset]():
+	case reflect.TypeFor[configuration.Preset]():
 		return definitionRef("preset")
-	case reflect.TypeFor[actionlint.LintRulesConfig]():
+	case reflect.TypeFor[configuration.LintRulesConfig]():
 		mapping := reflectMapping(struct {
-			Preset  actionlint.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
-			Disable []string          `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
+			Preset  configuration.Preset `yaml:"preset" jsonschema:"description=Baseline selection: recommended, all stable rules, or none. Explicit rules override presets."`
+			Disable []string             `yaml:"disable" jsonschema:"description=Suppress these diagnostic rule IDs at every severity. Omission or an empty list suppresses none."`
 		}{})
 		disable, _ := mapping.Properties.Get("disable")
 		disable.Items = definitionRef("rule-name")
@@ -162,8 +163,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		for _, category := range categories {
 			group := reflectMapping(struct {
-				Preset actionlint.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
-				Level  actionlint.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
+				Preset configuration.Preset `yaml:"preset" jsonschema:"description=Baseline selection within this group: recommended, all, or none."`
+				Level  configuration.Level  `yaml:"level" jsonschema:"description=Default diagnostic level for rules in this group."`
 			}{})
 			group.Version, group.ID = "", ""
 			group.Extras = map[string]any{"x-tombi-additional-key-label": "rule_name"}
@@ -212,18 +213,18 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}
 		mapping.Version, mapping.ID = "", ""
 		return mapping
-	case reflect.TypeFor[actionlint.ToolsConfig]():
+	case reflect.TypeFor[configuration.ToolsConfig]():
 		return toolsSchema(reflectMapping)
-	case reflect.TypeFor[actionlint.OutputFormats]():
+	case reflect.TypeFor[configuration.OutputFormats]():
 		values := make([]any, 0, len(output.FormatNames()))
 		for _, name := range output.FormatNames() {
 			values = append(values, name)
 		}
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
-	case reflect.TypeFor[actionlint.IgnorePatterns]():
+	case reflect.TypeFor[configuration.IgnorePatterns]():
 		// JSON Schema's regex format uses a different dialect from Go's regexp.
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string"}}
-	case reflect.TypeFor[map[string]actionlint.IgnorePatterns]():
+	case reflect.TypeFor[map[string]configuration.IgnorePatterns]():
 		return &jsonschema.Schema{
 			Type:   "object",
 			Extras: map[string]any{"x-tombi-additional-key-label": "file_pattern"},
@@ -232,8 +233,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 				{Type: "null"},
 			}},
 		}
-	case reflect.TypeFor[actionlint.RepositoryConfig]():
-		mapping := reflectMapping(actionlint.RepositoryWire{})
+	case reflect.TypeFor[configuration.RepositoryConfig]():
+		mapping := reflectMapping(configuration.RepositoryWire{})
 		mapping.Version, mapping.ID = "", ""
 		enterprise := reflectMapping(struct {
 			Kind    string `yaml:"kind" jsonschema:"required,enum=ghes,description=Identifies GitHub Enterprise Server."`
@@ -267,7 +268,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 			})
 		})
 		return mapping
-	case reflect.TypeFor[actionlint.JobTimeoutPolicy]():
+	case reflect.TypeFor[configuration.JobTimeoutPolicy]():
 		// The runtime type stores private state and accepts either a boolean or
 		// this mapping. Keep this in sync with JobTimeoutPolicy.UnmarshalYAML.
 		mapping := reflectMapping(struct {
@@ -291,21 +292,21 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		return mapping
 	case reflect.TypeFor[toolconfig.Backend]():
 		return definitionRef("backend")
-	case reflect.TypeFor[actionlint.PermissionLocationList]():
+	case reflect.TypeFor[configuration.PermissionLocationList]():
 		values := []any{}
-		for _, location := range actionlint.PermissionLocations() {
+		for _, location := range configuration.PermissionLocations() {
 			values = append(values, string(location))
 		}
 		location := &jsonschema.Schema{Type: "string", Enum: values}
 		return &jsonschema.Schema{AnyOf: []*jsonschema.Schema{location, {Type: "array", MinItems: new(uint64(1)), Items: location}}, Description: "Require permissions at every listed location. Use workflow, every-job, or a nonempty array. Omit require-at to accept permissions on the workflow or on every job. Set missing-permissions to off to disable the rule."}
-	case reflect.TypeFor[actionlint.PermissionsPolicy]():
+	case reflect.TypeFor[configuration.PermissionsPolicy]():
 		mapping := reflectMapping(struct {
 			Scope string `yaml:"scope" jsonschema:"enum=workflow,enum=job,default=workflow,description=Require a workflow-level declaration or a declaration on every job."`
 		}{})
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
-	case reflect.TypeFor[actionlint.SuppressionsPolicy]():
+	case reflect.TypeFor[configuration.SuppressionsPolicy]():
 		mapping := reflectMapping(struct {
 			Rules  []string `yaml:"rules" jsonschema:"minItems=1,description=Rule IDs whose inline exceptions are prohibited. Omit to select all suppressible rules."`
 			Report string   `yaml:"report" jsonschema:"enum=suppression,enum=violation,enum=all,default=all,description=Select suppression comments, original violations, or both for reporting."`
@@ -477,7 +478,7 @@ func generate() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := r.Reflect(actionlint.Config{})
+	s := r.Reflect(configuration.Config{})
 	s.Type = ""
 	s.AnyOf = []*jsonschema.Schema{{Type: "object", AdditionalProperties: jsonschema.TrueSchema}, {Type: "null"}}
 	overrides, _ := s.Properties.Get("overrides")
@@ -542,7 +543,7 @@ func generateNetworkPolicy() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := r.Reflect(actionlint.NetworkPolicyFile{})
+	s := r.Reflect(configuration.NetworkPolicyFile{})
 	s.ID = ""
 	s.Title = "actionlint network policy"
 	s.PatternProperties = map[string]*jsonschema.Schema{`^\$schema$`: {Type: "string"}}

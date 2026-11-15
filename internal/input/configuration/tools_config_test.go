@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
@@ -194,14 +194,14 @@ func TestUnknownToolNames(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registered rule rejected while loading %s: %v", text, err)
 		}
-		if err := repoconfig.ValidateToolNames(cfg); err == nil || !strings.Contains(err.Error(), "unknown tool") {
+		if err := configuration.ValidateToolNames(cfg); err == nil || !strings.Contains(err.Error(), "unknown tool") {
 			t.Fatalf("%s: analyzer name accepted as a tool: %v", text, err)
 		}
-		if err := repoconfig.ValidateToolNames(cfg, "pyflakes", "expression"); err != nil {
+		if err := configuration.ValidateToolNames(cfg, "pyflakes", "expression"); err != nil {
 			t.Fatalf("registered provider rejected in %s: %v", text, err)
 		}
 	}
-	if err := repoconfig.ValidateToolNames(&repoconfig.Config{Tools: repoconfig.ToolsConfig{"ruff": {}, "shellcheck": {}}}); err != nil {
+	if err := configuration.ValidateToolNames(&configuration.Config{Tools: configuration.ToolsConfig{"ruff": {}, "shellcheck": {}}}); err != nil {
 		t.Fatalf("bundled providers need no registration: %v", err)
 	}
 	// Input structure is validated before plugins load; names bind afterwards.
@@ -209,10 +209,10 @@ func TestUnknownToolNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay}); err == nil {
+	if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay}); err == nil {
 		t.Fatal("unregistered overlay tool accepted after binding")
 	}
-	if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay}, "pyflakes"); err != nil {
+	if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay}, "pyflakes"); err != nil {
 		t.Fatal(err)
 	}
 }

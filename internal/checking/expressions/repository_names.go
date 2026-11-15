@@ -5,7 +5,7 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
@@ -43,7 +43,7 @@ func unionNames(repository, environment []string) []string {
 }
 
 func jobReferenceNames(facts repository.Snapshot, job workflowdecl.JobView) ReferenceNames {
-	names := ReferenceNames{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)}
+	names := ReferenceNames{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)}
 	environment := job.Environment()
 	if !environment.Present() {
 		return names

@@ -53,7 +53,7 @@ func TestSnapshotExpressionVersionGlobs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
 
 			source := `on: push
@@ -65,7 +65,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)

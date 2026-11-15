@@ -5,7 +5,6 @@ import (
 	"unicode/utf8"
 
 	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -30,7 +29,7 @@ type Source struct {
 }
 
 func (s Source) valid() bool {
-	return s.Coordinates == sourcemodel.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == sourceid.Digest([]byte(s.Text))
+	return s.Coordinates == sourcemodel.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == sourcemodel.ContentDigest([]byte(s.Text))
 }
 
 type (

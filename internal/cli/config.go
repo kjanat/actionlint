@@ -9,7 +9,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
@@ -30,7 +30,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 			return err
 		}
 	}
-	if _, err := repoconfig.CompileIgnorePatterns(req.IgnoreRegex); err != nil {
+	if _, err := configuration.CompileIgnorePatterns(req.IgnoreRegex); err != nil {
 		return err
 	}
 	options, err := resolveTemplate(renderOptions{Template: req.Template, TemplateFile: req.TemplateFile})
@@ -51,10 +51,10 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 			return err
 		}
 	}
-	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, repoconfig.FormatYAML, streams.Acquisition)
+	return generateCommandConfig(ctx, streams.Stdout, req.JSON, req.Hyperlinks, configuration.FormatYAML, streams.Acquisition)
 }
 
-func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format repoconfig.FileFormat, acquisition plugininstall.Acquisition) error {
+func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hyperlinks hyperlinkMode, format configuration.FileFormat, acquisition plugininstall.Acquisition) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err

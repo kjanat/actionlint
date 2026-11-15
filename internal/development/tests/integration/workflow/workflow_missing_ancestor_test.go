@@ -42,7 +42,7 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 				for _, name := range []string{"New", "Old", "Outside", "Missing"} {
 					t.Run(roots[0]+name, func(t *testing.T) {
 						t.Parallel()
-						result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
+						result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.InputFile{
 							{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},
 							{Path: filepath.Join(base, "outside/.github/workflows/build.yml"), Content: []byte("name: Outside\n" + testutil.GoodWorkflow), Project: project},
 							{Path: filepath.Join(roots[0], ".github/workflows/consumer.yml"), Content: []byte(workflowRunConsumer(name)), Project: project},
@@ -62,7 +62,7 @@ func TestWorkflowRunMissingAncestorAlias(t *testing.T) {
 				// Different contents supplied under two spellings of the same path conflict.
 				t.Run(roots[0]+"Conflict", func(t *testing.T) {
 					t.Parallel()
-					_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
+					_, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.InputFile{
 						{Path: filepath.Join(roots[1], ".github/workflows/build.yml"), Content: []byte("name: Old\n" + testutil.GoodWorkflow), Project: project},
 						{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},
 						{Path: filepath.Join(roots[0], ".github/workflows/consumer.yml"), Content: []byte(workflowRunConsumer("New")), Project: project},

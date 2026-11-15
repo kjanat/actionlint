@@ -1,11 +1,11 @@
-package config_test
+package configuration_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestRepositoryRelativeConfigAliasBoundaries(t *testing.T) {
@@ -22,7 +22,7 @@ func TestRepositoryRelativeConfigAliasBoundaries(t *testing.T) {
 		{filepath.Join(root, "..", "missing", "ci.yml"), filepath.Join("..", "missing", "ci.yml")},
 		{"./ci.yml", "./ci.yml"},
 	} {
-		if got := repoconfig.RepositoryRelativePath(tc.path, root); got != tc.want {
+		if got := configuration.RepositoryRelativePath(tc.path, root); got != tc.want {
 			t.Fatalf("path %q: got %q, want %q", tc.path, got, tc.want)
 		}
 	}

@@ -40,7 +40,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("session %s: %+v, %v", path, result, err)
 				}
-				result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: parent}, []workspace.Source{{Path: path, Content: []byte(source), Project: workspace.Identity(root), Config: cfg}})
+				result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: parent}, []workspace.InputFile{{Path: path, Content: []byte(source), Project: workspace.Identity(root), Config: cfg}})
 				if err != nil || result.FileCount != 1 || len(result.Diagnostics) != want {
 					t.Fatalf("direct %s: %+v, %v", path, result, err)
 				}

@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
@@ -13,13 +13,13 @@ import (
 // DefaultPluginOptions selects registry defaults for tools without an explicit
 // native command. Configured backends and disabled tools take precedence.
 type DefaultPluginOptions struct {
-	RuleSet config.RuleSet
+	RuleSet configuration.RuleSet
 	// Tools lists the bundled tool ids that run their default command in
 	// this invocation. Each may receive a default plugin declaration; ids
 	// the invocation selected or disabled explicitly are left out.
 	Tools    []string
 	Warning  func(string)
-	Overlays []config.Overlay
+	Overlays []configuration.Overlay
 	// Rules supplies already inspected plugin descriptors. Missing descriptors
 	// are read from local or cached provider manifests, never by executing guests.
 	Rules       []rule.Descriptor
@@ -31,7 +31,7 @@ type DefaultPluginOptions struct {
 // It declares, in bundled directory order, the registry plugin named after
 // each bundled tool in options.Tools that configuration leaves enabled and
 // on its default backend.
-func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]pluginreference.Reference, error) {
+func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) ([]pluginreference.Reference, error) {
 	if cfg.Plugins != nil {
 		return slices.Clone(cfg.Plugins), nil
 	}
@@ -45,11 +45,11 @@ func DefaultReferences(cfg *config.Config, options DefaultPluginOptions) ([]plug
 		if !slices.Contains(options.Tools, id) {
 			continue
 		}
-		candidates, err := config.ConfigCandidates(id, cfg)
+		candidates, err := configuration.ConfigCandidates(id, cfg)
 		if err != nil {
 			return nil, err
 		}
-		if !slices.ContainsFunc(candidates, func(candidate *config.Config) bool {
+		if !slices.ContainsFunc(candidates, func(candidate *configuration.Config) bool {
 			tool := candidate.Tools[id]
 			return tool.Backend == nil && (tool.Enabled == nil || *tool.Enabled) && options.RuleSet.DiagnosticLevel(candidate, id) != "off"
 		}) {

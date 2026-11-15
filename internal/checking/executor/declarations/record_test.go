@@ -7,7 +7,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -18,7 +18,7 @@ import (
 func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 	t.Parallel()
 	declaration := rule.Declaration{Name: "native-record", Category: "correctness"}
-	rules, err := repoconfig.NewRuleSet([]rule.Declaration{declaration})
+	rules, err := configuration.NewRuleSet([]rule.Declaration{declaration})
 	if err != nil {
 		t.Fatal(err)
 	}

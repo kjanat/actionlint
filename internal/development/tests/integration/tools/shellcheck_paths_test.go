@@ -8,7 +8,7 @@ import (
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
@@ -18,8 +18,8 @@ func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: root,
 
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: testutil.RequireTool(t, "shellcheck"), Process: &processconfig.Options{Arguments: []string{"--check-sourced"}}}}),
-	}, []workspace.Source{{Path: "workflow.yml", Content: []byte(`on: push
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: testutil.RequireTool(t, "shellcheck"), Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}),
+	}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

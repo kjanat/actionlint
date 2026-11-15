@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -23,7 +24,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 			writeToolFixture(t, root, "left.yml", "extends: [base.yml]\n")
 			writeToolFixture(t, root, "right.yml", "extends: [base.yml]\n")
 			leaf := writeToolFixture(t, root, "leaf.yml", "extends: [left.yml, right.yml]\n"+replacement+"\n")
-			inspection, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: leaf}, true)
+			inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: leaf}, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -42,8 +43,8 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				var report repoconfig.Report
-				session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, OnConfigLoaded: func(r repoconfig.Report) { report = r }, Rules: checking.ConfigurationRules()})
+				var report configreport.Report
+				session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []configuration.Overlay{overlay}, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -54,7 +55,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 					t.Fatalf("overlay changed source warnings: %+v, want %+v", report.Inspection.Warnings, inspection.Warnings)
 				}
 				var log bytes.Buffer
-				session, err = workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []repoconfig.Overlay{overlay}, LogWriter: &log, Rules: checking.ConfigurationRules()})
+				session, err = workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: []configuration.Overlay{overlay}, LogWriter: &log, Rules: checking.ConfigurationRules()})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -84,7 +85,7 @@ config-secrets: [SECRET]
 	for _, overlayText := range []string{"", "policy: {require-commit-hash: false}", "config-variables: [OVERLAY]"} {
 		t.Run(overlayText, func(t *testing.T) {
 			t.Parallel()
-			var overlays []repoconfig.Overlay
+			var overlays []configuration.Overlay
 			if overlayText != "" {
 				overlay, err := checking.ConfigurationRules().ParseOverlay("config", []byte(overlayText))
 				if err != nil {
@@ -92,8 +93,8 @@ config-secrets: [SECRET]
 				}
 				overlays = append(overlays, overlay)
 			}
-			var report repoconfig.Report
-			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r repoconfig.Report) { report = r }, Rules: checking.ConfigurationRules()})
+			var report configreport.Report
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: leaf, ConfigOverlays: overlays, OnConfigLoaded: func(r configreport.Report) { report = r }, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -140,7 +141,7 @@ func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
 			line := "policy: {require-commit-hash: " + value + "}"
 			base := writeToolFixture(t, root, "base.yml", "# source policy\n"+line+"\n")
 			leaf := writeToolFixture(t, root, "leaf.yml", "extends: [base.yml]\nconfig-variables: [SAFE]\n")
-			inspection, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: leaf}, true)
+			inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: leaf}, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -148,11 +149,11 @@ func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
 			if value == "null" {
 				state = "null"
 			}
-			want := repoconfig.Origin{File: base, Source: "config", State: state, Line: 2, Column: strings.Index(line, value) + 1}
+			want := configreport.Origin{File: base, Source: "config", State: state, Line: 2, Column: strings.Index(line, value) + 1}
 			if got := inspection.Origins[pointer]; got != want {
 				t.Fatalf("origin=%+v, want %+v", got, want)
 			}
-			if got, exists := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; exists && got != (repoconfig.Origin{Source: "default", State: "missing"}) {
+			if got, exists := inspection.Origins["/lint/rules/correctness/expression-reference/level"]; exists && got != (configreport.Origin{Source: "default", State: "missing"}) {
 				t.Fatalf("implicit knowledge level acquired a source origin: %+v", got)
 			}
 			cfg, err := checking.ConfigurationRules().Load(leaf)

@@ -25,7 +25,7 @@ type SourceSnapshot struct{ admission *admission }
 // afterwards.
 type admission struct {
 	registry  *SourceSnapshots
-	captured  capture.Snapshot
+	captured  capture.CapturedDocument
 	reference source.Reference
 	action    bool
 	bound     *workflowdecl.Bound
@@ -49,9 +49,9 @@ func (s SourceSnapshot) Content() []byte {
 	return s.admission.captured.Bytes()
 }
 
-func (s SourceSnapshot) Capture() capture.Snapshot {
+func (s SourceSnapshot) Capture() capture.CapturedDocument {
 	if s.admission == nil {
-		return capture.Snapshot{}
+		return capture.CapturedDocument{}
 	}
 	return s.admission.captured
 }
@@ -89,16 +89,16 @@ func NewSourceSnapshots(store *capture.Store) (*SourceSnapshots, error) {
 }
 
 // Capture looks up already-captured bytes without canonicalizing or reading.
-func (s *SourceSnapshots) Capture(path string) (capture.Snapshot, error) {
+func (s *SourceSnapshots) Capture(path string) (capture.CapturedDocument, error) {
 	if s == nil || s.store == nil {
-		return capture.Snapshot{}, errors.New("source declarations require a capture store")
+		return capture.CapturedDocument{}, errors.New("source declarations require a capture store")
 	}
 	captured, state, err := s.store.Lookup(path)
 	if err != nil {
-		return capture.Snapshot{}, err
+		return capture.CapturedDocument{}, err
 	}
 	if state != capture.Captured {
-		return capture.Snapshot{}, fmt.Errorf("source %q has no captured revision", path)
+		return capture.CapturedDocument{}, fmt.Errorf("source %q has no captured revision", path)
 	}
 	return captured, nil
 }
@@ -157,7 +157,7 @@ func (s *SourceSnapshots) storedLocked(document, revision string, action bool) (
 
 // Document returns canonical declarations for this source revision.
 // Repeated decodes share the existing immutable binding.
-func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document) (SourceSnapshot, error) {
+func (s *SourceSnapshots) Document(captured capture.CapturedDocument, document Document) (SourceSnapshot, error) {
 	record := document.Provenance.record
 	if record == nil {
 		return SourceSnapshot{}, errors.New("source document has no parse provenance")
@@ -168,7 +168,7 @@ func (s *SourceSnapshots) Document(captured capture.Snapshot, document Document)
 	return s.bind(captured, record)
 }
 
-func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
+func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *actionmeta.Metadata) (SourceSnapshot, error) {
 	if metadata == nil {
 		return SourceSnapshot{}, errors.New("action metadata is unavailable")
 	}
@@ -201,7 +201,7 @@ func (s *SourceSnapshots) Action(captured capture.Snapshot, metadata *actionmeta
 	return s.bind(captured, record)
 }
 
-func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) error {
+func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []byte) error {
 	if s == nil || s.store == nil {
 		return errors.New("source declarations require a capture store")
 	}
@@ -214,7 +214,7 @@ func (s *SourceSnapshots) verify(captured capture.Snapshot, content []byte) erro
 	return nil
 }
 
-func (s *SourceSnapshots) bind(captured capture.Snapshot, record *workflowdecl.Record) (SourceSnapshot, error) {
+func (s *SourceSnapshots) bind(captured capture.CapturedDocument, record *workflowdecl.Record) (SourceSnapshot, error) {
 	if err := s.verify(captured, []byte(record.Text())); err != nil {
 		return SourceSnapshot{}, err
 	}

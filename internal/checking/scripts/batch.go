@@ -11,7 +11,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/invocations"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -72,8 +72,8 @@ type Scope struct {
 	Reader   *files.Reader // records the filesystem reads tools make in this scope
 	// Config is a host-owned prepared value. Internal consumers treat it as read-only;
 	// Tool detaches selected settings before invoking a registered Runner.
-	Config           *repoconfig.Config
-	ConfigProvenance repoconfig.Provenance
+	Config           *configuration.Config
+	ConfigProvenance configuration.Provenance
 	Deployment       Deployment
 	Composite        bool
 	Context          invocation.Context

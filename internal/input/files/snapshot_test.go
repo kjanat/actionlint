@@ -152,7 +152,7 @@ func TestSnapshotResolvesSymlinksBeforeParents(t *testing.T) {
 func TestSnapshotBudgetIsSharedAndCannotBeIgnored(t *testing.T) {
 	t.Parallel()
 	budget := &SnapshotBudget{}
-	var snapshots []*SnapshotFS
+	var snapshots []*BoundedFS
 	for range 2 {
 		root := t.TempDir()
 		if err := os.WriteFile(filepath.Join(root, "source.sh"), bytes.Repeat([]byte("x"), 5<<20), 0o600); err != nil {

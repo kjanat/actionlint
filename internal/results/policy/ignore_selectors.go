@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -24,7 +24,7 @@ func CompileIgnoreSelectors(values []string) (IgnoreSelectors, error) {
 	return IgnoreSelectors{selectors: append([]string(nil), values...)}, nil
 }
 
-func (selectors IgnoreSelectors) matches(rules repoconfig.RuleSet, diagnostic results.Diagnostic) bool {
+func (selectors IgnoreSelectors) matches(rules configuration.RuleSet, diagnostic results.Diagnostic) bool {
 	for _, selector := range selectors.selectors {
 		if rules.ResolveAlias(selector) == rules.ResolveAlias(diagnostic.Rule) || diagnostic.Code != "" && selector == diagnostic.Code {
 			return true

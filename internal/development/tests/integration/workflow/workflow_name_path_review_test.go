@@ -35,7 +35,7 @@ jobs:
     steps: [{run: echo ok}]
 permissions: {}
 `
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.Source{
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: roots[0]}, []workspace.InputFile{
 					{Path: ".github/workflows/build.yml", Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},
 					{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
 				})
@@ -71,7 +71,7 @@ jobs:
     steps: [{run: echo ok}]
 permissions: {}
 `
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: workspace.Identity(root)}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: workspace.Identity(root)}})
 				if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "glob" || result.Diagnostics[0].Start.Line != 3 {
 					t.Fatalf("expected glob finding on line 3: %+v, %v", result.Diagnostics, err)
 				}
@@ -108,7 +108,7 @@ jobs:
     steps: [{run: echo ok}]
 permissions: {}
 `
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{
 					{Path: ".github/workflows/consumer.yml", Content: []byte(strings.ReplaceAll(source, "\n", ending)), Project: project},
 					{Path: ".github/workflows/build.yml", Content: []byte("name: Build CI\n" + testutil.GoodWorkflow), Project: project},
 					{Path: ".github/workflows/backslash.yml", Content: []byte("name: 'Build\\nCI'\n" + testutil.GoodWorkflow), Project: project},

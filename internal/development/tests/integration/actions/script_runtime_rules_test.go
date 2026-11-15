@@ -44,7 +44,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 					if parseErr != nil {
 						t.Fatal(parseErr)
 					}
-					result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "action.yml", Content: []byte(action), Config: config}})
+					result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "action.yml", Content: []byte(action), Config: config}})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -90,7 +90,7 @@ func TestScriptRuntimePublicGPGAction(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "action.yml", Content: content, Config: config}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "action.yml", Content: content, Config: config}})
 			if err != nil {
 				t.Fatal(err)
 			}

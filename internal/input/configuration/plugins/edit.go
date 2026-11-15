@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
@@ -25,7 +25,7 @@ func References(value any) ([]pluginreference.Reference, bool, error) {
 	if !exists {
 		return nil, false, nil
 	}
-	var declarations config.PluginDeclarations
+	var declarations configuration.PluginDeclarations
 	if err := declarations.DecodeConfig(raw); err != nil {
 		return nil, true, binding.At("plugins", err)
 	}

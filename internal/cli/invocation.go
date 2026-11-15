@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -27,7 +27,7 @@ type invocation struct {
 	Origin         bool
 	MigrationWrite bool
 	MigrationCheck bool
-	ConfigFormat   repoconfig.FileFormat
+	ConfigFormat   configuration.FileFormat
 	Rule           string
 	Shell          string
 }
@@ -51,7 +51,7 @@ type checkInvocation struct {
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool
 	Paths                 []string
-	Config                repoconfig.Selection
+	Config                configuration.Selection
 	StdinFilename         string
 	IgnoreRegex           []string
 	IgnoreSelectors       []string

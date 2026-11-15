@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestOverlayBeforePluginsDefersOnlyRuleNames(t *testing.T) {
@@ -13,14 +13,14 @@ func TestOverlayBeforePluginsDefersOnlyRuleNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay})
+	cfg, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg); err == nil {
+	if _, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg); err == nil {
 		t.Fatal("unregistered rule survived final configuration binding")
 	}
-	if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []repoconfig.Overlay{overlay}, "example"); err != nil {
+	if _, _, err := checking.ConfigurationRules().Overlaid(nil, nil, []configuration.Overlay{overlay}, "example"); err != nil {
 		t.Fatal(err)
 	}
 	for _, invalid := range []string{

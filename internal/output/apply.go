@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
 
@@ -52,7 +52,7 @@ func ApplyEdits(ctx context.Context, p edits.Plan, reader *files.Reader) (writte
 		if err != nil {
 			return err
 		}
-		if sourceid.Digest(data) != c.Revision || string(data) != c.Before {
+		if source.ContentDigest(data) != c.Revision || string(data) != c.Before {
 			return fmt.Errorf("source changed since fix preview: %s", c.Path)
 		}
 		return nil

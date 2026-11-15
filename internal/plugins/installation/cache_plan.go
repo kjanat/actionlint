@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
@@ -41,7 +41,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 			paths = append(paths, module.Path())
 		}
 	}
-	addTools := func(tools config.ToolsConfig) {
+	addTools := func(tools configuration.ToolsConfig) {
 		for _, name := range slices.Sorted(maps.Keys(tools)) {
 			add(tools[name].Backend)
 		}

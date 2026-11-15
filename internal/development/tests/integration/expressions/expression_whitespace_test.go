@@ -65,9 +65,9 @@ jobs:
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: source, Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: source, Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)
@@ -89,7 +89,7 @@ func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
 
 			source := `on: push
@@ -100,7 +100,7 @@ jobs:
     steps:
       - run: echo ok
 ` + "\npermissions: {}\n"
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)
@@ -125,7 +125,7 @@ jobs:
       - run: echo ok
 ` + "\npermissions: {}\n"
 	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-	sources := []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
+	sources := []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, sources))
 	if err != nil {
 		t.Fatal(err)

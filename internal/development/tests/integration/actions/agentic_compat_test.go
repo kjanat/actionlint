@@ -59,7 +59,7 @@ func TestAgenticWorkflowCompiledLockDiscoveryAndAnalysis(t *testing.T) {
 	}
 }
 
-func workflowSourcePaths(sources []workspace.Source) []string {
+func workflowSourcePaths(sources []workspace.InputFile) []string {
 	result := make([]string, len(sources))
 	for i, source := range sources {
 		result[i] = source.Path

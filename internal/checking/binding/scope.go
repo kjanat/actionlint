@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 )
 
@@ -17,8 +17,8 @@ import (
 type Rule struct {
 	scope      *Scope
 	id         bindingmodel.ID
-	execution  *config.Config
-	policy     *config.Config
+	execution  *configuration.Config
+	policy     *configuration.Config
 	options    json.RawMessage
 	optionsErr error
 }
@@ -36,7 +36,7 @@ func (r *Rule) ID() bindingmodel.ID { return r.id }
 
 // Registry owns every prepared decision for one entry analysis.
 type Registry struct {
-	rules     config.RuleSet
+	rules     configuration.RuleSet
 	records   []*Rule
 	namespace bindingmodel.Namespace
 	sealed    bool
@@ -55,11 +55,11 @@ func (r *Registry) Seal() *Snapshot {
 }
 
 // NewRegistry creates an analysis-owned configuration binding registry.
-func NewRegistry(rules config.RuleSet) *Registry {
+func NewRegistry(rules configuration.RuleSet) *Registry {
 	return &Registry{rules: rules, namespace: bindingmodel.NewNamespace()}
 }
 
-func (r *Registry) add(execution, policy *config.Config) *Rule {
+func (r *Registry) add(execution, policy *configuration.Config) *Rule {
 	decision := &Rule{id: r.namespace.ID(uint64(len(r.records)) + 1), execution: execution, policy: policy}
 	r.records = append(r.records, decision)
 	return decision
@@ -78,10 +78,10 @@ func (r *Snapshot) Lookup(id bindingmodel.ID) (*Rule, bool) {
 }
 
 // Config returns the resolved execution settings. Consumers must not mutate them.
-func (r *Rule) Config() *config.Config { return r.execution }
+func (r *Rule) Config() *configuration.Config { return r.execution }
 
 // Policy returns resolved notification settings, including an entry lint-off override.
-func (r *Rule) Policy() *config.Config { return r.policy }
+func (r *Rule) Policy() *configuration.Config { return r.policy }
 
 // Scope returns the occurrence's prepared configuration roles.
 func (r *Rule) Scope() *Scope { return r.scope }
@@ -89,17 +89,17 @@ func (r *Rule) Scope() *Scope { return r.scope }
 // Scope owns the prepared rule decisions for one source within an entry analysis.
 // Its maps are private and are never changed after construction.
 type Scope struct {
-	rules     config.RuleSet
+	rules     configuration.RuleSet
 	bindings  map[string]*Rule
 	fallback  *Rule
-	source    *config.Config
-	composite *config.Config
-	caller    *config.Config
+	source    *configuration.Config
+	composite *configuration.Config
+	caller    *configuration.Config
 }
 
 // Prepare binds all declared rules. The caller owns configuration resolution;
 // source and composite projections can differ even for the same document.
-func (r *Registry) Prepare(caller, source, composite *config.Config) *Scope {
+func (r *Registry) Prepare(caller, source, composite *configuration.Config) *Scope {
 	if r.sealed {
 		panic("configuration binding registry is sealed")
 	}
@@ -144,15 +144,15 @@ func (s *Scope) Rule(name string) *Rule {
 }
 
 // DiagnosticLevel reads the policy selected when this occurrence was prepared.
-func (s *Scope) DiagnosticLevel(name string) config.Level {
+func (s *Scope) DiagnosticLevel(name string) configuration.Level {
 	return s.rules.DiagnosticLevel(s.Rule(name).policy, name)
 }
 
 // Source returns the projection governing source suppressions.
-func (s *Scope) Source() *config.Config { return s.source }
+func (s *Scope) Source() *configuration.Config { return s.source }
 
 // Composite returns the resolved invocation settings for script collection.
-func (s *Scope) Composite() *config.Config { return s.composite }
+func (s *Scope) Composite() *configuration.Config { return s.composite }
 
 // Caller returns the entry settings governing dependency blocking and path filters.
-func (s *Scope) Caller() *config.Config { return s.caller }
+func (s *Scope) Caller() *configuration.Config { return s.caller }

@@ -14,7 +14,6 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -62,7 +61,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 	}
 	type doctorItem struct {
 		name, command string
-		options       *processconfig.Options
+		options       *hostprocess.CommandOptions
 		manifest      *pluginmanifests.Manifest
 	}
 	items := make([]doctorItem, 0, len(manifests)+1)
@@ -71,7 +70,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 		items = append(items, doctorItem{manifests[i].Rule.Name, selection.Command, selection.Process, &manifests[i]})
 	}
 	if req.ResolverCommand != "" {
-		items = append(items, doctorItem{"resolver", req.ResolverCommand, &processconfig.Options{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}, nil})
+		items = append(items, doctorItem{"resolver", req.ResolverCommand, &hostprocess.CommandOptions{Executable: &req.ResolverCommand, Arguments: req.ResolverArguments}, nil})
 	}
 	for _, item := range items {
 		if item.options != nil && item.options.Executable != nil {
@@ -79,7 +78,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 		}
 		tool := doctorTool{Name: item.name, Command: item.command, Status: "disabled"}
 		if item.command != "" {
-			tool.Path, tool.Arguments, err = processconfig.ResolveOptions(item.command, item.options)
+			tool.Path, tool.Arguments, err = hostprocess.ResolveCommandOptions(item.command, item.options)
 			tool.Status = "available"
 			if err == nil && item.manifest != nil && item.options != nil && item.options.Optional {
 				err = probeDoctorVersion(ctx, *item.manifest, item.command, item.options)
@@ -150,7 +149,7 @@ func checkDoctorTools(manifests []pluginmanifests.Manifest, named []string) erro
 // probeDoctorVersion runs the manifest's version probe against command, as
 // analysis does before it uses an automatically discovered tool. A provider
 // without a version probe passes.
-func probeDoctorVersion(ctx context.Context, manifest pluginmanifests.Manifest, command string, options *processconfig.Options) error {
+func probeDoctorVersion(ctx context.Context, manifest pluginmanifests.Manifest, command string, options *hostprocess.CommandOptions) error {
 	if manifest.Process == nil || manifest.Process.Version == nil {
 		return nil
 	}

@@ -1,4 +1,4 @@
-package config_test
+package configuration_test
 
 import (
 	"encoding/json"
@@ -8,10 +8,10 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
-func resolveRules(t *testing.T, presets repoconfig.Presets, config *repoconfig.Config, descriptors ...rule.Descriptor) *repoconfig.Config {
+func resolveRules(t *testing.T, presets configuration.Presets, config *configuration.Config, descriptors ...rule.Descriptor) *configuration.Config {
 	t.Helper()
 	resolved, err := checking.ConfigurationRules().ResolveRules(presets, config, descriptors...)
 	if err != nil {
@@ -22,20 +22,20 @@ func resolveRules(t *testing.T, presets repoconfig.Presets, config *repoconfig.C
 
 func TestCategoryBindingProgrammaticAliases(t *testing.T) {
 	t.Parallel()
-	setting, err := repoconfig.NewSetting("warn", map[string]int{"max-minutes": 12})
+	setting, err := configuration.NewSetting("warn", map[string]int{"max-minutes": 12})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := &repoconfig.Config{}
-	cfg.Lint.Rules.Policy = repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"require-job-timeout": setting})
-	cfg.Lint.Rules.Conventions = repoconfig.NewGroup("", "error", nil)
-	resolved := resolveRules(t, repoconfig.Presets{Strict: true}, cfg)
+	cfg := &configuration.Config{}
+	cfg.Lint.Rules.Policy = configuration.NewGroup("", "", map[string]configuration.Setting{"require-job-timeout": setting})
+	cfg.Lint.Rules.Conventions = configuration.NewGroup("", "error", nil)
+	resolved := resolveRules(t, configuration.Presets{Strict: true}, cfg)
 	maximum, known := resolved.RequiresJobTimeout().MaxMinutes()
 	if !known || maximum != 12 || checking.ConfigurationRules().DiagnosticLevel(resolved, "job-timeout") != "warn" || checking.ConfigurationRules().DiagnosticLevel(resolved, "require-job-timeout") != "warn" {
 		t.Fatal("canonical category baseline replaced explicit legacy alias")
 	}
-	cfg.Lint.Rules.Policy = repoconfig.NewGroup("", "", map[string]repoconfig.Setting{"require-job-timeout": setting, "job-timeout": setting})
-	if _, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg); err == nil || !strings.Contains(err.Error(), "duplicate rule aliases") {
+	cfg.Lint.Rules.Policy = configuration.NewGroup("", "", map[string]configuration.Setting{"require-job-timeout": setting, "job-timeout": setting})
+	if _, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg); err == nil || !strings.Contains(err.Error(), "duplicate rule aliases") {
 		t.Fatalf("duplicate aliases accepted: %v", err)
 	}
 }
@@ -53,7 +53,7 @@ func TestCategoryBindingValidatesHiddenInheritedRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	descriptor := rule.Descriptor{Name: "community-check", Category: "security", Maturity: "stable"}
-	if _, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, loaded.Config, descriptor); err == nil || !strings.Contains(err.Error(), "base.yml") || !strings.Contains(err.Error(), "lint.rules.security") {
+	if _, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, loaded.Config, descriptor); err == nil || !strings.Contains(err.Error(), "base.yml") || !strings.Contains(err.Error(), "lint.rules.security") {
 		t.Fatalf("hidden inherited category mismatch accepted: %v", err)
 	}
 }
@@ -68,7 +68,7 @@ func TestCategoryBindingPluginOptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved := resolveRules(t, repoconfig.Presets{}, cfg, descriptor)
+	resolved := resolveRules(t, configuration.Presets{}, cfg, descriptor)
 	if got := checking.ConfigurationRules().DiagnosticLevel(resolved, descriptor.Name); got != "error" {
 		t.Fatalf("level: %s", got)
 	}
@@ -117,7 +117,7 @@ func TestCategoryBindingFailures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("structural decode rejected deferred binding: %v", err)
 			}
-			if _, err := checking.ConfigurationRules().ResolveRules(repoconfig.Presets{}, cfg, tc.descriptors...); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg, tc.descriptors...); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("got %v, want %q", err, tc.want)
 			}
 		})
@@ -130,21 +130,21 @@ func TestCategoryBindingNurserySelection(t *testing.T) {
 		descriptor := rule.Descriptor{Name: "community-check", Category: "correctness", Provider: "community", Maturity: maturity, Recommended: true}
 		for _, tc := range []struct {
 			rules   string
-			presets repoconfig.Presets
-			want    repoconfig.Level
+			presets configuration.Presets
+			want    configuration.Level
 		}{
-			{"{}", repoconfig.Presets{}, "off"},
-			{"{preset: recommended}", repoconfig.Presets{}, "off"},
-			{"{preset: all}", repoconfig.Presets{}, "off"},
-			{"{correctness: all}", repoconfig.Presets{}, "off"},
-			{"{correctness: warn}", repoconfig.Presets{}, "off"},
-			{"{nursery: all}", repoconfig.Presets{}, "on"},
-			{"{nursery: warn}", repoconfig.Presets{}, "warn"},
-			{"{}", repoconfig.Presets{Strict: true}, "off"},
-			{"{}", repoconfig.Presets{Experimental: new(true)}, "on"},
-			{"{correctness: {community-check: warn}}", repoconfig.Presets{}, "warn"},
-			{"{correctness: {community-check: off}}", repoconfig.Presets{Experimental: new(true)}, "off"},
-			{"{correctness: {community-check: warn}}", repoconfig.Presets{Experimental: new(false)}, "off"},
+			{"{}", configuration.Presets{}, "off"},
+			{"{preset: recommended}", configuration.Presets{}, "off"},
+			{"{preset: all}", configuration.Presets{}, "off"},
+			{"{correctness: all}", configuration.Presets{}, "off"},
+			{"{correctness: warn}", configuration.Presets{}, "off"},
+			{"{nursery: all}", configuration.Presets{}, "on"},
+			{"{nursery: warn}", configuration.Presets{}, "warn"},
+			{"{}", configuration.Presets{Strict: true}, "off"},
+			{"{}", configuration.Presets{Experimental: new(true)}, "on"},
+			{"{correctness: {community-check: warn}}", configuration.Presets{}, "warn"},
+			{"{correctness: {community-check: off}}", configuration.Presets{Experimental: new(true)}, "off"},
+			{"{correctness: {community-check: warn}}", configuration.Presets{Experimental: new(false)}, "off"},
 		} {
 			t.Run(maturity+"/"+tc.rules+"/"+string(tc.want), func(t *testing.T) {
 				t.Parallel()

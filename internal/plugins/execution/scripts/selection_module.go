@@ -4,18 +4,18 @@ import (
 	"errors"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 // AllowsModule reports whether invocation settings permit configured Wasm selection.
-func AllowsModule(name, requested string, explicit *processconfig.Options) bool {
+func AllowsModule(name, requested string, explicit *process.CommandOptions) bool {
 	return requested == name && (explicit == nil || !explicit.IgnoreConfig && (explicit.Optional || explicit.AllowWasm))
 }
 
 // Module returns the configured module unless an explicit process choice overrides it.
-func Module(name, requested string, explicit *processconfig.Options, cfg *config.Config) *toolconfig.Module {
+func Module(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config) *toolconfig.Module {
 	if cfg == nil || !AllowsModule(name, requested, explicit) {
 		return nil
 	}
@@ -27,7 +27,7 @@ func Module(name, requested string, explicit *processconfig.Options, cfg *config
 }
 
 // Load resolves a configured WebAssembly module through the invocation loader.
-func Load(name, requested string, explicit *processconfig.Options, cfg *config.Config, load func(string) (checkinputs.ScriptBackend, error)) (checkinputs.ScriptBackend, error) {
+func Load(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, load func(string) (checkinputs.ScriptBackend, error)) (checkinputs.ScriptBackend, error) {
 	module := Module(name, requested, explicit, cfg)
 	if module == nil {
 		return nil, nil

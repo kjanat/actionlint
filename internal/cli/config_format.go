@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strconv"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/spf13/cobra"
 )
 
 type configFormatFlag struct {
-	selected *repoconfig.FileFormat
-	format   repoconfig.FileFormat
+	selected *configuration.FileFormat
+	format   configuration.FileFormat
 }
 
 func (flag *configFormatFlag) Set(value string) error {
@@ -37,7 +37,7 @@ func (flag *configFormatFlag) String() string {
 func (*configFormatFlag) Type() string { return "bool" }
 
 func (a *commandApp) configInitFlags(command *cobra.Command) {
-	for _, format := range repoconfig.FileFormats() {
+	for _, format := range configuration.FileFormats() {
 		name := string(format)
 		command.Flags().Var(&configFormatFlag{selected: &a.inv.ConfigFormat, format: format}, name, "Create "+format.Filename())
 		command.Flags().Lookup(name).NoOptDefVal = "true"

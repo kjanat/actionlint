@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -127,7 +127,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				Runners:   runner.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runner.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
 				Analyzers: []checkinputs.Registration{{Checker: observer}},
-			}, []workspace.Source{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
+			}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,13 +154,13 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	t.Parallel()
 	observer := &runtimeObserver{}
 	label := "self-32vcpu-windows-2022"
-	cfg, err := (config.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
+	cfg, err := (configuration.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: observer}}}, []workspace.Source{{
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: observer}}}, []workspace.InputFile{{
 			Path:    "workflow.yml",
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
 			Config:  cfg,

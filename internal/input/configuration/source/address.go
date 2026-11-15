@@ -1,5 +1,4 @@
-// Package address resolves configuration source addresses without acquiring bytes.
-package address
+package source
 
 import (
 	"errors"
@@ -10,15 +9,15 @@ import (
 	"strings"
 )
 
-// Remote reports whether name uses the HTTPS configuration source scheme.
+// IsRemoteAddress reports whether name uses the HTTPS configuration source scheme.
 // Normalize must still validate the complete address before it is read.
-func Remote(name string) bool {
+func IsRemoteAddress(name string) bool {
 	return strings.HasPrefix(strings.ToLower(name), "https:")
 }
 
-// Normalize validates an HTTPS address or returns an absolute local filename.
+// NormalizeAddress validates an HTTPS address or returns an absolute local filename.
 // Queries belong to remote identity; fragments and credentials are forbidden.
-func Normalize(name string) (string, error) {
+func NormalizeAddress(name string) (string, error) {
 	if strings.TrimSpace(name) == "" || strings.ContainsRune(name, 0) {
 		return "", errors.New("config source requires a nonempty address without NUL")
 	}
@@ -39,13 +38,13 @@ func Normalize(name string) (string, error) {
 	return filepath.Abs(name)
 }
 
-// Resolve interprets a dependency relative to its declaring source. Remote
+// ResolveAddress interprets a dependency relative to its declaring source. Remote
 // sources resolve URL references; they cannot reach local filesystem addresses.
-func Resolve(origin, reference string) (string, error) {
+func ResolveAddress(origin, reference string) (string, error) {
 	if strings.TrimSpace(reference) == "" || strings.ContainsRune(reference, 0) {
 		return "", errors.New("extends requires a nonempty source address without NUL")
 	}
-	if Remote(origin) {
+	if IsRemoteAddress(origin) {
 		if strings.Contains(reference, "#") {
 			return "", errors.New("extends URL references cannot contain fragments")
 		}
@@ -58,15 +57,15 @@ func Resolve(origin, reference string) (string, error) {
 			return "", err
 		}
 		if next.IsAbs() {
-			if _, err := Normalize(reference); err != nil {
+			if _, err := NormalizeAddress(reference); err != nil {
 				return "", err
 			}
 			return reference, nil
 		}
-		return Normalize(base.ResolveReference(next).String())
+		return NormalizeAddress(base.ResolveReference(next).String())
 	}
 	if hasScheme(reference) {
-		if _, err := Normalize(reference); err != nil {
+		if _, err := NormalizeAddress(reference); err != nil {
 			return "", err
 		}
 		return reference, nil
@@ -74,16 +73,16 @@ func Resolve(origin, reference string) (string, error) {
 	if !filepath.IsAbs(reference) {
 		reference = filepath.Join(filepath.Dir(origin), reference)
 	}
-	return Normalize(reference)
+	return NormalizeAddress(reference)
 }
 
 func hasScheme(name string) bool {
 	return strings.Contains(name, ":") && filepath.VolumeName(name) == ""
 }
 
-// Extension selects a remote format from the URL path, independently of queries.
-func Extension(name string) string {
-	if Remote(name) {
+// AddressExtension selects a remote format from the URL path, independently of queries.
+func AddressExtension(name string) string {
+	if IsRemoteAddress(name) {
 		if u, err := url.Parse(name); err == nil {
 			return path.Ext(u.Path)
 		}

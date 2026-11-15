@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
@@ -14,7 +14,7 @@ func (a *commandApp) applyConfiguredOutput() error {
 	if a.inv.Operation != operationCheck || a.inv.Check.Config.Disabled {
 		return nil
 	}
-	path, err := config.SelectedPath(a.inv.Check.Config)
+	path, err := configuration.SelectedPath(a.inv.Check.Config)
 	if err != nil || path == "" {
 		return err
 	}

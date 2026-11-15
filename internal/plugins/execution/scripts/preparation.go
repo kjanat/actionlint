@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/address"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptpreparation "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -85,7 +85,7 @@ func newPreparation(m manifests.Manifest, via route, programs manifests.Programs
 
 // inlineSettings is tools.<name>.config as JSON, or nil when it holds no
 // inline settings.
-func inlineSettings(cfg *config.Config, name string) (json.RawMessage, error) {
+func inlineSettings(cfg *configuration.Config, name string) (json.RawMessage, error) {
 	if cfg == nil {
 		return nil, nil
 	}
@@ -106,7 +106,7 @@ var errEngineConfigFile = errors.New("a snippet engine needs inline configuratio
 
 // toolEnabled reports whether configuration leaves a tool on: its rule is
 // not off and tools.<name>.enabled is not false.
-func toolEnabled(cfg *config.Config, name string) bool {
+func toolEnabled(cfg *configuration.Config, name string) bool {
 	if cfg == nil {
 		return true
 	}
@@ -280,7 +280,7 @@ func (p shellPreparation) batch(ctx context.Context, batch tools.Batch) (func(co
 			settings[scope] = scopeSettings{failed: true}
 			// A workflow scope cannot interpolate the action path; report
 			// it only when no composite scope could and a script needs it.
-			if !scope.Composite && errors.Is(err, config.ErrActionPathUnavailable) {
+			if !scope.Composite && errors.Is(err, configuration.ErrActionPathUnavailable) {
 				deferred, deferredScope = err, scope
 				continue
 			}
@@ -325,7 +325,7 @@ func (p shellPreparation) batch(ctx context.Context, batch tools.Batch) (func(co
 // scope resolves the directives and configuration file of a scope.
 func (p shellPreparation) scope(ctx context.Context, scope *tools.Scope) (scopeSettings, error) {
 	paths := scopePaths(scope)
-	var cfg *config.Config
+	var cfg *configuration.Config
 	if scope != nil {
 		cfg = scope.Config
 	}
@@ -436,15 +436,15 @@ func scopePaths(scope *tools.Scope) runPaths {
 }
 
 // PathContext uses the scope's configuration source, workspace and runner action path.
-func PathContext(scope *tools.Scope) config.PathContext {
+func PathContext(scope *tools.Scope) configuration.PathContext {
 	return scopePaths(scope).context()
 }
 
 // context is the path interpolation context of a scope's configuration.
-func (paths runPaths) context() config.PathContext {
+func (paths runPaths) context() configuration.PathContext {
 	configDir := paths.workspace
-	if paths.configPath != "" && !address.Remote(paths.configPath) {
+	if paths.configPath != "" && !source.IsRemoteAddress(paths.configPath) {
 		configDir = filepath.Dir(paths.configPath)
 	}
-	return config.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shellprofile.RunnerWorkspace(paths.workspace), ActionPath: shellprofile.RunnerActionPath(paths.actionPath)}
+	return configuration.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shellprofile.RunnerWorkspace(paths.workspace), ActionPath: shellprofile.RunnerActionPath(paths.actionPath)}
 }

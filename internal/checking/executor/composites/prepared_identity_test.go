@@ -13,7 +13,7 @@ import (
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
@@ -172,13 +172,13 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 		t.Fatal("fixture did not expand both calls")
 	}
 	graph := result.Batch.Invocations()
-	configByOwner := map[invocation.ID]*repoconfig.Config{}
+	configByOwner := map[invocation.ID]*configuration.Config{}
 	for i, script := range scripts {
 		record, exists := graph.Script(script.Occurrence)
 		if !exists {
 			t.Fatal("fixture script is absent from the graph")
 		}
-		config := &repoconfig.Config{}
+		config := &configuration.Config{}
 		configByOwner[record.Owner] = config
 		for _, scope := range scopes {
 			if scope.Context.ID() == record.Owner {

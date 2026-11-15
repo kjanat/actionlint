@@ -31,7 +31,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 
@@ -70,7 +70,7 @@ import (
 )
 
 // sourceUnit is a workflow or action manifest and its resolved configuration.
-type sourceUnit = workspace.Source
+type sourceUnit = workspace.InputFile
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
@@ -86,7 +86,7 @@ type analysisRequest struct {
 	NoIgnore           bool
 	Analyzers          []checkinputs.Registration
 	Tools              []tools.Registration
-	IgnorePatterns     repoconfig.IgnorePatterns
+	IgnorePatterns     configuration.IgnorePatterns
 	IgnoreSelectors    policy.IgnoreSelectors
 	OnRulesCreated     func([]workflowvisit.Rule) []workflowvisit.Rule
 	WorkingDir         string
@@ -94,7 +94,7 @@ type analysisRequest struct {
 	// a repository identity. Empty leaves their local dependency root unknown.
 	LocalDependencyRoot  string
 	ReadFile             func(string) ([]byte, error)
-	RulePresets          repoconfig.Presets
+	RulePresets          configuration.Presets
 	LoadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	LogWriter            io.Writer
 	LogLevel             LogLevel
@@ -109,7 +109,7 @@ type analysisResult struct {
 }
 
 type analyzedFile struct {
-	captured    capture.Snapshot
+	captured    capture.CapturedDocument
 	source      sourceUnit
 	errors      []*findingmodel.Finding
 	publication *policy.Batch
@@ -121,7 +121,7 @@ type inputFiles struct{ workspace.Inputs }
 
 func (f *inputFiles) add(path string) { f.Add(path) }
 func (f *inputFiles) list() []string  { return f.List() }
-func (f *inputFiles) addConfig(cfg *repoconfig.Config, provenance repoconfig.Provenance, project *workspace.Project, workingDir string) {
+func (f *inputFiles) addConfig(cfg *configuration.Config, provenance configuration.Provenance, project *workspace.Project, workingDir string) {
 	f.AddConfig(cfg, provenance, project, workingDir)
 }
 
@@ -459,7 +459,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		ac.Configure(workspaceactions.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
 			OnManifestRequest: documents.request,
-			OnDocument: func(captured capture.Snapshot, path string, meta *actionmeta.Metadata, parseErr error) {
+			OnDocument: func(captured capture.CapturedDocument, path string, meta *actionmeta.Metadata, parseErr error) {
 				if err := captures.Verify(captured, captured.Bytes()); err != nil {
 					documents.addError(err)
 					return
@@ -707,8 +707,8 @@ func (r *analysisResult) publishDiagnostics() error {
 
 // revalidateCaptures is the final publication boundary: a handle admitted before
 // a later conflict cannot publish an entry, observation or entry outline.
-func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.Source, workingDir string, prior error) error {
-	admitted := make(map[string]capture.Source, len(rows))
+func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.TableRow, workingDir string, prior error) error {
+	admitted := make(map[string]capture.TableRow, len(rows))
 	withheld := 0
 	withheldRelated := 0
 	for _, row := range rows {

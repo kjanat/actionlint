@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -40,7 +40,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, Rules: checking.ConfigurationRules()})
+		session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []configuration.Overlay{overlay}, Rules: checking.ConfigurationRules()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,7 +80,7 @@ func TestRuffShorthandOverlay(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []repoconfig.Overlay{overlay}, Rules: checking.ConfigurationRules()})
+			session, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: []configuration.Overlay{overlay}, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}

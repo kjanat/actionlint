@@ -8,7 +8,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // WithScriptInputs routes run steps through the registration and action inputs
@@ -153,15 +153,15 @@ type configuredRouting struct {
 func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.Finding, error) {
 	var out []tools.Finding
 	var failures error
-	groups := map[*config.Config]bool{}
-	var order []*config.Config
+	groups := map[*configuration.Config]bool{}
+	var order []*configuration.Config
 	for _, script := range batch.Scripts {
 		if !groups[script.Config] {
 			order = append(order, script.Config)
 		}
 		groups[script.Config] = true
 	}
-	nativeScripts := make(map[*config.Config]map[string]struct{}, len(order))
+	nativeScripts := make(map[*configuration.Config]map[string]struct{}, len(order))
 	for _, cfg := range order {
 		c := r.context
 		c.Config, c.ProjectConfig, c.ProjectRoot = cfg, nil, ""

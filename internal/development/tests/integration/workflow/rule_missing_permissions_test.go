@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestMissingPermissionsSelectionAndSuppression(t *testing.T) {
@@ -29,7 +29,7 @@ func TestMissingPermissionsSelectionAndSuppression(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := fmt.Sprintf(workflow, tc.comment)
-			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
+			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, tc.config, checking.Options{Presets: configuration.Presets{Strict: tc.strict}})
 			if tc.severity == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected findings: %+v", findings)

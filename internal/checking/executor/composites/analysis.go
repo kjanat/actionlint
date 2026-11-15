@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
@@ -49,7 +49,7 @@ type Options struct {
 	Reader               *files.Reader // records reads made while resolving script paths
 
 	// ConfigProvenance is shared by the entry settings and per-file projections.
-	ConfigProvenance repoconfig.Provenance
+	ConfigProvenance configuration.Provenance
 	// CollectScripts supplies execution units. Registration, selector errors and
 	// script budgets apply even when no script analyzer consumes the occurrences.
 	CollectScripts, ResolveExecution bool
@@ -72,7 +72,7 @@ type Result struct {
 }
 
 type SourceDocument interface {
-	Capture() capture.Snapshot
+	Capture() capture.CapturedDocument
 	Content() []byte
 	Provenance() parsing.Provenance
 }

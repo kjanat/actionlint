@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -39,10 +39,10 @@ func TestReadConfigFormats(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff([]string{"gpu"}, repoconfig.RunnerLabels(loaded.Config.Facts())); diff != "" {
+			if diff := cmp.Diff([]string{"gpu"}, configuration.RunnerLabels(loaded.Config.Facts())); diff != "" {
 				t.Fatal(diff)
 			}
-			if diff := cmp.Diff([]string{"STAGE"}, repoconfig.VariableNames(loaded.Config.Facts())); diff != "" {
+			if diff := cmp.Diff([]string{"STAGE"}, configuration.VariableNames(loaded.Config.Facts())); diff != "" {
 				t.Fatal(diff)
 			}
 			if len(loaded.Warnings) != 0 {
@@ -54,7 +54,7 @@ func TestReadConfigFormats(t *testing.T) {
 
 func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
 	t.Parallel()
-	for _, name := range repoconfig.RepositoryConfigNames {
+	for _, name := range configuration.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
@@ -70,7 +70,7 @@ func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
 			if path != want {
 				t.Fatalf("path=%q want %q", path, want)
 			}
-			if diff := cmp.Diff([]string{"gpu"}, repoconfig.RunnerLabels(loaded.Config.Facts())); diff != "" {
+			if diff := cmp.Diff([]string{"gpu"}, configuration.RunnerLabels(loaded.Config.Facts())); diff != "" {
 				t.Fatal(diff)
 			}
 		})
@@ -86,13 +86,13 @@ func TestLoadRepositoryFindsEveryFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filepath.Base(path) != "actionlint.yml" || repoconfig.VariableNames(loaded.Config.Facts())[0] != "YAML" {
-		t.Fatalf("path=%q variables=%v", path, repoconfig.VariableNames(loaded.Config.Facts()))
+	if filepath.Base(path) != "actionlint.yml" || configuration.VariableNames(loaded.Config.Facts())[0] != "YAML" {
+		t.Fatalf("path=%q variables=%v", path, configuration.VariableNames(loaded.Config.Facts()))
 	}
 }
 
 func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
-	for _, name := range repoconfig.RepositoryConfigNames {
+	for _, name := range configuration.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			github := filepath.Join(root, ".github")
@@ -104,7 +104,7 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 			}
 			want := writeConfig(t, github, name, formatSources[name])
 			t.Chdir(github)
-			got, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{}, true)
+			got, err := checking.ConfigurationRules().Inspect(configuration.Selection{}, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +131,7 @@ func TestTOMLConfigReportsPositions(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	_, err := checking.ConfigurationRules().Load(writeConfig(t, dir, "actionlint.toml", "config-variables = [\"A\"]\n\n[self-hosted-runner]\nlabels = 7\n"))
-	location, located := errors.AsType[*repoconfig.SourceError](err)
+	location, located := errors.AsType[*configuration.SourceError](err)
 	if err == nil || !located || location.Line != 4 || location.Column != 10 {
 		t.Fatalf("type error: %v", err)
 	}
@@ -159,13 +159,13 @@ func TestExtendsAcrossFormats(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := loaded.Config
-	if diff := cmp.Diff([]string{"gpu"}, repoconfig.RunnerLabels(cfg.Facts())); diff != "" {
+	if diff := cmp.Diff([]string{"gpu"}, configuration.RunnerLabels(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
-	if diff := cmp.Diff([]string{"TOKEN"}, repoconfig.SecretNames(cfg.Facts())); diff != "" {
+	if diff := cmp.Diff([]string{"TOKEN"}, configuration.SecretNames(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
-	if diff := cmp.Diff([]string{"STAGE"}, repoconfig.VariableNames(cfg.Facts())); diff != "" {
+	if diff := cmp.Diff([]string{"STAGE"}, configuration.VariableNames(cfg.Facts())); diff != "" {
 		t.Fatal(diff)
 	}
 	if len(loaded.Provenance.Sources()) != 3 {

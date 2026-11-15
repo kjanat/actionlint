@@ -88,7 +88,7 @@ permissions: {}
 		t.Helper()
 		result, err := checking.Analyze(t.Context(),
 
-			checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}},
+			checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 		)
 		if err != nil {
 			t.Fatal(err)

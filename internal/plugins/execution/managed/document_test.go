@@ -20,10 +20,9 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -215,7 +214,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		name, config string
 		disabled     bool
 		partial      bool
-		process      *processconfig.Options
+		process      *process.CommandOptions
 	}{
 		{"enabled", "{}", false, false, nil},
 		{"tool disabled", "tools: {shellcheck: false}", true, false, nil},
@@ -223,8 +222,8 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		{"inline options", "tools: {shellcheck: {config: {disable: [SC2001], enable: [quote-safe-variables], shell: bash, extended-analysis: false}}}", false, false, nil},
 		{"override disabled", "overrides: [{includes: ['ci.yml'], tools: {shellcheck: false}}]", true, false, nil},
 		{"partial findings", "{}", false, true, nil},
-		{"working directory", "{}", false, false, &processconfig.Options{Optional: true, WorkingDir: t.TempDir()}},
-		{"wasm permitted", "{}", false, false, &processconfig.Options{Optional: true, AllowWasm: true, WorkingDir: t.TempDir()}},
+		{"working directory", "{}", false, false, &process.CommandOptions{Optional: true, WorkingDir: t.TempDir()}},
+		{"wasm permitted", "{}", false, false, &process.CommandOptions{Optional: true, AllowWasm: true, WorkingDir: t.TempDir()}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -237,7 +236,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: []tools.Registration{registration}}
+			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []tools.Registration{registration}}
 			needed, err := checking.RequiredTools(t.Context(), options, nil)
 			if err != nil || needed["shellcheck"] {
 				t.Fatalf("native dependency: %v %v", needed, err)
@@ -268,7 +267,7 @@ permissions: {}
 				t.Fatalf("document plugin lost attached YAML comments: %+v", comments)
 			}
 			finding := result.Diagnostics[0]
-			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != sourceid.Digest([]byte(workflow)) {
+			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != sourcepos.ContentDigest([]byte(workflow)) {
 				t.Fatalf("mapping/fix changed: %+v", finding)
 			}
 			if finding.Reference == nil || finding.Reference.Document == "" || finding.Reference.Node == "" || finding.Reference.Address == "$" {
@@ -306,7 +305,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			needed, err := checking.RequiredTools(t.Context(), checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []config.Overlay{overlay}, Tools: []tools.Registration{registration}}, nil)
+			needed, err := checking.RequiredTools(t.Context(), checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: []tools.Registration{registration}}, nil)
 			if err != nil || !needed["shellcheck"] {
 				t.Fatalf("explicit native settings lost: %v %v", needed, err)
 			}
@@ -314,7 +313,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 	}
 	for _, options := range []scripts.Selection{
 		{Command: "custom-shellcheck"},
-		{Command: "shellcheck", Process: &processconfig.Options{Arguments: []string{"--norc"}}},
+		{Command: "shellcheck", Process: &process.CommandOptions{Arguments: []string{"--norc"}}},
 	} {
 		registration, err := shellcheckRegistration(options).WithAnalyzer(&documentGuest{})
 		if err != nil {
@@ -349,7 +348,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			overlays := []config.Overlay{base}
+			overlays := []configuration.Overlay{base}
 			if tc.extra != "" {
 				extra, err := checking.ConfigurationRules().ParseOverlay("config", []byte(tc.extra), "shellcheck")
 				if err != nil {
@@ -404,7 +403,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			}
 			guest := &documentGuest{}
 			options := checking.Options{
-				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []config.Overlay{base, disabled},
+				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{base, disabled},
 				Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck", ManagedOnly: true})},
 				Analyzers: []checkinputs.Registration{{Checker: guest}},
 			}
@@ -446,7 +445,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	}
 	guest := &documentGuest{}
 	options := checking.Options{
-		WorkingDir: root, ConfigOverlays: []config.Overlay{overlay},
+		WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
 		Tools:     []tools.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
 		Analyzers: []checkinputs.Registration{{Checker: guest}},
 	}

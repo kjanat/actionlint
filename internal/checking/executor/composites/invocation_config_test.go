@@ -13,7 +13,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
@@ -48,7 +48,7 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 			failure := errors.New("invalid action configuration")
 			loads := 0
 			f.options.CollectScripts = collect
-			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) {
+			f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) {
 				loads++
 				return nil, failure
 			})
@@ -78,10 +78,10 @@ func TestCompositeConfigFailureIsVisibleWithoutScripts(t *testing.T) {
 func TestRepeatedCompositeConfigIsResolvedOnceWithoutScripts(t *testing.T) {
 	t.Parallel()
 	f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}, {uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns: {using: composite, steps: []}\n"}, nil)
-	childConfig := &repoconfig.Config{}
+	childConfig := &configuration.Config{}
 	loads := 0
 	f.options.CollectScripts = false
-	f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
+	f.options.BindSource = testSourceBindings(func(path string) (*configuration.Config, error) {
 		loads++
 		return childConfig, nil
 	})
@@ -99,11 +99,11 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/without-inputs@v1\n      - uses: owner/root@v1\n        with: {script: 'root()'}\n      - uses: $/outer\n      - uses: owner/shared@v1\n        with: {script: 'shared()'}\n"
 	action := "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: owner/child@v1\n      with: {script: 'child()'}\n    - uses: owner/shared@v1\n      with: {script: 'shared()'}\n"
 	f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": action}, nil)
-	rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
+	rootConfig, childConfig := &configuration.Config{}, &configuration.Config{}
 	f.options.Bindings = testBindings(rootConfig)
-	f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return childConfig, nil })
+	f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return childConfig, nil })
 	f.options.ScriptInputs = []checkinputs.ScriptInput{{Action: "owner/shared", Input: "script", Language: "javascript"}}
-	loads := map[*repoconfig.Config]int{}
+	loads := map[*configuration.Config]int{}
 	f.options.ScriptInputsForScope = func(scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
 		config := scope.Composite()
 		loads[config]++
@@ -135,11 +135,11 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 			t.Parallel()
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(1)'}\n      - uses: $/outer\n      - uses: actions/github-script@v7\n        with: {script: 'console.log(3)'}\n"
 			f := newInvocationFixture(t, t.Context(), workflow, map[string]string{"outer/action.yml": "name: outer\ndescription: test\nruns:\n  using: composite\n  steps:\n    - uses: actions/github-script@v7\n      with: {script: 'console.log(2)'}\n"}, nil)
-			rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
+			rootConfig, childConfig := &configuration.Config{}, &configuration.Config{}
 			f.options.Bindings = testBindings(rootConfig)
 			f.options.CollectScripts = collect
-			f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return childConfig, nil })
-			var seen []*repoconfig.Config
+			f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return childConfig, nil })
+			var seen []*configuration.Config
 			f.options.ScriptInputsForScope = func(scope *binding.Scope) ([]checkinputs.ScriptInput, error) {
 				config := scope.Composite()
 				seen = append(seen, config)
@@ -149,8 +149,8 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := []*repoconfig.Config{rootConfig, childConfig, rootConfig}
-			if !slices.Equal(seen, []*repoconfig.Config{rootConfig, childConfig}) || len(result.Batch.Invocations().Scripts()) != len(want) {
+			want := []*configuration.Config{rootConfig, childConfig, rootConfig}
+			if !slices.Equal(seen, []*configuration.Config{rootConfig, childConfig}) || len(result.Batch.Invocations().Scripts()) != len(want) {
 				t.Fatal("semantic registration must use each declaring config even without script analysis")
 			}
 			if !collect {
@@ -209,15 +209,15 @@ func TestNonExpandedCallsUseTheirDeclaringConfig(t *testing.T) {
 						budget = &invocation.Budget{MaxDepth: 1, MaxCalls: 10, MaxScripts: invocation.DefaultMaxScripts}
 					}
 					f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{id: outer, uses: $/outer}]}}\n", map[string]string{"outer/action.yml": "name: outer\ndescription: identity\nruns:\n  using: composite\n  steps:\n    - id: nested\n      uses: " + target + "\n"}, budget)
-					rootConfig, childConfig := &repoconfig.Config{}, &repoconfig.Config{}
+					rootConfig, childConfig := &configuration.Config{}, &configuration.Config{}
 					if ignores.root {
-						rootConfig.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "outer"}}
+						rootConfig.Ignores = configuration.IgnoreConfigs{{Rule: "probe", Step: "outer"}}
 					}
 					if ignores.child {
-						childConfig.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "nested"}}
+						childConfig.Ignores = configuration.IgnoreConfigs{{Rule: "probe", Step: "nested"}}
 					}
 					f.options.Bindings = testBindings(rootConfig)
-					f.options.BindSource = testSourceBindings(func(string) (*repoconfig.Config, error) { return childConfig, nil })
+					f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return childConfig, nil })
 					f.options.CollectScripts = collect
 					f.options.Rules = append(f.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
 					result, err := Workflow(f.options, f.root)
@@ -256,15 +256,15 @@ func TestRootOpaqueCallUsesEntryConfig(t *testing.T) {
 			t.Run(fmt.Sprintf("scripts=%t/ignores=%t", collect, ignores), func(t *testing.T) {
 				t.Parallel()
 				f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{id: remote, uses: owner/action@v1}]}}\n", nil, nil)
-				config := &repoconfig.Config{}
+				config := &configuration.Config{}
 				if ignores {
-					config.Ignores = repoconfig.IgnoreConfigs{{Rule: "probe", Step: "remote"}}
+					config.Ignores = configuration.IgnoreConfigs{{Rule: "probe", Step: "remote"}}
 				}
 				f.options.Bindings = testBindings(config)
 				f.options.CollectScripts = collect
-				f.options.BindSource = testSourceBindings(func(path string) (*repoconfig.Config, error) {
+				f.options.BindSource = testSourceBindings(func(path string) (*configuration.Config, error) {
 					t.Errorf("opaque call loaded an action config: %s", path)
-					return &repoconfig.Config{}, nil
+					return &configuration.Config{}, nil
 				})
 				f.options.Rules = append(f.options.Rules, &ignoreProbeRule{Base: workflowvisit.NewBase("probe", "")})
 				result, err := Workflow(f.options, f.root)

@@ -69,7 +69,7 @@ type resolverDocuments struct {
 type SourceDocument struct {
 	path       string
 	address    string
-	captured   capture.Snapshot
+	captured   capture.CapturedDocument
 	provenance parsing.Provenance
 	files      actionmeta.ReferencedFiles
 }
@@ -84,7 +84,7 @@ func (d SourceDocument) Content() []byte { return d.captured.Bytes() }
 
 func (d SourceDocument) ReferencedFiles() actionmeta.ReferencedFiles { return d.files }
 
-func (d SourceDocument) Capture() capture.Snapshot { return d.captured }
+func (d SourceDocument) Capture() capture.CapturedDocument { return d.captured }
 
 // Provenance is the parse record to pass to parsing.SourceSnapshots.Document
 // when admitting this source. It is zero when the manifest was never parsed.
@@ -196,7 +196,7 @@ func (c *Resolver) SetRepositorySource(load func(string) (RepositoryDocument, er
 
 type RepositoryDocument struct {
 	Parsed   parsing.Document
-	Captured capture.Snapshot
+	Captured capture.CapturedDocument
 	Valid    bool
 }
 

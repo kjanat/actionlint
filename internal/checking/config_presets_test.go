@@ -4,21 +4,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // configRecorder records the prepared configuration supplied to a custom rule.
 type configRecorder struct {
 	workflowvisit.Base
-	config *repoconfig.Config
+	config *configuration.Config
 }
 
 func newConfigRecorder() *configRecorder {
 	return &configRecorder{Base: workflowvisit.NewBase("custom-config", "")}
 }
 
-func (r *configRecorder) SetConfig(config *repoconfig.Config) { r.config = config }
+func (r *configRecorder) SetConfig(config *configuration.Config) { r.config = config }
 
 func TestRulePresetsPrepareConfigurationWithoutFile(t *testing.T) {
 	t.Parallel()
@@ -31,14 +31,14 @@ jobs:
 `)
 	for _, tc := range []struct {
 		name    string
-		config  *repoconfig.Config
-		presets repoconfig.Presets
+		config  *configuration.Config
+		presets configuration.Presets
 	}{
-		{"default", nil, repoconfig.Presets{}},
-		{"explicit configuration", &repoconfig.Config{}, repoconfig.Presets{}},
-		{"strict", nil, repoconfig.Presets{Strict: true}},
-		{"experimental enabled", nil, repoconfig.Presets{Experimental: new(true)}},
-		{"experimental disabled", nil, repoconfig.Presets{Experimental: new(false)}},
+		{"default", nil, configuration.Presets{}},
+		{"explicit configuration", &configuration.Config{}, configuration.Presets{}},
+		{"strict", nil, configuration.Presets{Strict: true}},
+		{"experimental enabled", nil, configuration.Presets{Experimental: new(true)}},
+		{"experimental disabled", nil, configuration.Presets{Experimental: new(false)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

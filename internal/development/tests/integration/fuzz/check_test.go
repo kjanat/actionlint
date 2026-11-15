@@ -42,7 +42,7 @@ jobs:
 
 		_, _ = checking.Analyze(t.Context(),
 
-			checking.Options{ReadFile: func(string) ([]byte, error) { return nil, fs.ErrNotExist }}, []workspace.Source{{Path: "test.yaml", Content: data}},
+			checking.Options{ReadFile: func(string) ([]byte, error) { return nil, fs.ErrNotExist }}, []workspace.InputFile{{Path: "test.yaml", Content: data}},
 		)
 	})
 }

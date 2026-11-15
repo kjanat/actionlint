@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 
 	"github.com/spf13/cobra"
@@ -77,7 +77,7 @@ func (c checkInvocation) defaultPlugins(warning func(string)) plugininstall.Defa
 
 // Optional discovery is a default, not an explicit choice of a native checker.
 // Arguments, including those a retired flag adds, still opt into native use.
-func implicitProcessOptions(options *processconfig.Options) bool {
+func implicitProcessOptions(options *process.CommandOptions) bool {
 	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
 		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&
 		len(options.Environment) == 0 && options.WorkingDir == ""

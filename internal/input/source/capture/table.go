@@ -18,10 +18,10 @@ const (
 	Conflicted State = "conflicted"
 )
 
-// Source is a copied row of the sealed source table. Conflicted documents expose
+// TableRow is a copied row of the sealed source table. Conflicted documents expose
 // no revision or model: first-arrival bytes remain private and cannot authorize
 // admission. Code and Message are deterministic projections of Error for JSON.
-type Source struct {
+type TableRow struct {
 	Document             string             `json:"document"`
 	State                State              `json:"state"`
 	Revision             source.Revision    `json:"revision,omitzero"`
@@ -51,38 +51,38 @@ func state(e *entry) State {
 // Lookup performs no metadata or content IO and never waits. An alias not yet
 // passed to Canonical/Read is Absent; admission must resolve authorized aliases
 // through Canonical during the capture phase. A pending alias is Pending.
-func (s *Store) Lookup(path string) (Snapshot, State, error) {
+func (s *Store) Lookup(path string) (CapturedDocument, State, error) {
 	if err := validatePath(path); err != nil {
-		return Snapshot{}, Absent, err
+		return CapturedDocument{}, Absent, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	name := s.aliases[path]
 	if name == nil {
-		return Snapshot{}, Absent, nil
+		return CapturedDocument{}, Absent, nil
 	}
 	select {
 	case <-name.done:
 	default:
-		return Snapshot{}, Pending, nil
+		return CapturedDocument{}, Pending, nil
 	}
 	e := s.docs[name.document]
 	if !name.documentRequired || e == nil {
-		return Snapshot{}, Absent, nil
+		return CapturedDocument{}, Absent, nil
 	}
 	current := state(e)
 	switch current {
 	case Captured:
 		return s.snapshot(e), current, nil
 	case Failed:
-		return Snapshot{}, current, e.err
+		return CapturedDocument{}, current, e.err
 	case Conflicted:
-		return Snapshot{}, current, e.conflict
+		return CapturedDocument{}, current, e.conflict
 	case Absent, Pending:
 		// Absent and pending documents have no snapshot or error.
 		fallthrough
 	default:
-		return Snapshot{}, current, nil
+		return CapturedDocument{}, current, nil
 	}
 }
 
@@ -90,7 +90,7 @@ func (s *Store) Lookup(path string) (Snapshot, State, error) {
 // Aliases include every completed source resolution, even from cancelled or
 // conflicting requests. Identity-only aliases are omitted. Returned rows and
 // alias slices cannot mutate the sealed table.
-func (s *Store) Sources() ([]Source, error) {
+func (s *Store) Sources() ([]TableRow, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.sealed {
@@ -105,15 +105,15 @@ func (s *Store) Sources() ([]Source, error) {
 
 // Revision returns an exact captured revision only after sealing. It performs
 // no metadata or content IO and never admits failed or conflicted documents.
-func (s *Store) Revision(revision source.Revision) (Snapshot, bool) {
+func (s *Store) Revision(revision source.Revision) (CapturedDocument, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.sealed || !revision.Valid() {
-		return Snapshot{}, false
+		return CapturedDocument{}, false
 	}
 	e := s.docs[revision.Document()]
 	if e == nil || state(e) != Captured || e.value.revision != revision {
-		return Snapshot{}, false
+		return CapturedDocument{}, false
 	}
 	return s.snapshot(e), true
 }
@@ -140,10 +140,10 @@ func (s *Store) ReadAliases() ([]string, error) {
 }
 
 // sourceTable requires s.mu after all counted work has been joined.
-func (s *Store) sourceTable() []Source {
-	rows := make([]Source, 0, len(s.docs))
+func (s *Store) sourceTable() []TableRow {
+	rows := make([]TableRow, 0, len(s.docs))
 	for document, e := range s.docs {
-		row := Source{Document: document, State: state(e), Aliases: s.snapshot(e).aliases}
+		row := TableRow{Document: document, State: state(e), Aliases: s.snapshot(e).aliases}
 		switch row.State {
 		case Captured:
 			row.Revision = e.value.revision
@@ -159,7 +159,7 @@ func (s *Store) sourceTable() []Source {
 		}
 		rows = append(rows, row)
 	}
-	slices.SortFunc(rows, func(a, b Source) int {
+	slices.SortFunc(rows, func(a, b TableRow) int {
 		return cmp.Compare(a.Document, b.Document)
 	})
 	return rows

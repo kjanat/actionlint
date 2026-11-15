@@ -5,13 +5,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestIgnoreSelectors(t *testing.T) {
 	t.Parallel()
-	rules, err := repoconfig.NewRuleSet([]rule.Declaration{{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true, Aliases: []rule.Alias{{Name: "old-shellcheck"}}}})
+	rules, err := configuration.NewRuleSet([]rule.Declaration{{Name: "shellcheck", Category: "correctness", Maturity: "stable", Recommended: true, Aliases: []rule.Alias{{Name: "old-shellcheck"}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -22,12 +22,12 @@ import (
 	results1 "actionlint.kjanat.dev/v2/internal/results"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -45,11 +45,11 @@ type lintRequest struct {
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
 	// Tests use it to select executables.
-	processes    map[string]*processconfig.Options
+	processes    map[string]*process.CommandOptions
 	workingDir   string
 	workspaceDir string
 	configFile   string
-	overlays     []repoconfig.Overlay
+	overlays     []configuration.Overlay
 	ignore       []string
 	format       outputFormat
 	sarif        bool
@@ -184,7 +184,7 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	if err != nil {
 		code := commandstatus.ExitFailure
-		if _, ok := errors.AsType[*repoconfig.OverlayError](err); ok {
+		if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
 			code = commandstatus.ExitInvalidCommandOption
 		}
 		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
@@ -294,7 +294,7 @@ func (req *lintRequest) toolSelections() registry.Selections {
 			selections[id] = scripts.Selection{}
 			continue
 		}
-		options := processconfig.Options{Optional: true}
+		options := process.CommandOptions{Optional: true}
 		if replaced := req.processes[id]; replaced != nil {
 			options = *replaced
 		}

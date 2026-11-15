@@ -11,9 +11,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
 func TestRuffLauncherArguments(t *testing.T) {
@@ -72,9 +72,9 @@ permissions: {}
 					if launcher == "env" {
 						args = []string{"RUFF_OUTPUT_FILE=" + output, "ruff"}
 					}
-					options := &processconfig.Options{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+					options := &process.CommandOptions{Executable: &tool, Optional: optional, Arguments: args, Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 					input := source
-					var config *repoconfig.Config
+					var config *configuration.Config
 					switch disabled {
 					case "shell":
 						input = strings.Replace(source, "shell: python", "shell: bash", 1)
@@ -85,7 +85,7 @@ permissions: {}
 						}
 						config = parsed
 					}
-					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(input), Config: config}})
+					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(input), Config: config}})
 					if (err != nil) != (disabled == "") {
 						t.Fatalf("invalid launcher result: optional=%v disabled=%s error=%v", optional, disabled, err)
 					}
@@ -102,7 +102,7 @@ permissions: {}
 				t.Run(launcher+strconv.FormatBool(literal)+strings.Join(flags, " "), func(t *testing.T) {
 					t.Parallel()
 					calls := filepath.Join(t.TempDir(), "calls")
-					options := &processconfig.Options{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
+					options := &process.CommandOptions{Environment: []string{"ACTIONLINT_TEST_RUFF=1", "ACTIONLINT_TEST_RUFF_OUTPUT=[]", "ACTIONLINT_TEST_RUFF_PREFIX=" + string(encoded), "ACTIONLINT_TEST_RUFF_CALLS=" + calls}}
 					command := strconv.Quote(tool)
 					if literal {
 						options.Executable = &tool
@@ -116,7 +116,7 @@ permissions: {}
 						options.Arguments = flags
 					}
 					options.Optional = true
-					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
 					content, readErr := os.ReadFile(calls)
 					if flags[0] != "--preview" {
 						if err == nil || !os.IsNotExist(readErr) {

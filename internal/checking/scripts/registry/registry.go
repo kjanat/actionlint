@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
+	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/managed"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -83,7 +83,7 @@ func Defaults() Selections {
 	}
 	selections := make(Selections, len(manifests))
 	for _, manifest := range manifests {
-		selections[manifest.Rule.Name] = scripts.Selection{Command: manifest.Rule.Name, Process: &processconfig.Options{Optional: true}}
+		selections[manifest.Rule.Name] = scripts.Selection{Command: manifest.Rule.Name, Process: &process.CommandOptions{Optional: true}}
 	}
 	return selections
 }

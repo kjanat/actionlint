@@ -15,7 +15,7 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	config "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -25,7 +25,7 @@ import (
 
 type pluginSourceMount struct {
 	host, alias, guest string
-	files              *inputfiles.SnapshotFS
+	files              *inputfiles.BoundedFS
 }
 
 type pluginSourceFiles struct {
@@ -67,7 +67,7 @@ func closeSourceAuthorities(authorities []sourceAuthority) error {
 	return failure
 }
 
-func sourceAuthorities(script tools.Script, settings integrationconfig.Settings, paths config.PathContext, workspace, directory string) ([]sourceAuthority, error) {
+func sourceAuthorities(script tools.Script, settings integrationconfig.Settings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
 	if script.Config == nil {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}

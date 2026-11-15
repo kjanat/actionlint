@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -37,7 +37,7 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			owner := newRuleConfigurations(config, root, repoconfig.Presets{}, ConfigurationRules(), nil)
+			owner := newRuleConfigurations(config, root, configuration.Presets{}, ConfigurationRules(), nil)
 			entry, err := owner.workflow(filepath.Join(root, "ci.yml"))
 			if err != nil {
 				t.Fatal(err)
@@ -54,7 +54,7 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 				}
 			}
 			workflow := "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: windows-latest\n    steps:\n      - uses: $/first\n      - uses: $/second\n"
-			result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}})
+			result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +81,7 @@ func TestRemoteBodyKeepsEachParentsPreparedRuleDecision(t *testing.T) {
 func TestSourceBindingOwnerCachesLogicalAddresses(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	owner := newRuleConfigurations(nil, root, repoconfig.Presets{}, ConfigurationRules(), nil)
+	owner := newRuleConfigurations(nil, root, configuration.Presets{}, ConfigurationRules(), nil)
 	owner.bindEntry("ci.yml", nil)
 	first, err := owner.bindSource("action.yml")
 	if err != nil {
@@ -107,7 +107,7 @@ func TestLocalMetadataAdvisoryUsesTargetBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow := "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n"
-	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}

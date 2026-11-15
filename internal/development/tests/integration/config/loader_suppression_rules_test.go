@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestRegisteredRuleSelectors(t *testing.T) {
@@ -63,7 +63,7 @@ func TestRegisteredRulesInheritanceAndOverlay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, _, err := checking.ConfigurationRules().Overlaid(source.Config, source, []repoconfig.Overlay{overlay}, "no-sudo")
+	cfg, _, err := checking.ConfigurationRules().Overlaid(source.Config, source, []configuration.Overlay{overlay}, "no-sudo")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -20,7 +20,7 @@ func TestFileOverrideToolConfigOrigins(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: t.TempDir(), ConfigOverlays: []repoconfig.Overlay{overlay}, Rules: checking.ConfigurationRules()})
+			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Rules: checking.ConfigurationRules()})
 			if err != nil {
 				t.Fatal(err)
 			}

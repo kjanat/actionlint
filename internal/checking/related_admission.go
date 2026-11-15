@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func admitRelated(locations []results.Related, captures *capture.Store, rows map[string]capture.Source, workingDir string) ([]results.Related, int) {
+func admitRelated(locations []results.Related, captures *capture.Store, rows map[string]capture.TableRow, workingDir string) ([]results.Related, int) {
 	if locations == nil {
 		return nil, 0
 	}

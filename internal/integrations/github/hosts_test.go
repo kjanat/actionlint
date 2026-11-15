@@ -11,7 +11,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/references/repository"
 )
 
 const (
@@ -69,7 +68,7 @@ func (r *listingResolver) Resolve(ctx context.Context, request references.Reques
 	r.mu.Lock()
 	r.calls++
 	r.mu.Unlock()
-	access := repository.AccessFromContext(ctx)
+	access := references.RepositoryAccessFromContext(ctx)
 	if access == nil {
 		return references.Result{}, errors.New("no repository access")
 	}
@@ -103,7 +102,7 @@ func (r *listingResolver) Resolve(ctx context.Context, request references.Reques
 		return references.Result{}, errors.Join(errors.New("selected object not found"), err)
 	}
 	commit := object
-	if tag, ok := kind.(repository.PeeledTag); ok {
+	if tag, ok := kind.(references.RepositoryPeeledTag); ok {
 		commit = tag.Commit
 		if _, found, err := session.Object(ctx, commit); err != nil || !found {
 			return references.Result{}, errors.Join(errors.New("peeled commit not found"), err)
@@ -126,7 +125,7 @@ func (r *listingResolver) resolutions() int {
 func newListingClient(t *testing.T, options Options, resolver references.Resolver) *GitHub {
 	t.Helper()
 	var client *GitHub
-	options.Resolver = func() references.Resolver { return repository.Bind(resolver, client) }
+	options.Resolver = func() references.Resolver { return references.BindRepositoryAccess(resolver, client) }
 	client, err := New(options)
 	if err != nil {
 		t.Fatal(err)

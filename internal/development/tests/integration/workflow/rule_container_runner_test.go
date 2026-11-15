@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // GitHub requires Linux with Docker for managed containers. ubuntu-slim runs
@@ -82,7 +82,7 @@ func TestContainerRunnerSelection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: " + tc.runner + "\n    steps:\n      - uses: docker://alpine:3" + tc.comment + "\n"
-			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Presets: repoconfig.Presets{Strict: tc.strict}})
+			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Presets: configuration.Presets{Strict: tc.strict}})
 			count := 0
 			for _, finding := range findings {
 				if finding.Rule != "container-runner" {

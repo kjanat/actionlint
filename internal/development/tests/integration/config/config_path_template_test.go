@@ -37,7 +37,7 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.Source{{Path: ".github/workflows/test.yml", Content: content, Project: project, Config: project.Config()}})
+			result, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: ".github/workflows/test.yml", Content: content, Project: project, Config: project.Config()}})
 			if err != nil {
 				t.Fatal(err)
 			}

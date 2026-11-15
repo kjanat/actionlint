@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"github.com/google/go-cmp/cmp"
 )
@@ -26,7 +26,7 @@ func TestDirectPluginDeclaration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var refs repoconfig.PluginDeclarations
+	var refs configuration.PluginDeclarations
 	if err := decodeConfigYAML(data, &refs); err != nil || !refs[0].Equal(cfg.Plugins[0]) {
 		t.Fatalf("roundtrip: %s %v", data, err)
 	}
@@ -68,7 +68,7 @@ func TestPluginDeclarations(t *testing.T) {
 }
 
 // declarationFields lists the name, version and registry of each declaration.
-func declarationFields(refs repoconfig.PluginDeclarations) [][3]string {
+func declarationFields(refs configuration.PluginDeclarations) [][3]string {
 	fields := make([][3]string, 0, len(refs))
 	for _, ref := range refs {
 		fields = append(fields, [3]string{ref.Name(), ref.Version(), ref.Registry()})
@@ -95,7 +95,7 @@ func TestPluginAliasRegistryScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var roundTrip repoconfig.PluginDeclarations
+	var roundTrip configuration.PluginDeclarations
 	if err := decodeConfigYAML(data, &roundTrip); err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestPluginDeclarationsExtends(t *testing.T) {
 }
 
 func TestSelectedPathAllFormats(t *testing.T) {
-	for _, name := range repoconfig.RepositoryConfigNames {
+	for _, name := range configuration.RepositoryConfigNames {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			if err := os.Mkdir(filepath.Join(dir, ".git"), 0o700); err != nil {
@@ -194,7 +194,7 @@ func TestSelectedPathAllFormats(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(dir)
-			got, err := repoconfig.SelectedPath(repoconfig.Selection{})
+			got, err := configuration.SelectedPath(configuration.Selection{})
 			if err != nil || got != want {
 				t.Fatalf("got %q, %v; want %q", got, err, want)
 			}

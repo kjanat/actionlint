@@ -14,7 +14,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
+	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"

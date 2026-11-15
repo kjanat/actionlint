@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 func TestEditorAnalysisRetainsDependencySources(t *testing.T) {
@@ -75,7 +75,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 		filepath.Join("local", "action.yml"): {URI: FileURI(actionPath), Version: 9, Text: unsaved},
 	}
 	var actionReads atomic.Int32
-	result, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []repoconfig.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
+	result, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{overlay}, ReadFile: func(path string) ([]byte, error) {
 		if filepath.Clean(path) == actionPath {
 			actionReads.Add(1)
 		}
@@ -88,7 +88,7 @@ func TestEditorExcludedDependencyUsesUnsavedCapturedBytes(t *testing.T) {
 		t.Fatalf("excluded open dependency was not analyzed through its caller: %+v", result.Diagnostics)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != sourceid.Digest([]byte(unsaved)) {
+	if finding.Path != actionPath || finding.Rule != "deprecated-commands" || finding.Start.Line != 7 || finding.Reference == nil || finding.Reference.Revision != source.ContentDigest([]byte(unsaved)) {
 		t.Fatalf("dependency diagnostic used different bytes or coordinates: %+v", finding)
 	}
 	if result.Sources[actionPath].Text != unsaved || actionReads.Load() != 0 {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 func TestProjectDiscoveryStopsWithSessionContext(t *testing.T) {
@@ -120,7 +120,7 @@ func TestOptionsConfigReplacesRepositoryConfiguration(t *testing.T) {
 	root := t.TempDir()
 	writeShellcheckFixture(t, root, ".git", "gitdir: elsewhere\n")
 	writeShellcheckFixture(t, root, ".github/actionlint.yaml", "files: {excludes: ['workflow.yml']}\n")
-	config := &repoconfig.Config{}
+	config := &configuration.Config{}
 	session, err := New(t.Context(), Options{WorkingDir: root, Config: config})
 	if err != nil {
 		t.Fatal(err)

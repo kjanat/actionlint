@@ -7,8 +7,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
+	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
@@ -153,12 +153,12 @@ func workflowExpressionOptions(scope *binding.Scope) Options {
 }
 
 func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Snapshot) Options {
-	var config *repoconfig.Config
+	var config *configuration.Config
 	if scope != nil {
 		config = scope.Composite()
 	}
-	facts := repoconfig.RepositoryFacts(config, host)
-	level := func(name string) repoconfig.Level {
+	facts := configuration.RepositoryFacts(config, host)
+	level := func(name string) configuration.Level {
 		selected := config
 		if scope != nil {
 			selected = scope.Rule(name).Config()
@@ -166,7 +166,7 @@ func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Sn
 		return selected.RuleSet().DiagnosticLevel(selected, name)
 	}
 	return Options{
-		Semantics:                 exprlang.Options{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)},
+		Semantics:                 exprlang.Options{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)},
 		SuspiciousCoercion:        level("coercion") != "off",
 		CaseInsensitiveConditions: level("case-insensitive-conditions") != "off",
 		StringConditions:          level("string-conditions") != "off",

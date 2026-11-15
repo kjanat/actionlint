@@ -25,7 +25,7 @@ permissions: {}
 		if err != nil {
 			t.Fatal(err)
 		}
-		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src), Config: cfg}})
+		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(src), Config: cfg}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,7 +43,7 @@ permissions: {}
 		}
 	}
 	src = strings.Replace(src, "|| 'fallback' }}", "|| 'fallback' }} # actionlint:ignore unsound-ternary -- testing fallback behavior", 1)
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(src)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v, %v", result, err)
 	}
