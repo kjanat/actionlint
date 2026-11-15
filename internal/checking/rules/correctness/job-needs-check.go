@@ -3,7 +3,7 @@ package correctness
 import (
 	"slices"
 
-	jobneeds "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/job-needs"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/jobneeds"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )

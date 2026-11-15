@@ -9,7 +9,7 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	identifier "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/id"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
