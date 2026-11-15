@@ -87,7 +87,7 @@ func (r *Remote) Lookup(spec string) (*calls.Metadata, error) {
 	if result.failure.failed() {
 		return nil, result.failure
 	}
-	return result.metadata.Clone(), nil
+	return result.metadata, nil
 }
 
 func (r *Remote) Load(ctx context.Context, spec string) (*calls.Metadata, error) {
