@@ -86,23 +86,20 @@ func (c *LintRulesConfig) LegacyGroups() map[string]Group {
 }
 
 // LegacyGroup identifies a built-in rule's configuration group before semantic
-// categories replaced provider, maturity and policy groups.
+// categories replaced provider, maturity and policy groups. Bundled tool
+// providers belonged to "external"; other rules declare their group.
 func (ruleSet RuleSet) LegacyGroup(name string) string {
 	name = ruleSet.ResolveAlias(name)
 	if _, bundled := toolProviders()[name]; bundled {
 		return "external"
 	}
-	switch name {
-	case "empty-triggers", "empty-job", "empty-run":
-		return "style"
-	case "uncancellable-condition":
-		return "correctness"
-	case "unpinned-reference", "job-timeout", "missing-action-metadata", "forbidden-suppression":
-		return "policy"
-	default:
-		if descriptor, known := ruleSet.FindRule(name); known {
-			return descriptor.Category
-		}
+	descriptor, known := ruleSet.FindRule(name)
+	switch {
+	case !known:
 		return ""
+	case descriptor.LegacyGroup != "":
+		return descriptor.LegacyGroup
+	default:
+		return descriptor.Category
 	}
 }

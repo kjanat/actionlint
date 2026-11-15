@@ -54,9 +54,9 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d Rule, p Presets, selected bool)
 	if d.Experimental() || !d.Recommended && !selected {
 		level = "off"
 	}
-	if enabled, known := policyEnabled(cfg, d.Name); known {
+	if policy, projected := d.policySetting(); projected && policy.enabled != nil {
 		level = "off"
-		if enabled {
+		if policy.enabled(cfg) {
 			level = "on"
 		}
 	}
@@ -231,8 +231,8 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 		resolved[d.Name] = setting.Level()
 		next.Lint.Rules.resolvedFixed[d.Name] = fixed
 		next.Lint.Rules.boundSettings[d.Name] = boundSetting{Setting: setting}
-		if d.Configure != nil {
-			d.Configure(&next, setting)
+		if policy, projected := d.policySetting(); projected {
+			policy.configure(&next, setting)
 		}
 	}
 	return &next, nil
@@ -483,21 +483,6 @@ func validateOptionsJSON(descriptor Rule, document json.RawMessage) error {
 		return err
 	}
 	return schemaBindingError(schema.Validate(document))
-}
-
-func policyEnabled(cfg *Config, name string) (bool, bool) {
-	switch name {
-	case "forbidden-suppression":
-		return cfg != nil && cfg.Policy.DisallowSuppressions.Enabled(), true
-	case "unpinned-reference":
-		return cfg.RequiresCommitHash(), true
-	case "job-timeout":
-		return cfg.RequiresJobTimeout().Enabled(), true
-	case "cache-write-untrusted", "cache-call-unrestricted", "cache-operation":
-		return cfg.CachePolicyEnabled(name), true
-	default:
-		return false, false
-	}
 }
 
 func (ruleSet RuleSet) ForDocument(config *Config, path, root string) (*Config, error) {

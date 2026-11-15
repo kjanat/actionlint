@@ -13,6 +13,8 @@ var ForbiddenSuppressionRule = &define.Rule{
 	Description: "Report suppressions forbidden by policy",
 	Category:    "conventions",
 	Subcategory: "suppressions",
+	LegacyGroup: "policy",
+	Policy:      "disallow-suppressions",
 	Help:        "Remove the suppression and address its finding, or change the repository suppression policy.",
 	Scope:       rule.SourceConfiguration,
 	Options:     define.Options[configuration.SuppressionsPolicy](),

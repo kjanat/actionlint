@@ -14,7 +14,8 @@ func (ruleSet RuleSet) projectSettings(c *Config) {
 			}
 			setting, exists = ruleSet.canonicalSetting(group, descriptor.Name)
 		}
-		if !exists || descriptor.Configure == nil {
+		policy, projected := descriptor.policySetting()
+		if !exists || !projected {
 			continue
 		}
 		if (setting.Level() == "" || setting.Level() == "default") && !setting.HasOptions() {
@@ -26,14 +27,9 @@ func (ruleSet RuleSet) projectSettings(c *Config) {
 				setting = setting.WithLevel("on")
 			}
 		}
-		descriptor.Configure(c, setting)
-		if setting.Level() == "off" {
-			switch descriptor.Name {
-			case "job-timeout":
-				c.Policy.RequireJobTimeout = &JobTimeoutPolicy{}
-			case "forbidden-suppression":
-				c.Policy.DisallowSuppressions = &SuppressionsPolicy{}
-			}
+		policy.configure(c, setting)
+		if setting.Level() == "off" && policy.disable != nil {
+			policy.disable(c)
 		}
 	}
 	if c.Lint.MessageIgnores != nil {

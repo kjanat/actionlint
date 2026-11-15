@@ -13,6 +13,7 @@ var EmptyRunRule = &define.Rule{
 	Description: "Report steps with an empty run script",
 	Category:    "suspicious",
 	Subcategory: "steps",
+	LegacyGroup: "style",
 	Recommended: true,
 	Explanation: "Report run steps whose script is empty. GitHub accepts the step, but it runs nothing.",
 	Help:        "Write the commands the step should run, or remove the step.",

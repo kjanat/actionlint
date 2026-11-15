@@ -80,8 +80,8 @@ func (c *IgnoreConfig) DecodeConfig(value any) error {
 }
 
 func (ruleSet RuleSet) ValidateIgnore(c IgnoreConfig, additional ...string) error {
-	if ruleSet.ResolveAlias(c.Rule) == "forbidden-suppression" {
-		return errors.New("ignores: forbidden-suppression cannot be suppressed")
+	if suppressions, found := ruleSet.suppressionsRule(); found && ruleSet.ResolveAlias(c.Rule) == suppressions.Name {
+		return fmt.Errorf("ignores: %s cannot be suppressed", suppressions.Name)
 	}
 	if !ruleSet.Suppressible(c.Rule, additional...) {
 		return fmt.Errorf("ignores: unknown suppressible rule %q", c.Rule)
@@ -90,6 +90,7 @@ func (ruleSet RuleSet) ValidateIgnore(c IgnoreConfig, additional ...string) erro
 }
 
 func (c IgnoreConfig) validateStructure() error {
+	// Decoding has no rule set; ValidateIgnore also rejects aliases.
 	if c.Rule == "forbidden-suppression" {
 		return errors.New("ignores: forbidden-suppression cannot be suppressed")
 	}

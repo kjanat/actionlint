@@ -27,6 +27,7 @@ var Rule = &define.Rule{
 	Description:     "Validate expression values assigned to workflow fields",
 	Category:        "correctness",
 	Subcategory:     "expressions",
+	MigrationNote:   "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.",
 	Recommended:     true,
 	Help:            "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.",
 	SupportsActions: true,

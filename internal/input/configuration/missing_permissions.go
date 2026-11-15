@@ -83,7 +83,7 @@ func (options MissingPermissionsOptions) Locations() []PermissionLocation {
 func (cfg *Config) PermissionDeclarationLocations() ([]PermissionLocation, error) {
 	options := MissingPermissionsOptions{}
 	if cfg != nil {
-		setting, _ := cfg.Lint.Rules.Security.Rule("missing-permissions")
+		setting, _ := cfg.Lint.Rules.Security.Rule(permissionsRule)
 		if _, err := setting.LoadOptions(&options); err != nil {
 			return nil, err
 		}

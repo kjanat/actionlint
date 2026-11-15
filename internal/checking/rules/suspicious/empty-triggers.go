@@ -13,6 +13,7 @@ var EmptyTriggersRule = &define.Rule{
 	Description: "Report workflows that declare no triggers",
 	Category:    "suspicious",
 	Subcategory: "triggers",
+	LegacyGroup: "style",
 	Recommended: true,
 	Explanation: "Report workflows whose on section is empty. GitHub accepts the workflow, but no event ever starts it.",
 	Help:        "Add the events that should start the workflow, or delete the workflow.",

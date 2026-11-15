@@ -60,8 +60,10 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 	if field(root, "policy") != nil {
 		result.Notes = append(result.Notes, "Migrated policy levels are explicit: presets and --strict no longer override explicit disables.")
 	}
-	if legacyExpressionControls(root) {
-		result.Notes = append(result.Notes, "Expression diagnostics have independent rule IDs in v2. Existing expression levels, disable entries and suppressions select only expression; review the split-rule migration in docs/config-migration.md. Workflow comments are not rewritten.")
+	for _, descriptor := range ruleSet.Rules() {
+		if descriptor.MigrationNote != "" && legacyRuleControls(root, descriptor) {
+			result.Notes = append(result.Notes, descriptor.MigrationNote)
+		}
 	}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".toml":
@@ -93,29 +95,31 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 	return result, nil
 }
 
-// The valid v2 expression selector cannot distinguish old broad intent from a
-// deliberate field-value selection. Warn during legacy conversion; do not alias it.
-func legacyExpressionControls(root any) bool {
+// legacyRuleControls reports whether root selects the rule by its name in its
+// category, a disable entry or an ignore. A rule whose name kept a narrower
+// meaning cannot tell old broad intent from a deliberate selection, so
+// migration explains the change instead of aliasing the name.
+func legacyRuleControls(root any, descriptor Rule) bool {
 	rules := field(field(root, "lint"), "rules")
-	if field(field(rules, "correctness"), "expression") != nil {
+	if field(field(rules, descriptor.Category), descriptor.Name) != nil {
 		return true
 	}
 	if disabled := field(rules, "disable"); disabled != nil {
 		for _, item := range elements(disabled) {
-			if text(item) == "expression" {
+			if text(item) == descriptor.Name {
 				return true
 			}
 		}
 	}
 	if ignores := field(root, "ignores"); ignores != nil {
 		for _, item := range elements(ignores) {
-			if selected := field(item, "rule"); selected != nil && text(selected) == "expression" {
+			if selected := field(item, "rule"); selected != nil && text(selected) == descriptor.Name {
 				return true
 			}
 		}
 	}
 	if overrides := field(root, "overrides"); overrides != nil {
-		return slices.ContainsFunc(elements(overrides), legacyExpressionControls)
+		return slices.ContainsFunc(elements(overrides), func(override any) bool { return legacyRuleControls(override, descriptor) })
 	}
 	return false
 }
@@ -275,9 +279,12 @@ func migratedPolicySettings(value any) any {
 		return value
 	}
 	policies := mapping()
-	for _, name := range []string{"cache-call-unrestricted", "cache-operation", "cache-write-untrusted", "disallow-suppressions", "require-action-metadata", "require-commit-hash", "require-job-timeout", "missing-permissions"} {
+	for name := range policySettings {
 		setField(policies, name, value)
 	}
+	// policy.require-permissions has no projection; null also resets the rule
+	// that replaced it.
+	setField(policies, permissionsRule, value)
 	return policies
 }
 

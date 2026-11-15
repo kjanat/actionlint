@@ -35,6 +35,26 @@ type Declaration struct {
 	// Options constructs a fresh value for option decoding and schema generation.
 	// Nil means the rule accepts no options.
 	Options func() any
+	// LegacyGroup names the configuration group that held the rule before
+	// semantic categories replaced provider, maturity and policy groups.
+	// Empty means the rule's category.
+	LegacyGroup string
+	// Policy names the legacy policy setting that the rule's level and options
+	// replace and still project into. Empty means none.
+	Policy string
+	// MovedOptions lists legacy rule options that migration moves to
+	// repository facts.
+	MovedOptions []MovedOption
+	// MigrationNote explains a change of meaning to users whose legacy
+	// configuration selects the rule's name.
+	MigrationNote string
+}
+
+// MovedOption names a legacy rule option and the repository fact that
+// replaced it.
+type MovedOption struct {
+	Option     string
+	Repository string
 }
 
 // Descriptor describes a check independently of its execution backend.
