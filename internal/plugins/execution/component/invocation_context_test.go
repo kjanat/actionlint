@@ -307,11 +307,11 @@ func TestInvocationContextRejectsBudgetOverflow(t *testing.T) {
 	if strconv.IntSize <= 32 {
 		t.Skip("int cannot exceed WIT u32 on 32-bit platforms")
 	}
-	const beyondU32 = int(uint64(math.MaxUint32) + 1)
+	beyondU32 := uint64(math.MaxUint32) + 1
 	for name, budget := range map[string]invocation.Budget{
-		"depth":   {MaxDepth: beyondU32, MaxCalls: 1, MaxScripts: 1},
-		"calls":   {MaxDepth: 1, MaxCalls: beyondU32, MaxScripts: 1},
-		"scripts": {MaxDepth: 1, MaxCalls: 1, MaxScripts: beyondU32},
+		"depth":   {MaxDepth: int(beyondU32), MaxCalls: 1, MaxScripts: 1},
+		"calls":   {MaxDepth: 1, MaxCalls: int(beyondU32), MaxScripts: 1},
+		"scripts": {MaxDepth: 1, MaxCalls: 1, MaxScripts: int(beyondU32)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
