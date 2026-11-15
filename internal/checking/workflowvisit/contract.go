@@ -1,4 +1,4 @@
-package visit
+package workflowvisit
 
 import (
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"

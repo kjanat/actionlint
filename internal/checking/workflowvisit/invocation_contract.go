@@ -1,8 +1,7 @@
-package calls
+package workflowvisit
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -24,7 +23,7 @@ type Invocation struct {
 
 // InvocationParticipant observes resolved action execution without producing child rules.
 type InvocationParticipant interface {
-	workflowvisit.Rule
+	Rule
 	EnterInvocation(Invocation) error
 	VisitInvocationStep(workflowdecl.StepView) error
 	VisitOpaqueAction(workflowdecl.StepView) error
@@ -46,7 +45,7 @@ type CheckoutParticipant interface {
 
 type (
 	MetadataParticipant interface {
-		workflowvisit.Rule
+		Rule
 		CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot, actionmeta.ReferencedFiles) error
 		ForMetadata(*workspaceactions.Resolver) MetadataParticipant
 	}

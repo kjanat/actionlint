@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -36,7 +36,7 @@ func TestOpaqueActionExpressionsUseInvocationFrameWithoutWorkflowDuplicates(t *t
 					t.Fatal(err)
 				}
 				context := builder.RootContext()
-				if err := rule.EnterInvocation(checkcalls.Invocation{Context: context, Source: snapshot, Path: path}); err != nil {
+				if err := rule.EnterInvocation(workflowvisit.Invocation{Context: context, Source: snapshot, Path: path}); err != nil {
 					t.Fatal(err)
 				}
 				if err := rule.VisitOpaqueAction(steps[0]); err != nil {

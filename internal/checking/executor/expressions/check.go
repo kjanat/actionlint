@@ -5,11 +5,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	workflowexpr "actionlint.kjanat.dev/v2/internal/checking/expressions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
@@ -36,11 +35,11 @@ type ruleExpression struct {
 }
 
 type expressionInvocation struct {
-	scope  checkcalls.Invocation
+	scope  workflowvisit.Invocation
 	parent *workflowexpr.Checker
 }
 
-func (r *ruleExpression) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *ruleExpression) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}

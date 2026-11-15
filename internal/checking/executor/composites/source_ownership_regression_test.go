@@ -8,9 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
@@ -43,8 +42,8 @@ func (r *sourceMutationRule) VisitStep(step workflowdecl.StepView) error {
 	return nil
 }
 
-func (r *sourceMutationRule) EnterInvocation(checkcalls.Invocation) error { return nil }
-func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error    { return nil }
+func (r *sourceMutationRule) EnterInvocation(workflowvisit.Invocation) error { return nil }
+func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error       { return nil }
 func (r *sourceMutationRule) VisitInvocationStep(step workflowdecl.StepView) error {
 	return r.VisitStep(step)
 }
@@ -53,7 +52,7 @@ func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.StepView) error
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (r *sourceMutationRule) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	r.metadata++
 	return r
 }
@@ -63,8 +62,8 @@ func (r *sourceMutationRule) CheckStandaloneMetadata(*actionmeta.Metadata, parsi
 }
 
 var (
-	_ checkcalls.MetadataParticipant   = (*sourceMutationRule)(nil)
-	_ checkcalls.InvocationParticipant = (*sourceMutationRule)(nil)
+	_ workflowvisit.MetadataParticipant   = (*sourceMutationRule)(nil)
+	_ workflowvisit.InvocationParticipant = (*sourceMutationRule)(nil)
 )
 
 type canonicalFactObserver struct {
@@ -111,7 +110,7 @@ func (observer *canonicalFactObserver) VisitStep(view workflowdecl.StepView) err
 	return nil
 }
 
-func (observer *canonicalFactObserver) EnterInvocation(call checkcalls.Invocation) error {
+func (observer *canonicalFactObserver) EnterInvocation(call workflowvisit.Invocation) error {
 	observer.parents = append(observer.parents, observer.source)
 	observer.source = call.Source
 	return nil
@@ -131,7 +130,7 @@ func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.StepV
 	return observer.VisitStep(step)
 }
 
-var _ checkcalls.InvocationParticipant = (*canonicalFactObserver)(nil)
+var _ workflowvisit.InvocationParticipant = (*canonicalFactObserver)(nil)
 
 func TestSourceOwnershipRuleCannotChangeCollectedScript(t *testing.T) {
 	t.Parallel()

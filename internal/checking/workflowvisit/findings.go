@@ -1,4 +1,4 @@
-package visit
+package workflowvisit
 
 import findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 

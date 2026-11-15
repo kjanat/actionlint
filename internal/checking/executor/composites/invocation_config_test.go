@@ -9,11 +9,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -173,7 +171,7 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 
 type ignoreProbeRule struct{ workflowvisit.Base }
 
-func (*ignoreProbeRule) EnterInvocation(checkcalls.Invocation) error { return nil }
+func (*ignoreProbeRule) EnterInvocation(workflowvisit.Invocation) error { return nil }
 
 func (*ignoreProbeRule) VisitInvocationStep(workflowdecl.StepView) error { return nil }
 

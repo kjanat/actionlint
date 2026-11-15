@@ -6,9 +6,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
@@ -96,7 +95,7 @@ func (r *containerAdapter) ApplyCheckout(actions *workspaceactions.Resolver) {
 	r.actions = actions.Prepared()
 }
 
-func (r *containerAdapter) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *containerAdapter) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}

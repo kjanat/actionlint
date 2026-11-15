@@ -7,11 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
@@ -73,7 +72,7 @@ func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.
 	return nil
 }
 
-func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) checkcalls.MetadataParticipant {
+func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
 	return rule
 }
 
@@ -182,4 +181,4 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	}
 }
 
-var _ checkcalls.MetadataParticipant = (*mutatingStandaloneMetadata)(nil)
+var _ workflowvisit.MetadataParticipant = (*mutatingStandaloneMetadata)(nil)

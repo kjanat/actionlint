@@ -4,9 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
-
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -16,13 +14,13 @@ import (
 
 type frameObserver struct {
 	workflowvisit.Base
-	enter func(checkcalls.Invocation) error
+	enter func(workflowvisit.Invocation) error
 	step  func() error
 }
 
-func (p *frameObserver) EnterInvocation(call checkcalls.Invocation) error { return p.enter(call) }
-func (p *frameObserver) LeaveInvocation(invocation.Context) error         { return nil }
-func (p *frameObserver) VisitStep(workflowdecl.StepView) error            { return p.step() }
+func (p *frameObserver) EnterInvocation(call workflowvisit.Invocation) error { return p.enter(call) }
+func (p *frameObserver) LeaveInvocation(invocation.Context) error            { return nil }
+func (p *frameObserver) VisitStep(workflowdecl.StepView) error               { return p.step() }
 func (p *frameObserver) VisitInvocationStep(step workflowdecl.StepView) error {
 	return p.VisitStep(step)
 }
@@ -68,7 +66,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 						t.Fatal("nested traversal replaced the live caller frame")
 					}
 				}
-				probe := &frameObserver{Base: workflowvisit.NewBase("observe-frame", ""), enter: func(call checkcalls.Invocation) error {
+				probe := &frameObserver{Base: workflowvisit.NewBase("observe-frame", ""), enter: func(call workflowvisit.Invocation) error {
 					assertCaller()
 					if call.Context == rootContext || call.Source == f.root {
 						t.Fatal("child did not receive its own invocation, source and resolver")
@@ -80,7 +78,7 @@ func TestCompositeTraversalDoesNotReplaceCallerFrame(t *testing.T) {
 					visited++
 					return childError
 				}}
-				err := parent.visitActionScripts(workflowStepViews(t, workflow, "test")[0], []checkcalls.InvocationParticipant{probe}, nil)
+				err := parent.visitActionScripts(workflowStepViews(t, workflow, "test")[0], []workflowvisit.InvocationParticipant{probe}, nil)
 				assertCaller()
 				return err
 			})

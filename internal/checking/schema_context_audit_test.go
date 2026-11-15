@@ -7,8 +7,7 @@ import (
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-	"actionlint.kjanat.dev/v2/internal/checking/passes"
-	visit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -121,7 +120,7 @@ jobs:
 					t.Fatalf("matrix reserved key source lost: %#v", matrix)
 				}
 			}
-			if err := passes.Visit(workflow, passes.Options{Passes: []visit.Pass{rule}}); err != nil {
+			if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{rule}}); err != nil {
 				t.Fatal(err)
 			}
 			errs := rule.Errs()
@@ -156,7 +155,7 @@ jobs:
     steps:
       - run: echo test
 `)
-			if err := passes.Visit(workflow, passes.Options{Passes: []visit.Pass{rule}}); err != nil {
+			if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{rule}}); err != nil {
 				t.Fatal(err)
 			}
 			errs := rule.Errs()
@@ -167,7 +166,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.WorkflowView, visit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.WorkflowView, workflowvisit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)

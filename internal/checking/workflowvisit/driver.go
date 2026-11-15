@@ -1,4 +1,4 @@
-package passes
+package workflowvisit
 
 import (
 	"cmp"
@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -15,7 +14,7 @@ import (
 // Visit keeps no reference to them after it returns.
 type Options struct {
 	// Passes run in slice order at every node.
-	Passes []workflowvisit.Pass
+	Passes []Pass
 	Hooks  Hooks
 	// Debug receives per-phase timings when non-nil.
 	Debug io.Writer
@@ -28,7 +27,7 @@ type Options struct {
 type Hooks struct {
 	Workflow         func(declaration.WorkflowView) error
 	Job              func(declaration.JobView) error
-	JobPass          func(pass workflowvisit.Pass, job declaration.JobView, visit func() error) error
+	JobPass          func(pass Pass, job declaration.JobView, visit func() error) error
 	Step             func(declaration.StepView) error
 	ParallelBoundary func()
 }
@@ -42,7 +41,7 @@ func Visit(n declaration.WorkflowView, options Options) error {
 
 // visitor is the state of one Visit call.
 type visitor struct {
-	passes []workflowvisit.Pass
+	passes []Pass
 	hooks  Hooks
 	dbg    io.Writer
 }
@@ -171,7 +170,7 @@ func (v *visitor) visitJob(n declaration.JobView) error {
 	return nil
 }
 
-func (v *visitor) visitJobPass(p workflowvisit.Pass, n declaration.JobView, visit func() error) error {
+func (v *visitor) visitJobPass(p Pass, n declaration.JobView, visit func() error) error {
 	if v.hooks.JobPass != nil {
 		return v.hooks.JobPass(p, n, visit)
 	}

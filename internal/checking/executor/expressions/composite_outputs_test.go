@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -48,7 +48,7 @@ func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
 		}
 		mark := rule.FindingCount()
 		context := builder.RootContext()
-		if err := rule.EnterInvocation(checkcalls.Invocation{Context: context, Source: snapshot, Path: path, Actions: invocationMetadata{metadata}}); err != nil {
+		if err := rule.EnterInvocation(workflowvisit.Invocation{Context: context, Source: snapshot, Path: path, Actions: invocationMetadata{metadata}}); err != nil {
 			t.Fatal(err)
 		}
 		for step := range body.Steps() {

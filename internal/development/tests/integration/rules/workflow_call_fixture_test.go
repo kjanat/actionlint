@@ -6,7 +6,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"

@@ -1,4 +1,4 @@
-package visit
+package workflowvisit
 
 import (
 	"testing"

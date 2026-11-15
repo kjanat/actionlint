@@ -1,4 +1,4 @@
-package passes
+package workflowvisit
 
 import (
 	"reflect"
@@ -6,12 +6,11 @@ import (
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type jobPhasePass struct {
-	workflowvisit.Base
+	Base
 	events []string
 }
 
@@ -30,9 +29,9 @@ func TestVisitJobPassWrapsEveryJobPhase(t *testing.T) {
 	pass := &jobPhasePass{}
 	workflow := declaration.Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {}}}, false, "").Bind("phases").Workflow()
 	err := Visit(workflow, Options{
-		Passes: []workflowvisit.Pass{pass},
-		Hooks: Hooks{JobPass: func(wrapped workflowvisit.Pass, job declaration.JobView, visit func() error) error {
-			if wrapped != workflowvisit.Pass(pass) {
+		Passes: []Pass{pass},
+		Hooks: Hooks{JobPass: func(wrapped Pass, job declaration.JobView, visit func() error) error {
+			if wrapped != Pass(pass) {
 				t.Fatalf("hook received pass %v, want %v", wrapped, pass)
 			}
 			pass.events = append(pass.events, "enter "+job.Key())

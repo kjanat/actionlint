@@ -7,7 +7,7 @@ import (
 
 	expressionchecks "actionlint.kjanat.dev/v2/internal/checking/executor/expressions"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 

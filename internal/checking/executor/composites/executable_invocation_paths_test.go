@@ -3,11 +3,10 @@ package composites
 import (
 	"testing"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -17,8 +16,8 @@ import (
 // executableRule is what the probe needs from the executable-bit rule: the
 // invocation hooks, checkout placement and the current script paths.
 type executableRule interface {
-	checkcalls.InvocationParticipant
-	checkcalls.CheckoutParticipant
+	workflowvisit.InvocationParticipant
+	workflowvisit.CheckoutParticipant
 	Paths() execution.Paths
 }
 
@@ -46,7 +45,7 @@ func (p *executablePathsProbe) checkPaths() {
 	}
 }
 
-func (p *executablePathsProbe) EnterInvocation(call checkcalls.Invocation) error {
+func (p *executablePathsProbe) EnterInvocation(call workflowvisit.Invocation) error {
 	p.checkPaths()
 	if err := p.executableRule.EnterInvocation(call); err != nil {
 		return err

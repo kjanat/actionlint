@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 )
 
 func TestWorkflowMetadataPreparationDoesNotRequireLintRules(t *testing.T) {

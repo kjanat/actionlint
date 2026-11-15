@@ -13,10 +13,9 @@ import (
 	"testing/synctest"
 	"time"
 
-	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -163,7 +162,7 @@ type sharedCompositeObserver struct {
 	steps     *[]workflowdecl.StepView
 }
 
-func (r *sharedCompositeObserver) EnterInvocation(scope checkcalls.Invocation) error {
+func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	*r.snapshots = append(*r.snapshots, scope.Source)

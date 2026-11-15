@@ -138,7 +138,7 @@ invalid and explicit declarations and copies repository default maps.
 `internal/input/files/names` loads repository workflow names and records whether
 every name was read. `internal/model/workflows/names` owns the immutable inventory
 and workflow-name filter grammar. The workflow-run-names rule produces findings
-under `internal/checking/rules/correctness/workflow-run-names`; the input loader
+under `internal/checking/rules/correctness`; the input loader
 does not produce lint diagnostics. Incomplete inventories cannot prove that a
 producer is absent or that filters exclude every producer.
 

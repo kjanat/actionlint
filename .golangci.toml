@@ -70,7 +70,7 @@ forbid        = [
 
 [linters.settings.depguard.rules.yaml-types]
 files = [
-  "**/internal/checking/passes/*.go",
+  "**/internal/checking/workflowvisit/*.go",
   "**/internal/model/workflows/definition/*.go",
   "**/internal/model/workflows/mappings/*.go",
   "!$test",
