@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-//go:generate node ../../../../../tools/generate/webhook-payloads/main.mts
+//go:generate node ../../../../tools/generate/webhook-payloads/main.mts
 //go:embed payload_catalogue.json
 var catalogueJSON []byte
 
