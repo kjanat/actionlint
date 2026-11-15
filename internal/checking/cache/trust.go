@@ -74,7 +74,7 @@ var cacheEventClasses = map[string]cacheEventClass{
 //
 // Inventory tests require an explicit decision before a new generated event can ship.
 func cacheRestrictedEvents(w declaration.Workflow) []string {
-	var events []string
+	events := make([]string, 0, len(w.On))
 	for _, event := range w.On {
 		name := event.EventName()
 		switch cacheEventClasses[name] {

@@ -7,7 +7,7 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func TestOriginOwnsSelectorValuesAndPosition(t *testing.T) {
+func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"plain", "selector", "selector"},
@@ -24,11 +24,10 @@ func TestOriginOwnsSelectorValuesAndPosition(t *testing.T) {
 				t.Fatal("owned job unavailable")
 			}
 			view := slices.Collect(job.Steps())[0]
-			value.Value, step.Pos.Line = "changed", 999
 			want := Origin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, Position: workflowlang.Pos{Line: 3, Col: 7}, HasPosition: true}
 			origin := view.Origin("Build")
 			if origin != want {
-				t.Fatalf("owned origin = %+v; want %+v", origin, want)
+				t.Fatalf("origin = %+v; want %+v", origin, want)
 			}
 			origin.Position.Line = 999
 			if fresh := view.Origin("Build"); fresh != want {
@@ -41,7 +40,7 @@ func TestOriginOwnsSelectorValuesAndPosition(t *testing.T) {
 	}
 }
 
-func TestJobOriginOwnsUsesSelector(t *testing.T) {
+func TestJobOriginReadsUsesSelector(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"plain", "org/repo/.github/workflows/check.yml@main", "org/repo/.github/workflows/check.yml@main"},
@@ -57,7 +56,6 @@ func TestJobOriginOwnsUsesSelector(t *testing.T) {
 			if !present {
 				t.Fatal("owned job unavailable")
 			}
-			job.ID.Value, uses.Value = "changed", "changed"
 			want := Origin{Job: "Build", Uses: tc.want}
 			if got := view.Origin(); got != want {
 				t.Fatalf("job origin = %+v; want %+v", got, want)

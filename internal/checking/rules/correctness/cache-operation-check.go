@@ -7,6 +7,7 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // CacheOperationCheck checks action operations and reusable calls against their
@@ -22,7 +23,13 @@ func CacheOperationCheck(workflow workflowdecl.Workflow, lookup *workflowinputs.
 			return reporting.FromDiagnostics(cachepolicy.CheckCallOperations(job.WorkflowCall, mode, lookup))
 		},
 		Step: func(step workflowdecl.Step) []reporting.Finding {
-			mode := cachemodel.EffectiveMode(workflow.CacheMode, step.Job().CacheMode)
+			// Composite action steps have no declaring workflow job, so the
+			// job layer contributes no cache override.
+			var jobMode *workflowlang.CacheMode
+			if job := step.Job(); job.Present() {
+				jobMode = job.CacheMode
+			}
+			mode := cachemodel.EffectiveMode(workflow.CacheMode, jobMode)
 			findings := reporting.FromDiagnostics(cachepolicy.CheckStep(step, mode))
 			for i := range findings {
 				findings[i].Step = step

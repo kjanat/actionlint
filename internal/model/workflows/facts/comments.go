@@ -7,7 +7,7 @@ import (
 
 // SourceComments publishes YAML attachments independently of the decoded scalar.
 func SourceComments(source []workflowlang.ScalarComment) []SourceComment {
-	var comments []SourceComment
+	comments := make([]SourceComment, 0, len(source))
 	for _, comment := range source {
 		placement := LeadingComment
 		if comment.Trailing {
