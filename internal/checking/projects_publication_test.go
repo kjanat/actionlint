@@ -67,7 +67,11 @@ func TestCheckProjectsPreservesIncompleteChecksAcrossRepositories(t *testing.T) 
 		}
 	}
 	for _, path := range paths {
-		if !seen[filepath.Clean(path)] {
+		canonical, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !seen[filepath.Clean(canonical)] {
 			t.Errorf("missing incomplete workflow-name check for %s: %+v", path, result.IncompleteChecks)
 		}
 	}
