@@ -11,9 +11,9 @@ import (
 
 // FromAction projects decoded action metadata into a report outline.
 func FromAction(path string, metadata *actionmeta.Metadata, parseErr error) Action {
-	outline := ActionFields{Path: path, ParseStatus: "failed", Inputs: []Input{}, Outputs: []Output{}, Runs: UnknownRuns{}}
+	outline := Action{Path: path, ParseStatus: "failed", Inputs: []Input{}, Outputs: []Output{}, Runs: UnknownRuns{}}
 	if metadata == nil || metadata.Root == nil {
-		return NewAction(outline)
+		return outline
 	}
 	fields := actionOutlineFields(metadata.Root)
 	outline.Name, outline.Description = actionOutlineString(fields["name"]), actionOutlineString(fields["description"])
@@ -25,7 +25,7 @@ func FromAction(path string, metadata *actionmeta.Metadata, parseErr error) Acti
 	if parseErr != nil {
 		outline.ParseStatus = "partial"
 	}
-	return NewAction(outline)
+	return outline
 }
 
 func actionOutlineFields(node *syntax.Node) map[string]*syntax.Node {
@@ -96,7 +96,7 @@ func actionRunsOutline(node *syntax.Node) ActionRuns {
 	using := actionOutlineString(fields["using"])
 	switch strings.ToLower(using) {
 	case "composite":
-		return NewCompositeRuns(actionStepOutlines(fields["steps"]))
+		return CompositeRuns{Steps: actionStepOutlines(fields["steps"])}
 	case "docker":
 		args := []string{}
 		if sequence := actionmeta.Node(fields["args"]); sequence != nil && sequence.Kind == syntax.SequenceNode {
@@ -106,10 +106,10 @@ func actionRunsOutline(node *syntax.Node) ActionRuns {
 				}
 			}
 		}
-		return NewDockerRuns(DockerRunsFields{
+		return DockerRuns{
 			Image: actionOutlineString(fields["image"]), Entrypoint: actionOutlineString(fields["entrypoint"]),
 			PreEntrypoint: actionOutlineString(fields["pre-entrypoint"]), PostEntrypoint: actionOutlineString(fields["post-entrypoint"]), Args: args,
-		})
+		}
 	case "":
 		if plugin := actionOutlineString(fields["plugin"]); plugin != "" {
 			return PluginRuns{Plugin: plugin}
@@ -132,7 +132,7 @@ func actionStepOutlines(node *syntax.Node) []Step {
 	}
 	for _, node := range node.Content {
 		fields := actionOutlineFields(node)
-		step := StepFields{
+		step := Step{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
 			Start: outlinePosition(workflowparser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
@@ -144,7 +144,7 @@ func actionStepOutlines(node *syntax.Node) []Step {
 		case hasUses && !hasRun:
 			step.Kind = "uses"
 		}
-		steps = append(steps, NewStep(step))
+		steps = append(steps, step)
 	}
 	return steps
 }

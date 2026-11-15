@@ -3,9 +3,7 @@ package outline
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"slices"
 )
 
 // Outline is a lossy report projection of observed workflow or action
@@ -26,40 +24,27 @@ func (d Outlines) MarshalJSON() ([]byte, error) {
 	if d == nil {
 		return []byte("[]"), nil
 	}
-	return marshal(plain(d))
+	return json.Marshal(plain(d))
 }
 
 func (Workflow) documentOutline() {}
 
 // DocumentPath returns the source path.
-func (w Workflow) DocumentPath() string { return w.path }
+func (w Workflow) DocumentPath() string { return w.Path }
 
-// WithPath returns a detached copy with a different source path.
+// WithPath returns the workflow with a different source path.
 func (w Workflow) WithPath(path string) Outline {
-	detached := copyOwnedWorkflow(w)
-	detached.path = path
-	return detached
+	w.Path = path
+	return w
 }
 
 // MarshalJSON derives the document kind from the concrete type.
 func (w Workflow) MarshalJSON() ([]byte, error) {
-	return marshal(struct {
+	type plain Workflow
+	return json.Marshal(struct {
 		Kind string `json:"kind"`
-		workflowWire
-	}{"workflow", workflowWire{
-		Path: w.path, Name: w.name, ParseStatus: w.parseStatus,
-		Triggers: slices.Clone(w.triggers), Jobs: cloneJobs(w.jobs),
-	}})
-}
-
-// marshal encodes value into storage owned by the caller. A failure is reported
-// by message so the error cannot retain the encoded value.
-func marshal(value any) ([]byte, error) {
-	data, err := json.Marshal(value)
-	if err != nil {
-		return nil, errors.New(err.Error())
-	}
-	return bytes.Clone(data), nil
+		plain
+	}{"workflow", plain(w)})
 }
 
 // UnmarshalJSON dispatches document variants using their kind.
@@ -78,14 +63,12 @@ func (d *Outlines) UnmarshalJSON(data []byte) error {
 		}
 		switch header.Kind {
 		case "workflow":
-			var value workflowWire
+			type plain Workflow
+			var value plain
 			if err := json.Unmarshal(record, &value); err != nil {
 				return err
 			}
-			values = append(values, Workflow{
-				path: value.Path, name: value.Name, parseStatus: value.ParseStatus,
-				triggers: value.Triggers, jobs: value.Jobs,
-			})
+			values = append(values, Workflow(value))
 		case "action":
 			var value Action
 			if err := json.Unmarshal(record, &value); err != nil {
@@ -107,14 +90,8 @@ type ActionRuns interface {
 
 // CompositeRuns contains the action's declared steps.
 type CompositeRuns struct {
-	steps []Step
+	Steps []Step `json:"steps"`
 }
-
-// NewCompositeRuns records steps; later changes to the slice do not affect it.
-func NewCompositeRuns(steps []Step) CompositeRuns { return CompositeRuns{steps: cloneSteps(steps)} }
-
-// Steps returns the declared steps in source order.
-func (r CompositeRuns) Steps() []Step { return cloneSteps(r.steps) }
 
 // JavaScriptRuns identifies a Node runtime and its entrypoints.
 type JavaScriptRuns struct {
@@ -128,47 +105,6 @@ type JavaScriptRuns struct {
 
 // DockerRuns identifies a container image and its entrypoints.
 type DockerRuns struct {
-	image, entrypoint, preEntrypoint, postEntrypoint string
-	args                                             []string
-}
-
-// DockerRunsFields lists the declarations recorded by NewDockerRuns.
-type DockerRunsFields struct {
-	Image          string
-	Entrypoint     string
-	PreEntrypoint  string
-	PostEntrypoint string
-	Args           []string
-}
-
-// NewDockerRuns records fields; later changes to Args do not affect it.
-func NewDockerRuns(fields DockerRunsFields) DockerRuns {
-	return DockerRuns{
-		image: fields.Image, entrypoint: fields.Entrypoint, preEntrypoint: fields.PreEntrypoint,
-		postEntrypoint: fields.PostEntrypoint, args: slices.Clone(fields.Args),
-	}
-}
-
-// Image returns the declared container image.
-func (r DockerRuns) Image() string { return r.image }
-
-// Entrypoint returns the declared main entrypoint.
-func (r DockerRuns) Entrypoint() string { return r.entrypoint }
-
-// PreEntrypoint returns the declared pre entrypoint.
-func (r DockerRuns) PreEntrypoint() string { return r.preEntrypoint }
-
-// PostEntrypoint returns the declared post entrypoint.
-func (r DockerRuns) PostEntrypoint() string { return r.postEntrypoint }
-
-// Args returns the declared container arguments.
-func (r DockerRuns) Args() []string { return slices.Clone(r.args) }
-
-type compositeRunsWire struct {
-	Steps []Step `json:"steps"`
-}
-
-type dockerRunsWire struct {
 	Image          string   `json:"image,omitempty"`
 	Entrypoint     string   `json:"entrypoint,omitempty"`
 	PreEntrypoint  string   `json:"pre_entrypoint,omitempty"`
@@ -194,16 +130,17 @@ func (UnknownRuns) actionRuns()    {}
 
 // MarshalJSON derives the runtime kind from the concrete type.
 func (r CompositeRuns) MarshalJSON() ([]byte, error) {
-	return marshal(struct {
+	type plain CompositeRuns
+	return json.Marshal(struct {
 		Kind string `json:"kind"`
-		compositeRunsWire
-	}{"composite", compositeRunsWire{Steps: cloneSteps(r.steps)}})
+		plain
+	}{"composite", plain(r)})
 }
 
 // MarshalJSON derives the runtime kind from the concrete type.
 func (r JavaScriptRuns) MarshalJSON() ([]byte, error) {
 	type plain JavaScriptRuns
-	return marshal(struct {
+	return json.Marshal(struct {
 		Kind string `json:"kind"`
 		plain
 	}{"javascript", plain(r)})
@@ -211,19 +148,17 @@ func (r JavaScriptRuns) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON derives the runtime kind from the concrete type.
 func (r DockerRuns) MarshalJSON() ([]byte, error) {
-	return marshal(struct {
+	type plain DockerRuns
+	return json.Marshal(struct {
 		Kind string `json:"kind"`
-		dockerRunsWire
-	}{"docker", dockerRunsWire{
-		Image: r.image, Entrypoint: r.entrypoint, PreEntrypoint: r.preEntrypoint,
-		PostEntrypoint: r.postEntrypoint, Args: slices.Clone(r.args),
-	}})
+		plain
+	}{"docker", plain(r)})
 }
 
 // MarshalJSON derives the runtime kind from the concrete type.
 func (r PluginRuns) MarshalJSON() ([]byte, error) {
 	type plain PluginRuns
-	return marshal(struct {
+	return json.Marshal(struct {
 		Kind string `json:"kind"`
 		plain
 	}{"plugin", plain(r)})
@@ -232,28 +167,10 @@ func (r PluginRuns) MarshalJSON() ([]byte, error) {
 // MarshalJSON derives the runtime kind from the concrete type.
 func (r UnknownRuns) MarshalJSON() ([]byte, error) {
 	type plain UnknownRuns
-	return marshal(struct {
+	return json.Marshal(struct {
 		Kind string `json:"kind"`
 		plain
 	}{"unknown", plain(r)})
-}
-
-// cloneRuns detaches a runtime value from storage shared with its source.
-func cloneRuns(runs ActionRuns) ActionRuns {
-	switch runs := runs.(type) {
-	case CompositeRuns:
-		return copyOwnedCompositeRuns(runs)
-	case DockerRuns:
-		return copyOwnedDockerRuns(runs)
-	case JavaScriptRuns:
-		return copyOwnedJavaScriptRuns(runs)
-	case PluginRuns:
-		return copyOwnedPluginRuns(runs)
-	case UnknownRuns:
-		return copyOwnedUnknownRuns(runs)
-	default:
-		return nil
-	}
 }
 
 func decodeActionRuns(data json.RawMessage) (ActionRuns, error) {
@@ -268,29 +185,22 @@ func decodeActionRuns(data json.RawMessage) (ActionRuns, error) {
 	}
 	switch header.Kind {
 	case "composite":
-		var value compositeRunsWire
-		err := json.Unmarshal(data, &value)
-		return CompositeRuns{steps: value.Steps}, err
+		return decodeRuns[CompositeRuns](data)
 	case "javascript":
-		var value JavaScriptRuns
-		err := json.Unmarshal(data, &value)
-		return value, err
+		return decodeRuns[JavaScriptRuns](data)
 	case "docker":
-		var value dockerRunsWire
-		err := json.Unmarshal(data, &value)
-		return DockerRuns{
-			image: value.Image, entrypoint: value.Entrypoint, preEntrypoint: value.PreEntrypoint,
-			postEntrypoint: value.PostEntrypoint, args: value.Args,
-		}, err
+		return decodeRuns[DockerRuns](data)
 	case "plugin":
-		var value PluginRuns
-		err := json.Unmarshal(data, &value)
-		return value, err
+		return decodeRuns[PluginRuns](data)
 	case "unknown":
-		var value UnknownRuns
-		err := json.Unmarshal(data, &value)
-		return value, err
+		return decodeRuns[UnknownRuns](data)
 	default:
 		return nil, fmt.Errorf("unknown action runtime kind %q", header.Kind)
 	}
+}
+
+func decodeRuns[T ActionRuns](data json.RawMessage) (ActionRuns, error) {
+	var value T
+	err := json.Unmarshal(data, &value)
+	return value, err
 }
