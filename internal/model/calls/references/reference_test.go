@@ -14,11 +14,49 @@ func TestActionReferenceProblem(t *testing.T) {
 		{"/repo@v1", "owner and repo and ref should not be empty"},
 		{"owner/@v1", "owner and repo and ref should not be empty"},
 		{"owner/repo@", "owner and repo and ref should not be empty"},
+		{"owner//path@v1", "owner and repo and ref should not be empty"},
+		{"./a", "ref is missing"},
+		{"docker://x@sha256:ab", "owner and repo and ref should not be empty"},
 	} {
 		t.Run(tc.spec, func(t *testing.T) {
 			t.Parallel()
 			if got := ActionReferenceProblem(tc.spec); got != tc.problem {
 				t.Fatalf("problem=%q, want %q", got, tc.problem)
+			}
+		})
+	}
+}
+
+func TestParseRepositoryUses(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		spec   string
+		target RepositoryTarget
+		ok     bool
+	}{
+		{"o/r@v", RepositoryTarget{"o", "r", "", "v"}, true},
+		{"o/r/p/q@v", RepositoryTarget{"o", "r", "p/q", "v"}, true},
+		{"o/r@v/x", RepositoryTarget{"o", "r", "", "v/x"}, true},
+		{"$x/r@v", RepositoryTarget{"$x", "r", "", "v"}, true},
+		{".x/r@v", RepositoryTarget{".x", "r", "", "v"}, true},
+		{"./a@v", RepositoryTarget{}, false},
+		{"$/a@v", RepositoryTarget{}, false},
+		{"docker://x@sha256:ab", RepositoryTarget{}, false},
+		{"builtin:o/r@v", RepositoryTarget{}, false},
+		{"self:o/r@v", RepositoryTarget{}, false},
+		{"https://h/o/r@v", RepositoryTarget{}, false},
+		{"o/r", RepositoryTarget{}, false},
+		{"o/r@", RepositoryTarget{}, false},
+		{"o/r@v ${{ x }}", RepositoryTarget{}, false},
+		{" o/r@v", RepositoryTarget{}, false},
+		{"o/../p@v", RepositoryTarget{}, false},
+		{"o/r@v@w", RepositoryTarget{}, false},
+	} {
+		t.Run(tc.spec, func(t *testing.T) {
+			t.Parallel()
+			target, ok := ParseRepositoryUses(tc.spec)
+			if ok != tc.ok || target != tc.target {
+				t.Fatalf("ParseRepositoryUses(%q) = %+v, %v; want %+v, %v", tc.spec, target, ok, tc.target, tc.ok)
 			}
 		})
 	}
