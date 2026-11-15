@@ -94,7 +94,7 @@ func ServeWithOptions(ctx context.Context, in io.Reader, out io.Writer, options 
 		workers.Wait()
 	}()
 	initialized, shutdown := false, false
-	respond := func(id json.RawMessage, result any, rpcErr any) error {
+	respond := func(id json.RawMessage, result, rpcErr any) error {
 		v := map[string]any{"jsonrpc": "2.0", "id": id}
 		if rpcErr != nil {
 			v["error"] = rpcErr

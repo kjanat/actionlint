@@ -17,7 +17,7 @@ func TestRepositoryRootAndWorkflowFiles(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	for _, path := range []string{".git", "src/nested", "inner/.git", ".github/workflows/sub"} {
-		if err := os.MkdirAll(filepath.Join(root, path), 0750); err != nil {
+		if err := os.MkdirAll(filepath.Join(root, path), 0o750); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -43,7 +43,7 @@ func TestRepositoryRootAndWorkflowFiles(t *testing.T) {
 	if found, err := HasWorkflowFiles(filepath.Join(root, "inner"), files.New(t.Context(), nil, record)); err != nil || found || listed != nil {
 		t.Fatalf("repository without a workflows directory: %v, %v, listed %q", found, err, listed)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".github", "workflows", "sub", "ci.yaml"), []byte("on: push\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".github", "workflows", "sub", "ci.yaml"), []byte("on: push\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if found, err := HasWorkflowFiles(root, files.New(t.Context(), nil, nil)); err != nil || !found {
@@ -58,13 +58,13 @@ func TestHasWorkflowFilesUnreadable(t *testing.T) {
 	}
 	root := t.TempDir()
 	workflows := filepath.Join(root, ".github", "workflows")
-	if err := os.MkdirAll(workflows, 0750); err != nil {
+	if err := os.MkdirAll(workflows, 0o750); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(workflows, 0); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(workflows, 0750) })
+	t.Cleanup(func() { _ = os.Chmod(workflows, 0o750) })
 	if found, err := HasWorkflowFiles(root, files.New(t.Context(), nil, nil)); !errors.Is(err, fs.ErrPermission) || found {
 		t.Fatalf("HasWorkflowFiles = %v, %v; want a permission error", found, err)
 	}
@@ -77,7 +77,7 @@ func TestWorkflowTypo(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			for _, path := range []string{".git", "src/nested", directory} {
-				if err := os.MkdirAll(filepath.Join(root, path), 0750); err != nil {
+				if err := os.MkdirAll(filepath.Join(root, path), 0o750); err != nil {
 					t.Fatal(err)
 				}
 			}

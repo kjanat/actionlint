@@ -57,7 +57,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	network.SetFile(network.RecordURL("v1.0.0"), []byte(record))
 	root := repositoryfixture.Directory(t)
 	configPath := filepath.Join(root, ".github", "actionlint.yaml")
-	if err := os.MkdirAll(filepath.Dir(configPath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, configPath, "plugins: []\n")

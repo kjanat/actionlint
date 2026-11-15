@@ -22,11 +22,11 @@ func windowsPathSpellings(path string) map[string]string {
 func TestWindowsForwardSlashToolPaths(t *testing.T) {
 	root := t.TempDir()
 	tool := filepath.Join(root, "tools with spaces", "checker.exe")
-	if err := os.MkdirAll(filepath.Dir(tool), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(tool), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	// This empty stub is used only for command-path resolution.
-	if err := os.WriteFile(tool, nil, 0600); err != nil {
+	if err := os.WriteFile(tool, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for spelling, path := range windowsPathSpellings(tool) {

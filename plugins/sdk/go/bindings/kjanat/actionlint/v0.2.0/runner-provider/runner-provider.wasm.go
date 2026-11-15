@@ -9,14 +9,14 @@ package runnerprovider
 func wasmexport_Describe() (result *Descriptor) {
 	result_ := Exports.Describe()
 	result = &result_
-	return
+	return result
 }
 
 //go:wasmexport kjanat:actionlint/runner-provider@0.2.0#resolve
 //export kjanat:actionlint/runner-provider@0.2.0#resolve
-func wasmexport_Resolve(request0 *uint8, request1 uint32, request2 *uint8, request3 uint32, request4 *uint8, request5 uint32, request6 *uint8, request7 uint32, request8 *uint8, request9 uint32, request10 uint32, request11 uint32, request12 *Selector, request13 uint32) (result *Outcome) {
+func wasmexport_Resolve(request0 *uint8, request1 uint32, request2 *uint8, request3 uint32, request4 *uint8, request5 uint32, request6 *uint8, request7 uint32, request8 *uint8, request9, request10, request11 uint32, request12 *Selector, request13 uint32) (result *Outcome) {
 	request := lift_Request((*uint8)(request0), uint32(request1), (*uint8)(request2), uint32(request3), (*uint8)(request4), uint32(request5), (*uint8)(request6), uint32(request7), (*uint8)(request8), uint32(request9), uint32(request10), uint32(request11), (*Selector)(request12), uint32(request13))
 	result_ := Exports.Resolve(request)
 	result = &result_
-	return
+	return result
 }

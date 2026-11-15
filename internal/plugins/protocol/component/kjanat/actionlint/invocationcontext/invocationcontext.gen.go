@@ -20,12 +20,12 @@ type InvocationContext interface {
 	// Records remain stable in registration order; parents precede children.
 	// Offset may equal the count, returning an empty page.
 	// Limit must be 1..256; invalid bounds return an error, never partial success.
-	Calls(ctx context.Context, offset uint32, limit uint32) (ResultListCallString, error)
+	Calls(ctx context.Context, offset, limit uint32) (ResultListCallString, error)
 	// All queries return an error when invocation facts are unavailable.
 	// Counts cover stored records only, including incomplete call outcomes.
 	Describe(ctx context.Context) (ResultSummaryString, error)
 	ScriptByID(ctx context.Context, id string) (ResultOptionScriptOccurrenceString, error)
-	Scripts(ctx context.Context, offset uint32, limit uint32) (ResultListScriptOccurrenceString, error)
+	Scripts(ctx context.Context, offset, limit uint32) (ResultListScriptOccurrenceString, error)
 }
 
 // EntryKind corresponds to the WIT enum entry-kind.

@@ -64,7 +64,7 @@ func (a *integratedAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {
 	return &checkinputs.ToolIntegration{Tool: a.tool, Contract: a.contract, ConfigurationSchema: `{}`}
 }
 
-func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage, explicit json.RawMessage) (*checkinputs.ToolNegotiation, error) {
+func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _, explicit json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	a.explicit = explicit
 	if a.unsupported {
 		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "unsupported test option"}

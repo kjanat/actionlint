@@ -96,7 +96,7 @@ func TestReadDocumentationFile(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	want := []byte("run: echo C:\\tools\\bin\n")
-	if err := os.WriteFile(path, want, 0600); err != nil {
+	if err := os.WriteFile(path, want, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := readDocumentationFile(path)
@@ -196,7 +196,7 @@ func TestMainGenerateMissingWorkflow(t *testing.T) {
 	input := must(os.ReadFile("testdata/ok/replace_absolute_path.in"))
 	want := must(os.ReadFile("testdata/ok/replace_absolute_path.out"))
 	path := filepath.Join(t.TempDir(), "checks.md")
-	if err := os.WriteFile(path, input, 0600); err != nil {
+	if err := os.WriteFile(path, input, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := Main([]string{"exe", "-fix", path}); err != nil {

@@ -16,7 +16,7 @@ func TestCheckResultRetainsCachedConfiguration(t *testing.T) {
 	dir := t.TempDir()
 	config := filepath.Join(dir, "actionlint.yaml")
 	workflow := filepath.Join(dir, "ci.yml")
-	if err := os.WriteFile(config, []byte("config-variables: [MY_VAR]\n"), 0600); err != nil {
+	if err := os.WriteFile(config, []byte("config-variables: [MY_VAR]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(workflow, []byte(`on: push
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo ok
-`), 0600); err != nil {
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: dir, ConfigFile: config, Rules: checking.ConfigurationRules()})

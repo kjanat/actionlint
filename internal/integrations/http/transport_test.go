@@ -234,7 +234,7 @@ func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	var dialed []string
-	base := &http.Transport{DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
+	base := &http.Transport{DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		dialed = append(dialed, address)
 		if len(dialed) == 1 {
 			return nil, errors.New("first public address unavailable")
@@ -242,7 +242,7 @@ func TestAutomaticPinsDialAndRechecksSameAuthority(t *testing.T) {
 		return new(net.Dialer).DialContext(ctx, network, server.Listener.Addr().String())
 	}}
 	lookups := 0
-	checked := transportFor(t, "http://bücher.example/plugin", Grant{}, base, func(_ context.Context, _ string, host string) ([]netip.Addr, error) {
+	checked := transportFor(t, "http://bücher.example/plugin", Grant{}, base, func(_ context.Context, _, host string) ([]netip.Addr, error) {
 		if host != "xn--bcher-kva.example" {
 			t.Errorf("IDN lookup = %q", host)
 		}
@@ -288,7 +288,7 @@ func TestHTTPProxyPinsCONNECTAndTLSIdentity(t *testing.T) {
 			return proxyURL, nil
 		},
 		TLSClientConfig: &tls.Config{ServerName: "caller-config"},
-		DialContext: func(_ context.Context, _ string, address string) (net.Conn, error) {
+		DialContext: func(_ context.Context, _, address string) (net.Conn, error) {
 			if address != "proxy.example:8080" {
 				t.Errorf("proxy dial changed: %s", address)
 			}
@@ -517,7 +517,7 @@ func TestOwnedTransportDoesNotInheritRegisteredProtocolExecutor(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(server.Close)
-	base := &http.Transport{DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
+	base := &http.Transport{DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		if address != "8.8.8.8:80" {
 			t.Errorf("unpinned dial: %s", address)
 		}

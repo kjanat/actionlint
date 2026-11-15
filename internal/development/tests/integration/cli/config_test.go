@@ -40,7 +40,7 @@ func TestConfigInheritedWarningLocation(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "base.yml")
 	if err := os.WriteFile(base, []byte(`# inherited settings
 config-variable: [TYPO]
-`), 0600); err != nil {
+`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	leaf := filepath.Join(dir, ".github", "actionlint.yaml")
@@ -48,7 +48,7 @@ config-variable: [TYPO]
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(leaf, []byte("extends: ["+string(encodedBase)+"]\n"), 0600); err != nil {
+	if err := os.WriteFile(leaf, []byte("extends: ["+string(encodedBase)+"]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got := testRunCommand("", "config", "validate", "--config", leaf)
@@ -259,7 +259,7 @@ lint:
   rules:
     <<: *defaults
     policy: ` + replacement + "\n"
-		if err := os.WriteFile(config, []byte(source), 0600); err != nil {
+		if err := os.WriteFile(config, []byte(source), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		result, err := checking.ConfigurationRules().Inspect(repoconfig.Selection{Path: config}, true)

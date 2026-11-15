@@ -43,7 +43,7 @@ func TestRegisteredRulesInheritanceAndOverlay(t *testing.T) {
 		"base.yaml":   "lint: {rules: {disable: [no-sudo]}}\n",
 		"config.yaml": "extends: [base.yaml]\noverrides: [{includes: ['**'], lint: {rules: {disable: [no-sudo]}}}]\n",
 	} {
-		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

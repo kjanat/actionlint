@@ -43,7 +43,7 @@ func TestPlanAndApply(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	before := "αβ\r\nvalue\n"
-	if err := os.WriteFile(path, []byte(before), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	original, err := os.Stat(path)
@@ -84,7 +84,7 @@ func TestApplyPreflightsAllFiles(t *testing.T) {
 	dir := t.TempDir()
 	a, b := filepath.Join(dir, "a"), filepath.Join(dir, "b")
 	for _, p := range []string{a, b} {
-		if err := os.WriteFile(p, []byte("before"), 0600); err != nil {
+		if err := os.WriteFile(p, []byte("before"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
