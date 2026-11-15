@@ -12,7 +12,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -74,7 +73,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 					sources[path] = content
 				}
 				revision := candidate.Revisions[e.Path]
-				if revision == "" || revision != sourceid.Digest(content) {
+				if revision == "" || revision != sourcepos.ContentDigest(content) {
 					return Plan{}, fmt.Errorf("fix for %s has a missing or stale source revision", e.Path)
 				}
 				start, end, err := sourceposition.Range(content, sourcepos.YAML, e.Start, e.End)
@@ -110,7 +109,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 		}
 		after.Write(before[cursor:])
 		if after.String() != string(before) {
-			p.Changes = append(p.Changes, Change{path, string(before), after.String(), sourceid.Digest(before)})
+			p.Changes = append(p.Changes, Change{path, string(before), after.String(), sourcepos.ContentDigest(before)})
 		}
 	}
 	return p, nil

@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	sourceedits "actionlint.kjanat.dev/v2/internal/results/edits"
 )
@@ -46,7 +46,7 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 			valid := len(f.Edits) > 0
 			for _, e := range f.Edits {
 				target, ok := documents[e.Path]
-				if !ok || f.Revisions[e.Path] != sourceid.Digest([]byte(target.Text)) {
+				if !ok || f.Revisions[e.Path] != source.ContentDigest([]byte(target.Text)) {
 					valid = false
 					break
 				}

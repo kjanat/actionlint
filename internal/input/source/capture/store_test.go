@@ -16,7 +16,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 func newStore(t *testing.T, overlays []Overlay, reader Reader) *Store {
@@ -71,7 +70,7 @@ func TestConcurrentAliasesShareOneReadAndCacheSuccess(t *testing.T) {
 	var reads atomic.Int32
 	started, release := make(chan struct{}), make(chan struct{})
 	store := newStore(t, nil, func(_ context.Context, document string) ([]byte, error) {
-		if document != sourceid.Document(files.PhysicalPath(path)) {
+		if document != source.DocumentID(files.PhysicalPath(path)) {
 			t.Errorf("reader address = %q", document)
 		}
 		reads.Add(1)
@@ -118,7 +117,7 @@ func TestFailuresAreCached(t *testing.T) {
 			t.Fatal(err)
 		} else {
 			var failure *CaptureError
-			if !errors.As(err, &failure) || failure.Code() != "capture-failed" || failure.Document() != sourceid.Document(files.PhysicalPath(path)) {
+			if !errors.As(err, &failure) || failure.Code() != "capture-failed" || failure.Document() != source.DocumentID(files.PhysicalPath(path)) {
 				t.Fatalf("failure = %v", err)
 			}
 			var original *os.PathError
@@ -235,7 +234,7 @@ func TestOverlayAndSnapshotMutationIsolation(t *testing.T) {
 	if err := store.Verify(first, expected); err != nil {
 		t.Fatal(err)
 	}
-	if first.Revision().Digest() != sourceid.Digest(expected) {
+	if first.Revision().Digest() != source.ContentDigest(expected) {
 		t.Fatal("digest normalized physical bytes")
 	}
 }
@@ -256,7 +255,7 @@ func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
 			cleanupStore(t, store)
 			_, _, err = store.Lookup(path)
 			conflict := requireConflict(t, err)
-			if conflict.document != sourceid.Document(files.PhysicalPath(path)) {
+			if conflict.document != source.DocumentID(files.PhysicalPath(path)) {
 				t.Fatalf("conflict document = %q", conflict.document)
 			}
 			if message != "" && err.Error() != message {
@@ -322,7 +321,7 @@ func TestStdinAndInvalidUTF8(t *testing.T) {
 	if snapshot.Revision().Document() != "<stdin>" || !snapshot.Revision().Valid() || snapshot.CoordinatesAvailable() || snapshot.Coordinates() != source.RawLF {
 		t.Fatalf("invalid UTF-8 capture = %#v", snapshot)
 	}
-	if snapshot.Revision().Digest() != sourceid.Digest(invalid) || !bytes.Equal(snapshot.Bytes(), invalid) {
+	if snapshot.Revision().Digest() != source.ContentDigest(invalid) || !bytes.Equal(snapshot.Bytes(), invalid) {
 		t.Fatal("invalid UTF-8 bytes lost")
 	}
 	if document, err := store.Canonical(t.Context(), "<stdin>"); err != nil || document != "<stdin>" {
@@ -357,7 +356,7 @@ func TestCanonicalSymlinkAndMissingParentMemoized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := sourceid.Document(filepath.Join(resolvedReal, "missing-parent", "file"))
+	want := source.DocumentID(filepath.Join(resolvedReal, "missing-parent", "file"))
 	if got := readSnapshot(t, store, physical, source.YAML); got.Revision().Document() != want {
 		t.Fatalf("revision document = %q", got.Revision().Document())
 	}

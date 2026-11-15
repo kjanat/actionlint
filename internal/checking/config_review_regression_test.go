@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -137,7 +136,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 	if err != nil {
 		return nil, err
 	}
-	reference := sourceid.New(dependencySource.Revision().Document(), dependencySource.Bytes()).Ref("", "document", "", "$")
+	reference := source.NewReferenceIndex(dependencySource.Revision().Document(), dependencySource.Bytes()).Ref("", "document", "", "$")
 	workflow := sourceUnit{Path: ".github/workflows/ci.yml", Content: []byte(commandGoodWorkflow), Config: cfg, Project: workspace.Identity(root)}
 	findings, err := checkWithCaches(t, t.Context(), analysisRequest{
 		WorkingDir: root,

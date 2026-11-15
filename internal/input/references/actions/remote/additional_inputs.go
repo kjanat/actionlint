@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
 )
 
@@ -26,7 +26,7 @@ func allowReviewedAdditionalInputs(manifest actions.Manifest, definition actionm
 	if identity.Host() == "github.com" && repositoryMatches &&
 		identity.Commit() == "3d6703deef41a82916a2e5ca87096f93035cef66" &&
 		identity.Directory() == "" && manifest.Filename() == "action.yml" &&
-		sourceid.Digest([]byte(manifest.Content())) == "bb286e504a0e382a926ee922bd1cd2dd15d390b60220cc9bf97e442db65ebd80" {
+		source.ContentDigest([]byte(manifest.Content())) == "bb286e504a0e382a926ee922bd1cd2dd15d390b60220cc9bf97e442db65ebd80" {
 		return definition.WithAdditionalInputs()
 	}
 	return definition

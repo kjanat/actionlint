@@ -13,7 +13,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 // Reader receives the Store lifetime context and canonical document address.
@@ -79,7 +78,7 @@ func physicalDocument(path string) string {
 	if path == "<stdin>" || source.RemoteAddress(path) {
 		return path
 	}
-	return sourceid.Document(files.PhysicalPath(path))
+	return source.DocumentID(files.PhysicalPath(path))
 }
 
 func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader, resolve func(string) string) (*Store, error) {
@@ -140,7 +139,7 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 		variants := make(map[string]struct{})
 		for _, overlay := range group {
 			e.aliases[overlay.Path] = struct{}{}
-			variants[string(overlay.Coordinates)+":"+sourceid.Digest(overlay.Content)] = struct{}{}
+			variants[string(overlay.Coordinates)+":"+source.ContentDigest(overlay.Content)] = struct{}{}
 		}
 		if len(variants) != 1 {
 			keys := make([]string, 0, len(variants))

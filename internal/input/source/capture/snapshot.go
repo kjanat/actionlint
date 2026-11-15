@@ -6,7 +6,6 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
 )
 
 type captured struct {
@@ -54,7 +53,7 @@ func (s Snapshot) Aliases() []string { return slices.Clone(s.aliases) }
 
 func capture(document string, model source.Coordinates, content []byte) (*captured, error) {
 	content = bytes.Clone(content)
-	revision, err := source.NewRevision(document, sourceid.Digest(content))
+	revision, err := source.NewRevision(document, source.ContentDigest(content))
 	if err != nil {
 		return nil, err
 	}
