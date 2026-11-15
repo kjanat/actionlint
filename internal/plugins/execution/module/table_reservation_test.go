@@ -1,4 +1,4 @@
-package wasmbudget
+package module
 
 import (
 	"testing"
@@ -26,9 +26,9 @@ func TestTablesReserveMaximumWithGrowthHeadroom(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := Tables(test.tables, test.limit)
+			actual, err := ReservedTableBytes(test.tables, test.limit)
 			if (err == nil) != test.valid || actual != test.want {
-				t.Fatalf("Tables() = %d, %v; want %d valid=%v", actual, err, test.want, test.valid)
+				t.Fatalf("ReservedTableBytes() = %d, %v; want %d valid=%v", actual, err, test.want, test.valid)
 			}
 		})
 	}

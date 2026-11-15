@@ -16,8 +16,6 @@ import (
 	"sync/atomic"
 	"syscall/js"
 
-	"actionlint.kjanat.dev/v2/internal/lsp/transport"
-
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/lsp"
@@ -181,7 +179,7 @@ func main() {
 	go func() {
 		reader := bufio.NewReader(output)
 		for {
-			message, err := transport.ReadPayload(reader)
+			message, err := lsp.ReadFramedPayload(reader)
 			if err != nil {
 				return
 			}
