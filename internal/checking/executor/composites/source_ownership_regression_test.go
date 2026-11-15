@@ -3,19 +3,15 @@ package composites
 import (
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-
-	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
-	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -59,72 +55,6 @@ var (
 	_ workflowvisit.MetadataParticipant   = (*sourceMutationRule)(nil)
 	_ workflowvisit.InvocationParticipant = (*sourceMutationRule)(nil)
 )
-
-type canonicalFactObserver struct {
-	workflowvisit.Base
-	source     parsing.SourceSnapshot
-	parents    []parsing.SourceSnapshot
-	uses       *[]string
-	runs       *[]string
-	conditions *[]string
-	reference  *[]source.Reference
-	valid      *bool
-}
-
-func newCanonicalFactObserver(snapshot parsing.SourceSnapshot) *canonicalFactObserver {
-	uses := []string{}
-	runs := []string{}
-	conditions := []string{}
-	references := []source.Reference{}
-	valid := true
-	return &canonicalFactObserver{Base: workflowvisit.NewBase("observe-canonical-source", ""), source: snapshot, uses: &uses, runs: &runs, conditions: &conditions, reference: &references, valid: &valid}
-}
-
-func (observer *canonicalFactObserver) VisitStep(view workflowdecl.Step) error {
-	if err := observer.source.ValidateStep(view); err != nil {
-		*observer.valid = false
-		return err
-	}
-	reference := view.Reference()
-	*observer.reference = append(*observer.reference, reference)
-	condition := view.Condition()
-	if condition.State() != value.Missing {
-		semantic := condition.Source()
-		if boolean, known := condition.Bool(); known {
-			semantic = strconv.FormatBool(boolean)
-		}
-		*observer.conditions = append(*observer.conditions, strconv.Itoa(int(condition.State()))+"\x00"+semantic)
-	}
-	if action, ok := view.Action(); ok {
-		*observer.uses = append(*observer.uses, action.Uses.Text())
-	}
-	if run, ok := view.Run(); ok {
-		*observer.runs = append(*observer.runs, run.Run.Text())
-	}
-	return nil
-}
-
-func (observer *canonicalFactObserver) EnterInvocation(call workflowvisit.Invocation) error {
-	observer.parents = append(observer.parents, observer.source)
-	observer.source = call.Source
-	return nil
-}
-
-func (observer *canonicalFactObserver) LeaveInvocation(invocation.Context) error {
-	observer.source = observer.parents[len(observer.parents)-1]
-	observer.parents = observer.parents[:len(observer.parents)-1]
-	return nil
-}
-
-func (observer *canonicalFactObserver) VisitInvocationStep(step workflowdecl.Step) error {
-	return observer.VisitStep(step)
-}
-
-func (observer *canonicalFactObserver) VisitOpaqueAction(step workflowdecl.Step) error {
-	return observer.VisitStep(step)
-}
-
-var _ workflowvisit.InvocationParticipant = (*canonicalFactObserver)(nil)
 
 func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 	t.Parallel()
@@ -202,12 +132,6 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 	}
 }
 
-type workflowPreCallMutation struct {
-	workflowvisit.Base
-	original  *workflowlang.Workflow
-	mutations int
-}
-
 type workflowPreMutation struct {
 	workflowvisit.Base
 	mutate   func(*workflowlang.Workflow)
@@ -218,16 +142,6 @@ type workflowPreMutation struct {
 func (rule *workflowPreMutation) VisitWorkflowPre(_ workflowdecl.Workflow) error {
 	rule.runs++
 	rule.mutate(rule.original)
-	return nil
-}
-
-func (rule *workflowPreCallMutation) VisitWorkflowPre(_ workflowdecl.Workflow) error {
-	step := rule.original.Jobs["test"].Steps[0]
-	action := step.Exec.(*workflowlang.ExecAction)
-	action.Uses.Value = "$/b"
-	step.Pos.Line = 99
-	step.Pos.Col = 88
-	rule.mutations++
 	return nil
 }
 
@@ -259,55 +173,6 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	}
 }
 
-type canonicalObservationSnapshot struct {
-	Uses, Runs, Conditions []string
-	References             []source.Reference
-}
-
-func canonicalObservation(observer *canonicalFactObserver) canonicalObservationSnapshot {
-	return canonicalObservationSnapshot{
-		Uses:       append([]string(nil), (*observer.uses)...),
-		Runs:       append([]string(nil), (*observer.runs)...),
-		Conditions: append([]string(nil), (*observer.conditions)...),
-		References: append([]source.Reference(nil), (*observer.reference)...),
-	}
-}
-
-type executionFactSnapshot struct {
-	Calls       []string
-	Targets     []string
-	ScriptTexts []string
-	Shells      []string
-	Directories []string
-	JobIDs      []string
-}
-
-func executionSnapshot(result Result) executionFactSnapshot {
-	var snapshot executionFactSnapshot
-	for _, call := range result.Batch.Invocations().Calls() {
-		if facts, ok := call.Facts(); ok {
-			snapshot.Calls = append(snapshot.Calls, facts.Uses)
-		}
-		if target, ok := call.Outcome.Target(); ok {
-			snapshot.Targets = append(snapshot.Targets, target.Document)
-		}
-	}
-	for index, unit := range result.Batch.Scripts() {
-		snapshot.ScriptTexts = append(snapshot.ScriptTexts, unit.Run.Run.Text())
-		snapshot.Shells = append(snapshot.Shells, unit.Execution.Shell.Name)
-		snapshot.Directories = append(snapshot.Directories, unit.Execution.Directory.Path)
-		fact, ok := result.Batch.Fact(index, true)
-		if ok && fact.Runtime != nil {
-			snapshot.Shells[index] = fact.Runtime.Shell
-			snapshot.Directories[index] = fact.Runtime.Directory
-		}
-		if unit.Origin != nil {
-			snapshot.JobIDs = append(snapshot.JobIDs, unit.Origin.Job)
-		}
-	}
-	return snapshot
-}
-
 func checkoutSnapshot(result Result) []string {
 	var paths []string
 	for _, scope := range result.Batch.Scopes() {
@@ -321,30 +186,6 @@ func checkoutSnapshot(result Result) []string {
 func captureMutableMetadata(f *invocationFixture) {
 	f.mutableMetadata = map[string]*actionmeta.Metadata{}
 	f.mutateMeta = func(meta *actionmeta.Metadata) { f.mutableMetadata[filepath.Clean(meta.Path())] = meta }
-}
-
-func mutateRunInput(t *testing.T, f *invocationFixture, view workflowdecl.Step, text string) {
-	t.Helper()
-	if view.SourceReference() == f.root.Reference() {
-		for key, job := range f.original.Jobs {
-			owned := workflowStepViews(t, workflowView(t, f.root), key)
-			for index, step := range job.Steps {
-				if owned[index].Reference() == view.Reference() {
-					step.Exec.(*workflowlang.ExecRun).Run.Value = text
-					return
-				}
-			}
-		}
-	} else if meta := f.mutableMetadata[filepath.Clean(view.SourceReference().Document)]; meta != nil {
-		for _, step := range meta.Runs.Steps {
-			if step.Run != nil {
-				step.Run.Value = text
-				mutateMetadataScalar(step, "run", text)
-				return
-			}
-		}
-	}
-	t.Fatal("mutable run input unavailable")
 }
 
 func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.Step, text string) {

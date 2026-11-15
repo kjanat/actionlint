@@ -387,6 +387,19 @@ func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, 
 	return run, action.Inputs["script"]
 }
 
+func TestBatchFactsMatchCanonicalDeclarations(t *testing.T) {
+	t.Parallel()
+	graph, collection := batchFixture(t, true)
+	batch, err := NewBatch(graph, collection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batch.Scripts()) != 2 {
+		t.Fatalf("fixture must produce a run and an input unit, got %d", len(batch.Scripts()))
+	}
+	assertBatchFactsMatchCanonicalDeclarations(t, batch, collection.Declarations)
+}
+
 func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, registry *parsing.SourceSnapshots) {
 	t.Helper()
 	_, units := batch.Snapshot()

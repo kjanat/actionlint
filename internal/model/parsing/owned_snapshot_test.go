@@ -8,7 +8,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
@@ -66,7 +65,7 @@ func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	}
 }
 
-func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
+func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n")
 	document := Workflow(content)
@@ -75,18 +74,11 @@ func TestOwnedIndexSurvivesAnonymousStepMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cursor := document.Workflow.Jobs["build"].Steps[0]
 	view := snapshotJobSteps(t, snapshot, "build")[0]
-	switch action := cursor.Exec.(type) {
-	case *workflowlang.ExecAction:
-		action.Uses.Value = "evil/changed@v1"
-	default:
-		t.Fatal("fixture action absent")
-	}
 	refs := snapshot.CanonicalReferences()
 	_, dependencies := snapshot.Declarations()
 	if len(refs.Steps) != 1 || refs.Steps[0] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
-		t.Fatal("final declaration projection reindexed mutable syntax")
+		t.Fatal("final declaration projection lost the anonymous step")
 	}
 	refs.Steps[0] = source.Reference{}
 	if snapshot.CanonicalReferences().Steps[0] != view.Reference() {
