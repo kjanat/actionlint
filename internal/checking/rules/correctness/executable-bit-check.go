@@ -28,7 +28,7 @@ type ruleExecutableBit struct {
 
 // NewRuleExecutableBit checks script executable bits using prepared Git-index facts.
 func NewRuleExecutableBit(base workflowvisit.Base, input ExecutableContext) workflowvisit.Rule {
-	r := &ruleExecutableBit{Logger: reporting.Logger{Tag: base.Name()}, name: base.Name(), description: base.Description()}
+	r := &ruleExecutableBit{Tag: base.Name(), name: base.Name(), description: base.Description()}
 	input.Report = func(finding *findingmodel.Finding) { r.findings.Report(finding) }
 	r.ExecutableChecker = NewExecutableChecker(input)
 	return r

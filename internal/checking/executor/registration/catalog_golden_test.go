@@ -65,6 +65,7 @@ func catalogSnapshot(t *testing.T) []catalogEntry {
 // TestCatalogMatchesGolden pins every native declaration and its execution
 // shape so that restructuring how rules are defined cannot change them.
 func TestCatalogMatchesGolden(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join("testdata", "catalog.golden.json")
 	got, err := json.MarshalIndent(catalogSnapshot(t), "", "\t")
 	if err != nil {
