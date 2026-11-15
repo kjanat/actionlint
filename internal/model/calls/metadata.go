@@ -4,7 +4,6 @@ package calls
 import (
 	"fmt"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -21,46 +20,16 @@ func expectedMapping(where string, n *syntax.Node) error {
 	)
 }
 
-// InputType is the declared type of a reusable workflow input. GitHub accepts
-// only boolean, number and string; any other or omitted type is unknown.
-type InputType uint8
-
-const (
-	// InputTypeAny is an unknown type; every value is assignable.
-	InputTypeAny InputType = iota
-	// InputTypeBoolean is "type: boolean".
-	InputTypeBoolean
-	// InputTypeNumber is "type: number".
-	InputTypeNumber
-	// InputTypeString is "type: string".
-	InputTypeString
-)
-
-// ExprType returns the expression type a value passed to the input must be assignable to.
-func (t InputType) ExprType() exprtypes.Type {
-	switch t {
-	case InputTypeBoolean:
-		return exprtypes.BoolType()
-	case InputTypeNumber:
-		return exprtypes.NumberType()
-	case InputTypeString:
-		return exprtypes.StringType()
-	case InputTypeAny:
-	}
-	return exprtypes.AnyType()
-}
-
-// String returns the expression type's spelling, as used in diagnostics.
-func (t InputType) String() string { return t.ExprType().String() }
-
 // Input describes an input declared by a local reusable workflow.
 type Input struct {
 	// Name is a name of the input defined in the reusable workflow.
 	Name string
 	// Required is true when 'required' field of the input is set to true and no default value is set.
 	Required bool
-	// Type is the declared type of the input.
-	Type InputType
+	// Type is the declared type of the input. GitHub accepts only boolean,
+	// number and string; any other or omitted type is
+	// WorkflowCallEventInputTypeInvalid and accepts every value.
+	Type workflowlang.WorkflowCallEventInputType
 }
 
 // Inputs maps lowercase input names to reusable workflow input metadata.

@@ -22,8 +22,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow0.yaml
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "optional_input", Required: false, Type: calls.InputTypeString},
-				"required_input": {Name: "required_input", Required: true, Type: calls.InputTypeString},
+				"optional_input": {Name: "optional_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"required_input": {Name: "required_input", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "output"},
@@ -36,8 +36,8 @@ func TestRuleWorkflowCallCheckReusableWorkflowCall(t *testing.T) {
 		// workflow1.yaml: Inputs and outputs in upper case (#216)
 		{
 			Inputs: calls.Inputs{
-				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: calls.InputTypeString},
-				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: calls.InputTypeString},
+				"optional_input": {Name: "OPTIONAL_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"required_input": {Name: "REQUIRED_INPUT", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			Outputs: calls.Outputs{
 				"output": {Name: "OUTPUT"},

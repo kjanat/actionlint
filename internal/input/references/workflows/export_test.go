@@ -72,18 +72,8 @@ func (c *ASTComparisonCache) WriteWorkflowCallEventFromWorkflow(wpath string, ev
 	}
 
 	for _, i := range event.Inputs {
-		t := calls.InputTypeAny
-		switch i.Type {
-		case workflowlang.WorkflowCallEventInputTypeBoolean:
-			t = calls.InputTypeBoolean
-		case workflowlang.WorkflowCallEventInputTypeNumber:
-			t = calls.InputTypeNumber
-		case workflowlang.WorkflowCallEventInputTypeString:
-			t = calls.InputTypeString
-		case workflowlang.WorkflowCallEventInputTypeInvalid:
-		}
 		m.Inputs[i.ID] = calls.Input{
-			Type:     t,
+			Type:     i.Type,
 			Required: i.Required != nil && i.Required.Value && i.Default == nil,
 			Name:     i.Name.Value,
 		}

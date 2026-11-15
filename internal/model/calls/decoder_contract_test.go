@@ -3,6 +3,8 @@ package calls
 import (
 	"strings"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestMetadataDecoderDuplicateAndAliasKeys(t *testing.T) {
@@ -36,10 +38,10 @@ func TestMetadataDecoderDuplicateAndAliasKeys(t *testing.T) {
 	if len(got.Inputs) != 2 || !hasName || !hasAliased {
 		t.Fatalf("inputs = %#v, want case-insensitive keys name and aliased", got.Inputs)
 	}
-	if in := got.Inputs["name"]; in.Name != "name" || in.Required || in.Type != InputTypeNumber {
+	if in := got.Inputs["name"]; in.Name != "name" || in.Required || in.Type != workflowlang.WorkflowCallEventInputTypeNumber {
 		t.Errorf("last duplicate input = %#v, want name, optional number", in)
 	}
-	if in := got.Inputs["aliased"]; in.Name != "Aliased" || in.Required || in.Type != InputTypeNumber {
+	if in := got.Inputs["aliased"]; in.Name != "Aliased" || in.Required || in.Type != workflowlang.WorkflowCallEventInputTypeNumber {
 		t.Errorf("alias-key input = %#v, want resolved key spelling Aliased and last number value", in)
 	}
 	_, hasOther := got.Outputs["other"]
@@ -76,11 +78,11 @@ func TestMetadataDecoderAliasesAndNullBodies(t *testing.T) {
 	}
 	for _, name := range []string{"definition", "first", "second"} {
 		in, ok := got.Inputs[name]
-		if !ok || !in.Required || in.Type != InputTypeBoolean {
+		if !ok || !in.Required || in.Type != workflowlang.WorkflowCallEventInputTypeBoolean {
 			t.Errorf("input %q = %#v, want required boolean", name, in)
 		}
 	}
-	if in, ok := got.Inputs["empty"]; !ok || in.Required || in.Type != InputTypeAny {
+	if in, ok := got.Inputs["empty"]; !ok || in.Required || in.Type != workflowlang.WorkflowCallEventInputTypeInvalid {
 		t.Errorf("null input = %#v, want optional any", in)
 	}
 	for _, name := range []string{"definition", "copied"} {
@@ -113,7 +115,7 @@ on:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if shared, ok := got.Inputs["shared"]; len(got.Inputs) != 1 || !ok || shared.Type != InputTypeString {
+	if shared, ok := got.Inputs["shared"]; len(got.Inputs) != 1 || !ok || shared.Type != workflowlang.WorkflowCallEventInputTypeString {
 		t.Fatalf("inputs = %#v, want alias-expanded Shared string input", got.Inputs)
 	}
 }
@@ -139,11 +141,11 @@ func TestMetadataDecoderMergeKeys(t *testing.T) {
 		}
 		want := map[string]struct {
 			required bool
-			typ      InputType
+			typ      workflowlang.WorkflowCallEventInputType
 		}{
-			"single":          {true, InputTypeNumber},
-			"sequence_first":  {true, InputTypeBoolean},
-			"sequence_second": {false, InputTypeNumber},
+			"single":          {true, workflowlang.WorkflowCallEventInputTypeNumber},
+			"sequence_first":  {true, workflowlang.WorkflowCallEventInputTypeBoolean},
+			"sequence_second": {false, workflowlang.WorkflowCallEventInputTypeNumber},
 		}
 		for name, expected := range want {
 			in, ok := got.Inputs[name]
@@ -178,9 +180,9 @@ on:
 		if err != nil {
 			t.Fatal(err)
 		}
-		for name, typ := range map[string]InputType{
-			"explicit":   InputTypeBoolean,
-			"overridden": InputTypeBoolean,
+		for name, typ := range map[string]workflowlang.WorkflowCallEventInputType{
+			"explicit":   workflowlang.WorkflowCallEventInputTypeBoolean,
+			"overridden": workflowlang.WorkflowCallEventInputTypeBoolean,
 		} {
 			if in, ok := got.Inputs[name]; !ok || in.Type != typ {
 				t.Errorf("input %q = %#v, want type %s", name, in, typ)
@@ -209,7 +211,7 @@ on:
 		if err != nil {
 			t.Fatal(err)
 		}
-		if in, ok := got.Inputs["inherited"]; !ok || in.Type != InputTypeString {
+		if in, ok := got.Inputs["inherited"]; !ok || in.Type != workflowlang.WorkflowCallEventInputTypeString {
 			t.Errorf("merged input = %#v, want string input", in)
 		}
 		if out := got.Outputs["inherited"]; out.Name != "inherited" {

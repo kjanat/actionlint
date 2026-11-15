@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -31,7 +33,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"i": {"i", false, InputTypeString},
+					"i": {"i", false, workflowlang.WorkflowCallEventInputTypeString},
 				},
 				Outputs: Outputs{
 					"o": {"o"},
@@ -99,15 +101,15 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"a": {"a", false, InputTypeString},
-					"b": {"b", false, InputTypeNumber},
-					"c": {"c", false, InputTypeBoolean},
-					"d": {"d", false, InputTypeAny},
-					"e": {"e", false, InputTypeString},
-					"f": {"f", true, InputTypeString},
-					"g": {"g", false, InputTypeString},
-					"h": {"h", false, InputTypeString},
-					"i": {"i", true, InputTypeAny},
+					"a": {"a", false, workflowlang.WorkflowCallEventInputTypeString},
+					"b": {"b", false, workflowlang.WorkflowCallEventInputTypeNumber},
+					"c": {"c", false, workflowlang.WorkflowCallEventInputTypeBoolean},
+					"d": {"d", false, workflowlang.WorkflowCallEventInputTypeInvalid},
+					"e": {"e", false, workflowlang.WorkflowCallEventInputTypeString},
+					"f": {"f", true, workflowlang.WorkflowCallEventInputTypeString},
+					"g": {"g", false, workflowlang.WorkflowCallEventInputTypeString},
+					"h": {"h", false, workflowlang.WorkflowCallEventInputTypeString},
+					"i": {"i", true, workflowlang.WorkflowCallEventInputTypeInvalid},
 				},
 				Outputs: nil,
 				Secrets: nil,
@@ -129,7 +131,7 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"i": {"i", false, InputTypeString},
+					"i": {"i", false, workflowlang.WorkflowCallEventInputTypeString},
 				},
 				Outputs: Outputs{
 					"o": {"o"},
@@ -216,8 +218,8 @@ func TestReusableWorkflowUnmarshalOK(t *testing.T) {
 			`,
 			want: &Metadata{
 				Inputs: Inputs{
-					"my_input1": {"MY_INPUT1", false, InputTypeString},
-					"my_input2": {"MY_INPUT2", false, InputTypeNumber},
+					"my_input1": {"MY_INPUT1", false, workflowlang.WorkflowCallEventInputTypeString},
+					"my_input2": {"MY_INPUT2", false, workflowlang.WorkflowCallEventInputTypeNumber},
 				},
 				Outputs: Outputs{
 					"my_output1": {"MY_OUTPUT1"},

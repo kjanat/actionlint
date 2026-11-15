@@ -13,7 +13,6 @@ import (
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	yamlSchema "actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
-	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
 
@@ -276,7 +275,7 @@ func (rule *Checker) checkWorkflowCall(c workflowdecl.WorkflowCallView) {
 		}
 
 		mi, ok := m.Inputs[n]
-		if !ok || mi.Type == calls.InputTypeAny {
+		if !ok || mi.Type == workflowlang.WorkflowCallEventInputTypeInvalid {
 			continue
 		}
 

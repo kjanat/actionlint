@@ -21,8 +21,8 @@ import (
 
 var testReusableWorkflowWantedMetadata *calls.Metadata = &calls.Metadata{
 	Inputs: calls.Inputs{
-		"input1": {Name: "input1", Required: false, Type: calls.InputTypeString},
-		"input2": {Name: "input2", Required: true, Type: calls.InputTypeBoolean},
+		"input1": {Name: "input1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+		"input2": {Name: "input2", Required: true, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
 	},
 	Outputs: calls.Outputs{
 		"output1": {Name: "output1"},
@@ -252,10 +252,10 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"unknown_input": {},
 			},
 			want: calls.Inputs{
-				"string_input":  {Name: "string_input", Required: false, Type: calls.InputTypeString},
-				"number_input":  {Name: "number_input", Required: false, Type: calls.InputTypeNumber},
-				"bool_input":    {Name: "bool_input", Required: false, Type: calls.InputTypeBoolean},
-				"unknown_input": {Name: "unknown_input", Required: false, Type: calls.InputTypeAny},
+				"string_input":  {Name: "string_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"number_input":  {Name: "number_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeNumber},
+				"bool_input":    {Name: "bool_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
+				"unknown_input": {Name: "unknown_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 		{
@@ -276,11 +276,11 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				},
 			},
 			want: calls.Inputs{
-				"unspecified":          {Name: "unspecified", Required: false, Type: calls.InputTypeAny},
-				"not_required":         {Name: "not_required", Required: false, Type: calls.InputTypeAny},
-				"required":             {Name: "required", Required: true, Type: calls.InputTypeAny},
-				"required_but_default": {Name: "required_but_default", Required: false, Type: calls.InputTypeAny},
-				"expression":           {Name: "expression", Required: false, Type: calls.InputTypeAny},
+				"unspecified":          {Name: "unspecified", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"not_required":         {Name: "not_required", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"required":             {Name: "required", Required: true, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"required_but_default": {Name: "required_but_default", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"expression":           {Name: "expression", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 		{
@@ -294,7 +294,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"MY_INPUT": {Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 			want: calls.Inputs{
-				"my_input": {Name: "MY_INPUT", Required: false, Type: calls.InputTypeString},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
 			},
 		},
 		{
@@ -303,7 +303,7 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 				"MY_INPUT": {},
 			},
 			want: calls.Inputs{
-				"my_input": {Name: "MY_INPUT", Required: false, Type: calls.InputTypeAny},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 	}
@@ -609,7 +609,7 @@ func TestReusableWorkflowCacheDetachesMetadata(t *testing.T) {
 	c := newCapturedWorkflowCache(t, cwd, cwd, nil)
 	want := func() *calls.Metadata {
 		return &calls.Metadata{
-			Inputs:         calls.Inputs{"in": {Name: "in", Required: true, Type: calls.InputTypeString}},
+			Inputs:         calls.Inputs{"in": {Name: "in", Required: true, Type: workflowlang.WorkflowCallEventInputTypeString}},
 			Outputs:        calls.Outputs{"out": {Name: "out"}},
 			Secrets:        calls.Secrets{"token": {Name: "token", Required: true}},
 			JobPermissions: map[string]calls.PermissionScopeLevels{"build": {"contents": calls.PermissionLevelRead}},
