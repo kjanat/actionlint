@@ -37,14 +37,14 @@ jobs:
 		"nested": {"contents": calls.PermissionLevelWrite},
 	}})
 	var messages []string
-	check := WorkflowCallCheck(workflow, cache.Resolved(), repository.Snapshot{}, func(format string, args ...any) {
+	check := WorkflowCallChecks(workflow, cache.Resolved(), repository.Snapshot{}, func(format string, args ...any) {
 		messages = append(messages, fmt.Sprintf(format, args...))
 	})
-	if check.Name != "workflow-call" || check.Workflow != nil || check.Step != nil {
+	if check.Workflow != nil || check.Step != nil {
 		t.Fatalf("unexpected declaration callbacks: %+v", check)
 	}
 	first := check.Job(inherited)
-	if len(first) != 1 || first[0].Rule != "workflow-call" || first[0].Start.Line != 8 || !strings.Contains(first[0].Message, "contents: none") {
+	if len(first) != 1 || first[0].Start.Line != 8 || !strings.Contains(first[0].Message, "contents: none") {
 		t.Fatalf("captured workflow permissions were not applied: %+v", first)
 	}
 	if findings := check.Job(allowed); len(findings) != 0 {

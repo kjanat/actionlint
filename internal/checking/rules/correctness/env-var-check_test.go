@@ -31,7 +31,7 @@ func TestEnvironmentNameDiagnostics(t *testing.T) {
 		if want.name == "TAB\tNAME" {
 			message = `environment variable name "TAB\tNAME" is invalid. '&', '=' and spaces should not be contained`
 		}
-		if finding.Rule != "env-var" || finding.Start != position(want.line) || finding.Message != message {
+		if finding.Start != position(want.line) || finding.Message != message {
 			t.Fatalf("finding %d: %+v", i, finding)
 		}
 	}

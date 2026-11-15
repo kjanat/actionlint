@@ -25,8 +25,8 @@ jobs:
 	workflow := declaration.Publish(source, decoded, false, "").Bind("test").Workflow()
 	first, _ := workflow.Job("z_first")
 	second, _ := workflow.Job("a_second")
-	check := CacheWriteUntrustedCheck(workflow)
-	if check.Workflow != nil || check.Step != nil || check.Name != "cache-write-untrusted" {
+	check := CacheWriteUntrustedChecks(workflow)
+	if check.Workflow != nil || check.Step != nil {
 		t.Fatalf("unexpected declaration callbacks: %+v", check)
 	}
 	if findings := check.Job(second); len(findings) != 0 {
@@ -44,7 +44,7 @@ jobs:
 	workflow = declaration.Publish(source, decoded, false, "").Bind("without-ceiling").Workflow()
 	first, _ = workflow.Job("z_first")
 	second, _ = workflow.Job("a_second")
-	check = CacheCallUnrestrictedCheck(workflow)
+	check = CacheCallUnrestrictedChecks(workflow)
 	for _, job := range []declaration.Job{second, first, second} {
 		findings := check.Job(job)
 		if len(findings) != 1 || findings[0].Rule != "cache-call-unrestricted" {

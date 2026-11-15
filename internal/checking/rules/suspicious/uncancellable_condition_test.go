@@ -1,6 +1,7 @@
 package suspicious_test
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strings"
 	"testing"
 
@@ -53,7 +54,7 @@ func TestUncancellableCondition(t *testing.T) {
 				t.Fatal(errs)
 			}
 			view := declaration.Publish(source, ast, false, "").Bind("test").Workflow()
-			check := suspicious.UncancellableConditionCheck()
+			check := suspicious.UncancellableConditionRule.Checks(define.Inputs{})
 			for _, job := range view.Jobs() {
 				got := check.Job(job)
 				if len(got) != tc.jobs {
@@ -100,7 +101,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 			}
 			view := declaration.Publish(content, ast, false, "").Bind("test").Workflow()
 			for _, job := range view.Jobs() {
-				findings := suspicious.UncancellableConditionCheck().Job(job)
+				findings := suspicious.UncancellableConditionRule.Checks(define.Inputs{}).Job(job)
 				if len(findings) != 1 || len(findings[0].Fixes) != 1 {
 					t.Fatalf("missing fix: %+v", findings)
 				}
@@ -127,7 +128,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 				}
 				checked := declaration.Publish(fixed, updated, false, "").Bind("fixed").Workflow()
 				for _, fixedJob := range checked.Jobs() {
-					if got := suspicious.UncancellableConditionCheck().Job(fixedJob); len(got) != 0 {
+					if got := suspicious.UncancellableConditionRule.Checks(define.Inputs{}).Job(fixedJob); len(got) != 0 {
 						t.Fatalf("fix leaves finding: %+v", got)
 					}
 					if !strings.Contains(fixedJob.If.Text(), "!cancelled()") {
@@ -171,7 +172,7 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 			view := declaration.Publish(content, ast, false, "").Bind("test").Workflow()
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
-					check := suspicious.UncancellableConditionCheck()
+					check := suspicious.UncancellableConditionRule.Checks(define.Inputs{})
 					var findings []reporting.Finding
 					if check.Step != nil {
 						findings = check.Step(step)

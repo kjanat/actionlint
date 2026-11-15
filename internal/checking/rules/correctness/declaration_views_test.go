@@ -1,6 +1,7 @@
 package correctness_test
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"reflect"
 	"slices"
 	"sync"
@@ -21,7 +22,7 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 		t.Fatal(errs)
 	}
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
-	check := correctness.IdCheck()
+	check := correctness.IdRule.Checks(define.Inputs{})
 	if check.Step != nil || check.Workflow != nil {
 		t.Fatal("ID checking requests more than job declarations")
 	}
@@ -47,7 +48,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 		t.Fatal(errs)
 	}
 	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
-	findings := correctness.EnvVarCheck().Job(jobView(w, "test"))
+	findings := correctness.EnvVarRule.Checks(define.Inputs{}).Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
 	}

@@ -20,7 +20,7 @@ func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
 	if _, err := remote.Inspect(t.Context(), "actions/checkout@v4"); err != nil {
 		t.Fatal(err)
 	}
-	check := MissingActionMetadataCheck(remote.Resolved())
+	check := MissingActionMetadataChecks(remote.Resolved())
 	for _, uses := range []string{"./local", "$/mapped", "docker://alpine", "${{ inputs.action }}", "invalid", "actions/checkout@v4"} {
 		t.Run(uses, func(t *testing.T) {
 			t.Parallel()
@@ -86,7 +86,7 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "actions/checkout@v4", Pos: &workflowlang.Pos{Line: 5, Col: 20}}}}
 			job, _ := workflowdecl.Publish(source, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("metadata-availability").Workflow().Job("test")
 			for view := range job.Steps() {
-				got := MissingActionMetadataCheck(remote.Resolved()).Step(view)
+				got := MissingActionMetadataChecks(remote.Resolved()).Step(view)
 				if len(got) != tc.want {
 					t.Fatalf("findings=%+v, want %d", got, tc.want)
 				}

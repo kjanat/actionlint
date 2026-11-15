@@ -3,6 +3,7 @@ package conventions
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -10,6 +11,18 @@ import (
 type TimeoutPolicy struct {
 	Enabled  bool
 	Min, Max *float64
+}
+
+// TimeoutPolicyFrom converts the configured policy into the bounds JobTimeoutChecks enforces.
+func TimeoutPolicyFrom(policy *configuration.JobTimeoutPolicy) TimeoutPolicy {
+	options := TimeoutPolicy{Enabled: policy.Enabled()}
+	if lower, ok := policy.MinMinutes(); ok {
+		options.Min = new(lower)
+	}
+	if upper, ok := policy.MaxMinutes(); ok {
+		options.Max = new(upper)
+	}
+	return options
 }
 
 // JobTimeoutChecks copies the configured bounds and checks each job against them.

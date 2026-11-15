@@ -1,6 +1,7 @@
 package checking
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strings"
 	"testing"
 

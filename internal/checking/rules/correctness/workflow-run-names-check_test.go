@@ -39,7 +39,7 @@ func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
 				}
 				return
 			}
-			if len(findings) != 1 || findings[0].Rule != "workflow-run-names" || findings[0].Start.Line != 3 || !strings.Contains(findings[0].Message, tc.message) {
+			if len(findings) != 1 || findings[0].Start.Line != 3 || !strings.Contains(findings[0].Message, tc.message) {
 				t.Fatalf("finding lost its rule, source or filter meaning: %+v", findings)
 			}
 		})

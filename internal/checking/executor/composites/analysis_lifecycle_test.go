@@ -1,11 +1,11 @@
 package composites
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"context"
 	"errors"
 	"testing"
 
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -43,12 +43,12 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
-	check := conventions.MissingActionMetadataCheck(nil)
-	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{check.Declaration})
+	check := conventions.MissingActionMetadataChecks(nil)
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.Declaration()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata := declarationchecks.New(rules, check)
+	metadata := define.NewChecksVisitor(rules, conventions.MissingActionMetadataRule.Name, check)
 	f.options.Rules = []workflowvisit.Rule{&cancelBeforeStep{Base: workflowvisit.NewBase("cancel", ""), cancel: cancel}, metadata}
 	_, err = Workflow(f.options, f.root)
 	if !errors.Is(err, context.Canceled) || len(metadata.Errs()) != 0 {

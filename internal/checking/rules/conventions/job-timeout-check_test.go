@@ -28,10 +28,10 @@ func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
 				limit = 5
 				policy.Min, policy.Max = nil, &limit
 			}
-			check := conventions.JobTimeoutCheck(policy)
+			check := conventions.JobTimeoutChecks(policy)
 			limit = 10
 			findings := check.Job(job)
-			if len(findings) != 1 || findings[0].Rule != "job-timeout" {
+			if len(findings) != 1 {
 				t.Fatalf("caller mutation changed the configured %s: %+v", bound, findings)
 			}
 		})

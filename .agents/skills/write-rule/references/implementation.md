@@ -9,11 +9,10 @@ For a declaration check, trace `missing-permissions` as a worked example:
 
 | Responsibility                                          | Entry point                                                                           |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Rule metadata, examples and requested declaration views | `internal/checking/rules/security/missing-permissions.go`                             |
+| Rule definition: metadata, options, enablement, checks  | `MissingPermissionsRule` in `internal/checking/rules/security/missing-permissions.go` |
 | Configuration projection                                | `internal/input/configuration/registry.go`, `internal/input/configuration/catalog.go` |
-| Execution registration                                  | `internal/checking/executor/registration/registry.go`                                 |
-| Declaration adapter                                     | `internal/checking/executor/declarations/visitor.go`                                  |
-| Typed workflow, job and step inputs                     | `internal/checking/inputs/declarations.go`                                            |
+| Catalog order                                           | `All` in `internal/checking/executor/registration/registry.go`                        |
+| Rule definition and adapter                             | `internal/checking/define/rule.go`, `internal/checking/define/checks.go`              |
 | Semantic implementation                                 | `MissingPermissions` in `internal/checking/rules/security/missing-permissions.go`     |
 | Semantic regression cases                               | `internal/checking/rules/security/missing_workflow_permissions_test.go`               |
 | Configured host and suppression cases                   | `internal/development/tests/integration/workflow/rule_missing_permissions_test.go`    |
@@ -23,10 +22,27 @@ reusable-only workflow from one with another trigger. Follow its registration,
 configuration, and diagnostic flow. Choose severity and compatibility behavior
 for the new rule based on the problem it detects.
 
-For source-local checks, return a `DeclarationCheck` with callbacks for the
-workflow, job or step views the rule consumes. Leave other callbacks nil. Define
-that binding beside the rule's metadata and implementation; the traversal adapter
-does not select implementations by rule name. For reasoning across calls, inspect
+Define a rule once, as a package-level `define.Rule` named `<Name>Rule`. Set
+`Name`, `Description`, `Category`, `Subcategory`, `Help` and any non-default
+`Recommended`, `DefaultLevel`, `Examples` or `RequiredInputs`. Leave `Provider`,
+`Maturity`, `Explanation` and `DocumentationURL` unset to take the defaults:
+`actionlint`, stable, the description as a sentence and the rule's section in
+`docs/rules.md`. Declare options with `define.Options[T]()`, restrict when the rule
+runs with `Enabled`, and acquire inputs before construction with `Prepare`.
+
+Choose exactly one way to run the rule:
+
+- `Checks` for source-local checks. Return `define.Checks` with callbacks for the
+  workflow, job or step views the rule consumes and leave the others nil; use
+  `define.Fixed` when the checks need no inputs. The adapter attaches the rule's
+  name to findings that leave `Rule` empty, so checks do not repeat it.
+- `Walker` for a stateful traversal. It receives a `workflowvisit.Base` carrying the
+  rule's name and description.
+- `Script` for analysis of document scripts.
+- None, with `DeclaredBy`, for a rule whose findings another component reports.
+
+Add the rule to `All`; a test fails when a defined rule is missing or listed twice.
+The traversal adapter does not select implementations by rule name. For reasoning across calls, inspect
 `internal/model/workflows/facts` and `internal/model/workflows/execution` and an existing consumer.
 Shared semantic predicates belong in the model packages, not in rule adapters. Adapters supply facts
 and attach findings; they should not each reconstruct the same analysis.

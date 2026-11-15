@@ -40,13 +40,13 @@ func TestCheck(t *testing.T) {
 		},
 	}
 	want := []results.Diagnostic{
-		{Rule: "id", Start: at(1), Message: `invalid job ID "1build". job ID must start with a letter or _ and contain only alphanumeric characters, -, or _`},
-		{Rule: "id", Start: at(3), Message: `invalid job ID "bad.need". job ID must start with a letter or _ and contain only alphanumeric characters, -, or _`},
-		{Rule: "id", Start: at(11), Message: `step ID "__reserved" must not start with reserved prefix __`},
-		{Rule: "id", Start: at(12), Message: `step ID "` + long + `" must be shorter than 100 characters`},
-		{Rule: "id", Start: at(13), Message: `step ID "FIRST" duplicates. previously defined at line:10,col:5. step ID must be unique within a job. note that step ID is case insensitive`},
-		{Rule: "id", Start: at(14), Message: `step ID "first" duplicates. previously defined at line:10,col:5. step ID must be unique within a job. note that step ID is case insensitive`},
-		{Rule: "id", Start: at(15), Message: `invalid step ID "bad step". step ID must start with a letter or _ and contain only alphanumeric characters, -, or _`},
+		{Start: at(1), Message: `invalid job ID "1build". job ID must start with a letter or _ and contain only alphanumeric characters, -, or _`},
+		{Start: at(3), Message: `invalid job ID "bad.need". job ID must start with a letter or _ and contain only alphanumeric characters, -, or _`},
+		{Start: at(11), Message: `step ID "__reserved" must not start with reserved prefix __`},
+		{Start: at(12), Message: `step ID "` + long + `" must be shorter than 100 characters`},
+		{Start: at(13), Message: `step ID "FIRST" duplicates. previously defined at line:10,col:5. step ID must be unique within a job. note that step ID is case insensitive`},
+		{Start: at(14), Message: `step ID "first" duplicates. previously defined at line:10,col:5. step ID must be unique within a job. note that step ID is case insensitive`},
+		{Start: at(15), Message: `invalid step ID "bad step". step ID must start with a letter or _ and contain only alphanumeric characters, -, or _`},
 	}
 	if diff := cmp.Diff(want, Check(job)); diff != "" {
 		t.Fatal(diff)

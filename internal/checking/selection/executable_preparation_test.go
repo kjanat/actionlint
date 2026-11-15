@@ -1,6 +1,7 @@
 package selection_test
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"context"
 	"errors"
 	"io/fs"

@@ -35,11 +35,11 @@ use them before adding new analysis.
 
 Read the matching section of [implementation.md](references/implementation.md):
 
-- **Native semantic check:** define the rule's name, category, severity and
-  required data in a `rule.Declaration`. Register the declaration and implementation
-  together in `nativeRuleCatalog` under `internal/checking/executor/registration`.
-  Declare `SupportsActions` when the check applies to actions; declaration checks
-  then receive composite invocation support from the common adapter.
+- **Native semantic check:** define the rule once as a `define.Rule` in its category
+  under `internal/checking/rules`: name, category, help, options, enablement and the
+  check that runs it. Add the rule to `All` in `internal/checking/executor/registration`
+  to fix its position in the catalog. Declare `SupportsActions` when the check applies
+  to actions; stateless checks then receive composite invocation support from the common adapter.
   Report findings through the host. If several rules need the same analysis,
   implement it once in the semantic model.
 - **External linter:** author a plugin using the manifest format and SDK interfaces. Test its

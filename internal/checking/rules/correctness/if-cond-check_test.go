@@ -33,7 +33,7 @@ func TestConditionDiagnostics(t *testing.T) {
 			if len(findings) != 1 {
 				t.Fatalf("findings: %+v", findings)
 			}
-			if findings[0].Rule != "if-cond" || findings[0].Start != start || findings[0].Message != test.message {
+			if findings[0].Start != start || findings[0].Message != test.message {
 				t.Fatalf("finding: %+v", findings[0])
 			}
 		})

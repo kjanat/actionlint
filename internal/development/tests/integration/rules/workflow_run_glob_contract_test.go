@@ -1,6 +1,7 @@
 package rules_test
 
 import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"strconv"
 	"strings"
 	"testing"
@@ -9,8 +10,6 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
-
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -47,7 +46,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := declarationchecks.New(checking.ConfigurationRules(), correctness.GlobCheck())
+			rule := correctness.GlobRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
 				t.Fatal(err)
 			}
@@ -60,7 +59,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
 	t.Parallel()
-	rule := declarationchecks.New(checking.ConfigurationRules(), correctness.GlobCheck())
+	rule := correctness.GlobRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
 	workflow := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Workflows: []*workflowlang.String{{Value: "${{ inputs.pattern }}", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}}}
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil || len(rule.Errs()) != 0 {
 		t.Fatalf("unknown expression treated as a literal glob: %v, %v", rule.Errs(), err)

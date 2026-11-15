@@ -167,6 +167,12 @@ func sentence(text string) string {
 	return text + "."
 }
 
+// NewVisitor constructs the traversal for a rule that executes through Checks
+// or Walker. It does not run Prepare or consult Enabled.
+func (r *Rule) NewVisitor(in Inputs) workflowvisit.Rule {
+	return r.Registration(configuration.Rule{}).Build(in)
+}
+
 // Registration pairs a rule declaration with its constructor and execution conditions.
 type Registration struct {
 	configuration.Rule

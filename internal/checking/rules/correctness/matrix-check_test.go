@@ -37,12 +37,12 @@ jobs:
 	clean, _ := workflow.Job("clean")
 	mixed, _ := workflow.Job("mixed")
 	for _, enabled := range []bool{false, true} {
-		check := MatrixCheck(enabled)
-		if check.Name != "matrix" || check.Job == nil || check.Workflow != nil || check.Step != nil {
+		check := MatrixChecks(enabled)
+		if check.Job == nil || check.Workflow != nil || check.Step != nil {
 			t.Fatalf("unexpected declaration callbacks: %+v", check)
 		}
 		first := check.Job(duplicate)
-		if len(first) != 1 || first[0].Rule != "matrix" || first[0].Start.Line != 6 {
+		if len(first) != 1 || first[0].Start.Line != 6 {
 			t.Fatalf("duplicate finding lost its rule or source: %+v", first)
 		}
 		if findings := check.Job(clean); len(findings) != 0 {
