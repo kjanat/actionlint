@@ -2,34 +2,33 @@ package inputs
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
-
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 	t.Parallel()
 	for name, change := range map[string]func(*Input){
-		"graph absent":             func(input *Input) { input.CallGraph = CallGraph{} },
+		"graph absent":             func(input *Input) { input.CallGraph = invocation.Graph{} },
 		"invocations input absent": func(input *Input) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Scripts} },
 		"scripts input absent":     func(input *Input) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Invocations} },
 		"entry reference":          func(input *Input) { input.Reference.Node = "another" },
 		"unknown occurrence":       func(input *Input) { input.Invoked[0].Occurrence.ID = "unknown" },
 		"reference":                func(input *Input) { input.Invoked[0].Reference.Revision = "stale" },
-		"ancestry":                 func(input *Input) { input.Invoked[0].Occurrence.Ancestry[0] = "unknown" },
-		"owner":                    func(input *Input) { input.Invoked[0].Occurrence.Owner = input.CallGraph.Entry().ID },
+		"owner":                    func(input *Input) { input.Invoked[0].Occurrence.Owner = input.CallGraph.RootID() },
 		"duplicate":                func(input *Input) { input.Invoked = append(input.Invoked, input.Invoked[0]) },
 		"root collection":          func(input *Input) { input.Scripts, input.Invoked = input.Invoked, nil },
 		"missing text":             func(input *Input) { input.Invoked = nil },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			graph := graphFixture(t)
-			occurrence := graph.clone().Scripts[0]
-			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: retainGraph(t, graph), Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
+			graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script"})
+			occurrence := graph.Scripts()[0]
+			input := Input{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
 			if err := input.ValidateInvocations(); err != nil {
 				t.Fatal(err)
 			}
@@ -43,41 +42,36 @@ func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 
 func TestInputScriptSelectionCoverage(t *testing.T) {
 	t.Parallel()
-	graph := graphFixture(t)
-	second := graph.clone().Scripts[0]
-	second.ID = OccurrenceID(strings.Repeat("d", 64))
-	second.Declaration.Node = "second"
-	graph.Scripts = append(graph.Scripts, second)
-	graph.Budget.MaxScripts = 2
-	first := graph.Scripts[0]
+	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script"}, invocationfixture.Script{Node: "second"})
+	first, second := graph.Scripts()[0], graph.Scripts()[1]
 	for _, test := range []struct {
 		name      string
-		selection []OccurrenceID
+		selection []invocation.ID
 		scripts   []Script
 		valid     bool
 	}{
 		{"all", nil, []Script{{Reference: first.Declaration, Occurrence: first}, {Reference: second.Declaration, Occurrence: second}}, true},
-		{"subset", []OccurrenceID{first.ID}, []Script{{Reference: first.Declaration, Occurrence: first}}, true},
-		{"none", []OccurrenceID{}, nil, true},
+		{"subset", []invocation.ID{first.ID}, []Script{{Reference: first.Declaration, Occurrence: first}}, true},
+		{"none", []invocation.ID{}, nil, true},
 		{"omitted", nil, []Script{{Reference: first.Declaration, Occurrence: first}}, false},
-		{"selected missing", []OccurrenceID{first.ID}, nil, false},
-		{"unselected supplied", []OccurrenceID{}, []Script{{Reference: first.Declaration, Occurrence: first}}, false},
-		{"duplicate selection", []OccurrenceID{first.ID, first.ID}, []Script{{Reference: first.Declaration, Occurrence: first}}, false},
-		{"unknown selection", []OccurrenceID{"unknown"}, nil, false},
+		{"selected missing", []invocation.ID{first.ID}, nil, false},
+		{"unselected supplied", []invocation.ID{}, []Script{{Reference: first.Declaration, Occurrence: first}}, false},
+		{"duplicate selection", []invocation.ID{first.ID, first.ID}, []Script{{Reference: first.Declaration, Occurrence: first}}, false},
+		{"unknown selection", []invocation.ID{"unknown"}, nil, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: retainGraph(t, graph), SelectedScripts: test.selection, Invoked: test.scripts}
+			input := Input{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph, SelectedScripts: test.selection, Invoked: test.scripts}
 			if err := input.ValidateInvocations(); (err == nil) != test.valid {
 				t.Fatalf("valid=%v: %v", test.valid, err)
 			}
 		})
 	}
-	input := Input{Reference: graph.Entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations}, CallGraph: retainGraph(t, graph)}
+	input := Input{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations}, CallGraph: graph}
 	if err := input.ValidateInvocations(); err != nil {
 		t.Fatalf("graph without collected text: %v", err)
 	}
-	input.SelectedScripts = []OccurrenceID{}
+	input.SelectedScripts = []invocation.ID{}
 	if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 		t.Fatalf("selection without the scripts input accepted: %v", err)
 	}
@@ -85,10 +79,9 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 
 func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
 	t.Parallel()
-	for name, occurrence := range map[string]ScriptOccurrence{
-		"id": {ID: "id"}, "owner": {Owner: "owner"}, "ancestry": {Ancestry: []OccurrenceID{"owner"}},
-		"depth": {Depth: 1}, "declaration": {Declaration: source.Reference{Document: "document"}},
-		"kind": {Kind: RunScript}, "input": {Input: "script"},
+	for name, occurrence := range map[string]invocation.Script{
+		"id": {ID: "id"}, "owner": {Owner: "owner"}, "declaration": {Declaration: source.Reference{Document: "document"}},
+		"kind": {Kind: invocation.ScriptRun}, "input": {Input: "script"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -103,7 +96,7 @@ func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
 			}
 		})
 	}
-	for _, input := range []Input{{Scripts: []Script{{Text: "text"}}}, {SelectedScripts: []OccurrenceID{}}} {
+	for _, input := range []Input{{Scripts: []Script{{Text: "text"}}}, {SelectedScripts: []invocation.ID{}}} {
 		if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 			t.Fatalf("orphan selection or unavailable text accepted: %v", err)
 		}

@@ -90,7 +90,7 @@ func TestBatchBindsActionSourceAndOwnsCopies(t *testing.T) {
 					t.Fatal("inherited shell replaced the declaration shell")
 				}
 				fact, exists := batch.Fact(i, false)
-				if !exists || fact.Path != "" || fact.JobID != "" || invocation.ID(fact.Occurrence.Owner) != batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {
+				if !exists || fact.Path != "" || fact.JobID != "" || fact.Occurrence.Owner != batch.Invocations().RootID() {
 					t.Fatalf("standalone fact changed entry semantics: %+v", fact)
 				}
 			}

@@ -10,7 +10,6 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/invocations"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -90,11 +89,10 @@ var ErrInvalidBatch = errors.New("execution: invalid prepared batch")
 type Batch struct{ data *batchData }
 
 type batchData struct {
-	graph      invocation.Graph
-	projection invocations.Projection
-	scopes     []*Scope
-	scripts    []Unit
-	collected  bool
+	graph     invocation.Graph
+	scopes    []*Scope
+	scripts   []Unit
+	collected bool
 }
 
 // NewBatch validates complete script collection or an explicit scopes-only batch.
@@ -134,11 +132,7 @@ func NewBatch(graph invocation.Graph, collection Collection) (Batch, error) {
 	if err != nil {
 		return Batch{}, err
 	}
-	projection, err := invocations.New(graph)
-	if err != nil {
-		return Batch{}, fmt.Errorf("%w: %w", ErrInvalidBatch, err)
-	}
-	return Batch{&batchData{graph: graph, projection: projection, scopes: scopes, scripts: scripts, collected: collected}}, nil
+	return Batch{&batchData{graph: graph, scopes: scopes, scripts: scripts, collected: collected}}, nil
 }
 
 func validateScope(scope *Scope, graph invocation.Graph) error {
@@ -181,13 +175,6 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 }
 
 func (batch Batch) Valid() bool { return batch.data != nil }
-
-func (batch Batch) CallGraph() checkinputs.CallGraph {
-	if batch.data == nil {
-		return checkinputs.CallGraph{}
-	}
-	return batch.data.projection.Graph()
-}
 
 func (batch Batch) Invocations() invocation.Graph {
 	if batch.data == nil {

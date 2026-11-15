@@ -12,6 +12,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -94,18 +95,18 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 	if len(guest.inputs) != 3 || len(observer.input.Scripts) != 1 || len(observer.input.Invoked) != 2 {
 		t.Fatalf("missing executions: guest=%d root=%d invoked=%d", len(guest.inputs), len(observer.input.Scripts), len(observer.input.Invoked))
 	}
-	want := map[checkinputs.OccurrenceID]checkinputs.Script{}
+	want := map[invocation.ID]checkinputs.Script{}
 	for _, scripts := range [][]checkinputs.Script{observer.input.Scripts, observer.input.Invoked} {
 		for _, script := range scripts {
 			want[script.Occurrence.ID] = script
 		}
 	}
-	seen := map[checkinputs.OccurrenceID]bool{}
+	seen := map[invocation.ID]bool{}
 	for _, input := range guest.inputs {
 		if err := input.ValidateInvocations(); err != nil {
 			t.Fatal(err)
 		}
-		if input.Reference != observer.input.Reference || input.Path != filename || input.Content != workflow || input.Kind != "workflow" || input.ParseStatus != observer.input.ParseStatus || input.CallGraph != observer.input.CallGraph {
+		if input.Reference != observer.input.Reference || input.Path != filename || input.Content != workflow || input.Kind != "workflow" || input.ParseStatus != observer.input.ParseStatus || !reflect.DeepEqual(input.CallGraph, observer.input.CallGraph) {
 			t.Fatal("adapter rebuilt source header or graph")
 		}
 		if len(input.SelectedScripts) != 1 {
@@ -120,7 +121,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 		if len(scripts) != 1 || !reflect.DeepEqual(scripts[0], want[id]) {
 			t.Fatalf("adapter changed canonical script %s", id)
 		}
-		if len(input.Invoked) == 1 && (scripts[0].Occurrence.Depth != 2 || len(scripts[0].Occurrence.Ancestry) != 3 || scripts[0].Path == "") {
+		if depth, _ := input.CallGraph.Depth(scripts[0].Occurrence.Owner); len(input.Invoked) == 1 && (depth != 2 || scripts[0].Path == "") {
 			t.Fatal("nested script lost ancestry or declaration path")
 		}
 	}
@@ -154,7 +155,7 @@ func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(observer.inputs) != 1 || observer.inputs[0].Occurrence.Kind != checkinputs.ActionInputScript {
+	if len(observer.inputs) != 1 || observer.inputs[0].Occurrence.Kind != invocation.ScriptActionInput {
 		t.Fatalf("action-input route did not execute: %+v", observer.inputs)
 	}
 	if len(guest.inputs) != 2 {
@@ -204,11 +205,13 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 		t.Fatal("standalone scripts lost")
 	}
 	for _, input := range guest.inputs {
-		if input.Kind != "action" || input.Reference != observer.input.Reference || input.CallGraph.Entry().Kind != checkinputs.ActionEntry || input.CallGraph != observer.input.CallGraph {
+		if input.Kind != "action" || input.Reference != observer.input.Reference || input.CallGraph.Entry().Kind != invocation.EntryAction || !reflect.DeepEqual(input.CallGraph, observer.input.CallGraph) {
 			t.Fatal("standalone entry identity changed")
 		}
 	}
-	if guest.inputs[0].Scripts[0].Occurrence.Depth != 0 || guest.inputs[1].Invoked[0].Occurrence.Depth != 1 {
+	entryDepth, _ := guest.inputs[0].CallGraph.Depth(guest.inputs[0].Scripts[0].Occurrence.Owner)
+	invokedDepth, _ := guest.inputs[1].CallGraph.Depth(guest.inputs[1].Invoked[0].Occurrence.Owner)
+	if entryDepth != 0 || invokedDepth != 1 {
 		t.Fatal("standalone depth changed")
 	}
 }

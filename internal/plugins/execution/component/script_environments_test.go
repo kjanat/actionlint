@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	bind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
@@ -71,7 +72,7 @@ func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
 	t.Parallel()
 	environments := scriptmodel.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Windows}, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentStep, Names: []string{"miXedCase"}})
-	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: checkinputs.ScriptOccurrence{ID: "selected"}, Environment: environments}}}
+	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}, Environment: environments}}}
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	for _, id := range []string{"", "entry", "call", "unselected", "another-invocation"} {
 		result, err := (scriptEnvironments{}).ForScript(ctx, id)
@@ -125,7 +126,7 @@ func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 
 func TestSuppliedScriptWithoutEnvironmentFactsReturnsAnEmptyList(t *testing.T) {
 	t.Parallel()
-	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: checkinputs.ScriptOccurrence{ID: "selected"}}}}
+	input := checkinputs.Input{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}}}}
 	document := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	result, err := (scriptEnvironments{}).ForScript(document, "selected")
 	value, ok := result.(bind.ResultListEnvironmentStringOk)

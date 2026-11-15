@@ -98,7 +98,7 @@ func TestWorkflowEntryClearsInheritedActionOrigin(t *testing.T) {
 	if got.ActionPath != "" || got.ActionRunnerPath != "" || got.ActionIndependent || got.Workspace != paths.Workspace || got.Analysis != paths.Analysis || !got.Placements.Present() || got.Placements.Details().Directory.Path != "checkout" {
 		t.Fatalf("entry origin or shared paths incorrect: %+v", got)
 	}
-	if fact, exists := result.Batch.Fact(0, false); !exists || invocation.ID(fact.Occurrence.Owner) != result.Batch.Invocations().RootID() || fact.Occurrence.Depth != 0 {
+	if fact, exists := result.Batch.Fact(0, false); !exists || fact.Occurrence.Owner != result.Batch.Invocations().RootID() {
 		t.Fatal("entry script fabricated a caller")
 	}
 }
@@ -144,7 +144,7 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	if !exists {
 		t.Fatal("top-level call projection absent")
 	}
-	graph := result.Batch.CallGraph()
+	graph := result.Batch.Invocations()
 	call, exists := graph.Call(fact.Occurrence.Owner)
 	if !exists {
 		t.Fatal("top-level owning call absent")
@@ -155,7 +155,8 @@ func TestPreparedTopLevelCallHasNoExternalCaller(t *testing.T) {
 	}
 	step := workflowStepViews(t, w, "test")[0]
 	site := stepReference(t, f.root, step)
-	if call.Parent != graph.Entry().ID || call.Site.Document != graph.Entry().Reference.Document || call.Depth != 1 || call.Uses != "$/child" || call.Site != site || call.Step.Line != stepPosition(t, step).Line || call.Step.Column != stepPosition(t, step).Col {
+	facts, _ := call.Facts()
+	if call.Parent() != graph.RootID() || call.Site().Document != graph.Entry().Reference.Document || call.Depth() != 1 || facts.Uses != "$/child" || call.Site() != site || facts.Step.Line != stepPosition(t, step).Line || facts.Step.Column != stepPosition(t, step).Col {
 		t.Fatalf("top-level public call facts: %+v", call)
 	}
 }
@@ -350,8 +351,8 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 	if !exists {
 		t.Fatal("missing invocation projection")
 	}
-	call, exists := result.Batch.CallGraph().Call(projection.Occurrence.Owner)
-	if !exists || invocation.ID(projection.Occurrence.Owner) != owner.ID() {
+	call, exists := result.Batch.Invocations().Call(projection.Occurrence.Owner)
+	if !exists || projection.Occurrence.Owner != owner.ID() {
 		t.Fatal("missing occurrence owner call")
 	}
 	prefix, _, found := strings.Cut(line, "{uses")
@@ -359,7 +360,8 @@ func TestPreparedFactsProjectCanonicalCallCoordinates(t *testing.T) {
 		t.Fatal("fixture has no call mapping")
 	}
 	wantColumn := utf8.RuneCountInString(prefix) + 1
-	if call.Site != owner.Site() || !strings.HasSuffix(filepath.ToSlash(call.Site.Document), "/outer/action.yml") || call.Step.Line != 1 || call.Step.Column != wantColumn || call.Depth != 2 || call.Uses != "$/inner" || invocation.ID(call.Parent) != owner.Parent() {
+	facts, _ := call.Facts()
+	if call.Site() != owner.Site() || !strings.HasSuffix(filepath.ToSlash(call.Site().Document), "/outer/action.yml") || facts.Step.Line != 1 || facts.Step.Column != wantColumn || call.Depth() != 2 || facts.Uses != "$/inner" || call.Parent() != owner.Parent() {
 		t.Fatalf("public projection lost canonical call facts: %+v", call)
 	}
 }

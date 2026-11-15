@@ -1,34 +1,25 @@
 package inputs
 
 import (
-	"fmt"
 	"strconv"
-	"strings"
 	"testing"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
-
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 func selectedGraphInput(tb testing.TB, count int) Input {
 	tb.Helper()
-	entry := InvocationEntry{ID: OccurrenceID(strings.Repeat("a", 64)), Kind: WorkflowEntry, Reference: source.Reference{Document: "workflow", Node: "document"}}
-	records := CallGraphData{Entry: entry, Budget: InvocationBudget{MaxDepth: 1, MaxCalls: 1, MaxScripts: count}, Complete: true}
-	for index := range count {
-		records.Scripts = append(records.Scripts, ScriptOccurrence{
-			ID: OccurrenceID(fmt.Sprintf("%064x", index+1)), Owner: entry.ID, Ancestry: []OccurrenceID{entry.ID},
-			Declaration: source.Reference{Document: "workflow", Node: strconv.Itoa(index)}, Kind: RunScript,
-		})
+	scripts := make([]invocationfixture.Script, count)
+	for index := range scripts {
+		scripts[index] = invocationfixture.Script{Node: strconv.Itoa(index), Entry: true}
 	}
-	graph, err := NewCallGraph(records)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	selected := records.Scripts[0]
+	graph := invocationfixture.Graph(tb, scripts...)
+	selected := graph.Scripts()[0]
 	return Input{
-		Reference: entry.Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
-		SelectedScripts: []OccurrenceID{selected.ID}, Scripts: []Script{{Reference: selected.Declaration, Occurrence: selected}},
+		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
+		SelectedScripts: []invocation.ID{selected.ID}, Scripts: []Script{{Reference: selected.Declaration, Occurrence: selected}},
 	}
 }
 

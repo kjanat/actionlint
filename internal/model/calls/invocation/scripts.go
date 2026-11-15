@@ -72,6 +72,12 @@ func (b *Builder) AddScript(context Context, declaration source.Reference, kind 
 // Scripts returns registered occurrences in traversal order.
 func (g Graph) Scripts() []Script { return slices.Clone(g.scripts) }
 
+// ScriptCount returns the number of registered occurrences.
+func (g Graph) ScriptCount() int { return len(g.scripts) }
+
+// ScriptRange returns scripts[start:end] in traversal order; callers check bounds.
+func (g Graph) ScriptRange(start, end int) []Script { return slices.Clone(g.scripts[start:end]) }
+
 // Script returns a registered occurrence; computed but unregistered IDs are absent.
 func (g Graph) Script(id ID) (Script, bool) {
 	index, exists := g.scriptIndex[id]

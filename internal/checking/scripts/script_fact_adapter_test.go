@@ -277,7 +277,7 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 					if err := input.ValidateInvocations(); err != nil {
 						t.Fatal(err)
 					}
-					if input.Reference != batch.CallGraph().Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}) {
+					if input.Reference != batch.Invocations().Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}) {
 						t.Fatalf("script call invented a source/header or lost unit path: %+v", input)
 					}
 					scripts := slices.Concat(input.Scripts, input.Invoked)
@@ -326,35 +326,33 @@ func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
 func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	t.Parallel()
 	batch := twoRunFactBatch(t)
-	want := batch.CallGraph().Export()
+	want := batch.Invocations()
 	options := json.RawMessage(`{"mode":"safe"}`)
 	calls := 0
 	adapter := FactAnalyzer{Options: options, Analyzer: factAdapterAnalyzer{
 		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "mutating", OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`)}},
 		run: func(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
-			if string(input.Options) != `{"mode":"safe"}` || input.AvailableInputs[0] != rulemeta.Scripts || !reflect.DeepEqual(input.CallGraph.Export(), want) {
+			if string(input.Options) != `{"mode":"safe"}` || input.AvailableInputs[0] != rulemeta.Scripts || !reflect.DeepEqual(input.CallGraph, want) {
 				t.Fatalf("earlier analyzer call corrupted current input: %+v", input)
 			}
 			calls++
 			input.Options[0] = '!'
 			input.AvailableInputs[0] = rulemeta.Source
 			input.SelectedScripts[0] = "forged"
-			input.Scripts[0].Occurrence.Ancestry[0] = "forged"
+			input.Scripts[0].Occurrence.Owner = "forged"
 			input.Scripts[0].Spans[0].End = 999
-			snapshot := input.CallGraph.Export()
-			snapshot.Scripts[0].Ancestry[0] = "forged"
 			return nil, nil
 		},
 	}}
 	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != 2 {
 		t.Fatalf("mutation interrupted later unit: calls=%d error=%v", calls, err)
 	}
-	if string(options) != `{"mode":"safe"}` || !reflect.DeepEqual(batch.CallGraph().Export(), want) {
+	if string(options) != `{"mode":"safe"}` || !reflect.DeepEqual(batch.Invocations(), want) {
 		t.Fatal("analyzer mutated parent registration or batch graph")
 	}
 	for index := range batch.Scripts() {
 		fact, exists := batch.Fact(index, false)
-		if !exists || fact.Occurrence.Ancestry[0] != want.Entry.ID || fact.Spans[0].End == 999 {
+		if !exists || fact.Occurrence.Owner != want.RootID() || fact.Spans[0].End == 999 {
 			t.Fatal("analyzer mutated parent script facts")
 		}
 	}
@@ -368,7 +366,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := batch.CallGraph().Export()
+	want := batch.Invocations()
 	calls := 0
 	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "invoked-mutator"}}, run: func(_ context.Context, input checkinputs.Input) ([]results.Diagnostic, error) {
 		calls++
@@ -376,7 +374,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 			t.Fatalf("invoked script was not selected: %+v", input)
 		}
 		input.Invoked[0].Text = "changed"
-		input.Invoked[0].Occurrence.Ancestry[0] = "changed"
+		input.Invoked[0].Occurrence.Owner = "changed"
 		input.Invoked[0].Spans[0].End = 999
 		input.SelectedScripts[0] = "changed"
 		input.AvailableInputs[0] = rulemeta.Source
@@ -385,12 +383,12 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts()) {
 		t.Fatalf("invoked analysis failed: calls=%d error=%v", calls, err)
 	}
-	if !reflect.DeepEqual(batch.CallGraph().Export(), want) {
+	if !reflect.DeepEqual(batch.Invocations(), want) {
 		t.Fatal("invoked analyzer mutated batch graph")
 	}
 	for index := range batch.Scripts() {
 		fact, exists := batch.Fact(index, false)
-		if !exists || fact.Text == "changed" || fact.Spans[0].End == 999 || fact.Occurrence.Ancestry[0] != want.Entry.ID {
+		if !exists || fact.Text == "changed" || fact.Spans[0].End == 999 || fact.Occurrence.Owner == "changed" {
 			t.Fatal("invoked analyzer mutated parent script facts")
 		}
 	}

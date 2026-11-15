@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -374,22 +375,22 @@ func (r documentRunner) validateDocumentBatch(batch tools.Batch) error {
 			continue
 		}
 		occurrence := script.Fact.Occurrence
-		if err := batch.CallGraph.ValidateOccurrence(occurrence); err != nil {
+		if err := checkinputs.ValidateOccurrence(batch.CallGraph, occurrence); err != nil {
 			return fmt.Errorf("%s document batch script %d: %w", r.name, index, err)
 		}
-		if occurrence.Kind != checkinputs.RunScript || script.Fact.Reference != occurrence.Declaration {
+		if occurrence.Kind != invocation.ScriptRun || script.Fact.Reference != occurrence.Declaration {
 			return fmt.Errorf("%s document batch script %d: %w: missing or foreign prepared occurrence", r.name, index, checkinputs.ErrInvalidCallGraph)
 		}
 	}
 	return nil
 }
 
-func (r documentRunner) input(script tools.Script, graph checkinputs.CallGraph) checkinputs.Input {
+func (r documentRunner) input(script tools.Script, graph invocation.Graph) checkinputs.Input {
 	input := r.context.Document
 	input.AvailableInputs = []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}
 	input.CallGraph = graph
-	input.SelectedScripts = []checkinputs.OccurrenceID{script.Fact.Occurrence.ID}
-	if graph.Valid() && script.Fact.Occurrence.Owner == graph.Entry().ID {
+	input.SelectedScripts = []invocation.ID{script.Fact.Occurrence.ID}
+	if graph.Valid() && script.Fact.Occurrence.Owner == graph.RootID() {
 		input.Scripts = []checkinputs.Script{script.Fact}
 	} else {
 		input.Invoked = []checkinputs.Script{script.Fact}

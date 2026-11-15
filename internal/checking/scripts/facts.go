@@ -15,8 +15,8 @@ func (batch Batch) Fact(index int, includeExecution bool) (checkinputs.Script, b
 		return checkinputs.Script{}, false
 	}
 	unit := batch.data.scripts[index]
-	occurrence, exists := batch.data.projection.Script(unit.Occurrence)
-	if !exists || occurrence.Declaration != unit.Reference || (occurrence.Kind == checkinputs.ActionInputScript) != (unit.Input != nil) {
+	occurrence, exists := batch.data.graph.Script(unit.Occurrence)
+	if !exists || occurrence.Declaration != unit.Reference || (occurrence.Kind == invocation.ScriptActionInput) != (unit.Input != nil) {
 		return checkinputs.Script{}, false
 	}
 	script := fact(unit, batch.data.graph, includeExecution)
