@@ -82,7 +82,7 @@ type analysisSession struct {
 }
 
 // check parses action manifests and workflows with their respective parsers.
-func (s *analysisSession) check(path, sourcePath string, captured capture.Snapshot, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
+func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
 	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, *resultpolicy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
@@ -100,7 +100,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Snapsh
 	return s.analyzeDocument(path, sourcePath, captured, content, document, false, project, config, provenance, processes, actions, workflows, usedRules)
 }
 
-func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.Snapshot, content []byte, document parsing.Document, action bool,
+func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
 	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, publication *resultpolicy.Batch, resultErr error) {

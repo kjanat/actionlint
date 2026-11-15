@@ -48,7 +48,7 @@ func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
 		return manifest, nil
 	})
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ permissions: {}
 func TestRemoteMetadataIsUnavailableWithoutProvider(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
+	result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

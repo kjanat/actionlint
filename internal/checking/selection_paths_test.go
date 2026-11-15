@@ -80,7 +80,7 @@ func TestCallerRelativeSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: parent}, []workspace.Source{{Path: relative, Content: []byte(badWorkflow), Project: project, Config: project.Config()}})
+	result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: parent}, []workspace.InputFile{{Path: relative, Content: []byte(badWorkflow), Project: project, Config: project.Config()}})
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
 		t.Fatalf("direct caller-relative workflow was dropped: %+v, %v", result, err)
 	}
@@ -142,7 +142,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: workflow, Content: []byte(goodWorkflow), Config: loaded.Config, ConfigProvenance: loaded.Provenance}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: workflow, Content: []byte(goodWorkflow), Config: loaded.Config, ConfigProvenance: loaded.Provenance}})
 	if err != nil || result.FileCount != 0 || !slices.Contains(result.Inputs, base) || !slices.Contains(result.Inputs, config) {
 		t.Fatalf("direct analysis lost excluded configuration inputs: %+v, %v", result, err)
 	}
@@ -182,7 +182,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 					t.Fatalf("filtered=%t: alias selection/override lost: %+v, %v", filtered, result, err)
 				}
 			}
-			check(checking.Analyze(t.Context(), checking.Options{WorkingDir: parent}, []workspace.Source{{Path: path, Content: []byte(content), Project: project, Config: cfg}}))
+			check(checking.Analyze(t.Context(), checking.Options{WorkingDir: parent}, []workspace.InputFile{{Path: path, Content: []byte(content), Project: project, Config: cfg}}))
 			var reads []string
 			session, err := workspace.New(t.Context(), workspace.Options{WorkingDir: parent, ReadFile: func(name string) ([]byte, error) {
 				reads = append(reads, name)

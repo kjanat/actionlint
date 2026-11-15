@@ -113,7 +113,7 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 
 // ResolveBeforePlugins merges already parsed overlays for dependency selection.
 // Only rule-name binding is deferred; it is repeated by the analysis session.
-func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resolved, error) {
+func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (ResolvedConfig, error) {
 	inputs := make(map[string]Input)
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
@@ -123,13 +123,14 @@ func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resol
 	}
 	resolved, err := ruleSet.resolveValue(node, inputs, false)
 	if err != nil && len(names) != 0 {
-		return Resolved{}, configreport.NewOverlayError(names, err)
+		return ResolvedConfig{}, configreport.NewOverlayError(names, err)
 	}
 	return resolved, err
 }
 
-type Loaded struct {
-	Resolved
+// LoadedFile is a ResolvedConfig together with the configuration file it came from.
+type LoadedFile struct {
+	ResolvedConfig
 	Filename string
 }
 
@@ -149,9 +150,9 @@ func (o Overlay) BindPaths(directory string) (Overlay, error) {
 
 // Overlaid merges parsed overlays over a loaded source and resolves the result.
 // Without overlays it returns the supplied configuration and the source's document.
-func (ruleSet RuleSet) Overlaid(cfg *Config, source *Loaded, overlays []Overlay, additional ...string) (*Config, Resolved, error) {
+func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Overlay, additional ...string) (*Config, ResolvedConfig, error) {
 	var node any
-	var resolved Resolved
+	var resolved ResolvedConfig
 	var bindingSources []bindingSource
 	captured := &ruleSources{}
 	if cfg != nil {
@@ -162,13 +163,13 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *Loaded, overlays []Overlay,
 			var err error
 			baseline, err := ruleSet.EncodeValue(cfg)
 			if err != nil {
-				return nil, Resolved{}, err
+				return nil, ResolvedConfig{}, err
 			}
 			captured.base = captureRuleDocument(baseline)
 		}
 	}
 	if source != nil {
-		node, resolved = source.Value, source.Resolved
+		node, resolved = source.Value, source.ResolvedConfig
 	}
 	inputs := maps.Clone(resolved.Inputs)
 	if inputs == nil {
@@ -179,7 +180,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *Loaded, overlays []Overlay,
 		captured = captured.withOverlay(overlay.rules)
 		var settings Config
 		if err := ruleSet.DecodeValue(overlay.node, &settings); err != nil {
-			return nil, Resolved{}, err
+			return nil, ResolvedConfig{}, err
 		}
 		bindingSources = append(bindingSources, ruleBindingSources(overlay.name, &settings, overlay.inputs)...)
 		merged := configtree.Overlay(configtree.Capture(node, inputs), configtree.Capture(overlay.node, overlay.inputs), MergePlan())
@@ -190,7 +191,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *Loaded, overlays []Overlay,
 		var err error
 		resolved, err = ruleSet.ResolveValue(node, inputs, additional...)
 		if err != nil {
-			return nil, Resolved{}, configreport.NewOverlayError(names, err)
+			return nil, ResolvedConfig{}, configreport.NewOverlayError(names, err)
 		}
 		cfg = resolved.Config
 		cfg.Lint.Rules.bindingSources = bindingSources
@@ -208,7 +209,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *Loaded, overlays []Overlay,
 		var err error
 		resolved, err = ruleSet.ResolveValue(nil, nil, additional...)
 		if err != nil {
-			return nil, Resolved{}, err
+			return nil, ResolvedConfig{}, err
 		}
 	}
 	return cfg, resolved, nil

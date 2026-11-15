@@ -32,7 +32,7 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
 			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
 		}}}),
-	}, []workspace.Source{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")}},
+	}, []workspace.InputFile{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 		t.Run(fmt.Sprintf("%q", ending), func(t *testing.T) {
 			t.Parallel()
 			src := strings.ReplaceAll("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"first\n        ${{ unknown }}\"\npermissions: {}\n", "\n", ending)
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(src)}})
 			if err != nil {
 				t.Fatal(err)
 			}

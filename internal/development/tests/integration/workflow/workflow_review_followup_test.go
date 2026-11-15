@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 		if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 			t.Fatalf("path interpolation %q: error=%v diagnostics=%+v", expression, err, result.Diagnostics)
 		}
@@ -44,7 +44,7 @@ jobs:
         run: printf '%s\n' "$WORKFLOW_PATH"
 permissions: {}
 `
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("path environment binding: error=%v result=%+v", err, result)
 	}
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "script-injection" || !strings.Contains(result.Diagnostics[0].Message, "potentially untrusted") {
 				t.Fatalf("name interpolation: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
@@ -79,7 +79,7 @@ jobs:
         run: printf '%s\n' "$WORKFLOW_NAME"
 permissions: {}
 `
-			result, err = checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+			result, err = checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("name environment binding: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
@@ -105,7 +105,7 @@ permissions: {}
 			if reference == "" {
 				wantRule, wantMessage = "syntax-check", "string should not be empty"
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != wantRule || !strings.Contains(result.Diagnostics[0].Message, wantMessage) {
 				t.Fatalf("empty pattern: error=%v diagnostics=%+v", err, result.Diagnostics)
 			}
@@ -129,7 +129,7 @@ jobs:
 permissions: {}
 `
 	request := checking.Options{WorkingDir: root}
-	requestSources := []workspace.Source{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}
+	requestSources := []workspace.InputFile{{Path: filepath.Join(dir, "consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}}
 	for _, present := range []bool{false, true} {
 		if present {
 			fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: Build\n"+testutil.GoodWorkflow)
@@ -164,7 +164,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -185,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\npermissions: {}\n"
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -208,7 +208,7 @@ jobs:
         run: printf '%s\n' "$HEAD_REF"
 permissions: {}
 `
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(source)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(source)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("environment binding rejected: %v, %+v", err, result)
 	}
@@ -244,7 +244,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -38,7 +38,7 @@ func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
 	result, err := Analyze(t.Context(), Options{
 		WorkingDir: t.TempDir(),
 		Analyzers:  []checkinputs.Registration{{Checker: suppressionCompletionProbe{cause}}},
-	}, []workspace.Source{
+	}, []workspace.InputFile{
 		{Path: "failing.yml", Content: []byte(prefix + "      - run: echo ok # ignore completion-probe\npermissions: {}\n")},
 		{Path: "complete.yml", Content: []byte(prefix + "      - run: echo ok # ignore expression-reference\npermissions: {}\n")},
 	})
@@ -58,7 +58,7 @@ func TestUnusedSuppressionsRequireParsedDeclarations(t *testing.T) {
 	} {
 		t.Run(strings.TrimSpace(content), func(t *testing.T) {
 			t.Parallel()
-			result, err := Analyze(t.Context(), Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yml", Content: []byte(content)}})
+			result, err := Analyze(t.Context(), Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(content)}})
 			if err != nil || result == nil {
 				t.Fatalf("lost syntax result: %v", err)
 			}
@@ -98,7 +98,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 				Tools: registry.Registrations(registry.Selections{"shellcheck": {
 					Command: "shellcheck", Process: &process.CommandOptions{Executable: &missing, Optional: true},
 				}}),
-			}, []workspace.Source{{Path: "workflow.yml", Config: cfg, Content: []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # ignore shellcheck expression-reference\npermissions: {}\n")}})
+			}, []workspace.InputFile{{Path: "workflow.yml", Config: cfg, Content: []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # ignore shellcheck expression-reference\npermissions: {}\n")}})
 			if err != nil || result == nil {
 				t.Fatalf("optional tool became a fatal error: %v", err)
 			}

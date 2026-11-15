@@ -57,7 +57,7 @@ func configuredEngineSelections() registry.Selections {
 	return selections
 }
 
-func configuredEngineFixture(t *testing.T) (string, []string, *configuration.Loaded) {
+func configuredEngineFixture(t *testing.T) (string, []string, *configuration.LoadedFile) {
 	t.Helper()
 	root := t.TempDir()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\npermissions: {}\n"
@@ -90,7 +90,7 @@ func configuredEngineFixture(t *testing.T) (string, []string, *configuration.Loa
 	return root, paths, cfg
 }
 
-func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *configuration.Loaded, options checking.Options) (*checking.Result, error) {
+func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *configuration.LoadedFile, options checking.Options) (*checking.Result, error) {
 	t.Helper()
 	if options.Tools == nil {
 		options.Tools = registry.Registrations(configuredEngineSelections())
@@ -103,13 +103,13 @@ func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg 
 		options.ConfigFile = "actionlint.yaml"
 		return checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: root})
 	default:
-		var sources []workspace.Source
+		var sources []workspace.InputFile
 		for _, path := range paths {
 			content, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
-			sources = append(sources, workspace.Source{Path: path, Content: content, Config: cfg.Config, ConfigProvenance: cfg.Provenance})
+			sources = append(sources, workspace.InputFile{Path: path, Content: content, Config: cfg.Config, ConfigProvenance: cfg.Provenance})
 		}
 		return checking.Analyze(t.Context(), options, sources)
 	}
@@ -308,13 +308,13 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				}
 				return backend, nil
 			}}
-			var sources []workspace.Source
+			var sources []workspace.InputFile
 			for i, selected := range []*configuration.Config{cfg, other} {
 				content, err := os.ReadFile(paths[i])
 				if err != nil {
 					t.Fatal(err)
 				}
-				sources = append(sources, workspace.Source{Path: paths[i], Content: content, Config: selected})
+				sources = append(sources, workspace.InputFile{Path: paths[i], Content: content, Config: selected})
 			}
 			result, err := checking.Analyze(t.Context(), options, sources)
 			if err != nil || result == nil || len(result.Diagnostics) != 2 || loads.Load() != 1 || backend.checks.Load() != 2 || backend.closes.Load() != 1 {

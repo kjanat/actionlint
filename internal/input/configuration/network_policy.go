@@ -164,7 +164,7 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 	return p, nil
 }
 
-func (p *NetworkPolicy) Resolve(rules RuleSet, resolved Resolved) (Resolved, error) {
+func (p *NetworkPolicy) Resolve(rules RuleSet, resolved ResolvedConfig) (ResolvedConfig, error) {
 	if p == nil || len(p.files) == 0 {
 		return resolved, nil
 	}
@@ -174,12 +174,12 @@ func (p *NetworkPolicy) Resolve(rules RuleSet, resolved Resolved) (Resolved, err
 	}
 	cfg, err := p.Apply(resolved.Config)
 	if err != nil {
-		return Resolved{}, err
+		return ResolvedConfig{}, err
 	}
 	resolved.Config = cfg
 	resolved.Values, err = rules.EffectiveValues(cfg)
 	if err != nil {
-		return Resolved{}, err
+		return ResolvedConfig{}, err
 	}
 	resolved.Origins = maps.Clone(resolved.Origins)
 	if resolved.Origins == nil {

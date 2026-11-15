@@ -395,7 +395,7 @@ func TestProviderParityFixtures(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					sources := []workspace.Source{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &configuration.Config{}}}
+					sources := []workspace.InputFile{{Path: path, InputPath: filepath.Join(repository, path), Content: content, Project: workspace.Identity(filepath.Join(repository, dir)), Config: &configuration.Config{}}}
 					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: repository, Tools: recorder.wrap(registrations)}, sources)
 					return toolFindings(t, result, err, recorder, map[string]string{repository: "<repository>"})
 				}, shellcheck, ruff)
@@ -536,7 +536,7 @@ func TestProviderEmbeddedRunnerArguments(t *testing.T) {
 		return []byte(`{"comments":[]}`), nil
 	}}})
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: bash\n        run: echo $1\n"
-	if _, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "/", Tools: registrations}, []workspace.Source{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
+	if _, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "/", Tools: registrations}, []workspace.InputFile{{Path: "test.yaml", Content: []byte(source)}}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"--norc", "-f", "json1", "--shell", "bash", "-e", "SC1091,SC2194,SC2050,SC2157,SC2043,SC2153,SC2154", "-"}

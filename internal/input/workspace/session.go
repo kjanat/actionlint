@@ -18,8 +18,8 @@ import (
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
-// Source associates the displayed path with the file read for analysis.
-type Source struct {
+// InputFile associates the displayed path with the file read for analysis.
+type InputFile struct {
 	Path             string
 	Content          []byte
 	Config           *configuration.Config
@@ -32,7 +32,7 @@ type Source struct {
 
 // Selection is a prepared batch. Inputs includes configuration and excluded discovery candidates.
 type Selection struct {
-	Sources        []Source
+	Sources        []InputFile
 	Inputs         []string
 	Configurations []configreport.Report
 }
@@ -58,8 +58,8 @@ type Options struct {
 	LogWriter         io.Writer
 }
 
-// Session shares repository and configuration lookups across input selections.
-type Session struct {
+// InputPreparer shares repository and configuration lookups across input selections.
+type InputPreparer struct {
 	networkPolicy *configuration.NetworkPolicy
 	rules         configuration.RuleSet
 	projects      *Projects
@@ -80,7 +80,7 @@ type Session struct {
 }
 
 // New prepares a session whose file reads and config loads stop when ctx is canceled.
-func New(ctx context.Context, opts Options) (*Session, error) {
+func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 	if opts.Config != nil && opts.ConfigFile != "" {
 		return nil, errors.New("workspace options set both Config and ConfigFile")
 	}
@@ -88,7 +88,7 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	if policyErr != nil {
 		return nil, policyErr
 	}
-	a := &Session{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile, opts.ConfigConnections).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
+	a := &InputPreparer{rules: opts.Rules, projects: NewProjects(opts.Rules), defaultConfig: opts.Config, ctx: ctx, cwd: opts.WorkingDir, stdin: opts.StdinFileName, onFilesSelected: opts.OnFilesSelected, readFile: configsource.New(ctx, opts.ReadFile, opts.ConfigConnections).ReadFile, log: opts.Log, logOut: opts.LogWriter, ruleNames: slices.Clone(opts.RuleNames)}
 	a.defaultConfigProvenance = opts.ConfigProvenance
 	a.networkPolicy = policy
 	a.noIgnore = opts.NoIgnore
@@ -139,14 +139,14 @@ func New(ctx context.Context, opts Options) (*Session, error) {
 	}
 	return a, nil
 }
-func (a *Session) WorkingDir() string                      { return a.cwd }
-func (a *Session) ProjectAt(path string) (*Project, error) { return a.projects.At(path) }
-func (a *Session) selectionLog(args ...any) {
+func (a *InputPreparer) WorkingDir() string                      { return a.cwd }
+func (a *InputPreparer) ProjectAt(path string) (*Project, error) { return a.projects.At(path) }
+func (a *InputPreparer) selectionLog(args ...any) {
 	a.log(args...)
 }
 
 // Repository analyzes the nearest repository's workflows and actions. An empty dir uses WorkingDir.
-func (a *Session) Repository(dir string) (*Selection, error) {
+func (a *InputPreparer) Repository(dir string) (*Selection, error) {
 	if dir == "" {
 		dir = a.cwd
 	}
@@ -182,7 +182,7 @@ func (a *Session) Repository(dir string) (*Selection, error) {
 	return a.discoveredFiles(paths, metadata.List(), project)
 }
 
-func (a *Session) Directory(dir string, project *Project) (*Selection, error) {
+func (a *InputPreparer) Directory(dir string, project *Project) (*Selection, error) {
 	listed := &Inputs{}
 	paths, err := WorkflowPaths(files.New(a.ctx, nil, listed.Add), dir)
 	if err != nil {
@@ -195,7 +195,7 @@ func (a *Session) Directory(dir string, project *Project) (*Selection, error) {
 	return a.discoveredFiles(paths, listed.List(), project)
 }
 
-func (a *Session) discoveredFiles(paths, metadata []string, project *Project) (*Selection, error) {
+func (a *InputPreparer) discoveredFiles(paths, metadata []string, project *Project) (*Selection, error) {
 	a.selectionLog("Collected", len(paths), "YAML files")
 	a.filesSelected(paths)
 	result, err := a.readFiles(paths, project, nil)
@@ -216,7 +216,7 @@ func (a *Session) discoveredFiles(paths, metadata []string, project *Project) (*
 	return result, err
 }
 
-func (a *Session) filesSelected(paths []string) {
+func (a *InputPreparer) filesSelected(paths []string) {
 	if a.onFilesSelected != nil {
 		a.onFilesSelected(slices.Clone(paths))
 	}
@@ -225,7 +225,7 @@ func (a *Session) filesSelected(paths []string) {
 // Files expands directory inputs and analyzes paths in order, discovering each
 // file's project when project is nil. Overlapping inputs are deduplicated.
 // Relative paths retain the caller's spelling and resolve from the process directory.
-func (a *Session) Files(paths []string, project *Project) (*Selection, error) {
+func (a *InputPreparer) Files(paths []string, project *Project) (*Selection, error) {
 	selection, err := FindFiles(a.ctx, paths, a.noIgnore)
 	if err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func (a *Session) Files(paths []string, project *Project) (*Selection, error) {
 
 // SelectedFiles reads a discovery result without reinterpreting discovered paths
 // as literal file arguments. Hosts can partition it by repository before loading plugins.
-func (a *Session) SelectedFiles(selection FileSelection, project *Project) (*Selection, error) {
+func (a *InputPreparer) SelectedFiles(selection FileSelection, project *Project) (*Selection, error) {
 	paths := make([]string, 0, len(selection.Files))
 	explicit := make(map[string]bool)
 	for _, file := range selection.Files {
@@ -244,7 +244,7 @@ func (a *Session) SelectedFiles(selection FileSelection, project *Project) (*Sel
 	}
 	a.filesSelected(paths)
 	if len(paths) == 0 {
-		return &Selection{Sources: []Source{}, Inputs: selection.Inputs}, nil
+		return &Selection{Sources: []InputFile{}, Inputs: selection.Inputs}, nil
 	}
 	result, err := a.readFiles(paths, project, explicit)
 	if result != nil {
@@ -255,12 +255,12 @@ func (a *Session) SelectedFiles(selection FileSelection, project *Project) (*Sel
 
 // Empty analyzes nothing. The result records the selected configuration of WorkingDir, explicit
 // or from its project, as an input with its report.
-func (a *Session) Empty() (*Selection, error) {
+func (a *InputPreparer) Empty() (*Selection, error) {
 	project, err := a.projects.At(a.cwd)
 	if err != nil {
 		return nil, err
 	}
-	result := &Selection{Sources: []Source{}}
+	result := &Selection{Sources: []InputFile{}}
 	inputs := &Inputs{}
 	inputs.Add(a.defaultConfigPath)
 	for _, path := range a.networkPolicy.Files() {
@@ -279,12 +279,12 @@ func (a *Session) Empty() (*Selection, error) {
 	return result, nil
 }
 
-func (a *Session) ReadFiles(paths []string, project *Project) (*Selection, error) {
+func (a *InputPreparer) ReadFiles(paths []string, project *Project) (*Selection, error) {
 	return a.readFiles(paths, project, nil)
 }
 
-func (a *Session) readFiles(paths []string, project *Project, explicit map[string]bool) (*Selection, error) {
-	sources := make([]Source, 0, len(paths))
+func (a *InputPreparer) readFiles(paths []string, project *Project, explicit map[string]bool) (*Selection, error) {
+	sources := make([]InputFile, 0, len(paths))
 	configProjects := make([]*Project, 0, len(paths))
 	for _, path := range paths {
 		inputPath := path
@@ -325,7 +325,7 @@ func (a *Session) readFiles(paths []string, project *Project, explicit map[strin
 	return a.prepare(sources, configProjects...)
 }
 
-func (a *Session) relativePath(path string) string {
+func (a *InputPreparer) relativePath(path string) string {
 	if rel, err := filepath.Rel(a.cwd, path); err == nil {
 		return rel
 	}
@@ -334,7 +334,7 @@ func (a *Session) relativePath(path string) string {
 
 // ReadStdin analyzes a reader using StdinFileName. normalizePath makes its diagnostic
 // path relative to WorkingDir; false preserves the caller's spelling.
-func (a *Session) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, error) {
+func (a *InputPreparer) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, error) {
 	a.selectionLog("Reading the input from stdin")
 	content, err := io.ReadAll(stdin)
 	if err != nil {
@@ -343,7 +343,7 @@ func (a *Session) ReadStdin(stdin io.Reader, normalizePath bool) (*Selection, er
 	return a.Content(a.stdin, content, nil, normalizePath)
 }
 
-func (a *Session) Content(path string, content []byte, project *Project, normalizePath bool) (*Selection, error) {
+func (a *InputPreparer) Content(path string, content []byte, project *Project, normalizePath bool) (*Selection, error) {
 	if project == nil && path != "<stdin>" {
 		discoveryPath := path
 		if !filepath.IsAbs(discoveryPath) {
@@ -362,18 +362,18 @@ func (a *Session) Content(path string, content []byte, project *Project, normali
 	if normalizePath {
 		source.Path = a.relativePath(path)
 	}
-	return a.prepare([]Source{source})
+	return a.prepare([]InputFile{source})
 }
 
-func (a *Session) source(path string, content []byte, project *Project) Source {
+func (a *InputPreparer) source(path string, content []byte, project *Project) InputFile {
 	cfg := a.defaultConfig
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
-	return Source{Path: path, Content: content, Config: cfg, Project: project}
+	return InputFile{Path: path, Content: content, Config: cfg, Project: project}
 }
 
-func (a *Session) prepare(sources []Source, configProjects ...*Project) (*Selection, error) {
+func (a *InputPreparer) prepare(sources []InputFile, configProjects ...*Project) (*Selection, error) {
 	for i := range sources {
 		cfg, err := a.ConfigForProject(sources[i].Project)
 		if err != nil {

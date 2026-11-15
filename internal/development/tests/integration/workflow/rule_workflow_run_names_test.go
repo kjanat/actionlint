@@ -52,7 +52,7 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(src), Project: workspace.Identity(root), Config: config}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(src), Project: workspace.Identity(root), Config: config}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -98,13 +98,13 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-				sources := []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
+				sources := []workspace.InputFile{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
 				if inMemory {
 					cfg, err := checking.ConfigurationRules().Parse([]byte("files: {excludes: ['**/build.yml']}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					sources = append(sources, workspace.Source{Path: ".github/workflows/build.yml", Content: []byte(producer), Project: project, Config: cfg})
+					sources = append(sources, workspace.InputFile{Path: ".github/workflows/build.yml", Content: []byte(producer), Project: project, Config: cfg})
 				} else {
 					fixturefiles.Write(t, root, ".github/workflows/build.yml", producer)
 				}
@@ -146,7 +146,7 @@ permissions: {}
 						return nil, os.ErrPermission
 					}
 					return os.ReadFile(path)
-				}}, []workspace.Source{
+				}}, []workspace.InputFile{
 					{Path: strings.ToLower(producer), Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project},
 					{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project},
 				})
@@ -184,7 +184,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: ".github/workflows/consumer.yml", Content: []byte(src), Project: project}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -229,7 +229,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{
 				{Path: ".github/workflows/build.yml", Content: []byte("name: '" + tc.name + "'\n" + testutil.GoodWorkflow), Project: project},
 				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project},
 			})
@@ -272,7 +272,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "."}, []workspace.Source{
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: "."}, []workspace.InputFile{
 				{Path: ".github/workflows/build.yml", Content: []byte(producerContent), Project: project, Config: cfg},
 				{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project, Config: cfg},
 			})
@@ -308,7 +308,7 @@ permissions: {}
 					return nil, readErr
 				}
 				return os.ReadFile(path)
-			}}, []workspace.Source{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}})
+			}}, []workspace.InputFile{{Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: workspace.Identity(root)}})
 			if !read {
 				t.Fatal("sibling was not read")
 			}
@@ -336,7 +336,7 @@ jobs:
 permissions: {}
 `
 	project := workspace.Identity(root)
-	sources := []workspace.Source{{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project}, {Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project}}
+	sources := []workspace.InputFile{{Path: producer, Content: []byte("name: New\n" + testutil.GoodWorkflow), Project: project}, {Path: filepath.Join(root, ".github/workflows/consumer.yml"), Content: []byte(consumer), Project: project}}
 	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, sources)
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("%+v %v", result, err)

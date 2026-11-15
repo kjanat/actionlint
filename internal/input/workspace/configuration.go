@@ -10,7 +10,7 @@ import (
 
 type configState struct {
 	sync.Mutex
-	source     *configuration.Loaded
+	source     *configuration.LoadedFile
 	overlays   []configuration.Overlay
 	onLoaded   func(configreport.Report)
 	loaded     map[*Project]*configuration.Config
@@ -18,9 +18,9 @@ type configState struct {
 	reports    map[*Project]configreport.Report
 }
 
-func (a *Session) ConfigForProject(project *Project) (*configuration.Config, error) {
+func (a *InputPreparer) ConfigForProject(project *Project) (*configuration.Config, error) {
 	var cfg *configuration.Config
-	var source *configuration.Loaded
+	var source *configuration.LoadedFile
 	if a.defaultConfig != nil {
 		cfg = a.defaultConfig
 		if a.configState != nil {
@@ -92,7 +92,7 @@ func (a *Session) ConfigForProject(project *Project) (*configuration.Config, err
 }
 
 // ConfigProvenanceForProject reads the source owner selected by ConfigForProject.
-func (a *Session) ConfigProvenanceForProject(project *Project) configuration.Provenance {
+func (a *InputPreparer) ConfigProvenanceForProject(project *Project) configuration.Provenance {
 	if a.configState == nil {
 		if a.defaultConfig != nil {
 			return a.defaultConfigProvenance

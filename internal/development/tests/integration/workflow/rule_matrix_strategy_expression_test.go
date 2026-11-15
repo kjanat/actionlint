@@ -48,9 +48,9 @@ jobs:
 permissions: {}
 `
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
-			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)

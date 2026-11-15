@@ -35,13 +35,13 @@ func TestLinterMissingLocalAction(t *testing.T) {
 		{"      - uses: ./missing # actionlint:ignore missing-local-action -- downloaded at runtime\n        id: missing\n", 0},
 	} {
 		request := checking.Options{}
-		var requestSources []workspace.Source
+		var requestSources []workspace.InputFile
 		var lConfig *configuration.Config
 		var err error
 
 		lConfig = &configuration.Config{}
 		source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + tc.steps + "permissions: {}\n"
-		requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: proj, Config: lConfig}}
+		requestSources = []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: proj, Config: lConfig}}
 		errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 		if err != nil || len(errs) != tc.want {
 			t.Fatalf("got %v, %v; want %d diagnostics", errs, err, tc.want)
@@ -70,10 +70,10 @@ func TestMissingLocalActionRuleSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			request := checking.Options{}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			lConfig := cfg
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./missing\n      - uses: invalid\npermissions: {}\n"
-			requestSources = []workspace.Source{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(t.TempDir()), Config: lConfig}}
+			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(t.TempDir()), Config: lConfig}}
 			findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil || len(findings) != 1 || findings[0].Rule != tc.want {
 				t.Fatalf("got %v, %v; want only %s", findings, err, tc.want)
@@ -233,7 +233,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 					tool = shellcheck
 				}
 				request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})})
-				requestSources := []workspace.Source{{Path: "test.yaml", Content: b, Project: proj, Config: &configuration.Config{}}}
+				requestSources := []workspace.InputFile{{Path: "test.yaml", Content: b, Project: proj, Config: &configuration.Config{}}}
 				errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 				if err != nil {
 					t.Fatal(err)

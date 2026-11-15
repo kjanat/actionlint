@@ -45,7 +45,7 @@ jobs:
         run: printf '%s\n' "$REF" "$PATH_VALUE"
 permissions: {}
 `
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow)}})
 	if err != nil || len(result.Diagnostics) != 0 {
 		t.Fatalf("safe environment binding rejected: %v, %+v", err, result)
 	}
@@ -82,7 +82,7 @@ jobs:
           ACTOR_NAME: ${{ github.event.workflow_run.` + actor + `.name }}
         run: printf '%s\n' "$ACTOR_NAME"
 ` + "\npermissions: {}\n"
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow)}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("safe actor environment binding rejected: %v, %+v", err, result)
 		}
@@ -113,7 +113,7 @@ jobs:
       - run: echo "${{ github.event.issue.title }}"
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -144,7 +144,7 @@ jobs:
       - run: echo "${{ github[format('to{0}', 'ken')] }}"
 permissions: {}
 `
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "${{ ` + expression + " }}\"\n" + "\npermissions: {}\n"
-	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ jobs:
     steps:
       - run: echo "${{ ` + expression + " }}\"\n" + "\npermissions: {}\n"
 				}
-				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+				result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 				if err != nil {
 					t.Fatal(err)
 				}

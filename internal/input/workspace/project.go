@@ -12,7 +12,7 @@ import (
 // Project represents one GitHub project. One Git repository corresponds to one project.
 type Project struct {
 	root       string
-	config     *configuration.Loaded
+	config     *configuration.LoadedFile
 	configPath string
 }
 

@@ -39,7 +39,7 @@ func cleanupStore(t *testing.T, store *Store) {
 	})
 }
 
-func readSnapshot(t *testing.T, store *Store, path string, model source.Coordinates) Snapshot {
+func readSnapshot(t *testing.T, store *Store, path string, model source.Coordinates) CapturedDocument {
 	t.Helper()
 	snapshot, err := store.Read(t.Context(), path, model)
 	if err != nil {
@@ -297,7 +297,7 @@ func TestVerifyRejectsMismatchedBytesAndHandles(t *testing.T) {
 	store := newStore(t, nil, reader)
 	snapshot := readSnapshot(t, store, path, source.YAML)
 	requireConflict(t, store.Verify(snapshot, []byte("changed")))
-	if err := store.Verify(Snapshot{}, nil); !errors.Is(err, ErrInvalidSnapshot) {
+	if err := store.Verify(CapturedDocument{}, nil); !errors.Is(err, ErrInvalidSnapshot) {
 		t.Fatalf("zero handle = %v", err)
 	}
 	other := newStore(t, nil, reader)

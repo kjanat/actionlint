@@ -32,7 +32,7 @@ func TestSchemaNestedJobExpressions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
 
 			src := `on: push
@@ -44,7 +44,7 @@ jobs:
       - run: echo test
 permissions: {}
 `
-			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
 				t.Fatal(err)
@@ -87,7 +87,7 @@ func TestSchemaNestedStructuredExpressions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
-			var requestSources []workspace.Source
+			var requestSources []workspace.InputFile
 			var err error
 
 			src := `on: push
@@ -100,7 +100,7 @@ jobs:
         with: ${{ fromJSON('{"args":"echo test"}') }}
 permissions: {}
 `
-			requestSources = []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
+			requestSources = []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil || len(errs) != 0 {
 				t.Fatalf("schema-supported expression object rejected: %v %v", err, errs)

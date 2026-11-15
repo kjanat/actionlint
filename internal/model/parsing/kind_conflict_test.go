@@ -29,7 +29,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			captures := []capture.Snapshot{captured, aliased}
+			captures := []capture.CapturedDocument{captured, aliased}
 			registry := fixtures.SourceSnapshots
 			documents := []Document{Workflow(content), Action(path, content)}
 			if order == "action-first" {

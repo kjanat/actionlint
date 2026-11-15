@@ -62,8 +62,8 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	const slow, fast = "alpha", "beta"
-	source := func(path, label string) workspace.Source {
-		return workspace.Source{Path: path, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + label + "\n    steps: [{run: echo ok}]\n")}
+	source := func(path, label string) workspace.InputFile {
+		return workspace.InputFile{Path: path, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + label + "\n    steps: [{run: echo ok}]\n")}
 	}
 	want := []string{"a.yml", "b.yml"}
 	for range 2 {
@@ -75,7 +75,7 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 			Analyzers:  []checkinputs.Registration{{Checker: observer}},
 		}
 		// a.yml waits until b.yml has been analyzed.
-		result, err := checking.Analyze(t.Context(), settings, []workspace.Source{source("b.yml", fast), source("a.yml", slow)})
+		result, err := checking.Analyze(t.Context(), settings, []workspace.InputFile{source("b.yml", fast), source("a.yml", slow)})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -43,7 +43,7 @@ jobs:
           VALUE: ${{ steps.container.outputs.unknown }}
 permissions: {}
 `)
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: ".github/workflows/test.yml", Content: content, Project: workspace.Identity(root)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: ".github/workflows/test.yml", Content: content, Project: workspace.Identity(root)}})
 			if err != nil || len(result.Diagnostics) != 0 {
 				t.Fatalf("error=%v diagnostics=%+v", err, result.Diagnostics)
 			}

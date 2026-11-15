@@ -73,7 +73,7 @@ type Result struct {
 }
 
 type SourceDocument interface {
-	Capture() capture.Snapshot
+	Capture() capture.CapturedDocument
 	Content() []byte
 	Provenance() parsing.Provenance
 }

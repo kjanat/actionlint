@@ -85,7 +85,7 @@ permissions: {}
 						}
 						config = parsed
 					}
-					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(input), Config: config}})
+					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Process: options}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(input), Config: config}})
 					if (err != nil) != (disabled == "") {
 						t.Fatalf("invalid launcher result: optional=%v disabled=%s error=%v", optional, disabled, err)
 					}
@@ -116,7 +116,7 @@ permissions: {}
 						options.Arguments = flags
 					}
 					options.Optional = true
-					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.Source{{Path: "ci.yml", Content: []byte(source)}})
+					_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Command: command, Process: options}})}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(source)}})
 					content, readErr := os.ReadFile(calls)
 					if flags[0] != "--preview" {
 						if err == nil || !os.IsNotExist(readErr) {

@@ -18,7 +18,7 @@ jobs:
       - run: echo hello
 permissions: {}
 `)
-	result, err := checking.Analyze(context.Background(), checking.Options{}, []workspace.Source{{Path: "workflow.yml", Content: source}})
+	result, err := checking.Analyze(context.Background(), checking.Options{}, []workspace.InputFile{{Path: "workflow.yml", Content: source}})
 	if err != nil {
 		fmt.Println("incomplete:", err)
 	}

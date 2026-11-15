@@ -32,7 +32,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: workspace.Identity(root), Config: cfg}})
+	analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: workspace.Identity(root), Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestWorkflowDiagnosticTemplates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: infile, InputPath: filepath.Join(root, infile), Content: content, Project: proj, Config: &configuration.Config{}}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: infile, InputPath: filepath.Join(root, infile), Content: content, Project: proj, Config: &configuration.Config{}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -178,7 +178,7 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.Write(t, root, file, string(content))
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: proj, Config: &configuration.Config{}}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: file, InputPath: filepath.Join(root, file), Content: content, Project: proj, Config: &configuration.Config{}}})
 	if err != nil {
 		t.Fatal(err)
 	}

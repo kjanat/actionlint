@@ -49,7 +49,7 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 			calls.Add(1)
 			return []byte(`{"comments":[]}`), nil
 		}}}),
-	}, []workspace.Source{{Path: "action.yml", Content: source}})
+	}, []workspace.InputFile{{Path: "action.yml", Content: source}})
 	if result == nil || err == nil || err.Error() != `analyzer "failed-action-scripts" requires unavailable input kind "scripts"` {
 		t.Fatal("failed action lost its result or explicit unavailable input error", err)
 	}

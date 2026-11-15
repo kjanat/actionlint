@@ -28,7 +28,7 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		cancel()
 		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`), nil
-	}}})}, []workspace.Source{{Path: "cancelled.yml", Content: []byte(strings.Replace(badWorkflow, "permissions: {}\n", "", 1) + `        shell: bash
+	}}})}, []workspace.InputFile{{Path: "cancelled.yml", Content: []byte(strings.Replace(badWorkflow, "permissions: {}\n", "", 1) + `        shell: bash
       - run: print(1)
         shell: python
 permissions: {}
@@ -81,7 +81,7 @@ permissions: {}
 		for _, failingFirst := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/failing-first=%t", adapter, failingFirst), func(t *testing.T) {
 				t.Parallel()
-				sources := []workspace.Source{{Path: "successful.yml", Content: []byte(successful)}, {Path: "failing.yml", Content: []byte(failing)}}
+				sources := []workspace.InputFile{{Path: "successful.yml", Content: []byte(successful)}, {Path: "failing.yml", Content: []byte(failing)}}
 				if failingFirst {
 					slices.Reverse(sources)
 				}

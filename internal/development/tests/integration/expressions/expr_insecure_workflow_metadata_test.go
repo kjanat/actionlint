@@ -86,7 +86,7 @@ func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
 func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []diagmodel.Diagnostic {
 	t.Helper()
 	request := checking.Options{WorkingDir: t.TempDir()}
-	var requestSources []workspace.Source
+	var requestSources []workspace.InputFile
 	var err error
 
 	source := strings.ReplaceAll(`on: {workflow_run: {workflows: ['Build*'], types: [completed]}}
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 `, "\n", ending) + step + "permissions: {}" + ending
-	requestSources = []workspace.Source{{Path: "consumer.yaml", InputPath: "consumer.yaml", Content: []byte(source), Project: nil}}
+	requestSources = []workspace.InputFile{{Path: "consumer.yaml", InputPath: "consumer.yaml", Content: []byte(source), Project: nil}}
 	findings, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 	if err != nil {
 		t.Fatal(err)

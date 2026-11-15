@@ -78,14 +78,14 @@ func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, 
 			return configreport.Inspection{Path: path}, fmt.Errorf("could not bind config file %q: %w", path, err)
 		}
 	}
-	var resolved Resolved
+	var resolved ResolvedConfig
 	if path != "" {
-		var source *Loaded
+		var source *LoadedFile
 		source, err = parseRules.ReadContext(ctx, path, readFile, registeredRules...)
 		if err != nil {
 			return configreport.Inspection{Path: path}, err
 		}
-		resolved = source.Resolved
+		resolved = source.ResolvedConfig
 	} else {
 		resolved, err = parseRules.ResolveDocument(nil, registeredRules...)
 	}

@@ -71,7 +71,7 @@ import (
 )
 
 // sourceUnit is a workflow or action manifest and its resolved configuration.
-type sourceUnit = workspace.Source
+type sourceUnit = workspace.InputFile
 
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
@@ -110,7 +110,7 @@ type analysisResult struct {
 }
 
 type analyzedFile struct {
-	captured    capture.Snapshot
+	captured    capture.CapturedDocument
 	source      sourceUnit
 	errors      []*findingmodel.Finding
 	publication *policy.Batch
@@ -460,7 +460,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		ac.Configure(workspaceactions.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
 			OnManifestRequest: documents.request,
-			OnDocument: func(captured capture.Snapshot, path string, meta *actionmeta.Metadata, parseErr error) {
+			OnDocument: func(captured capture.CapturedDocument, path string, meta *actionmeta.Metadata, parseErr error) {
 				if err := captures.Verify(captured, captured.Bytes()); err != nil {
 					documents.addError(err)
 					return
@@ -708,8 +708,8 @@ func (r *analysisResult) publishDiagnostics() error {
 
 // revalidateCaptures is the final publication boundary: a handle admitted before
 // a later conflict cannot publish an entry, observation or entry outline.
-func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.Source, workingDir string, prior error) error {
-	admitted := make(map[string]capture.Source, len(rows))
+func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capture.TableRow, workingDir string, prior error) error {
+	admitted := make(map[string]capture.TableRow, len(rows))
 	withheld := 0
 	withheldRelated := 0
 	for _, row := range rows {

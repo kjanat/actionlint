@@ -31,7 +31,7 @@ func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
 
 		checking.Options{Analyzers: []checkinputs.Registration{
 			{Checker: namedFindingAnalyzer("first")}, {Checker: namedFindingAnalyzer("second")},
-		}}, []workspace.Source{{Path: "workflow.yml", Content: []byte(workflow)}},
+		}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 	)
 	if err != nil {
 		t.Fatal(err)

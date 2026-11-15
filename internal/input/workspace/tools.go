@@ -19,7 +19,7 @@ type ExternalToolRequirements map[string]bool
 // RequiredTools resolves configuration for each input without reading workflows or
 // starting analyzers. Empty paths discovers the working directory's workflows and actions.
 // Relative paths resolve against the session's WorkingDir; absolute paths are unchanged.
-func (a *Session) RequiredTools(ctx context.Context, paths []string, options ToolOptions) (ExternalToolRequirements, error) {
+func (a *InputPreparer) RequiredTools(ctx context.Context, paths []string, options ToolOptions) (ExternalToolRequirements, error) {
 	needed := ExternalToolRequirements{}
 	explicit := make(map[string]bool)
 	if len(paths) == 0 {

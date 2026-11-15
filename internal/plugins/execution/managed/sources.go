@@ -25,7 +25,7 @@ import (
 
 type pluginSourceMount struct {
 	host, alias, guest string
-	files              *inputfiles.SnapshotFS
+	files              *inputfiles.BoundedFS
 }
 
 type pluginSourceFiles struct {

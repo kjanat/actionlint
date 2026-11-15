@@ -17,7 +17,7 @@ func TestQuarantineRejectsMisuseAndPreservesSealedTable(t *testing.T) {
 	other := newStore(t, []Overlay{{Path: path, Content: []byte("original"), Coordinates: source.YAML}}, reader)
 	captured := readSnapshot(t, store, path, source.YAML)
 	foreign := readSnapshot(t, other, path, source.YAML)
-	for _, invalid := range []Snapshot{{}, foreign} {
+	for _, invalid := range []CapturedDocument{{}, foreign} {
 		if err := store.Quarantine(invalid, "contradictory evidence"); !errors.Is(err, ErrInvalidSnapshot) {
 			t.Fatalf("invalid handle quarantine error = %v", err)
 		}

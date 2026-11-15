@@ -46,7 +46,7 @@ func (s *editorSession) analyze(ctx context.Context, documents map[string]Docume
 }
 
 func analyzeDocuments(ctx context.Context, options checking.Options, documents map[string]Document) (Analysis, error) {
-	return analyzeEditorDocuments(ctx, options, documents, func(ctx context.Context, options checking.Options, sources []workspace.Source) (*checking.Result, error) {
+	return analyzeEditorDocuments(ctx, options, documents, func(ctx context.Context, options checking.Options, sources []workspace.InputFile) (*checking.Result, error) {
 		paths := make([]string, 0, len(sources))
 		for _, source := range sources {
 			paths = append(paths, source.Path)
@@ -62,7 +62,7 @@ func AnalyzeEditorDocuments(ctx context.Context, options checking.Options, docum
 	return analyzeEditorDocuments(ctx, options, documents, checking.Analyze)
 }
 
-func analyzeEditorDocuments(ctx context.Context, options checking.Options, documents map[string]Document, check func(context.Context, checking.Options, []workspace.Source) (*checking.Result, error)) (Analysis, error) {
+func analyzeEditorDocuments(ctx context.Context, options checking.Options, documents map[string]Document, check func(context.Context, checking.Options, []workspace.InputFile) (*checking.Result, error)) (Analysis, error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
 		return Analysis{}, err
@@ -73,14 +73,14 @@ func analyzeEditorDocuments(ctx context.Context, options checking.Options, docum
 	opts := options
 	opts.WorkingDir = directory
 	opts.SourceOverlays = slices.Clone(options.SourceOverlays)
-	sources := make([]workspace.Source, 0, len(documents))
+	sources := make([]workspace.InputFile, 0, len(documents))
 	project := workspace.Identity(directory)
 	for _, path := range slices.Sorted(maps.Keys(documents)) {
 		address := path
 		if !filepath.IsAbs(address) {
 			address = filepath.Join(directory, address)
 		}
-		sources = append(sources, workspace.Source{Path: address, Content: []byte(documents[path].Text), Project: project})
+		sources = append(sources, workspace.InputFile{Path: address, Content: []byte(documents[path].Text), Project: project})
 		opts.SourceOverlays = append(opts.SourceOverlays, checking.SourceOverlay{Path: address, Content: []byte(documents[path].Text)})
 	}
 	result, err := check(ctx, opts, sources)

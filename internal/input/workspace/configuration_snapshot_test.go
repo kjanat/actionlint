@@ -50,7 +50,7 @@ tools:
 					}
 					opts.ConfigOverlays = []configuration.Overlay{value}
 				}
-				selectInput := func(session *workspace.Session) *workspace.Selection {
+				selectInput := func(session *workspace.InputPreparer) *workspace.Selection {
 					t.Helper()
 					var result *workspace.Selection
 					var err error

@@ -46,7 +46,7 @@ jobs:
       - run: echo "$MY_ENV_VAR"
 permissions: {}
 `
-			sources := []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
+			sources := []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(src), Project: nil}}
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, sources))
 			if err != nil {
 				t.Fatal(err)

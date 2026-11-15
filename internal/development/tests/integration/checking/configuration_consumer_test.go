@@ -41,7 +41,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 			}
 			result, err := checking.Analyze(t.Context(),
 				checking.Options{WorkingDir: t.TempDir()},
-				[]workspace.Source{{Path: "workflow.yml", Content: []byte(configurationWorkflow), Config: cfg}},
+				[]workspace.InputFile{{Path: "workflow.yml", Content: []byte(configurationWorkflow), Config: cfg}},
 			)
 			if err != nil {
 				t.Fatal(err)

@@ -64,7 +64,7 @@ jobs:
 				"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
 				"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 			})}
-			result, err := Analyze(t.Context(), options, []workspace.Source{{Path: path, Content: []byte(caller)}})
+			result, err := Analyze(t.Context(), options, []workspace.InputFile{{Path: path, Content: []byte(caller)}})
 			if err != nil {
 				t.Fatal(err)
 			}

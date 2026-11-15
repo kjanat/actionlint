@@ -123,12 +123,12 @@ func AssertSourceFile(t *testing.T, got, want string) {
 	}
 }
 
-func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []workspace.Source {
+func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, cfg *configuration.Config) []workspace.InputFile {
 	tb.Helper()
 	if cfg == nil && project != nil {
 		cfg = project.Config()
 	}
-	sources := make([]workspace.Source, 0, len(paths))
+	sources := make([]workspace.InputFile, 0, len(paths))
 	reader := files.New(tb.Context(), nil, nil)
 	for _, path := range paths {
 		content, err := reader.ReadFile(path)
@@ -141,7 +141,7 @@ func FixtureSources(tb testing.TB, paths []string, project *workspace.Project, c
 				display = relative
 			}
 		}
-		sources = append(sources, workspace.Source{Path: display, InputPath: path, Content: content, Project: project, Config: cfg})
+		sources = append(sources, workspace.InputFile{Path: display, InputPath: path, Content: content, Project: project, Config: cfg})
 	}
 	return sources
 }
@@ -219,7 +219,7 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 			t.Fatal(err)
 		}
 	}
-	result, err := checking.Analyze(t.Context(), options, []workspace.Source{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Config: cfg}})
+	result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}

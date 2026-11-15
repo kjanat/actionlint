@@ -32,7 +32,7 @@ type Cache struct {
 type reusableWorkflowMetadataResult struct {
 	metadata *calls.Metadata
 	failure  metadataError // zero when metadata was read and parsed, or deliberately ignored
-	captured capture.Snapshot
+	captured capture.CapturedDocument
 }
 
 // failureKind says which step of loading a reusable workflow failed.

@@ -101,7 +101,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 			root := t.TempDir()
 			options := checking.Options{WorkingDir: root, Tools: []tools.Registration{provider}}
 			options.Runners.AsOf, _ = lifecycle.ParseDate("2026-11-01")
-			result, err := checking.Analyze(t.Context(), options, []workspace.Source{{
+			result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{
 				Path: filepath.Join(root, "ci.yml"), Config: cfg,
 				Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '16'\n      - run: echo safe\n"),
 			}})

@@ -57,7 +57,7 @@ func TestScriptBackendsWithoutCommands(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend}, "shellcheck": {Backend: backend}})}, []workspace.Source{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
+		checking.Options{Tools: registry.Registrations(registry.Selections{"ruff": {Backend: backend}, "shellcheck": {Backend: backend}})}, []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

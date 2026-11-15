@@ -33,7 +33,7 @@ func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 	third := base
 	third.End = sourcepos.Position{Line: 2, Column: 1}
 	input := []results.Diagnostic{base, second, third}
-	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: detailedAnalyzer{input}}}}, []workspace.Source{{Path: "ci.yml", Content: []byte(content)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: detailedAnalyzer{input}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(content)}})
 	if err != nil {
 		t.Fatal(err)
 	}

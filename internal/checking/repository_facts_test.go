@@ -36,7 +36,7 @@ func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
 		}
 		return repository.Snapshot{Variables: empty}
 	}
-	var sources []workspace.Source
+	var sources []workspace.InputFile
 	for i, test := range []struct {
 		root, variable string
 		identified     bool
@@ -47,7 +47,7 @@ func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
 		if test.identified {
 			project = workspace.Identity(test.root)
 		}
-		sources = append(sources, workspace.Source{Path: filepath.Join(test.root, fmt.Sprintf("workflow%d.yml", i)), Project: project, Content: fmt.Appendf(nil, variableWorkflow, test.variable)})
+		sources = append(sources, workspace.InputFile{Path: filepath.Join(test.root, fmt.Sprintf("workflow%d.yml", i)), Project: project, Content: fmt.Appendf(nil, variableWorkflow, test.variable)})
 	}
 	result, err := Analyze(t.Context(), Options{WorkingDir: unknown, Repository: provider}, sources)
 	if err != nil {
@@ -83,7 +83,7 @@ func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *tes
 			t.Error("working directory was presented as an identified repository")
 			return repository.Snapshot{}
 		},
-	}, []workspace.Source{{Path: ".github/workflows/ci.yml", Content: []byte(content)}})
+	}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: []byte(content)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestEnvironmentNamesAreScopedPerJob(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			content := "on: " + test.trigger + "\njobs:\n  test:\n" + test.environment + "    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n        env: {VALUE: '${{ vars.DEPLOY }}', TOKEN: '${{ secrets.ENV_TOKEN }}'}\npermissions: {}\n"
-			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte(content)}})
+			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte(content)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -155,7 +155,7 @@ func TestUnavailableRunnerLabelsDoNotBecomeAnEmptyAllowlist(t *testing.T) {
 				t.Fatal(err)
 			}
 			root := t.TempDir()
-			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + test.selector + "\n    steps:\n      - run: echo ok\npermissions: {}\n")}})
+			result, err := Analyze(t.Context(), Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: " + test.selector + "\n    steps:\n      - run: echo ok\npermissions: {}\n")}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -89,7 +89,7 @@ jobs:
 				}
 				for _, ending := range []string{"\n", "\r\n"} {
 					workflow := strings.ReplaceAll(field.workflow, "\n", ending)
-					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.Source{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
+					result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir()}, []workspace.InputFile{{Path: "workflow.yaml", Content: []byte(workflow), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -45,7 +45,7 @@ jobs:
     steps: [{run: echo ok}]
 permissions: {}
 `
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: ".github/workflows/consumer.yml", Content: []byte(workflow), Project: workspace.Identity(root)}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: ".github/workflows/consumer.yml", Content: []byte(workflow), Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +74,7 @@ func TestWorkflowRunGlobWithoutProject(t *testing.T) {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 permissions: {}
 `
-		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: filepath.Join("outside", "workflow.yml"), Content: []byte(source), Config: cfg}})
+		result, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: filepath.Join("outside", "workflow.yml"), Content: []byte(source), Config: cfg}})
 		if err != nil {
 			t.Fatal(err)
 		}

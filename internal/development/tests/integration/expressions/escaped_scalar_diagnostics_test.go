@@ -31,7 +31,7 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 						result = testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
 					} else {
 						var err error
-						result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "ci.yml", Content: []byte(src)}})
+						result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(src)}})
 						if err != nil {
 							t.Fatal(err)
 						}

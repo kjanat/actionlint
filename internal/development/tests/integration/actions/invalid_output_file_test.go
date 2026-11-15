@@ -40,7 +40,7 @@ runs:
 				result = testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
 			} else {
 				var err error
-				result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.Source{{Path: "action.yml", Content: []byte(action)}})
+				result, err = checking.Analyze(t.Context(), checking.Options{WorkingDir: root}, []workspace.InputFile{{Path: "action.yml", Content: []byte(action)}})
 				if err != nil {
 					t.Fatal(err)
 				}

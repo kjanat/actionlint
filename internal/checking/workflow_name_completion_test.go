@@ -41,7 +41,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 		}
 	}
 	const source = "on: {workflow_run: {workflows: [Missing], types: [completed]}}\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Tools: tools}, []workspace.Source{{
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Tools: tools}, []workspace.InputFile{{
 		Path: filepath.Join(directory, "consumer.yml"), Content: []byte(source), Project: workspace.Identity(root),
 	}})
 	if !errors.Is(err, cause) || result == nil {
@@ -103,7 +103,7 @@ jobs:
 					"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
 					"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 				}),
-			}, []workspace.Source{{Path: filepath.Join(directory, "consumer.yml"), Content: []byte(strings.Replace(source, "ignore[workflow-run-names]", "ignore["+tc.selector+"]", 1)), Project: workspace.Identity(root)}})
+			}, []workspace.InputFile{{Path: filepath.Join(directory, "consumer.yml"), Content: []byte(strings.Replace(source, "ignore[workflow-run-names]", "ignore["+tc.selector+"]", 1)), Project: workspace.Identity(root)}})
 			if err != nil {
 				t.Fatal(err)
 			}

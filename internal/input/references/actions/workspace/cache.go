@@ -27,7 +27,7 @@ import (
 type metadataSource struct {
 	path       string
 	address    string
-	captured   capture.Snapshot
+	captured   capture.CapturedDocument
 	provenance parsing.Provenance
 	files      actionmeta.ReferencedFiles
 }
@@ -64,7 +64,7 @@ type Cache struct {
 	sourceBase        string
 	sourceRoot        string
 	explicitDocuments map[string]struct{}
-	onDocument        func(capture.Snapshot, string, *actionmeta.Metadata, error)
+	onDocument        func(capture.CapturedDocument, string, *actionmeta.Metadata, error)
 	onManifestRequest func(string)
 	reader            *files.Reader
 	customReader      bool
@@ -87,7 +87,7 @@ type Options struct {
 	ExplicitDocuments map[string]struct{}
 	// OnDocument completes before the publishing lookup returns. Cache hits can
 	// return during notification; consumers join all lookups before reading outlines.
-	OnDocument        func(capture.Snapshot, string, *actionmeta.Metadata, error)
+	OnDocument        func(capture.CapturedDocument, string, *actionmeta.Metadata, error)
 	OnManifestRequest func(string)
 }
 
@@ -275,9 +275,9 @@ func (c *Cache) hasDockerfile(dir string) (bool, error) {
 	return false, nil
 }
 
-func (c *Cache) readLocalActionMetadataFile(dir string) (capture.Snapshot, string, error) {
+func (c *Cache) readLocalActionMetadataFile(dir string) (capture.CapturedDocument, string, error) {
 	if c.captures == nil {
-		return capture.Snapshot{}, "", errors.New("local action cache requires a capture store")
+		return capture.CapturedDocument{}, "", errors.New("local action cache requires a capture store")
 	}
 	for _, name := range []string{"action.yml", "action.yaml"} {
 		path := filepath.Join(dir, name)
@@ -289,12 +289,12 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.Snapshot, strin
 			continue
 		}
 		if err != nil {
-			return capture.Snapshot{}, "", capture.NewReadError(fmt.Sprintf("could not read action metadata in %q", dir), err)
+			return capture.CapturedDocument{}, "", capture.NewReadError(fmt.Sprintf("could not read action metadata in %q", dir), err)
 		}
 		return captured, name, nil
 	}
 
-	return capture.Snapshot{}, "", nil
+	return capture.CapturedDocument{}, "", nil
 }
 
 func (c *Cache) hasExplicitAction(spec string) (bool, error) {

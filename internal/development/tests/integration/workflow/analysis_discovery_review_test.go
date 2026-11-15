@@ -24,7 +24,7 @@ jobs:
 		result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: cwd, ReadFile: func(path string) ([]byte, error) {
 			t.Errorf("in-memory workflow metadata was read from disk: %s", path)
 			return nil, os.ErrNotExist
-		}}, []workspace.Source{{Path: ".github/workflows/memory.yml", Content: content, Project: project}})
+		}}, []workspace.InputFile{{Path: ".github/workflows/memory.yml", Content: content, Project: project}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("in-memory metadata lost for working directory %q: %+v, %v", cwd, result, err)
 		}

@@ -90,7 +90,7 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, []workspace.Source{{Path: filepath.Join(root, "workflow.yml"), Content: workflow, Config: cfg}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: []tools.Registration{registration}}, []workspace.InputFile{{Path: filepath.Join(root, "workflow.yml"), Content: workflow, Config: cfg}})
 	if err != nil {
 		t.Fatal(err)
 	}

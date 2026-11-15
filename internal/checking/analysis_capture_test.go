@@ -235,7 +235,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := func(snapshot capture.Snapshot, message string) *findingmodel.Finding {
+	finding := func(snapshot capture.CapturedDocument, message string) *findingmodel.Finding {
 		reference := source.Reference{Document: snapshot.Revision().Document(), Revision: snapshot.Revision().Digest(), Node: "document"}
 		return &findingmodel.Finding{Reference: &reference, Rule: "test", Message: message}
 	}

@@ -50,7 +50,7 @@ func TestActionCoercionSelection(t *testing.T) {
 					fixturefiles.Write(t, root, "inner/action.yml", source)
 					result = testutil.Composite(t, root, "- uses: ./inner", options)
 				} else {
-					result, err = checking.Analyze(t.Context(), options, []workspace.Source{{Path: "action.yml", Content: []byte(source), Config: cfg}})
+					result, err = checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "action.yml", Content: []byte(source), Config: cfg}})
 					if err != nil {
 						t.Fatal(err)
 					}

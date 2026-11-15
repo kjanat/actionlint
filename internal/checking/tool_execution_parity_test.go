@@ -50,8 +50,8 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 	if err != nil {
 		t.Fatal(err)
 	}
-	check(checking.Analyze(t.Context(), checking.Options{WorkingDir: "repo"}, []workspace.Source{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg}}))
-	check(checking.Analyze(t.Context(), checking.Options{WorkingDir: "repo"}, []workspace.Source{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg, Project: workspace.Identity("repo")}}))
+	check(checking.Analyze(t.Context(), checking.Options{WorkingDir: "repo"}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg}}))
+	check(checking.Analyze(t.Context(), checking.Options{WorkingDir: "repo"}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg, Project: workspace.Identity("repo")}}))
 	options := checking.Options{WorkingDir: "repo", ConfigFile: "actionlint.yml"}
 	check(checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}))
 	check(checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}}))

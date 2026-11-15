@@ -10,24 +10,24 @@ import (
 
 // CaptureRemote records downloaded bytes without reading the URL or filesystem.
 // Supplying different bytes for the same address invalidates its earlier captures.
-func (s *Store) CaptureRemote(ctx context.Context, address string, content []byte, model source.Coordinates) (Snapshot, error) {
+func (s *Store) CaptureRemote(ctx context.Context, address string, content []byte, model source.Coordinates) (CapturedDocument, error) {
 	if !source.RemoteAddress(address) || !model.Valid() {
-		return Snapshot{}, errors.New("remote source capture requires an HTTPS address and coordinates")
+		return CapturedDocument{}, errors.New("remote source capture requires an HTTPS address and coordinates")
 	}
 	document, err := s.Canonical(ctx, address)
 	if err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closing {
-		return Snapshot{}, &ClosedError{}
+		return CapturedDocument{}, &ClosedError{}
 	}
 	if err := ctx.Err(); err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	if err := s.ctx.Err(); err != nil {
-		return Snapshot{}, err
+		return CapturedDocument{}, err
 	}
 	e := s.docs[document]
 	if e.done == nil {
@@ -41,10 +41,10 @@ func (s *Store) CaptureRemote(ctx context.Context, address string, content []byt
 		e.conflict = ConflictError{document, "remote source bytes or coordinates changed during analysis"}
 	}
 	if e.conflicted() {
-		return Snapshot{}, e.conflict
+		return CapturedDocument{}, e.conflict
 	}
 	if e.err != nil {
-		return Snapshot{}, e.err
+		return CapturedDocument{}, e.err
 	}
 	if e.readAliases == nil {
 		e.readAliases = make(map[string]struct{})

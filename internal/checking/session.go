@@ -357,7 +357,7 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 
 // Analyze checks supplied snapshots through the same runtime ownership path as Check.
 // It does not discover configuration or read the supplied source paths.
-func Analyze(ctx context.Context, options Options, sources []workspace.Source) (*Result, error) {
+func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*Result, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
 	return Check(ctx, options, inputmodel.Request{Kind: inputmodel.Prepared, Sources: sources})
 }

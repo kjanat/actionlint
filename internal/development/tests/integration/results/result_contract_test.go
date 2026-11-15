@@ -97,7 +97,7 @@ func TestCheckResultSchema(t *testing.T) {
 		"plugin: internal/check",
 		"using: future-runtime",
 	} {
-		analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "action.yml", Content: []byte(`name: Test
+		analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "action.yml", Content: []byte(`name: Test
 description: Test action
 runs:
   ` + runtime + "\n")}})
@@ -186,7 +186,7 @@ runs:
 	}
 	for _, code := range []int{0, 1, 2, 3, 99} {
 		result := commandstatus.NewCheckResult(code)
-		analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.Source{{Path: "ci.yml", Content: []byte(`on: push
+		analysis, err := checking.Analyze(t.Context(), checking.Options{}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

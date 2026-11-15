@@ -97,13 +97,13 @@ jobs:
 permissions: {}
 `)
 	request := checking.Options{WorkingDir: root}
-	var requestSources []workspace.Source
+	var requestSources []workspace.InputFile
 	for _, name := range []string{"normal", "suspicious", "suppressed"} {
 		content := workflow
 		if name == "suppressed" {
 			content = bad
 		}
-		requestSources = append(requestSources, workspace.Source{Path: ".github/workflows/" + name + ".yml", Content: content, Config: cfg})
+		requestSources = append(requestSources, workspace.InputFile{Path: ".github/workflows/" + name + ".yml", Content: content, Config: cfg})
 	}
 	for range 3 {
 		result, err := checking.Analyze(t.Context(), request, requestSources)

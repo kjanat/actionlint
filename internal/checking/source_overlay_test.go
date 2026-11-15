@@ -62,7 +62,7 @@ func TestPreparedExplicitBytesStillConflictWithBuffer(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "workflow.yml")
 	content := []byte("on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo explicit}]}}\n")
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, SourceOverlays: []SourceOverlay{{Path: path, Content: []byte("on: push\njobs: {}\n")}}}, []workspace.Source{{Path: path, Content: content}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, SourceOverlays: []SourceOverlay{{Path: path, Content: []byte("on: push\njobs: {}\n")}}}, []workspace.InputFile{{Path: path, Content: content}})
 	if _, conflicted := errors.AsType[capture.ConflictError](err); !conflicted {
 		t.Fatalf("explicit prepared bytes were silently overridden: %v", err)
 	}
