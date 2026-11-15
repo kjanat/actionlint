@@ -13,7 +13,7 @@ import (
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"

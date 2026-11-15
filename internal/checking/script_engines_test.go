@@ -16,7 +16,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 

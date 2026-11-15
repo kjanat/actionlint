@@ -15,7 +15,7 @@ import (
 	yamlSchema "actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 

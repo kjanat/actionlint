@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 

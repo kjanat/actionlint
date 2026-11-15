@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 

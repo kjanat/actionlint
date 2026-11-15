@@ -10,7 +10,7 @@ import (
 
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 

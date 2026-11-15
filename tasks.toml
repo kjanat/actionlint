@@ -150,10 +150,10 @@ run     = "go run ./internal/development/generators/event-triggers --registry ./
 
 ["generate:actions"]
 sources = ["internal/development/generators/action-metadata/**"]
-outputs = ["internal/model/actions/*.gen.go"]
+outputs = ["internal/model/actionmeta/*.gen.go"]
 run     = [
-  "go run ./internal/development/generators/action-metadata -runtimes -output internal/model/actions/runtimes.gen.go",
-  "go run ./internal/development/generators/action-metadata -output internal/model/actions/availability.gen.go"
+  "go run ./internal/development/generators/action-metadata -runtimes -output internal/model/actionmeta/runtimes.gen.go",
+  "go run ./internal/development/generators/action-metadata -output internal/model/actionmeta/availability.gen.go"
 ]
 
 ["generate:workflow-views"]

@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"github.com/kjanat/wacogo"
 )
 

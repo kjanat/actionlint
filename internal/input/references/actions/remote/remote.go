@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )

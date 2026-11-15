@@ -119,7 +119,7 @@ of the resulting types. `needs` includes direct prerequisites only.
 rows. Unknown includes can add values and property names; unknown excludes only
 remove rows. The expression checker supplies inferred row element types and
 reports expression problems. Recursive value-to-type conversion belongs to
-`internal/model/contexts/values`, which uses inferred types only for unknown
+`internal/model/contexts/value`, which uses inferred types only for unknown
 parts and does not change evaluation state.
 
 `internal/model/workflows/cache` owns cache-grant inheritance and capability

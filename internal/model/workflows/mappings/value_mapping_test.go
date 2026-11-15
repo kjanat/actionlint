@@ -1,10 +1,10 @@
-package mapping
+package mappings
 
 import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 func TestMappingDistinguishesAbsentFromExplicitScalars(t *testing.T) {

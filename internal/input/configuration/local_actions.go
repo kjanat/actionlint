@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta/reference"
 )
 
 // LocalActionSources maps generated local action directories to source directories.

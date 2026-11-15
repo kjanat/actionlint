@@ -13,7 +13,7 @@ import (
 	actionfixtures "actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
 )
 

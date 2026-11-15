@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"

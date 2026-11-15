@@ -1,4 +1,4 @@
-package context
+package contexts
 
 import exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 

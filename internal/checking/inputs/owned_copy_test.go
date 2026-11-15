@@ -6,7 +6,7 @@ import (
 	"testing/fstest"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )

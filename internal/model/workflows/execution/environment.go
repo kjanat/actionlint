@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"

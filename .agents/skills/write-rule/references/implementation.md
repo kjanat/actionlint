@@ -35,7 +35,7 @@ Other parts of the model and host are relevant depending on the rule:
 
 | Responsibility                        | Entry point                                                  |
 | ------------------------------------- | ------------------------------------------------------------ |
-| Declaration views and semantic values | `internal/model/workflows`, `internal/model/contexts/values` |
+| Declaration views and semantic values | `internal/model/workflows`, `internal/model/contexts/value` |
 | Configured check selection            | `internal/checking/selection/registry.go`                    |
 | Action participation contracts        | `internal/checking/executor/calls/composite_contract.go`     |
 | Workflow and action execution         | `internal/checking/executor/composites`                      |

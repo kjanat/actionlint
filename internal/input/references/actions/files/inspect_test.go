@@ -11,7 +11,7 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	actionfiles "actionlint.kjanat.dev/v2/internal/input/references/actions/files"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {

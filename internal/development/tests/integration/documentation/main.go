@@ -25,7 +25,7 @@ import (
 
 	processconfig "actionlint.kjanat.dev/v2/internal/integrations/process/config"
 
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	render "actionlint.kjanat.dev/v2/internal/output"
 	"github.com/google/go-cmp/cmp"

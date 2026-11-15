@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"crypto/sha256"
@@ -10,7 +10,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

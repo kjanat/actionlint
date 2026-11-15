@@ -8,7 +8,7 @@ import (
 
 	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {

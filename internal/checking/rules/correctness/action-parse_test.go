@@ -12,7 +12,7 @@ import (
 	actionfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/actions"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 

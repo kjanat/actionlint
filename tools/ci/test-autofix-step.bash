@@ -98,8 +98,8 @@ check_input package.json true false
 check_input bun.lock true false
 check_input internal/development/generators/expression-contexts/main.go true true
 check_input internal/model/contexts/availability.gen.go true true
-check_input internal/model/actions/availability.gen.go true true
-check_input internal/model/actions/runtimes.gen.go true true
+check_input internal/model/actionmeta/availability.gen.go true true
+check_input internal/model/actionmeta/runtimes.gen.go true true
 check_input internal/checking/rules/correctness/events.go true true
 check_input internal/checking/executor/expressions/check.go true true
 check_input popular_actions.go false false
@@ -108,7 +108,7 @@ check_input internal/checking/rule_registry.go true true
 check_input docs/rules.md true false
 check_input internal/development/generators/rule-docs/main.go true true
 check_input internal/development/generators/action-metadata/runtimes.go true true
-check_input internal/model/actions/metadata.go true true
+check_input internal/model/actionmeta/metadata.go true true
 check_input cmd/actionlint/main.go false true
 check_input internal/languages/expressions/typecheck/check.go false true
 check_input mise.lock false true

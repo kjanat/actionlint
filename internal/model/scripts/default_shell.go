@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 // ShellExecutableName extracts the runner's executable before its first space.

@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 

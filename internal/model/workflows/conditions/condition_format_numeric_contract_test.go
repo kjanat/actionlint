@@ -7,7 +7,7 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowvalue "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	workflowvalue "actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 

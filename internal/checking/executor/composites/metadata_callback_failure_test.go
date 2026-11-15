@@ -9,7 +9,7 @@ import (
 	checkcalls "actionlint.kjanat.dev/v2/internal/checking/executor/calls"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )

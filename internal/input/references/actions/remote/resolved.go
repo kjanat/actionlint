@@ -2,7 +2,7 @@ package remote
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 

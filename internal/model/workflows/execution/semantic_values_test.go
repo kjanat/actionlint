@@ -3,7 +3,7 @@ package execution
 import (
 	"testing"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 func TestResolveShellPreservesSemanticStates(t *testing.T) {

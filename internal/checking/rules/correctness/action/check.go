@@ -12,9 +12,9 @@ import (
 	identifier "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/id"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 

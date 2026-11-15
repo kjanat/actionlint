@@ -7,14 +7,14 @@ import (
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
 	"actionlint.kjanat.dev/v2/internal/checking/passes"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repositories"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/traversal"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T) {
