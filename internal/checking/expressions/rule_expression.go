@@ -5,7 +5,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
-	workflowexpr "actionlint.kjanat.dev/v2/internal/checking/expressions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -24,7 +23,7 @@ import (
 
 // ruleExpression connects workflow expression checking to host lookups and options.
 type ruleExpression struct {
-	*workflowexpr.Checker
+	*Checker
 	reporting.Logger
 	bindings *binding.Scope
 	host     repository.Snapshot
@@ -36,7 +35,7 @@ type ruleExpression struct {
 
 type expressionInvocation struct {
 	scope  workflowvisit.Invocation
-	parent *workflowexpr.Checker
+	parent *Checker
 }
 
 func (r *ruleExpression) EnterInvocation(scope workflowvisit.Invocation) error {
@@ -44,7 +43,7 @@ func (r *ruleExpression) EnterInvocation(scope workflowvisit.Invocation) error {
 		return invocation.ErrForeignContext
 	}
 	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
-	r.Checker = workflowexpr.New(workflowexpr.Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Bindings, r.host))
+	r.Checker = New(Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Bindings, r.host))
 	if body, available := scope.Source.ActionView(); available {
 		r.BeginComposite(body)
 	}
@@ -115,10 +114,10 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.JobView) error {
 	return r.collect(mark, r.Checker.VisitJobPost(view))
 }
 
-// New connects expression checking to the supplied dependency lookups and runner facts.
-func New(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+// NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
+func NewExpressionRule(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: "expression", ctx: ctx, remote: remote}
-	r.Checker = workflowexpr.New(workflowexpr.Dependencies{
+	r.Checker = New(Dependencies{
 		Runners:  runners,
 		Action:   lookup.New(ctx, actionsCache, remote).Lookup,
 		Workflow: workflowCache.LookupForCall,
@@ -149,11 +148,11 @@ func (r *ruleExpression) SetRepository(facts repository.Snapshot) {
 	r.Configure(workflowExpressionOptionsWithFacts(r.bindings, facts))
 }
 
-func workflowExpressionOptions(scope *binding.Scope) workflowexpr.Options {
+func workflowExpressionOptions(scope *binding.Scope) Options {
 	return workflowExpressionOptionsWithFacts(scope, repository.Snapshot{})
 }
 
-func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Snapshot) workflowexpr.Options {
+func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Snapshot) Options {
 	var config *repoconfig.Config
 	if scope != nil {
 		config = scope.Composite()
@@ -166,7 +165,7 @@ func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Sn
 		}
 		return selected.RuleSet().DiagnosticLevel(selected, name)
 	}
-	return workflowexpr.Options{
+	return Options{
 		Semantics:                 exprlang.Options{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)},
 		SuspiciousCoercion:        level("coercion") != "off",
 		CaseInsensitiveConditions: level("case-insensitive-conditions") != "off",
@@ -174,7 +173,7 @@ func workflowExpressionOptionsWithFacts(scope *binding.Scope, host repository.Sn
 		JoinLiteral:               level("join-literal") != "off",
 		CollectionComparison:      level("collection-comparison") != "off",
 		MixedTypeComparisons:      level("mixed-type-comparisons") != "off",
-		JobReferences:             func(job workflowdecl.JobView) workflowexpr.ReferenceNames { return jobReferenceNames(facts, job) },
+		JobReferences:             func(job workflowdecl.JobView) ReferenceNames { return jobReferenceNames(facts, job) },
 		UnsoundTernary:            level("unsound-ternary") != "off",
 		ScriptInjectionDisabled:   level("script-injection") == "off",
 	}

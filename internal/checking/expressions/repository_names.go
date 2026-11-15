@@ -5,8 +5,6 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	workflowexpr "actionlint.kjanat.dev/v2/internal/checking/expressions"
-
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
 	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
@@ -14,7 +12,7 @@ import (
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func environmentReferenceNames(variables, secrets, environmentSecrets []string) workflowexpr.ReferenceNames {
+func environmentReferenceNames(variables, secrets, environmentSecrets []string) ReferenceNames {
 	var extra exprtypes.ObjectBuilder
 	if environmentSecrets == nil {
 		extra.SetMapped(exprtypes.StringType())
@@ -22,7 +20,7 @@ func environmentReferenceNames(variables, secrets, environmentSecrets []string) 
 	for _, name := range environmentSecrets {
 		extra.SetProperty(name, exprtypes.StringType())
 	}
-	return workflowexpr.ReferenceNames{Variables: variables, Secrets: secrets, EnvironmentSecrets: new(extra.Build())}
+	return ReferenceNames{Variables: variables, Secrets: secrets, EnvironmentSecrets: new(extra.Build())}
 }
 
 func unionNames(repository, environment []string) []string {
@@ -44,8 +42,8 @@ func unionNames(repository, environment []string) []string {
 	return names
 }
 
-func jobReferenceNames(facts repository.Snapshot, job workflowdecl.JobView) workflowexpr.ReferenceNames {
-	names := workflowexpr.ReferenceNames{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)}
+func jobReferenceNames(facts repository.Snapshot, job workflowdecl.JobView) ReferenceNames {
+	names := ReferenceNames{Variables: repoconfig.VariableNames(facts), Secrets: repoconfig.SecretNames(facts)}
 	environment := job.Environment()
 	if !environment.Present() {
 		return names

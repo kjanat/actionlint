@@ -35,7 +35,7 @@ func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rule := New(t.Context(), nil, nil, nil, nil)
+	rule := NewExpressionRule(t.Context(), nil, nil, nil, nil)
 	parent := rule.Checker
 	for _, closed := range []bool{true, false, true} {
 		using := "runs: {using: node24, main: index.js}\n"

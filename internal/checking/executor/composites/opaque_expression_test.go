@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	expressionchecks "actionlint.kjanat.dev/v2/internal/checking/executor/expressions"
-
+	"actionlint.kjanat.dev/v2/internal/checking/expressions"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
@@ -24,7 +23,7 @@ func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing
 					}
 					content += "    - uses: actions/github-script@v7\n      with:\n        script: ${{ " + sink.expression + " }}\n"
 					fixture := newInvocationFixture(t, t.Context(), "on: issues\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{"outer/action.yml": content}, nil)
-					fixture.options.Rules = []workflowvisit.Rule{expressionchecks.New(t.Context(), fixture.options.Actions, nil, nil, nil)}
+					fixture.options.Rules = []workflowvisit.Rule{expressions.NewExpressionRule(t.Context(), fixture.options.Actions, nil, nil, nil)}
 					var result Result
 					var err error
 					if standalone {

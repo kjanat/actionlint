@@ -29,7 +29,7 @@ func TestOpaqueActionExpressionsUseInvocationFrameWithoutWorkflowDuplicates(t *t
 			if !present || len(steps) != 1 {
 				t.Fatal("captured opaque action step absent")
 			}
-			rule := New(t.Context(), nil, nil, nil, nil)
+			rule := NewExpressionRule(t.Context(), nil, nil, nil, nil)
 			if inside {
 				builder, err := invocation.NewBuilder(invocation.EntryAction, snapshot.Reference(), invocation.DefaultBudget())
 				if err != nil {

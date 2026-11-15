@@ -13,9 +13,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	expressionchecks "actionlint.kjanat.dev/v2/internal/checking/executor/expressions"
-
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
+	"actionlint.kjanat.dev/v2/internal/checking/expressions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -175,7 +174,7 @@ var nativeRuleCatalog = sync.OnceValue(func() []ruleSpec {
 			return declarationchecks.New(c.Rules, correctness.WorkflowCallCheck(workflow, c.Workflows, repoconfig.RepositoryFacts(c.Config, c.Repository), logger.Debug))
 		}}),
 		newSpec(correctness.ExpressionDeclaration(), implementation{Prepare: prepareWorkflowMetadata, Build: func(c Inputs) workflowvisit.Rule {
-			return expressionchecks.New(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
+			return expressions.NewExpressionRule(c.Context, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 		}}),
 		newSpec(correctness.DeprecatedCommandsDeclaration(), implementation{Script: workflowcommands.Checker{}}),
 		newSpec(suspicious.ErrexitStatusDeclaration(), implementation{Script: runtimechecks.Errexit()}),
