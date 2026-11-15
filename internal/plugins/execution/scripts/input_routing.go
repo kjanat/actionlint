@@ -56,7 +56,9 @@ func (r inputRouting) Analyze(ctx context.Context, batch tools.Batch) ([]tools.T
 
 type routingEmpty struct{}
 
-func (routingEmpty) Analyze(context.Context, tools.Batch) ([]tools.ToolFinding, error) { return nil, nil }
+func (routingEmpty) Analyze(context.Context, tools.Batch) ([]tools.ToolFinding, error) {
+	return nil, nil
+}
 
 type selectedRuns struct {
 	runner tools.Runner

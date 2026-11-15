@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func checkEnvironmentMapping(env *workflowlang.Env) []reporting.Finding {
+func checkEnvironmentMapping(env *workflowlang.Env) []reporting.StepFinding {
 	if env == nil {
 		return nil
 	}
@@ -25,15 +25,15 @@ func checkEnvironmentMapping(env *workflowlang.Env) []reporting.Finding {
 	return reporting.FromDiagnostics(environmentNameDiagnostics(entries))
 }
 
-func checkWorkflowEnvironment(w declaration.Workflow) []reporting.Finding {
+func checkWorkflowEnvironment(w declaration.Workflow) []reporting.StepFinding {
 	return checkEnvironmentMapping(w.Env)
 }
 
-func checkStepEnvironment(step declaration.Step) []reporting.Finding {
+func checkStepEnvironment(step declaration.Step) []reporting.StepFinding {
 	return checkEnvironmentMapping(step.Env)
 }
 
-func checkJobEnvironment(job declaration.Job) []reporting.Finding {
+func checkJobEnvironment(job declaration.Job) []reporting.StepFinding {
 	out := checkEnvironmentMapping(job.Env)
 	if job.Container != nil {
 		out = append(out, checkEnvironmentMapping(job.Container.Env)...)

@@ -20,7 +20,7 @@ import (
 type eventsCheck struct{ reporting.Collector }
 
 // Events validates event declarations.
-func Events(n declaration.Workflow) []reporting.Finding {
+func Events(n declaration.Workflow) []reporting.StepFinding {
 	rule := &eventsCheck{Rule: "events"}
 
 	for _, e := range n.On {

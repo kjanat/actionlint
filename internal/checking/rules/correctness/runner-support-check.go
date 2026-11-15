@@ -17,17 +17,17 @@ import (
 func RunnerSupportCheck(runners *runnerlang.Knowledge) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: RunnerSupportDeclaration(),
-		Job: func(job workflowdecl.Job) []reporting.Finding {
-			var findings []reporting.Finding
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+			var findings []reporting.StepFinding
 			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
 			for _, problem := range problems {
 				position := supportPosition(job, problem.Selector)
 				message := supportMessage(problem)
-				finding := reporting.Finding{Rule: "runner-support", Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
+				finding := reporting.StepFinding{Rule: "runner-support", Code: string(problem.State), Severity: "warning", Message: message, Start: position, DocumentationURL: problem.Policy.URL, LifecycleEvidence: problem.Evidence}
 				if problem.Evidence != nil && !problem.Evidence.Current {
 					finding.Code = string(problem.Evidence.Kind)
 				}
-				if !slices.ContainsFunc(findings, func(existing reporting.Finding) bool {
+				if !slices.ContainsFunc(findings, func(existing reporting.StepFinding) bool {
 					return existing.Start == finding.Start && existing.Message == finding.Message
 				}) {
 					findings = append(findings, finding)

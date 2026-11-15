@@ -18,13 +18,13 @@ import (
 func VendorLockInCheck(target string) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: VendorLockInDeclaration(),
-		Job: func(job declaration.Job) []reporting.Finding {
+		Job: func(job declaration.Job) []reporting.StepFinding {
 			if !job.Present() || job.WorkflowCall == nil {
 				return nil
 			}
 			return reporting.FromDiagnostics(VendorLockIn(job.Workflow(), job.WorkflowCall.Uses, target))
 		},
-		Step: func(step declaration.Step) []reporting.Finding {
+		Step: func(step declaration.Step) []reporting.StepFinding {
 			if action, present := step.Action(); present {
 				findings := reporting.FromDiagnostics(VendorLockIn(step.Workflow(), action.Uses, target))
 				for i := range findings {

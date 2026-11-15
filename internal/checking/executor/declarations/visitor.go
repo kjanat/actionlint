@@ -22,9 +22,9 @@ import (
 // declarationRule is the traversal adapter for stateless declaration checks.
 type declarationRule struct {
 	workflowvisit.Base
-	workflowCheck func(workflowdecl.Workflow) []reporting.Finding
-	jobCheck      func(workflowdecl.Job) []reporting.Finding
-	stepCheck     func(workflowdecl.Step) []reporting.Finding
+	workflowCheck func(workflowdecl.Workflow) []reporting.StepFinding
+	jobCheck      func(workflowdecl.Job) []reporting.StepFinding
+	stepCheck     func(workflowdecl.Step) []reporting.StepFinding
 	rules         configuration.RuleSet
 }
 
@@ -81,7 +81,7 @@ func New(rules configuration.RuleSet, check checkinputs.DeclarationCheck) workfl
 	return adapter
 }
 
-func (r *declarationRule) collect(input []reporting.Finding, job string) {
+func (r *declarationRule) collect(input []reporting.StepFinding, job string) {
 	for _, d := range input {
 		finding := new(d.Finding)
 		if descriptor, known := r.rules.FindRule(finding.Rule); known {

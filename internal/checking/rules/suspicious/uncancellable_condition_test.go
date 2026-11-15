@@ -65,7 +65,7 @@ func TestUncancellableCondition(t *testing.T) {
 					}
 				}
 				for step := range job.Steps() {
-					var got []reporting.Finding
+					var got []reporting.StepFinding
 					if check.Step != nil {
 						got = check.Step(step)
 					}
@@ -172,7 +172,7 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
 					check := suspicious.UncancellableConditionCheck()
-					var findings []reporting.Finding
+					var findings []reporting.StepFinding
 					if check.Step != nil {
 						findings = check.Step(step)
 					}

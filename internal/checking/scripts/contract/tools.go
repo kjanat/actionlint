@@ -100,7 +100,7 @@ type Batch struct {
 	Scripts   []Script
 }
 
-// Finding binds a result to the invocation that produced it. Policy is applied
+// ToolFinding binds a result to the invocation that produced it. Policy is applied
 // by the host after adapters finish, including for externally sourced findings.
 type ToolFinding struct {
 	results.Diagnostic

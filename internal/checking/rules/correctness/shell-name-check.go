@@ -20,13 +20,13 @@ func ShellNameCheck(runners *runnerlang.Knowledge, registries ...*commands.Regis
 	}
 	return checkinputs.DeclarationCheck{
 		Declaration: ShellNameDeclaration(),
-		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+		Workflow: func(workflow workflowdecl.Workflow) []reporting.StepFinding {
 			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(workflow.Defaults)), runnerlang.Any, registries...))
 		},
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflowdecl.DefaultsRun(job.Defaults)), platform(job), registries...))
 		},
-		Step: func(step workflowdecl.Step) []reporting.Finding {
+		Step: func(step workflowdecl.Step) []reporting.StepFinding {
 			if run, present := step.Run(); present {
 				findings := reporting.FromDiagnostics(checkShell(workflowdecl.Scalar(run.Shell), platform(step.Job()), registries...))
 				for i := range findings {

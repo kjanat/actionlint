@@ -13,7 +13,7 @@ func CacheCallUnrestrictedCheck(workflow workflowdecl.Workflow) checkinputs.Decl
 	access := cachepolicy.NewTrust(workflow)
 	return checkinputs.DeclarationCheck{
 		Declaration: CacheCallUnrestrictedDeclaration(),
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckCall(job))
 		},
 	}

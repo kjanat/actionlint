@@ -18,7 +18,7 @@ import (
 func WorkflowRunNamesCheck(inventory namemodel.Inventory) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: WorkflowRunNamesDeclaration(),
-		Workflow: func(workflow workflowdecl.Workflow) []reporting.Finding {
+		Workflow: func(workflow workflowdecl.Workflow) []reporting.StepFinding {
 			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
 		},
 	}

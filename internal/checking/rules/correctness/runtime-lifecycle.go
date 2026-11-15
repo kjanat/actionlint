@@ -27,7 +27,7 @@ func RuntimeLifecycleDeclaration() rule.Declaration {
 func RuntimeLifecycleCheck(context actionmeta.LifecycleContext) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: RuntimeLifecycleDeclaration(),
-		Step: func(step workflowdecl.Step) []reporting.Finding {
+		Step: func(step workflowdecl.Step) []reporting.StepFinding {
 			action, ok := step.Action()
 			if !ok {
 				return nil
@@ -53,7 +53,7 @@ func RuntimeLifecycleCheck(context actionmeta.LifecycleContext) checkinputs.Decl
 			if position.Line == 0 {
 				return nil
 			}
-			return []reporting.Finding{{
+			return []reporting.StepFinding{{
 				Rule: "runtime-lifecycle", Code: string(evidence.Kind), Severity: "warning",
 				Message: message, Start: position, Step: step, DocumentationURL: evidence.Source,
 				LifecycleEvidence: &evidence,

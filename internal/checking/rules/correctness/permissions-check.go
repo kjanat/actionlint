@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-func checkPermissionMapping(p *workflowlang.Permissions) []reporting.Finding {
+func checkPermissionMapping(p *workflowlang.Permissions) []reporting.StepFinding {
 	if p == nil {
 		return nil
 	}
@@ -28,11 +28,11 @@ func checkPermissionMapping(p *workflowlang.Permissions) []reporting.Finding {
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }
 
-func checkWorkflowPermissions(w declaration.Workflow) []reporting.Finding {
+func checkWorkflowPermissions(w declaration.Workflow) []reporting.StepFinding {
 	return checkPermissionMapping(w.Permissions)
 }
 
-func checkJobPermissions(job declaration.Job) []reporting.Finding {
+func checkJobPermissions(job declaration.Job) []reporting.StepFinding {
 	return checkPermissionMapping(job.Permissions)
 }
 

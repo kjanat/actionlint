@@ -20,12 +20,12 @@ func JobTimeoutCheck(policy TimeoutPolicy) checkinputs.DeclarationCheck {
 	if policy.Max != nil {
 		policy.Max = new(*policy.Max)
 	}
-	return checkinputs.DeclarationCheck{Declaration: JobTimeoutDeclaration(), Job: func(job declaration.Job) []reporting.Finding {
+	return checkinputs.DeclarationCheck{Declaration: JobTimeoutDeclaration(), Job: func(job declaration.Job) []reporting.StepFinding {
 		return JobTimeout(job, policy)
 	}}
 }
 
-func JobTimeout(n declaration.Job, policy TimeoutPolicy) []reporting.Finding {
+func JobTimeout(n declaration.Job, policy TimeoutPolicy) []reporting.StepFinding {
 	rule := reporting.Collector{Rule: "job-timeout"}
 
 	if !policy.Enabled {

@@ -13,7 +13,7 @@ func CacheWriteUntrustedCheck(workflow workflowdecl.Workflow) checkinputs.Declar
 	access := cachepolicy.NewTrust(workflow)
 	return checkinputs.DeclarationCheck{
 		Declaration: CacheWriteUntrustedDeclaration(),
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckWrites(job))
 		},
 	}

@@ -13,7 +13,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func shapeFindings(t *testing.T, src string) []reporting.Finding {
+func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	t.Helper()
 	ast, _ := workflowparser.Parse([]byte(src))
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()

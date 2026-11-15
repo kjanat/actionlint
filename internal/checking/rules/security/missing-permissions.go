@@ -26,12 +26,12 @@ func MissingPermissionsDeclaration() rule.Declaration {
 
 func MissingPermissionsCheck(locations []configuration.PermissionLocation) inputs.DeclarationCheck {
 	locations = slices.Clone(locations)
-	return inputs.DeclarationCheck{Declaration: MissingPermissionsDeclaration(), Workflow: func(workflow declaration.Workflow) []reporting.Finding {
+	return inputs.DeclarationCheck{Declaration: MissingPermissionsDeclaration(), Workflow: func(workflow declaration.Workflow) []reporting.StepFinding {
 		return MissingPermissions(workflow, locations)
 	}}
 }
 
-func MissingPermissions(workflow declaration.Workflow, locations []configuration.PermissionLocation) []reporting.Finding {
+func MissingPermissions(workflow declaration.Workflow, locations []configuration.PermissionLocation) []reporting.StepFinding {
 	defaultLocations := len(locations) == 0
 	requireWorkflow := slices.Contains(locations, configuration.WorkflowPermissions)
 	requireJob := slices.Contains(locations, configuration.EveryJobPermissions)

@@ -16,8 +16,8 @@ import (
 func UnpinnedReferenceCheck(excluded func(string) bool) checkinputs.DeclarationCheck {
 	return checkinputs.DeclarationCheck{
 		Declaration: UnpinnedReferenceDeclaration(),
-		Job:         func(job declaration.Job) []reporting.Finding { return CommitHashJob(job, excluded) },
-		Step:        func(step declaration.Step) []reporting.Finding { return CommitHashStep(step, excluded) },
+		Job:         func(job declaration.Job) []reporting.StepFinding { return CommitHashJob(job, excluded) },
+		Step:        func(step declaration.Step) []reporting.StepFinding { return CommitHashStep(step, excluded) },
 	}
 }
 
@@ -35,13 +35,13 @@ type commitHashCheck struct {
 	excluded func(string) bool
 }
 
-func CommitHashStep(step declaration.Step, excluded func(string) bool) []reporting.Finding {
+func CommitHashStep(step declaration.Step, excluded func(string) bool) []reporting.StepFinding {
 	rule := &commitHashCheck{Rule: "unpinned-reference", excluded: excluded}
 	rule.checkStep(step)
 	return rule.Findings
 }
 
-func CommitHashJob(job declaration.Job, excluded func(string) bool) []reporting.Finding {
+func CommitHashJob(job declaration.Job, excluded func(string) bool) []reporting.StepFinding {
 	rule := &commitHashCheck{Rule: "unpinned-reference", excluded: excluded}
 	rule.checkJob(job)
 	return rule.Findings

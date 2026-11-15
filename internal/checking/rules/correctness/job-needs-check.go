@@ -8,7 +8,7 @@ import (
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func checkJobDependencies(w declaration.Workflow) []reporting.Finding {
+func checkJobDependencies(w declaration.Workflow) []reporting.StepFinding {
 	jobs := slices.Collect(func(yield func(declaration.Job) bool) {
 		for _, job := range w.Jobs() {
 			if !yield(job) {

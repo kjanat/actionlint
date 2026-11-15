@@ -16,7 +16,7 @@ import (
 )
 
 // UncancellableCondition reports a condition of w that keeps running after cancellation.
-func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) []reporting.Finding {
+func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
@@ -51,7 +51,7 @@ func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) 
 			}}
 		}
 	}
-	return []reporting.Finding{finding}
+	return []reporting.StepFinding{finding}
 }
 
 func decodedConditionPosition(value string, offset int) (line, column int) {
@@ -59,6 +59,6 @@ func decodedConditionPosition(value string, offset int) (line, column int) {
 	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
 }
 
-func checkJobCancellationCondition(job declaration.Job) []reporting.Finding {
+func checkJobCancellationCondition(job declaration.Job) []reporting.StepFinding {
 	return UncancellableCondition(job.Workflow(), job.If)
 }

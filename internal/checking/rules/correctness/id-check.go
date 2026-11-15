@@ -11,7 +11,7 @@ import (
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func checkIdentifiers(job declaration.Job) []reporting.Finding {
+func checkIdentifiers(job declaration.Job) []reporting.StepFinding {
 	name := func(value *workflowlang.String) identifier.Name {
 		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: reporting.Position(value.Pos)}
 	}

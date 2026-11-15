@@ -39,7 +39,7 @@ func WorkflowCallCheck(workflow workflowdecl.Workflow, cache *workflowinputs.Res
 	}
 	return checkinputs.DeclarationCheck{
 		Declaration: descriptor,
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			check := workflowCallCheck{
 				Rule:                descriptor.Name,
 				workflowPermissions: workflow.Permissions, workflowCacheMode: workflow.CacheMode,
