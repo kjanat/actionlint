@@ -1,10 +1,11 @@
 package configuration
 
 import (
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"fmt"
 	"maps"
 	"strings"
+
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 // configOrigins assigns source locations after inheritance and Action overrides.

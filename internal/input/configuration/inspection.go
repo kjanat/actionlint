@@ -1,12 +1,13 @@
 package configuration
 
 import (
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 // Selection selects an explicit file, repository discovery, or no configuration.
