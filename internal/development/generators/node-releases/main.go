@@ -17,7 +17,7 @@ import (
 
 func main() {
 	revision := flag.String("revision", "", "Full commit SHA in nodejs/Release")
-	output := flag.String("output", "internal/model/runtimes/data", "Output directory")
+	output := flag.String("output", "internal/model/lifecycle/data", "Output directory")
 	flag.Parse()
 	if err := update(*revision, *output); err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -7,7 +7,6 @@ import (
 	config "actionlint.kjanat.dev/v2/internal/input/configuration"
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	"actionlint.kjanat.dev/v2/internal/model/runtimes"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -149,7 +148,7 @@ func TestLifecycleIntroductionPolicyPreservesUnavailableRuntime(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			f := lifecycleFinding(t, "2026-01-01", true)
-			evidence, message, known := runtimes.NodeLifecycle("26", lifecycleDate(t, "2026-01-01"), f.LifecycleEvidence.Service)
+			evidence, message, known := lifecycle.NodeLifecycle("26", lifecycleDate(t, "2026-01-01"), f.LifecycleEvidence.Service)
 			if !known || !evidence.Current || evidence.Kind != lifecycle.SupportStarts {
 				t.Fatalf("expected an unavailable Node.js release: %+v", evidence)
 			}

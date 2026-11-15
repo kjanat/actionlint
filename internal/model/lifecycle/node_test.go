@@ -1,16 +1,15 @@
-package runtimes
+package lifecycle
 
 import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 func TestNodeLifecycleReleaseSchedule(t *testing.T) {
 	t.Parallel()
-	date, err := lifecycle.ParseDate("2026-11-15")
+	date, err := ParseDate("2026-11-15")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +28,7 @@ func TestNodeLifecycleReleaseSchedule(t *testing.T) {
 		{"26", "node26", "2029-04-30", false},
 	} {
 		e, message, ok := NodeLifecycle(tc.selector, date, service)
-		if !ok || e.Name != tc.name || e.Effective.String() != tc.deadline || e.Current != tc.current || e.Subject != lifecycle.LanguageRuntimes || e.Kind != lifecycle.SupportEnds || !e.Announced.IsZero() || e.Service != service || !strings.Contains(message, tc.deadline) {
+		if !ok || e.Name != tc.name || e.Effective.String() != tc.deadline || e.Current != tc.current || e.Subject != LanguageRuntimes || e.Kind != SupportEnds || !e.Announced.IsZero() || e.Service != service || !strings.Contains(message, tc.deadline) {
 			t.Errorf("%s: %+v %s", tc.selector, e, message)
 		}
 	}
@@ -44,16 +43,16 @@ func TestNodeLifecycleIntroductionAndEndBoundary(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		date      string
-		kind      lifecycle.EventKind
+		kind      EventKind
 		current   bool
 		effective string
 	}{
-		{"2026-05-04", lifecycle.SupportStarts, true, "2026-05-05"},
-		{"2026-05-05", lifecycle.SupportEnds, false, "2029-04-30"},
-		{"2029-04-29", lifecycle.SupportEnds, false, "2029-04-30"},
-		{"2029-04-30", lifecycle.SupportEnds, true, "2029-04-30"},
+		{"2026-05-04", SupportStarts, true, "2026-05-05"},
+		{"2026-05-05", SupportEnds, false, "2029-04-30"},
+		{"2029-04-29", SupportEnds, false, "2029-04-30"},
+		{"2029-04-30", SupportEnds, true, "2029-04-30"},
 	} {
-		date, err := lifecycle.ParseDate(tc.date)
+		date, err := ParseDate(tc.date)
 		if err != nil {
 			t.Fatal(err)
 		}
