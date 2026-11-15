@@ -32,10 +32,10 @@ type Selection struct {
 	// skipped, with a warning, when it cannot run.
 	Process *processconfig.Options
 	// Backend replaces the process with a snippet engine.
-	Backend checkinputs.ScriptBackend `clone:"shared"`
+	Backend checkinputs.ScriptBackend
 	// Runner replaces the process with an in-process function that has no
 	// filesystem, such as an embedding program's ShellCheck build.
-	Runner func(args []string, stdin string) ([]byte, error) `clone:"shared"`
+	Runner func(args []string, stdin string) ([]byte, error)
 	// ManagedOnly permits a managed document analyzer without the native
 	// fallback.
 	ManagedOnly bool
@@ -102,10 +102,6 @@ func RegisterProvider(p Provider) (tools.Registration, error) {
 }
 
 func register(p Provider, sel selection) (tools.Registration, error) {
-	// Snapshot configuration data while retaining the caller's execution capabilities.
-	p.Manifest = p.Manifest.Clone()
-	p.Selection = copyOwnedSelection(p.Selection)
-	sel.Selection = p.Selection
 	m := p.Manifest
 	name := m.Rule.Name
 	if m.Role != manifests.RoleScript || m.Transport != manifests.TransportProcess || m.Process == nil {
