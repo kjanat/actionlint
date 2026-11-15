@@ -12,9 +12,9 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	yamlSchema "actionlint.kjanat.dev/v2/internal/languages/yaml/schema"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 
@@ -533,15 +533,15 @@ func (rule *Checker) checkRawYAMLString(y workflowdecl.RawYAMLStringView) exprty
 
 	switch y.Tag() {
 	case workflowlang.YamlTagBool:
-		if yamlSchema.IsCoreSchemaBool(y.Value()) {
+		if codec.IsCoreSchemaBool(y.Value()) {
 			return exprtypes.BoolType()
 		}
 	case workflowlang.YamlTagNull:
-		if yamlSchema.IsCoreSchemaNull(y.Value()) {
+		if codec.IsCoreSchemaNull(y.Value()) {
 			return exprtypes.NullType()
 		}
 	case workflowlang.YamlTagInt, workflowlang.YamlTagFloat:
-		if yamlSchema.IsCoreSchemaNumber(y.Value()) {
+		if codec.IsCoreSchemaNumber(y.Value()) {
 			return exprtypes.NumberType()
 		}
 	}

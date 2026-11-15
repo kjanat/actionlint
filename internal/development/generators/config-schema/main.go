@@ -17,7 +17,7 @@ import (
 	actionlint "actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/invopop/jsonschema"
 )
@@ -215,8 +215,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	case reflect.TypeFor[actionlint.ToolsConfig]():
 		return toolsSchema(reflectMapping)
 	case reflect.TypeFor[actionlint.OutputFormats]():
-		values := make([]any, 0, len(outputformat.Names()))
-		for _, name := range outputformat.Names() {
+		values := make([]any, 0, len(output.FormatNames()))
+		for _, name := range output.FormatNames() {
 			values = append(values, name)
 		}
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}

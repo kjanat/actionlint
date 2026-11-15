@@ -7,7 +7,6 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestScalarAttachedComments(t *testing.T) {
@@ -82,7 +81,7 @@ func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 	} {
 		originalAlias := originalEntries[tc.index+1]
 		attachment := parser.scalarDeclarations[*PosAt(originalEntries[tc.index])]
-		if attachment.scalar != originalAlias || originalAlias.Kind != syntax.AliasNode || parser.aliases[entries[tc.index+1]] != originalAlias {
+		if attachment.scalar != originalAlias || originalAlias.Kind != codec.AliasNode || parser.aliases[entries[tc.index+1]] != originalAlias {
 			t.Fatal("projection replaced original alias comment attachment")
 		}
 		source := parser.ScriptSourceForDeclaration(entries[tc.index+1], PosAt(entries[tc.index]))
@@ -130,7 +129,7 @@ func TestStandaloneAliasDeclarationCommentsUseLazyPhysicalGraph(t *testing.T) {
 		t.Fatalf("lazy token end=%v mapped=%t", got, ok)
 	}
 	attachment, exists := parser.scalarDeclarations[*PosAt(entries[2])]
-	if !exists || attachment.scalar == nil || attachment.scalar.Kind != syntax.AliasNode || attachment.scalar == originalAlias || *PosAt(attachment.scalar) != *PosAt(originalAlias) {
+	if !exists || attachment.scalar == nil || attachment.scalar.Kind != codec.AliasNode || attachment.scalar == originalAlias || *PosAt(attachment.scalar) != *PosAt(originalAlias) {
 		t.Fatalf("lazy attachment does not reference separately parsed physical alias: %+v", attachment)
 	}
 	if parser.aliases[entries[3]] != originalAlias {

@@ -1,6 +1,6 @@
 package matrix
 
-import value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+import "actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 // ValueHasUnknownParts reports dynamic or invalid values, including nested members.
 func ValueHasUnknownParts(v value.Value) bool { return dynamic(v) }

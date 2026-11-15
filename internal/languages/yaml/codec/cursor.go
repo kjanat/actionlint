@@ -6,7 +6,6 @@ import (
 	"iter"
 	"reflect"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 	"github.com/kjanat/go-yaml/v4/plugin/limit"
 )
@@ -14,8 +13,8 @@ import (
 // Session accounts for construction across one sequential schema traversal.
 // Its source graph must not change before Close.
 type Session struct {
-	nodes                  map[*syntax.Node]*upstream.Node
-	originals              map[*upstream.Node]*syntax.Node
+	nodes                  map[*Node]*upstream.Node
+	originals              map[*upstream.Node]*Node
 	limits                 constructionLimits
 	aliases, constructions int
 	fatal                  *LoadError
@@ -35,13 +34,13 @@ var nestingLimit = limit.New()
 // Cursor identifies a source occurrence together with its enclosing aliases.
 type Cursor struct {
 	session *Session
-	node    *syntax.Node
+	node    *Node
 	via     *aliasCrossing
 	claim   *rootClaim
 }
 
 type aliasCrossing struct {
-	node   *syntax.Node
+	node   *Node
 	parent *aliasCrossing
 }
 
@@ -54,12 +53,12 @@ type Entered struct {
 type rootClaim struct{ decoded bool }
 
 // Open creates a traversal without expanding aliases or constructing values.
-func Open(root *syntax.Node) (*Session, Cursor, error) {
+func Open(root *Node) (*Session, Cursor, error) {
 	graph, err := toParser(root)
 	if err != nil {
 		return nil, Cursor{}, err
 	}
-	s := &Session{nodes: make(map[*syntax.Node]*upstream.Node, len(graph.originals)), originals: graph.originals, limits: limit.New()}
+	s := &Session{nodes: make(map[*Node]*upstream.Node, len(graph.originals)), originals: graph.originals, limits: limit.New()}
 	for raw, node := range graph.originals {
 		s.nodes[node] = raw
 	}
@@ -78,7 +77,7 @@ func (s *Session) Finish(err error) error {
 }
 
 // Wrap locates a schema error without discarding already located diagnostics.
-func (s *Session) Wrap(n *syntax.Node, err error) error {
+func (s *Session) Wrap(n *Node, err error) error {
 	if s.fatal != nil {
 		return s.fatal
 	}
@@ -93,10 +92,10 @@ func (s *Session) Wrap(n *syntax.Node, err error) error {
 }
 
 // Node returns the original occurrence, which may be an alias.
-func (c Cursor) Node() *syntax.Node { return c.node }
+func (c Cursor) Node() *Node { return c.node }
 
 // Node returns the original concrete node reached by Enter.
-func (e Entered) Node() *syntax.Node { return e.cursor.node }
+func (e Entered) Node() *Node { return e.cursor.node }
 
 func (c Cursor) check() error {
 	var mark Mark
@@ -115,7 +114,7 @@ func (c Cursor) check() error {
 	return nil
 }
 
-func (s *Session) fail(n *syntax.Node, stage upstream.Stage, err error) error {
+func (s *Session) fail(n *Node, stage upstream.Stage, err error) error {
 	raw := upstream.NewLoadError(stage, err.Error(), upstream.Mark{Line: n.Line, Column: n.Column}, err)
 	s.fatal = &LoadError{message: raw.Message, mark: Mark{Line: n.Line, Column: n.Column}, text: raw.Error(), cause: raw}
 	return s.fatal
@@ -148,12 +147,12 @@ func (c Cursor) Enter() (Entered, error) {
 		}
 		c.claim = nil
 		switch c.node.Kind {
-		case syntax.DocumentNode:
+		case DocumentNode:
 			if len(c.node.Content) == 0 {
 				return Entered{cursor: c, claim: &rootClaim{}}, nil
 			}
 			c.node = c.node.Content[0]
-		case syntax.AliasNode:
+		case AliasNode:
 			for parent := c.via; parent != nil; parent = parent.parent {
 				if parent.node == c.node {
 					return Entered{}, c.session.fail(c.node, upstream.ComposerStage, fmt.Errorf("anchor '%s' value contains itself", c.node.Value))
@@ -161,7 +160,7 @@ func (c Cursor) Enter() (Entered, error) {
 			}
 			c.via = &aliasCrossing{node: c.node, parent: c.via}
 			c.node = c.node.Alias
-		case syntax.SequenceNode, syntax.MappingNode, syntax.ScalarNode:
+		case SequenceNode, MappingNode, ScalarNode:
 			return Entered{cursor: c, claim: &rootClaim{}}, nil
 		default:
 			// Kind zero is the empty root node.
@@ -173,7 +172,7 @@ func (c Cursor) Enter() (Entered, error) {
 // Pairs yields mapping occurrences in source order, carrying enclosing aliases.
 func (e Entered) Pairs() iter.Seq2[Cursor, Cursor] {
 	return func(yield func(Cursor, Cursor) bool) {
-		if e.cursor.node == nil || e.cursor.node.Kind != syntax.MappingNode {
+		if e.cursor.node == nil || e.cursor.node.Kind != MappingNode {
 			return
 		}
 		for i := 0; i+1 < len(e.cursor.node.Content); i += 2 {
@@ -189,7 +188,7 @@ func (e Entered) Pairs() iter.Seq2[Cursor, Cursor] {
 // Items yields sequence occurrences in source order, carrying enclosing aliases.
 func (e Entered) Items() iter.Seq[Cursor] {
 	return func(yield func(Cursor) bool) {
-		if e.cursor.node == nil || e.cursor.node.Kind != syntax.SequenceNode {
+		if e.cursor.node == nil || e.cursor.node.Kind != SequenceNode {
 			return
 		}
 		for _, node := range e.cursor.node.Content {
@@ -255,7 +254,7 @@ func checkDecodeType(t reflect.Type, selected bool, seen map[decodeShape]bool) e
 		}
 		return errors.New("YAML selections require a Select struct field")
 	}
-	if t == reflect.TypeFor[syntax.Node]() || t == reflect.TypeFor[upstream.Node]() {
+	if t == reflect.TypeFor[Node]() || t == reflect.TypeFor[upstream.Node]() {
 		return fmt.Errorf("YAML node fields require an explicit schema traversal: %v", t)
 	}
 	if _, ok := t.MethodByName("UnmarshalYAML"); ok {

@@ -15,7 +15,7 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"

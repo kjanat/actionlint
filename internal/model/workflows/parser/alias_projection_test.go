@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestYAMLAliasProjectionIsRepeatableAndOwnsItsNodes(t *testing.T) {
@@ -17,7 +16,7 @@ func TestYAMLAliasProjectionIsRepeatableAndOwnsItsNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := snapshotAliasTestGraph(root)
-	report := func(_ *syntax.Node, _ YamlAliasDiagnostic, message string) { t.Fatal(message) }
+	report := func(_ *codec.Node, _ YamlAliasDiagnostic, message string) { t.Fatal(message) }
 	first, firstOrigins := projectAliasTestGraph(root, report)
 	second, secondOrigins := projectAliasTestGraph(root, report)
 	assertAliasTestProjection(t, first, before)
@@ -54,7 +53,7 @@ func TestYAMLAliasProjectionKeepsSharedExpansionBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	originals := snapshotAliasTestGraph(root)
-	projected, origins := projectAliasTestGraph(root, func(_ *syntax.Node, _ YamlAliasDiagnostic, message string) { t.Fatal(message) })
+	projected, origins := projectAliasTestGraph(root, func(_ *codec.Node, _ YamlAliasDiagnostic, message string) { t.Fatal(message) })
 	assertAliasTestProjection(t, projected, originals)
 	if len(origins) != 3*depth+1 {
 		t.Fatalf("projected alias uses=%d, want %d", len(origins), 3*depth+1)
@@ -130,10 +129,10 @@ func TestYAMLAliasGraphPreconditionRejectsNilProgrammerInput(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name string
-		root *syntax.Node
+		root *codec.Node
 	}{
 		{"nil root", nil},
-		{"nil child", &syntax.Node{Kind: syntax.DocumentNode, Content: []*syntax.Node{nil}}},
+		{"nil child", &codec.Node{Kind: codec.DocumentNode, Content: []*codec.Node{nil}}},
 	} {
 		for _, project := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/project=%t", tc.name, project), func(t *testing.T) {
@@ -143,7 +142,7 @@ func TestYAMLAliasGraphPreconditionRejectsNilProgrammerInput(t *testing.T) {
 						t.Fatal("malformed internal source graph did not fail loudly")
 					}
 				}()
-				report := func(*syntax.Node, YamlAliasDiagnostic, string) {}
+				report := func(*codec.Node, YamlAliasDiagnostic, string) {}
 				if project {
 					projectAliasTestGraph(tc.root, report)
 				} else {

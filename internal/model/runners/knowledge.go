@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"errors"
@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

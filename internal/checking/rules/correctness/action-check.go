@@ -12,7 +12,7 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 

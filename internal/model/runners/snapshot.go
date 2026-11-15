@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 // snapshotProvider resolves GitHub selectors against an explicitly selected inventory.

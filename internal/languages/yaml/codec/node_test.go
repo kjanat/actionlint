@@ -4,8 +4,6 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestOwnedGraphAndNestedDecode(t *testing.T) {
@@ -60,8 +58,8 @@ func TestOwnedGraphAndNestedDecode(t *testing.T) {
 	if visits != 2 || children != 2 {
 		t.Errorf("base/copy visits=%d child visits=%d want 2 each", visits, children)
 	}
-	if reflect.TypeFor[syntax.Node]().PkgPath() != "actionlint.kjanat.dev/v2/internal/languages/yaml/syntax" {
-		t.Fatal("tree is not owned by syntax")
+	if reflect.TypeFor[Node]().PkgPath() != "actionlint.kjanat.dev/v2/internal/languages/yaml/codec" {
+		t.Fatal("tree is not owned by codec")
 	}
 }
 

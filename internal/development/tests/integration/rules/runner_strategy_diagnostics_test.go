@@ -8,7 +8,7 @@ import (
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )

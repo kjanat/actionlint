@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -17,7 +16,7 @@ type cursorCycleRoot struct {
 	Items map[string]any `yaml:"items"`
 }
 
-func parseCycleSource(t *testing.T, source string) *syntax.Node {
+func parseCycleSource(t *testing.T, source string) *codec.Node {
 	t.Helper()
 	root, err := codec.Parse([]byte(source))
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 

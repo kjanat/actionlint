@@ -6,7 +6,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"

@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 type builtinProvider struct{ custom LabelSet }

@@ -1,9 +1,9 @@
-package runner
+package runners
 
 import (
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestSnapshotInventoryValidation(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func TestParseYAMLIntegerRadixBounds(t *testing.T) {
@@ -132,19 +131,19 @@ func TestParserAliasTypeLocations(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name, value, message string
-		check                func(*Parser, *syntax.Node)
+		check                func(*Parser, *codec.Node)
 	}{
-		{"string", "{}", "expected scalar node for string value", func(p *Parser, n *syntax.Node) { p.parseString(n, false) }},
-		{"cache mode", "{}", "expected string for \"cache-mode\"", func(p *Parser, n *syntax.Node) { p.parseCacheMode(n) }},
-		{"sequence", "{}", "must be sequence node", func(p *Parser, n *syntax.Node) { p.checkSequence("steps", n, false) }},
-		{"mapping", "[]", "mapping node is expected", func(p *Parser, n *syntax.Node) {
+		{"string", "{}", "expected scalar node for string value", func(p *Parser, n *codec.Node) { p.parseString(n, false) }},
+		{"cache mode", "{}", "expected string for \"cache-mode\"", func(p *Parser, n *codec.Node) { p.parseCacheMode(n) }},
+		{"sequence", "{}", "must be sequence node", func(p *Parser, n *codec.Node) { p.checkSequence("steps", n, false) }},
+		{"mapping", "[]", "mapping node is expected", func(p *Parser, n *codec.Node) {
 			for range p.parseSectionMapping("env", n, false, false) {
 			}
 		}},
-		{"bool", "{}", "expected bool value", func(p *Parser, n *syntax.Node) { p.parseBool(n) }},
-		{"integer", "{}", "expected scalar node for integer value", func(p *Parser, n *syntax.Node) { p.parseInt(n) }},
-		{"float", "{}", "expected scalar node for float value", func(p *Parser, n *syntax.Node) { p.parseFloat(n) }},
-		{"expression", "plain", "expecting a single ${{...}} expression", func(p *Parser, n *syntax.Node) { p.parseBool(n) }},
+		{"bool", "{}", "expected bool value", func(p *Parser, n *codec.Node) { p.parseBool(n) }},
+		{"integer", "{}", "expected scalar node for integer value", func(p *Parser, n *codec.Node) { p.parseInt(n) }},
+		{"float", "{}", "expected scalar node for float value", func(p *Parser, n *codec.Node) { p.parseFloat(n) }},
+		{"expression", "plain", "expecting a single ${{...}} expression", func(p *Parser, n *codec.Node) { p.parseBool(n) }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -159,8 +158,8 @@ second: *value
 			}
 			p := &Parser{}
 			projected := projectAliasTestInput(p, doc)
-			for i, n := range []*syntax.Node{projected.Content[0].Content[3], projected.Content[0].Content[5]} {
-				if p.aliases[n] != doc.Content[0].Content[3+2*i] || doc.Content[0].Content[3+2*i].Kind != syntax.AliasNode {
+			for i, n := range []*codec.Node{projected.Content[0].Content[3], projected.Content[0].Content[5]} {
+				if p.aliases[n] != doc.Content[0].Content[3+2*i] || doc.Content[0].Content[3+2*i].Kind != codec.AliasNode {
 					t.Fatal("type diagnostic lost original alias provenance")
 				}
 				tt.check(p, n)
@@ -185,7 +184,7 @@ func TestParserScriptSource(t *testing.T) {
 	tests := []struct {
 		name       string
 		source     string
-		node       *syntax.Node
+		node       *codec.Node
 		line       int
 		column     int
 		want       workflowlang.Pos
@@ -198,8 +197,8 @@ func TestParserScriptSource(t *testing.T) {
     nested
 next: value
 `,
-			node: &syntax.Node{
-				Style:  syntax.LiteralStyle,
+			node: &codec.Node{
+				Style:  codec.LiteralStyle,
 				Value:  "echo $foo\n  nested",
 				Line:   1,
 				Column: 6,
@@ -216,8 +215,8 @@ next: value
     nested
 next: value
 `,
-			node: &syntax.Node{
-				Style:  syntax.LiteralStyle,
+			node: &codec.Node{
+				Style:  codec.LiteralStyle,
 				Value:  "echo $foo\n  nested",
 				Line:   1,
 				Column: 6,
@@ -234,8 +233,8 @@ next: value
   echo hi
 next: value
 `,
-			node: &syntax.Node{
-				Style:  syntax.LiteralStyle,
+			node: &codec.Node{
+				Style:  codec.LiteralStyle,
 				Value:  "\necho hi\n",
 				Line:   1,
 				Column: 6,
@@ -248,7 +247,7 @@ next: value
 		{
 			name:       "single-line plain scalar",
 			source:     "run: echo $foo # YAML comment\n",
-			node:       &syntax.Node{Value: "echo $foo", Line: 1, Column: 6},
+			node:       &codec.Node{Value: "echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
 			want:       workflowlang.Pos{Line: 1, Col: 11},
@@ -260,7 +259,7 @@ next: value
   echo $foo
 next: value
 `,
-			node:       &syntax.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			node:       &codec.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     17,
 			want:       workflowlang.Pos{Line: 2, Col: 8},
@@ -272,7 +271,7 @@ next: value
   echo $foo
 next: value
 `,
-			node:       &syntax.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
+			node:       &codec.Node{Value: "echo first echo $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     11,
 			wantMapped: false,
@@ -283,7 +282,7 @@ next: value
   run: echo first
     x
 `,
-			node:       &syntax.Node{Value: "echo first x", Line: 2, Column: 8},
+			node:       &codec.Node{Value: "echo first x", Line: 2, Column: 8},
 			line:       1,
 			column:     12,
 			want:       workflowlang.Pos{Line: 3, Col: 5},
@@ -292,7 +291,7 @@ next: value
 		{
 			name:       "plain scalar with unicode",
 			source:     "run: echo é $foo\n",
-			node:       &syntax.Node{Value: "echo é $foo", Line: 1, Column: 6},
+			node:       &codec.Node{Value: "echo é $foo", Line: 1, Column: 6},
 			line:       1,
 			column:     8,
 			want:       workflowlang.Pos{Line: 1, Col: 13},
@@ -303,7 +302,7 @@ next: value
 			source: `run: >
   echo $foo
 `,
-			node:       &syntax.Node{Style: syntax.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
+			node:       &codec.Node{Style: codec.FoldedStyle, Value: "echo $foo\n", Line: 1, Column: 6},
 			line:       1,
 			column:     6,
 			want:       workflowlang.Pos{Line: 2, Col: 8},
@@ -314,7 +313,7 @@ next: value
 			source: `run: |
   echo source
 `,
-			node:       &syntax.Node{Style: syntax.LiteralStyle, Value: "echo decoded\n", Line: 1, Column: 6},
+			node:       &codec.Node{Style: codec.LiteralStyle, Value: "echo decoded\n", Line: 1, Column: 6},
 			line:       1,
 			column:     1,
 			wantMapped: false,
@@ -385,10 +384,10 @@ run: *script
 			t.Fatal(p.errs)
 		}
 		originalAlias := root.Content[0].Content[3]
-		if p.aliases[projected.Content[0].Content[3]] != originalAlias || originalAlias.Kind != syntax.AliasNode {
+		if p.aliases[projected.Content[0].Content[3]] != originalAlias || originalAlias.Kind != codec.AliasNode {
 			t.Fatal("script source lost original alias provenance")
 		}
-		for _, n := range []*syntax.Node{projected.Content[0].Content[1], projected.Content[0].Content[3]} {
+		for _, n := range []*codec.Node{projected.Content[0].Content[1], projected.Content[0].Content[3]} {
 			source := p.ScriptSource(n)
 			if source == nil {
 				t.Fatal("literal script lost its source mapping")
@@ -471,10 +470,10 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 			wrong := NewSourceParser([]byte(input))
 			projected := projectAliasTestInput(wrong, root)
 			wrong.IndexScalarSources(projected)
-			var projectedScript *syntax.Node
-			var find func(*syntax.Node)
-			find = func(node *syntax.Node) {
-				if node.Kind == syntax.ScalarNode && node.Anchor == "script" {
+			var projectedScript *codec.Node
+			var find func(*codec.Node)
+			find = func(node *codec.Node) {
+				if node.Kind == codec.ScalarNode && node.Anchor == "script" {
 					projectedScript = node
 				}
 				for _, child := range node.Content {

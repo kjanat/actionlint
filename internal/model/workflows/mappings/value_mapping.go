@@ -1,5 +1,5 @@
-// Package mapping resolves ordered, state-aware workflow mapping entries.
-package mapping
+// Package mappings resolves ordered, state-aware workflow mapping entries.
+package mappings
 
 import (
 	"iter"
@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 // Input is one declared mapping entry. A missing Name uses its map key.

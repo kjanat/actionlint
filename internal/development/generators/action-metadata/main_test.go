@@ -51,7 +51,7 @@ func TestCompleteRunnerActionSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkedIn, err := os.ReadFile(filepath.Join("..", "..", "..", "model", "actions", "availability.gen.go"))
+	checkedIn, err := os.ReadFile(filepath.Join("..", "..", "..", "model", "actionmeta", "availability.gen.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

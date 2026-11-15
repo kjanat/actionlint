@@ -6,7 +6,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 type context struct {
@@ -21,7 +20,7 @@ func (p position) before(other position) bool {
 	return p.line < other.line || p.line == other.line && p.column < other.column
 }
 
-func start(node *syntax.Node) position { return position{node.Line, node.Column} }
+func start(node *codec.Node) position { return position{node.Line, node.Column} }
 
 // Index records concrete YAML job and step ranges, without following aliases.
 type Index []context
@@ -34,7 +33,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 	}
 	var result Index
 	lines := sourcemap.NewDocument(string(source)).Lines()
-	startsLine := func(node *syntax.Node) bool {
+	startsLine := func(node *codec.Node) bool {
 		if node.Line < 1 || node.Line > len(lines) {
 			return false
 		}
@@ -44,7 +43,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 		}
 		return strings.Trim(string(prefix[:node.Column-1]), " \t-") == ""
 	}
-	scalar := func(node *syntax.Node, key string) string {
+	scalar := func(node *codec.Node, key string) string {
 		value := rawScalar(node, key)
 		if resolve != nil {
 			if resolved := resolve(value); resolved != nil {
@@ -53,10 +52,10 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 		}
 		return value
 	}
-	var visit func(*syntax.Node, position, []string, context)
-	var steps func(*syntax.Node, position, string)
-	steps = func(node *syntax.Node, end position, job string) {
-		if node.Kind != syntax.SequenceNode {
+	var visit func(*codec.Node, position, []string, context)
+	var steps func(*codec.Node, position, string)
+	steps = func(node *codec.Node, end position, job string) {
+		if node.Kind != codec.SequenceNode {
 			return
 		}
 		for i, step := range node.Content {
@@ -64,7 +63,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 			if i+1 < len(node.Content) {
 				last = start(node.Content[i+1])
 			}
-			if step.Kind != syntax.MappingNode {
+			if step.Kind != codec.MappingNode {
 				continue
 			}
 			result = append(result, context{first: start(step), end: last, job: job, stepID: scalar(step, "id"), stepName: scalar(step, "name"), uses: scalar(step, "uses"), startsLine: startsLine(step)})
@@ -80,8 +79,8 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 			}
 		}
 	}
-	visit = func(node *syntax.Node, end position, path []string, current context) {
-		if node.Kind == syntax.MappingNode {
+	visit = func(node *codec.Node, end position, path []string, current context) {
+		if node.Kind == codec.MappingNode {
 			for i := 0; i+1 < len(node.Content); i += 2 {
 				key, value := node.Content[i], node.Content[i+1]
 				last := end
@@ -95,7 +94,7 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 				}
 				visit(value, last, append(append([]string(nil), path...), key.Value), next)
 			}
-		} else if node.Kind == syntax.SequenceNode && (len(path) == 3 && path[0] == "jobs" && path[2] == "steps" || len(path) == 2 && path[0] == "runs" && path[1] == "steps") {
+		} else if node.Kind == codec.SequenceNode && (len(path) == 3 && path[0] == "jobs" && path[2] == "steps" || len(path) == 2 && path[0] == "runs" && path[1] == "steps") {
 			steps(node, end, current.job)
 		}
 	}
@@ -103,10 +102,10 @@ func Contexts(source []byte, resolve func(string) *string) Index {
 	return result
 }
 
-func rawScalar(node *syntax.Node, key string) string {
-	if node.Kind == syntax.MappingNode {
+func rawScalar(node *codec.Node, key string) string {
+	if node.Kind == codec.MappingNode {
 		for i := 0; i+1 < len(node.Content); i += 2 {
-			if node.Content[i].Value == key && node.Content[i+1].Kind == syntax.ScalarNode {
+			if node.Content[i].Value == key && node.Content[i+1].Kind == codec.ScalarNode {
 				return node.Content[i+1].Value
 			}
 		}

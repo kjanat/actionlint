@@ -7,7 +7,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func configuredWorkflowPermissions(cfg *repoconfig.Config) string {

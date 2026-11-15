@@ -12,10 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	"actionlint.kjanat.dev/v2/internal/model/actions/reference"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -259,7 +258,7 @@ func missingLocalActionMetadata(spec string) error {
 func (c *Resolver) findRepositoryMetadata(spec string, certain bool) (MetadataResult, bool) {
 	original := spec
 	mapped := false
-	if normalized, err := reference.NormalizeLocalDirectory(spec); err == nil {
+	if normalized, err := actionmeta.NormalizeLocalActionDirectory(spec); err == nil {
 		if source, exists := c.sourceMappings[normalized]; exists {
 			spec, mapped = source, true
 		}

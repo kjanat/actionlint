@@ -7,7 +7,7 @@ import (
 
 	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -174,20 +174,20 @@ func resolvePermissionsModel(p *workflowlang.Permissions) ResolvedPermissions {
 
 // ResolvePermissionsYAML resolves a raw "permissions:" YAML node. A nil node or a node with a zero
 // Kind means the section is absent.
-func ResolvePermissionsYAML(n *syntax.Node) ResolvedPermissions {
+func ResolvePermissionsYAML(n *codec.Node) ResolvedPermissions {
 	if n == nil || n.Kind == 0 {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}
 	switch n.Kind {
-	case syntax.MappingNode:
+	case codec.MappingNode:
 		ss := make(map[string]string, len(n.Content)/2)
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			ss[n.Content[i].Value] = strings.ToLower(n.Content[i+1].Value)
 		}
 		return resolvePermissions(permissionsSource{scopes: ss})
-	case syntax.ScalarNode:
+	case codec.ScalarNode:
 		return resolvePermissions(permissionsSource{all: strings.ToLower(n.Value)})
-	case syntax.DocumentNode, syntax.SequenceNode, syntax.AliasNode:
+	case codec.DocumentNode, codec.SequenceNode, codec.AliasNode:
 	}
 	return ResolvedPermissions{Kind: PermissionsInvalid}
 }

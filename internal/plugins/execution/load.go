@@ -18,7 +18,7 @@ import (
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/http"
 	networkpolicy "actionlint.kjanat.dev/v2/internal/integrations/network"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"

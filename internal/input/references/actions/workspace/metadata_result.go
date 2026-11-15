@@ -3,7 +3,7 @@ package workspace
 import (
 	"errors"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 type MetadataStatus uint8

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestResolverRepositoryIDSurvivesAcquisition(t *testing.T) {
@@ -29,9 +29,9 @@ func TestResolverRepositoryIDSurvivesAcquisition(t *testing.T) {
 		} {
 			t.Run(kind+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
-				id := func(value uint64) repositoryid.ID {
+				id := func(value uint64) repofacts.ID {
 					if value == 0 {
-						return repositoryid.ID{}
+						return repofacts.ID{}
 					}
 					return knownRepositoryID(t, value)
 				}

@@ -17,7 +17,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -26,11 +26,11 @@ type fakeResolver struct {
 	requests []references.Request
 	err      error
 	tree     bool
-	ids      []repositoryid.ID
+	ids      []repofacts.ID
 }
 
-func knownRepositoryID(value uint64) repositoryid.ID {
-	id, err := repositoryid.Known(value)
+func knownRepositoryID(value uint64) repofacts.ID {
+	id, err := repofacts.KnownID(value)
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func TestCheckingSessionPreparesResolverFacts(t *testing.T) {
 			steps := "      - uses: owner/repo@v1\n"
 			if partial {
 				wantRequests = 2
-				provider.ids = []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43)}
+				provider.ids = []repofacts.ID{knownRepositoryID(42), knownRepositoryID(43)}
 				steps += "      - uses: owner/repo@v2\n"
 			}
 			content := "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + steps
@@ -134,7 +134,7 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 
 func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 	t.Parallel()
-	provider := &fakeResolver{ids: []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43), knownRepositoryID(43)}}
+	provider := &fakeResolver{ids: []repofacts.ID{knownRepositoryID(42), knownRepositoryID(43), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
 	first := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
 	second := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
@@ -155,7 +155,7 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 
 func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
 	t.Parallel()
-	provider := &fakeResolver{ids: []repositoryid.ID{{}, knownRepositoryID(42), {}, knownRepositoryID(42)}}
+	provider := &fakeResolver{ids: []repofacts.ID{{}, knownRepositoryID(42), {}, knownRepositoryID(42)}}
 	rule := newReferenceCheck(provider)
 	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2", "owner/repo@v3", "OWNER/REPO@v4"} {
 		findings, err := rule.CheckDocument(t.Context(), checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: uses, Kind: "action"}}})
@@ -166,7 +166,7 @@ func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
 			t.Fatalf("message without repository ID = %q", findings[0].Message)
 		}
 	}
-	want := []repositoryid.ID{{}, {}, knownRepositoryID(42), knownRepositoryID(42)}
+	want := []repofacts.ID{{}, {}, knownRepositoryID(42), knownRepositoryID(42)}
 	for i, request := range provider.requests {
 		if request.ExpectedRepositoryID != want[i] {
 			t.Fatalf("request %d expected repository ID = %+v, want %+v", i, request.ExpectedRepositoryID, want[i])
@@ -176,7 +176,7 @@ func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
 
 func TestRepositoryIdentityRetainsPartialFindings(t *testing.T) {
 	t.Parallel()
-	provider := &fakeResolver{ids: []repositoryid.ID{knownRepositoryID(42), knownRepositoryID(43)}}
+	provider := &fakeResolver{ids: []repofacts.ID{knownRepositoryID(42), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
 	input := checkinputs.Input{Dependencies: []workflowfacts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
 	findings, err := rule.CheckDocument(t.Context(), input)

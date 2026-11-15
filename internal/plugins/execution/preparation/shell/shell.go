@@ -4,10 +4,9 @@
 package shell
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/bash"
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
@@ -41,7 +40,7 @@ func (s Shell) Analysis() (dialect, startup string) {
 	}
 	switch invocation.Language {
 	case "bash", "sh", "dash", "ksh":
-		return invocation.Language, bash.Setup(invocation.Settings)
+		return invocation.Language, interpreters.BashSetup(invocation.Settings)
 	default:
 		return "", ""
 	}

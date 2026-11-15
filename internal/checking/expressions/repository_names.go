@@ -7,7 +7,7 @@ import (
 
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )

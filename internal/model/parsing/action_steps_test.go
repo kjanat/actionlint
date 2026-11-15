@@ -3,7 +3,7 @@ package parsing
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
@@ -37,11 +37,11 @@ func TestRejectedCompositeRunsKeepSurroundingDeclarations(t *testing.T) {
 
 func TestCompositeScriptNodeSharing(t *testing.T) {
 	t.Parallel()
-	leaf := &syntax.Node{Kind: syntax.ScalarNode, Value: "hello", Line: 3, Column: 5}
-	shared := &syntax.Node{Kind: syntax.SequenceNode, Content: []*syntax.Node{leaf}}
-	alias := &syntax.Node{Kind: syntax.AliasNode, Alias: shared}
-	root := &syntax.Node{Kind: syntax.SequenceNode, Content: []*syntax.Node{shared, alias, alias}}
-	clone, ok := cloneActionNode(root, make(map[*syntax.Node]bool), make(map[*syntax.Node]*syntax.Node))
+	leaf := &codec.Node{Kind: codec.ScalarNode, Value: "hello", Line: 3, Column: 5}
+	shared := &codec.Node{Kind: codec.SequenceNode, Content: []*codec.Node{leaf}}
+	alias := &codec.Node{Kind: codec.AliasNode, Alias: shared}
+	root := &codec.Node{Kind: codec.SequenceNode, Content: []*codec.Node{shared, alias, alias}}
+	clone, ok := cloneActionNode(root, make(map[*codec.Node]bool), make(map[*codec.Node]*codec.Node))
 	if !ok || clone == root || len(clone.Content) != 3 {
 		t.Fatalf("clone failed: %v, %+v", ok, clone)
 	}
@@ -51,17 +51,17 @@ func TestCompositeScriptNodeSharing(t *testing.T) {
 	if got := clone.Content[0].Content[0]; got == leaf || got.Value != leaf.Value || got.Line != leaf.Line || got.Column != leaf.Column {
 		t.Fatalf("source information lost: %+v", got)
 	}
-	if root.Content[1] != alias || alias.Kind != syntax.AliasNode || alias.Alias != shared {
+	if root.Content[1] != alias || alias.Kind != codec.AliasNode || alias.Alias != shared {
 		t.Fatal("shared metadata was mutated")
 	}
 }
 
 func TestCompositeScriptNodeCycle(t *testing.T) {
 	t.Parallel()
-	root := &syntax.Node{Kind: syntax.SequenceNode}
-	root.Content = []*syntax.Node{{Kind: syntax.AliasNode, Alias: root}}
-	done := make(map[*syntax.Node]*syntax.Node)
-	if _, ok := cloneActionNode(root, make(map[*syntax.Node]bool), done); ok {
+	root := &codec.Node{Kind: codec.SequenceNode}
+	root.Content = []*codec.Node{{Kind: codec.AliasNode, Alias: root}}
+	done := make(map[*codec.Node]*codec.Node)
+	if _, ok := cloneActionNode(root, make(map[*codec.Node]bool), done); ok {
 		t.Fatal("accepted a cyclic node graph")
 	}
 	if _, ok := done[root]; ok {

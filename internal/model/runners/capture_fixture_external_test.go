@@ -1,4 +1,4 @@
-package runner_test
+package runners_test
 
 import (
 	"testing"

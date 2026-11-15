@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 // YamlAliasDiagnostic classifies physical-source alias problems. Rejected uses
@@ -23,10 +22,10 @@ const (
 // projectYAMLAliases builds a detached parser graph and alias-use provenance.
 // Shared declarations remain shared within the projection; source nodes never change.
 // root must be a complete, non-nil, structurally valid graph from codec.Parse.
-func projectYAMLAliases(root *syntax.Node, uses []yamlAliasUse) (*syntax.Node, map[*syntax.Node]*syntax.Node) {
-	copies := map[*syntax.Node]*syntax.Node{}
-	var clone func(*syntax.Node) *syntax.Node
-	clone = func(node *syntax.Node) *syntax.Node {
+func projectYAMLAliases(root *codec.Node, uses []yamlAliasUse) (*codec.Node, map[*codec.Node]*codec.Node) {
+	copies := map[*codec.Node]*codec.Node{}
+	var clone func(*codec.Node) *codec.Node
+	clone = func(node *codec.Node) *codec.Node {
 		if existing, found := copies[node]; found {
 			return existing
 		}
@@ -42,13 +41,13 @@ func projectYAMLAliases(root *syntax.Node, uses []yamlAliasUse) (*syntax.Node, m
 		return result
 	}
 	projected := clone(root)
-	var aliases map[*syntax.Node]*syntax.Node
+	var aliases map[*codec.Node]*codec.Node
 	for _, use := range uses {
 		original := use.parent.Content[use.index]
 		resolved := new(*copies[original.Alias])
 		copies[use.parent].Content[use.index] = resolved
 		if aliases == nil {
-			aliases = map[*syntax.Node]*syntax.Node{}
+			aliases = map[*codec.Node]*codec.Node{}
 		}
 		aliases[resolved] = original
 	}
@@ -57,24 +56,24 @@ func projectYAMLAliases(root *syntax.Node, uses []yamlAliasUse) (*syntax.Node, m
 
 // AdmitYAMLAliases applies the codec's resource limit to dialect-approved uses.
 // It neither constructs semantic values nor changes the physical source graph.
-func AdmitYAMLAliases(root *syntax.Node) error {
-	uses := inspectYAMLAliases(root, func(*syntax.Node, YamlAliasDiagnostic, string) {})
+func AdmitYAMLAliases(root *codec.Node) error {
+	uses := inspectYAMLAliases(root, func(*codec.Node, YamlAliasDiagnostic, string) {})
 	return admitYAMLAliasUses(root, uses)
 }
 
-func admitYAMLAliasUses(root *syntax.Node, uses []yamlAliasUse) error {
+func admitYAMLAliasUses(root *codec.Node, uses []yamlAliasUse) error {
 	if !codec.RequiresAdmission(len(uses)) {
 		return nil
 	}
 	return codec.Admit(root, acceptedYAMLAliasUses(uses))
 }
 
-func acceptedYAMLAliasUses(uses []yamlAliasUse) func(*syntax.Node, int) bool {
+func acceptedYAMLAliasUses(uses []yamlAliasUse) func(*codec.Node, int) bool {
 	accepted := make(map[yamlAliasUse]bool, len(uses))
 	for _, use := range uses {
 		accepted[use] = true
 	}
-	return func(parent *syntax.Node, index int) bool {
+	return func(parent *codec.Node, index int) bool {
 		return accepted[yamlAliasUse{parent, index}]
 	}
 }
@@ -82,28 +81,28 @@ func acceptedYAMLAliasUses(uses []yamlAliasUse) func(*syntax.Node, int) bool {
 // ValidateYAMLAliases only reports diagnostics on a complete, non-nil, structurally valid
 // source graph from codec.Parse. Content order defines declarations; shared concrete
 // nodes are inspected once and alias diagnostics follow parent slots.
-func ValidateYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) {
+func ValidateYAMLAliases(root *codec.Node, report func(n *codec.Node, d YamlAliasDiagnostic, m string)) {
 	inspectYAMLAliases(root, report)
 }
 
 type yamlAliasUse struct {
-	parent *syntax.Node
+	parent *codec.Node
 	index  int
 }
 
-func inspectYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAliasDiagnostic, m string)) []yamlAliasUse {
+func inspectYAMLAliases(root *codec.Node, report func(n *codec.Node, d YamlAliasDiagnostic, m string)) []yamlAliasUse {
 	type usage struct {
 		used    bool
 		defined bool
 	}
 
-	anchors := map[*syntax.Node]*usage{}
-	visited := map[*syntax.Node]bool{}
-	var declarations []*syntax.Node
+	anchors := map[*codec.Node]*usage{}
+	visited := map[*codec.Node]bool{}
+	var declarations []*codec.Node
 	var uses []yamlAliasUse
 
-	var resolve func(*syntax.Node) // For recursive call
-	resolve = func(n *syntax.Node) {
+	var resolve func(*codec.Node) // For recursive call
+	resolve = func(n *codec.Node) {
 		if visited[n] {
 			return
 		}
@@ -118,7 +117,7 @@ func inspectYAMLAliases(root *syntax.Node, report func(n *syntax.Node, d YamlAli
 			anchors[n] = u
 		}
 		for i, c := range n.Content {
-			if c.Kind != syntax.AliasNode {
+			if c.Kind != codec.AliasNode {
 				resolve(c)
 				continue
 			}

@@ -9,7 +9,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

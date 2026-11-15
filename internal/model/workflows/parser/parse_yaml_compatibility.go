@@ -5,15 +5,15 @@ import (
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
 
 // Check the physical tree before alias projection. YAML accepts compact empty
 // flow values, but GitHub's reader can absorb the colon into an unquoted key.
 // Quoted keys use a different token boundary and do not need this restriction.
-func (p *Parser) checkFlowMappingNulls(node *syntax.Node, flow bool) {
-	flow = flow || node.Style&syntax.FlowStyle != 0
-	if flow && node.Kind == syntax.MappingNode {
+func (p *Parser) checkFlowMappingNulls(node *codec.Node, flow bool) {
+	flow = flow || node.Style&codec.FlowStyle != 0
+	if flow && node.Kind == codec.MappingNode {
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key, value := node.Content[i], node.Content[i+1]
 			if p.compactFlowNull(key, value) {
@@ -26,9 +26,9 @@ func (p *Parser) checkFlowMappingNulls(node *syntax.Node, flow bool) {
 	}
 }
 
-func (p *Parser) compactFlowNull(key, value *syntax.Node) bool {
-	if key.Kind != syntax.ScalarNode || key.Value == "" || key.Style&(syntax.SingleQuotedStyle|syntax.DoubleQuotedStyle) != 0 ||
-		value.Kind != syntax.ScalarNode || value.Tag != workflowlang.YamlTagNull || value.Value != "" {
+func (p *Parser) compactFlowNull(key, value *codec.Node) bool {
+	if key.Kind != codec.ScalarNode || key.Value == "" || key.Style&(codec.SingleQuotedStyle|codec.DoubleQuotedStyle) != 0 ||
+		value.Kind != codec.ScalarNode || value.Tag != workflowlang.YamlTagNull || value.Value != "" {
 		return false
 	}
 	row := value.Line - 1

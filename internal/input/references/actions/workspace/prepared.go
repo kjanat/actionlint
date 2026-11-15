@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 type preparedAction struct {

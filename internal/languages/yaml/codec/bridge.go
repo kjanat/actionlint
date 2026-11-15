@@ -6,17 +6,15 @@ import (
 	"errors"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
-
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
-func fromParser(root *upstream.Node, seen map[*upstream.Node]*syntax.Node) (*syntax.Node, error) {
+func fromParser(root *upstream.Node, seen map[*upstream.Node]*Node) (*Node, error) {
 	if seen == nil {
-		seen = map[*upstream.Node]*syntax.Node{}
+		seen = map[*upstream.Node]*Node{}
 	}
-	var convert func(*upstream.Node) (*syntax.Node, error)
-	convert = func(n *upstream.Node) (*syntax.Node, error) {
+	var convert func(*upstream.Node) (*Node, error)
+	convert = func(n *upstream.Node) (*Node, error) {
 		if n == nil {
 			return nil, nil
 		}
@@ -31,7 +29,7 @@ func fromParser(root *upstream.Node, seen map[*upstream.Node]*syntax.Node) (*syn
 		if err != nil {
 			return nil, err
 		}
-		r := &syntax.Node{Kind: kind, Style: style, Tag: n.Tag, Value: n.Value, Anchor: n.Anchor, HeadComment: n.HeadComment, LineComment: n.LineComment, FootComment: n.FootComment, Line: n.Line, Column: n.Column}
+		r := &Node{Kind: kind, Style: style, Tag: n.Tag, Value: n.Value, Anchor: n.Anchor, HeadComment: n.HeadComment, LineComment: n.LineComment, FootComment: n.FootComment, Line: n.Line, Column: n.Column}
 		seen[n] = r
 		r.Alias, err = convert(n.Alias)
 		if err != nil {
@@ -51,17 +49,17 @@ func fromParser(root *upstream.Node, seen map[*upstream.Node]*syntax.Node) (*syn
 
 type parserGraph struct {
 	root      *upstream.Node
-	originals map[*upstream.Node]*syntax.Node
+	originals map[*upstream.Node]*Node
 }
 
-func toParser(root *syntax.Node) (parserGraph, error) {
+func toParser(root *Node) (parserGraph, error) {
 	if err := validateGraph(root); err != nil {
 		return parserGraph{}, err
 	}
-	graph := parserGraph{originals: map[*upstream.Node]*syntax.Node{}}
-	seen := map[*syntax.Node]*upstream.Node{}
-	var convert func(*syntax.Node) (*upstream.Node, error)
-	convert = func(n *syntax.Node) (*upstream.Node, error) {
+	graph := parserGraph{originals: map[*upstream.Node]*Node{}}
+	seen := map[*Node]*upstream.Node{}
+	var convert func(*Node) (*upstream.Node, error)
+	convert = func(n *Node) (*upstream.Node, error) {
 		if n == nil {
 			return nil, nil
 		}
@@ -116,13 +114,13 @@ func translate(err error) error {
 
 // Parse reads the first YAML document into an owned syntax graph.
 // Empty input returns a non-nil zero-kind node; malformed YAML returns nil and its parse error.
-func Parse(data []byte) (*syntax.Node, error) {
+func Parse(data []byte) (*Node, error) {
 	var node upstream.Node
 	if err := upstream.Unmarshal(data, &node); err != nil {
 		return nil, translate(err)
 	}
 	if node.Kind == 0 {
-		return &syntax.Node{}, nil
+		return &Node{}, nil
 	}
 	return fromParser(&node, nil)
 }
@@ -161,7 +159,7 @@ func representation(value any) (*upstream.Node, error) {
 	return &raw, nil
 }
 
-func Encode(value any) (*syntax.Node, error) {
+func Encode(value any) (*Node, error) {
 	raw, err := representation(value)
 	if err != nil {
 		return nil, err

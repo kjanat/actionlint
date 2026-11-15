@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	sourceid "actionlint.kjanat.dev/v2/internal/input/source/identity"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 // allowReviewedAdditionalInputs permits undeclared input names for an identified implementation.

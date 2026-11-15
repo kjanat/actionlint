@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/workflowcall"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 

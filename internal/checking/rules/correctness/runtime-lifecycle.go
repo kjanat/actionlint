@@ -6,9 +6,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	"actionlint.kjanat.dev/v2/internal/model/runtimes"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -45,7 +45,7 @@ func RuntimeLifecycleCheck(context actionmeta.LifecycleContext) checkinputs.Decl
 			if !known {
 				return nil
 			}
-			evidence, message, known := runtimes.NodeLifecycle(strings.TrimSpace(selector), context.AsOf, context.Service)
+			evidence, message, known := lifecycle.NodeLifecycle(strings.TrimSpace(selector), context.AsOf, context.Service)
 			if !known {
 				return nil
 			}

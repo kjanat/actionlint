@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRunnerSupportMessagesDescribeTheNextState(t *testing.T) {

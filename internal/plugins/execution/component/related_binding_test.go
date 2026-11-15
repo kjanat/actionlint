@@ -11,7 +11,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/related"
 	"github.com/kjanat/wacogo"
 )
 
@@ -52,8 +51,8 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 	locations := []results.Related{{Message: "same request", Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}}
 	native, nativeErr := checkexecutor.Run(t.Context(), input, []checkinputs.Registration{{Checker: relatedProbe{locations}}})
 	wire, witErr := liftAnalysisForInput(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())), &input)
-	a, na := errors.AsType[*related.RejectedError](nativeErr)
-	b, nb := errors.AsType[*related.RejectedError](witErr)
+	a, na := errors.AsType[*results.RejectedRelatedError](nativeErr)
+	b, nb := errors.AsType[*results.RejectedRelatedError](witErr)
 	if !na || !nb || a.Count() != 1 || b.Count() != 1 || len(native) != 1 || len(wire) != 1 || !reflect.DeepEqual(native[0].Related, wire[0].Related) || native[0].Related[0].Revision != revision {
 		t.Fatalf("native=%+v %v WIT=%+v %v", native, nativeErr, wire, witErr)
 	}
@@ -63,7 +62,7 @@ func TestMalformedRelatedKeepsWITPrimaryAndCountsEveryLocation(t *testing.T) {
 	t.Parallel()
 	locations := []results.Related{{Path: "workflow.yml", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 1, Column: 1}}, {Path: "workflow.yml", Start: sourcepos.Position{}, End: sourcepos.Position{Line: 1, Column: 1}}}
 	findings, err := liftAnalysis(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())))
-	rejected, ok := errors.AsType[*related.RejectedError](err)
+	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != 2 || len(findings) != 1 || findings[0].Message != "primary" || len(findings[0].Related) != 0 {
 		t.Fatalf("findings=%+v err=%v", findings, err)
 	}

@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestFixtureRepositoryIDIsOptional(t *testing.T) {
@@ -12,7 +12,7 @@ func TestFixtureRepositoryIDIsOptional(t *testing.T) {
 	if err != nil || !id.IsZero() {
 		t.Fatalf("absent header = %+v, %v", id, err)
 	}
-	want, err := repositoryid.Known(42)
+	want, err := repofacts.KnownID(42)
 	if err != nil {
 		t.Fatal(err)
 	}

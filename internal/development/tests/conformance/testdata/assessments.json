@@ -631,7 +631,7 @@
         "rationale": "Additional lint over the pinned reader conversion: empty-job warnings, undefined matrix and step references, a string-valued timeout expression, and github.event.number on a push trigger. The pinned OpenAPI push payload has no number member. These findings do not establish that GitHub rejects the workflow.",
         "evidence": [
           "fixture:languageservices/workflow-parser/testdata/reader/misc-jobs.yml",
-          "internal/model/contexts/events/payload/catalogue.json (@octokit/openapi-webhooks, revision 592754e9bee3fab1f3c11f51bcde825eb2d19112, push)",
+          "internal/model/contexts/events/payload_catalogue.json (@octokit/openapi-webhooks, revision 592754e9bee3fab1f3c11f51bcde825eb2d19112, push)",
           "source:internal/checking/rules/correctness/empty-job-check.go",
           "source:internal/languages/expressions/typecheck/name_diagnostics.go"
         ]
@@ -998,7 +998,7 @@
         "rationale": "Actionlint's supported trigger catalogue excludes project, project_card and project_column; the fixture also declares workflow_run without workflows and an empty run script. These are event-validation findings and an empty-run warning. The corpus acceptance label establishes no GitHub service behavior.",
         "evidence": [
           "fixture:schemastore/src/test/github-workflow/on-event_name-null.yaml",
-          "source:internal/model/contexts/events/triggers/webhooks.gen.go",
+          "source:internal/model/contexts/events/webhooks.gen.go",
           "source:internal/development/generators/event-triggers/sources/manifest.json",
           "source:internal/checking/workflows/events.go",
           "source:internal/checking/workflows/shape.go"

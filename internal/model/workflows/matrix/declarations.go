@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 // Axis describes one declared row. Values do not enumerate the full domain

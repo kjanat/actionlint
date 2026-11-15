@@ -19,7 +19,7 @@ import (
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 

@@ -8,7 +8,7 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"mvdan.cc/sh/v3/syntax"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"

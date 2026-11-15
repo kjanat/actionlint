@@ -36,8 +36,8 @@ import (
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 

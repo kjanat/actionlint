@@ -5,8 +5,6 @@ import (
 	"slices"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	"actionlint.kjanat.dev/v2/internal/model/contexts/events/payload"
-	eventtriggers "actionlint.kjanat.dev/v2/internal/model/contexts/events/triggers"
 )
 
 // Trigger identifies a possible event and optional activity filters. Unknown
@@ -25,7 +23,7 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 		if name == "pull_request_target" {
 			name = "pull_request"
 		}
-		variants, known := payload.Variants(name)
+		variants, known := PayloadVariants(name)
 		var dispatch exprtypes.ObjectType
 		hasDispatch := false
 		if trigger.Name == "repository_dispatch" {
@@ -42,7 +40,7 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 		}
 		actions := trigger.Actions
 		if len(actions) == 0 {
-			actions, _ = eventtriggers.DefaultActivities(trigger.Name)
+			actions, _ = DefaultActivities(trigger.Name)
 		}
 		if len(actions) == 0 {
 			// Events without a types filter can still carry webhook actions, e.g.
@@ -123,7 +121,7 @@ func (b *builder) build(id int) member {
 	}
 	b.active[id] = true
 	defer delete(b.active, id)
-	n := payload.Node(id)
+	n := PayloadNode(id)
 	var m member
 	switch n.Kind {
 	case "absent", "null":

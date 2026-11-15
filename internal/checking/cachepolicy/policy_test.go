@@ -11,7 +11,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	triggers "actionlint.kjanat.dev/v2/internal/model/contexts/events/triggers"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -82,14 +82,14 @@ func TestCachePolicyTriggers(t *testing.T) {
 
 func TestCachePolicyEventClassification(t *testing.T) {
 	t.Parallel()
-	for event := range triggers.AllWebhookTypes {
+	for event := range events.AllWebhookTypes {
 		class, exists := cacheEventClasses[event]
 		if !exists || class == cacheEventUnknown {
 			t.Errorf("generated event %q needs an explicit cache trust classification", event)
 		}
 	}
 	for event, class := range cacheEventClasses {
-		if _, exists := triggers.AllWebhookTypes[event]; !exists {
+		if _, exists := events.AllWebhookTypes[event]; !exists {
 			t.Errorf("cache event %q is absent from the generated inventory", event)
 		}
 		switch class {

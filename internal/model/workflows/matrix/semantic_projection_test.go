@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 

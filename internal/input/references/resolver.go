@@ -5,24 +5,24 @@ import (
 	"context"
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // Request preserves consumer semantics: actions and workflows may resolve the
 // same ref differently. ExpectedRepositoryID detects repository name reuse.
 type Request struct {
-	Version              int             `json:"version"`
-	Repository           string          `json:"repository"`
-	Ref                  string          `json:"ref"`
-	Kind                 string          `json:"kind"`
-	ExpectedRepositoryID repositoryid.ID `json:"expected_repository_id,omitzero"`
+	Version              int          `json:"version"`
+	Repository           string       `json:"repository"`
+	Ref                  string       `json:"ref"`
+	Kind                 string       `json:"kind"`
+	ExpectedRepositoryID repofacts.ID `json:"expected_repository_id,omitzero"`
 }
 
 // Result binds a resolution to immutable content and records the resolver's
 // fetch log. Tree identities must never be presented as commit identities.
 type Result struct {
 	Version      int             `json:"version"`
-	RepositoryID repositoryid.ID `json:"repository_id,omitzero"`
+	RepositoryID repofacts.ID    `json:"repository_id,omitzero"`
 	Repository   string          `json:"repository"`
 	Commit       string          `json:"commit,omitempty"`
 	Tree         string          `json:"tree,omitempty"`

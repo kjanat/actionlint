@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/bash"
-
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 )
 
@@ -128,13 +126,13 @@ func TestBashPreparationMatchesStartupOptions(t *testing.T) {
 			if err != nil {
 				t.Fatalf("original: %v: %s", err, want)
 			}
-			prepared := exec.CommandContext(t.Context(), executable, "--noprofile", "--norc", "-c", bash.Setup(invocation.Settings)+"\n"+snapshot)
+			prepared := exec.CommandContext(t.Context(), executable, "--noprofile", "--norc", "-c", BashSetup(invocation.Settings)+"\n"+snapshot)
 			got, err := prepared.CombinedOutput()
 			if err != nil {
 				t.Fatalf("prepared: %v: %s", err, got)
 			}
 			if string(got) != string(want) {
-				t.Fatalf("setup %s\noriginal:\n%s\nprepared:\n%s", bash.Setup(invocation.Settings), want, got)
+				t.Fatalf("setup %s\noriginal:\n%s\nprepared:\n%s", BashSetup(invocation.Settings), want, got)
 			}
 		})
 	}

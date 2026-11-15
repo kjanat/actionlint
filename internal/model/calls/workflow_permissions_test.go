@@ -10,7 +10,6 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -240,10 +239,10 @@ func TestResolvePermissionsAbsent(t *testing.T) {
 	if have := ResolvePermissionsYAML(nil); have.Kind != PermissionsAbsent {
 		t.Errorf("nil YAML node should be absent but got %v", have.Kind)
 	}
-	if have := ResolvePermissionsYAML(&syntax.Node{}); have.Kind != PermissionsAbsent {
+	if have := ResolvePermissionsYAML(&codec.Node{}); have.Kind != PermissionsAbsent {
 		t.Errorf("zero YAML node should be absent but got %v", have.Kind)
 	}
-	if have := ResolvePermissionsYAML(&syntax.Node{Kind: syntax.SequenceNode}); have.Kind != PermissionsInvalid {
+	if have := ResolvePermissionsYAML(&codec.Node{Kind: codec.SequenceNode}); have.Kind != PermissionsInvalid {
 		t.Errorf("sequence YAML node should be invalid but got %v", have.Kind)
 	}
 }
@@ -287,7 +286,7 @@ func TestDefaultPermissionLevels(t *testing.T) {
 	}
 }
 
-func permissionSourceNode(t *testing.T, data []byte) *syntax.Node {
+func permissionSourceNode(t *testing.T, data []byte) *codec.Node {
 	t.Helper()
 	root, err := codec.Parse(data)
 	if err != nil {
@@ -311,7 +310,7 @@ func TestResolvePermissionsYAMLDoesNotMutateSource(t *testing.T) {
 		}
 		original := *node
 		original.Content = slices.Clone(node.Content)
-		children := make([]syntax.Node, len(node.Content))
+		children := make([]codec.Node, len(node.Content))
 		for i, child := range node.Content {
 			children[i] = *child
 		}

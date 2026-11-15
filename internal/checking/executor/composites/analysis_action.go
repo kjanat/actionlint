@@ -11,7 +11,7 @@ import (
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 

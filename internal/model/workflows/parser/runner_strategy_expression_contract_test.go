@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	matrixlang "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )

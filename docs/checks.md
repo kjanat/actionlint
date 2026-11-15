@@ -1562,7 +1562,7 @@ actionlint validates the Webhook configurations:
 | `tags`            | `push`                                                                       |
 | `tags-ignore`     | `push`                                                                       |
 
-The available webhooks and their types are listed in [`webhooks.gen.go`](../internal/model/contexts/events/triggers/webhooks.gen.go).
+The available webhooks and their types are listed in [`webhooks.gen.go`](../internal/model/contexts/events/webhooks.gen.go).
 A [script][generate-webhook-events] generates the file, and a weekly CI workflow updates it.
 
 <a id="check-workflow-dispatch-events"></a>

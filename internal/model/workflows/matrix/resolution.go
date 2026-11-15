@@ -10,7 +10,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )

@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 func TestRelativeRepositoryRootUsesSessionWorkingDirectory(t *testing.T) {

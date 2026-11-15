@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRunnerProviderCLI(t *testing.T) {

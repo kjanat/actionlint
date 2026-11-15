@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -15,7 +14,7 @@ func (m unsafeNodeResult) MarshalYAML() (any, error) { return m.result, nil }
 
 func TestMarshalerCannotReturnSyntaxNodes(t *testing.T) {
 	t.Parallel()
-	node := syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "hidden"}
+	node := codec.Node{Kind: codec.ScalarNode, Tag: "!!str", Value: "hidden"}
 	for _, tc := range []struct {
 		name   string
 		result any
@@ -38,7 +37,7 @@ func TestMarshalerCannotReturnSyntaxNodes(t *testing.T) {
 }
 
 type safeYAMLMarshaler struct {
-	Node   *syntax.Node
+	Node   *codec.Node
 	Parent *safeYAMLMarshaler
 }
 
@@ -47,7 +46,7 @@ func (safeYAMLMarshaler) MarshalYAML() (any, error) {
 }
 
 type safeTextMarshaler struct {
-	Node   *syntax.Node
+	Node   *codec.Node
 	Parent *safeTextMarshaler
 }
 
@@ -55,7 +54,7 @@ func (safeTextMarshaler) MarshalText() ([]byte, error) { return []byte("safe tex
 
 func TestSafeMarshalersHideSyntaxNodesAndParentCycles(t *testing.T) {
 	t.Parallel()
-	node := &syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "internal"}
+	node := &codec.Node{Kind: codec.ScalarNode, Tag: "!!str", Value: "internal"}
 	yamlValue := &safeYAMLMarshaler{Node: node}
 	yamlValue.Parent = yamlValue
 	textValue := &safeTextMarshaler{Node: node}
@@ -84,7 +83,7 @@ func TestSafeMarshalersHideSyntaxNodesAndParentCycles(t *testing.T) {
 func TestNilSyntaxNodeFieldEncodesAsNull(t *testing.T) {
 	t.Parallel()
 	value := struct {
-		Node *syntax.Node `yaml:"node"`
+		Node *codec.Node `yaml:"node"`
 	}{}
 	encoded, err := codec.Marshal(value)
 	if err != nil {
@@ -104,7 +103,7 @@ func TestNilSyntaxNodeFieldEncodesAsNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Encode nil node field: %v", err)
 	}
-	if decoded.Kind != syntax.MappingNode || len(decoded.Content) != 2 {
+	if decoded.Kind != codec.MappingNode || len(decoded.Content) != 2 {
 		t.Fatalf("Encode nil node field = %#v, want one mapping property", decoded)
 	}
 	var baseline upstream.Node
@@ -113,14 +112,14 @@ func TestNilSyntaxNodeFieldEncodesAsNull(t *testing.T) {
 	}
 	null := decoded.Content[1]
 	wantNull := baseline.Content[1]
-	if null.Kind != syntax.ScalarNode || null.Tag != wantNull.Tag || null.Value != wantNull.Value || null.Tag != "!!null" {
+	if null.Kind != codec.ScalarNode || null.Tag != wantNull.Tag || null.Value != wantNull.Value || null.Tag != "!!null" {
 		t.Fatalf("encoded field = %#v, upstream baseline = %#v; want YAML null", null, wantNull)
 	}
 }
 
 func TestEncoderWritesNothingOnMarshalerFailureAndRemainsUsable(t *testing.T) {
 	t.Parallel()
-	node := syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "unsafe"}
+	node := codec.Node{Kind: codec.ScalarNode, Tag: "!!str", Value: "unsafe"}
 	var output bytes.Buffer
 	encoder := codec.NewEncoder(&output)
 	if err := encoder.Encode(unsafeNodeResult{result: node}); err == nil {
@@ -147,12 +146,12 @@ func TestEncodeReturnsAValueNodeWithZeroCoordinates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
-	if encoded.Kind != syntax.MappingNode {
+	if encoded.Kind != codec.MappingNode {
 		t.Fatalf("Encode root kind = %v, want MappingNode value", encoded.Kind)
 	}
-	seen := map[*syntax.Node]bool{}
-	var visit func(*syntax.Node)
-	visit = func(node *syntax.Node) {
+	seen := map[*codec.Node]bool{}
+	var visit func(*codec.Node)
+	visit = func(node *codec.Node) {
 		if node == nil || seen[node] {
 			return
 		}

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/http/accounting"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestResolverProcessHelper(t *testing.T) {
@@ -61,12 +61,12 @@ func TestResolverProcessHelper(t *testing.T) {
 		fmt.Printf(`{"version":1,"repository_id":0,"repository":%q,"commit":%q,"observed_at":"2026-10-16T00:00:00Z","fetch_log":{}}`, request.Repository, strings.Repeat("a", 40))
 		os.Exit(0)
 	}
-	repositoryID, err := repositoryid.Known(42)
+	repositoryID, err := repofacts.KnownID(42)
 	if err != nil {
 		os.Exit(9)
 	}
 	if mode == "no-repository-id" {
-		repositoryID = repositoryid.ID{}
+		repositoryID = repofacts.ID{}
 	}
 	result := references.Result{Version: 1, Repository: request.Repository, RepositoryID: repositoryID, Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}
 	if mode == "wrong-repository" {

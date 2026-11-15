@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"

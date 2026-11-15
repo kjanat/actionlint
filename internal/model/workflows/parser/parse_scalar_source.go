@@ -9,26 +9,25 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 // IndexScalarSources binds physical node identity and context before projection.
 // Standalone ScriptSource calls without indexing use an independently parsed graph.
 // Decode lazily: most workflow scalars never need source-level diagnostics.
-func (p *Parser) IndexScalarSources(root *syntax.Node) {
+func (p *Parser) IndexScalarSources(root *codec.Node) {
 	p.scalarContexts = make(map[workflowlang.Pos]sourcemap.Context)
 	p.scalarSources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
 	p.indexScalarComments(root)
-	var visit func(*syntax.Node, sourcemap.Context)
-	visit = func(n *syntax.Node, context sourcemap.Context) {
+	var visit func(*codec.Node, sourcemap.Context)
+	visit = func(n *codec.Node, context sourcemap.Context) {
 		if n == nil {
 			return
 		}
-		if n.Kind == syntax.ScalarNode {
+		if n.Kind == codec.ScalarNode {
 			p.scalarContexts[*PosAt(n)] = context
 		}
-		if n.Kind == syntax.MappingNode || n.Kind == syntax.SequenceNode {
-			context.Flow = context.Flow || n.Style&syntax.FlowStyle != 0
+		if n.Kind == codec.MappingNode || n.Kind == codec.SequenceNode {
+			context.Flow = context.Flow || n.Style&codec.FlowStyle != 0
 			if !context.Flow {
 				context.Indent = scalarCollectionIndent(n, p.sourceLines)
 			}
@@ -42,14 +41,14 @@ func (p *Parser) IndexScalarSources(root *syntax.Node) {
 
 // Collection positions can point at properties preceding their first entry.
 // Recover the structural indentation once for all scalar consumers.
-func scalarCollectionIndent(node *syntax.Node, lines []string) int {
+func scalarCollectionIndent(node *codec.Node, lines []string) int {
 	indent := node.Column - 1
 	if len(node.Content) == 0 {
 		return indent
 	}
 	first := node.Content[0]
-	if node.Kind == syntax.MappingNode {
-		if node.Anchor != "" || node.Style&syntax.TaggedStyle != 0 {
+	if node.Kind == codec.MappingNode {
+		if node.Anchor != "" || node.Style&codec.TaggedStyle != 0 {
 			indent = first.Column - 1
 			if len(node.Content) > 1 && node.Content[1].Line > first.Line {
 				declaration := lines[node.Content[1].Line-1]
@@ -76,8 +75,8 @@ func scalarCollectionIndent(node *syntax.Node, lines []string) int {
 }
 
 // ScriptSource returns an owned mapping; callers cannot mutate the parser's cache.
-func (p *Parser) ScriptSource(n *syntax.Node) *workflowlang.ScriptSource {
-	if n == nil || n.Kind != 0 && n.Kind != syntax.ScalarNode {
+func (p *Parser) ScriptSource(n *codec.Node) *workflowlang.ScriptSource {
+	if n == nil || n.Kind != 0 && n.Kind != codec.ScalarNode {
 		return nil
 	}
 	if p.scalarContexts == nil {

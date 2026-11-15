@@ -4,17 +4,15 @@ import (
 	"bytes"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
-
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
 func TestUnknownNodeRepresentationRejected(t *testing.T) {
 	t.Parallel()
-	for _, node := range []*syntax.Node{
+	for _, node := range []*Node{
 		{Kind: 1 << 31},
-		{Kind: syntax.ScalarNode, Style: 1 << 31},
-		{Kind: syntax.SequenceNode, Content: []*syntax.Node{{Kind: 1 << 31}}},
+		{Kind: ScalarNode, Style: 1 << 31},
+		{Kind: SequenceNode, Content: []*Node{{Kind: 1 << 31}}},
 	} {
 		if _, err := Marshal(node); err == nil {
 			t.Fatalf("encoded unsupported node: %+v", node)
@@ -41,7 +39,7 @@ func TestCursorRejectsNilSyntaxTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
-	var node *syntax.Node
+	var node *Node
 	if err := cursor.Decode(node); err == nil {
 		t.Fatal("accepted nil syntax target")
 	}
@@ -49,19 +47,19 @@ func TestCursorRejectsNilSyntaxTarget(t *testing.T) {
 
 func TestEncodeSyntaxValuesAndRejectNestedNodes(t *testing.T) {
 	t.Parallel()
-	node := syntax.Node{Kind: syntax.ScalarNode, Tag: "!!str", Value: "example"}
+	node := Node{Kind: ScalarNode, Tag: "!!str", Value: "example"}
 	for _, value := range []any{node, &node} {
 		encoded, err := Marshal(value)
 		if err != nil || string(encoded) != "example\n" {
 			t.Fatalf("Marshal = %q, %v", encoded, err)
 		}
 		converted, err := Encode(value)
-		if err != nil || converted.Kind != syntax.ScalarNode || converted.Value != "example" {
+		if err != nil || converted.Kind != ScalarNode || converted.Value != "example" {
 			t.Fatalf("Encode = %+v, %v", converted, err)
 		}
 	}
 	for _, value := range []any{
-		struct{ Value syntax.Node }{node},
+		struct{ Value Node }{node},
 		map[string]any{"value": &node},
 		[]any{node},
 	} {

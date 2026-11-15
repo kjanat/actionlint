@@ -12,7 +12,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/related"
 )
 
 // Run isolates each analyzer's input and joins all started work.
@@ -155,7 +154,7 @@ func RunOne(ctx context.Context, input checkinputs.Input, registration PreparedR
 	for i := range findings {
 		findings[i] = findings[i].Clone()
 	}
-	err = errors.Join(preparationErr, err, related.BindDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
+	err = errors.Join(preparationErr, err, results.BindRelatedInDiagnostics(findings, input.Path, input.Revision, input.Coordinates))
 	if canceled := ctx.Err(); canceled != nil && !errors.Is(err, canceled) {
 		err = errors.Join(err, canceled)
 	}

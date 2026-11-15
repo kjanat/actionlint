@@ -13,8 +13,7 @@ import (
 	actionfixtures "actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
-	"actionlint.kjanat.dev/v2/internal/model/repositoryid"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // WithFixtureKnowledge supplies the corpus's explicit host evidence. Configured
@@ -69,16 +68,16 @@ func (p *fixtureActions) Lookup(ctx context.Context, ref actions.Reference) (act
 	return actions.NewManifestFile(selection, manifest.filename, []byte(manifest.content))
 }
 
-func fixtureRepositoryID(fields map[string]string) (repositoryid.ID, error) {
+func fixtureRepositoryID(fields map[string]string) (repository.ID, error) {
 	text, present := fields["repository-id"]
 	if !present {
-		return repositoryid.ID{}, nil
+		return repository.ID{}, nil
 	}
 	value, err := strconv.ParseUint(text, 10, 64)
 	if err != nil {
-		return repositoryid.ID{}, err
+		return repository.ID{}, err
 	}
-	return repositoryid.Known(value)
+	return repository.KnownID(value)
 }
 
 // FixtureActions reads local manifests with their provenance in comment headers.

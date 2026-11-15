@@ -11,7 +11,7 @@ import (
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	repoconfig "actionlint.kjanat.dev/v2/internal/input/configuration"
-	repository "actionlint.kjanat.dev/v2/internal/model/repositories"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type Selection struct {

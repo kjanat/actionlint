@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 // Inspect records missing and present paths. Unrepresentable or otherwise

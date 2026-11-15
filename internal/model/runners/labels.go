@@ -1,4 +1,4 @@
-package runner
+package runners
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
 

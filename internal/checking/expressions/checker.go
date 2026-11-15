@@ -9,7 +9,7 @@ import (
 
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actions"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"

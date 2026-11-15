@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/contract"
+	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"

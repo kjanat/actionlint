@@ -3,7 +3,7 @@ package execution
 import (
 	"strings"
 
-	value "actionlint.kjanat.dev/v2/internal/model/contexts/values"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 // Shell distinguishes the runner's bash -e fallback from explicit bash,

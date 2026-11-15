@@ -3,8 +3,6 @@ package codec
 import (
 	"errors"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 )
 
 func errorCursor(t *testing.T, data []byte) Cursor {
@@ -78,7 +76,7 @@ func TestEmptyInputValidatesTargets(t *testing.T) {
 	t.Parallel()
 	for _, source := range []string{"", "# comment\n"} {
 		cursor := errorCursor(t, []byte(source))
-		if err := cursor.Decode((*syntax.Node)(nil)); err == nil {
+		if err := cursor.Decode((*Node)(nil)); err == nil {
 			t.Fatal("empty stream accepted a nil target")
 		}
 		value := "preserved"

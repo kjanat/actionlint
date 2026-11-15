@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/syntax"
 	upstream "github.com/kjanat/go-yaml/v4"
 )
 
@@ -17,7 +16,7 @@ type cursorPlainStrings struct {
 	Items [][]string `yaml:"items"`
 }
 
-func walkCursorItems(root *syntax.Node, visit func(codec.Cursor) error) error {
+func walkCursorItems(root *codec.Node, visit func(codec.Cursor) error) error {
 	session, rootCursor, err := codec.Open(root)
 	if err != nil {
 		return err
@@ -60,7 +59,7 @@ func walkCursorItems(root *syntax.Node, visit func(codec.Cursor) error) error {
 	return session.Finish(walkErr)
 }
 
-func cursorDecodeStrings(root *syntax.Node, enterItem bool) ([][]string, error) {
+func cursorDecodeStrings(root *codec.Node, enterItem bool) ([][]string, error) {
 	var values [][]string
 	err := walkCursorItems(root, func(item codec.Cursor) error {
 		var value []string
@@ -83,7 +82,7 @@ func cursorDecodeStrings(root *syntax.Node, enterItem bool) ([][]string, error) 
 	return values, err
 }
 
-func cursorDecodeMaps(root *syntax.Node, enterItem bool) ([]map[string]any, error) {
+func cursorDecodeMaps(root *codec.Node, enterItem bool) ([]map[string]any, error) {
 	var values []map[string]any
 	err := walkCursorItems(root, func(item codec.Cursor) error {
 		var value map[string]any
@@ -121,15 +120,15 @@ func assertCursorAliasErrorMatchesUpstream(t *testing.T, got, want error) {
 	}
 }
 
-func assertOriginalItemAliases(t *testing.T, root *syntax.Node, anchorName string, count int) {
+func assertOriginalItemAliases(t *testing.T, root *codec.Node, anchorName string, count int) {
 	t.Helper()
 	anchor := mappingValue(root, anchorName)
 	items := mappingValue(root, "items")
-	if anchor == nil || items == nil || items.Kind != syntax.SequenceNode || len(items.Content) != count {
+	if anchor == nil || items == nil || items.Kind != codec.SequenceNode || len(items.Content) != count {
 		t.Fatalf("source graph anchor=%#v items=%#v", anchor, items)
 	}
 	for i, occurrence := range items.Content {
-		if occurrence.Kind != syntax.AliasNode || occurrence.Alias != anchor {
+		if occurrence.Kind != codec.AliasNode || occurrence.Alias != anchor {
 			t.Fatalf("source occurrence %d = %#v, want alias to original anchor %p", i, occurrence, anchor)
 		}
 	}
@@ -229,11 +228,11 @@ func TestCursorParentAliasSequenceCarriesExpansionContext(t *testing.T) {
 	sequence := mappingValue(root, "sequence")
 	parentOccurrence := mappingValue(root, "items")
 	payload := mappingValue(root, "payload")
-	if sequence == nil || payload == nil || parentOccurrence == nil || parentOccurrence.Kind != syntax.AliasNode || parentOccurrence.Alias != sequence {
+	if sequence == nil || payload == nil || parentOccurrence == nil || parentOccurrence.Kind != codec.AliasNode || parentOccurrence.Alias != sequence {
 		t.Fatalf("source parent alias = %#v, sequence = %#v, payload = %#v", parentOccurrence, sequence, payload)
 	}
 	for i, occurrence := range sequence.Content {
-		if occurrence.Kind != syntax.AliasNode || occurrence.Alias != payload {
+		if occurrence.Kind != codec.AliasNode || occurrence.Alias != payload {
 			t.Fatalf("parent sequence item %d = %#v, want alias to original payload %p", i, occurrence, payload)
 		}
 	}
@@ -244,11 +243,11 @@ func TestCursorParentAliasSequenceCarriesExpansionContext(t *testing.T) {
 		}
 		assertCursorAliasErrorMatchesUpstream(t, gotErr, wantErr)
 	}
-	if parentOccurrence.Kind != syntax.AliasNode || parentOccurrence.Alias != sequence {
+	if parentOccurrence.Kind != codec.AliasNode || parentOccurrence.Alias != sequence {
 		t.Errorf("parent alias occurrence changed during decode: %#v", parentOccurrence)
 	}
 	for i, occurrence := range sequence.Content {
-		if occurrence.Kind != syntax.AliasNode || occurrence.Alias != payload {
+		if occurrence.Kind != codec.AliasNode || occurrence.Alias != payload {
 			t.Errorf("parent sequence item %d changed during decode: %#v", i, occurrence)
 		}
 	}
@@ -287,7 +286,7 @@ func TestCursorValidAliasAndUnselectedControlsMatchUpstream(t *testing.T) {
 	}
 }
 
-func openFirstEnteredItem(root *syntax.Node) (*codec.Session, codec.Cursor, codec.Entered, error) {
+func openFirstEnteredItem(root *codec.Node) (*codec.Session, codec.Cursor, codec.Entered, error) {
 	session, rootCursor, err := codec.Open(root)
 	if err != nil {
 		return nil, codec.Cursor{}, codec.Entered{}, err
