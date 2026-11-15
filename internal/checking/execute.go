@@ -65,7 +65,6 @@ import (
 
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
-	"actionlint.kjanat.dev/v2/internal/results/related"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"golang.org/x/sync/errgroup"
 )
@@ -816,7 +815,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 	if withheld != 0 {
 		prior = errors.Join(prior, &admissionRejectedError{count: withheld})
 	}
-	return related.Consolidate(prior, withheldRelated)
+	return diagmodel.ConsolidateRejectedRelated(prior, withheldRelated)
 }
 
 type sourceAnalysisError struct {

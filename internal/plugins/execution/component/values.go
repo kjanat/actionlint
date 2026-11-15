@@ -11,7 +11,6 @@ import (
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
-	"actionlint.kjanat.dev/v2/internal/results/related"
 	"github.com/kjanat/wacogo"
 )
 
@@ -409,7 +408,7 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		return results.Diagnostic{}, err
 	}
 	if withheld != 0 {
-		return d, related.NewRejectedError(withheld)
+		return d, results.NewRejectedRelatedError(withheld)
 	}
 	return d, nil
 }
@@ -444,7 +443,7 @@ func liftAnalysisForInput(v wacogo.Val, input *checkinputs.Input) ([]results.Dia
 	for i := range list.Len() {
 		d, diagnosticErr := liftDiagnostic(list.Get(i))
 		if diagnosticErr != nil {
-			if rejected, ok := errors.AsType[*related.RejectedError](diagnosticErr); ok {
+			if rejected, ok := errors.AsType[*results.RejectedRelatedError](diagnosticErr); ok {
 				withheld += rejected.Count()
 			} else {
 				analysisErr = errors.Join(analysisErr, fmt.Errorf("diagnostic %d: %w", i, diagnosticErr))
@@ -453,8 +452,8 @@ func liftAnalysisForInput(v wacogo.Val, input *checkinputs.Input) ([]results.Dia
 		}
 		if input != nil {
 			var bindingErr error
-			d.Related, bindingErr = related.Bind(d.Related, input.Path, input.Revision, input.Coordinates)
-			if rejected, ok := errors.AsType[*related.RejectedError](bindingErr); ok {
+			d.Related, bindingErr = results.BindRelated(d.Related, input.Path, input.Revision, input.Coordinates)
+			if rejected, ok := errors.AsType[*results.RejectedRelatedError](bindingErr); ok {
 				withheld += rejected.Count()
 			} else if bindingErr != nil {
 				analysisErr = errors.Join(analysisErr, bindingErr)
@@ -463,7 +462,7 @@ func liftAnalysisForInput(v wacogo.Val, input *checkinputs.Input) ([]results.Dia
 		diagnostics = append(diagnostics, d)
 	}
 	if withheld != 0 {
-		analysisErr = errors.Join(analysisErr, related.NewRejectedError(withheld))
+		analysisErr = errors.Join(analysisErr, results.NewRejectedRelatedError(withheld))
 	}
 	return diagnostics, analysisErr
 }

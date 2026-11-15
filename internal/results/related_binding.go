@@ -1,44 +1,42 @@
-// Package related enforces related-location request grants and admission errors.
-package related
+package results
 
 import (
 	"errors"
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// RejectedError counts withheld related locations, never primary diagnostics.
+// RejectedRelatedError counts withheld related locations, never primary diagnostics.
 // The count is fixed at creation; read it with Count.
-type RejectedError struct {
+type RejectedRelatedError struct {
 	withheld int
 	cause    error
 }
 
-// NewRejectedError reports withheld related locations; nil when none were withheld.
-func NewRejectedError(withheld int) error {
+// NewRejectedRelatedError reports withheld related locations; nil when none were withheld.
+func NewRejectedRelatedError(withheld int) error {
 	if withheld <= 0 {
 		return nil
 	}
-	return &RejectedError{withheld: withheld}
+	return &RejectedRelatedError{withheld: withheld}
 }
 
-func (e *RejectedError) Error() string {
+func (e *RejectedRelatedError) Error() string {
 	message := fmt.Sprintf("admission-rejected: withheld %d related location(s)", e.withheld)
 	if e.cause != nil {
 		return message + ": " + e.cause.Error()
 	}
 	return message
 }
-func (e *RejectedError) Unwrap() error     { return e.cause }
-func (*RejectedError) Code() string        { return "admission-rejected" }
-func (e *RejectedError) Count() int        { return e.withheld }
-func (e *RejectedError) relatedCount() int { return e.withheld }
+func (e *RejectedRelatedError) Unwrap() error     { return e.cause }
+func (*RejectedRelatedError) Code() string        { return "admission-rejected" }
+func (e *RejectedRelatedError) Count() int        { return e.withheld }
+func (e *RejectedRelatedError) relatedCount() int { return e.withheld }
 
-// Consolidate exposes the complete count across request bridges and sealed
+// ConsolidateRejectedRelated exposes the complete count across request bridges and sealed
 // admission while retaining every original operational cause for errors.Is/As.
-func Consolidate(prior error, withheld int) error {
+func ConsolidateRejectedRelated(prior error, withheld int) error {
 	var count func(error) int
 	count = func(err error) int {
 		if err == nil {
@@ -64,16 +62,16 @@ func Consolidate(prior error, withheld int) error {
 	if total == 0 {
 		return prior
 	}
-	return &RejectedError{withheld: total, cause: prior}
+	return &RejectedRelatedError{withheld: total, cause: prior}
 }
 
-// Bind applies only the trusted exact-request-path grant. Explicit bindings are
+// BindRelated applies only the trusted exact-request-path grant. Explicit bindings are
 // claims for sealed revalidation; mixed or unsupported bindings are rejected.
-func Bind(locations []results.Related, path string, revision source.Revision, model source.Coordinates) ([]results.Related, error) {
+func BindRelated(locations []Related, path string, revision source.Revision, model source.Coordinates) ([]Related, error) {
 	if locations == nil {
 		return nil, nil
 	}
-	kept := make([]results.Related, 0, len(locations))
+	kept := make([]Related, 0, len(locations))
 	count := 0
 	for _, location := range locations {
 		if location.Revision == (source.Revision{}) && location.Coordinates == "" {
@@ -89,25 +87,25 @@ func Bind(locations []results.Related, path string, revision source.Revision, mo
 		kept = append(kept, location)
 	}
 	if count != 0 {
-		return kept, &RejectedError{withheld: count}
+		return kept, &RejectedRelatedError{withheld: count}
 	}
 	return kept, nil
 }
 
-// BindDiagnostics retains every primary and reports one exact withheld count.
-func BindDiagnostics(findings []results.Diagnostic, path string, revision source.Revision, model source.Coordinates) error {
+// BindRelatedInDiagnostics retains every primary and reports one exact withheld count.
+func BindRelatedInDiagnostics(findings []Diagnostic, path string, revision source.Revision, model source.Coordinates) error {
 	count := 0
 	for i := range findings {
-		kept, err := Bind(findings[i].Related, path, revision, model)
+		kept, err := BindRelated(findings[i].Related, path, revision, model)
 		findings[i].Related = kept
-		if rejected, ok := errors.AsType[*RejectedError](err); ok {
+		if rejected, ok := errors.AsType[*RejectedRelatedError](err); ok {
 			count += rejected.Count()
 		} else if err != nil {
 			return err
 		}
 	}
 	if count != 0 {
-		return &RejectedError{withheld: count}
+		return &RejectedRelatedError{withheld: count}
 	}
 	return nil
 }
