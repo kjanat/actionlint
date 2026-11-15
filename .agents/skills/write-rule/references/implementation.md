@@ -33,13 +33,13 @@ and attach findings; they should not each reconstruct the same analysis.
 
 Other parts of the model and host are relevant depending on the rule:
 
-| Responsibility                        | Entry point                                                  |
-| ------------------------------------- | ------------------------------------------------------------ |
+| Responsibility                        | Entry point                                                 |
+| ------------------------------------- | ----------------------------------------------------------- |
 | Declaration views and semantic values | `internal/model/workflows`, `internal/model/contexts/value` |
-| Configured check selection            | `internal/checking/selection/registry.go`                    |
-| Action participation contracts        | `internal/checking/executor/calls/composite_contract.go`     |
-| Workflow and action execution         | `internal/checking/executor/composites`                      |
-| Configured action integration tests   | `internal/development/tests/integration/actions`             |
+| Configured check selection            | `internal/checking/selection/registry.go`                   |
+| Action participation contracts        | `internal/checking/executor/calls/composite_contract.go`    |
+| Workflow and action execution         | `internal/checking/executor/composites`                     |
+| Configured action integration tests   | `internal/development/tests/integration/actions`            |
 
 For each fact the rule uses, read where it is produced and how existing checks
 interpret it. Check which inputs produce a known value, an unknown value, or an
