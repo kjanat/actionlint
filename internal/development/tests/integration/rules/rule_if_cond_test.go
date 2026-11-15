@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -40,7 +41,7 @@ func TestRuleIfCond(t *testing.T) {
 			t.Parallel()
 			var s workflowlang.Step
 			if len(tc.cond) > 0 {
-				s.If = &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}}
+				s.If = &workflowlang.String{Value: tc.cond, Pos: &source.Position{}}
 			}
 
 			r := declarationchecks.New(checking.ConfigurationRules(), correctness.IfCondCheck())
@@ -63,10 +64,10 @@ func TestRuleIfCond(t *testing.T) {
 			t.Parallel()
 			var j workflowlang.Job
 			if len(tc.cond) > 0 {
-				j.If = &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}}
+				j.If = &workflowlang.String{Value: tc.cond, Pos: &source.Position{}}
 				j.Snapshot = &workflowlang.Snapshot{
-					ImageName: &workflowlang.String{Value: "test", Pos: &workflowlang.Pos{}},
-					If:        &workflowlang.String{Value: tc.cond, Pos: &workflowlang.Pos{}},
+					ImageName: &workflowlang.String{Value: "test", Pos: &source.Position{}},
+					If:        &workflowlang.String{Value: tc.cond, Pos: &source.Position{}},
 				}
 			}
 

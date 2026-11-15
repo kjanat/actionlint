@@ -7,7 +7,6 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +21,7 @@ type Finding struct {
 	// endColumn is the inclusive column where the error range ends. A zero value lets the formatter
 	// infer the range from the source token at Column.
 	EndColumn   int
-	EndPosition *workflowlang.Pos
+	EndPosition *sourcepos.Position
 	// source is the content of the file at Filepath when the error points at a file other than the
 	// linted workflow. It replaces the workflow source for rendering the snippet.
 	Source []byte `clone:"intern"`
@@ -54,7 +53,7 @@ func (e *Finding) String() string {
 }
 
 // At creates a finding at a workflow source position.
-func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
+func At(pos *sourcepos.Position, kind string, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
 		Start: sourcepos.Position{Line: pos.Line, Column: pos.Column},
@@ -62,7 +61,7 @@ func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
 }
 
 // Errorf formats a finding at a workflow source position.
-func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Finding {
+func Errorf(pos *sourcepos.Position, kind string, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
 		Start: sourcepos.Position{Line: pos.Line, Column: pos.Column},

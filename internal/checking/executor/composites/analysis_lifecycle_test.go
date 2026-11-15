@@ -9,6 +9,7 @@ import (
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -17,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -70,7 +70,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			f.options.Scripts = scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}
 			f.options.Join = func() error {
 				joined = true
-				pass.Error(&workflowlang.Pos{Line: 1, Column: 1}, "reported finding")
+				pass.Error(&source.Position{Line: 1, Column: 1}, "reported finding")
 				return joinFailure
 			}
 			result, err := analyze(f.options, func(c *compositeAnalyzer) error {
@@ -172,7 +172,7 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 				Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
 				CollectScripts: true, Scripts: scriptexecution.Service{Analyzers: []scriptexecution.Analyzer{script}}, Join: func() error {
 					joined = true
-					pass.Error(&workflowlang.Pos{Line: 1, Column: 1}, "joined finding")
+					pass.Error(&source.Position{Line: 1, Column: 1}, "joined finding")
 					return nil
 				},
 			}

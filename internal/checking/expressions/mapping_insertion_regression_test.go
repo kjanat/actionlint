@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -59,7 +60,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 	const key = "${{ vars.AXIS }}"
 	strategy := &workflowlang.Strategy{Matrix: &workflowlang.Matrix{Expression: &workflowlang.String{
 		Value: `${{ fromJSON('{"${{ vars.AXIS }}":["ubuntu-latest"]}') }}`,
-		Pos:   &workflowlang.Pos{Line: 1, Column: 1},
+		Pos:   &source.Position{Line: 1, Column: 1},
 	}}}
 	resolution := matrixcheck.Resolve(strategy)
 	if combinations, complete := resolution.Combinations(8); !complete || len(combinations) != 1 {

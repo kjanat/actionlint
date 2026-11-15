@@ -1,18 +1,18 @@
 package finding
 
 import (
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 type Owner struct {
 	Job  string
-	Step *workflowlang.Pos
+	Step *source.Position
 }
 
 // IgnoreOrigin distinguishes executions of shared YAML anchors.
 // It never changes displayed locations or the scope of inline comments.
 type IgnoreOrigin struct {
-	StepPosition                *workflowlang.Pos
+	StepPosition                *source.Position
 	Job, StepID, StepName, Uses string
 	// metadata uses the owning action's YAML location for inner selectors.
 	Metadata bool

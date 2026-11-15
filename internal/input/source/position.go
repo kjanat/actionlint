@@ -1,8 +1,23 @@
 package source
 
+import "fmt"
+
 // Position uses one-based Unicode-scalar line and column numbers.
 // Range ends are exclusive and may lie on a later line.
 type Position struct {
 	Line   int `json:"line"`
 	Column int `json:"column"`
+}
+
+// IsBefore reports whether p precedes other. Equal positions return false.
+func (p Position) IsBefore(other Position) bool {
+	if p.Line != other.Line {
+		return p.Line < other.Line
+	}
+	return p.Column < other.Column
+}
+
+// String formats p as line:L,col:C for diagnostics.
+func (p Position) String() string {
+	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Column)
 }

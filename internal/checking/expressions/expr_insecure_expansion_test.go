@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -18,7 +19,7 @@ func TestSecretScriptInterpolation(t *testing.T) {
 		t.Run(script, func(t *testing.T) {
 			t.Parallel()
 			rule := newTestChecker()
-			rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: script, Pos: &workflowlang.Pos{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run")
+			rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: script, Pos: &source.Position{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run")
 			findings := rule.Findings()
 			if len(findings) != 1 || findings[0].Rule != "script-injection" || findings[0].Code != "secret-interpolation" || !strings.Contains(findings[0].Message, "environment variable") {
 				t.Fatalf("got %+v, want secret interpolation guidance", findings)
@@ -30,8 +31,8 @@ func TestSecretScriptInterpolation(t *testing.T) {
 func TestSecretEnvironmentValueIsNotScriptInterpolation(t *testing.T) {
 	t.Parallel()
 	rule := newTestChecker()
-	rule.checkString(ownedStringFixture(&workflowlang.String{Value: "${{ secrets.TOKEN }}", Pos: &workflowlang.Pos{Line: 1, Column: 1}}), "jobs.<job_id>.steps.env")
-	rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: `tool --token "$TOKEN"`, Pos: &workflowlang.Pos{Line: 2, Column: 1}}), "jobs.<job_id>.steps.run")
+	rule.checkString(ownedStringFixture(&workflowlang.String{Value: "${{ secrets.TOKEN }}", Pos: &source.Position{Line: 1, Column: 1}}), "jobs.<job_id>.steps.env")
+	rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: `tool --token "$TOKEN"`, Pos: &source.Position{Line: 2, Column: 1}}), "jobs.<job_id>.steps.run")
 	if findings := rule.Findings(); len(findings) != 0 {
 		t.Fatalf("environment-variable handoff reported: %+v", findings)
 	}
@@ -40,7 +41,7 @@ func TestSecretEnvironmentValueIsNotScriptInterpolation(t *testing.T) {
 func TestAllScriptInterpolationsChecked(t *testing.T) {
 	t.Parallel()
 	rule := newTestChecker()
-	rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "echo '${{ github.event.head_commit.committer.email }}' '${{ github.event.workflow_run.head_branch }}'", Pos: &workflowlang.Pos{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run")
+	rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "echo '${{ github.event.head_commit.committer.email }}' '${{ github.event.workflow_run.head_branch }}'", Pos: &source.Position{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run")
 	if len(rule.Findings()) != 2 {
 		t.Fatalf("got %+v", rule.Findings())
 	}
@@ -55,7 +56,7 @@ func TestWorkflowRunHeadRepositoryInjection(t *testing.T) {
 		t.Run(expression, func(t *testing.T) {
 			t.Parallel()
 			rule := newTestChecker()
-			rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "echo '${{ " + expression + " }}'", Pos: &workflowlang.Pos{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run")
+			rule.checkScriptString(ownedStringFixture(&workflowlang.String{Value: "echo '${{ " + expression + " }}'", Pos: &source.Position{Line: 1, Column: 1}}), "jobs.<job_id>.steps.run")
 			if len(rule.Findings()) != 1 || rule.Findings()[0].Rule != "script-injection" {
 				t.Fatalf("got %+v, want one expression injection finding", rule.Findings())
 			}

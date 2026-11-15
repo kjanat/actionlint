@@ -1,13 +1,11 @@
 package cachepolicy
 
-import (
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-)
+import "actionlint.kjanat.dev/v2/internal/input/source"
 
 // position uses the declaration's source position when present.
-func position(pos *workflowlang.Pos) workflowlang.Pos {
+func position(pos *source.Position) source.Position {
 	if pos == nil {
-		return workflowlang.Pos{}
+		return source.Position{}
 	}
 	return *pos
 }

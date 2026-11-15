@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -18,10 +19,10 @@ func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
 	if !present {
 		t.Fatal("fixture action unavailable")
 	}
-	action.Uses.SourceScalar.End = workflowlang.Pos{}
+	action.Uses.SourceScalar.End = source.Position{}
 	parser := NewSourceParser(content)
 	parser.IndexDependencySpans(workflow)
-	if got := action.Uses.SourceScalar.End; got != (workflowlang.Pos{}) {
+	if got := action.Uses.SourceScalar.End; got != (source.Position{}) {
 		t.Fatalf("unindexed dependency gained a span: %v", got)
 	}
 	root, err := codec.Parse(content)
@@ -30,7 +31,7 @@ func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
 	}
 	parser.IndexScalarSources(root)
 	parser.IndexDependencySpans(workflow)
-	if got := action.Uses.SourceScalar.End; got != (workflowlang.Pos{Line: 6, Column: 30}) {
+	if got := action.Uses.SourceScalar.End; got != (source.Position{Line: 6, Column: 30}) {
 		t.Fatalf("indexed dependency end = %v; want 6:30", got)
 	}
 }

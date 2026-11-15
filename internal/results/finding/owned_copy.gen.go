@@ -8,7 +8,6 @@ import (
 
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	lifecycle "actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	results "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -70,12 +69,12 @@ func (ctx *ownedCopyContext) copyOwnedValue_a20c76a4097cded664fbce69c4763a0d(in 
 	return (*lifecycle.Evidence)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in *workflow.Pos) *workflow.Pos {
+func (ctx *ownedCopyContext) copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in *source.Position) *source.Position {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	return (*workflow.Pos)(&out)
+	return (*source.Position)(&out)
 }
 
 func (ctx *ownedCopyContext) copyOwnedValue_5b63e45071f3623d527e4e32b340556f(in *SuppressionOrigin) *SuppressionOrigin {

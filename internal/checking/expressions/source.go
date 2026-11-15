@@ -4,6 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -11,7 +12,7 @@ import (
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func (rule *Checker) scopeExpressionSource(value string, pos *workflowlang.Pos) func() {
+func (rule *Checker) scopeExpressionSource(value string, pos *source.Position) func() {
 	previous, offset := rule.expressionSource, rule.expressionOffset
 	rule.expressionSource, rule.expressionOffset = nil, 0
 	if pos != nil {
@@ -29,7 +30,7 @@ func (rule *Checker) scopeExpressionSource(value string, pos *workflowlang.Pos) 
 	return func() { rule.expressionSource, rule.expressionOffset = previous, offset }
 }
 
-func (rule *Checker) expressionPosition(offset int, end bool) *workflowlang.Pos {
+func (rule *Checker) expressionPosition(offset int, end bool) *source.Position {
 	source := rule.expressionSource
 	if source == nil || offset < 0 || offset > len(source.Value) {
 		return nil
@@ -45,7 +46,7 @@ func (rule *Checker) expressionPosition(offset int, end bool) *workflowlang.Pos 
 }
 
 // scalarPosition returns the position of an optional scalar.
-func scalarPosition(s *workflowlang.String) *workflowlang.Pos {
+func scalarPosition(s *workflowlang.String) *source.Position {
 	if s == nil {
 		return nil
 	}
@@ -60,7 +61,7 @@ func expressionLiteral(text string) (any, bool) {
 	return expreval.ConditionConstantValue(expression)
 }
 
-func rawValuePosition(value workflowlang.RawYAMLValue) *workflowlang.Pos {
+func rawValuePosition(value workflowlang.RawYAMLValue) *source.Position {
 	if value == nil {
 		return nil
 	}

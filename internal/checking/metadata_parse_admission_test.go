@@ -167,7 +167,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal("metadata parse record absent")
 			}
 			producer := correctness.NewRuleAction(t.Context(), cache, nil)
-			if err := producer.VisitStep(ownedApplicationStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &workflowlang.Pos{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(ownedApplicationStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &sourcepos.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]

@@ -1,6 +1,7 @@
 package parsing
 
 import (
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -11,7 +12,7 @@ import (
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
 func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workflowlang.Step {
-	pos := &workflowlang.Pos{Line: metadata.Line, Column: metadata.Column}
+	pos := &source.Position{Line: metadata.Line, Column: metadata.Column}
 	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {
 		return opaque

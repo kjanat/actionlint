@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestActionMetadataLiteralKeys(t *testing.T) {
@@ -33,7 +33,7 @@ runs:
 					t.Fatalf("execution fields were lost: %#v", meta.Runs)
 				}
 				meta.Directory, meta.Filename = t.TempDir(), "action.yml"
-				findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+				findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 				if errs := findings; len(errs) != 0 {
 					t.Fatalf("literal field key rejected: %v", errs)
 				}
@@ -124,7 +124,7 @@ runs:
 	}
 	meta = *parsed
 	meta.Directory, meta.Filename = t.TempDir(), "action.yml"
-	findings := actioncheck.Check(&meta, &workflowlang.Pos{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+	findings := actioncheck.Check(&meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 	errs := findings
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, `context "secrets"`) {
 		t.Fatalf("expected the original expression diagnostic, got %v", errs)

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -15,8 +16,8 @@ import (
 // Standalone ScriptSource calls without indexing use an independently parsed graph.
 // Decode lazily: most workflow scalars never need source-level diagnostics.
 func (p *Parser) IndexScalarSources(root *codec.Node) {
-	p.scalarContexts = make(map[workflowlang.Pos]sourcemap.Context)
-	p.scalarSources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
+	p.scalarContexts = make(map[source.Position]sourcemap.Context)
+	p.scalarSources = make(map[source.Position]*workflowlang.ScriptSource)
 	p.indexScalarComments(root)
 	var visit func(*codec.Node, sourcemap.Context)
 	visit = func(n *codec.Node, context sourcemap.Context) {
@@ -81,11 +82,11 @@ func (p *Parser) ScriptSource(n *codec.Node) *workflowlang.ScriptSource {
 	}
 	if p.scalarContexts == nil {
 		// Standalone parser users can request a source map before parsing a tree.
-		source := strings.Join(p.sourceLines, "\n")
+		scriptSource := strings.Join(p.sourceLines, "\n")
 		if p.scalarDocument != nil {
-			source = scalarDocumentSource(p.scalarDocument)
+			scriptSource = scalarDocumentSource(p.scalarDocument)
 		}
-		root, err := codec.Parse([]byte(source))
+		root, err := codec.Parse([]byte(scriptSource))
 		if err != nil {
 			return nil
 		}
@@ -101,27 +102,27 @@ func (p *Parser) ScriptSource(n *codec.Node) *workflowlang.ScriptSource {
 
 // scalarSource retains the decoder result inside the parser. Public source
 // mappings are copied; parse-boundary metadata only reads its value fields.
-func (p *Parser) scalarSource(key workflowlang.Pos, value string) *workflowlang.ScriptSource {
-	if source, exists := p.scalarSources[key]; exists {
-		if source != nil && source.Value != value {
+func (p *Parser) scalarSource(key source.Position, value string) *workflowlang.ScriptSource {
+	if scriptSource, exists := p.scalarSources[key]; exists {
+		if scriptSource != nil && scriptSource.Value != value {
 			return nil
 		}
-		return source
+		return scriptSource
 	}
 	p.scalarSources[key] = nil
 	context, exists := p.scalarContexts[key]
 	if !exists {
 		return nil
 	}
-	decoded, err := p.scalarDocument.Decode(sourcemap.Position{Line: key.Line, Column: key.Column}, context)
+	decoded, err := p.scalarDocument.Decode(key, context)
 	if err != nil || decoded.Value != value {
 		return nil
 	}
-	source := workflowlang.NewScriptSource(decoded.Value)
-	source.Literal = decoded.Literal
-	source.ContentStart = workflowlang.Pos{Line: decoded.Start.Line, Column: decoded.Start.Column}
-	source.ScalarEnd = workflowlang.Pos{Line: decoded.End.Line, Column: decoded.End.Column}
-	source.Comments = p.scalarComments[key].comments(p.sourceLines, source)
+	scriptSource := workflowlang.NewScriptSource(decoded.Value)
+	scriptSource.Literal = decoded.Literal
+	scriptSource.ContentStart = decoded.Start
+	scriptSource.ScalarEnd = decoded.End
+	scriptSource.Comments = p.scalarComments[key].comments(p.sourceLines, scriptSource)
 	for _, span := range decoded.Spans {
 		endColumn := 0
 		if span.Width != 0 {
@@ -131,28 +132,28 @@ func (p *Parser) scalarSource(key workflowlang.Pos, value string) *workflowlang.
 		if span.LineBreak {
 			endLine, endColumn = span.Line+1, 1
 		}
-		source.Spans = append(source.Spans, workflowlang.ScriptSourceSpan{Start: span.Start, End: span.End, YamlLine: span.Line, YamlColumn: span.Column, YamlEndColumn: endColumn, YamlEndLine: endLine})
+		scriptSource.Spans = append(scriptSource.Spans, workflowlang.ScriptSourceSpan{Start: span.Start, End: span.End, YamlLine: span.Line, YamlColumn: span.Column, YamlEndColumn: endColumn, YamlEndLine: endLine})
 	}
-	p.scalarSources[key] = source
-	return source
+	p.scalarSources[key] = scriptSource
+	return scriptSource
 }
 
 // cloneScriptSource returns source with its slices detached. Copying the whole
 // value keeps fields added later; a new reference field still shares storage
 // until it is detached here.
-func cloneScriptSource(source workflowlang.ScriptSource) workflowlang.ScriptSource {
-	source.Lines = slices.Clone(source.Lines)
-	source.Spans = slices.Clone(source.Spans)
-	source.Comments = slices.Clone(source.Comments)
-	return source
+func cloneScriptSource(scriptSource workflowlang.ScriptSource) workflowlang.ScriptSource {
+	scriptSource.Lines = slices.Clone(scriptSource.Lines)
+	scriptSource.Spans = slices.Clone(scriptSource.Spans)
+	scriptSource.Comments = slices.Clone(scriptSource.Comments)
+	return scriptSource
 }
 
 func scalarDocumentSource(document *sourcemap.Document) string {
-	var source strings.Builder
+	var scriptSource strings.Builder
 	for i := range document.LineCount() {
 		line, ending := document.Line(i)
-		source.WriteString(line)
-		source.WriteString(ending)
+		scriptSource.WriteString(line)
+		scriptSource.WriteString(ending)
 	}
-	return source.String()
+	return scriptSource.String()
 }

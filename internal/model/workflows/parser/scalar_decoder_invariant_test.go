@@ -10,7 +10,6 @@ import (
 	inputsource "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 var scalarDecoderInvariantCorpus = []string{
@@ -131,7 +130,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 	if source.Value != node.Value {
 		t.Fatalf("decoded value %q differs from YAML parser value %q", source.Value, node.Value)
 	}
-	for _, pos := range []workflowlang.Pos{source.ContentStart, source.ScalarEnd} {
+	for _, pos := range []inputsource.Position{source.ContentStart, source.ScalarEnd} {
 		if pos.Line < 1 || pos.Line > len(lines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}

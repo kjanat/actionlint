@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
@@ -61,10 +61,10 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 			prefix := node.Value[:offset]
 			line := strings.Count(prefix, "\n") + 1
 			col := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
-			var want workflowlang.Pos
+			var want sourcepos.Position
 			for i, raw := range strings.Split(tc.input, "\n") {
 				if offset := strings.Index(raw, tc.rawToken); offset >= 0 {
-					want = workflowlang.Pos{Line: i + 1, Column: utf8.RuneCountInString(raw[:offset]) + 1}
+					want = sourcepos.Position{Line: i + 1, Column: utf8.RuneCountInString(raw[:offset]) + 1}
 					break
 				}
 			}
@@ -134,7 +134,7 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 					source := p.ScriptSource(node)
 					lines := strings.Split(node.Value, "\n")
 					got, ok := source.EndPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
-					want := workflowlang.Pos{Line: 1, Column: len(content) + 1}
+					want := sourcepos.Position{Line: 1, Column: len(content) + 1}
 					if suffix == "  " {
 						want.Column += len(suffix)
 					}
@@ -171,7 +171,7 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 				source := p.ScriptSource(node)
 				lines := strings.Split(node.Value, "\n")
 				got, ok := source.EndPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
-				want := workflowlang.Pos{Line: 2, Column: len("  echo ${{ github.ref") + 1}
+				want := sourcepos.Position{Line: 2, Column: len("  echo ${{ github.ref") + 1}
 				if !ok || *got != want {
 					t.Fatalf("EOF position = %v, %v; want %v", got, ok, want)
 				}
@@ -197,7 +197,7 @@ func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
 				source := p.ScriptSource(node)
 				lines := strings.Split(node.Value, "\n")
 				got, ok := source.EndPos(len(lines), utf8.RuneCountInString(lines[len(lines)-1])+1)
-				want := workflowlang.Pos{Line: 1, Column: len(content) + 1}
+				want := sourcepos.Position{Line: 1, Column: len(content) + 1}
 				if !ok || *got != want {
 					t.Fatalf("EOF = %v, %v; want %v", got, ok, want)
 				}

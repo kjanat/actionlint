@@ -4,6 +4,7 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -18,7 +19,7 @@ type ceilingCheck struct {
 	findings []results.Diagnostic
 }
 
-func (r *ceilingCheck) Errorf(pos workflowlang.Pos, format string, args ...any) {
+func (r *ceilingCheck) Errorf(pos source.Position, format string, args ...any) {
 	r.findings = append(r.findings, report(pos, "workflow-call", format, args...))
 }
 
@@ -43,7 +44,7 @@ func CheckCeiling(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMo
 	return r.findings
 }
 
-func (r *ceilingCheck) check(pos workflowlang.Pos, spec, sourceSpec string, granted cachemodel.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
+func (r *ceilingCheck) check(pos source.Position, spec, sourceSpec string, granted cachemodel.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
 	have, known := granted.Capabilities()
 	if granted.Present() && !known {
 		return

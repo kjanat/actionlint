@@ -419,7 +419,7 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 		}
 		close(release)
 	}()
-	scripts := []tools.Script{{Text: "first", Execution: tools.Execution{Shell: "bash"}, Key: &workflowlang.Pos{Line: 1, Column: 1}}, {Text: "second", Execution: tools.Execution{Shell: "bash"}, Key: &workflowlang.Pos{Line: 2, Column: 1}}}
+	scripts := []tools.Script{{Text: "first", Execution: tools.Execution{Shell: "bash"}, Key: &sourcepos.Position{Line: 1, Column: 1}}, {Text: "second", Execution: tools.Execution{Shell: "bash"}, Key: &sourcepos.Position{Line: 2, Column: 1}}}
 	begin := time.Now()
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: scripts})
 	if err != nil {

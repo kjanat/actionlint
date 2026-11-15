@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-func callFinding(pos workflowlang.Pos, format string, args ...any) results.Diagnostic {
+func callFinding(pos sourcepos.Position, format string, args ...any) results.Diagnostic {
 	return results.Diagnostic{Rule: "workflow-call", Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Column}}
 }
 
@@ -24,7 +24,7 @@ func CheckArguments(call *workflowlang.WorkflowCall, m *calls.Metadata) []result
 		return findings
 	}
 	u := call.Uses
-	report := func(pos workflowlang.Pos, format string, args ...any) {
+	report := func(pos sourcepos.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	// Validate inputs
@@ -91,7 +91,7 @@ func CheckPermissions(call *workflowlang.WorkflowCall, granted calls.ResolvedPer
 	if call == nil || call.Uses == nil || m == nil || granted.Kind != calls.PermissionsDeclared {
 		return findings
 	}
-	report := func(pos workflowlang.Pos, format string, args ...any) {
+	report := func(pos sourcepos.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	ids := make([]string, 0, len(m.JobPermissions))
@@ -133,4 +133,4 @@ func CheckPermissions(call *workflowlang.WorkflowCall, granted calls.ResolvedPer
 	return findings
 }
 
-func callPosition(node *workflowlang.String) workflowlang.Pos { pos, _ := node.Position(); return pos }
+func callPosition(node *workflowlang.String) sourcepos.Position { pos, _ := node.Position(); return pos }

@@ -168,7 +168,7 @@ func hasPosition(s *workflowlang.String) bool {
 }
 
 // positionPointer detaches an optional value position for legacy finding adapters.
-func positionPointer(position workflowlang.Pos, present bool) *workflowlang.Pos {
+func positionPointer(position source.Position, present bool) *source.Position {
 	if !present {
 		return nil
 	}

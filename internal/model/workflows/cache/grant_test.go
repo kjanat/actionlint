@@ -3,6 +3,7 @@ package cache
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -44,8 +45,8 @@ func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 
 func TestEffectiveModePreservesPublishedDeclaration(t *testing.T) {
 	t.Parallel()
-	workflowMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead, Pos: &workflowlang.Pos{Line: 2, Column: 13}}
-	jobMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone, Pos: &workflowlang.Pos{Line: 5, Column: 17}}
+	workflowMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead, Pos: &source.Position{Line: 2, Column: 13}}
+	jobMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone, Pos: &source.Position{Line: 5, Column: 17}}
 	if EffectiveMode(workflowMode, nil) != workflowMode || EffectiveMode(workflowMode, jobMode) != jobMode {
 		t.Fatal("inheritance did not select the declaring mode")
 	}

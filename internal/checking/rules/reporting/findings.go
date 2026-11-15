@@ -24,16 +24,16 @@ type Collector struct {
 	Step     declaration.Step
 }
 
-func (c *Collector) Error(p *workflow.Pos, text string) {
+func (c *Collector) Error(p *sourcepos.Position, text string) {
 	c.Findings = append(c.Findings, Finding{Rule: c.Rule, Message: text, Start: Position(p), Step: c.Step})
 }
 
-func (c *Collector) Errorf(p *workflow.Pos, format string, args ...any) {
+func (c *Collector) Errorf(p *sourcepos.Position, format string, args ...any) {
 	c.Error(p, fmt.Sprintf(format, args...))
 }
 
 // Position converts a workflow position to a diagnostic position. Nil means no position.
-func Position(p *workflow.Pos) sourcepos.Position {
+func Position(p *sourcepos.Position) sourcepos.Position {
 	if p == nil {
 		return sourcepos.Position{}
 	}
@@ -41,7 +41,7 @@ func Position(p *workflow.Pos) sourcepos.Position {
 }
 
 // OptionalPosition returns nil when a declaration has no source position.
-func OptionalPosition(pos workflow.Pos, present bool) *workflow.Pos {
+func OptionalPosition(pos sourcepos.Position, present bool) *sourcepos.Position {
 	if !present {
 		return nil
 	}
@@ -49,7 +49,7 @@ func OptionalPosition(pos workflow.Pos, present bool) *workflow.Pos {
 }
 
 // Warning constructs a warning at the supplied source position.
-func Warning(rule, code string, p *workflow.Pos, format string, args ...any) Finding {
+func Warning(rule, code string, p *sourcepos.Position, format string, args ...any) Finding {
 	return Finding{Rule: rule, Code: code, Severity: "warning", Message: fmt.Sprintf(format, args...), Start: Position(p)}
 }
 
@@ -63,7 +63,7 @@ func FromDiagnostics(ds []results.Diagnostic) []Finding {
 }
 
 // SourcePosition returns a declaration's position, or nil when it has none.
-func SourcePosition(s *workflow.String) *workflow.Pos {
+func SourcePosition(s *workflow.String) *sourcepos.Position {
 	if s == nil {
 		return nil
 	}

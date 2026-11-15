@@ -177,6 +177,6 @@ func (r *Trust) CheckCall(job declaration.Job) []results.Diagnostic {
 	return []results.Diagnostic{report(position(call.Uses.Pos), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, messages.SortedQuotes(events))}
 }
 
-func report(pos workflowlang.Pos, kind, format string, args ...any) results.Diagnostic {
+func report(pos sourcepos.Position, kind, format string, args ...any) results.Diagnostic {
 	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Column}}
 }

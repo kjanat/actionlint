@@ -11,7 +11,6 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
 
@@ -63,7 +62,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
 		{Input: &site, Text: "disabled", Config: disabled},
 		{Text: "unrelated run", Config: enabled},
-		{Input: &site, Text: "enabled", Config: enabled, Key: &workflowlang.Pos{Line: 9, Column: 5}},
+		{Input: &site, Text: "enabled", Config: enabled, Key: &sourcepos.Position{Line: 9, Column: 5}},
 	}})
 	if err != nil || calls != 1 || len(findings) != 1 || findings[0].Script != 2 {
 		t.Fatalf("eligibility changed input routing/indices: calls=%d findings=%+v err=%v", calls, findings, err)
@@ -116,7 +115,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Column: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
+	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "input", Key: &sourcepos.Position{Line: 11, Column: 7}}, {Text: "run", Execution: tools.Execution{Shell: "bash"}}}})
 	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (sourcepos.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
@@ -159,7 +158,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	}
 	findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{
 		{Text: "run", Execution: tools.Execution{Shell: "bash"}},
-		{Input: &site, Text: "input", Key: &workflowlang.Pos{Line: 11, Column: 7}},
+		{Input: &site, Text: "input", Key: &sourcepos.Position{Line: 11, Column: 7}},
 	}})
 	if !errors.Is(err, nativeFailure) || !errors.Is(err, inputFailure) || nativeCalls != 1 || inputCalls != 1 || len(findings) != 2 {
 		t.Fatalf("partial outcomes lost or routes duplicated: native=%d input=%d findings=%+v err=%v", nativeCalls, inputCalls, findings, err)
@@ -238,7 +237,7 @@ func TestInputDeclaredContractRequiresExplicitEffect(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "source", Key: &workflowlang.Pos{Line: 1, Column: 1}}}})
+		findings, err := runner.Analyze(t.Context(), tools.Batch{Scripts: []tools.Script{{Input: &site, Text: "source", Key: &sourcepos.Position{Line: 1, Column: 1}}}})
 		if (err == nil) != (effect == checkinputs.TemplateEffectNone) || (len(findings) == 1) != (effect == checkinputs.TemplateEffectNone) {
 			t.Fatalf("effect %q: findings=%+v err=%v", effect, findings, err)
 		}

@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -38,8 +39,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"github.com/google/go-cmp/cmp"
@@ -550,7 +549,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			}
 		}
 		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
-		out := upstreamDiagnostics(actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{}))
+		out := upstreamDiagnostics(actioncheck.Check(meta, &source.Position{Line: 1, Col: 1}, actionmeta.ReferencedFiles{}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")

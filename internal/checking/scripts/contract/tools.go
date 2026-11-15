@@ -4,6 +4,7 @@ package tools
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -87,7 +88,7 @@ type Script struct {
 	Fact       checkinputs.Script
 	Text       string
 	Source     *workflow.ScriptSource
-	Key, Value *workflow.Pos
+	Key, Value *source.Position
 	Shell      *string
 	Config     *configuration.Config
 	Path       string

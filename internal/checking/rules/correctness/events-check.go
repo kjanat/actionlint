@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
@@ -86,7 +87,7 @@ func (rule *eventsCheck) checkTimezone(tz *workflowlang.String) {
 	}
 }
 
-func (rule *eventsCheck) filterNotAvailable(pos *workflowlang.Pos, filter, hook string, available []string) {
+func (rule *eventsCheck) filterNotAvailable(pos *source.Position, filter, hook string, available []string) {
 	e := "events"
 	if len(available) < 2 {
 		e = "event"
@@ -100,8 +101,8 @@ func (rule *eventsCheck) checkExclusiveFilters(filter, ignore *workflowlang.Webh
 	if ok {
 		if !filter.IsEmpty() && !ignore.IsEmpty() {
 			p := reporting.OptionalPosition(filter.Name.Position())
-			if p.IsBefore(reporting.OptionalPosition(ignore.Name.Position())) {
-				p = reporting.OptionalPosition(ignore.Name.Position())
+			if q := reporting.OptionalPosition(ignore.Name.Position()); p.IsBefore(*q) {
+				p = q
 			}
 			rule.Errorf(p, "both %q and %q filters cannot be used for the same event %q. note: use '!' to negate patterns", filter.Name.Text(), ignore.Name.Text(), hook)
 		}
@@ -163,7 +164,7 @@ func (rule *eventsCheck) checkWebhookEvent(event *workflowlang.WebhookEvent) {
 	)
 }
 
-func (rule *eventsCheck) checkTypes(hook string, pos *workflowlang.Pos, types []*workflowlang.String, expected []string) {
+func (rule *eventsCheck) checkTypes(hook string, pos *source.Position, types []*workflowlang.String, expected []string) {
 	if len(expected) == 0 && len(types) > 0 {
 		rule.Errorf(pos, "\"types\" cannot be specified for %q Webhook event", hook)
 		return

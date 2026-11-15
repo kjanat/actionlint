@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestActionMetadataContextSuggestion(t *testing.T) {
@@ -27,7 +27,7 @@ runs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+	findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, `did you mean "github.repository"?`) || findings[0].Path != "action.yml" || findings[0].Start.Line != 6 {
 		t.Fatalf("metadata suggestion lost diagnostic or position: %v", findings)
 	}

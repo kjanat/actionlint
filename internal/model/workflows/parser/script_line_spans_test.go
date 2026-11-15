@@ -44,7 +44,7 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 				line := lineIndex + 1
 				for column := 1; column <= utf8.RuneCountInString(text)+1; column++ {
 					for _, exclusive := range []bool{false, true} {
-						var want *workflowlang.Pos
+						var want *sourcepos.Position
 						var wantOK bool
 						if exclusive {
 							want, wantOK = exec.Source.EndPos(line, column)

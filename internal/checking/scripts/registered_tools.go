@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -69,7 +69,7 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmod
 			finding.SuppressionOrigin = &findingmodel.SuppressionOrigin{Path: at.Path, First: at.First, Last: at.Last}
 		}
 		if result.End.Line > 0 {
-			finding.EndPosition = &workflowlang.Pos{Line: result.End.Line, Column: result.End.Column}
+			finding.EndPosition = &source.Position{Line: result.End.Line, Column: result.End.Column}
 			if result.End.Line == result.Start.Line {
 				finding.EndColumn = result.End.Column - 1
 			}

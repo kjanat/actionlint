@@ -890,7 +890,7 @@ func expression(text *workflowlang.String) value.Value {
 	return value.Template(text.Value, origin(text.Pos, true))
 }
 
-func origin(pos *workflowlang.Pos, fromExpression bool) value.Origin {
+func origin(pos *sourcepos.Position, fromExpression bool) value.Origin {
 	o := value.Origin{FromExpression: fromExpression}
 	if pos != nil {
 		o.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Column}
@@ -898,7 +898,7 @@ func origin(pos *workflowlang.Pos, fromExpression bool) value.Origin {
 	return o
 }
 
-func rowPosition(row *workflowlang.MatrixRow) *workflowlang.Pos {
+func rowPosition(row *workflowlang.MatrixRow) *sourcepos.Position {
 	if row.Expression != nil {
 		return row.Expression.Pos
 	}

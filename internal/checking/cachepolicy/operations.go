@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -29,7 +30,7 @@ type operationCheck struct {
 	findings []results.Diagnostic
 }
 
-func (r *operationCheck) Errorf(pos workflowlang.Pos, format string, args ...any) {
+func (r *operationCheck) Errorf(pos source.Position, format string, args ...any) {
 	r.findings = append(r.findings, report(pos, "cache-operation", format, args...))
 }
 
@@ -47,7 +48,7 @@ func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos workflowlang.Pos, sourceSpec string, granted cachemodel.Grant, checked map[cacheModeVisit]bool) {
+func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec string, granted cachemodel.Grant, checked map[cacheModeVisit]bool) {
 	spec, local := references.LocalWorkflow(sourceSpec)
 	if !local {
 		return

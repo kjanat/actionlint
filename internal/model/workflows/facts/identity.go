@@ -49,7 +49,7 @@ type Skeleton struct {
 
 type skeletonJob struct {
 	id, address string
-	positions   []workflowlang.Pos
+	positions   []source.Position
 	steps       []skeletonStep
 }
 
@@ -57,7 +57,7 @@ type skeletonStep struct {
 	step                      *workflowlang.Step
 	key, fingerprint, address string
 	job                       string
-	position                  workflowlang.Pos
+	position                  source.Position
 	hasPosition               bool
 	children                  []skeletonStep
 }
@@ -89,7 +89,7 @@ func BuildSkeleton(workflow *workflowlang.Workflow, action bool) Skeleton {
 			continue
 		}
 		entry := skeletonJob{id: id, address: "jobs[" + strconv.Quote(id) + "]"}
-		for _, pos := range []*workflowlang.Pos{job.Pos, stringPos(job.ID)} {
+		for _, pos := range []*source.Position{job.Pos, stringPos(job.ID)} {
 			if pos != nil {
 				entry.positions = append(entry.positions, *pos)
 			}
@@ -129,7 +129,7 @@ func (s Skeleton) Bind(path string, content []byte) References {
 	return refs
 }
 
-func stringPos(value *workflowlang.String) *workflowlang.Pos {
+func stringPos(value *workflowlang.String) *source.Position {
 	if value == nil {
 		return nil
 	}

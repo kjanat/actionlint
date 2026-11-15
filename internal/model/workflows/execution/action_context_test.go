@@ -23,21 +23,21 @@ func TestCallPositionAdmission(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name    string
-		pos     *workflowlang.Pos
-		want    invocation.Position
+		pos     *source.Position
+		want    source.Position
 		invalid bool
 	}{
 		{name: "absent"},
-		{name: "unknown", pos: &workflowlang.Pos{}},
-		{name: "known", pos: &workflowlang.Pos{Line: 2, Column: 3}, want: invocation.Position{Line: 2, Column: 3}},
-		{name: "partial line", pos: &workflowlang.Pos{Line: 2}, invalid: true},
-		{name: "partial column", pos: &workflowlang.Pos{Column: 3}, invalid: true},
+		{name: "unknown", pos: &source.Position{}},
+		{name: "known", pos: &source.Position{Line: 2, Column: 3}, want: source.Position{Line: 2, Column: 3}},
+		{name: "partial line", pos: &source.Position{Line: 2}, invalid: true},
+		{name: "partial column", pos: &source.Position{Column: 3}, invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			position := invocation.Position{}
+			position := source.Position{}
 			if tc.pos != nil {
-				position = invocation.Position{Line: tc.pos.Line, Column: tc.pos.Column}
+				position = *tc.pos
 			}
 			facts := invocation.Facts{HasUses: true, Uses: "$/action", Step: position, Condition: invocation.ConditionEnabled}
 			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
@@ -108,7 +108,7 @@ func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 		{&workflowlang.String{Value: "false"}, invocation.ConditionSkipped},
 		{&workflowlang.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
 	} {
-		call := &workflowlang.Step{Pos: &workflowlang.Pos{Line: 4, Column: 3}, If: tc.condition, Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "$/action"}}}
+		call := &workflowlang.Step{Pos: &source.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "$/action"}}}
 		context, err := testCallContext(t, call, runnerlang.MacOrLinux)
 		if err != nil {
 			t.Fatal(err)

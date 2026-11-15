@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestActionMetadataKnownExpressions(t *testing.T) {
@@ -81,7 +81,7 @@ runs:
 				t.Fatal(err)
 			}
 			meta.Filename, meta.Source = "action.yml", source
-			findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+			findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			errs := findings
 			if tc.message == "" {
 				if len(errs) != 0 {

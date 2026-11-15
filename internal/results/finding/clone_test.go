@@ -7,7 +7,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
@@ -24,12 +23,12 @@ func referenceFinding() *Finding {
 		}},
 		Rule:              "rule",
 		Message:           "message",
-		EndPosition:       &workflowlang.Pos{Line: 1, Column: 2},
+		EndPosition:       &source.Position{Line: 1, Column: 2},
 		Source:            []byte("source"),
 		SuppressionOrigin: &SuppressionOrigin{Path: "path"},
 		SuppressionTarget: &SuppressionOrigin{Path: "target", First: 1, Last: 2},
-		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &workflowlang.Pos{Line: 3}, Job: "job"},
-		Owner:             &Owner{Job: "job", Step: &workflowlang.Pos{Line: 4}},
+		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &source.Position{Line: 3}, Job: "job"},
+		Owner:             &Owner{Job: "job", Step: &source.Position{Line: 4}},
 		MetadataIdentity:  &MetadataIdentity{Visit: 5},
 	}
 }
@@ -62,7 +61,7 @@ func TestCloneDetachesEveryReference(t *testing.T) {
 
 func TestClonePreservesAbsentReferences(t *testing.T) {
 	t.Parallel()
-	original := At(&workflowlang.Pos{Line: 1, Column: 1}, "rule", "message")
+	original := At(&source.Position{Line: 1, Column: 1}, "rule", "message")
 	if diff := cmp.Diff(original, original.Clone(), cloneComparison); diff != "" {
 		t.Fatalf("clone of a plain finding differs:\n%s", diff)
 	}

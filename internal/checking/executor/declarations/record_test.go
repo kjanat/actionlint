@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -27,7 +26,7 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 		Path: "script.sh", Start: source.Position{Line: 2, Column: 3},
 		LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.LanguageRuntimes, Name: "example"},
 		EndColumn:         8,
-		EndPosition:       &workflowlang.Pos{Line: 2, Column: 9},
+		EndPosition:       &source.Position{Line: 2, Column: 9},
 		Source:            []byte("first\nsecond\n"),
 		RawScriptSource:   true,
 		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
