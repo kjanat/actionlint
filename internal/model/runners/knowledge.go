@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -198,7 +197,7 @@ func joinAnswers(job workflowdecl.Job, answers []runnerapi.Answer) (jobRecord, e
 			for _, rejection := range result.Rejections {
 				if rejection.Position.Line == 0 {
 					if declaration, present := job.Position(); present {
-						rejection.Position = sourcepos.Position{Line: declaration.Line, Column: declaration.Column}
+						rejection.Position = declaration
 					}
 				}
 				if !slices.Contains(record.rejections, rejection) {

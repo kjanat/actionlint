@@ -6,7 +6,6 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -57,8 +56,8 @@ func (rule *Checker) addScriptEnvironmentFix(report *report) {
 		return
 	}
 	edit := results.Edit{
-		Start:       sourcepos.Position{Line: start.Line, Column: start.Column},
-		End:         sourcepos.Position{Line: end.Line, Column: end.Column},
+		Start:       *start,
+		End:         *end,
 		Replacement: "${" + replacement.environment.Name() + "}",
 	}
 	report.fixes = append(report.fixes, results.Fix{

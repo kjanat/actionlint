@@ -56,7 +56,7 @@ func (e *Finding) String() string {
 func At(pos *sourcepos.Position, kind string, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
-		Start: sourcepos.Position{Line: pos.Line, Column: pos.Column},
+		Start: *pos,
 	}
 }
 
@@ -64,7 +64,7 @@ func At(pos *sourcepos.Position, kind string, msg string) *Finding {
 func Errorf(pos *sourcepos.Position, kind string, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
-		Start: sourcepos.Position{Line: pos.Line, Column: pos.Column},
+		Start: *pos,
 	}
 }
 

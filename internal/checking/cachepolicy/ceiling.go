@@ -40,7 +40,7 @@ func CheckCeiling(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMo
 		return nil
 	}
 	r := ceilingCheck{cache: lookup, debug: debug}
-	r.check(position(call.Uses.Pos), spec, call.Uses.Value, cachemodel.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
+	r.check(source.ZeroIfNil(call.Uses.Pos), spec, call.Uses.Value, cachemodel.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
 	return r.findings
 }
 

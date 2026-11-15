@@ -77,7 +77,7 @@ func InputNames(action *workflowlang.ExecAction) (iter.Seq2[string, *workflowlan
 				continue
 			}
 			position := key.Origin().Span.Start
-			source, ok := sources[source.Position{Line: position.Line, Column: position.Column}]
+			source, ok := sources[position]
 			var input *workflowlang.Input
 			if ok && source.unique {
 				input = source.input

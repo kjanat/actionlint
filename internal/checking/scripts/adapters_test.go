@@ -66,7 +66,7 @@ func (a sourceTool) Analyze(_ context.Context, batch tools.Batch) ([]tools.Findi
 		if script.Path != a.path || string(script.Content) != string(a.content) || script.Scope == nil || script.Scope.ActionPath != a.actionPath {
 			a.t.Fatalf("native adapter changed source deployment: %+v", script)
 		}
-		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "source finding", Path: script.Path, Start: sourcepos.Position{Line: script.Value.Line, Column: script.Value.Column}, Script: i, Content: script.Content})
+		findings = append(findings, tools.Finding{Rule: "shellcheck", Message: "source finding", Path: script.Path, Start: *script.Value, Script: i, Content: script.Content})
 	}
 	return findings, nil
 }

@@ -384,7 +384,7 @@ func (rule *schemaChecker) expressionFindings(value *ExprString, field, location
 func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *sourcepos.Position, code ProblemCode, format string, args ...any) {
 	d := MetadataProblem{Path: meta.Path(), Start: sourcepos.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
 	if end != nil {
-		d.End = sourcepos.Position{Line: end.Line, Column: end.Column}
+		d.End = *end
 	}
 	rule.problems = append(rule.problems, d)
 }

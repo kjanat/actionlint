@@ -25,32 +25,16 @@ type Collector struct {
 }
 
 func (c *Collector) Error(p *sourcepos.Position, text string) {
-	c.Findings = append(c.Findings, Finding{Rule: c.Rule, Message: text, Start: Position(p), Step: c.Step})
+	c.Findings = append(c.Findings, Finding{Rule: c.Rule, Message: text, Start: sourcepos.ZeroIfNil(p), Step: c.Step})
 }
 
 func (c *Collector) Errorf(p *sourcepos.Position, format string, args ...any) {
 	c.Error(p, fmt.Sprintf(format, args...))
 }
 
-// Position converts a workflow position to a diagnostic position. Nil means no position.
-func Position(p *sourcepos.Position) sourcepos.Position {
-	if p == nil {
-		return sourcepos.Position{}
-	}
-	return sourcepos.Position{Line: p.Line, Column: p.Column}
-}
-
-// OptionalPosition returns nil when a declaration has no source position.
-func OptionalPosition(pos sourcepos.Position, present bool) *sourcepos.Position {
-	if !present {
-		return nil
-	}
-	return &pos
-}
-
 // Warning constructs a warning at the supplied source position.
 func Warning(rule, code string, p *sourcepos.Position, format string, args ...any) Finding {
-	return Finding{Rule: rule, Code: code, Severity: "warning", Message: fmt.Sprintf(format, args...), Start: Position(p)}
+	return Finding{Rule: rule, Code: code, Severity: "warning", Message: fmt.Sprintf(format, args...), Start: sourcepos.ZeroIfNil(p)}
 }
 
 // FromDiagnostics associates diagnostics with a check before step ownership is assigned.

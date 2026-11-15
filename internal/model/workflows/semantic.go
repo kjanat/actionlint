@@ -13,7 +13,7 @@ import (
 func origin(pos *sourcepos.Position, expression bool) value.Origin {
 	result := value.Origin{FromExpression: expression}
 	if pos != nil {
-		result.Span.Start = sourcepos.Position{Line: pos.Line, Column: pos.Column}
+		result.Span.Start = *pos
 	}
 	return result
 }

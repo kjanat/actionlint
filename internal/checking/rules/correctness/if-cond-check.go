@@ -20,7 +20,7 @@ func checkCondition(value *workflowlang.String) []reporting.Finding {
 	if value == nil {
 		return nil
 	}
-	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, reporting.Position(value.Pos)))
+	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcepos.ZeroIfNil(value.Pos)))
 }
 
 func checkJobConditions(job declaration.Job) []reporting.Finding {

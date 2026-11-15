@@ -120,7 +120,7 @@ func NewTrust(w declaration.Workflow) *Trust {
 		jobs = append(jobs, job)
 	}
 	slices.SortFunc(jobs, func(a, b declaration.Job) int {
-		left, right := position(a.Pos), position(b.Pos)
+		left, right := sourcepos.ZeroIfNil(a.Pos), sourcepos.ZeroIfNil(b.Pos)
 		if order := cmp.Compare(left.Line, right.Line); order != 0 {
 			return order
 		}
@@ -153,7 +153,7 @@ func (r *Trust) CheckWrites(job declaration.Job) []results.Diagnostic {
 	for _, declaration := range r.declarations {
 		if declaration.job == job {
 			mode := declaration.mode
-			return []results.Diagnostic{report(position(mode.Pos), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), messages.SortedQuotes(declaration.reachable))}
+			return []results.Diagnostic{report(sourcepos.ZeroIfNil(mode.Pos), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), messages.SortedQuotes(declaration.reachable))}
 		}
 	}
 	return nil
@@ -174,9 +174,9 @@ func (r *Trust) CheckCall(job declaration.Job) []results.Diagnostic {
 	if len(events) == 0 {
 		return nil
 	}
-	return []results.Diagnostic{report(position(call.Uses.Pos), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, messages.SortedQuotes(events))}
+	return []results.Diagnostic{report(sourcepos.ZeroIfNil(call.Uses.Pos), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, messages.SortedQuotes(events))}
 }
 
 func report(pos sourcepos.Position, kind, format string, args ...any) results.Diagnostic {
-	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Column}}
+	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: pos}
 }

@@ -21,3 +21,19 @@ func (p Position) IsBefore(other Position) bool {
 func (p Position) String() string {
 	return fmt.Sprintf("line:%d,col:%d", p.Line, p.Column)
 }
+
+// ZeroIfNil returns the zero Position, which marks an absent location, when p is nil.
+func ZeroIfNil(p *Position) Position {
+	if p == nil {
+		return Position{}
+	}
+	return *p
+}
+
+// NilUnlessPresent returns a pointer to p, or nil when present is false.
+func NilUnlessPresent(p Position, present bool) *Position {
+	if !present {
+		return nil
+	}
+	return &p
+}

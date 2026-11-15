@@ -33,7 +33,7 @@ func Docker(exec *workflowlang.ExecAction) []*findingmodel.Finding {
 
 // DockerReference validates a Docker reference from its canonical source value.
 func DockerReference(spec string, pos *source.Position) []*findingmodel.Finding {
-	return DockerReferenceValue(spec, positionValue(pos), pos != nil)
+	return DockerReferenceValue(spec, source.ZeroIfNil(pos), pos != nil)
 }
 
 // DockerReferenceValue validates a Docker reference from an owned scalar value and position.
@@ -42,19 +42,19 @@ func DockerReferenceValue(spec string, pos source.Position, hasPosition bool) []
 		return nil
 	}
 	rule := validator{}
-	rule.checkDockerAction(spec, positionPointer(pos, hasPosition))
+	rule.checkDockerAction(spec, source.NilUnlessPresent(pos, hasPosition))
 	return rule.errs
 }
 
 // RepositoryReference validates repository reference syntax without consulting metadata.
 func RepositoryReference(spec string, pos *source.Position) []*findingmodel.Finding {
-	return RepositoryReferenceValue(spec, positionValue(pos), pos != nil)
+	return RepositoryReferenceValue(spec, source.ZeroIfNil(pos), pos != nil)
 }
 
 // RepositoryReferenceValue validates reference syntax from an owned scalar value and position.
 func RepositoryReferenceValue(spec string, pos source.Position, hasPosition bool) []*findingmodel.Finding {
 	rule := validator{}
-	rule.checkRepositoryReference(spec, positionPointer(pos, hasPosition))
+	rule.checkRepositoryReference(spec, source.NilUnlessPresent(pos, hasPosition))
 	return rule.errs
 }
 
@@ -71,20 +71,6 @@ func InvalidActionReference(spec string, pos source.Position, hasPosition bool) 
 	case references.FormRepository, references.FormBuiltin:
 	}
 	return len(RepositoryReferenceValue(spec, pos, hasPosition)) != 0
-}
-
-func positionValue(pos *source.Position) source.Position {
-	if pos == nil {
-		return source.Position{}
-	}
-	return *pos
-}
-
-func positionPointer(pos source.Position, present bool) *source.Position {
-	if !present {
-		return nil
-	}
-	return &pos
 }
 
 // InvalidReference reports an invalid action reference at its original declaration.

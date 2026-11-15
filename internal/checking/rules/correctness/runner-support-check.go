@@ -48,7 +48,7 @@ func supportPosition(job workflowdecl.Job, selector runnerapi.Selector) sourcepo
 		return selector.Group.Position
 	}
 	position, _ := job.Position()
-	return sourcepos.Position{Line: position.Line, Column: position.Column}
+	return position
 }
 
 func supportMessage(problem runnerlang.SupportProblem) string {

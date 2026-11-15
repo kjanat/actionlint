@@ -40,7 +40,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	for _, j := range w.Jobs() {
 		jobs = append(jobs, j)
 	}
-	slices.SortFunc(jobs, func(a, b declaration.Job) int { return position(a.Pos).Line - position(b.Pos).Line })
+	slices.SortFunc(jobs, func(a, b declaration.Job) int { return sourcepos.ZeroIfNil(a.Pos).Line - sourcepos.ZeroIfNil(b.Pos).Line })
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
 		findings = append(findings, trust.CheckCall(j)...)

@@ -509,7 +509,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlan
 					}
 				}
 				rule.Errorf(
-					positionPointer(exec.Uses.Position()),
+					sourcepos.NilUnlessPresent(exec.Uses.Position()),
 					actionmeta.CodeRequiredInput,
 					"missing input %q which is required by action %s. all required inputs are %s",
 					i.Name,
@@ -528,9 +528,9 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 		for _, finding := range expressionSemanticFindings(field.Expressions, field.SchemaPath, rule.advisories) {
 			position := actionmeta.ExpressionPosition(meta, &field.Value, finding.Offset)
 			end := actionmeta.ExpressionEndPosition(meta, &field.Value, finding)
-			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: sourcepos.Position{Line: position.Line, Column: position.Column}}
+			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: *position}
 			if end != nil {
-				problem.End = sourcepos.Position{Line: end.Line, Column: end.Column}
+				problem.End = *end
 			}
 			problems = append(problems, problem)
 		}

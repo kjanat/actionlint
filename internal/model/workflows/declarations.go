@@ -75,10 +75,10 @@ func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref
 	if value == nil || value.ContainsExpression() {
 		return
 	}
-	start := workflowfacts.Position(value.Pos)
+	start := sourcepos.ZeroIfNil(value.Pos)
 	end := start
 	if physical := value.SourceScalar.End; physical.Line > 0 && physical.Column > 0 {
-		end = sourcepos.Position{Line: physical.Line, Column: physical.Column}
+		end = physical
 	}
 	d.dependencies = append(d.dependencies, workflowfacts.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
 }

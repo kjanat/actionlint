@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
@@ -76,7 +77,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					}
 					calls++
 					collector := reporting.Collector{Rule: check.Name, Step: input}
-					collector.Errorf(reporting.OptionalPosition(input.Position()), "test finding")
+					collector.Errorf(sourcepos.NilUnlessPresent(input.Position()), "test finding")
 					return collector.Findings
 				}
 			}

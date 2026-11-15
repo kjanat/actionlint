@@ -41,7 +41,7 @@ func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(position(call.Uses.Pos), call.Uses.Value, cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(source.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cachemodel.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
@@ -105,7 +105,7 @@ func CheckStep(step declaration.Step, mode *workflowlang.CacheMode) []results.Di
 	}
 	name := references.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
-		return []results.Diagnostic{report(position(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
+		return []results.Diagnostic{report(source.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
 	}
 	return nil
 }

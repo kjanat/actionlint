@@ -67,7 +67,7 @@ func newString(n *codec.Node) *workflowlang.String {
 	return &workflowlang.String{
 		Value:  n.Value,
 		Quoted: quoted,
-		Pos:    &source.Position{Line: pos.Line, Column: pos.Column},
+		Pos:    &pos,
 		SourceScalar: workflowlang.SourceScalar{
 			HasSource: true,
 			Kind:      kind,
