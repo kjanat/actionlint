@@ -82,7 +82,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 		if result, ok := s.cache[request]; ok {
 			s.mu.Unlock()
 			accounting.RecordResolverCall(ctx, nil, true)
-			return result.Clone(), nil
+			return result, nil
 		}
 		pending, ok := s.pending[request]
 		if !ok {
@@ -101,7 +101,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 		}
 		if !pending.abandoned {
 			accounting.RecordResolverCall(ctx, nil, true)
-			return pending.result.Clone(), pending.err
+			return pending.result, pending.err
 		}
 	}
 	if s.pending == nil {
@@ -112,7 +112,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 	s.mu.Unlock()
 	result, err := s.resolver.Resolve(ctx, request)
 	s.mu.Lock()
-	pending.result, pending.err, pending.abandoned = result.Clone(), err, err != nil && ctx.Err() != nil
+	pending.result, pending.err, pending.abandoned = result, err, err != nil && ctx.Err() != nil
 	if err == nil {
 		if s.cache == nil {
 			s.cache = make(map[references.Request]references.Result)

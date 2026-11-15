@@ -72,7 +72,7 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 	if exists {
 		p.mu.Unlock()
 		accounting.RecordResolverCall(ctx, nil, true)
-		return cached.Clone(), nil
+		return cached, nil
 	}
 	if call, exists := p.pending[request]; exists {
 		p.mu.Unlock()
@@ -84,7 +84,7 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 				return references.Result{}, err
 			}
 			accounting.RecordResolverCall(ctx, nil, true)
-			return call.result.Clone(), call.err
+			return call.result, call.err
 		}
 	}
 	if p.pending == nil {
@@ -96,7 +96,7 @@ func (p *Process) Resolve(ctx context.Context, request references.Request) (refe
 
 	result, err := p.resolve(ctx, request)
 	p.mu.Lock()
-	call.result, call.err = result.Clone(), err
+	call.result, call.err = result, err
 	if err == nil {
 		if p.cache == nil {
 			p.cache = make(map[references.Request]references.Result)
