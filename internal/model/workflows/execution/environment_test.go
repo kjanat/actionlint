@@ -1,9 +1,10 @@
 package execution
 
 import (
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"fmt"
 	"testing"
+
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 

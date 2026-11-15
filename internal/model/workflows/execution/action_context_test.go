@@ -1,7 +1,6 @@
 package execution
 
 import (
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"

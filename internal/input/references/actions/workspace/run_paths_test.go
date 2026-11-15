@@ -1,10 +1,11 @@
 package workspace
 
 import (
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"path/filepath"
 	"slices"
 	"testing"
+
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 

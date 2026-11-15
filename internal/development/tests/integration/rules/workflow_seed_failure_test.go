@@ -1,9 +1,10 @@
 package rules_test
 
 import (
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"path/filepath"
 	"testing"
+
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
