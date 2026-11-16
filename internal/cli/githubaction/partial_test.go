@@ -41,8 +41,17 @@ func TestPartialResultAnalyzer(t *testing.T) {
 		time.Sleep(time.Minute)
 		os.Exit(2)
 	}
-	fmt.Print(`{"comments":[{"file":"-","line":2,"endLine":2,"column":6,"endColumn":12,"level":"warning","code":2086,"message":"Quote this variable."}]}`)
-	os.Exit(1)
+	// Report "hi" in "echo hi". Diagnostics outside the snippet are rejected.
+	row := 0
+	for line := range strings.SplitSeq(string(script), "\n") {
+		row++
+		if column := strings.Index(line, "echo hi"); column >= 0 {
+			fmt.Printf(`{"comments":[{"file":"-","line":%d,"endLine":%[1]d,"column":%d,"endColumn":%d,"level":"warning","code":2086,"message":"Quote this variable."}]}`,
+				row, column+6, column+8)
+			os.Exit(1)
+		}
+	}
+	os.Exit(2)
 }
 
 func TestActionPreservesNativeTimeoutFindings(t *testing.T) {
