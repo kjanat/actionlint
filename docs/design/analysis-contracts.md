@@ -103,7 +103,8 @@ releases. `internal/plugins/installation` resolves and saves a project's plugin
 declarations. `internal/plugins/pluginselection` chooses the plugins an
 invocation runs. `internal/plugins/configmigration` upgrades legacy
 configuration and declares its default plugins. `internal/plugins/pluginacquisition`
-locates the plugin caches. None of these packages makes the host Go packages
+lays out the plugin caches inside the dependency cache that
+`internal/integrations/dependencycache` locates. None of these packages makes the host Go packages
 public.
 
 The SDKs and examples live under `plugins/sdk` and `plugins/examples`. Plugin
