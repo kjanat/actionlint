@@ -194,7 +194,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 		if override.partial != nil {
 			origins = override.partial.Origins()
 		}
-		current = document.Overlay(current, document.Capture(ruleSet.normalizeToolSwitch(patch), origins), MergePlan())
+		current = document.Merge(current, document.Capture(ruleSet.normalizeToolSwitch(patch), origins), MergePlan())
 	}
 	merged := current.Value()
 	if err := ruleSet.validateToolSettings(merged); err != nil {

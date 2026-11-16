@@ -116,7 +116,7 @@ func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resol
 	inputs := make(map[string]document.Location)
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
-		merged := document.Overlay(document.Capture(node, inputs), document.Capture(overlay.node, overlay.inputs), MergePlan())
+		merged := document.Merge(document.Capture(node, inputs), document.Capture(overlay.node, overlay.inputs), MergePlan())
 		node, inputs = merged.Value(), merged.Origins()
 		names = append(names, overlay.name)
 	}
@@ -180,7 +180,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Over
 			return nil, ResolvedConfig{}, err
 		}
 		bindingSources = append(bindingSources, ruleBindingSources(overlay.name, &settings, overlay.inputs)...)
-		merged := document.Overlay(document.Capture(node, inputs), document.Capture(overlay.node, overlay.inputs), MergePlan())
+		merged := document.Merge(document.Capture(node, inputs), document.Capture(overlay.node, overlay.inputs), MergePlan())
 		node, inputs = merged.Value(), merged.Origins()
 		names = append(names, overlay.name)
 	}

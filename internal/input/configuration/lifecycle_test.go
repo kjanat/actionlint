@@ -21,7 +21,7 @@ func TestLifecycleMergeByID(t *testing.T) {
 	doc := func(p ...any) any {
 		return map[string]any{"lint": map[string]any{"lifecycle": map[string]any{"policies": p}}}
 	}
-	merged := document.Overlay(document.Capture(doc(policy("a", "original"), policy("b", "retained")), nil), document.Capture(doc(policy("a", "replacement"), policy("c", "added")), nil), MergePlan()).Value()
+	merged := document.Merge(document.Capture(doc(policy("a", "original"), policy("b", "retained")), nil), document.Capture(doc(policy("a", "replacement"), policy("c", "added")), nil), MergePlan()).Value()
 	var cfg Config
 	if err := binding.Decode(merged, &cfg); err != nil {
 		t.Fatal(err)

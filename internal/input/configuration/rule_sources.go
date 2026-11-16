@@ -8,6 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
+// ruleSources keeps the extends and lint settings of every loaded file, the
+// encoded base configuration and the command-line overlays, so lint settings
+// can be decoded again once plugin rules are registered. root names the
+// selected file; documents is keyed by normalized file address.
 type ruleSources struct {
 	root      string
 	documents map[string]any
@@ -69,13 +73,13 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			base = document.Overlay(base, inherited, MergePlan())
+			base = document.Merge(base, inherited, MergePlan())
 		}
 		normalized, err := ruleSet.normalizeRuleDocument(value)
 		if err != nil {
 			return nil, err
 		}
-		result := document.Overlay(base, document.Capture(normalized, nil), MergePlan())
+		result := document.Merge(base, document.Capture(normalized, nil), MergePlan())
 		cache[path] = result
 		return result, nil
 	}
@@ -99,7 +103,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		merged = document.Overlay(merged, document.Capture(normalized, nil), MergePlan())
+		merged = document.Merge(merged, document.Capture(normalized, nil), MergePlan())
 	}
 	if merged.Value() == nil {
 		return config, nil

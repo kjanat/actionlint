@@ -160,10 +160,10 @@ func cloneNode(n *Node) *Node {
 	return &out
 }
 
-// Overlay returns a detached tree that applies patch over base according to plan.
-func Overlay(base, patch *Node, plan Plan) *Node { return overlay(base, patch, plan, "") }
+// Merge returns a detached tree that applies patch over base according to plan.
+func Merge(base, patch *Node, plan Plan) *Node { return merge(base, patch, plan, "") }
 
-func overlay(base, patch *Node, plan Plan, path string) *Node {
+func merge(base, patch *Node, plan Plan, path string) *Node {
 	if patch == nil {
 		return cloneNode(base)
 	}
@@ -228,7 +228,7 @@ func overlay(base, patch *Node, plan Plan, path string) *Node {
 		if rule.Mode == AtomicMembers {
 			out.object[k] = cloneNode(v)
 		} else {
-			out.object[k] = overlay(base.Child(k), v, plan, Path(path, k))
+			out.object[k] = merge(base.Child(k), v, plan, Path(path, k))
 		}
 	}
 	return out

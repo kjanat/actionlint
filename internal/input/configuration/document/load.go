@@ -106,9 +106,9 @@ func Load(path string, read func(string) ([]byte, error), normalize Normalizer, 
 				}
 				return Loaded{}, extendsError{origin: path, cause: cause}
 			}
-			result.Root = Overlay(result.Root, inherited.Root, plan)
+			result.Root = Merge(result.Root, inherited.Root, plan)
 		}
-		result.Root = Overlay(result.Root, parsed, plan)
+		result.Root = Merge(result.Root, parsed, plan)
 		cache[path] = result
 		files = append(files, path)
 		return result, nil

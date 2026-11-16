@@ -6,12 +6,12 @@ import (
 	"strings"
 )
 
-// Mode selects how a configuration field combines with the preceding layer.
-type Mode uint8
+// MergeMode selects how a configuration field combines with the preceding layer.
+type MergeMode uint8
 
 const (
 	// Recursive merges objects member by member. Other values replace.
-	Recursive Mode = iota
+	Recursive MergeMode = iota
 	// Replace replaces the whole field.
 	Replace
 	// AtomicMembers replaces the object's members as a unit. After an
@@ -21,17 +21,17 @@ const (
 	KeyedList
 )
 
-// Rule assigns merge semantics to one JSON pointer. Members lists the object
+// MergeRule assigns merge semantics to one JSON pointer. Members lists the object
 // members that AtomicMembers resets; Key names the identifying member of a
 // KeyedList entry.
-type Rule struct {
-	Mode    Mode
+type MergeRule struct {
+	Mode    MergeMode
 	Members []string
 	Key     string
 }
 
 // Plan maps JSON pointers to their merge rules. Pointers without a rule merge recursively.
-type Plan map[string]Rule
+type Plan map[string]MergeRule
 
 // WireShape identifies the public wire fields of a private domain value.
 type WireShape interface{ MergeWire() reflect.Type }
@@ -64,7 +64,7 @@ func CompilePlan(root reflect.Type) (Plan, error) {
 			tag := field.Tag.Get("merge")
 			switch {
 			case tag == "replace":
-				plan[child] = Rule{Mode: Replace}
+				plan[child] = MergeRule{Mode: Replace}
 			case tag == "atomic-members":
 				ft := field.Type
 				for ft.Kind() == reflect.Pointer {
@@ -87,7 +87,7 @@ func CompilePlan(root reflect.Type) (Plan, error) {
 						}
 					}
 				}
-				plan[child] = Rule{Mode: AtomicMembers, Members: members}
+				plan[child] = MergeRule{Mode: AtomicMembers, Members: members}
 			case strings.HasPrefix(tag, "key="):
 				key := strings.TrimPrefix(tag, "key=")
 				if key == "" || field.Type.Kind() != reflect.Slice {
@@ -112,7 +112,7 @@ func CompilePlan(root reflect.Type) (Plan, error) {
 				if !found {
 					return fmt.Errorf("%s: keyed merge field %q is not declared", child, key)
 				}
-				plan[child] = Rule{Mode: KeyedList, Key: key}
+				plan[child] = MergeRule{Mode: KeyedList, Key: key}
 			case tag != "":
 				return fmt.Errorf("%s: unknown merge rule %q", child, tag)
 			default:

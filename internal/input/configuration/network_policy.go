@@ -146,7 +146,7 @@ func ReadNetworkPolicy(paths []string, read func(string) ([]byte, error)) (*Netw
 			return nil, err
 		}
 		if declared := loaded.Root.Child("defaults"); declared != nil {
-			defaults = document.Overlay(defaults, declared, nil)
+			defaults = document.Merge(defaults, declared, nil)
 			p.defaultOrigins = defaults.Origins()
 		}
 		p.files = append(p.files, loaded.Files...)

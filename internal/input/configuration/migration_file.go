@@ -26,16 +26,20 @@ type FileMigration struct {
 	connections acquisitionhttp.Connections
 }
 
+// fileSnapshot is the content of one migration input when the migration was
+// prepared. Apply compares each snapshot with the current input.
 type fileSnapshot interface {
 	bytes() []byte
 	configSnapshot()
 }
 
+// localConfigSnapshot is a local input and the file its path resolved to.
 type localConfigSnapshot struct {
 	content []byte
 	target  string
 }
 
+// remoteConfigSnapshot is an HTTPS input.
 type remoteConfigSnapshot struct{ content []byte }
 
 func (s localConfigSnapshot) bytes() []byte  { return s.content }
