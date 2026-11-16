@@ -48,7 +48,7 @@ jobs:
 
 func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	t.Parallel()
-	root := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
+	root := filepath.Join("..", "..", "..", "..", "input", "references", "reusableworkflows", "testdata", "reusable-workflows")
 
 	run := func(t *testing.T, cache *reusableworkflows.Cache) []string {
 		t.Helper()

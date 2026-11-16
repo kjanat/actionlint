@@ -11,8 +11,8 @@ import (
 
 func at(line int) source.Position { return source.Position{Line: line, Column: 3} }
 
-func job(line int, id string, needs ...string) Job {
-	j := Job{ID: Name{Value: id, Start: at(line)}}
+func job(line int, id string, needs ...string) JobDependencies {
+	j := JobDependencies{ID: Name{Value: id, Start: at(line)}}
 	for i, need := range needs {
 		j.Needs = append(j.Needs, Name{Value: need, Start: source.Position{Line: line, Column: 20 + i}})
 	}
@@ -31,29 +31,29 @@ func TestCheck(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name string
-		jobs []Job
+		jobs []JobDependencies
 		want []results.Diagnostic
 	}{
-		{"valid graph", []Job{job(1, "build"), job(2, "test", "build"), job(3, "deploy", "Build", "test")}, nil},
-		{"missing dependency", []Job{job(1, "test", "build")}, []results.Diagnostic{
+		{"valid graph", []JobDependencies{job(1, "build"), job(2, "test", "build"), job(3, "deploy", "Build", "test")}, nil},
+		{"missing dependency", []JobDependencies{job(1, "test", "build")}, []results.Diagnostic{
 			{Start: at(1), Message: `job "test" needs job "build" which does not exist in this workflow`},
 		}},
-		{"duplicate need", []Job{job(1, "build"), job(2, "test", "build", "BUILD")}, []results.Diagnostic{
+		{"duplicate need", []JobDependencies{job(1, "build"), job(2, "test", "build", "BUILD")}, []results.Diagnostic{
 			{Start: source.Position{Line: 2, Column: 21}, Message: `job ID "BUILD" duplicates in "needs" section. note that job ID is case insensitive`},
 		}},
-		{"duplicate job", []Job{job(1, "build"), job(2, "BUILD")}, []results.Diagnostic{
+		{"duplicate job", []JobDependencies{job(1, "build"), job(2, "BUILD")}, []results.Diagnostic{
 			{Start: at(2), Message: `job ID "BUILD" duplicates. previously defined at line:1,col:3. note that job ID is case insensitive`},
 		}},
-		{"self cycle", []Job{job(1, "build", "build")}, []results.Diagnostic{
+		{"self cycle", []JobDependencies{job(1, "build", "build")}, []results.Diagnostic{
 			{Start: at(1), Message: `cyclic dependencies in "needs" job configurations are detected. detected cycle is "build" -> "build"`},
 		}},
-		{"cycle starts at earliest job", []Job{job(1, "c", "b"), job(2, "a", "c"), job(3, "b", "a")}, []results.Diagnostic{
+		{"cycle starts at earliest job", []JobDependencies{job(1, "c", "b"), job(2, "a", "c"), job(3, "b", "a")}, []results.Diagnostic{
 			{Start: at(1), Message: `cyclic dependencies in "needs" job configurations are detected. detected cycle is "c" -> "b" -> "a" -> "c"`},
 		}},
-		{"missing dependency suppresses cycle detection", []Job{job(1, "a", "b"), job(2, "b", "a", "missing")}, []results.Diagnostic{
+		{"missing dependency suppresses cycle detection", []JobDependencies{job(1, "a", "b"), job(2, "b", "a", "missing")}, []results.Diagnostic{
 			{Start: at(2), Message: `job "b" needs job "missing" which does not exist in this workflow`},
 		}},
-		{"empty ids are skipped", []Job{job(1, ""), job(2, "build", "")}, nil},
+		{"empty ids are skipped", []JobDependencies{job(1, ""), job(2, "build", "")}, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -66,7 +66,7 @@ func TestCheck(t *testing.T) {
 
 func TestCheckReportsOneCycleDeterministically(t *testing.T) {
 	t.Parallel()
-	jobs := []Job{job(1, "x", "y"), job(2, "y", "x"), job(3, "p", "q"), job(4, "q", "p")}
+	jobs := []JobDependencies{job(1, "x", "y"), job(2, "y", "x"), job(3, "p", "q"), job(4, "q", "p")}
 	first := messages(Check(jobs))
 	for range 20 {
 		if again := messages(Check(jobs)); len(again) != 1 || again[0] != first[0] {

@@ -16,7 +16,7 @@ import (
 func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
-	loaded, err := pluginexecution.LoadPlugins(ctx, pluginselection.Sources{Paths: []string{filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm")}}, checking.BuiltinRuleNames(), io.Discard, false)
+	loaded, err := pluginexecution.LoadPlugins(ctx, pluginselection.Sources{Paths: []string{filepath.Join("..", "..", "..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "pipe-to-shell.wasm")}}, checking.BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		cancel()
 		t.Fatal(err)

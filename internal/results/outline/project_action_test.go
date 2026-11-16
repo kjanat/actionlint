@@ -99,7 +99,7 @@ func TestParseActionOutlineRuntimes(t *testing.T) {
   args: [test, 42]`, DockerRuns{Image: "docker://alpine:3", Entrypoint: "/entry.sh", PreEntrypoint: "/pre.sh", PostEntrypoint: "/post.sh", Args: []string{"test", "42"}}},
 		{"plugin", "plugin: GitHub.Runner.Plugins.Repository.CheckoutAction", PluginRuns{Plugin: "GitHub.Runner.Plugins.Repository.CheckoutAction"}},
 		{"empty composite", `using: composite
-  steps: []`, CompositeRuns{Steps: []Step{}}},
+  steps: []`, CompositeRuns{Steps: []StepOutline{}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

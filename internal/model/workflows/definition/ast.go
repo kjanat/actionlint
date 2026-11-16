@@ -565,6 +565,25 @@ const (
 	ExecKindParallel
 )
 
+// String returns the name reports use for the kind: uses, run, wait, cancel or
+// parallel. Unknown kinds return "unknown".
+func (k ExecKind) String() string {
+	switch k {
+	case ExecKindAction:
+		return "uses"
+	case ExecKindRun:
+		return "run"
+	case ExecKindWait:
+		return "wait"
+	case ExecKindCancel:
+		return "cancel"
+	case ExecKindParallel:
+		return "parallel"
+	default:
+		return "unknown"
+	}
+}
+
 // Exec identifies how a workflow step is executed.
 type Exec interface {
 	// Kind returns the step execution kind.

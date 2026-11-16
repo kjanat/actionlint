@@ -232,9 +232,9 @@ permissions: {}
 	}
 }
 
-func requireWorkflowOutline(t *testing.T, document outline.Outline) outline.Workflow {
+func requireWorkflowOutline(t *testing.T, document outline.Outline) outline.WorkflowOutline {
 	t.Helper()
-	workflow, ok := document.(outline.Workflow)
+	workflow, ok := document.(outline.WorkflowOutline)
 	if !ok {
 		t.Fatalf("expected workflow, got %T", document)
 	}
@@ -329,7 +329,7 @@ permissions: {}
 			got := make([]string, 0, len(analysis.Documents))
 			for _, document := range analysis.Documents {
 				switch document := document.(type) {
-				case outline.Workflow:
+				case outline.WorkflowOutline:
 					got = append(got, document.DocumentPath()+":"+document.ParseStatus)
 				case outline.Action:
 					got = append(got, document.DocumentPath()+":"+document.ParseStatus)

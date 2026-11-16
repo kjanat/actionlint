@@ -26,7 +26,7 @@ func TestCheck(t *testing.T) {
 	t.Parallel()
 	at := func(line int) source.Position { return source.Position{Line: line, Column: 5} }
 	long := strings.Repeat("x", 100)
-	job := Job{
+	job := JobIdentifiers{
 		ID:    &Name{Value: "1build", Start: at(1)},
 		Needs: []Name{{Value: "ok", Start: at(2)}, {Value: "bad.need", Start: at(3)}, {Value: "${{ dynamic }}", Dynamic: true, Start: at(4)}},
 		Steps: []Name{
@@ -51,7 +51,7 @@ func TestCheck(t *testing.T) {
 	if diff := cmp.Diff(want, Check(job)); diff != "" {
 		t.Fatal(diff)
 	}
-	if findings := Check(Job{}); findings != nil {
+	if findings := Check(JobIdentifiers{}); findings != nil {
 		t.Fatal(findings)
 	}
 }

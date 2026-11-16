@@ -22,7 +22,7 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
 	acquisition := registryAcquisition(registry)
 	registry.SetAliases("community-check")
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

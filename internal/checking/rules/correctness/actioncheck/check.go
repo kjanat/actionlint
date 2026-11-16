@@ -166,7 +166,7 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 }
 
 // compositeStepErrorf reports an error at the step's position in its action metadata file.
-func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, code actionmeta.ProblemCode, format string, args ...any) {
+func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.CompositeStep, idx int, code actionmeta.ProblemCode, format string, args ...any) {
 	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, code, format, args...)
 }
 
@@ -233,7 +233,7 @@ func (rule *validator) checkActionInputDefaults(meta *actionmeta.Metadata) {
 	}
 }
 
-func (rule *validator) checkCompositeActionStepKeys(meta *actionmeta.Metadata, s *actionmeta.Step, idx int, allowed []string) {
+func (rule *validator) checkCompositeActionStepKeys(meta *actionmeta.Metadata, s *actionmeta.CompositeStep, idx int, allowed []string) {
 	for _, k := range s.Keys {
 		if !slices.Contains(allowed, strings.ToLower(k)) {
 			rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeUnexpectedField, "has unexpected key %q. expected one of %s", k, messages.SortedQuotes(allowed))
@@ -241,7 +241,7 @@ func (rule *validator) checkCompositeActionStepKeys(meta *actionmeta.Metadata, s
 	}
 }
 
-func (rule *validator) checkCompositeActionStep(meta *actionmeta.Metadata, s *actionmeta.Step, idx int) {
+func (rule *validator) checkCompositeActionStep(meta *actionmeta.Metadata, s *actionmeta.CompositeStep, idx int) {
 	if !s.IsMapping {
 		rule.compositeStepErrorf(meta, s, idx, actionmeta.CodeInvalidStep, `must be a mapping with "run" or "uses" key`)
 		return
@@ -293,7 +293,7 @@ func (rule *validator) checkCompositeActionStep(meta *actionmeta.Metadata, s *ac
 	rule.checkCompositeActionStepExprs(meta, s, idx)
 }
 
-func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, s *actionmeta.Step, idx int) {
+func (rule *validator) checkCompositeActionStepExprs(meta *actionmeta.Metadata, s *actionmeta.CompositeStep, idx int) {
 	report := func(key, field string, v *actionmeta.ExprString, bare bool) {
 		if v == nil {
 			return

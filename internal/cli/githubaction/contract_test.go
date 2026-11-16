@@ -19,7 +19,7 @@ import (
 
 // documentValues compares opaque document outlines and repository IDs by their recorded values.
 var documentValues = cmp.AllowUnexported(
-	outline.Workflow{}, outline.Job{}, outline.Step{}, outline.Action{}, outline.CompositeRuns{}, outline.DockerRuns{}, repository.ID{},
+	outline.WorkflowOutline{}, outline.JobOutline{}, outline.StepOutline{}, outline.Action{}, outline.CompositeRuns{}, outline.DockerRuns{}, repository.ID{},
 )
 
 func TestActionMultiProjectResultParity(t *testing.T) {

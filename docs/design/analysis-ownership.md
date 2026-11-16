@@ -39,7 +39,7 @@ flowchart LR
     Application --> Composition[checking/executor/composites]
     Registry --> Builtin[builtin adapters]
     Composition --> Engine[checking/workflowvisit]
-    Composition --> Scripts[checking/scripts]
+    Composition --> Scripts[checking/scriptanalysis]
     Application --> Policy[results/policy]
     Application --> Workspace[input/workspace]
     Decode --> Documents[document values]

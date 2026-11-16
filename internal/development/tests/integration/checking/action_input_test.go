@@ -99,7 +99,7 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/action-input.wasm")
+	module, err := filepath.Abs("../../../../plugins/pluginexecution/component/testdata/plugins/action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

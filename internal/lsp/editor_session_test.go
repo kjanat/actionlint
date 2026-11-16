@@ -167,8 +167,8 @@ func TestEditorSessionRetainsExplicitPluginSnapshot(t *testing.T) {
 	for _, test := range []struct {
 		path, rule, shell, script string
 	}{
-		{"../plugins/execution/module/testdata/engines/echo.wasm", "echo", "python", "print(missing)"},
-		{"../plugins/execution/component/testdata/plugins/no-sudo.wasm", "no-sudo", "bash", "sudo first"},
+		{"../plugins/pluginexecution/module/testdata/engines/echo.wasm", "echo", "python", "print(missing)"},
+		{"../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm", "no-sudo", "bash", "sudo first"},
 	} {
 		t.Run(test.rule, func(t *testing.T) {
 			t.Parallel()
@@ -212,7 +212,7 @@ func testEditorPluginSnapshot(t *testing.T, fixture, rule, shell, firstScript st
 
 func TestEditorConfiguredLocalEngineTracksArtifactContent(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../plugins/execution/module/testdata/engines/echo.wasm")
+	data, err := os.ReadFile("../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

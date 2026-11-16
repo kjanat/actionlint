@@ -82,7 +82,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 
 func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	t.Parallel()
-	component, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/buildkite-runners.wasm")
+	component, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

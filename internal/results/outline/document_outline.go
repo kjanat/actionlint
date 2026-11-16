@@ -27,20 +27,20 @@ func (d Outlines) MarshalJSON() ([]byte, error) {
 	return json.Marshal(plain(d))
 }
 
-func (Workflow) documentOutline() {}
+func (WorkflowOutline) documentOutline() {}
 
 // DocumentPath returns the source path.
-func (w Workflow) DocumentPath() string { return w.Path }
+func (w WorkflowOutline) DocumentPath() string { return w.Path }
 
 // WithPath returns the workflow with a different source path.
-func (w Workflow) WithPath(path string) Outline {
+func (w WorkflowOutline) WithPath(path string) Outline {
 	w.Path = path
 	return w
 }
 
 // MarshalJSON derives the document kind from the concrete type.
-func (w Workflow) MarshalJSON() ([]byte, error) {
-	type plain Workflow
+func (w WorkflowOutline) MarshalJSON() ([]byte, error) {
+	type plain WorkflowOutline
 	return json.Marshal(struct {
 		Kind string `json:"kind"`
 		plain
@@ -63,12 +63,12 @@ func (d *Outlines) UnmarshalJSON(data []byte) error {
 		}
 		switch header.Kind {
 		case "workflow":
-			type plain Workflow
+			type plain WorkflowOutline
 			var value plain
 			if err := json.Unmarshal(record, &value); err != nil {
 				return err
 			}
-			values = append(values, Workflow(value))
+			values = append(values, WorkflowOutline(value))
 		case "action":
 			var value Action
 			if err := json.Unmarshal(record, &value); err != nil {
@@ -90,7 +90,7 @@ type ActionRuns interface {
 
 // CompositeRuns contains the action's declared steps.
 type CompositeRuns struct {
-	Steps []Step `json:"steps"`
+	Steps []StepOutline `json:"steps"`
 }
 
 // JavaScriptRuns identifies a Node runtime and its entrypoints.

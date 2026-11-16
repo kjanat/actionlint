@@ -71,7 +71,7 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 
 func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 	t.Parallel()
-	module, err := os.ReadFile("../../../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm")
+	module, err := os.ReadFile("../../../../plugins/pluginexecution/component/testdata/plugins/ruff-action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestConfiguredComponentCollectsInputSelectors(t *testing.T) {
 
 func TestConfiguredComponentRejectsForeignEngineIdentity(t *testing.T) {
 	t.Parallel()
-	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/action-input.wasm")
+	module, err := filepath.Abs("../../../../plugins/pluginexecution/component/testdata/plugins/action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

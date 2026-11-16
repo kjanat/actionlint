@@ -29,7 +29,7 @@ func (b *countedPluginBackend) Check(context.Context, checkinputs.ScriptRequest)
 
 func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 	t.Parallel()
-	const path = "../plugins/execution/component/testdata/plugins/no-sudo.wasm"
+	const path = "../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"
 	const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: sudo echo test\npermissions: {}\n"
 	for _, tc := range []struct {
 		name, command, config, rule string
@@ -44,7 +44,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 			t.Parallel()
 			selected := pluginselection.Sources{Paths: []string{path}}
 			if tc.managed {
-				data, err := os.ReadFile("../plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
+				data, err := os.ReadFile("../plugins/pluginexecution/component/testdata/plugins/managed-no-sudo.wasm")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -143,7 +143,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 
 func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	plugin, err := filepath.Abs("../plugins/execution/component/testdata/plugins/managed-no-sudo.wasm")
+	plugin, err := filepath.Abs("../plugins/pluginexecution/component/testdata/plugins/managed-no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

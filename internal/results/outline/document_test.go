@@ -12,10 +12,10 @@ import (
 func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 	t.Parallel()
 	input := outline.Outlines{
-		outline.Workflow{Path: "ci.yml", ParseStatus: "complete", Triggers: []string{"push"}, Jobs: []outline.Job{
-			{ID: "build", Needs: []string{}, Steps: []outline.Step{{Kind: "uses", Uses: "./action"}}},
+		outline.WorkflowOutline{Path: "ci.yml", ParseStatus: "complete", Triggers: []string{"push"}, Jobs: []outline.JobOutline{
+			{ID: "build", Needs: []string{}, Steps: []outline.StepOutline{{Kind: "uses", Uses: "./action"}}},
 		}},
-		outline.Action{Path: "action.yml", ParseStatus: "complete", Inputs: []outline.ActionInputOutline{}, Outputs: []outline.ActionOutputOutline{}, Runs: outline.CompositeRuns{Steps: []outline.Step{}}},
+		outline.Action{Path: "action.yml", ParseStatus: "complete", Inputs: []outline.ActionInputOutline{}, Outputs: []outline.ActionOutputOutline{}, Runs: outline.CompositeRuns{Steps: []outline.StepOutline{}}},
 	}
 	data, err := json.Marshal(input)
 	if err != nil {
@@ -28,7 +28,7 @@ func TestReportsDecodeWithoutAnalysis(t *testing.T) {
 	if !reflect.DeepEqual(input, output) {
 		t.Fatalf("round trip: %s", data)
 	}
-	step := output[0].(outline.Workflow).Jobs[0].Steps[0]
+	step := output[0].(outline.WorkflowOutline).Jobs[0].Steps[0]
 	if got := step.Reference(); got != (callreferences.WorkspaceReference{Path: "action"}) {
 		t.Fatalf("step reference = %#v", got)
 	}

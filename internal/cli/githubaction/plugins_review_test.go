@@ -18,7 +18,7 @@ import (
 
 func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 	t.Parallel()
-	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 }
 
 func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
-	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"))
+	module, err := os.ReadFile(filepath.Join("..", "..", "plugins", "pluginexecution", "module", "testdata", "engines", "echo.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 
 func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "execution", "component", "testdata", "plugins", "ruff-script-engine.wasm"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "pluginexecution", "component", "testdata", "plugins", "ruff-script-engine.wasm"))
 	if err != nil {
 		t.Fatal(err)
 	}

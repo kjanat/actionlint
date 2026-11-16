@@ -131,7 +131,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 
 func TestManagedPluginEditorSnapshot(t *testing.T) {
 	t.Parallel()
-	wasm, err := os.ReadFile("../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

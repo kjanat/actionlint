@@ -19,12 +19,12 @@ type Name struct {
 	Dynamic bool
 	Start   source.Position
 }
-type Job struct {
+type JobIdentifiers struct {
 	ID           *Name
 	Needs, Steps []Name
 }
 
-func Check(job Job) []results.Diagnostic {
+func Check(job JobIdentifiers) []results.Diagnostic {
 	var findings []results.Diagnostic
 	report := func(name Name, message string) {
 		findings = append(findings, results.Diagnostic{Start: name.Start, Message: message})

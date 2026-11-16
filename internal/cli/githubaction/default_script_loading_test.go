@@ -82,7 +82,7 @@ func TestDefaultRuffLoadsOnlyForPython(t *testing.T) {
 
 func addRuffFixture(t *testing.T, registry *fixtureregistry.PluginRegistry) {
 	t.Helper()
-	module, err := os.ReadFile("../../plugins/execution/module/testdata/engines/echo.wasm")
+	module, err := os.ReadFile("../../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,11 +107,11 @@ func addRuffFixture(t *testing.T, registry *fixtureregistry.PluginRegistry) {
 func TestDefaultRuffComponentUsesDeclaredActionInputs(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	module, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm")
+	module, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/plugins/ruff-action-input.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := os.ReadFile("../../plugins/execution/component/testdata/sources/script-engine/ruff-action-input.metadata.json")
+	metadata, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/sources/script-engine/ruff-action-input.metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}

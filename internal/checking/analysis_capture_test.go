@@ -240,8 +240,8 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	}
 	retained := item(good, "unrelated finding")
 	result := analysisResult{files: []analyzedFile{
-		{captured: bad, errors: []*finding.Finding{item(bad, "old accepted entry")}, outline: outline.Workflow{Path: badPath}},
-		{captured: good, errors: []*finding.Finding{item(bad, "old accepted dependency"), retained}, outline: outline.Workflow{Path: goodPath}},
+		{captured: bad, errors: []*finding.Finding{item(bad, "old accepted entry")}, outline: outline.WorkflowOutline{Path: badPath}},
+		{captured: good, errors: []*finding.Finding{item(bad, "old accepted dependency"), retained}, outline: outline.WorkflowOutline{Path: goodPath}},
 	}}
 	_, err = store.Read(t.Context(), badPath, source.RawLF)
 	conflict, conflicted := errors.AsType[capture.ConflictError](err)

@@ -24,7 +24,7 @@ import (
 
 func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 	t.Parallel()
-	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/script-engine.wasm")
+	module, err := filepath.Abs("../../../../plugins/pluginexecution/component/testdata/plugins/script-engine.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 
 func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	t.Parallel()
-	module, err := filepath.Abs("../../../../plugins/execution/component/testdata/plugins/script-engine.wasm")
+	module, err := filepath.Abs("../../../../plugins/pluginexecution/component/testdata/plugins/script-engine.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if !found {
 		t.Fatal("component engine missing from rule catalogue")
 	}
-	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module, "../../../../plugins/execution/module/testdata/engines/echo.wasm"}, pluginacquisition.Options{})
+	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module, "../../../../plugins/pluginexecution/module/testdata/engines/echo.wasm"}, pluginacquisition.Options{})
 	if err == nil || !strings.Contains(err.Error(), "multiple plugins provide script engine") {
 		t.Fatalf("duplicate core/component engine accepted: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
 		t.Fatalf("configured component backend: %#v, %v", findings, err)
 	}
-	if _, err := pluginexecution.ScriptEngineLoader(pluginacquisition.Options{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), "../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm"); err == nil {
+	if _, err := pluginexecution.ScriptEngineLoader(pluginacquisition.Options{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), "../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"); err == nil {
 		t.Fatal("analyzer-only component accepted as configured script engine")
 	}
 }
@@ -95,7 +95,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	t.Parallel()
 	acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
-	module, err := filepath.Abs("../../../../plugins/execution/module/testdata/engines/echo.wasm")
+	module, err := filepath.Abs("../../../../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestModuleKindSelection(t *testing.T) {
 	for _, tc := range []struct {
 		path string
 		core bool
-	}{{"../../../../plugins/execution/module/testdata/engines/echo.wasm", true}, {"../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm", false}} {
+	}{{"../../../../plugins/pluginexecution/module/testdata/engines/echo.wasm", true}, {"../../../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm", false}} {
 		artifact, err := artifacts.Resolve(t.Context(), tc.path, artifacts.Options{})
 		if err != nil {
 			t.Fatal(err)

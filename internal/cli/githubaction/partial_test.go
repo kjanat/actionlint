@@ -133,7 +133,7 @@ waiting:
 	if len(result.Documents) != 1 {
 		t.Fatalf("timeout discarded parsed outline: %+v", result.Documents)
 	}
-	workflow, ok := result.Documents[0].(outline.Workflow)
+	workflow, ok := result.Documents[0].(outline.WorkflowOutline)
 	if !ok || workflow.DocumentPath() != "./timeout.yaml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 		t.Fatalf("timeout corrupted workflow document: %+v", result.Documents)
 	}

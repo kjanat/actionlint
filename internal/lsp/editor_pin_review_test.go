@@ -16,7 +16,7 @@ import (
 func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
-	data, err := os.ReadFile("../plugins/execution/module/testdata/engines/echo.wasm")
+	data, err := os.ReadFile("../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

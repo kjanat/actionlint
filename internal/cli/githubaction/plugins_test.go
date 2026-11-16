@@ -33,7 +33,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+			wasm, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestActionExactRegistryPlugins(t *testing.T) {
 }
 
 func TestActionConfiguredWasm(t *testing.T) {
-	for _, fixture := range []string{"../../plugins/execution/module/testdata/engines/echo.wasm", "../../plugins/execution/component/testdata/plugins/ruff-action-input.wasm"} {
+	for _, fixture := range []string{"../../plugins/pluginexecution/module/testdata/engines/echo.wasm", "../../plugins/pluginexecution/component/testdata/plugins/ruff-action-input.wasm"} {
 		t.Run(fixture, func(t *testing.T) {
 			acquisition := pluginacquisition.Options{UserCacheDir: t.TempDir()}
 			module, err := os.ReadFile(fixture)
@@ -183,7 +183,7 @@ func TestActionEnabledRuffDoesNotRequireNativeExecutable(t *testing.T) {
 			}
 			workspace := workspaceWith(t, files)
 			registry := fixtureregistry.NewPluginRegistry(t)
-			module, err := os.ReadFile("../../plugins/execution/module/testdata/engines/echo.wasm")
+			module, err := os.ReadFile("../../plugins/pluginexecution/module/testdata/engines/echo.wasm")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -242,7 +242,7 @@ func TestActionPluginPlanConfiguredDigests(t *testing.T) {
 
 func TestActionInlinePinnedPlugin(t *testing.T) {
 	t.Parallel()
-	wasm, err := os.ReadFile("../../plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("../../plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
