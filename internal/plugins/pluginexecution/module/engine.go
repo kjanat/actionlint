@@ -21,6 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine/enginediagnostics"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
@@ -29,8 +30,6 @@ import (
 const (
 	// ABIVersion is the core module ABI this host implements.
 	ABIVersion uint32 = 1
-	// DefaultTimeout bounds one engine call, including admission and initialization.
-	DefaultTimeout = 10 * time.Second
 	// DefaultMemoryPages bounds linear memory and reserved tables per instance.
 	DefaultMemoryPages    uint32 = 4096
 	defaultCompileTimeout        = time.Minute
@@ -52,21 +51,12 @@ var requiredExports = map[string]struct{ params, results []api.ValueType }{
 // Options configures a loaded engine. Zero values select the defaults.
 type Options struct {
 	// Artifact configures URI resolution and verified download caching.
-	Artifact    artifacts.Options
-	Timeout     time.Duration
-	MemoryPages uint32
+	Artifact artifacts.Options
+	// Limits requests the guest's resource bounds; zero values select
+	// guestlimits.DefaultTimeout and DefaultMemoryPages.
+	guestlimits.Limits
 	// CacheDir stores compiled machine code between runs. Empty disables the cache.
 	CacheDir string
-}
-
-// Limits reports the resource bounds an engine runs under.
-type Limits struct {
-	Timeout     time.Duration
-	MemoryPages uint32
-}
-
-func (l Limits) String() string {
-	return fmt.Sprintf("memory %d MiB, time %s", uint64(l.MemoryPages)*64/1024, l.Timeout)
 }
 
 // Interface is one advertised operation version and the export that implements it.
@@ -119,7 +109,7 @@ type Capabilities struct {
 // calls and discards an instance after a trap or an exceeded limit.
 type Engine struct {
 	path     string
-	limits   Limits
+	limits   guestlimits.Limits
 	metadata Metadata
 	check    string
 	// checkVersion is the negotiated check operation version: 1, 2 or 3.
@@ -142,22 +132,37 @@ type Engine struct {
 // exports, negotiates the operation versions it advertises and keeps one
 // instance ready.
 func LoadModuleEngine(ctx context.Context, path string, options Options) (*Engine, error) {
-	if options.MemoryPages > 65536 {
-		return nil, fmt.Errorf("engine memory limit %d exceeds WebAssembly maximum of 65536 pages", options.MemoryPages)
+	limits, err := options.limits()
+	if err != nil {
+		return nil, err
 	}
 	artifact, err := artifacts.Resolve(ctx, path, options.Artifact)
 	if err != nil {
 		return nil, err
 	}
-	return LoadArtifact(ctx, artifact, options)
+	return loadArtifact(ctx, artifact, limits, options)
 }
 
 // LoadArtifact loads a resolved snapshot without reading its source again.
 func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Options) (*Engine, error) {
-	path, data := artifact.Info.Source, artifact.Bytes
-	if options.MemoryPages > 65536 {
-		return nil, fmt.Errorf("engine memory limit %d exceeds WebAssembly maximum of 65536 pages", options.MemoryPages)
+	limits, err := options.limits()
+	if err != nil {
+		return nil, err
 	}
+	return loadArtifact(ctx, artifact, limits, options)
+}
+
+// limits validates resource policy before artifact resolution or runtime creation.
+func (o Options) limits() (guestlimits.Limits, error) {
+	limits, err := o.Limits.Resolve(DefaultMemoryPages)
+	if err != nil {
+		return guestlimits.Limits{}, fmt.Errorf("engine %w", err)
+	}
+	return limits, nil
+}
+
+func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits guestlimits.Limits, options Options) (*Engine, error) {
+	path, data := artifact.Info.Source, artifact.Bytes
 	kind, metadata, err := artifacts.Sniff(data)
 	if err != nil {
 		return nil, err
@@ -176,13 +181,6 @@ func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Opt
 		if declared.ABIVersion != int(ABIVersion) || (declared.Transport != "" && declared.Transport != transport) {
 			return nil, errors.New("custom metadata advertises an incompatible engine ABI or transport")
 		}
-	}
-	limits := Limits{Timeout: options.Timeout, MemoryPages: options.MemoryPages}
-	if limits.Timeout <= 0 {
-		limits.Timeout = DefaultTimeout
-	}
-	if limits.MemoryPages == 0 {
-		limits.MemoryPages = DefaultMemoryPages
 	}
 	tables, err := wacogo.CoreModuleTables(data)
 	if err != nil {
@@ -404,7 +402,7 @@ func (e *Engine) CheckVersion() int { return e.checkVersion }
 func (e *Engine) Path() string { return e.path }
 
 // Limits returns the resource bounds for this engine.
-func (e *Engine) Limits() Limits { return e.limits }
+func (e *Engine) Limits() guestlimits.Limits { return e.limits }
 
 // Metadata returns the engine's discovery object.
 func (e *Engine) Metadata() Metadata {

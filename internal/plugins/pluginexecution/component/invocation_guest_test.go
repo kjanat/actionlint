@@ -11,6 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -23,7 +24,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	var logs []string
 	// 257 pages take about 1s natively; race and coverage builds run 10x slower
 	// than the default limit allows. The limit is not under test here.
-	guest, err := LoadComponentPlugin(t.Context(), "testdata/plugins/misbehave.wasm", Options{Timeout: time.Minute, Log: func(line string) { logs = append(logs, line) }})
+	guest, err := LoadComponentPlugin(t.Context(), "testdata/plugins/misbehave.wasm", Options{Limits: guestlimits.Limits{Timeout: time.Minute}, Log: func(line string) { logs = append(logs, line) }})
 	if err != nil {
 		t.Fatal(err)
 	}

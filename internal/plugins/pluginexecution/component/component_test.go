@@ -20,6 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -92,7 +93,7 @@ func TestRustPluginReportsPipeToShell(t *testing.T) {
 	if len(descriptor.Examples) != 1 || descriptor.Category != "security" || descriptor.Provider != "example" || descriptor.Help == "" || len(descriptor.OptionsSchema) == 0 || descriptor.Name != "pipe-to-shell" || strings.Join(inputKindNames(descriptor.RequiredInputs), ",") != "scripts,invocations" {
 		t.Fatalf("descriptor=%+v", descriptor)
 	}
-	if plugin.Limits() != (component.Limits{Timeout: component.DefaultTimeout, MemoryPages: component.DefaultMemoryPages}) {
+	if plugin.Limits() != (guestlimits.Limits{Timeout: guestlimits.DefaultTimeout, MemoryPages: component.DefaultMemoryPages}) {
 		t.Fatalf("limits=%+v", plugin.Limits())
 	}
 	root := writeRepository(t, map[string]string{".github/workflows/ci.yml": pipeWorkflow})
@@ -201,7 +202,7 @@ func TestFailuresAreReportedAndIsolated(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
 	var logged []string
-	plugin := loadPlugin(t, "misbehave", component.Options{Timeout: 3 * time.Second, MemoryPages: 96, Log: func(line string) {
+	plugin := loadPlugin(t, "misbehave", component.Options{Limits: guestlimits.Limits{Timeout: 3 * time.Second, MemoryPages: 96}, Log: func(line string) {
 		mu.Lock()
 		defer mu.Unlock()
 		logged = append(logged, line)

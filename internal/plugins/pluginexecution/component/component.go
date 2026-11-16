@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
@@ -50,7 +51,7 @@ type Plugin struct {
 
 	digest string
 	path   string
-	limits Limits
+	limits guestlimits.Limits
 	log    func(string)
 
 	engine             *wacogo.Engine
@@ -74,7 +75,7 @@ func (p *Plugin) ArtifactDigest() string { return p.digest }
 func (p *Plugin) Path() string { return p.path }
 
 // Limits returns the resource bounds for this plugin.
-func (p *Plugin) Limits() Limits { return p.limits }
+func (p *Plugin) Limits() guestlimits.Limits { return p.limits }
 
 // Close releases the runtime. The plugin cannot be used afterwards.
 func (p *Plugin) Close(ctx context.Context) error {

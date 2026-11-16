@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 )
 
 func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
@@ -38,7 +39,7 @@ func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
 func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 	t.Parallel()
 	artifact := &artifacts.Artifact{Info: artifacts.ArtifactProvenance{Source: "in-memory"}}
-	if _, err := LoadArtifact(t.Context(), artifact, Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
+	if _, err := LoadArtifact(t.Context(), artifact, Options{Limits: guestlimits.Limits{MemoryPages: 65537}}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("in-memory artifact bypassed memory option validation: %v", err)
 	}
 }

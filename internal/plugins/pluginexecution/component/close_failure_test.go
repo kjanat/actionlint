@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 )
 
 func TestCallCloseDoesNotRunGuestDestructors(t *testing.T) {
@@ -12,7 +14,7 @@ func TestCallCloseDoesNotRunGuestDestructors(t *testing.T) {
 	for _, operation := range []string{"trap", "hang"} {
 		t.Run(operation, func(t *testing.T) {
 			t.Parallel()
-			plugin, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{Timeout: 2 * time.Second})
+			plugin, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "wat", "close-failure.wasm"), Options{Limits: guestlimits.Limits{Timeout: 2 * time.Second}})
 			if err != nil {
 				t.Fatal(err)
 			}

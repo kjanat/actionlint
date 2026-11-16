@@ -17,6 +17,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 	"github.com/kjanat/wazero/api"
 	"github.com/kjanat/wazero/experimental"
@@ -47,7 +48,7 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 	if metadata.ID != "actionlint-engine-echo" || metadata.Engine.Version != "1.0.0" || metadata.Capabilities.MaxInputBytes != 8388608 {
 		t.Fatalf("metadata=%+v", metadata)
 	}
-	if engine.Limits() != (module.Limits{Timeout: module.DefaultTimeout, MemoryPages: module.DefaultMemoryPages}) {
+	if engine.Limits() != (guestlimits.Limits{Timeout: guestlimits.DefaultTimeout, MemoryPages: module.DefaultMemoryPages}) {
 		t.Fatalf("limits=%+v", engine.Limits())
 	}
 	diagnostics, err := engine.Check(t.Context(), scriptengine.Request{Source: "label = 'é🦀'; print(missing)\n", Filename: "workflow.step.py", Config: json.RawMessage(`{"lint":{"select":["F821"]}}`)})
@@ -121,7 +122,7 @@ func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 
 func TestFailuresDiscardTheInstance(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), module.Options{MemoryPages: 64})
+	engine := loadEngine(t, enginePath("echo"), module.Options{Limits: guestlimits.Limits{MemoryPages: 64}})
 	if engine.Limits().String() != "memory 4 MiB, time 10s" {
 		t.Fatalf("limits=%s", engine.Limits())
 	}
@@ -262,7 +263,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			start := time.Now()
-			engine, err := module.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
+			engine, err := module.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Limits: guestlimits.Limits{Timeout: 100 * time.Millisecond}})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}
@@ -275,7 +276,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 
 func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 	t.Parallel()
-	const timeout = module.DefaultTimeout
+	const timeout = guestlimits.DefaultTimeout
 	var compiledAt, initializedDeadline time.Time
 	var initialized sync.Once
 	ctx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
@@ -284,7 +285,7 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 			initialized.Do(func() { initializedDeadline, _ = ctx.Deadline() })
 		})
 	}))
-	engine, err := module.LoadModuleEngine(ctx, enginePath("echo"), module.Options{Timeout: timeout})
+	engine, err := module.LoadModuleEngine(ctx, enginePath("echo"), module.Options{Limits: guestlimits.Limits{Timeout: timeout}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +348,7 @@ func TestCleanupFailureDiscardsInstance(t *testing.T) {
 	for _, name := range []string{"trap-free-output", "trap-free-input", "hang-free-output"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
+			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Limits: guestlimits.Limits{Timeout: 100 * time.Millisecond}})
 			// Trap fixtures fail only their first deallocation. Both calls must
 			// fail, proving the second call receives a fresh instance.
 			for range 2 {

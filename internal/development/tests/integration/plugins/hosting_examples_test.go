@@ -10,10 +10,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
-var _ interface{ Limits() module.Limits } = (*module.Engine)(nil)
+var _ interface{ Limits() guestlimits.Limits } = (*module.Engine)(nil)
 
 func Example_componentLoading() {
 	ctx := context.Background()

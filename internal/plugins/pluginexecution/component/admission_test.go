@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 )
 
 func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
@@ -19,7 +20,7 @@ func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
 			t.Parallel()
 			entered, release := make(chan struct{}), make(chan struct{})
 			plugin := loadPlugin(t, "misbehave", component.Options{
-				Timeout: 2 * time.Second,
+				Limits: guestlimits.Limits{Timeout: 2 * time.Second},
 				Log: func(line string) {
 					if strings.HasPrefix(line, "analyzing ") {
 						close(entered)

@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
@@ -40,7 +41,7 @@ func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Opt
 	return loadArtifact(ctx, artifact, limits, options)
 }
 
-func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits Limits, options Options) (*Plugin, error) {
+func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits guestlimits.Limits, options Options) (*Plugin, error) {
 	path, data := artifact.Info.Source, artifact.Bytes
 	kind, staticMetadata, err := artifacts.Sniff(data)
 	if err != nil {

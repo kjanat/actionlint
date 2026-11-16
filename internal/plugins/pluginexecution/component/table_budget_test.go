@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
@@ -119,7 +120,7 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 	}
 	plugin := &Plugin{
 		path: path, engine: engine, hostFactory: factory, component: withoutTables,
-		limits: Limits{Timeout: 30 * time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
+		limits: guestlimits.Limits{Timeout: 30 * time.Second, MemoryPages: 64}, gate: semaphore.NewWeighted(1),
 		memory: &memoryBudget{limit: 64 << 16}, log: func(string) {},
 	}
 	t.Cleanup(func() { _ = plugin.Close(context.Background()) })
