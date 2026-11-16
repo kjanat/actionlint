@@ -3,6 +3,7 @@ package define
 import (
 	"context"
 	"io"
+	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -44,6 +45,37 @@ type Inputs struct {
 	Reader                        *files.Reader
 	Index                         func(context.Context, string) *execution.IndexSnapshot
 	ExecutableIndex               *execution.IndexSnapshot
+}
+
+// DocumentPath returns the absolute path of the checked document.
+func (c Inputs) DocumentPath() string {
+	if filepath.IsAbs(c.Path) {
+		return c.Path
+	}
+	return filepath.Join(c.WorkingDir, c.Path)
+}
+
+// InProjectWorkflows reports whether the checked document is a workflow
+// directly under the project's .github/workflows directory and the session
+// can inventory that directory's workflow names.
+func (c Inputs) InProjectWorkflows() bool {
+	if c.ProjectRoot == "" || c.WorkflowNames == nil {
+		return false
+	}
+	return workflownames.SamePath(filepath.Dir(c.DocumentPath()), filepath.Join(c.projectRoot(), ".github", "workflows"))
+}
+
+// ProjectWorkflowNames returns the inventory of the project's workflow names.
+// Call it only when [Inputs.InProjectWorkflows] reports true.
+func (c Inputs) ProjectWorkflowNames() (namemodel.Inventory, error) {
+	return c.WorkflowNames.ForRoot(c.projectRoot())
+}
+
+func (c Inputs) projectRoot() string {
+	if absolute, err := filepath.Abs(c.ProjectRoot); err == nil {
+		return absolute
+	}
+	return c.ProjectRoot
 }
 
 // PrepareWorkflowMetadata resolves the reusable-workflow metadata that

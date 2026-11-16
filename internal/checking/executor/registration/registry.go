@@ -65,6 +65,7 @@ var All = []*define.Rule{
 	correctness.IfCondRule,
 	correctness.NumericValuesRule,
 	suspicious.EmptyTriggersRule,
+	suspicious.DuplicateWorkflowNameRule,
 	correctness.EmptyJobRule,
 	suspicious.EmptyRunRule,
 	security.UnpinnedReferenceRule,
