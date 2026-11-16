@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/base/files"
@@ -147,7 +147,7 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 }
 
 // testChecks registers analyzers and tools as Check registers them.
-func testChecks(tb testing.TB, analyzers []checkinputs.Registration, tools []contract.Registration) *registeredChecks {
+func testChecks(tb testing.TB, analyzers []results.AnalyzerRegistration, tools []contract.Registration) *registeredChecks {
 	tb.Helper()
 	checks, err := registerChecks(analyzers, tools)
 	if err != nil {

@@ -18,8 +18,8 @@ func moduleRoot(name string) ([]byte, error) { return fs.ReadFile(os.DirFS("../.
 
 // installed is a tool provider a plugin installs. Its settings accept only
 // level: low or high.
-func installed(configFiles bool) ToolProvider {
-	return ToolProvider{
+func installed(configFiles bool) toolsettings.Provider {
+	return toolsettings.Provider{
 		Rule: rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry", Category: "conventions"},
 		Settings: toolsettings.Spec{
 			Schema:     json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"level":{"enum":["low","high"]}},"additionalProperties":false}`),
@@ -28,7 +28,7 @@ func installed(configFiles bool) ToolProvider {
 	}
 }
 
-func compile(t *testing.T, providers ...ToolProvider) *toolsettings.Schema {
+func compile(t *testing.T, providers ...toolsettings.Provider) *toolsettings.Schema {
 	t.Helper()
 	document, err := Document(moduleRoot, providers)
 	if err != nil {
@@ -194,7 +194,7 @@ func TestDocumentRejectsUnsupportedRuleCategory(t *testing.T) {
 	t.Parallel()
 	provider := installed(false)
 	provider.Rule.Category = "external"
-	if _, err := Document(moduleRoot, []ToolProvider{provider}); err == nil || !strings.Contains(err.Error(), `unsupported category "external"`) {
+	if _, err := Document(moduleRoot, []toolsettings.Provider{provider}); err == nil || !strings.Contains(err.Error(), `unsupported category "external"`) {
 		t.Fatalf("error = %v", err)
 	}
 }

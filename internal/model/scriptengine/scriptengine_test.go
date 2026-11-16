@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestDescriptorCloneIsolatesInputSelectors(t *testing.T) {
@@ -32,7 +32,7 @@ var diagnosticValue = Diagnostic{
 	Filename: "a.sh", Code: "SC1", Message: "m",
 	Location: sourcetext.Position{Line: 2, Column: 3}, EndLocation: sourcetext.Position{Line: 2, Column: 5},
 	TemplateEffect: TemplateEffectNone,
-	Fixes: []Fix{{Applicability: results.FixSafe, Description: "d", Replacements: []Replacement{{
+	Fixes: []Fix{{Applicability: applicability.Safe, Description: "d", Replacements: []Replacement{{
 		Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 2, Column: 5}, Text: "x",
 	}}}},
 }

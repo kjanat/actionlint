@@ -11,14 +11,14 @@ import (
 
 func copyOwnedDiagnostic(in Diagnostic) Diagnostic {
 	out := in
-	out.Reference = copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in.Reference)
+	out.Reference = copyOwnedValue_d81e8853003df5ad6bd1d26fe34cb89d(in.Reference)
 	out.Related = slices.Clone(in.Related)
 	out.Lifecycle = copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in.Lifecycle)
 	out.Fixes = copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in.Fixes)
 	return out
 }
 
-func copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in *sourcetext.Reference) *sourcetext.Reference {
+func copyOwnedValue_d81e8853003df5ad6bd1d26fe34cb89d(in *sourcetext.Reference) *sourcetext.Reference {
 	if in == nil {
 		return nil
 	}

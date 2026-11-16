@@ -29,7 +29,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\npermissions: {}\n")
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Analyzer: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []results.AnalyzerRegistration{{Analyzer: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
 	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\npermissions: {}\n")
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Analyzer: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []results.AnalyzerRegistration{{Analyzer: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 				content = append(content, "permissions: {}\n"...)
 			}
 			capture := &identityCapture{}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Analyzer: capture}}}, []workspace.InputFile{{Path: path, Content: content}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []results.AnalyzerRegistration{{Analyzer: capture}}}, []workspace.InputFile{{Path: path, Content: content}})
 			if err != nil {
 				t.Fatalf("analyze: %v, %+v", err, result)
 			}

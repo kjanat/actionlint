@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -97,7 +98,7 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 	if err != nil {
 		return err
 	}
-	providers := make([]configschema.ToolProvider, 0, len(manifests))
+	providers := make([]toolsettings.Provider, 0, len(manifests))
 	for _, manifest := range manifests {
 		providers = append(providers, manifest.ConfigurationSchemaProvider())
 	}

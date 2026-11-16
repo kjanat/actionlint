@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/severity"
@@ -357,11 +358,11 @@ func liftFixes(v wacogo.Val) ([]results.Fix, error) {
 			return nil, err
 		}
 		var fix results.Fix
-		applicability, err := liftString(record, "applicability")
+		applicabilityLabel, err := liftString(record, "applicability")
 		if err != nil {
 			return nil, err
 		}
-		if fix.Applicability, err = results.ParseApplicability(applicability); err != nil {
+		if fix.Applicability, err = applicability.Parse(applicabilityLabel); err != nil {
 			return nil, err
 		}
 		if fix.Revisions, err = liftRevisions(record.Field("revisions")); err != nil {

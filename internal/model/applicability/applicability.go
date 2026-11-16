@@ -1,4 +1,5 @@
-package results
+// Package applicability describes the review that one proposed fix requires.
+package applicability
 
 import "fmt"
 
@@ -7,41 +8,41 @@ import "fmt"
 type Applicability uint8
 
 const (
-	// FixSuggested offers a correction whose intent or effects need review.
-	FixSuggested Applicability = iota
-	// FixSafe can be applied without changing the intended behavior.
-	FixSafe
-	// FixUnsafe can change behavior even when it resolves the finding.
-	FixUnsafe
+	// Suggested offers a correction whose intent or effects need review.
+	Suggested Applicability = iota
+	// Safe can be applied without changing the intended behavior.
+	Safe
+	// Unsafe can change behavior even when it resolves the finding.
+	Unsafe
 )
 
-// ParseApplicability validates a wire value. Older plugins may omit it or send an empty string.
-func ParseApplicability(value string) (Applicability, error) {
+// Parse validates a wire value. Older plugins may omit it or send an empty string.
+func Parse(value string) (Applicability, error) {
 	switch value {
 	case "", "suggested":
-		return FixSuggested, nil
+		return Suggested, nil
 	case "safe":
-		return FixSafe, nil
+		return Safe, nil
 	case "unsafe":
-		return FixUnsafe, nil
+		return Unsafe, nil
 	default:
-		return FixSuggested, fmt.Errorf("unknown fix applicability %q", value)
+		return Suggested, fmt.Errorf("unknown fix applicability %q", value)
 	}
 }
 
 // Valid reports whether the value belongs to the fix contract.
-func (a Applicability) Valid() bool { return a <= FixUnsafe }
+func (a Applicability) Valid() bool { return a <= Unsafe }
 
 // Automatic reports whether this fix can be applied without review.
-func (a Applicability) Automatic() bool { return a == FixSafe }
+func (a Applicability) Automatic() bool { return a == Safe }
 
 func (a Applicability) String() string {
 	switch a {
-	case FixSuggested:
+	case Suggested:
 		return "suggested"
-	case FixSafe:
+	case Safe:
 		return "safe"
-	case FixUnsafe:
+	case Unsafe:
 		return "unsafe"
 	default:
 		return "invalid"
@@ -58,7 +59,7 @@ func (a Applicability) MarshalText() ([]byte, error) {
 
 // UnmarshalText validates applicability before it enters the diagnostic model.
 func (a *Applicability) UnmarshalText(text []byte) error {
-	parsed, err := ParseApplicability(string(text))
+	parsed, err := Parse(string(text))
 	if err == nil {
 		*a = parsed
 	}

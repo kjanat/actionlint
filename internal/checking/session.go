@@ -13,9 +13,9 @@ import (
 	"slices"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
@@ -73,7 +73,7 @@ type Options struct {
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
-	Analyzers []checkinputs.Registration
+	Analyzers []results.AnalyzerRegistration
 	ReadFile  func(string) ([]byte, error)
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
@@ -136,14 +136,14 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var definitions []commands.Definition
 	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+		if !results.IsNilAnalyzer(registration.Analyzer) {
 			definitions = append(definitions, registration.Analyzer.Descriptor().InvocationDefinitions...)
 		}
 	}
 	for _, registration := range options.Tools {
 		definitions = append(definitions, registration.InvocationDefinitions...)
 	}
-	registry, err := interpreters.New(definitions)
+	registry, err := commands.NewWithShells(definitions)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
-		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
+		options.Analyzers = append(slices.Clone(options.Analyzers), results.AnalyzerRegistration{
 			Analyzer: security.NewResolvedReferenceCheck(),
 			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)

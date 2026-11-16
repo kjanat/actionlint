@@ -3,6 +3,7 @@ package results
 
 import (
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
@@ -55,7 +56,7 @@ type LifecyclePolicyReport struct {
 // Fix is one complete suggested change. Apply all edits together.
 type Fix struct {
 	// Applicability belongs to this alternative, not its rule. Missing values require review.
-	Applicability Applicability `json:"applicability,omitempty"`
+	Applicability applicability.Applicability `json:"applicability,omitempty"`
 	// Revisions bind edits to the source snapshots the analyzer checked.
 	Revisions map[string]string `json:"revisions,omitempty"`
 

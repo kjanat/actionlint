@@ -6,6 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -33,7 +34,7 @@ func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
 	root := t.TempDir()
 	dependency, target := filepath.Join(root, "dependency.yml"), filepath.Join(root, "workflow.yml")
 	content := "target"
-	finding := results.Diagnostic{Path: dependency, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Fixes: []results.Fix{{Description: "update open caller", Applicability: results.FixSafe, Revisions: map[string]string{target: sha256hex.Digest([]byte(content))}, Edits: []results.Edit{{Path: target, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
+	finding := results.Diagnostic{Path: dependency, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}, Fixes: []results.Fix{{Description: "update open caller", Applicability: applicability.Safe, Revisions: map[string]string{target: sha256hex.Digest([]byte(content))}, Edits: []results.Edit{{Path: target, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
 	sources := map[string]Document{dependency: {Text: "😀bad"}}
 	open := map[string]Document{target: {URI: sourcetext.FileURI(target), Version: 3, Text: content}}
 	actions := codeActions(t.Context(), dependency, editorRange{Start: editorPosition{Character: 5}, End: editorPosition{Character: 5}}, []results.Diagnostic{finding}, sources, open)
@@ -51,7 +52,7 @@ func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
 	const text = "run: echo ok\n"
 	doc := Document{URI: sourcetext.FileURI(path), Version: 8, Text: text}
 	point := sourcetext.Position{Line: 1, Column: 1}
-	fix := results.Fix{Description: "Suppress shellcheck for this declaration", Applicability: results.FixSuggested, Revisions: map[string]string{path: sha256hex.Digest([]byte(text))}, Edits: []results.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
+	fix := results.Fix{Description: "Suppress shellcheck for this declaration", Applicability: applicability.Suggested, Revisions: map[string]string{path: sha256hex.Digest([]byte(text))}, Edits: []results.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
 	findings := []results.Diagnostic{
 		{Path: path, Rule: "shellcheck", Code: "SC2086", Start: point, Fixes: []results.Fix{fix}},
 		{Path: path, Rule: "shellcheck", Code: "SC2154", Start: point, Fixes: []results.Fix{fix}},
@@ -74,7 +75,7 @@ func TestCodeActionsUseEachFindingsFixes(t *testing.T) {
 	doc := Document{URI: sourcetext.FileURI(path), Version: 1, Text: text}
 	documents := map[string]Document{path: doc}
 	var findings []results.Diagnostic
-	for i, applicability := range []results.Applicability{results.FixSuggested, results.FixSuggested, results.FixSafe} {
+	for i, applicability := range []applicability.Applicability{applicability.Suggested, applicability.Suggested, applicability.Safe} {
 		point := sourcetext.Position{Line: i + 1, Column: 1}
 		finding := results.Diagnostic{Path: path, Rule: "same-rule", Start: point}
 		if i != 0 {

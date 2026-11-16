@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestResultCaptureSharesRevisionAcrossRepositoryCaches(t *testing.T) {
@@ -23,7 +23,7 @@ func TestResultCaptureSharesRevisionAcrossRepositoryCaches(t *testing.T) {
 	collector := &invocationCollector{}
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: root,
-		Analyzers:  []checkinputs.Registration{{Analyzer: collector}},
+		Analyzers:  []results.AnalyzerRegistration{{Analyzer: collector}},
 		ReadFile: func(requested string) ([]byte, error) {
 			if filepath.Clean(requested) != path {
 				return os.ReadFile(requested)

@@ -25,11 +25,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -206,7 +206,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Analyzer: analyzer})
+			options.Analyzers = append(slices.Clone(options.Analyzers), results.AnalyzerRegistration{Analyzer: analyzer})
 			continue
 		}
 		selection := backends.ToolSelection{Command: name}

@@ -1,4 +1,4 @@
-package toolmanifest_test
+package localproviders_test
 
 import (
 	"crypto/sha256"
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -30,7 +31,7 @@ func TestReadLocal(t *testing.T) {
 	}
 	reader := files.New(t.Context(), nil, nil)
 
-	manifest, programs, err := toolmanifest.ReadLocal(reader, write(t, map[string]string{"manifest.json": withDigest, "output.jq": program, "other.jq": "."}))
+	manifest, programs, err := localproviders.Read(reader, write(t, map[string]string{"manifest.json": withDigest, "output.jq": program, "other.jq": "."}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +44,7 @@ func TestReadLocal(t *testing.T) {
 		"not process":     {"manifest.json": strings.Replace(strings.Replace(minimal, `"transport": "process"`, `"transport": "wasm-core"`, 1), `"process": {`, `"integration": {"tool": "lint", "contract": "x"}, "unused": {`, 1)},
 		"invalid":         {"manifest.json": "{}"},
 	} {
-		if _, _, err := toolmanifest.ReadLocal(reader, write(t, files)); err == nil {
+		if _, _, err := localproviders.Read(reader, write(t, files)); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 	}
@@ -66,13 +67,13 @@ func TestReadLocalLoadsConfigurationTransforms(t *testing.T) {
 		t.Fatal(err)
 	}
 	reader := files.New(t.Context(), nil, nil)
-	if _, _, err := toolmanifest.ReadLocal(reader, path); err == nil {
+	if _, _, err := localproviders.Read(reader, path); err == nil {
 		t.Fatal("missing configuration transform accepted")
 	}
 	if err := os.WriteFile(filepath.Join(root, "configuration.jq"), []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	manifest, programs, err := toolmanifest.ReadLocal(reader, path)
+	manifest, programs, err := localproviders.Read(reader, path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,3 +84,24 @@ func TestReadLocalLoadsConfigurationTransforms(t *testing.T) {
 		t.Fatalf("loaded %q, found=%t", got, ok)
 	}
 }
+
+// minimal is the smallest valid local process provider manifest.
+const minimal = `{
+  "schema_version": 1,
+  "id": "example.invalid/providers/lint",
+  "version": "1.0.0",
+  "role": "script",
+  "scope": "source",
+  "transport": "process",
+  "rule": {"name": "lint", "description": "Lint", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "lint"},
+  "preparation": "kjanat:actionlint/shell-preparation@0.3.0",
+  "selectors": {"filename": "actionlint.sh"},
+  "capabilities": {"fixes": false, "reported_sources": false},
+  "process": {
+    "entry": "lint",
+    "args": ["--format=json", "{flag:dialect:--shell}", "{user-args}", "-"],
+    "stdin": "source",
+    "config": {"render": "none"},
+    "output": {"format": "json", "transform": {"language": "jq", "inline": "[]"}}
+  }
+}`

@@ -7,11 +7,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 var _ interface{ Limits() guestlimits.Limits } = (*module.Engine)(nil)
@@ -27,7 +27,7 @@ func Example_componentLoading() {
 	fmt.Println("loaded", component.Descriptor().Name, "with", component.Limits())
 	result, err := checking.Analyze(ctx,
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)

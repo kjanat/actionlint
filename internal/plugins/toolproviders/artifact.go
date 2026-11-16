@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -63,7 +64,7 @@ func ValidateProviderArtifact(ctx context.Context, artifact *artifacts.Artifact,
 // ValidateLocalProvider compiles a local provider manifest's schemas and jq
 // programs without resolving, probing or invoking its process entry.
 func ValidateLocalProvider(ctx context.Context, path string) error {
-	manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
+	manifest, programs, err := localproviders.Read(files.New(ctx, nil, nil), path)
 	if err != nil {
 		return err
 	}

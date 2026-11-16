@@ -1,4 +1,4 @@
-package interpreters
+package commands
 
 import (
 	"os"
@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"actionlint.kjanat.dev/v2/internal/model/commands"
 )
 
 func TestBashInvocationMatchesActualBash(t *testing.T) {
@@ -25,7 +23,7 @@ func TestBashInvocationMatchesActualBash(t *testing.T) {
 	} {
 		t.Run(command, func(t *testing.T) {
 			t.Parallel()
-			invocation := Builtin().AnalyzeFor(command, false, commands.UnixArguments)
+			invocation := BuiltinShells().AnalyzeFor(command, false, UnixArguments)
 			var arguments []string
 			for _, token := range invocation.Arguments {
 				arguments = append(arguments, strings.ReplaceAll(token.Value, "{0}", "/dev/null"))
@@ -35,7 +33,7 @@ func TestBashInvocationMatchesActualBash(t *testing.T) {
 			process := exec.CommandContext(t.Context(), bash, "--noprofile", "--norc", "-c", `args=(); while IFS= read -r -d '' arg; do args+=("$arg"); done; exec bash "${args[@]}"`)
 			process.Stdin = strings.NewReader(strings.Join(arguments, "\x00") + "\x00")
 			output, err := process.CombinedOutput()
-			if (invocation.Status == commands.Valid) != (err == nil) {
+			if (invocation.Status == Valid) != (err == nil) {
 				t.Fatalf("model=%+v; Bash error=%v output=%s", invocation, err, output)
 			}
 		})
@@ -44,23 +42,23 @@ func TestBashInvocationMatchesActualBash(t *testing.T) {
 
 func TestWrapperDelegationAndCustomDiagnostics(t *testing.T) {
 	t.Parallel()
-	registry, err := New([]commands.Definition{
-		{ID: "example/python", Executables: []string{"python"}, Language: "python", Options: []commands.Option{{Short: "u"}}},
+	registry, err := NewWithShells([]Definition{
+		{ID: "example/python", Executables: []string{"python"}, Language: "python", Options: []Option{{Short: "u"}}},
 		{ID: "example/actions-python", Executables: []string{"actions-shell"}, Prefix: []string{"python"}, Delegate: "example/python"},
 		{ID: "example/actions-bash", Executables: []string{"actions-shell"}, Prefix: []string{"bash"}, Delegate: "bash"},
-		{ID: "example/custom", Executables: []string{"custom"}, Language: "javascript", Options: []commands.Option{{Long: "unsafe", Warning: "This option bypasses the wrapper's sandbox."}}},
+		{ID: "example/custom", Executables: []string{"custom"}, Language: "javascript", Options: []Option{{Long: "unsafe", Warning: "This option bypasses the wrapper's sandbox."}}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
 		command, language string
-		status            commands.Status
+		status            Status
 	}{
-		{"actions-shell python -u {0}", "python", commands.Valid},
-		{"actions-shell bash -euo pipefail {0}", "bash", commands.Valid},
-		{"actions-shell bash -euo -pipefail {0}", "bash", commands.Invalid},
-		{"actions-shell rust {0}", "", commands.Unknown},
+		{"actions-shell python -u {0}", "python", Valid},
+		{"actions-shell bash -euo pipefail {0}", "bash", Valid},
+		{"actions-shell bash -euo -pipefail {0}", "bash", Invalid},
+		{"actions-shell rust {0}", "", Unknown},
 	} {
 		result := registry.Analyze(tc.command, false)
 		if result.Language != tc.language || result.Status != tc.status {
@@ -76,8 +74,8 @@ func TestWrapperDelegationAndCustomDiagnostics(t *testing.T) {
 func TestUnknownOptionsDoNotLookLikeValidatedInvocations(t *testing.T) {
 	t.Parallel()
 	for _, command := range []string{"unregistered {0}", "bash ${{ vars.FLAGS }} {0}"} {
-		result := Builtin().Analyze(command, false)
-		if result.Status != commands.Unknown || result.Reason == "" {
+		result := BuiltinShells().Analyze(command, false)
+		if result.Status != Unknown || result.Reason == "" {
 			t.Fatalf("unresolved invocation reported as checked: %+v", result)
 		}
 	}
@@ -108,8 +106,8 @@ func TestBashPreparationMatchesStartupOptions(t *testing.T) {
 					t.Skip("this Bash version does not implement inherit_errexit")
 				}
 			}
-			invocation := Builtin().AnalyzeFor(command, false, commands.UnixArguments)
-			if invocation.Status != commands.Valid {
+			invocation := BuiltinShells().AnalyzeFor(command, false, UnixArguments)
+			if invocation.Status != Valid {
 				t.Fatalf("invalid invocation: %+v", invocation)
 			}
 			script := filepath.ToSlash(filepath.Join(t.TempDir(), "snapshot.sh"))

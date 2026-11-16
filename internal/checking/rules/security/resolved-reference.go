@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -43,7 +44,7 @@ func (*ResolvedReferenceCheck) AnalyzeDocument(ctx context.Context, input checki
 		}
 		d := results.Diagnostic{Rule: "remote-resolution", Code: "pin-available", Severity: severity.Info, Reference: &reference, Path: input.Path, Start: dep.Start, End: dep.End, Message: message}
 		if dep.End != dep.Start {
-			d.Fixes = []results.Fix{{Description: "Pin " + name + " to resolved commit", Applicability: results.FixSuggested, Revisions: map[string]string{input.Path: input.Reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: dep.Start, End: dep.End, Replacement: strconv.Quote(name + "@" + result.Commit)}}}}
+			d.Fixes = []results.Fix{{Description: "Pin " + name + " to resolved commit", Applicability: applicability.Suggested, Revisions: map[string]string{input.Path: input.Reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: dep.Start, End: dep.End, Replacement: strconv.Quote(name + "@" + result.Commit)}}}}
 		}
 		findings = append(findings, d)
 	}

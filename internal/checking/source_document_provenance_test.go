@@ -42,7 +42,7 @@ func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
 			workflowPath := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 			result, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
-				Analyzers:  []checkinputs.Registration{{Analyzer: actionSourceReferenceProbe{path: actionPath}}},
+				Analyzers:  []results.AnalyzerRegistration{{Analyzer: actionSourceReferenceProbe{path: actionPath}}},
 			}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflowPath}})
 			if err != nil {
 				t.Fatal(err)

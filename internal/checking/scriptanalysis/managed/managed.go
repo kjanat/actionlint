@@ -15,6 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
@@ -34,7 +35,7 @@ func Bind(base contract.Registration, p backends.Provider) contract.Registration
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shell.ID {
 		return base
 	}
-	base.WithAnalyzer = func(registration checkinputs.Registration) (contract.Registration, error) {
+	base.WithAnalyzer = func(registration results.AnalyzerRegistration) (contract.Registration, error) {
 		return withAnalyzer(base, p, registration)
 	}
 	return base
@@ -57,7 +58,7 @@ func defaultSelection(sel backends.ToolSelection, name string) bool {
 // document, accounting for settings in overrides and composite actions.
 // Options in registration take precedence over the options configuration
 // gives the analyzer's rule.
-func withAnalyzer(base contract.Registration, p backends.Provider, registration checkinputs.Registration) (contract.Registration, error) {
+func withAnalyzer(base contract.Registration, p backends.Provider, registration results.AnalyzerRegistration) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
 	guest := registration.Analyzer
@@ -250,7 +251,7 @@ func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolInte
 
 type documentRunner struct {
 	documentRoute
-	guest      checkinputs.Analyzer
+	guest      results.Analyzer
 	integrator checkinputs.ToolIntegrator
 	context    contract.Context
 	native     func(*configuration.Config) (contract.Runner, error)
@@ -315,7 +316,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 			continue
 		}
 		files.configure(&input)
-		result, err := executor.Run(ctx, input, []checkinputs.Registration{{Analyzer: r.guest, Options: input.Options}})
+		result, err := executor.Run(ctx, input, []results.AnalyzerRegistration{{Analyzer: r.guest, Options: input.Options}})
 		for _, finding := range result {
 			mapped, mapErr := files.finding(r.name, finding, script, i)
 			if mapErr != nil {

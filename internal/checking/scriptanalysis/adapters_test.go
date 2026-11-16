@@ -16,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -200,7 +201,7 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 		t.Fatal("fixture source absent")
 	}
 	owner := &finding.Owner{Job: "test", Step: &position}
-	origin := &finding.IgnoreOrigin{Job: "test", StepPosition: &position}
+	origin := &workflows.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
 		"fact": func(t *testing.T) scriptanalysis.BatchAnalyzer {

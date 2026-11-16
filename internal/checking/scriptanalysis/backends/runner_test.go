@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -135,7 +136,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 			fix, ok := scriptFix(script.Source(), generated(script.Source().Value), scriptengine.Fix{Description: "Quote variables", Replacements: []scriptengine.Replacement{
 				replacement(4, 10, `"`), replacement(4, 16, `"`), replacement(5, 6, `"`), replacement(5, 12, `"`),
 			}})
-			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != results.FixSuggested {
+			if !ok || len(fix.Edits) != 4 || fix.Description != "Quote variables" || fix.Applicability != applicability.Suggested {
 				t.Fatalf("mapped fix: %+v", fix)
 			}
 			changed := applyFix(t, input, fix)
@@ -173,7 +174,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 func TestScriptFixPreservesApplicability(t *testing.T) {
 	t.Parallel()
 	script := scriptFixture(t, "run: |\n  echo $VALUE\n")
-	for _, applicability := range []results.Applicability{results.FixSuggested, results.FixSafe, results.FixUnsafe} {
+	for _, applicability := range []applicability.Applicability{applicability.Suggested, applicability.Safe, applicability.Unsafe} {
 		fix, ok := scriptFix(script.Source(), generated(script.Source().Value), scriptengine.Fix{
 			Applicability: applicability,
 			Replacements:  []scriptengine.Replacement{replacement(3, 6, `"`), replacement(3, 12, `"`)},

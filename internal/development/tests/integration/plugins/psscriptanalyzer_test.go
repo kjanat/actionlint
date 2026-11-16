@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
@@ -21,7 +22,7 @@ const psscriptanalyzerExample = "../../../../../plugins/examples/psscriptanalyze
 
 func loadPSScriptAnalyzer(t *testing.T) (toolmanifest.Manifest, toolmanifest.Programs) {
 	t.Helper()
-	manifest, programs, err := toolmanifest.ReadLocal(files.New(t.Context(), nil, nil), filepath.Join(psscriptanalyzerExample, "provider.json"))
+	manifest, programs, err := localproviders.Read(files.New(t.Context(), nil, nil), filepath.Join(psscriptanalyzerExample, "provider.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

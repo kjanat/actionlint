@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
@@ -16,13 +17,13 @@ import (
 )
 
 type FactAnalyzer struct {
-	Analyzer         checkinputs.Analyzer
+	Analyzer         results.Analyzer
 	Options          json.RawMessage
 	IncludeExecution bool
 }
 
 type describedFactAnalyzer struct {
-	checkinputs.Analyzer
+	results.Analyzer
 	descriptor checkinputs.Descriptor
 }
 
@@ -36,7 +37,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if adapter.IncludeExecution {
 		available = append(available, rule.Execution)
 	}
-	if checkinputs.IsNilAnalyzer(adapter.Analyzer) {
+	if results.IsNilAnalyzer(adapter.Analyzer) {
 		return nil, errors.New("nil analyzer registration")
 	}
 	descriptor := adapter.Analyzer.Descriptor()
@@ -57,7 +58,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if _, exists := prepared[identity]; exists {
 			continue
 		}
-		registration, err := executor.Prepare(checkinputs.Registration{Analyzer: described, Options: options}, available)
+		registration, err := executor.Prepare(results.AnalyzerRegistration{Analyzer: described, Options: options}, available)
 		if err != nil {
 			return nil, err
 		}

@@ -148,7 +148,7 @@ func (r *Rule) NewVisitor(in RuleInputs) workflowvisit.Rule {
 
 // ScriptAnalyzer returns the document analyzer of a rule that sets Script.
 // It reports false for any other rule.
-func (r *Rule) ScriptAnalyzer() (checkinputs.Analyzer, bool) {
+func (r *Rule) ScriptAnalyzer() (results.Analyzer, bool) {
 	if r.Script == nil {
 		return nil, false
 	}

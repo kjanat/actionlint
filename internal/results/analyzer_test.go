@@ -1,19 +1,19 @@
-package checkinputs
+package results
 
 import (
 	"context"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 type pointerAnalyzer struct{}
 
-func (*pointerAnalyzer) Descriptor() Descriptor {
-	return Descriptor{Name: "pointer"}
+func (*pointerAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "pointer"}
 }
 
-func (*pointerAnalyzer) AnalyzeDocument(context.Context, AnalyzerInput) ([]results.Diagnostic, error) {
+func (*pointerAnalyzer) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]Diagnostic, error) {
 	return nil, nil
 }
 

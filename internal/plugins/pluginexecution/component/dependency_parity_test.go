@@ -84,11 +84,11 @@ jobs:
     uses: owner/repo/.github/workflows/ci.yml@main
 permissions: {}
 `
-	check := func(a checkinputs.Analyzer) []results.Diagnostic {
+	check := func(a results.Analyzer) []results.Diagnostic {
 		t.Helper()
 		result, err := checking.Analyze(t.Context(),
 
-			checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
+			checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 		)
 		if err != nil {
 			t.Fatal(err)

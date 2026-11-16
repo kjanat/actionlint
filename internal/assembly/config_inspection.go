@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -88,7 +89,7 @@ func InstalledProviders(ctx context.Context, selection configuration.ConfigFileS
 	var manifests []toolmanifest.Manifest
 	for _, path := range sources.Paths {
 		if toolmanifest.IsLocalManifest(path) {
-			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
+			manifest, programs, err := localproviders.Read(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, err
 			}

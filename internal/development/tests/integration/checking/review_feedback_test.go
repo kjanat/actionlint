@@ -29,7 +29,7 @@ func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
 	t.Parallel()
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{
+		checking.Options{Analyzers: []results.AnalyzerRegistration{
 			{Analyzer: namedFindingAnalyzer("first")}, {Analyzer: namedFindingAnalyzer("second")},
 		}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 	)
@@ -59,7 +59,7 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 	}
 	options := checking.Options{
 		WorkingDir:        root,
-		Analyzers:         []checkinputs.Registration{{Analyzer: namedFindingAnalyzer("observed")}},
+		Analyzers:         []results.AnalyzerRegistration{{Analyzer: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
 	baseline, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})

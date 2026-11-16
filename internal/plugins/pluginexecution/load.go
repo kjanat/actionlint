@@ -10,16 +10,17 @@ import (
 	"slices"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -94,7 +95,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 				continue
 			}
 			// A local manifest names a command found on PATH; nothing is fetched.
-			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
+			manifest, programs, err := localproviders.Read(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
@@ -188,8 +189,8 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 	return loaded, nil
 }
 
-func (l *Loaded) Registrations() []checkinputs.Registration {
-	registrations := make([]checkinputs.Registration, 0, len(l.Components))
+func (l *Loaded) Registrations() []results.AnalyzerRegistration {
+	registrations := make([]results.AnalyzerRegistration, 0, len(l.Components))
 	if l.DisableTools {
 		return registrations
 	}
@@ -197,7 +198,7 @@ func (l *Loaded) Registrations() []checkinputs.Registration {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		registrations = append(registrations, checkinputs.Registration{Analyzer: plugin})
+		registrations = append(registrations, results.AnalyzerRegistration{Analyzer: plugin})
 	}
 	return registrations
 }

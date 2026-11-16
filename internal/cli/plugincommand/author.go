@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
+	"actionlint.kjanat.dev/v2/internal/input/localproviders"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -149,7 +150,7 @@ func loadAuthorManifest(ctx context.Context, streams commandio.Streams, path str
 		path = "actionlint-provider.json"
 	}
 	reader := boundedAuthoringReader(ctx, path)
-	return toolmanifest.ReadLocal(reader, path)
+	return localproviders.Read(reader, path)
 }
 
 func boundedAuthoringReader(ctx context.Context, manifestPath string) *files.Reader {

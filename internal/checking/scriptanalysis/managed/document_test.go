@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
@@ -93,7 +94,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 			}
 			directory := tc.directory(alias)
 			guest := &sourceProbeGuest{directory: directory, file: tc.file}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(results.AnalyzerRegistration{Analyzer: guest})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -144,7 +145,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 			}
 			directory := tc.directory(alias)
 			guest := &sourceProbeGuest{directory: directory, file: "value.txt"}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(results.AnalyzerRegistration{Analyzer: guest})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -199,7 +200,7 @@ func (g *documentGuest) AnalyzeDocument(_ context.Context, input checkinputs.Ana
 	result := []results.Diagnostic{{
 		Reference: &reference, Rule: "shellcheck", Code: "SC2086", Message: "Quote variable", Path: input.Path, Start: start, End: end,
 		Fixes: []results.Fix{{
-			Description: "Quote", Applicability: results.FixUnsafe, Revisions: map[string]string{input.Path: input.Reference.Revision},
+			Description: "Quote", Applicability: applicability.Unsafe, Revisions: map[string]string{input.Path: input.Reference.Revision},
 			Edits: []results.Edit{{Path: input.Path, Start: start, End: end, Replacement: `"$VALUE"`}},
 		}},
 	}}
@@ -229,7 +230,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			guest := &documentGuest{fail: tc.partial}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck", Process: tc.process}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck", Process: tc.process}).WithAnalyzer(results.AnalyzerRegistration{Analyzer: guest})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -302,7 +303,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: &documentGuest{}})
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(results.AnalyzerRegistration{Analyzer: &documentGuest{}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -316,7 +317,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 		{Command: "custom-shellcheck"},
 		{Command: "shellcheck", Process: &hostprocess.CommandOptions{Arguments: []string{"--norc"}}},
 	} {
-		registration, err := shellcheckRegistration(options).WithAnalyzer(checkinputs.Registration{Analyzer: &documentGuest{}})
+		registration, err := shellcheckRegistration(options).WithAnalyzer(results.AnalyzerRegistration{Analyzer: &documentGuest{}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -361,7 +362,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			options := checking.Options{
 				WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: overlays,
 				Tools:     []contract.Registration{shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"})},
-				Analyzers: []checkinputs.Registration{{Analyzer: guest}},
+				Analyzers: []results.AnalyzerRegistration{{Analyzer: guest}},
 			}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["shellcheck"] != tc.native {
@@ -406,7 +407,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			options := checking.Options{
 				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{base, disabled},
 				Tools:     []contract.Registration{shellcheckRegistration(backends.ToolSelection{Command: "shellcheck", ManagedOnly: true})},
-				Analyzers: []checkinputs.Registration{{Analyzer: guest}},
+				Analyzers: []results.AnalyzerRegistration{{Analyzer: guest}},
 			}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["shellcheck"] {
@@ -448,7 +449,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	options := checking.Options{
 		WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
 		Tools:     []contract.Registration{shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"})},
-		Analyzers: []checkinputs.Registration{{Analyzer: guest}},
+		Analyzers: []results.AnalyzerRegistration{{Analyzer: guest}},
 	}
 	needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 	if err != nil || !needed["shellcheck"] {
@@ -488,7 +489,7 @@ func TestDocumentPluginPlanningPropagatesCancellation(t *testing.T) {
 	options := checking.Options{
 		WorkingDir: t.TempDir(), SkipProjectConfig: true,
 		Tools:     []contract.Registration{shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"})},
-		Analyzers: []checkinputs.Registration{{Analyzer: guest}},
+		Analyzers: []results.AnalyzerRegistration{{Analyzer: guest}},
 	}
 	result := make(chan error, 1)
 	go func() {

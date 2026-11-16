@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func authoringManifest(t *testing.T, output string) toolmanifest.Manifest {
@@ -102,7 +102,7 @@ func TestEvaluateFixtureFixApplicability(t *testing.T) {
 		manifest := authoringManifest(t, `[{code:"E1", filename:$vars.filename, message:"fix", location:{row:1,column:1}, fixes:[{applicability:"`+label+`",replacements:[{row:1,column:1,end_row:1,end_column:2,text:"z"}]}]}]`)
 		stdout := `{}`
 		got, err := EvaluateFixture(t.Context(), manifest, nil, scriptengine.Request{Source: "abc", Filename: "snippet.py"}, &stdout, nil, nil)
-		want, parseErr := results.ParseApplicability(label)
+		want, parseErr := applicability.Parse(label)
 		if parseErr != nil {
 			if err == nil {
 				t.Fatalf("accepted unknown applicability %q", label)

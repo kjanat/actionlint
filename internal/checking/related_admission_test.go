@@ -154,7 +154,7 @@ func TestRelatedBridgeAndSealProduceOneExactTotal(t *testing.T) {
 
 func testRelatedBridgeAndSeal(t *testing.T, root string) {
 	t.Helper()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: relatedAdmissionProbe{}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: relatedAdmissionProbe{}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejected, ok := errors.AsType[*results.RejectedRelatedError](err)
 	if !ok || rejected.Count() != 3 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "primary" || len(result.Diagnostics[0].Related) != 1 || !result.Diagnostics[0].Related[0].Revision.Valid() {
 		t.Fatalf("result=%+v error=%v", result, err)

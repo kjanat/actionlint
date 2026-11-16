@@ -49,7 +49,7 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 	}
 	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Revision: revision, Coordinates: sourcetext.YAML}
 	locations := []results.Related{{Message: "same request", Path: input.Path, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 1}}}
-	native, nativeErr := executor.Run(t.Context(), input, []checkinputs.Registration{{Analyzer: relatedProbe{locations}}})
+	native, nativeErr := executor.Run(t.Context(), input, []results.AnalyzerRegistration{{Analyzer: relatedProbe{locations}}})
 	wire, witErr := liftAnalysisForInput(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())), &input)
 	a, na := errors.AsType[*results.RejectedRelatedError](nativeErr)
 	b, nb := errors.AsType[*results.RejectedRelatedError](witErr)

@@ -2,12 +2,13 @@ package workflowvisit
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // VisitWithOrigin annotates findings produced by a synchronous pass visit.
 // Asynchronous producers snapshot their own origins before scheduling work.
-func VisitWithOrigin(pass Pass, origin *finding.IgnoreOrigin, hasIgnores bool, visit func() error) error {
+func VisitWithOrigin(pass Pass, origin *workflows.IgnoreOrigin, hasIgnores bool, visit func() error) error {
 	rule, ok := pass.(Rule)
 	if !ok {
 		return visit()
@@ -47,7 +48,7 @@ func VisitWithOrigin(pass Pass, origin *finding.IgnoreOrigin, hasIgnores bool, v
 
 // originParticipant snapshots context for asynchronous diagnostic producers.
 type originParticipant interface {
-	SetIgnoreOrigin(*finding.IgnoreOrigin)
+	SetIgnoreOrigin(*workflows.IgnoreOrigin)
 }
 
 // HasConfiguredIgnores reports whether cfg configures ignore patterns.

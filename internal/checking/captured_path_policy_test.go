@@ -81,7 +81,7 @@ func testResultPathUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T, aliase
 		}
 		return os.Symlink(second, alias)
 	}}
-	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
+	result, err := Check(t.Context(), Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{alias}})
 	if err != nil || result == nil {
 		t.Fatalf("result available=%t error=%v", result != nil, err)
 	}

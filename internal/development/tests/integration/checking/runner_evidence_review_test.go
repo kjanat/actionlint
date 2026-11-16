@@ -72,7 +72,7 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 		settings := checking.Options{
 			WorkingDir: root,
 			Runners:    runnerapi.Options{Target: "order", Providers: []runnerapi.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
-			Analyzers:  []checkinputs.Registration{{Analyzer: observer}},
+			Analyzers:  []results.AnalyzerRegistration{{Analyzer: observer}},
 		}
 		// a.yml waits until b.yml has been analyzed.
 		result, err := checking.Analyze(t.Context(), settings, []workspace.InputFile{source("b.yml", fast), source("a.yml", slow)})

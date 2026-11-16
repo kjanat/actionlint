@@ -9,10 +9,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/guestlimits"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 var (
-	_ checkinputs.Analyzer          = (*component.Plugin)(nil)
+	_ results.Analyzer              = (*component.Plugin)(nil)
 	_ runnerapi.Provider            = (*component.Plugin)(nil)
 	_ scriptengine.DescribedBackend = (*component.Plugin)(nil)
 	_ scriptengine.ConfigValidator  = (*component.Plugin)(nil)

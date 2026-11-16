@@ -126,7 +126,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 			observer := &runtimeObserver{}
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				Runners:   runnerapi.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-				Analyzers: []checkinputs.Registration{{Analyzer: observer}},
+				Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}},
 			}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
 			if err != nil {
 				t.Fatal(err)
@@ -160,7 +160,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: observer}}}, []workspace.InputFile{{
+		checking.Options{Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}}}, []workspace.InputFile{{
 			Path:    "workflow.yml",
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
 			Config:  cfg,

@@ -52,7 +52,7 @@ jobs:
 	observer := &actionInputObserver{}
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []checkinputs.Registration{{Analyzer: observer}},
+		Analyzers:  []results.AnalyzerRegistration{{Analyzer: observer}},
 	}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	observer := &actionInputObserver{}
-	result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Options{})
+	result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 
 	sourcetext "actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	lifecycle "actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	workflows "actionlint.kjanat.dev/v2/internal/model/workflows"
 	results "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -44,7 +45,7 @@ func (ctx *ownedCopyContext) copyOwnedFinding(in Finding) Finding {
 	out.LifecycleEvidence = ctx.copyOwnedValue_a20c76a4097cded664fbce69c4763a0d(in.LifecycleEvidence)
 	out.Source = ctx.copyOwnedDiagnosticSource_0501a5497ec72587ae9bdd2ba5c771c1(in.Source)
 	out.SuppressionOrigin = ctx.copyOwnedValue_b4a5b1b397d5a381792c663e0ca0b89d(in.SuppressionOrigin)
-	out.IgnoreOrigin = ctx.copyOwnedValue_b455585ef54c0fa7055fb0e2b9ec5236(in.IgnoreOrigin)
+	out.IgnoreOrigin = ctx.copyOwnedValue_cade73ba6682831b20b4b140993cb18b(in.IgnoreOrigin)
 	out.Owner = ctx.copyOwnedValue_488883a8c9e16b542a80654da9eff6cf(in.Owner)
 	out.MetadataIdentity = ctx.copyOwnedValue_42b6878d647d4ff2cce39f1e3f24130d(in.MetadataIdentity)
 	return out
@@ -52,7 +53,7 @@ func (ctx *ownedCopyContext) copyOwnedFinding(in Finding) Finding {
 
 func (ctx *ownedCopyContext) copyOwnedDiagnostic_7e9304eab05e88fed387b3b0ef071edf(in results.Diagnostic) results.Diagnostic {
 	out := in
-	out.Reference = ctx.copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in.Reference)
+	out.Reference = ctx.copyOwnedValue_d81e8853003df5ad6bd1d26fe34cb89d(in.Reference)
 	out.Related = slices.Clone(in.Related)
 	out.Lifecycle = ctx.copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in.Lifecycle)
 	out.Fixes = ctx.copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in.Fixes)
@@ -82,12 +83,12 @@ func (ctx *ownedCopyContext) copyOwnedValue_b4a5b1b397d5a381792c663e0ca0b89d(in 
 	return (*results.SuppressionOrigin)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_b455585ef54c0fa7055fb0e2b9ec5236(in *IgnoreOrigin) *IgnoreOrigin {
+func (ctx *ownedCopyContext) copyOwnedValue_cade73ba6682831b20b4b140993cb18b(in *workflows.IgnoreOrigin) *workflows.IgnoreOrigin {
 	if in == nil {
 		return nil
 	}
-	out := ctx.copyOwnedIgnoreOrigin_a1370ab1e0d227e8e22f7d6653cb694e(*in)
-	return (*IgnoreOrigin)(&out)
+	out := ctx.copyOwnedIgnoreOrigin_ce6258af93770ac5e14442ea11fa1010(*in)
+	return (*workflows.IgnoreOrigin)(&out)
 }
 
 func (ctx *ownedCopyContext) copyOwnedValue_488883a8c9e16b542a80654da9eff6cf(in *Owner) *Owner {
@@ -106,7 +107,7 @@ func (ctx *ownedCopyContext) copyOwnedValue_42b6878d647d4ff2cce39f1e3f24130d(in 
 	return (*MetadataIdentity)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in *sourcetext.Reference) *sourcetext.Reference {
+func (ctx *ownedCopyContext) copyOwnedValue_d81e8853003df5ad6bd1d26fe34cb89d(in *sourcetext.Reference) *sourcetext.Reference {
 	if in == nil {
 		return nil
 	}
@@ -140,15 +141,15 @@ func (ctx *ownedCopyContext) copyOwnedEvidence_b6de2083f6a13cb13415ac74865b5030(
 	return out
 }
 
-func (ctx *ownedCopyContext) copyOwnedIgnoreOrigin_a1370ab1e0d227e8e22f7d6653cb694e(in IgnoreOrigin) IgnoreOrigin {
+func (ctx *ownedCopyContext) copyOwnedIgnoreOrigin_ce6258af93770ac5e14442ea11fa1010(in workflows.IgnoreOrigin) workflows.IgnoreOrigin {
 	out := in
-	out.StepPosition = ctx.copyOwnedValue_eceace1df987374cf9dcf7980dcfde93(in.StepPosition)
+	out.StepPosition = ctx.copyOwnedValue_634b2e8e9c575f1e53c12b5d6b315388(in.StepPosition)
 	return out
 }
 
 func (ctx *ownedCopyContext) copyOwnedOwner_04cdcfd326366ef897e9d060f96b402e(in Owner) Owner {
 	out := in
-	out.Step = ctx.copyOwnedValue_eceace1df987374cf9dcf7980dcfde93(in.Step)
+	out.Step = ctx.copyOwnedValue_634b2e8e9c575f1e53c12b5d6b315388(in.Step)
 	return out
 }
 
@@ -176,7 +177,7 @@ func (ctx *ownedCopyContext) copyOwnedValue_1322c9e5dd27dde9d49a9a553ec6e340(in 
 	return out
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_eceace1df987374cf9dcf7980dcfde93(in *sourcetext.Position) *sourcetext.Position {
+func (ctx *ownedCopyContext) copyOwnedValue_634b2e8e9c575f1e53c12b5d6b315388(in *sourcetext.Position) *sourcetext.Position {
 	if in == nil {
 		return nil
 	}

@@ -4,7 +4,6 @@
 package shell
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -25,7 +24,7 @@ type Shell struct {
 func (s Shell) Invocation() commands.Invocation {
 	registry := s.Registry
 	if registry == nil {
-		registry = interpreters.Builtin()
+		registry = commands.BuiltinShells()
 	}
 	return registry.AnalyzeFor(s.Name, s.Implicit, s.Platform)
 }
@@ -39,7 +38,7 @@ func (s Shell) Analysis() (dialect, startup string) {
 	}
 	switch invocation.Language {
 	case "bash", "sh", "dash", "ksh":
-		return invocation.Language, interpreters.BashSetup(invocation.Settings)
+		return invocation.Language, commands.BashSetup(invocation.Settings)
 	default:
 		return "", ""
 	}

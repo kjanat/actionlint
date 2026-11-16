@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
@@ -21,7 +20,7 @@ func checkShell(shell value.Value, platform runners.Platform, registries ...*com
 		return nil
 	}
 
-	registry := interpreters.Builtin()
+	registry := commands.BuiltinShells()
 	if len(registries) > 0 && registries[0] != nil {
 		registry = registries[0]
 	}

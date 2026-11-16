@@ -44,7 +44,7 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 			if tc.explicit {
 				selection = registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{}}}
 			}
-			options, err := checking.ConfigureToolIntegrations(checking.Options{Tools: registry.Registrations(selection), Analyzers: []checkinputs.Registration{{Analyzer: selectedToolGuest{}}}})
+			options, err := checking.ConfigureToolIntegrations(checking.Options{Tools: registry.Registrations(selection), Analyzers: []results.AnalyzerRegistration{{Analyzer: selectedToolGuest{}}}})
 			if err != nil {
 				t.Fatal(err)
 			}

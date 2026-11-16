@@ -284,7 +284,7 @@ func TestConsumerPreservesSubpathAndRef(t *testing.T) {
 // referenceCheck composes input acquisition and the pure rule for integration tests.
 type referenceCheck struct {
 	session *references.ResolutionSession
-	rule    checkinputs.Analyzer
+	rule    results.Analyzer
 }
 
 func newReferenceCheck(provider references.Resolver) referenceCheck {

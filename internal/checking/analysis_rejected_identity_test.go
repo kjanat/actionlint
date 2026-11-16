@@ -8,10 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
@@ -41,7 +41,7 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 		t.Fatal("rejected graph reached analyzer input")
 	}
 	var used []rule.Descriptor
-	findings, err := runDocumentAnalyzers(t.Context(), []checkinputs.Registration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
+	findings, err := runDocumentAnalyzers(t.Context(), []results.AnalyzerRegistration{{Analyzer: sourceOnlyProbe{content}}}, input, nil, &used)
 	if err != nil || len(findings) != 1 || findings[0].Path != "ci.yml" || findings[0].Message != "reported source finding" {
 		t.Fatalf("source-only fallback lost: %v %v", findings, err)
 	}

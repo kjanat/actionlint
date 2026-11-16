@@ -161,7 +161,7 @@ func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
 	}}
 	root := t.TempDir()
 	workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/outer@v1}, {uses: example/outer@v1}]}}\n"
-	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 			}}
 			root := t.TempDir()
 			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"
-			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -249,7 +249,7 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 	}}
 	root := t.TempDir()
 	workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action0@v1}]}}\n"
-	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,7 +372,7 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 				return nil
 			}}
 			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"
-			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -430,7 +430,7 @@ func TestRemoteCompositeRepositorySwitches(t *testing.T) {
 				return nil
 			}}
 			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/outer@v1}]}}\n"
-			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: pinned, Analyzers: []checkinputs.Registration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: pinned, Analyzers: []results.AnalyzerRegistration{{Analyzer: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}

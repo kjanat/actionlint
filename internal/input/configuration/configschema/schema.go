@@ -32,21 +32,6 @@ const RootFile = "actionlint.schema.json"
 // RootFile or a file it references. actionlint.Schema is one.
 type ReadFunc func(name string) ([]byte, error)
 
-// ToolProvider is what Document needs from a tool provider that a plugin
-// installs. The plugin layer builds it from the provider's manifest, so this
-// package does not depend on the manifest model.
-type ToolProvider struct {
-	// Rule is the rule the provider reports under; tools.<Rule.Name> and the
-	// lint.rules entry are named after it.
-	Rule rule.Descriptor
-	// Settings holds the provider's config_schema, its shorthands and
-	// whether tools.<name>.config may name a configuration file.
-	Settings toolsettings.Spec
-	// ProcessSchema is a process provider's process.config_schema. It is
-	// empty when the provider declares none.
-	ProcessSchema json.RawMessage
-}
-
 // object is a decoded JSON object.
 type object = map[string]any
 
@@ -57,7 +42,7 @@ type object = map[string]any
 // process.config_schema, and accepts a configuration file path only when the
 // provider reads configuration files. Installed providers replace bundled
 // entries with the same rule name.
-func Document(read ReadFunc, providers []ToolProvider) ([]byte, error) {
+func Document(read ReadFunc, providers []toolsettings.Provider) ([]byte, error) {
 	root, err := readObject(read, RootFile)
 	if err != nil {
 		return nil, err
@@ -91,7 +76,7 @@ func Document(read ReadFunc, providers []ToolProvider) ([]byte, error) {
 
 // addPluginRules specializes the shape-valid unknown rule entries generated
 // for each semantic category with every installed provider's option schema.
-func addPluginRules(root object, providers []ToolProvider) error {
+func addPluginRules(root object, providers []toolsettings.Provider) error {
 	categories := ruleCategoryMaps(root)
 	if len(categories) == 0 {
 		return errors.New("configuration schema describes no lint.rules category mappings")
@@ -393,7 +378,7 @@ func toolsMapping(value any) (object, bool) {
 
 // addTools adds an entry for each provider to the tools mapping, built from
 // the mapping's schema for unknown names.
-func addTools(tools object, providers []ToolProvider, settings map[string]object) error {
+func addTools(tools object, providers []toolsettings.Provider, settings map[string]object) error {
 	entries, _ := tools["properties"].(object)
 	unknown, _ := tools["additionalProperties"].(object)
 	for _, provider := range providers {
@@ -410,7 +395,7 @@ func addTools(tools object, providers []ToolProvider, settings map[string]object
 // toolEntry returns the tools.<name> schema of provider: a copy of the
 // schema for unknown names whose config property validates the provider's
 // settings.
-func toolEntry(unknown object, provider ToolProvider, settings object) (object, error) {
+func toolEntry(unknown object, provider toolsettings.Provider, settings object) (object, error) {
 	copied, err := deepCopy(unknown)
 	if err != nil {
 		return nil, err
@@ -456,7 +441,7 @@ func toolEntry(unknown object, provider ToolProvider, settings object) (object, 
 
 // addToolSettings places each provider schema in a single resource shared by
 // the root tools mapping and every override.
-func addToolSettings(root object, providers []ToolProvider) (map[string]object, error) {
+func addToolSettings(root object, providers []toolsettings.Provider) (map[string]object, error) {
 	definitions, _ := root["$defs"].(object)
 	if definitions == nil {
 		definitions = object{}
@@ -474,7 +459,7 @@ func addToolSettings(root object, providers []ToolProvider) (map[string]object, 
 }
 
 // settingsSchema combines a provider's common and process settings schemas.
-func settingsSchema(definitions object, provider ToolProvider) (object, error) {
+func settingsSchema(definitions object, provider toolsettings.Provider) (object, error) {
 	documents := []json.RawMessage{provider.Settings.Schema, provider.ProcessSchema}
 	settings := object{"type": "object", "additionalProperties": true}
 	var all []any

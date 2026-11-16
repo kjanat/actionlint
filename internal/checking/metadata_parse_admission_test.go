@@ -68,7 +68,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			var result *report.Analysis
 			var err, conflict error
 			if !quarantined {
-				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: probe}}}, []workspace.InputFile{unit})
+				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: probe}}}, []workspace.InputFile{unit})
 			} else {
 				// The existing constructor seam gives the test the real result owner;
 				// the analyzer runs after composition and source verification.
@@ -89,7 +89,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 				}
 				processes := hostprocess.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
-				request := analysisRequest{WorkingDir: root, Sources: []workspace.InputFile{unit}, Checks: testChecks(t, []checkinputs.Registration{{Analyzer: probe}}, nil), Processes: processes}
+				request := analysisRequest{WorkingDir: root, Sources: []workspace.InputFile{unit}, Checks: testChecks(t, []results.AnalyzerRegistration{{Analyzer: probe}}, nil), Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
 					func(ctx context.Context, overlays []capture.Overlay, reader capture.Reader) (*capture.Store, error) {
 						var initErr error

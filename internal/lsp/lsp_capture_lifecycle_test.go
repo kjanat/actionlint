@@ -195,7 +195,7 @@ func TestCancelledEditorAnalysisPublishesNoCapturedText(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		done <- result{analysis, err}
 	}()
 	select {

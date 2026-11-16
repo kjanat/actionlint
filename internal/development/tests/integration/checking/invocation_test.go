@@ -73,7 +73,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	a := &invocationAnalyzer{}
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
-		WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: a}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []results.AnalyzerRegistration{{Analyzer: a}}, SkipProjectConfig: true,
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 		}
 	}
 	capture := &invocationAnalyzer{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: capture}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []results.AnalyzerRegistration{{Analyzer: capture}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
 	if err != nil {
 		t.Fatal(err)
 	}

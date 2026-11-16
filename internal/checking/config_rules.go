@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // ConfigurationRules returns the rule catalog: the built-in rules followed by
@@ -53,10 +53,10 @@ var ruleCatalog = sync.OnceValues(func() (configuration.RuleSet, error) {
 
 // ConfigurationRegistrations declares the rules that analyzers and tool registrations add
 // to the built-in rule set, so configuration can name and configure them.
-func ConfigurationRegistrations(analyzers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
+func ConfigurationRegistrations(analyzers []results.AnalyzerRegistration, providers []contract.Registration) []configuration.RuleRegistration {
 	var registrations []configuration.RuleRegistration
 	for _, analyzer := range analyzers {
-		if checkinputs.IsNilAnalyzer(analyzer.Analyzer) {
+		if results.IsNilAnalyzer(analyzer.Analyzer) {
 			continue
 		}
 		registrations = append(registrations, configuration.RuleRegistration{Declaration: analyzer.Analyzer.Descriptor().Clone(), Options: slices.Clone(analyzer.Options)})

@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/applicability"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
@@ -50,7 +51,7 @@ func TestPlanAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := results.Diagnostic{Fixes: []results.Fix{{Applicability: results.FixSafe, Revisions: map[string]string{path: sha256hex.Digest([]byte(before))}, Edits: []results.Edit{{Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
+	d := results.Diagnostic{Fixes: []results.Fix{{Applicability: applicability.Safe, Revisions: map[string]string{path: sha256hex.Digest([]byte(before))}, Edits: []results.Edit{{Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
 	reader := files.New(t.Context(), nil, nil)
 	plan, err := edits.Build(t.Context(), []results.Diagnostic{d}, reader, false)
 	if err != nil {

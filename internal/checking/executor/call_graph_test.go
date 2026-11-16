@@ -34,7 +34,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 		}
 		return nil, nil
 	}}
-	if _, err := Run(t.Context(), input, []checkinputs.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
+	if _, err := Run(t.Context(), input, []results.AnalyzerRegistration{{Analyzer: first}, {Analyzer: second}}); err != nil {
 		t.Fatal(err)
 	}
 	if input.SelectedScripts[0] != occurrence.ID || input.Invoked[0].Occurrence != occurrence {
