@@ -25,7 +25,7 @@ func TestEffectiveAndRank(t *testing.T) {
 	if got := Severity("").Effective(); got != Error {
 		t.Fatalf("zero Effective() = %q, want error", got)
 	}
-	if !(Info.Rank() < Warning.Rank() && Warning.Rank() < Error.Rank() && Severity("").Rank() == 0) {
+	if Info.Rank() >= Warning.Rank() || Warning.Rank() >= Error.Rank() || Severity("").Rank() != 0 {
 		t.Fatal("ranks are not ordered info < warning < error")
 	}
 }
