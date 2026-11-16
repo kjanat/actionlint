@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // ReadScriptMetadata validates the static routing declaration for a script component.

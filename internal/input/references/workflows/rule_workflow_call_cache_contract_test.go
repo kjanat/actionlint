@@ -7,7 +7,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -45,7 +45,7 @@ jobs:
 	}
 	root := t.TempDir()
 	cache := newCapturedWorkflowCache(t, root, root, nil)
-	event, _ := workflowlang.FindWorkflowCallEvent(w)
+	event, _ := definition.FindWorkflowCallEvent(w)
 	cache.WriteWorkflowCallEventFromWorkflow("callee.yaml", event, w)
 	fromAST, _, ok := cache.Lookup("./callee.yaml")
 	if !ok {
@@ -54,7 +54,7 @@ jobs:
 	if diff := cmp.Diff(fromFile.JobCacheAccess, fromAST.JobCacheAccess); diff != "" {
 		t.Fatal(diff)
 	}
-	for id, want := range map[string]workflowlang.CacheModeKind{"base": workflowlang.CacheModeRead, "alias": workflowlang.CacheModeRead, "save": workflowlang.CacheModeWriteOnly, "none": workflowlang.CacheModeNone, "invalid": workflowlang.CacheModeInvalid, "scalar-alias": workflowlang.CacheModeRead} {
+	for id, want := range map[string]definition.CacheModeKind{"base": definition.CacheModeRead, "alias": definition.CacheModeRead, "save": definition.CacheModeWriteOnly, "none": definition.CacheModeNone, "invalid": definition.CacheModeInvalid, "scalar-alias": definition.CacheModeRead} {
 		if kind, declared := fromFile.JobCacheAccess[id].Mode.Kind(); !declared || kind != want {
 			t.Errorf("%s: wanted %v, got %v (declared %t)", id, want, kind, declared)
 		}

@@ -5,11 +5,11 @@ import (
 	"slices"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // FromWorkflow projects decoded workflow declarations into a report outline.
-func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool) Workflow {
+func FromWorkflow(path string, workflow *definition.Workflow, parseErrors bool) Workflow {
 	outline := Workflow{Path: path, ParseStatus: "failed", Triggers: []string{}, Jobs: []Job{}}
 	if workflow == nil {
 		return outline
@@ -58,7 +58,7 @@ func FromWorkflow(path string, workflow *workflowlang.Workflow, parseErrors bool
 	return outline
 }
 
-func stepOutlines(steps []*workflowlang.Step) []Step {
+func stepOutlines(steps []*definition.Step) []Step {
 	records := make([]Step, 0, len(steps))
 	for _, step := range steps {
 		record := Step{
@@ -66,15 +66,15 @@ func stepOutlines(steps []*workflowlang.Step) []Step {
 			Start: outlinePosition(step.Pos), Kind: "unknown", Uses: outlineString(step.DeclaredUses),
 		}
 		switch exec := step.Exec.(type) {
-		case *workflowlang.ExecRun:
+		case *definition.ExecRun:
 			record.Kind = "run"
-		case *workflowlang.ExecAction:
+		case *definition.ExecAction:
 			record.Kind, record.Uses = "uses", outlineString(exec.Uses)
-		case *workflowlang.ExecWait:
+		case *definition.ExecWait:
 			record.Kind = "wait"
-		case *workflowlang.ExecCancel:
+		case *definition.ExecCancel:
 			record.Kind = "cancel"
-		case *workflowlang.ExecParallel:
+		case *definition.ExecParallel:
 			record.Kind, record.Steps = "parallel", stepOutlines(exec.Steps)
 		}
 		records = append(records, record)
@@ -82,7 +82,7 @@ func stepOutlines(steps []*workflowlang.Step) []Step {
 	return records
 }
 
-func outlineString(value *workflowlang.String) string {
+func outlineString(value *definition.String) string {
 	if value == nil {
 		return ""
 	}

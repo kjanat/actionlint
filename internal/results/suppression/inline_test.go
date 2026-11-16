@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"github.com/google/go-cmp/cmp"
 )

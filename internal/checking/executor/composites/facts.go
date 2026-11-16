@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -32,9 +32,9 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 	} else if input.Reference != input.CallGraph.Entry().Reference {
 		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
 	}
-	input.AvailableInputs = append(input.AvailableInputs, rulemeta.Mappings, rulemeta.Dependencies, rulemeta.Invocations)
+	input.AvailableInputs = append(input.AvailableInputs, rule.Mappings, rule.Dependencies, rule.Invocations)
 	if result.Batch.Collected {
-		input.AvailableInputs = append(input.AvailableInputs, rulemeta.Scripts)
+		input.AvailableInputs = append(input.AvailableInputs, rule.Scripts)
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)
 			if !exists {
@@ -52,7 +52,7 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 		}
 	}
 	if result.ResolveExecution {
-		input.AvailableInputs = append(input.AvailableInputs, rulemeta.Execution)
+		input.AvailableInputs = append(input.AvailableInputs, rule.Execution)
 	}
 	input.Mappings, input.Dependencies = result.EntrySnapshot.Bound().Declarations()
 	return input, nil

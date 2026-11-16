@@ -10,7 +10,7 @@ import (
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 type failingMetadataParticipant struct {
@@ -39,7 +39,7 @@ func (p *failingMetadataCallback) CheckStandaloneMetadata(*actionmeta.Metadata, 
 	return p.failure
 }
 
-func (p *failingMetadataCallback) VisitStep(step declaration.Step) error {
+func (p *failingMetadataCallback) VisitStep(step workflows.Step) error {
 	position, _ := step.Position()
 	p.Error(&position, "partial metadata result")
 	return p.failure

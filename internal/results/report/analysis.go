@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
 	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"

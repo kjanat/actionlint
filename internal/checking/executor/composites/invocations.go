@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func (analysis *compositeAnalyzer) startEntry(kind invocation.EntryKind, snapshot parsing.SourceSnapshot) error {
@@ -86,7 +86,7 @@ func metadataOutcome(result workspaceactions.MetadataResult) (invocation.Outcome
 	return invocation.Outcome{}, fmt.Errorf("metadata lookup returned invalid outcome %d", result.Status())
 }
 
-func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction) (*actionmeta.Metadata, string, invocation.Outcome, error) {
+func (analysis *compositeAnalyzer) resolveAction(action *definition.ExecAction) (*actionmeta.Metadata, string, invocation.Outcome, error) {
 	uses := action.Uses
 	if uses == nil || uses.Value == "" {
 		outcome, err := invocation.Unresolved(invocation.ReasonInvalidCall, "action reference is empty")

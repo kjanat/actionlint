@@ -13,9 +13,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	backendroute "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
@@ -158,8 +158,8 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 }
 
 // runBody returns a run step whose body is text.
-func runBody(text string) *workflowlang.ExecRun {
-	return &workflowlang.ExecRun{Run: &workflowlang.String{Value: text}}
+func runBody(text string) *definition.ExecRun {
+	return &definition.ExecRun{Run: &definition.String{Value: text}}
 }
 
 type coreDescribedBackend struct {

@@ -10,8 +10,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +22,7 @@ type ReusableWorkflowMetadataLookup interface {
 
 type cacheModeVisit struct {
 	spec string
-	mode workflowlang.CacheModeKind
+	mode definition.CacheModeKind
 }
 
 type operationCheck struct {
@@ -36,7 +36,7 @@ func (r *operationCheck) Errorf(pos source.Position, format string, args ...any)
 
 // CheckCallOperations applies the caller's ceiling to inherited callee operations.
 // Results belong to the call site; policy evaluation is never cached with metadata.
-func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, lookup ReusableWorkflowMetadataLookup) []results.Diagnostic {
+func CheckCallOperations(call *definition.WorkflowCall, granted *definition.CacheMode, lookup ReusableWorkflowMetadataLookup) []results.Diagnostic {
 	if call == nil || call.Uses == nil || lookup == nil {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec str
 }
 
 // CheckStep reports cache action operations disabled by an explicit cache mode.
-func CheckStep(step declaration.Step, mode *workflowlang.CacheMode) []results.Diagnostic {
+func CheckStep(step workflows.Step, mode *definition.CacheMode) []results.Diagnostic {
 	action, ok := step.Action()
 	if !ok || action.Uses == nil {
 		return nil

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -57,7 +57,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 }
 
 func (a *integratedAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: a.tool, Category: "correctness", Provider: "arbitrary-fork", OptionsSchema: a.schema, RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: a.tool, Category: "correctness", Provider: "arbitrary-fork", OptionsSchema: a.schema, RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
 func (a *integratedAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {

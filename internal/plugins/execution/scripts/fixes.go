@@ -8,7 +8,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -19,7 +19,7 @@ import (
 // unchanged: a row preparation generated, or one whose expressions it
 // masked, makes the whole fix unavailable, as do indentation changes and
 // overlapping replacements. A fix may edit several rows.
-func scriptFix(source *workflowlang.ScriptSource, prepared preparation.Prepared, fix checkinputs.ScriptFix) (results.Fix, bool) {
+func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, fix checkinputs.ScriptFix) (results.Fix, bool) {
 	if source == nil || !source.Literal || len(fix.Replacements) == 0 {
 		return results.Fix{}, false
 	}
@@ -90,7 +90,7 @@ func scriptFix(source *workflowlang.ScriptSource, prepared preparation.Prepared,
 	return results.Fix{Description: fix.Description, Applicability: fix.Applicability, Edits: edits}, true
 }
 
-func fixPreservesIndent(source *workflowlang.ScriptSource, edits []results.Edit) bool {
+func fixPreservesIndent(source *definition.ScriptSource, edits []results.Edit) bool {
 	for _, span := range source.Spans {
 		original := source.Value[span.Start:span.End]
 		modified := original

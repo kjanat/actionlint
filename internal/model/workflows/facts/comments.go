@@ -2,11 +2,11 @@ package facts
 
 import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // SourceComments publishes YAML attachments independently of the decoded scalar.
-func SourceComments(source []workflowlang.ScalarComment) []SourceComment {
+func SourceComments(source []definition.ScalarComment) []SourceComment {
 	comments := make([]SourceComment, 0, len(source))
 	for _, comment := range source {
 		placement := LeadingComment

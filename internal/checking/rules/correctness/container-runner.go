@@ -13,9 +13,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // ContainerRunnerRule is the single definition of the container-runner rule.
@@ -93,7 +93,7 @@ func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *r
 	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
 }
 
-func (r *containerAdapter) VisitJobPre(job workflowdecl.Job) error {
+func (r *containerAdapter) VisitJobPre(job workflows.Job) error {
 	r.targets = r.runners.ContainerLimitations(job)
 	r.guards = []string{job.If.Text()}
 	r.reportUses(r.runners.JobContainerUses(job))
@@ -106,12 +106,12 @@ func (r *containerAdapter) reportUses(uses []runnerlang.ContainerUse) {
 	}
 }
 
-func (r *containerAdapter) VisitStep(step workflowdecl.Step) error {
+func (r *containerAdapter) VisitStep(step workflows.Step) error {
 	r.conditions[step.Reference()] = step.If.Text()
 	return r.checkStep(step)
 }
 
-func (r *containerAdapter) checkStep(step workflowdecl.Step) error {
+func (r *containerAdapter) checkStep(step workflows.Step) error {
 	if len(r.targets) == 0 {
 		return nil
 	}
@@ -173,9 +173,9 @@ func (r *containerAdapter) LeaveInvocation(scope invocation.Context) error {
 	return nil
 }
 
-func (r *containerAdapter) VisitInvocationStep(workflowdecl.Step) error { return nil }
+func (r *containerAdapter) VisitInvocationStep(workflows.Step) error { return nil }
 
-func (r *containerAdapter) VisitOpaqueAction(step workflowdecl.Step) error {
+func (r *containerAdapter) VisitOpaqueAction(step workflows.Step) error {
 	if len(r.frames) == 0 {
 		return nil
 	}

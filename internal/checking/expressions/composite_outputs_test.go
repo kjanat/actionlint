@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"

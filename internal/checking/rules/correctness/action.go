@@ -15,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -66,7 +66,7 @@ func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspace
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *ruleAction) VisitStep(n workflowdecl.Step) error {
+func (rule *ruleAction) VisitStep(n workflows.Step) error {
 	e, ok := n.Action()
 	if !ok || e.Uses == nil {
 		return nil
@@ -130,7 +130,7 @@ func (rule *ruleAction) VisitStep(n workflowdecl.Step) error {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
-func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *workflowlang.ExecAction) error {
+func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *definition.ExecAction) error {
 	if references.FormOf(displaySpec) == references.FormSelfRepository {
 		localSpec = displaySpec
 	}

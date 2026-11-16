@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestValidInputKindDiscriminant(t *testing.T) {
@@ -21,8 +21,8 @@ func TestValidInputKindDiscriminant(t *testing.T) {
 
 func TestValidateSuppressionRuleNameRejectsBuiltin(t *testing.T) {
 	t.Parallel()
-	reserved, err := rulemeta.NewNames([]rulemeta.Descriptor{{
-		Name: "forbidden-suppression", Aliases: []rulemeta.Alias{{Name: "disallow-suppressions", Deprecated: true}},
+	reserved, err := rule.NewNames([]rule.Descriptor{{
+		Name: "forbidden-suppression", Aliases: []rule.Alias{{Name: "disallow-suppressions", Deprecated: true}},
 	}})
 	if err != nil {
 		t.Fatal(err)

@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
@@ -17,7 +17,7 @@ import (
 // Decode lazily: most workflow scalars never need source-level diagnostics.
 func (p *Parser) IndexScalarSources(root *codec.Node) {
 	p.scalarContexts = make(map[source.Position]sourcemap.Context)
-	p.scalarSources = make(map[source.Position]*workflowlang.ScriptSource)
+	p.scalarSources = make(map[source.Position]*definition.ScriptSource)
 	p.indexScalarComments(root)
 	var visit func(*codec.Node, sourcemap.Context)
 	visit = func(n *codec.Node, context sourcemap.Context) {
@@ -76,7 +76,7 @@ func scalarCollectionIndent(node *codec.Node, lines []string) int {
 }
 
 // ScriptSource returns an owned mapping; callers cannot mutate the parser's cache.
-func (p *Parser) ScriptSource(n *codec.Node) *workflowlang.ScriptSource {
+func (p *Parser) ScriptSource(n *codec.Node) *definition.ScriptSource {
 	if n == nil || n.Kind != 0 && n.Kind != codec.ScalarNode {
 		return nil
 	}
@@ -102,7 +102,7 @@ func (p *Parser) ScriptSource(n *codec.Node) *workflowlang.ScriptSource {
 
 // scalarSource retains the decoder result inside the parser. Public source
 // mappings are copied; parse-boundary metadata only reads its value fields.
-func (p *Parser) scalarSource(key source.Position, value string) *workflowlang.ScriptSource {
+func (p *Parser) scalarSource(key source.Position, value string) *definition.ScriptSource {
 	if scriptSource, exists := p.scalarSources[key]; exists {
 		if scriptSource != nil && scriptSource.Value != value {
 			return nil
@@ -118,7 +118,7 @@ func (p *Parser) scalarSource(key source.Position, value string) *workflowlang.S
 	if err != nil || decoded.Value != value {
 		return nil
 	}
-	scriptSource := workflowlang.NewScriptSource(decoded.Value)
+	scriptSource := definition.NewScriptSource(decoded.Value)
 	scriptSource.Literal = decoded.Literal
 	scriptSource.ContentStart = decoded.Start
 	scriptSource.ScalarEnd = decoded.End
@@ -131,7 +131,7 @@ func (p *Parser) scalarSource(key source.Position, value string) *workflowlang.S
 // cloneScriptSource returns source with its slices detached. Copying the whole
 // value keeps fields added later; a new reference field still shares storage
 // until it is detached here.
-func cloneScriptSource(scriptSource workflowlang.ScriptSource) workflowlang.ScriptSource {
+func cloneScriptSource(scriptSource definition.ScriptSource) definition.ScriptSource {
 	scriptSource.Lines = slices.Clone(scriptSource.Lines)
 	scriptSource.Spans = slices.Clone(scriptSource.Spans)
 	scriptSource.Comments = slices.Clone(scriptSource.Comments)

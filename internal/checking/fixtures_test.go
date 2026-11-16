@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 )
 
 const (

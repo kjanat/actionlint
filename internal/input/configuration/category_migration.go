@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // ErrRuleMetadataRequired means a category migration needs plugin descriptors.

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowmodel "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -19,7 +19,7 @@ import (
 type stepNameAnalyzer struct{}
 
 func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -31,8 +31,8 @@ func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Analy
 		return nil, nil
 	}
 	var findings []results.Diagnostic
-	var checkSteps func([]*workflowmodel.Step)
-	checkSteps = func(steps []*workflowmodel.Step) {
+	var checkSteps func([]*definition.Step)
+	checkSteps = func(steps []*definition.Step) {
 		for _, step := range steps {
 			if step.Name == nil {
 				findings = append(findings, results.Diagnostic{
@@ -40,7 +40,7 @@ func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Analy
 					Start:   *step.Pos,
 				})
 			}
-			if parallel, ok := step.Exec.(*workflowmodel.ExecParallel); ok {
+			if parallel, ok := step.Exec.(*definition.ExecParallel); ok {
 				checkSteps(parallel.Steps)
 			}
 		}

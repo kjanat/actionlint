@@ -8,7 +8,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func resolveRules(t *testing.T, presets configuration.Presets, config *configuration.Config, descriptors ...rule.Descriptor) *configuration.Config {

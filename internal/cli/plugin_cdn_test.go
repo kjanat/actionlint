@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 

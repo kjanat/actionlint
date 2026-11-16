@@ -9,7 +9,7 @@ import (
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	render "actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -18,7 +18,7 @@ type customRuleForTest struct {
 	count int
 }
 
-func (r *customRuleForTest) VisitStep(n workflowdecl.Step) error {
+func (r *customRuleForTest) VisitStep(n workflows.Step) error {
 	r.count++
 	if r.count > 1 {
 		position, _ := n.Position()

@@ -9,13 +9,13 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // toolProvider is what configuration needs from a bundled tool provider.
 type toolProvider struct {
-	scope rulescope.ConfigurationScope
+	scope rule.ConfigurationScope
 	// schema validates inline tools.<name>.config settings; nil accepts any.
 	schema *toolsettings.Schema
 	// shorthands may be written directly under tools.<name>.
@@ -70,9 +70,9 @@ func loadToolProvider(name string) (toolProvider, error) {
 	}
 	switch manifest.Scope {
 	case "composite":
-		tool.scope = rulescope.CompositeConfiguration
+		tool.scope = rule.CompositeConfiguration
 	case "source":
-		tool.scope = rulescope.SourceConfiguration
+		tool.scope = rule.SourceConfiguration
 	default:
 		return toolProvider{}, fmt.Errorf("unknown scope %q", manifest.Scope)
 	}

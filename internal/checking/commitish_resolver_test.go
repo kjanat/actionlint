@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/gitwire"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/gitwire"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -14,22 +14,22 @@ func TestScalarAttachedComments(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, input string
-		want        []workflowlang.ScalarComment
+		want        []definition.ScalarComment
 	}{
-		{"leading", "# shellcheck disable=SC2086\nrun: echo $HI\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 1}}}},
-		{"trailing", "run: echo $HI # shellcheck disable=SC2086\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 15}, Trailing: true}}},
-		{"block-header", "run: | # shellcheck disable=SC2086\n  echo $HI\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 8}, Trailing: true}}},
+		{"leading", "# shellcheck disable=SC2086\nrun: echo $HI\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 1}}}},
+		{"trailing", "run: echo $HI # shellcheck disable=SC2086\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 15}, Trailing: true}}},
+		{"block-header", "run: | # shellcheck disable=SC2086\n  echo $HI\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 8}, Trailing: true}}},
 		{"body", "run: |\n  # shellcheck disable=SC2086\n  echo $HI\n", nil},
 		{"quoted", "run: 'echo $HI # shellcheck disable=SC2086'\n", nil},
-		{"quoted-trailing", "run: 'echo $HI # comment' # shellcheck disable=SC2086\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 27}, Trailing: true}}},
-		{"multiline-quoted-trailing", "run: 'echo\n  # shellcheck disable=SC2086\n  end' # shellcheck disable=SC2086\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 3, Column: 8}, Trailing: true}}},
-		{"unicode-trailing", "run: echo café # shellcheck disable=SC2086\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 16}, Trailing: true}}},
-		{"indented-leading", "  # shellcheck disable=SC2086\n  run: echo $HI\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 3}}}},
-		{"matching-block-body", "run: | # shellcheck disable=SC2086\n  # shellcheck disable=SC2086\n  echo $HI\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 8}, Trailing: true}}},
+		{"quoted-trailing", "run: 'echo $HI # comment' # shellcheck disable=SC2086\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 27}, Trailing: true}}},
+		{"multiline-quoted-trailing", "run: 'echo\n  # shellcheck disable=SC2086\n  end' # shellcheck disable=SC2086\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 3, Column: 8}, Trailing: true}}},
+		{"unicode-trailing", "run: echo café # shellcheck disable=SC2086\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 16}, Trailing: true}}},
+		{"indented-leading", "  # shellcheck disable=SC2086\n  run: echo $HI\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 3}}}},
+		{"matching-block-body", "run: | # shellcheck disable=SC2086\n  # shellcheck disable=SC2086\n  echo $HI\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 1, Column: 8}, Trailing: true}}},
 		{"following-comment", "run: echo $HI\n# shellcheck disable=SC2086\n", nil},
 		{"blank-separator", "# shellcheck disable=SC2086\n\nrun: echo $HI\n", nil},
-		{"preceding-entry", "name: example\n# shellcheck disable=SC2086\nrun: echo $HI\n", []workflowlang.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}}},
-		{"group", "# ordinary comment\n# shellcheck disable=SC2086\nrun: echo $HI\n", []workflowlang.ScalarComment{{Text: "# ordinary comment", Pos: sourcepos.Position{Line: 1, Column: 1}}, {Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}}},
+		{"preceding-entry", "name: example\n# shellcheck disable=SC2086\nrun: echo $HI\n", []definition.ScalarComment{{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}}},
+		{"group", "# ordinary comment\n# shellcheck disable=SC2086\nrun: echo $HI\n", []definition.ScalarComment{{Text: "# ordinary comment", Pos: sourcepos.Position{Line: 1, Column: 1}}, {Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}}},
 	} {
 		for _, newline := range []string{"\n", "\r\n"} {
 			t.Run(tc.name+newline, func(t *testing.T) {
@@ -75,10 +75,10 @@ func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 	originalEntries := root.Content[0].Content
 	for _, tc := range []struct {
 		index int
-		want  workflowlang.ScalarComment
+		want  definition.ScalarComment
 	}{
-		{2, workflowlang.ScalarComment{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}},
-		{4, workflowlang.ScalarComment{Text: "# shellcheck shell=sh", Pos: sourcepos.Position{Line: 4, Column: 15}, Trailing: true}},
+		{2, definition.ScalarComment{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}},
+		{4, definition.ScalarComment{Text: "# shellcheck shell=sh", Pos: sourcepos.Position{Line: 4, Column: 15}, Trailing: true}},
 	} {
 		originalAlias := originalEntries[tc.index+1]
 		attachment := parser.scalarDeclarations[*PosAt(originalEntries[tc.index])]
@@ -119,7 +119,7 @@ func TestStandaloneAliasDeclarationCommentsUseLazyPhysicalGraph(t *testing.T) {
 		t.Fatal("fixture eagerly indexed scalar sources")
 	}
 	source := parser.ScriptSourceForDeclaration(entries[3], PosAt(entries[2]))
-	wantComment := workflowlang.ScalarComment{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}
+	wantComment := definition.ScalarComment{Text: "# shellcheck disable=SC2086", Pos: sourcepos.Position{Line: 2, Column: 1}}
 	if source == nil || source.Value != "echo $HI" || len(source.Comments) != 1 || source.Comments[0] != wantComment {
 		t.Fatalf("lazy declaration source=%+v", source)
 	}

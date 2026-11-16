@@ -9,7 +9,7 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestExpressionWhitespaceWorkflowBoundaries(t *testing.T) {
@@ -60,7 +60,7 @@ jobs:
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
 			}
-			uses := workflow.Jobs["check"].Steps[0].Exec.(*workflowlang.ExecAction).Uses
+			uses := workflow.Jobs["check"].Steps[0].Exec.(*definition.ExecAction).Uses
 			if uses.Value != tc.parsed {
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}

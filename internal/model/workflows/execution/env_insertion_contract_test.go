@@ -6,7 +6,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
@@ -47,7 +47,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 			if len(env.Vars) != 0 || len(env.Insertions) != 1 {
 				t.Fatalf("directive parsed as an environment variable: %+v", env)
 			}
-			semantic := mapping.Resolve(workflowlang.EnvMappingView(env))
+			semantic := mapping.Resolve(definition.EnvMappingView(env))
 			if got := execution.CheckoutEnvironmentUnknown(semantic, runnerlang.MacOrLinux); got != tc.checkout {
 				t.Errorf("checkout environment unknown: %v, want %v (complete=%v entries=%v)", got, tc.checkout, semantic.Complete(), mappingSummary(semantic))
 			}

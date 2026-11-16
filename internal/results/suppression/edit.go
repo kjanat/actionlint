@@ -9,7 +9,7 @@ import (
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	rulemodel "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -18,7 +18,7 @@ import (
 // policy and bind the returned edit to the captured source revision and path.
 // Existing directives retain their selectors and reason; scalar content is
 // targeted through its YAML declaration, never by inserting script comments.
-func Edit(content []byte, line int, rule string, allowed []string, names rulemodel.Names) (results.Edit, bool) {
+func Edit(content []byte, line int, rule string, allowed []string, names rule.Names) (results.Edit, bool) {
 	if !slices.Contains(allowed, rule) {
 		return results.Edit{}, false
 	}
@@ -78,7 +78,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rulemod
 
 // Validate through the suppression parser itself, including malformed YAML
 // recovery. An edit must suppress its target without hiding grammar errors.
-func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rulemodel.Names) (results.Edit, bool) {
+func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rule.Names) (results.Edit, bool) {
 	first, last, err := sourceposition.Range(content, sourcepos.YAML, edit.Start, edit.End)
 	if err != nil {
 		return results.Edit{}, false

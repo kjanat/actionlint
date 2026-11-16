@@ -38,7 +38,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -85,7 +85,7 @@ type analysisSession struct {
 
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
-	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
+	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rule.Descriptor,
 ) ([]*findingmodel.Finding, documentmodel.Outline, *resultpolicy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
@@ -104,7 +104,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rulemeta.Descriptor,
+	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rule.Descriptor,
 ) (findings []*findingmodel.Finding, outline documentmodel.Outline, publication *resultpolicy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
@@ -271,7 +271,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
+	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -390,8 +390,8 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader,
 		ConfigProvenance: provenance,
 
-		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[rulemeta.Scripts] || requires[rulemeta.Invocations] || requires[rulemeta.Execution],
-		ResolveExecution: selected.resolveExecution || requires[rulemeta.Execution], Join: join, Debug: s.debugWriter(),
+		CollectScripts:   len(selected.scripts.Analyzers) != 0 || requires[rule.Scripts] || requires[rule.Invocations] || requires[rule.Execution],
+		ResolveExecution: selected.resolveExecution || requires[rule.Execution], Join: join, Debug: s.debugWriter(),
 	}
 	if action {
 		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)

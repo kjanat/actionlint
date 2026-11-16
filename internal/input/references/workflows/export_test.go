@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // ASTComparisonCache compares AST-derived metadata with captured-file decoding.
@@ -42,7 +42,7 @@ func (c *ASTComparisonCache) convWorkflowPathToSpec(p string) (string, bool) {
 // This method does nothing when (1) no project is set, (2) it could not convert the workflow path
 // to workflow call spec, (3) some cache for the workflow is already existing.
 // This method is thread safe.
-func (c *ASTComparisonCache) WriteWorkflowCallEvent(wpath string, event *workflowlang.WorkflowCallEvent) {
+func (c *ASTComparisonCache) WriteWorkflowCallEvent(wpath string, event *definition.WorkflowCallEvent) {
 	c.WriteWorkflowCallEventFromWorkflow(wpath, event, nil)
 }
 
@@ -50,7 +50,7 @@ func (c *ASTComparisonCache) WriteWorkflowCallEvent(wpath string, event *workflo
 // each job of the reusable workflow requires, taken from the workflow AST. The permission check on
 // workflow calls needs them. Passing a nil 'w' is equivalent to WriteWorkflowCallEvent. The same
 // do-nothing conditions and thread safety apply.
-func (c *ASTComparisonCache) WriteWorkflowCallEventFromWorkflow(wpath string, event *workflowlang.WorkflowCallEvent, w *workflowlang.Workflow) {
+func (c *ASTComparisonCache) WriteWorkflowCallEventFromWorkflow(wpath string, event *definition.WorkflowCallEvent, w *definition.Workflow) {
 	// Convert workflow path to workflow call spec
 	spec, ok := c.convWorkflowPathToSpec(wpath)
 	if !ok {

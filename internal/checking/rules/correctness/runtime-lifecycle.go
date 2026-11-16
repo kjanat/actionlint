@@ -9,8 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // RuntimeLifecycleRule is the single definition of the runtime-lifecycle rule.
@@ -30,12 +30,12 @@ var RuntimeLifecycleRule = &define.Rule{
 
 func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 	return define.Checks{
-		Step: func(step workflowdecl.Step) []reporting.StepFinding {
+		Step: func(step workflows.Step) []reporting.StepFinding {
 			action, ok := step.Action()
 			if !ok {
 				return nil
 			}
-			spec, known := workflowdecl.Scalar(action.Uses).ScalarString()
+			spec, known := workflows.Scalar(action.Uses).ScalarString()
 			if !known {
 				return nil
 			}
@@ -43,7 +43,7 @@ func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 			if !valid || !strings.EqualFold(target.Owner, "actions") || !strings.EqualFold(target.Repo, "setup-node") || target.Subpath != "" {
 				return nil
 			}
-			version := workflowdecl.ResolvedInputs(action).Lookup("node-version")
+			version := workflows.ResolvedInputs(action).Lookup("node-version")
 			selector, known := version.ScalarString()
 			if !known {
 				return nil

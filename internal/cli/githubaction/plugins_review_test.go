@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )

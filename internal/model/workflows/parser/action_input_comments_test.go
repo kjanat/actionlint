@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestAliasedActionInputsKeepDeclarationCommentsAndAnchoredSpans(t *testing.T) {
@@ -43,7 +43,7 @@ jobs:
 				if len(errors) != 0 {
 					t.Fatalf("parse errors: %+v", errors)
 				}
-				exec, ok := workflow.Jobs["build"].Steps[0].Exec.(*workflowlang.ExecAction)
+				exec, ok := workflow.Jobs["build"].Steps[0].Exec.(*definition.ExecAction)
 				if !ok {
 					t.Fatal("action step missing")
 				}
@@ -58,7 +58,7 @@ jobs:
 				if anchor == nil || alias == nil || plain == nil || anchor.Source == nil || alias.Source == nil || plain.Source == nil {
 					t.Fatalf("missing script input sources: %+v", inputs)
 				}
-				want := []workflowlang.ScalarComment{
+				want := []definition.ScalarComment{
 					{Text: "# alias leading", Pos: source.Position{Line: anchorLine + 1, Column: len(indent) + 1}},
 					{Text: "# alias trailing", Pos: source.Position{Line: anchorLine + 2, Column: len(indent) + 17}, Trailing: true},
 				}
@@ -71,7 +71,7 @@ jobs:
 				if len(anchor.Source.Comments) != 1 || anchor.Source.Comments[0].Text != "# anchor comment" {
 					t.Fatalf("anchor comments changed: %+v", anchor.Source.Comments)
 				}
-				for _, input := range []*workflowlang.ActionArgument{anchor, alias, plain} {
+				for _, input := range []*definition.ActionArgument{anchor, alias, plain} {
 					pos, mapped := input.Source.Position(1, 1)
 					if input.Value.Value != "echo café" || !mapped || *pos != (source.Position{Line: anchorLine, Column: len(indent) + 18}) || !slices.Equal(input.Source.Spans, anchor.Source.Spans) {
 						t.Fatalf("anchored text/spans changed: value=%+v source=%+v position=%+v", input.Value, input.Source, pos)

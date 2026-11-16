@@ -5,24 +5,24 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 	t.Parallel()
-	parent := FromMetadata(calls.DeclaredCacheMode(workflowlang.CacheModeWrite))
+	parent := FromMetadata(calls.DeclaredCacheMode(definition.CacheModeWrite))
 	for _, tc := range []struct {
 		name     string
 		metadata calls.CacheModeDeclaration
-		kind     workflowlang.CacheModeKind
+		kind     definition.CacheModeKind
 		bits     uint8
 		known    bool
 	}{
-		{"missing inherits", calls.CacheModeDeclaration{}, workflowlang.CacheModeWrite, 3, true},
-		{"invalid overrides", calls.DeclaredCacheMode(workflowlang.CacheModeInvalid), workflowlang.CacheModeInvalid, 0, false},
-		{"none overrides", calls.DeclaredCacheMode(workflowlang.CacheModeNone), workflowlang.CacheModeNone, 0, true},
-		{"read overrides", calls.DeclaredCacheMode(workflowlang.CacheModeRead), workflowlang.CacheModeRead, 1, true},
-		{"write-only overrides", calls.DeclaredCacheMode(workflowlang.CacheModeWriteOnly), workflowlang.CacheModeWriteOnly, 2, true},
+		{"missing inherits", calls.CacheModeDeclaration{}, definition.CacheModeWrite, 3, true},
+		{"invalid overrides", calls.DeclaredCacheMode(definition.CacheModeInvalid), definition.CacheModeInvalid, 0, false},
+		{"none overrides", calls.DeclaredCacheMode(definition.CacheModeNone), definition.CacheModeNone, 0, true},
+		{"read overrides", calls.DeclaredCacheMode(definition.CacheModeRead), definition.CacheModeRead, 1, true},
+		{"write-only overrides", calls.DeclaredCacheMode(definition.CacheModeWriteOnly), definition.CacheModeWriteOnly, 2, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -32,7 +32,7 @@ func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 			if !grant.Present() || grant.Kind() != tc.kind || bits != tc.bits || known != tc.known {
 				t.Fatalf("grant=%+v capabilities=%d known=%t", grant, bits, known)
 			}
-			if parent.Kind() != workflowlang.CacheModeWrite {
+			if parent.Kind() != definition.CacheModeWrite {
 				t.Fatal("child changed its parent")
 			}
 		})
@@ -45,12 +45,12 @@ func TestGrantInheritanceDistinguishesMissingInvalidAndNone(t *testing.T) {
 
 func TestEffectiveModePreservesPublishedDeclaration(t *testing.T) {
 	t.Parallel()
-	workflowMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeRead, Pos: &source.Position{Line: 2, Column: 13}}
-	jobMode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeNone, Pos: &source.Position{Line: 5, Column: 17}}
+	workflowMode := &definition.CacheMode{Kind: definition.CacheModeRead, Pos: &source.Position{Line: 2, Column: 13}}
+	jobMode := &definition.CacheMode{Kind: definition.CacheModeNone, Pos: &source.Position{Line: 5, Column: 17}}
 	if EffectiveMode(workflowMode, nil) != workflowMode || EffectiveMode(workflowMode, jobMode) != jobMode {
 		t.Fatal("inheritance did not select the declaring mode")
 	}
-	if grant := FromDeclaration(jobMode); !grant.Present() || grant.Kind() != workflowlang.CacheModeNone {
+	if grant := FromDeclaration(jobMode); !grant.Present() || grant.Kind() != definition.CacheModeNone {
 		t.Fatalf("grant=%+v", grant)
 	}
 }

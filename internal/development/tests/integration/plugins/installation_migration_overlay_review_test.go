@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"

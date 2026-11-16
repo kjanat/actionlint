@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -16,7 +16,7 @@ import (
 func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	t.Helper()
 	ast, _ := workflowparser.ParseWorkflow([]byte(src))
-	w := declaration.Bind("test", src, ast, false, "").Workflow()
+	w := workflows.Bind("test", src, ast, false, "").Workflow()
 	// The checks run here without the traversal adapter, which would name
 	// each finding after its rule.
 	named := func(name string, findings []reporting.StepFinding) []reporting.StepFinding {

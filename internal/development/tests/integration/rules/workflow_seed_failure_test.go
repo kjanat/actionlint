@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
@@ -44,7 +44,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 			}
 			reusable := false
 			for _, event := range workflow.On {
-				if _, ok := event.(*workflowlang.WorkflowCallEvent); ok {
+				if _, ok := event.(*definition.WorkflowCallEvent); ok {
 					reusable = true
 				}
 			}

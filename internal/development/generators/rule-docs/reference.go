@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // Reference renders documentation from the registered rule declarations.

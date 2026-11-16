@@ -17,9 +17,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
@@ -27,7 +27,7 @@ import (
 
 // checkOneExpression checks a value that must be exactly one ${{ }}
 // expression. ok is false when s is absent or the expression has errors.
-func (rule *Checker) checkOneExpression(s *workflowlang.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	// checkString is not available since it checks types for embedding values into a string
 	if s == nil {
 		return exprtypes.AnyType(), false
@@ -82,32 +82,32 @@ func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *source.Position, what
 
 // checkObjectExpression checks a single expression that must be an object.
 // ok is false when the expression has errors or another type.
-func (rule *Checker) checkObjectExpression(s *workflowlang.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkObjectExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkObjectTy(ty, scalarPosition(s), what)
 }
 
 // checkArrayExpression checks a single expression that must be an array.
 // ok is false when the expression has errors or another type.
-func (rule *Checker) checkArrayExpression(s *workflowlang.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkArrayExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkArrayTy(ty, scalarPosition(s), what)
 }
 
-func (rule *Checker) checkNumberExpression(s *workflowlang.String, what, workflowKey string) {
+func (rule *Checker) checkNumberExpression(s *definition.String, what, workflowKey string) {
 	if ty, ok := rule.checkOneExpression(s, what, workflowKey); ok {
 		rule.checkNumberTy(ty, scalarPosition(s), what)
 	}
 }
 
-func (rule *Checker) checkActionInputs(action *workflowlang.ExecAction, uses *workflowlang.String) {
+func (rule *Checker) checkActionInputs(action *definition.ExecAction, uses *definition.String) {
 	const key = "jobs.<job_id>.steps.with"
 	if action == nil {
 		return
 	}
 	actionSpec := uses.Text()
-	var checkMapping func(map[string]*workflowlang.ActionArgument, *workflowlang.String, []*workflowlang.ActionInputMapping)
-	checkMapping = func(inputs map[string]*workflowlang.ActionArgument, expression *workflowlang.String, insertions []*workflowlang.ActionInputMapping) {
+	var checkMapping func(map[string]*definition.ActionArgument, *definition.String, []*definition.ActionInputMapping)
+	checkMapping = func(inputs map[string]*definition.ActionArgument, expression *definition.String, insertions []*definition.ActionInputMapping) {
 		rule.checkWorkflowExpression(expression, "with", key, schema.StringMap)
 		for _, id := range slices.Sorted(maps.Keys(inputs)) {
 			input := inputs[id]
@@ -115,9 +115,9 @@ func (rule *Checker) checkActionInputs(action *workflowlang.ExecAction, uses *wo
 				continue
 			}
 			rule.checkString(input.Name, key)
-			name := workflowdecl.Scalar(input.Name)
+			name := workflows.Scalar(input.Name)
 			if input.Name == nil {
-				name = value.YAMLScalar(id, workflowlang.YamlTagStr, value.Origin{})
+				name = value.YAMLScalar(id, definition.YamlTagStr, value.Origin{})
 			}
 			canonical, state := mapping.ResolveKey(name)
 			isScriptAction := strings.HasPrefix(actionSpec, "actions/github-script@")
@@ -136,13 +136,13 @@ func (rule *Checker) checkActionInputs(action *workflowlang.ExecAction, uses *wo
 	checkMapping(action.Inputs, action.InputsExpression, action.InputInsertions)
 }
 
-func (rule *Checker) checkEnv(env *workflowlang.Env, workflowKey string) {
+func (rule *Checker) checkEnv(env *definition.Env, workflowKey string) {
 	if env == nil {
 		return
 	}
 
-	var checkValues func(*workflowlang.Env)
-	checkValues = func(current *workflowlang.Env) {
+	var checkValues func(*definition.Env)
+	checkValues = func(current *definition.Env) {
 		if current == nil {
 			return
 		}
@@ -162,7 +162,7 @@ func (rule *Checker) checkEnv(env *workflowlang.Env, workflowKey string) {
 	checkValues(env)
 }
 
-func (rule *Checker) checkContainer(c *workflowlang.Container, workflowKey, childWorkflowKeyPrefix string) {
+func (rule *Checker) checkContainer(c *definition.Container, workflowKey, childWorkflowKeyPrefix string) {
 	if c == nil {
 		return
 	}
@@ -179,7 +179,7 @@ func (rule *Checker) checkContainer(c *workflowlang.Container, workflowKey, chil
 		} else {
 			for _, field := range []struct {
 				name  string
-				value *workflowlang.String
+				value *definition.String
 			}{{"username", c.Credentials.Username}, {"password", c.Credentials.Password}} {
 				if field.value.IsExpressionAssigned() {
 					rule.checkWorkflowExpression(field.value, "credentials."+field.name, k, schema.NonEmpty)
@@ -199,7 +199,7 @@ func (rule *Checker) checkContainer(c *workflowlang.Container, workflowKey, chil
 	rule.checkString(c.Entrypoint, workflowKey)
 }
 
-func (rule *Checker) checkConcurrency(c *workflowlang.Concurrency, workflowKey string) {
+func (rule *Checker) checkConcurrency(c *definition.Concurrency, workflowKey string) {
 	if c == nil {
 		return
 	}
@@ -239,7 +239,7 @@ func (rule *Checker) checkConcurrency(c *workflowlang.Concurrency, workflowKey s
 	}
 }
 
-func (rule *Checker) checkDefaults(d *workflowlang.Defaults, workflowKey string) {
+func (rule *Checker) checkDefaults(d *definition.Defaults, workflowKey string) {
 	if d == nil || d.Run == nil {
 		return
 	}
@@ -248,7 +248,7 @@ func (rule *Checker) checkDefaults(d *workflowlang.Defaults, workflowKey string)
 	rule.checkString(d.Run.WorkingDirectory, workflowKey)
 }
 
-func (rule *Checker) checkWorkflowCall(c *workflowlang.WorkflowCall) {
+func (rule *Checker) checkWorkflowCall(c *definition.WorkflowCall) {
 	if c == nil || c.Uses == nil {
 		return
 	}
@@ -269,7 +269,7 @@ func (rule *Checker) checkWorkflowCall(c *workflowlang.WorkflowCall) {
 		}
 
 		mi, ok := m.Inputs[n]
-		if !ok || mi.Type == workflowlang.WorkflowCallEventInputTypeInvalid {
+		if !ok || mi.Type == definition.WorkflowCallEventInputTypeInvalid {
 			continue
 		}
 
@@ -311,13 +311,13 @@ func (rule *Checker) checkWorkflowCall(c *workflowlang.WorkflowCall) {
 	}
 }
 
-func (rule *Checker) checkSnapshot(s *workflowlang.Snapshot) {
+func (rule *Checker) checkSnapshot(s *definition.Snapshot) {
 	if s == nil {
 		return
 	}
 	rule.checkWorkflowExpression(s.Expression, "snapshot", "jobs.<job_id>.snapshot", schema.Snapshot)
 	for _, field := range []struct {
-		value *workflowlang.String
+		value *definition.String
 		name  string
 	}{{s.ImageName, "image-name"}, {s.Version, "version"}} {
 		if field.value != nil && field.value.IsExpressionAssigned() {
@@ -329,20 +329,20 @@ func (rule *Checker) checkSnapshot(s *workflowlang.Snapshot) {
 	rule.checkIfCondition(s.If, "jobs.<job_id>.snapshot.if")
 }
 
-func (rule *Checker) checkWebhookEventFilter(f *workflowlang.WebhookEventFilter) {
+func (rule *Checker) checkWebhookEventFilter(f *definition.WebhookEventFilter) {
 	if f == nil {
 		return
 	}
 	rule.checkStrings(f.Values, "")
 }
 
-func (rule *Checker) checkStrings(ss []*workflowlang.String, workflowKey string) {
+func (rule *Checker) checkStrings(ss []*definition.String, workflowKey string) {
 	for _, s := range ss {
 		rule.checkString(s, workflowKey)
 	}
 }
 
-func (rule *Checker) checkIfCondition(str *workflowlang.String, workflowKey string) {
+func (rule *Checker) checkIfCondition(str *definition.String, workflowKey string) {
 	if str == nil {
 		return
 	}
@@ -402,7 +402,7 @@ func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
 	}
 }
 
-func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) []typedExpr {
+func (rule *Checker) checkString(str *definition.String, workflowKey string) []typedExpr {
 	if str == nil {
 		return nil
 	}
@@ -421,7 +421,7 @@ func (rule *Checker) checkString(str *workflowlang.String, workflowKey string) [
 	return ts
 }
 
-func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey string, shell ...string) {
+func (rule *Checker) checkScriptString(str *definition.String, workflowKey string, shell ...string) {
 	if str == nil {
 		return
 	}
@@ -452,7 +452,7 @@ func (rule *Checker) checkScriptString(str *workflowlang.String, workflowKey str
 	rule.checkTemplateEvaluatedType(ts)
 }
 
-func (rule *Checker) checkBool(b *workflowlang.Bool, workflowKey string) {
+func (rule *Checker) checkBool(b *definition.Bool, workflowKey string) {
 	if b == nil || b.Expression == nil {
 		return
 	}
@@ -467,7 +467,7 @@ func (rule *Checker) checkBool(b *workflowlang.Bool, workflowKey string) {
 	}
 }
 
-func (rule *Checker) checkMaxParallel(i *workflowlang.Int, workflowKey string) {
+func (rule *Checker) checkMaxParallel(i *definition.Int, workflowKey string) {
 	if i == nil || i.Expression == nil {
 		return
 	}
@@ -482,22 +482,22 @@ func (rule *Checker) checkMaxParallel(i *workflowlang.Int, workflowKey string) {
 	}
 }
 
-func (rule *Checker) checkFloat(f *workflowlang.Float, workflowKey string) {
+func (rule *Checker) checkFloat(f *definition.Float, workflowKey string) {
 	if f == nil {
 		return
 	}
 	rule.checkNumberExpression(f.Expression, "float number value", workflowKey)
 }
 
-func (rule *Checker) checkRawYAMLValue(v workflowlang.RawYAMLValue) exprtypes.Type {
-	if object, ok := v.(*workflowlang.RawYAMLObject); ok {
+func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type {
+	if object, ok := v.(*definition.RawYAMLObject); ok {
 		properties := map[string]exprtypes.Type{}
 		for key, property := range object.Props {
 			properties[key] = rule.checkRawYAMLValue(property)
 		}
 		return exprtypes.NewStrictObjectType(properties).Type()
 	}
-	if array, ok := v.(*workflowlang.RawYAMLArray); ok {
+	if array, ok := v.(*definition.RawYAMLArray); ok {
 		var elements elementTypes
 		for _, item := range array.Elems {
 			if ty, ok := rule.checkMatrixSequenceItem(item); ok {
@@ -506,16 +506,16 @@ func (rule *Checker) checkRawYAMLValue(v workflowlang.RawYAMLValue) exprtypes.Ty
 		}
 		return exprtypes.NewArrayType(elements.merged()).Type()
 	}
-	if scalar, ok := v.(*workflowlang.RawYAMLString); ok {
+	if scalar, ok := v.(*definition.RawYAMLString); ok {
 		return rule.checkRawYAMLString(scalar)
 	}
 	panic("unreachable")
 }
 
-func (rule *Checker) checkRawYAMLString(y *workflowlang.RawYAMLString) exprtypes.Type {
+func (rule *Checker) checkRawYAMLString(y *definition.RawYAMLString) exprtypes.Type {
 	ts, ok := rule.checkExprsIn(y.Value, y.Pos(), false, false, "jobs.<job_id>.strategy")
 
-	if workflowlang.IsExprAssigned(y.Value) {
+	if definition.IsExprAssigned(y.Value) {
 		if !ok || len(ts) != 1 {
 			return exprtypes.AnyType()
 		}
@@ -526,15 +526,15 @@ func (rule *Checker) checkRawYAMLString(y *workflowlang.RawYAMLString) exprtypes
 	}
 
 	switch y.Tag {
-	case workflowlang.YamlTagBool:
+	case definition.YamlTagBool:
 		if codec.IsCoreSchemaBool(y.Value) {
 			return exprtypes.BoolType()
 		}
-	case workflowlang.YamlTagNull:
+	case definition.YamlTagNull:
 		if codec.IsCoreSchemaNull(y.Value) {
 			return exprtypes.NullType()
 		}
-	case workflowlang.YamlTagInt, workflowlang.YamlTagFloat:
+	case definition.YamlTagInt, definition.YamlTagFloat:
 		if codec.IsCoreSchemaNumber(y.Value) {
 			return exprtypes.NumberType()
 		}
@@ -542,7 +542,7 @@ func (rule *Checker) checkRawYAMLString(y *workflowlang.RawYAMLString) exprtypes
 	return exprtypes.StringType()
 }
 
-func (rule *Checker) checkWorkflowExpression(s *workflowlang.String, what, key string, shape schema.Shape) {
+func (rule *Checker) checkWorkflowExpression(s *definition.String, what, key string, shape schema.Shape) {
 	if s == nil {
 		return
 	}

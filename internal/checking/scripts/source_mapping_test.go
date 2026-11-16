@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
@@ -43,7 +43,7 @@ func TestCanonicalScriptSourcesPreserveScalarMapping(t *testing.T) {
 	}
 }
 
-func assertScalarMapping(t *testing.T, original *workflowlang.ScriptSource, canonical *workflowlang.ScriptSource) {
+func assertScalarMapping(t *testing.T, original *definition.ScriptSource, canonical *definition.ScriptSource) {
 	t.Helper()
 	if original == nil || canonical != original {
 		t.Fatal("unit lost its declared scalar source")

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"

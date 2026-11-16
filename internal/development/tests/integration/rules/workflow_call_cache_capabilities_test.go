@@ -9,10 +9,10 @@ import (
 
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
@@ -32,7 +32,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 			if len(errs) != 0 {
 				t.Fatalf("%s: %v", name, errs)
 			}
-			_, ok := workflowlang.FindWorkflowCallEvent(w)
+			_, ok := definition.FindWorkflowCallEvent(w)
 			if !ok {
 				t.Fatalf("%s has no workflow_call event", name)
 			}
@@ -50,12 +50,12 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := workflowCallVisitor(t, fixturedecl.Workflow(w), cache, repofacts.Snapshot{})
-	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	rule := workflowCallVisitor(t, declarations.Workflow(w), cache, repofacts.Snapshot{})
+	if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 	for _, j := range w.Jobs {
-		if err := rule.VisitJobPre(fixturedecl.Job(j)); err != nil {
+		if err := rule.VisitJobPre(declarations.Job(j)); err != nil {
 			t.Fatal(err)
 		}
 	}

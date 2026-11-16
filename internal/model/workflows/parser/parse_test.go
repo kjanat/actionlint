@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -446,7 +446,7 @@ func TestParseAliasedScriptsKeepPhysicalScalarContext(t *testing.T) {
 					t.Fatalf("job %q missing run step", name)
 				}
 				switch run := job.Steps[0].Exec.(type) {
-				case *workflowlang.ExecRun:
+				case *definition.ExecRun:
 					if run.Run == nil || run.Run.Value != tc.value || run.Source == nil || run.Source.Value != tc.value {
 						t.Fatalf("job %q run/source=%+v", name, run)
 					}

@@ -3,7 +3,7 @@ package parser
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -32,7 +32,7 @@ func mappingInputsFromYAML(node *codec.Node) *mapping.DeclaredMapping {
 	if node.Kind == codec.ScalarNode {
 		text := newString(node)
 		if text != nil && text.ContainsExpression() {
-			return &mapping.DeclaredMapping{Expression: workflowlang.SemanticValue(text)}
+			return &mapping.DeclaredMapping{Expression: definition.SemanticValue(text)}
 		}
 		return nil
 	}
@@ -50,13 +50,13 @@ func mappingInputsFromYAML(node *codec.Node) *mapping.DeclaredMapping {
 			result.Insertions = append(result.Insertions, mappingInputsFromYAML(valueNode))
 			continue
 		}
-		result.Values[key.Value] = mapping.DeclaredEntry{Name: workflowlang.SemanticValue(key), Source: key.Value}
+		result.Values[key.Value] = mapping.DeclaredEntry{Name: definition.SemanticValue(key), Source: key.Value}
 	}
 	return result
 }
 
-func knownMappingKey(key *workflowlang.String) (*workflowlang.String, bool) {
-	name, state := mapping.ResolveKey(workflowlang.SemanticValue(key))
+func knownMappingKey(key *definition.String) (*definition.String, bool) {
+	name, state := mapping.ResolveKey(definition.SemanticValue(key))
 	if state != mapping.KnownKey {
 		return nil, false
 	}

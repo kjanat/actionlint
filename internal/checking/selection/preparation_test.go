@@ -12,12 +12,12 @@ import (
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-	fixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	nameinput "actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
@@ -30,7 +30,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		trigger = "{workflow_run: {workflows: [Missing], types: [completed]}}"
 	}
 	source := "on: " + trigger + "\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n"
-	_, _, snapshots := fixture.NewCapturedSnapshots(t, root)
+	_, _, snapshots := declarations.NewCapturedSnapshots(t, root)
 	snapshot, err := snapshots.Document(path, []byte(source), parsing.Workflow([]byte(source)))
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 			loads := 0
 			inputs := workflowNameInputs(t, tc.level, tc.workflowRun, func(string) (namemodel.Declared, error) {
 				loads++
-				return namemodel.Declare(&workflowlang.String{Value: "Build"}), nil
+				return namemodel.Declare(&definition.String{Value: "Build"}), nil
 			})
 			found := false
 			for _, registration := range ruleexec.Registrations(inputs.Rules) {

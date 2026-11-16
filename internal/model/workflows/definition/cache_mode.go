@@ -1,4 +1,4 @@
-package workflow
+package definition
 
 import "actionlint.kjanat.dev/v2/internal/input/source"
 

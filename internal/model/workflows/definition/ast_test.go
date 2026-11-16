@@ -1,4 +1,4 @@
-package workflow_test
+package definition_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -19,40 +19,40 @@ func TestRawYAMLScalarEquals(t *testing.T) {
 		ltag, rtag  string
 		want        bool
 	}{
-		{"string and number", "1", "1", workflowlang.YamlTagStr, workflowlang.YamlTagInt, false},
-		{"untagged string", "1", "1", "", workflowlang.YamlTagStr, true},
-		{"string case", "Ubuntu", "ubuntu", workflowlang.YamlTagStr, workflowlang.YamlTagStr, false},
-		{"equal decimal", "3.10", "3.1", workflowlang.YamlTagFloat, workflowlang.YamlTagFloat, true},
-		{"integer and float", "1", "1.0", workflowlang.YamlTagInt, workflowlang.YamlTagFloat, true},
-		{"decimal leading zero", "010", "10", workflowlang.YamlTagInt, workflowlang.YamlTagInt, true},
-		{"hexadecimal", "0x10", "16", workflowlang.YamlTagInt, workflowlang.YamlTagInt, true},
-		{"octal", "0o10", "8", workflowlang.YamlTagInt, workflowlang.YamlTagInt, true},
-		{"signed hexadecimal", "0xffffffff", "-1", workflowlang.YamlTagInt, workflowlang.YamlTagInt, true},
-		{"maximum signed integer", "0x7fffffff", "2147483647", workflowlang.YamlTagInt, workflowlang.YamlTagInt, true},
-		{"minimum signed integer", "0x80000000", "-2147483648", workflowlang.YamlTagInt, workflowlang.YamlTagInt, true},
-		{"hexadecimal overflow", "0x100000000", "4294967296", workflowlang.YamlTagInt, workflowlang.YamlTagInt, false},
-		{"exponent", "1e2", "100", workflowlang.YamlTagFloat, workflowlang.YamlTagInt, true},
-		{"signed zero", "-0.0", "0", workflowlang.YamlTagFloat, workflowlang.YamlTagInt, true},
-		{"different numbers", "1", "2", workflowlang.YamlTagInt, workflowlang.YamlTagInt, false},
-		{"boolean case", "TRUE", "true", workflowlang.YamlTagBool, workflowlang.YamlTagBool, true},
-		{"different booleans", "true", "false", workflowlang.YamlTagBool, workflowlang.YamlTagBool, false},
-		{"boolean and string", "true", "true", workflowlang.YamlTagBool, workflowlang.YamlTagStr, false},
-		{"boolean and number", "true", "1", workflowlang.YamlTagBool, workflowlang.YamlTagInt, false},
-		{"null spellings", "~", "NULL", workflowlang.YamlTagNull, workflowlang.YamlTagNull, true},
-		{"empty null", "", "null", workflowlang.YamlTagNull, workflowlang.YamlTagNull, true},
-		{"null and string", "null", "null", workflowlang.YamlTagNull, workflowlang.YamlTagStr, false},
-		{"positive infinity", "+.inf", ".INF", workflowlang.YamlTagFloat, workflowlang.YamlTagFloat, true},
-		{"negative infinity", "-.inf", ".inf", workflowlang.YamlTagFloat, workflowlang.YamlTagFloat, false},
-		{"nan spellings", ".nan", ".NaN", workflowlang.YamlTagFloat, workflowlang.YamlTagFloat, true},
-		{"non-core boolean", "yes", "yes", workflowlang.YamlTagBool, workflowlang.YamlTagStr, true},
-		{"non-core integer", "1_000", "1_000", workflowlang.YamlTagInt, workflowlang.YamlTagStr, true},
-		{"non-core binary", "0b10", "2", workflowlang.YamlTagInt, workflowlang.YamlTagInt, false},
+		{"string and number", "1", "1", definition.YamlTagStr, definition.YamlTagInt, false},
+		{"untagged string", "1", "1", "", definition.YamlTagStr, true},
+		{"string case", "Ubuntu", "ubuntu", definition.YamlTagStr, definition.YamlTagStr, false},
+		{"equal decimal", "3.10", "3.1", definition.YamlTagFloat, definition.YamlTagFloat, true},
+		{"integer and float", "1", "1.0", definition.YamlTagInt, definition.YamlTagFloat, true},
+		{"decimal leading zero", "010", "10", definition.YamlTagInt, definition.YamlTagInt, true},
+		{"hexadecimal", "0x10", "16", definition.YamlTagInt, definition.YamlTagInt, true},
+		{"octal", "0o10", "8", definition.YamlTagInt, definition.YamlTagInt, true},
+		{"signed hexadecimal", "0xffffffff", "-1", definition.YamlTagInt, definition.YamlTagInt, true},
+		{"maximum signed integer", "0x7fffffff", "2147483647", definition.YamlTagInt, definition.YamlTagInt, true},
+		{"minimum signed integer", "0x80000000", "-2147483648", definition.YamlTagInt, definition.YamlTagInt, true},
+		{"hexadecimal overflow", "0x100000000", "4294967296", definition.YamlTagInt, definition.YamlTagInt, false},
+		{"exponent", "1e2", "100", definition.YamlTagFloat, definition.YamlTagInt, true},
+		{"signed zero", "-0.0", "0", definition.YamlTagFloat, definition.YamlTagInt, true},
+		{"different numbers", "1", "2", definition.YamlTagInt, definition.YamlTagInt, false},
+		{"boolean case", "TRUE", "true", definition.YamlTagBool, definition.YamlTagBool, true},
+		{"different booleans", "true", "false", definition.YamlTagBool, definition.YamlTagBool, false},
+		{"boolean and string", "true", "true", definition.YamlTagBool, definition.YamlTagStr, false},
+		{"boolean and number", "true", "1", definition.YamlTagBool, definition.YamlTagInt, false},
+		{"null spellings", "~", "NULL", definition.YamlTagNull, definition.YamlTagNull, true},
+		{"empty null", "", "null", definition.YamlTagNull, definition.YamlTagNull, true},
+		{"null and string", "null", "null", definition.YamlTagNull, definition.YamlTagStr, false},
+		{"positive infinity", "+.inf", ".INF", definition.YamlTagFloat, definition.YamlTagFloat, true},
+		{"negative infinity", "-.inf", ".inf", definition.YamlTagFloat, definition.YamlTagFloat, false},
+		{"nan spellings", ".nan", ".NaN", definition.YamlTagFloat, definition.YamlTagFloat, true},
+		{"non-core boolean", "yes", "yes", definition.YamlTagBool, definition.YamlTagStr, true},
+		{"non-core integer", "1_000", "1_000", definition.YamlTagInt, definition.YamlTagStr, true},
+		{"non-core binary", "0b10", "2", definition.YamlTagInt, definition.YamlTagInt, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			left := &workflowlang.RawYAMLString{Value: tc.left, Tag: tc.ltag}
-			right := &workflowlang.RawYAMLString{Value: tc.right, Tag: tc.rtag}
+			left := &definition.RawYAMLString{Value: tc.left, Tag: tc.ltag}
+			right := &definition.RawYAMLString{Value: tc.right, Tag: tc.rtag}
 			if got := left.Equals(right); got != tc.want {
 				t.Fatalf("%s %q equals %s %q: got %v, want %v", tc.ltag, tc.left, tc.rtag, tc.right, got, tc.want)
 			}
@@ -92,21 +92,21 @@ jobs:
 	if job.If.Value != "success()" {
 		t.Fatalf("condition = %q; want existing null normalization", job.If.Value)
 	}
-	if got := job.If.SourceScalar; !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != workflowlang.YamlTagNull || got.Value != "null" || got.Pos.Line != 5 {
+	if got := job.If.SourceScalar; !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != definition.YamlTagNull || got.Value != "null" || got.Pos.Line != 5 {
 		t.Fatalf("condition source = %#v; want original YAML null", got)
 	}
 	if _, present := job.Env.Vars["missing"]; present {
 		t.Fatal("omitted environment key became present")
 	}
-	for name, wantTag := range map[string]string{"literal-null": workflowlang.YamlTagNull, "blank": workflowlang.YamlTagNull, "empty": workflowlang.YamlTagStr} {
+	for name, wantTag := range map[string]string{"literal-null": definition.YamlTagNull, "blank": definition.YamlTagNull, "empty": definition.YamlTagStr} {
 		got := job.Env.Vars[name].Value.SourceScalar
 		if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != wantTag || name == "blank" && got.Value != "" {
 			t.Errorf("environment %s source = %#v; want scalar tag %s", name, got, wantTag)
 		}
 	}
 	step := job.Steps[0]
-	action := step.Exec.(*workflowlang.ExecAction)
-	for name, wantTag := range map[string]string{"literal-null": workflowlang.YamlTagNull, "blank": workflowlang.YamlTagNull, "empty": workflowlang.YamlTagStr} {
+	action := step.Exec.(*definition.ExecAction)
+	for name, wantTag := range map[string]string{"literal-null": definition.YamlTagNull, "blank": definition.YamlTagNull, "empty": definition.YamlTagStr} {
 		got := action.Inputs[name].Value.SourceScalar
 		if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != wantTag || name == "blank" && got.Value != "" {
 			t.Errorf("action input %s source = %#v; want scalar tag %s", name, got, wantTag)
@@ -149,7 +149,7 @@ func TestStringIsExpressionAssigned(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			s := &workflowlang.String{Value: tc.input}
+			s := &definition.String{Value: tc.input}
 			have := s.IsExpressionAssigned()
 			if tc.want != have {
 				t.Fatalf("wanted %v but got %v for input %q", tc.want, have, tc.input)
@@ -175,7 +175,7 @@ func TestStringContainsExpression(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			s := &workflowlang.String{Value: tc.input}
+			s := &definition.String{Value: tc.input}
 			if have := s.ContainsExpression(); tc.want != have {
 				t.Fatalf("wanted %v but the method returned %v for input %q", tc.want, have, tc.input)
 			}

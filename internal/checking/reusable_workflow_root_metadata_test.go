@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
@@ -71,7 +71,7 @@ permissions: {}
 			if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
-			_, ok := workflowlang.FindWorkflowCallEvent(workflow)
+			_, ok := definition.FindWorkflowCallEvent(workflow)
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
@@ -195,7 +195,7 @@ permissions: {}
 				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
-				_, ok := workflowlang.FindWorkflowCallEvent(workflow)
+				_, ok := definition.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("workflow_call event missing")
 				}

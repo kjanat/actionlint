@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestFlowStepSelectors(t *testing.T) {

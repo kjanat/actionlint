@@ -14,7 +14,7 @@ import (
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	render "actionlint.kjanat.dev/v2/internal/output"
 	diagnosticmodel "actionlint.kjanat.dev/v2/internal/results"
 

@@ -4,16 +4,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // actionStep decodes an admitted composite step with its own declared shell.
 // Relative working-directory values resolve from github.workspace.
 // https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs
-func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workflowlang.Step {
+func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *definition.Step {
 	pos := &source.Position{Line: metadata.Line, Column: metadata.Column}
-	opaque := &workflowlang.Step{Pos: pos, Exec: &workflowlang.ExecAction{}}
+	opaque := &definition.Step{Pos: pos, Exec: &definition.ExecAction{}}
 	if metadata.Node == nil || !metadata.IsMapping {
 		return opaque
 	}
@@ -30,7 +30,7 @@ func actionStep(metadata *actionmeta.Step, parser *workflowparser.Parser) *workf
 		return opaque
 	}
 	switch step.Exec.(type) {
-	case *workflowlang.ExecRun, *workflowlang.ExecAction:
+	case *definition.ExecRun, *definition.ExecAction:
 		return step
 	default:
 		return opaque

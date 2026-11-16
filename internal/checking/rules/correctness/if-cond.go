@@ -12,9 +12,9 @@ import (
 	exprcheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -31,14 +31,14 @@ var IfCondRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Job: checkJobConditions, Step: checkStepCondition}),
 }
 
-func checkCondition(value *workflowlang.String) []reporting.StepFinding {
+func checkCondition(value *definition.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
 	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcepos.ZeroIfNil(value.Pos)))
 }
 
-func checkJobConditions(job declaration.Job) []reporting.StepFinding {
+func checkJobConditions(job workflows.Job) []reporting.StepFinding {
 	out := checkCondition(job.If)
 	if job.Snapshot != nil {
 		out = append(out, checkCondition(job.Snapshot.If)...)
@@ -46,7 +46,7 @@ func checkJobConditions(job declaration.Job) []reporting.StepFinding {
 	return out
 }
 
-func checkStepCondition(step declaration.Step) []reporting.StepFinding {
+func checkStepCondition(step workflows.Step) []reporting.StepFinding {
 	return checkCondition(step.If)
 }
 

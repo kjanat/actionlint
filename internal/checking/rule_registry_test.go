@@ -3,7 +3,7 @@ package checking
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestRuleNamespaceAndDescriptorIsolation(t *testing.T) {

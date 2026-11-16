@@ -3,12 +3,12 @@ package workspace
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -17,7 +17,7 @@ import (
 )
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
-func (c *Resolver) ObserveExecution(step workflowdecl.Step) {
+func (c *Resolver) ObserveExecution(step workflows.Step) {
 	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
@@ -25,7 +25,7 @@ func (c *Resolver) ObserveExecution(step workflowdecl.Step) {
 	if !ok {
 		return
 	}
-	if c.shellEnvUnknown || c.shellEnvironmentUnknown(workflowdecl.Environment(step.Env)) || !c.runPreservesEnvironment(workflowdecl.Scalar(run.Run), workflowdecl.Scalar(run.Shell)) {
+	if c.shellEnvUnknown || c.shellEnvironmentUnknown(workflows.Environment(step.Env)) || !c.runPreservesEnvironment(workflows.Scalar(run.Run), workflows.Scalar(run.Shell)) {
 		c.persistentEnvUnknown = true
 	}
 }
@@ -90,7 +90,7 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 }
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
-func (c *Resolver) ObserveOpaqueAction(step workflowdecl.Step, action *workflowlang.ExecAction) {
+func (c *Resolver) ObserveOpaqueAction(step workflows.Step, action *definition.ExecAction) {
 	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
 		return
 	}

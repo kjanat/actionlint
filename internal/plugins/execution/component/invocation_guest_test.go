@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -34,7 +34,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	})
 	occurrence, _ := graph.Script(scripts[0])
 	input := checkinputs.AnalyzerInput{
-		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations},
+		Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Source, rule.Scripts, rule.Invocations},
 		CallGraph: graph, SelectedScripts: []invocation.ID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
 		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: sourcepos.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
 	}

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -47,7 +47,7 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
+			workflow := workflows.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 			job, ok := workflow.Job("test")
 			if !ok {
 				t.Fatal("missing job")
@@ -80,7 +80,7 @@ func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
+	workflow := workflows.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 	job, ok := workflow.Job("test")
 	if !ok {
 		t.Fatal("missing job")
@@ -106,7 +106,7 @@ func TestRuntimeLifecycleOnReleaseWorkflow(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Bind("release-workflow", string(content), parsed, false, "").Workflow()
+	workflow := workflows.Bind("release-workflow", string(content), parsed, false, "").Workflow()
 	job, ok := workflow.Job("verify")
 	if !ok {
 		t.Fatal("missing release verification job")

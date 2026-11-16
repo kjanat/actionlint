@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -158,7 +158,7 @@ func TestCPluginReportsSudoInWorkflowAndCompositeAction(t *testing.T) {
 	}
 }
 
-func inputKindNames(facts []rulemeta.InputKind) []string {
+func inputKindNames(facts []rule.InputKind) []string {
 	names := make([]string, len(facts))
 	for i, fact := range facts {
 		names[i] = string(fact)

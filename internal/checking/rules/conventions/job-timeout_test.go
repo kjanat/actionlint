@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -15,7 +15,7 @@ func TestJobTimeoutCheckOwnsConfiguredBounds(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	job, found := declaration.Bind("test", source, parsed, false, "").Workflow().Job("build")
+	job, found := workflows.Bind("test", source, parsed, false, "").Workflow().Job("build")
 	if !found {
 		t.Fatal("fixture job is missing")
 	}

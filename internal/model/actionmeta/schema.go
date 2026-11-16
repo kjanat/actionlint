@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type actionSchemaKind uint8
@@ -102,18 +102,18 @@ func (rule *schemaChecker) actionSchemaError(meta *Metadata, n *codec.Node, path
 	rule.metadataErrorfAt(meta, n.Line, n.Column, nil, code, "%s at \"%s\" in action metadata", message, path.Display())
 }
 
-func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *codec.Node, definition string, location schemaPath, depth int, evaluated bool) {
-	rule.checkActionSchemaMappingValue(meta, node, definition, location, depth, evaluated, nil)
+func (rule *schemaChecker) checkActionSchemaValue(meta *Metadata, node *codec.Node, definitionName string, location schemaPath, depth int, evaluated bool) {
+	rule.checkActionSchemaMappingValue(meta, node, definitionName, location, depth, evaluated, nil)
 }
 
 // Insertions share their enclosing mapping namespace; child values start a new one.
-func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *codec.Node, definition string, location schemaPath, depth int, evaluated bool, seen map[string]bool) {
+func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *codec.Node, definitionName string, location schemaPath, depth int, evaluated bool, seen map[string]bool) {
 	path := location.Schema()
 	n := Node(node)
-	if n == nil || definition == "any" {
+	if n == nil || definitionName == "any" {
 		return
 	}
-	visit := actionSchemaVisit{node: n, definition: definition}
+	visit := actionSchemaVisit{node: n, definition: definitionName}
 	if rule.active[visit] {
 		return
 	}
@@ -128,13 +128,13 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 		rule.actionSchemaError(meta, n, location, CodeNestingDepth, "action metadata exceeds maximum nesting depth of 100")
 		return
 	}
-	d, ok := actionMetadataSchema[definition]
-	if !ok && definition != "string" {
+	d, ok := actionMetadataSchema[definitionName]
+	if !ok && definitionName != "string" {
 		return
 	}
 	if d.kind == actionSchemaUnion {
 		variant := ""
-		switch definition {
+		switch definitionName {
 		case "runs":
 			switch strings.ToLower(meta.Runs.Using) {
 			case "docker":
@@ -178,10 +178,10 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 					rule.metadataErrorfAt(meta, pos.Line, pos.Column, ExpressionEndPosition(meta, value, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
 				}
 			}
-			if definition == "step-if" {
+			if definitionName == "step-if" {
 				return // Conditions use expression truthiness, including object and array values.
 			}
-			if literal, known := workflowlang.WorkflowExpressionLiteral(&workflowlang.String{Value: value.Value}); known {
+			if literal, known := definition.WorkflowExpressionLiteral(&definition.String{Value: value.Value}); known {
 				result, err := codec.Encode(literal)
 				if err != nil {
 					rule.actionSchemaError(meta, n, location, CodeExpressionType, fmt.Sprintf("could not validate expression value: %v", err))
@@ -248,7 +248,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 				} else if exprsyntax.IsMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
-					rule.checkActionSchemaMappingValue(meta, value, definition, location, depth+1, evaluated, seen)
+					rule.checkActionSchemaMappingValue(meta, value, definitionName, location, depth+1, evaluated, seen)
 					continue
 				} else {
 					for _, violation := range rule.expressionFindings(expr, path, location.Display(), true, meta.Inputs) {

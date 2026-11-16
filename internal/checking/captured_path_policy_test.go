@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -21,7 +21,7 @@ import (
 type pathRetargetChecker struct{ retarget func() error }
 
 func (pathRetargetChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "captured-path-test", Category: "correctness", Maturity: "stable", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "captured-path-test", Category: "correctness", Maturity: "stable", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (checker pathRetargetChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

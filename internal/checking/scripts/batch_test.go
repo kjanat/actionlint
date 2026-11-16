@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -159,7 +159,7 @@ func batchFixture(t *testing.T, withInput bool) (invocation.Graph, Collection) {
 	return graph, collection
 }
 
-func batchFixtureWithWorkflow(t *testing.T, withInput bool) (invocation.Graph, Collection, *workflowlang.Workflow) {
+func batchFixtureWithWorkflow(t *testing.T, withInput bool) (invocation.Graph, Collection, *definition.Workflow) {
 	t.Helper()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # original\n")
 	if withInput {
@@ -175,7 +175,7 @@ func batchSourceFixture(t *testing.T, content []byte) (invocation.Graph, Collect
 	return graph, collection
 }
 
-func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Graph, Collection, *workflowlang.Workflow) {
+func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Graph, Collection, *definition.Workflow) {
 	t.Helper()
 	parsed := parsing.Workflow(content)
 	if len(parsed.SyntaxErrors) != 0 {
@@ -259,7 +259,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var declaration *workflowdecl.Step
+			var declaration *workflows.Step
 			for _, reference := range snapshot.Bound().SourceIndex().Steps {
 				candidate, exists := registry.Declaration(reference)
 				if !exists {
@@ -276,7 +276,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 					}
 				} else if action, exists := candidate.Action(); exists {
 					declaration = &candidate
-					inputs, _ := workflowdecl.InputNames(action)
+					inputs, _ := workflows.InputNames(action)
 					for name, input := range inputs {
 						if name == tc.input {
 							if input.Source != nil {
@@ -342,8 +342,8 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 		if !isAction {
 			t.Fatal("action input declaration is not an action")
 		}
-		inputs, _ := workflowdecl.InputNames(action)
-		var input *workflowlang.ActionArgument
+		inputs, _ := workflows.InputNames(action)
+		var input *definition.ActionArgument
 		var inputExists bool
 		for name, candidate := range inputs {
 			if name == record.Input {
@@ -359,7 +359,7 @@ func TestParsedScriptMappingsCarryRequiredPositions(t *testing.T) {
 	}
 }
 
-func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, workflow *workflowlang.Workflow) (*workflowlang.ExecRun, *workflowlang.ActionArgument) {
+func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, workflow *definition.Workflow) (*definition.ExecRun, *definition.ActionArgument) {
 	t.Helper()
 	snapshot, found := collection.Declarations.Lookup(graph.Entry().Reference)
 	if !found {
@@ -376,11 +376,11 @@ func fixtureBodies(t *testing.T, graph invocation.Graph, collection Collection, 
 			t.Fatalf("fixture declaration does not match script %d", index)
 		}
 	}
-	run, ok := steps[0].Exec.(*workflowlang.ExecRun)
+	run, ok := steps[0].Exec.(*definition.ExecRun)
 	if !ok {
 		t.Fatal("fixture run has wrong kind")
 	}
-	action, ok := steps[1].Exec.(*workflowlang.ExecAction)
+	action, ok := steps[1].Exec.(*definition.ExecAction)
 	if !ok {
 		t.Fatal("fixture input has wrong kind")
 	}
@@ -418,8 +418,8 @@ func assertBatchFactsMatchCanonicalDeclarations(t *testing.T, batch Batch, regis
 		if run, isRun := declaration.Run(); isRun {
 			projected.Run, projected.Input = run, nil
 		} else if input, isInput := declaration.Action(); isInput && unit.Input != nil {
-			inputs, _ := workflowdecl.InputNames(input)
-			var found *workflowlang.ActionArgument
+			inputs, _ := workflows.InputNames(input)
+			var found *definition.ActionArgument
 			for name, candidate := range inputs {
 				if name == unit.Input.Site.Input {
 					found = candidate

@@ -1,4 +1,4 @@
-package workflow
+package definition
 
 import mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 

@@ -1,4 +1,4 @@
-package workflow
+package definition
 
 import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"

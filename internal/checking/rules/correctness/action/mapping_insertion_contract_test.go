@@ -9,7 +9,7 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestInsertedActionInputMetadata(t *testing.T) {
@@ -34,7 +34,7 @@ func TestInsertedActionInputMetadata(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			exec := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+			exec := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 			got := actioncheck.Inputs(&actionmeta.Metadata{Inputs: calls.Inputs{"token": {Name: "token", Required: true}}}, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
 			if tc.want == "" {
 				if len(got) != 0 {

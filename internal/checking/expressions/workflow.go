@@ -6,13 +6,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
+func (rule *Checker) VisitWorkflowPre(n workflows.Workflow) error {
 	rule.workflow = n
 	rule.eventTy = new(events.Type(n))
 	rule.checkString(n.Name, "")
@@ -23,18 +23,18 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 	}
 	hasNonWorkflowCallTrigger := triggerCount > 1
 	for _, event := range n.On {
-		if e, ok := event.(*workflowlang.WebhookEvent); ok {
+		if e, ok := event.(*definition.WebhookEvent); ok {
 			rule.checkStrings(e.Types, "")
-			for _, filter := range []*workflowlang.WebhookEventFilter{e.Branches, e.BranchesIgnore, e.Tags, e.TagsIgnore, e.Paths, e.PathsIgnore} {
+			for _, filter := range []*definition.WebhookEventFilter{e.Branches, e.BranchesIgnore, e.Tags, e.TagsIgnore, e.Paths, e.PathsIgnore} {
 				rule.checkWebhookEventFilter(filter)
 			}
 			rule.checkStrings(e.Workflows, "")
-		} else if e, ok := event.(*workflowlang.ScheduledEvent); ok {
+		} else if e, ok := event.(*definition.ScheduledEvent); ok {
 			for _, schedule := range e.Schedules {
 				rule.checkString(schedule.Cron, "")
 				rule.checkString(schedule.Timezone, "")
 			}
-		} else if e, ok := event.(*workflowlang.WorkflowDispatchEvent); ok {
+		} else if e, ok := event.(*definition.WorkflowDispatchEvent); ok {
 			var inputs exprtypes.ObjectBuilder
 			for id, input := range e.Inputs {
 				rule.checkString(input.Description, "")
@@ -43,13 +43,13 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 				rule.checkStrings(input.Options, "")
 				ty := exprtypes.AnyType()
 				switch input.Type {
-				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
+				case definition.WorkflowDispatchEventInputTypeBoolean:
 					ty = exprtypes.BoolType()
-				case workflowlang.WorkflowDispatchEventInputTypeNumber:
+				case definition.WorkflowDispatchEventInputTypeNumber:
 					ty = exprtypes.NumberType()
-				case workflowlang.WorkflowDispatchEventInputTypeString, workflowlang.WorkflowDispatchEventInputTypeChoice, workflowlang.WorkflowDispatchEventInputTypeEnvironment:
+				case definition.WorkflowDispatchEventInputTypeString, definition.WorkflowDispatchEventInputTypeChoice, definition.WorkflowDispatchEventInputTypeEnvironment:
 					ty = exprtypes.StringType()
-				case workflowlang.WorkflowDispatchEventInputTypeNone:
+				case definition.WorkflowDispatchEventInputTypeNone:
 				}
 				name := id
 				if input.Name != nil {
@@ -58,9 +58,9 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 				inputs.SetProperty(name, ty)
 			}
 			rule.dispatchInputsTy = new(inputs.Build())
-		} else if e, ok := event.(*workflowlang.RepositoryDispatchEvent); ok {
+		} else if e, ok := event.(*definition.RepositoryDispatchEvent); ok {
 			rule.checkStrings(e.Types, "")
-		} else if e, ok := event.(*workflowlang.WorkflowCallEvent); ok {
+		} else if e, ok := event.(*definition.WorkflowCallEvent); ok {
 			var inputs exprtypes.ObjectBuilder
 			// Defaults can use earlier inputs, but cannot refer to their own
 			// definition, so rule.inputsTy is rebuilt after each input is added.
@@ -70,23 +70,23 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 				expressions := rule.checkString(input.Default, "on.workflow_call.inputs.<inputs_id>.default")
 				ty := exprtypes.AnyType()
 				switch input.Type {
-				case workflowlang.WorkflowCallEventInputTypeString:
+				case definition.WorkflowCallEventInputTypeString:
 					ty = exprtypes.StringType()
-				case workflowlang.WorkflowCallEventInputTypeBoolean:
+				case definition.WorkflowCallEventInputTypeBoolean:
 					ty = exprtypes.BoolType()
 					if len(expressions) == 1 && input.Default.IsExpressionAssigned() {
 						if k := expressions[0].ty.Kind(); k != exprtypes.KindBool && k != exprtypes.KindAny {
 							rule.Errorf(scalarPosition(input.Default), "type of input %q must be bool but found type %s", input.Name.Text(), expressions[0].ty.String())
 						}
 					}
-				case workflowlang.WorkflowCallEventInputTypeNumber:
+				case definition.WorkflowCallEventInputTypeNumber:
 					ty = exprtypes.NumberType()
 					if len(expressions) == 1 && input.Default.IsExpressionAssigned() {
 						if k := expressions[0].ty.Kind(); k != exprtypes.KindNumber && k != exprtypes.KindAny {
 							rule.Errorf(scalarPosition(input.Default), "type of input %q must be number but found type %s", input.Name.Text(), expressions[0].ty.String())
 						}
 					}
-				case workflowlang.WorkflowCallEventInputTypeInvalid:
+				case definition.WorkflowCallEventInputTypeInvalid:
 				}
 				inputs.SetProperty(input.Name.Text(), ty)
 				rule.inputsTy = new(inputs.Build())
@@ -112,7 +112,7 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 			for _, output := range e.Outputs {
 				rule.checkString(output.Description, "")
 			}
-		} else if e, ok := event.(*workflowlang.ImageVersionEvent); ok {
+		} else if e, ok := event.(*definition.ImageVersionEvent); ok {
 			rule.checkStrings(e.Types, "")
 			rule.checkStrings(e.Names, "")
 			rule.checkStrings(e.Versions, "")
@@ -125,18 +125,18 @@ func (rule *Checker) VisitWorkflowPre(n workflowdecl.Workflow) error {
 	return nil
 }
 
-func (rule *Checker) VisitWorkflowPost(n workflowdecl.Workflow) error {
+func (rule *Checker) VisitWorkflowPost(n workflows.Workflow) error {
 	for _, event := range n.On {
-		if call, ok := event.(*workflowlang.WorkflowCallEvent); ok {
+		if call, ok := event.(*definition.WorkflowCallEvent); ok {
 			rule.checkWorkflowCallOutputs(call, n)
 			break
 		}
 	}
-	rule.workflow = workflowdecl.Workflow{}
+	rule.workflow = workflows.Workflow{}
 	return nil
 }
 
-func (rule *Checker) VisitJobPre(n workflowdecl.Job) error {
+func (rule *Checker) VisitJobPre(n workflows.Job) error {
 	rule.jobReferences = nil
 	if rule.options.JobReferences != nil {
 		names := rule.options.JobReferences(n)
@@ -205,9 +205,9 @@ func (rule *Checker) VisitJobPre(n workflowdecl.Job) error {
 	return nil
 }
 
-func (rule *Checker) VisitJobPost(n workflowdecl.Job) error {
+func (rule *Checker) VisitJobPost(n workflows.Job) error {
 	defer func() {
-		rule.jobEnv, rule.scriptJob = nil, workflowdecl.Job{}
+		rule.jobEnv, rule.scriptJob = nil, workflows.Job{}
 		rule.jobReferences = nil
 	}()
 	rule.checkSnapshot(n.Snapshot)
@@ -225,12 +225,12 @@ func (rule *Checker) VisitJobPost(n workflowdecl.Job) error {
 	return nil
 }
 
-func (rule *Checker) VisitStep(n workflowdecl.Step) error {
+func (rule *Checker) VisitStep(n workflows.Step) error {
 	rule.scriptEnv = n.Env
 	defer func() { rule.scriptEnv = nil }()
 	rule.checkString(n.Name, "jobs.<job_id>.steps.name")
 	rule.checkIfCondition(n.If, "jobs.<job_id>.steps.if")
-	var spec *workflowlang.String
+	var spec *definition.String
 	if run, ok := n.Run(); ok {
 		rule.checkScriptString(run.Run, "jobs.<job_id>.steps.run", rule.scriptShell(n))
 		rule.checkString(run.Shell, "")

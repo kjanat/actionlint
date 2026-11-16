@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -61,7 +61,7 @@ func TestLifecycleOutput(t *testing.T) {
 					findings = append(findings, finding)
 				}
 			case FormatSARIF:
-				sarifcheck.RequireValid(t, out.Bytes())
+				sarif.RequireValid(t, out.Bytes())
 				var document struct {
 					Runs []struct {
 						Results []map[string]any `json:"results"`

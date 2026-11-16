@@ -9,7 +9,7 @@ import (
 
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"

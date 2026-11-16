@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type rangeReviewBackend struct{ end checkinputs.ScriptPosition }
@@ -35,7 +35,7 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 	if len(failures) != 0 {
 		t.Fatal(failures)
 	}
-	run, ok := parsed.Jobs["test"].Steps[0].Exec.(*workflow.ExecRun)
+	run, ok := parsed.Jobs["test"].Steps[0].Exec.(*definition.ExecRun)
 	if !ok {
 		t.Fatal("fixture is not a run step")
 	}

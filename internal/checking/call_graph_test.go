@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -20,7 +20,7 @@ type callGraphCollector struct {
 }
 
 func (*callGraphCollector) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
 }
 
 func (collector *callGraphCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

@@ -9,14 +9,14 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestCallPositionAdmission(t *testing.T) {
@@ -101,14 +101,14 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		condition *workflowlang.String
+		condition *definition.String
 		want      invocation.Condition
 	}{
 		{nil, invocation.ConditionEnabled},
-		{&workflowlang.String{Value: "false"}, invocation.ConditionSkipped},
-		{&workflowlang.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
+		{&definition.String{Value: "false"}, invocation.ConditionSkipped},
+		{&definition.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
 	} {
-		call := &workflowlang.Step{Pos: &source.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "$/action"}}}
+		call := &definition.Step{Pos: &source.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &definition.ExecAction{Uses: &definition.String{Value: "$/action"}}}
 		context, err := testCallContext(t, call, runnerlang.MacOrLinux)
 		if err != nil {
 			t.Fatal(err)
@@ -195,7 +195,7 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 	if !present {
 		t.Fatal("action view unavailable")
 	}
-	inputs := declaration.ResolvedInputs(action)
+	inputs := workflows.ResolvedInputs(action)
 	if got := inputs.Lookup("null-value"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}
@@ -213,9 +213,9 @@ func testEntryContext(t *testing.T) invocation.Context {
 	return builder.RootContext()
 }
 
-func testCallContext(t *testing.T, step *workflowlang.Step, platform runnerlang.Platform) (invocation.Context, error) {
+func testCallContext(t *testing.T, step *definition.Step, platform runnerlang.Platform) (invocation.Context, error) {
 	t.Helper()
-	action, ok := step.Exec.(*workflowlang.ExecAction)
+	action, ok := step.Exec.(*definition.ExecAction)
 	if !ok {
 		return invocation.Context{}, ErrInvalidActionCall
 	}

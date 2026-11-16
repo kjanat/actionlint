@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // Invocation supplies the already-resolved caller and action scope.
@@ -25,8 +25,8 @@ type Invocation struct {
 type InvocationParticipant interface {
 	Rule
 	EnterInvocation(Invocation) error
-	VisitInvocationStep(workflowdecl.Step) error
-	VisitOpaqueAction(workflowdecl.Step) error
+	VisitInvocationStep(workflows.Step) error
+	VisitOpaqueAction(workflows.Step) error
 	LeaveInvocation(invocation.Context) error
 }
 
@@ -34,7 +34,7 @@ type InvocationParticipant interface {
 // entering that child's invocation. Opaque call sites use VisitOpaqueAction.
 type ExpandedActionParticipant interface {
 	InvocationParticipant
-	VisitExpandedAction(workflowdecl.Step) error
+	VisitExpandedAction(workflows.Step) error
 }
 
 // CheckoutParticipant adapts its own script paths to the checkout placement

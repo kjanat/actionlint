@@ -9,14 +9,14 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type sourceOnlyProbe struct{ content string }
 
 func (sourceOnlyProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -49,7 +49,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 				t.Fatalf("missing preparation error: %v", err)
 			}
-			var used []rulemeta.Descriptor
+			var used []rule.Descriptor
 			findings, err := runDocumentAnalyzers(t.Context(), []checkinputs.Registration{{Checker: sourceOnlyProbe{content}}}, input, nil, &used)
 			if err != nil || len(findings) != 1 || findings[0].Message != "reported source finding" {
 				t.Fatalf("source analyzer skipped: %v %v", findings, err)

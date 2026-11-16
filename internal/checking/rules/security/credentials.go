@@ -6,9 +6,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
@@ -30,7 +30,7 @@ var CredentialsRule = &define.Rule{
 type credentialsCheck struct{ reporting.Collector }
 
 // Credentials checks container passwords in a complete job declaration.
-func Credentials(n declaration.Job) []reporting.StepFinding {
+func Credentials(n workflows.Job) []reporting.StepFinding {
 	rule := &credentialsCheck{}
 
 	if !n.Present() {
@@ -56,7 +56,7 @@ func Credentials(n declaration.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Container) {
+func (rule *credentialsCheck) checkContainer(where string, n *definition.Container) {
 	if n == nil {
 		return
 	}

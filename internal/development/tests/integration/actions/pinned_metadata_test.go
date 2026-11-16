@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"

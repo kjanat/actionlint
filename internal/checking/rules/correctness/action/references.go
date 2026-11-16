@@ -9,12 +9,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Repository checks a repository action reference against available metadata.
-func Repository(exec *workflowlang.ExecAction, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+func Repository(exec *definition.ExecAction, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*findingmodel.Finding {
 	if exec == nil || exec.Uses == nil {
 		return nil
 	}
@@ -24,7 +24,7 @@ func Repository(exec *workflowlang.ExecAction, metadata actionmeta.Definition, c
 }
 
 // Docker checks the URI and optional tag of a Docker action reference.
-func Docker(exec *workflowlang.ExecAction) []*findingmodel.Finding {
+func Docker(exec *definition.ExecAction) []*findingmodel.Finding {
 	if exec == nil || exec.Uses == nil || references.FormOf(exec.Uses.Value) != references.FormContainer {
 		return nil
 	}
@@ -80,7 +80,7 @@ func InvalidReference(pos *source.Position, spec, why string) *findingmodel.Find
 	return rule.errs[0]
 }
 
-func (rule *validator) checkRepoAction(spec string, exec *workflowlang.ExecAction, meta actionmeta.Definition) {
+func (rule *validator) checkRepoAction(spec string, exec *definition.ExecAction, meta actionmeta.Definition) {
 	if !rule.checkRepositoryReference(spec, exec.Uses.Pos) {
 		return
 	}

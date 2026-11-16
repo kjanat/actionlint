@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -20,7 +20,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		t.Fatal(parseErrors)
 	}
 	first, second := workflow.Jobs["test"].Steps[0], workflow.Jobs["test"].Steps[1]
-	bound := workflowdecl.Bind("ci.yml", string(content), workflow, false, "")
+	bound := workflows.Bind("ci.yml", string(content), workflow, false, "")
 	job, present := bound.Workflow().Job("test")
 	if !present {
 		t.Fatal("owned job unavailable")

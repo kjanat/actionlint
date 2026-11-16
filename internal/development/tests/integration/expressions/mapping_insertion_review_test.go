@@ -8,12 +8,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	matrixlang "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -77,7 +77,7 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 					t.Fatal(errs)
 				}
 				workflow, _ := workflowparser.ParseWorkflow([]byte(source))
-				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != tc.entrypoint || action.Args == nil || action.Args.Value != tc.args {
 					t.Fatalf("reserved fields lost: %+v", action)
 				}
@@ -151,7 +151,7 @@ func TestDockerConstantInputKeys(t *testing.T) {
 					t.Fatal(errs)
 				}
 				workflow, _ := workflowparser.ParseWorkflow([]byte(source))
-				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 				if tc.entrypoint == "" {
 					if action.Entrypoint != nil || action.Args != nil {
 						t.Fatal("unknown input name was resolved as a reserved field")
@@ -181,8 +181,8 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 					t.Fatalf("script injection check missing: %v", errs)
 				}
 				workflow, _ := workflowparser.ParseWorkflow([]byte(source))
-				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-				names := workflowlang.ResolvedActionInputs(action)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
+				names := definition.ResolvedActionInputs(action)
 				found, count := false, 0
 				for name := range names.KeyedEntries() {
 					text, ok := name.ScalarString()
@@ -192,7 +192,7 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 				if !names.Complete() || !found || count != 1 {
 					t.Fatalf("metadata resolved different names: %v, complete=%v", count, names.Complete())
 				}
-				if _, known := workflowlang.ActionInputValue(action, "script"); known {
+				if _, known := definition.ActionInputValue(action, "script"); known {
 					t.Fatal("untrusted script value was treated as a constant")
 				}
 			})
@@ -211,8 +211,8 @@ func TestActionInputObjectResultsStayData(t *testing.T) {
 			t.Fatalf("evaluated script string interpreted as source: %v", errs)
 		}
 		workflow, _ := workflowparser.ParseWorkflow([]byte(source))
-		action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-		if value, known := workflowlang.ActionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
+		action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
+		if value, known := definition.ActionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
 			t.Fatalf("resolved value=%q, known=%v", value, known)
 		}
 	}

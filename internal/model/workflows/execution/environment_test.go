@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
@@ -21,13 +21,13 @@ func TestCheckoutEnvironmentPlatform(t *testing.T) {
 		for _, name := range []string{"git_work_tree", "path", "Node_Options", "ssh_askpass", "git_allow_protocol"} {
 			t.Run(fmt.Sprintf("%s/%d", name, platform), func(t *testing.T) {
 				t.Parallel()
-				env := &workflowlang.Env{Vars: map[string]*workflowlang.EnvVar{name: {Name: &workflowlang.String{Value: name}, Value: &workflowlang.String{Value: "override"}}}}
-				semantic := mapping.Resolve(workflowlang.EnvMappingView(env))
+				env := &definition.Env{Vars: map[string]*definition.EnvVar{name: {Name: &definition.String{Value: name}, Value: &definition.String{Value: "override"}}}}
+				semantic := mapping.Resolve(definition.EnvMappingView(env))
 				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runnerlang.MacOrLinux; got != want {
 					t.Fatalf("checkout uncertainty = %v, want %v", got, want)
 				}
-				expression := &workflowlang.Env{Insertions: []*workflowlang.Env{{Expression: &workflowlang.String{Value: fmt.Sprintf("${{ fromJSON('{%q:\"override\"}') }}", name)}}}}
-				semantic = mapping.Resolve(workflowlang.EnvMappingView(expression))
+				expression := &definition.Env{Insertions: []*definition.Env{{Expression: &definition.String{Value: fmt.Sprintf("${{ fromJSON('{%q:\"override\"}') }}", name)}}}}
+				semantic = mapping.Resolve(definition.EnvMappingView(expression))
 				if got, want := CheckoutEnvironmentUnknown(semantic, platform), platform != runnerlang.MacOrLinux; got != want {
 					t.Fatalf("inserted checkout uncertainty = %v, want %v", got, want)
 				}
@@ -47,7 +47,7 @@ func TestEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	resolved := mapping.Resolve(workflowlang.EnvMappingView(workflow.Env))
+	resolved := mapping.Resolve(definition.EnvMappingView(workflow.Env))
 	if got := resolved.Lookup("NULL_VALUE"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("unquoted null env state=%v kind=%v", got.State(), got.Kind())
 	}
@@ -78,7 +78,7 @@ func TestCanonicalEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	if !present {
 		t.Fatal("workflow view unavailable")
 	}
-	resolved := declaration.Environment(workflow.Env)
+	resolved := workflows.Environment(workflow.Env)
 	if got := resolved.Lookup("NULL_VALUE"); !got.Known() || got.Kind() != value.Null {
 		t.Fatalf("canonical unquoted null state=%v kind=%v", got.State(), got.Kind())
 	}

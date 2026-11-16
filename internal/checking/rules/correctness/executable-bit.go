@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -57,8 +57,8 @@ func (rule *ruleExecutableBit) FindingCount() int             { return rule.find
 func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
 	rule.findings.AnnotateSince(mark, annotate)
 }
-func (rule *ruleExecutableBit) VisitWorkflowPost(workflowdecl.Workflow) error { return nil }
-func (rule *ruleExecutableBit) VisitJobPost(workflowdecl.Job) error           { return nil }
+func (rule *ruleExecutableBit) VisitWorkflowPost(workflows.Workflow) error { return nil }
+func (rule *ruleExecutableBit) VisitJobPost(workflows.Job) error           { return nil }
 func (rule *ruleExecutableBit) ApplyCheckout(actions *workspaceactions.Resolver) {
 	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
 }
@@ -68,18 +68,18 @@ type executableInvocation struct {
 	parent *ExecutableChecker
 }
 
-func (rule *ruleExecutableBit) VisitStep(step workflowdecl.Step) error {
+func (rule *ruleExecutableBit) VisitStep(step workflows.Step) error {
 	if _, action := step.Action(); action {
 		return nil
 	}
 	return rule.VisitInvocationStep(step)
 }
 
-func (rule *ruleExecutableBit) VisitInvocationStep(step workflowdecl.Step) error {
+func (rule *ruleExecutableBit) VisitInvocationStep(step workflows.Step) error {
 	return rule.ExecutableChecker.VisitStep(step)
 }
 
-func (rule *ruleExecutableBit) VisitOpaqueAction(step workflowdecl.Step) error {
+func (rule *ruleExecutableBit) VisitOpaqueAction(step workflows.Step) error {
 	return rule.VisitInvocationStep(step)
 }
 

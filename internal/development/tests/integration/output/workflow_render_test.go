@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	render "actionlint.kjanat.dev/v2/internal/output"
@@ -44,7 +44,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 	if err := renderer.Render(&output, render.FromAnalysis(*analysis)); err != nil {
 		t.Fatal(err)
 	}
-	sarifcheck.RequireValid(t, []byte(output.String()))
+	sarif.RequireValid(t, []byte(output.String()))
 	var doc struct {
 		Runs []struct {
 			Tool struct {
@@ -192,7 +192,7 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 	if err := renderer.Render(&b, render.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
-	sarifcheck.RequireValid(t, []byte(b.String()))
+	sarif.RequireValid(t, []byte(b.String()))
 	var document struct {
 		Runs []struct {
 			ColumnKind string

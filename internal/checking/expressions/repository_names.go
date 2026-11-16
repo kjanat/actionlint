@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func environmentReferenceNames(variables, secrets, environmentSecrets []string) ReferenceNames {
@@ -42,7 +42,7 @@ func unionNames(repository, environment []string) []string {
 	return names
 }
 
-func jobReferenceNames(facts repository.Snapshot, job workflowdecl.Job) ReferenceNames {
+func jobReferenceNames(facts repository.Snapshot, job workflows.Job) ReferenceNames {
 	names := ReferenceNames{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)}
 	environment := job.Environment
 	if environment == nil {

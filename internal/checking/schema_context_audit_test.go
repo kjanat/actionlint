@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestSchemaAuditExpressionVisitorCoverage(t *testing.T) {
@@ -168,7 +168,7 @@ jobs:
 	}
 }
 
-func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workflow, workflowvisit.Rule) {
+func schemaAuditExpressionRule(t *testing.T, source string) (workflows.Workflow, workflowvisit.Rule) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -195,5 +195,5 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 		}
 	}
 	t.Fatal("expression rule is not registered")
-	return workflowdecl.Workflow{}, nil
+	return workflows.Workflow{}, nil
 }

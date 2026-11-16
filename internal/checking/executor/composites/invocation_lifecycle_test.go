@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 type invocationLifecycleProbe struct {
@@ -61,7 +61,7 @@ func (p *invocationLifecycleProbe) LeaveInvocation(call invocation.Context) erro
 	return p.leaveFailure
 }
 
-func (p *invocationLifecycleProbe) VisitInvocationStep(step declaration.Step) error {
+func (p *invocationLifecycleProbe) VisitInvocationStep(step workflows.Step) error {
 	p.emit("step", step.Reference())
 	if p.cancel != nil {
 		p.cancel()
@@ -69,7 +69,7 @@ func (p *invocationLifecycleProbe) VisitInvocationStep(step declaration.Step) er
 	return p.stepFailure
 }
 
-func (p *invocationLifecycleProbe) VisitOpaqueAction(step declaration.Step) error {
+func (p *invocationLifecycleProbe) VisitOpaqueAction(step workflows.Step) error {
 	p.emit("opaque", step.Reference())
 	return p.stepFailure
 }

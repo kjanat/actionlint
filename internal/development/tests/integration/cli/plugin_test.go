@@ -15,8 +15,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"

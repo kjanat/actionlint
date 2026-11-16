@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -17,7 +17,7 @@ type mutateCanonicalCallRule struct {
 	unchanged bool
 }
 
-func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflowdecl.Workflow) error {
+func (rule *mutateCanonicalCallRule) VisitWorkflowPre(workflow workflows.Workflow) error {
 	rule.visits++
 	job, _ := workflow.Job("test")
 	for step := range job.Steps() {

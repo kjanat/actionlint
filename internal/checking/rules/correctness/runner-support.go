@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // RunnerSupportRule is the single definition of the runner-support rule.
@@ -29,7 +29,7 @@ var RunnerSupportRule = &define.Rule{
 // RunnerSupportChecks reports support facts without changing which runners match.
 func RunnerSupportChecks(runners *runnerlang.Knowledge) define.Checks {
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+		Job: func(job workflows.Job) []reporting.StepFinding {
 			var findings []reporting.StepFinding
 			problems := append(runners.Support(job, runnerapi.JobExecution), runners.UpcomingSupport(job, runnerapi.JobExecution)...)
 			for _, problem := range problems {
@@ -50,7 +50,7 @@ func RunnerSupportChecks(runners *runnerlang.Knowledge) define.Checks {
 	}
 }
 
-func supportPosition(job workflowdecl.Job, selector runnerapi.Selector) sourcepos.Position {
+func supportPosition(job workflows.Job, selector runnerapi.Selector) sourcepos.Position {
 	for _, label := range selector.Labels {
 		if label.Position.Line > 0 {
 			return label.Position

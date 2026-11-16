@@ -16,14 +16,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -112,10 +112,10 @@ func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
 type capturedTraversal struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
-	workflows *[]workflowdecl.Step
+	workflows *[]workflows.Step
 }
 
-func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.Workflow) error {
+func (r *capturedTraversal) VisitWorkflowPre(workflow workflows.Workflow) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, job := range workflow.Jobs() {
@@ -130,7 +130,7 @@ func (r *capturedTraversal) VisitWorkflowPre(workflow workflowdecl.Workflow) err
 func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
-	var workflows []workflowdecl.Step
+	var workflows []workflows.Step
 	content := []byte(commandGoodWorkflow)
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
@@ -159,7 +159,7 @@ type sharedCompositeObserver struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
 	snapshots *[]parsing.SourceSnapshot
-	steps     *[]workflowdecl.Step
+	steps     *[]workflows.Step
 }
 
 func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation) error {
@@ -169,14 +169,14 @@ func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation
 	return nil
 }
 
-func (r *sharedCompositeObserver) VisitInvocationStep(step workflowdecl.Step) error {
+func (r *sharedCompositeObserver) VisitInvocationStep(step workflows.Step) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	*r.steps = append(*r.steps, step)
 	return nil
 }
-func (*sharedCompositeObserver) VisitOpaqueAction(workflowdecl.Step) error { return nil }
-func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error  { return nil }
+func (*sharedCompositeObserver) VisitOpaqueAction(workflows.Step) error   { return nil }
+func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error { return nil }
 
 func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	t.Parallel()
@@ -191,7 +191,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 	var mu sync.Mutex
 	var snapshots []parsing.SourceSnapshot
-	var steps []workflowdecl.Step
+	var steps []workflows.Step
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,

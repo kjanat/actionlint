@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // Input is an input declared by a callable: an "inputs" entry of an action
@@ -24,7 +24,7 @@ type Input struct {
 	// Type is a reusable workflow's declared input type. GitHub accepts only
 	// boolean, number and string; any other or omitted type, and every action
 	// input, is WorkflowCallEventInputTypeInvalid and accepts every value.
-	Type workflowlang.WorkflowCallEventInputType `json:"-"`
+	Type definition.WorkflowCallEventInputType `json:"-"`
 }
 
 // Inputs maps lowercase input IDs to a callable's input declarations.

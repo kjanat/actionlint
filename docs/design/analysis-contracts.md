@@ -32,7 +32,7 @@ registrations derive from that catalogue. Bundled external tools supply their
 declarations through manifests.
 
 The declaration types, rule names, aliases, categories and maturities are
-defined in `internal/model/rules`. Packages under `internal/model`,
+defined in `internal/model/rule`. Packages under `internal/model`,
 `internal/input` and `internal/results` use them without importing
 `internal/checking`. Tool settings schemas, bundled tool provider manifests
 and plugin references are defined in `internal/model` too, so these packages

@@ -16,9 +16,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // Complete returns expression property edits against the supplied buffer.
@@ -53,11 +53,11 @@ func Complete(content string, offset int) []Item {
 	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
 	c.SetAvailability(contextspec.WorkflowExpressionScope(key))
 	parsed, _ := workflowparser.ParseWorkflow([]byte(content))
-	w := declaration.Bind("editor-buffer", content, parsed, false, "").Workflow()
+	w := workflows.Bind("editor-buffer", content, parsed, false, "").Workflow()
 	contextspec.SetEventPayloadType(c, events.Type(w))
 	if w.Present() {
 		for _, event := range w.On {
-			if dispatch, ok := event.(*workflow.WorkflowDispatchEvent); ok && dispatch != nil {
+			if dispatch, ok := event.(*definition.WorkflowDispatchEvent); ok && dispatch != nil {
 				var inputs exprtypes.ObjectBuilder
 				for name, input := range dispatch.Inputs {
 					if input == nil {
@@ -65,14 +65,14 @@ func Complete(content string, offset int) []Item {
 					}
 					ty := exprtypes.StringType()
 					switch input.Type {
-					case workflow.WorkflowDispatchEventInputTypeBoolean:
+					case definition.WorkflowDispatchEventInputTypeBoolean:
 						ty = exprtypes.BoolType()
-					case workflow.WorkflowDispatchEventInputTypeNumber:
+					case definition.WorkflowDispatchEventInputTypeNumber:
 						ty = exprtypes.NumberType()
-					case workflow.WorkflowDispatchEventInputTypeNone,
-						workflow.WorkflowDispatchEventInputTypeString,
-						workflow.WorkflowDispatchEventInputTypeChoice,
-						workflow.WorkflowDispatchEventInputTypeEnvironment:
+					case definition.WorkflowDispatchEventInputTypeNone,
+						definition.WorkflowDispatchEventInputTypeString,
+						definition.WorkflowDispatchEventInputTypeChoice,
+						definition.WorkflowDispatchEventInputTypeEnvironment:
 					}
 					inputs.Set(strings.ToLower(name), ty)
 				}

@@ -12,7 +12,7 @@ import (
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 type documentChecks struct {
@@ -29,7 +29,7 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 		return selected, err
 	}
 	for _, a := range selected.Scripts {
-		execution := slices.Contains(a.Descriptor().RequiredInputs, rulemeta.Execution)
+		execution := slices.Contains(a.Descriptor().RequiredInputs, rule.Execution)
 		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
 		selected.resolveExecution = selected.resolveExecution || execution
 	}

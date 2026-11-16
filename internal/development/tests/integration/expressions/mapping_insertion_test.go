@@ -7,7 +7,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -250,8 +250,8 @@ func TestRepeatedMappingInsertions(t *testing.T) {
 						t.Fatalf("insertion lost: %+v", env)
 					}
 				case "with":
-					action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
-					inputs := workflowlang.ResolvedActionInputs(action)
+					action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
+					inputs := definition.ResolvedActionInputs(action)
 					second := false
 					for name := range inputs.KeyedEntries() {
 						text, ok := name.ScalarString()
@@ -341,7 +341,7 @@ func TestDockerInsertedReservedInputs(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+				action := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != "bash" || action.Args == nil || action.Args.Value != "hello" {
 					t.Fatalf("reserved inputs lost: %+v", action)
 				}

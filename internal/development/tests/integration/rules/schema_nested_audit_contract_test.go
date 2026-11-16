@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -34,7 +34,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+	if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
 	if errs := rule.Errs(); len(errs) != 0 {
@@ -64,7 +64,7 @@ jobs:
 			t.Fatalf("schema-supported image filters rejected: %v", errs)
 		}
 		rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+		if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 			t.Fatal(err)
 		}
 		if errs := rule.Errs(); len(errs) != 0 {
@@ -95,7 +95,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+			if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
 			if errs := rule.Errs(); tc.valid {
@@ -132,7 +132,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+			if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
 			if errs := rule.Errs(); tc.valid {
@@ -166,10 +166,10 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := rule.VisitJobPre(fixturedecl.Job(w.Jobs["test"])); err != nil {
+			if err := rule.VisitJobPre(declarations.Job(w.Jobs["test"])); err != nil {
 				t.Fatal(err)
 			}
-			if err := rule.VisitStep(fixturedecl.Step(w.Jobs["test"].Steps[0])); err != nil {
+			if err := rule.VisitStep(declarations.Step(w.Jobs["test"].Steps[0])); err != nil {
 				t.Fatal(err)
 			}
 			if valid := len(rule.Errs()) == 0; valid != tc.valid {

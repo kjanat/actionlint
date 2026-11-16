@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestExpressionFailurePhases(t *testing.T) {
@@ -49,7 +49,7 @@ func TestInvalidCallRetainsReturnType(t *testing.T) {
 	t.Parallel()
 	rule := newTestChecker()
 	source := "${{ startsWith('only-one') }}"
-	ty, valid := rule.checkOneExpression(ownedStringFixture(&workflowlang.String{Value: source, Pos: &sourcepos.Position{Line: 1, Column: 1}}), "value", "env")
+	ty, valid := rule.checkOneExpression(ownedStringFixture(&definition.String{Value: source, Pos: &sourcepos.Position{Line: 1, Column: 1}}), "value", "env")
 	if valid || ty.Kind() != exprtypes.KindBool {
 		t.Fatalf("invalid call must retain its declared bool result: type=%s valid=%v", ty, valid)
 	}
@@ -154,7 +154,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			if ternaries != 1 {
 				t.Fatalf("later diagnostic missing: %+v", rule.Findings())
 			}
-			if ty, ok := rule.checkOneExpression(ownedStringFixture(&workflowlang.String{Value: source, Pos: &sourcepos.Position{Line: 1, Column: 1}}), "value", "env"); ok {
+			if ty, ok := rule.checkOneExpression(ownedStringFixture(&definition.String{Value: source, Pos: &sourcepos.Position{Line: 1, Column: 1}}), "value", "env"); ok {
 				t.Fatalf("invalid interpolation types escaped into type checking: %v", ty)
 			}
 		}

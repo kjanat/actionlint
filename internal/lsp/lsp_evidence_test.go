@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -24,7 +24,7 @@ import (
 type editorPathAnalyzer struct{}
 
 func (editorPathAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

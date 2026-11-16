@@ -10,9 +10,9 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
@@ -25,10 +25,10 @@ func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
 	for _, uses := range []string{"./local", "$/mapped", "docker://alpine", "${{ inputs.action }}", "invalid", "actions/checkout@v4"} {
 		t.Run(uses, func(t *testing.T) {
 			t.Parallel()
-			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: uses, Pos: &sourcepos.Position{Line: 7, Column: 9}}}}
-			snapshot := workflowdecl.Bind("metadata-step", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Workflow()
+			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: uses, Pos: &sourcepos.Position{Line: 7, Column: 9}}}}
+			snapshot := workflows.Bind("metadata-step", "", &definition.Workflow{Jobs: map[string]*definition.Job{"test": {Steps: []*definition.Step{step}}}}, false, "").Workflow()
 			job, _ := snapshot.Job("test")
-			var checkedStep workflowdecl.Step
+			var checkedStep workflows.Step
 			for step := range job.Steps() {
 				checkedStep = step
 				break
@@ -84,8 +84,8 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 			if _, err := remote.Inspect(t.Context(), "actions/checkout@v4"); err != nil {
 				t.Fatal(err)
 			}
-			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "actions/checkout@v4", Pos: &sourcepos.Position{Line: 5, Column: 20}}}}
-			job, _ := workflowdecl.Bind("metadata-availability", source, &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{step}}}}, false, "").Workflow().Job("test")
+			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "actions/checkout@v4", Pos: &sourcepos.Position{Line: 5, Column: 20}}}}
+			job, _ := workflows.Bind("metadata-availability", source, &definition.Workflow{Jobs: map[string]*definition.Job{"test": {Steps: []*definition.Step{step}}}}, false, "").Workflow().Job("test")
 			for view := range job.Steps() {
 				got := MissingActionMetadataChecks(remote.Resolved()).Step(view)
 				if len(got) != tc.want {

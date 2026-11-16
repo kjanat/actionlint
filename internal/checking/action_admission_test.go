@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -18,17 +18,17 @@ import (
 
 type failedActionFactProbe struct {
 	name  string
-	fact  rulemeta.InputKind
+	fact  rule.InputKind
 	calls *atomic.Int32
 }
 
 func (probe failedActionFactProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: probe.name, Category: "correctness", RequiredInputs: []rulemeta.InputKind{probe.fact}}
+	return checkinputs.Descriptor{Name: probe.name, Category: "correctness", RequiredInputs: []rule.InputKind{probe.fact}}
 }
 
 func (probe failedActionFactProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	probe.calls.Add(1)
-	if len(input.Scripts)+len(input.ActionInputs)+len(input.Invoked) != 0 || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != rulemeta.Source {
+	if len(input.Scripts)+len(input.ActionInputs)+len(input.Invoked) != 0 || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != rule.Source {
 		return nil, errors.New("failed action leaked executable analyzer facts")
 	}
 	return nil, nil
@@ -42,8 +42,8 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
 		Analyzers: []checkinputs.Registration{
-			{Checker: failedActionFactProbe{name: "failed-action-source", fact: rulemeta.Source, calls: &sourceCalls}},
-			{Checker: failedActionFactProbe{name: "failed-action-scripts", fact: rulemeta.Scripts, calls: &scriptCalls}},
+			{Checker: failedActionFactProbe{name: "failed-action-source", fact: rule.Source, calls: &sourceCalls}},
+			{Checker: failedActionFactProbe{name: "failed-action-scripts", fact: rule.Scripts, calls: &scriptCalls}},
 		},
 		Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 			calls.Add(1)

@@ -6,7 +6,7 @@ import (
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -29,7 +29,7 @@ func TestAdditionalInputsRetainDeclaredInputValidation(t *testing.T) {
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			view := workflowdecl.Bind("additional-inputs", text, parsed, false, "").Workflow()
+			view := workflows.Bind("additional-inputs", text, parsed, false, "").Workflow()
 			job, exists := view.Job("test")
 			if !exists {
 				t.Fatal("fixture job is missing")

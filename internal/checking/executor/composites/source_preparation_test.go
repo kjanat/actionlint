@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 type preparationObserver struct {
@@ -23,7 +23,7 @@ type preparationObserver struct {
 
 var _ workflowvisit.InvocationParticipant = (*preparationObserver)(nil)
 
-func (r *preparationObserver) VisitWorkflowPre(workflowdecl.Workflow) error {
+func (r *preparationObserver) VisitWorkflowPre(workflows.Workflow) error {
 	if !r.prepared[r.entryDocument] {
 		r.t.Fatal("workflow checks started before source preparation")
 	}
@@ -38,9 +38,9 @@ func (r *preparationObserver) EnterInvocation(call workflowvisit.Invocation) err
 	return nil
 }
 
-func (*preparationObserver) LeaveInvocation(invocation.Context) error    { return nil }
-func (*preparationObserver) VisitInvocationStep(workflowdecl.Step) error { return nil }
-func (*preparationObserver) VisitOpaqueAction(workflowdecl.Step) error   { return nil }
+func (*preparationObserver) LeaveInvocation(invocation.Context) error { return nil }
+func (*preparationObserver) VisitInvocationStep(workflows.Step) error { return nil }
+func (*preparationObserver) VisitOpaqueAction(workflows.Step) error   { return nil }
 
 func (r *preparationObserver) CheckStandaloneMetadata(_ *actionmeta.Metadata, snapshot parsing.SourceSnapshot, _ actionmeta.ReferencedFiles) error {
 	if !r.prepared[snapshot.Reference().Document] {

@@ -8,7 +8,7 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
@@ -19,7 +19,7 @@ func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	pos := &sourcepos.Position{Line: 1, Column: 1}
-	exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: pos}}
+	exec := &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: pos}}
 	findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
 	var deprecated, missingScript bool
 	for _, err := range findings {
@@ -52,7 +52,7 @@ func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &sourcepos.Position{Line: 1, Column: 1}}}
+			exec := &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &sourcepos.Position{Line: 1, Column: 1}}}
 			findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
 			if tc.code == "" {
 				if len(findings) != 0 {

@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
@@ -186,7 +186,7 @@ jobs:
 				t.Fatal("workflow was not parsed")
 			}
 			fromAST := ResolvePermissions(w.Permissions)
-			fromView := ResolvePermissions(declaration.Bind("permissions-fixture", src, w, false, "").Workflow().Permissions)
+			fromView := ResolvePermissions(workflows.Bind("permissions-fixture", src, w, false, "").Workflow().Permissions)
 			if diff := cmp.Diff(fromAST, fromView); diff != "" {
 				t.Fatal("AST/view mismatch: " + diff)
 			}
@@ -334,7 +334,7 @@ func TestResolvePermissionsAbsentView(t *testing.T) {
 	if got := ResolvePermissions(nil); got.Kind != PermissionsAbsent {
 		t.Fatalf("absent permissions = %#v", got)
 	}
-	invalid := declaration.Bind("permissions-fixture", "", &workflowlang.Workflow{Permissions: &workflowlang.Permissions{}}, false, "").Workflow().Permissions
+	invalid := workflows.Bind("permissions-fixture", "", &definition.Workflow{Permissions: &definition.Permissions{}}, false, "").Workflow().Permissions
 	if got := ResolvePermissions(invalid); got.Kind != PermissionsInvalid {
 		t.Fatalf("invalid permissions = %#v", got)
 	}

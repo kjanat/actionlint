@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -43,7 +43,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	if workflow.OnPos == nil {
 		return nil, errors.New("\"on:\" is not found")
 	}
-	event, ok := workflowlang.FindWorkflowCallEvent(workflow)
+	event, ok := definition.FindWorkflowCallEvent(workflow)
 	if !ok {
 		return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", workflow.OnPos.Line, workflow.OnPos.Column)
 	}
@@ -55,8 +55,8 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 
 // hasDefault reports whether input supplies a default value. A YAML null
 // default supplies none, so a required input stays required.
-func hasDefault(input *workflowlang.WorkflowCallEventInput) bool {
-	return input.Default != nil && input.Default.SourceScalar.Tag != workflowlang.YamlTagNull
+func hasDefault(input *definition.WorkflowCallEventInput) bool {
+	return input.Default != nil && input.Default.SourceScalar.Tag != definition.YamlTagNull
 }
 
 func findingError(finding *workflowparser.SyntaxError) error {
@@ -76,7 +76,7 @@ func checkMetadataAliases(doc *codec.Node) error {
 // MetadataFromWorkflowCallEvent converts parsed workflow_call declarations and
 // the job facts of workflow. An omitted section stays nil; an empty one is an
 // empty map. A nil workflow records no job facts.
-func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workflow *workflowlang.Workflow) *Metadata {
+func MetadataFromWorkflowCallEvent(event *definition.WorkflowCallEvent, workflow *definition.Workflow) *Metadata {
 	metadata := &Metadata{}
 	if event.Inputs != nil {
 		metadata.Inputs = make(Inputs, len(event.Inputs))
@@ -121,16 +121,16 @@ type Metadata struct {
 // CacheModeDeclaration is a job's effective cache-mode declaration. The zero
 // value declares none: the job inherits the calling workflow's access limit.
 type CacheModeDeclaration struct {
-	kind     workflowlang.CacheModeKind
+	kind     definition.CacheModeKind
 	declared bool
 }
 
 // DeclaredCacheMode records an explicit, possibly invalid, cache-mode declaration.
-func DeclaredCacheMode(kind workflowlang.CacheModeKind) CacheModeDeclaration {
+func DeclaredCacheMode(kind definition.CacheModeKind) CacheModeDeclaration {
 	return CacheModeDeclaration{kind: kind, declared: true}
 }
 
-func cacheModeDeclaration(mode *workflowlang.CacheMode) CacheModeDeclaration {
+func cacheModeDeclaration(mode *definition.CacheMode) CacheModeDeclaration {
 	if mode == nil {
 		return CacheModeDeclaration{}
 	}
@@ -138,7 +138,7 @@ func cacheModeDeclaration(mode *workflowlang.CacheMode) CacheModeDeclaration {
 }
 
 // Kind returns the declared mode. It reports false when the job declares none.
-func (d CacheModeDeclaration) Kind() (workflowlang.CacheModeKind, bool) { return d.kind, d.declared }
+func (d CacheModeDeclaration) Kind() (definition.CacheModeKind, bool) { return d.kind, d.declared }
 
 // Equal reports whether both declarations are the same.
 func (d CacheModeDeclaration) Equal(other CacheModeDeclaration) bool { return d == other }
@@ -157,15 +157,15 @@ type CacheAccess struct {
 
 // jobCacheAccess describes one job, or reports false when the job declares no
 // cache mode, calls no local workflow and uses no cache action.
-func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflowlang.Step) (CacheAccess, bool) {
+func jobCacheAccess(mode *definition.CacheMode, uses string, steps []*definition.Step) (CacheAccess, bool) {
 	local, ok := references.LocalWorkflow(uses)
 	if !ok {
 		local = ""
 		uses = ""
 	}
 	var operations []string
-	for step := range workflowlang.AllSteps(steps) {
-		if exec, ok := step.Exec.(*workflowlang.ExecAction); ok && exec.Uses != nil {
+	for step := range definition.AllSteps(steps) {
+		if exec, ok := step.Exec.(*definition.ExecAction); ok && exec.Uses != nil {
 			if name := references.CacheAction(exec.Uses.Value); name != "" {
 				operations = append(operations, name)
 			}
@@ -179,7 +179,7 @@ func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflow
 
 // JobPermissionsAndCacheAccess collects effective permissions and cache declarations by job ID.
 // Jobs without either have no entry. A map without entries is nil.
-func JobPermissionsAndCacheAccess(workflow *workflowlang.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
+func JobPermissionsAndCacheAccess(workflow *definition.Workflow) (map[string]PermissionScopeLevels, map[string]CacheAccess) {
 	if workflow == nil {
 		return nil, nil
 	}
@@ -191,7 +191,7 @@ func JobPermissionsAndCacheAccess(workflow *workflowlang.Workflow) (map[string]P
 		if job.WorkflowCall != nil && job.WorkflowCall.Uses != nil {
 			uses = job.WorkflowCall.Uses.Value
 		}
-		if access, ok := jobCacheAccess(workflowlang.EffectiveCacheMode(workflow.CacheMode, job.CacheMode), uses, job.Steps); ok {
+		if access, ok := jobCacheAccess(definition.EffectiveCacheMode(workflow.CacheMode, job.CacheMode), uses, job.Steps); ok {
 			if cacheByJob == nil {
 				cacheByJob = map[string]CacheAccess{}
 			}

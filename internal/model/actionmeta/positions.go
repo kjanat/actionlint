@@ -9,7 +9,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // Provenance is the parse origin of decoded metadata: the exact text Parse
@@ -43,14 +43,14 @@ func (p Provenance) Text() (text string, ok bool) {
 
 // source maps a decoded value to its original scalar. It returns nil without
 // provenance or when no scalar at the value's position decodes to its text.
-func (p Provenance) source(value *ExprString) *workflowlang.ScriptSource {
+func (p Provenance) source(value *ExprString) *definition.ScriptSource {
 	if p.parsed == nil {
 		return nil
 	}
 	return p.parsed.source(value)
 }
 
-func (s *parsedSource) source(value *ExprString) *workflowlang.ScriptSource {
+func (s *parsedSource) source(value *ExprString) *definition.ScriptSource {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.indexed {

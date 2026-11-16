@@ -17,8 +17,8 @@ import (
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 

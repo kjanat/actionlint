@@ -7,17 +7,17 @@ import (
 	"sync/atomic"
 	"testing"
 
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	actionfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/actions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/actions"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
@@ -34,7 +34,7 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				}
 				return content, nil
 			}, nil)
-			cache := actionfixture.NewCache(t, root, nil, reader)
+			cache := actions.NewCache(t, root, nil, reader)
 			var lookup workspaceactions.ActionMetadataDocumentLookup = cache
 			spec := "./broken"
 			if mapped {
@@ -42,8 +42,8 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				spec = "./generated"
 			}
 			rule := NewRuleAction(t.Context(), ActionRule.Base(), lookup, nil)
-			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &source.Position{Line: 3, Column: 5}}}}
-			if err := rule.VisitStep(fixturedecl.Step(step)); err != nil {
+			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &source.Position{Line: 3, Column: 5}}}}
+			if err := rule.VisitStep(declarations.Step(step)); err != nil {
 				t.Fatal(err)
 			}
 			result, cached := cache.LookupMetadata("./broken")
@@ -71,7 +71,7 @@ func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) 
 		t.Run(failure.Error(), func(t *testing.T) {
 			t.Parallel()
 			rule := NewRuleAction(t.Context(), ActionRule.Base(), metadataParseFailureLookup{cause: failure}, nil)
-			err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &source.Position{Line: 1, Column: 1}}}}))
+			err := rule.VisitStep(declarations.Step(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &source.Position{Line: 1, Column: 1}}}}))
 			if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 				t.Fatalf("unbound or interrupted parse became a finding: error=%v findings=%+v", err, rule.Errs())
 			}

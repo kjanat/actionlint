@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
@@ -15,7 +15,7 @@ func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}
-	action, present := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+	action, present := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 	if !present {
 		t.Fatal("fixture action unavailable")
 	}

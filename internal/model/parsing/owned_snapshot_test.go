@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
@@ -108,13 +108,13 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	if err := reused.ValidateStep(foreignStep); err == nil {
 		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(workflowdecl.Step{}) {
+	if snapshots.Owns(foreignStep) || snapshots.Owns(workflows.Step{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
-	if err := bound.ValidateStep(workflowdecl.Step{}); err == nil {
+	if err := bound.ValidateStep(workflows.Step{}); err == nil {
 		t.Fatal("missing declaration accepted")
 	}
-	zero := workflowdecl.Step{}
+	zero := workflows.Step{}
 	if zero.Present() || zero.Reference() != (source.Reference{}) {
 		t.Fatal("zero handle exposes declarations")
 	}

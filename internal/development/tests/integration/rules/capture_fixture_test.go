@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 )

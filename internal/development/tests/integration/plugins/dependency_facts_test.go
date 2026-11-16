@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	dependencypins "actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependency-pins"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependencypins"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 

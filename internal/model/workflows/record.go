@@ -1,14 +1,14 @@
-// Package declaration binds parsed workflow and action syntax to its source
+// Package workflows binds parsed workflow and action syntax to its source
 // document. Consumers read the parsed tree directly; Workflow, Job and Step
 // handles add the owning document's identity and semantic lookups.
-package declaration
+package workflows
 
 import (
 	"iter"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -19,16 +19,16 @@ import (
 type Bound struct {
 	text       string
 	using      string
-	workflow   *workflowlang.Workflow
+	workflow   *definition.Workflow
 	references workflowfacts.References
-	steps      map[source.Reference]*workflowlang.Step
+	steps      map[source.Reference]*definition.Step
 }
 
 // Bind indexes workflow under identity. action selects action-manifest step
 // addresses; using is the action's runs.using value, empty for workflows.
-func Bind(identity, text string, workflow *workflowlang.Workflow, action bool, using string) *Bound {
+func Bind(identity, text string, workflow *definition.Workflow, action bool, using string) *Bound {
 	refs := workflowfacts.Index(identity, []byte(text), workflow, action)
-	bound := &Bound{text: text, using: using, workflow: workflow, references: refs, steps: map[source.Reference]*workflowlang.Step{}}
+	bound := &Bound{text: text, using: using, workflow: workflow, references: refs, steps: map[source.Reference]*definition.Step{}}
 	for step, ref := range refs.Steps {
 		bound.steps[ref] = step
 	}
@@ -69,7 +69,7 @@ func (b *Bound) ActionBody() ActionBody { return ActionBody{workflow: b.Workflow
 
 // Workflow is a parsed workflow bound to its document.
 type Workflow struct {
-	*workflowlang.Workflow
+	*definition.Workflow
 	owner *Bound
 }
 
@@ -102,7 +102,7 @@ func (w Workflow) Jobs() iter.Seq2[string, Job] {
 
 // ScalarSource maps a decoded scalar back to its captured YAML. It is
 // available for indexed expressions, conditions and dependency references.
-func (w Workflow) ScalarSource(s *workflowlang.String) *workflowlang.ScriptSource {
+func (w Workflow) ScalarSource(s *definition.String) *definition.ScriptSource {
 	pos, ok := s.Position()
 	if !ok || !w.Present() {
 		return nil
@@ -112,7 +112,7 @@ func (w Workflow) ScalarSource(s *workflowlang.String) *workflowlang.ScriptSourc
 
 // Job is a parsed job bound to its document.
 type Job struct {
-	*workflowlang.Job
+	*definition.Job
 	owner *Bound
 	key   string
 }
@@ -138,7 +138,7 @@ func (j Job) Steps() iter.Seq[Step] { return boundSteps(j.owner, j.stepNodes()) 
 // inside it, in the order of workflowlang.AllSteps.
 func (j Job) AllSteps() iter.Seq[Step] {
 	return func(yield func(Step) bool) {
-		for step := range workflowlang.AllSteps(j.stepNodes()) {
+		for step := range definition.AllSteps(j.stepNodes()) {
 			if !yield(Step{step, j.owner}) {
 				return
 			}
@@ -146,14 +146,14 @@ func (j Job) AllSteps() iter.Seq[Step] {
 	}
 }
 
-func (j Job) stepNodes() []*workflowlang.Step {
+func (j Job) stepNodes() []*definition.Step {
 	if !j.Present() {
 		return nil
 	}
 	return j.Job.Steps
 }
 
-func boundSteps(owner *Bound, nodes []*workflowlang.Step) iter.Seq[Step] {
+func boundSteps(owner *Bound, nodes []*definition.Step) iter.Seq[Step] {
 	return func(yield func(Step) bool) {
 		for _, step := range nodes {
 			if step != nil && !yield(Step{step, owner}) {
@@ -165,7 +165,7 @@ func boundSteps(owner *Bound, nodes []*workflowlang.Step) iter.Seq[Step] {
 
 // Step is a parsed step bound to its document.
 type Step struct {
-	*workflowlang.Step
+	*definition.Step
 	owner *Bound
 }
 
@@ -219,35 +219,35 @@ func (s Step) Condition() value.Value {
 	return condition(s.If)
 }
 
-func (s Step) Run() (*workflowlang.ExecRun, bool) {
+func (s Step) Run() (*definition.ExecRun, bool) {
 	if !s.Present() {
 		return nil, false
 	}
-	run, ok := s.Exec.(*workflowlang.ExecRun)
+	run, ok := s.Exec.(*definition.ExecRun)
 	return run, ok && run != nil
 }
 
-func (s Step) Action() (*workflowlang.ExecAction, bool) {
+func (s Step) Action() (*definition.ExecAction, bool) {
 	if !s.Present() {
 		return nil, false
 	}
-	action, ok := s.Exec.(*workflowlang.ExecAction)
+	action, ok := s.Exec.(*definition.ExecAction)
 	return action, ok && action != nil
 }
 
-func (s Step) Wait() (*workflowlang.ExecWait, bool) {
+func (s Step) Wait() (*definition.ExecWait, bool) {
 	if !s.Present() {
 		return nil, false
 	}
-	wait, ok := s.Exec.(*workflowlang.ExecWait)
+	wait, ok := s.Exec.(*definition.ExecWait)
 	return wait, ok && wait != nil
 }
 
-func (s Step) Cancel() (*workflowlang.ExecCancel, bool) {
+func (s Step) Cancel() (*definition.ExecCancel, bool) {
 	if !s.Present() {
 		return nil, false
 	}
-	cancel, ok := s.Exec.(*workflowlang.ExecCancel)
+	cancel, ok := s.Exec.(*definition.ExecCancel)
 	return cancel, ok && cancel != nil
 }
 
@@ -256,7 +256,7 @@ func (s Step) ParallelSteps() (iter.Seq[Step], bool) {
 	if !s.Present() {
 		return nil, false
 	}
-	parallel, ok := s.Exec.(*workflowlang.ExecParallel)
+	parallel, ok := s.Exec.(*definition.ExecParallel)
 	if !ok || parallel == nil {
 		return nil, false
 	}
@@ -281,8 +281,8 @@ func (a ActionBody) Steps() iter.Seq[Step] {
 }
 
 // OutputValues yields composite output expressions evaluated after all steps.
-func (a ActionBody) OutputValues() iter.Seq[*workflowlang.String] {
-	return func(yield func(*workflowlang.String) bool) {
+func (a ActionBody) OutputValues() iter.Seq[*definition.String] {
+	return func(yield func(*definition.String) bool) {
 		job, ok := a.workflow.Job("")
 		if !ok {
 			return

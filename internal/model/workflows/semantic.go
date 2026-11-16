@@ -1,11 +1,11 @@
-package declaration
+package workflows
 
 import (
 	"strconv"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
@@ -18,7 +18,7 @@ func origin(pos *sourcepos.Position, expression bool) value.Origin {
 	return result
 }
 
-func scalar(node *workflowlang.String) value.Value {
+func scalar(node *definition.String) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
@@ -28,41 +28,41 @@ func scalar(node *workflowlang.String) value.Value {
 	if node.ContainsExpression() {
 		return value.Template(node.Value, origin(node.Pos, true))
 	}
-	return value.YAMLScalar(node.Value, workflowlang.YamlTagStr, origin(node.Pos, false))
+	return value.YAMLScalar(node.Value, definition.YamlTagStr, origin(node.Pos, false))
 }
 
-func mappingScalar(node *workflowlang.String) value.Value {
+func mappingScalar(node *definition.String) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
-	return workflowlang.MappingScalar(node.Value, node.SourceScalar, origin(node.Pos, false))
+	return definition.MappingScalar(node.Value, node.SourceScalar, origin(node.Pos, false))
 }
 
-func condition(node *workflowlang.String) value.Value {
+func condition(node *definition.String) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
 	return value.Condition(node.Value, origin(node.Pos, true))
 }
 
-func boolean(node *workflowlang.Bool) value.Value {
+func boolean(node *definition.Bool) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
 	if node.Expression != nil {
 		return value.Template(node.Expression.Value, origin(node.Expression.Pos, true))
 	}
-	return value.YAMLScalar(strconv.FormatBool(node.Value), workflowlang.YamlTagBool, origin(node.Pos, false))
+	return value.YAMLScalar(strconv.FormatBool(node.Value), definition.YamlTagBool, origin(node.Pos, false))
 }
 
 // Bool decodes a boolean field.
-func Bool(node *workflowlang.Bool) value.Value { return boolean(node) }
+func Bool(node *definition.Bool) value.Value { return boolean(node) }
 
 // Environment resolves an env mapping, including insertions.
-func Environment(node *workflowlang.Env) mapping.Mapping { return resolvedEnvironment(node) }
+func Environment(node *definition.Env) mapping.Mapping { return resolvedEnvironment(node) }
 
 // ResolvedInputs resolves an action step's with: mapping, including insertions.
-func ResolvedInputs(node *workflowlang.ExecAction) mapping.Mapping {
+func ResolvedInputs(node *definition.ExecAction) mapping.Mapping {
 	if node == nil {
 		return mapping.Mapping{}
 	}
@@ -70,7 +70,7 @@ func ResolvedInputs(node *workflowlang.ExecAction) mapping.Mapping {
 }
 
 // MatrixResolution resolves a strategy's matrix.
-func MatrixResolution(node *workflowlang.Strategy) matrix.Resolution {
+func MatrixResolution(node *definition.Strategy) matrix.Resolution {
 	if node == nil {
 		return matrix.Resolution{}
 	}
@@ -78,7 +78,7 @@ func MatrixResolution(node *workflowlang.Strategy) matrix.Resolution {
 }
 
 // MatrixMapping resolves a matrix's keys as a mapping.
-func MatrixMapping(node *workflowlang.Matrix) mapping.Mapping {
+func MatrixMapping(node *definition.Matrix) mapping.Mapping {
 	if node == nil {
 		return mapping.Mapping{}
 	}
@@ -86,10 +86,10 @@ func MatrixMapping(node *workflowlang.Matrix) mapping.Mapping {
 }
 
 // RunnerSelection decodes runs-on.
-func RunnerSelection(node *workflowlang.Runner) value.Value { return runnerSelection(node) }
+func RunnerSelection(node *definition.Runner) value.Value { return runnerSelection(node) }
 
 // DefaultsRun decodes defaults.run.
-func DefaultsRun(defaults *workflowlang.Defaults) value.Value {
+func DefaultsRun(defaults *definition.Defaults) value.Value {
 	if defaults == nil {
 		return value.Value{}
 	}
@@ -97,14 +97,14 @@ func DefaultsRun(defaults *workflowlang.Defaults) value.Value {
 }
 
 // Container decodes a job or service container.
-func Container(node *workflowlang.Container) value.Value {
+func Container(node *definition.Container) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
 	return containerValue(node, resolvedEnvironment(node.Env))
 }
 
-func runnerSelection(node *workflowlang.Runner) value.Value {
+func runnerSelection(node *definition.Runner) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
@@ -125,7 +125,7 @@ func runnerSelection(node *workflowlang.Runner) value.Value {
 	return value.Map(value.Origin{}, props...)
 }
 
-func defaultsRunValue(node *workflowlang.DefaultsRun) value.Value {
+func defaultsRunValue(node *definition.DefaultsRun) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
@@ -138,7 +138,7 @@ func defaultsRunValue(node *workflowlang.DefaultsRun) value.Value {
 	return value.Map(origin(node.Pos, false), props...)
 }
 
-func containerValue(node *workflowlang.Container, envMapping mapping.Mapping) value.Value {
+func containerValue(node *definition.Container, envMapping mapping.Mapping) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
@@ -177,7 +177,7 @@ func containerValue(node *workflowlang.Container, envMapping mapping.Mapping) va
 	return value.Map(origin(node.Pos, false), props...)
 }
 
-func credentialsValue(node *workflowlang.Credentials) value.Value {
+func credentialsValue(node *definition.Credentials) value.Value {
 	if node.Expression != nil {
 		return scalar(node.Expression)
 	}
@@ -187,7 +187,7 @@ func credentialsValue(node *workflowlang.Credentials) value.Value {
 	return value.Map(origin(node.Pos, false), props...)
 }
 
-func environmentValue(mapping mapping.Mapping, node *workflowlang.Env) value.Value {
+func environmentValue(mapping mapping.Mapping, node *definition.Env) value.Value {
 	if !mapping.Complete() {
 		envOrigin := value.Origin{}
 		if node.Expression != nil {
@@ -202,17 +202,17 @@ func environmentValue(mapping mapping.Mapping, node *workflowlang.Env) value.Val
 	return value.Map(value.Origin{}, props...)
 }
 
-func appendSourceProp(props *[]value.Prop, name string, source *workflowlang.String) {
+func appendSourceProp(props *[]value.Prop, name string, source *definition.String) {
 	if source != nil {
 		*props = append(*props, value.Prop{Name: name, Value: scalar(source)})
 	}
 }
 
-func resolvedEnvironment(node *workflowlang.Env) mapping.Mapping {
+func resolvedEnvironment(node *definition.Env) mapping.Mapping {
 	return mapping.Resolve(environmentInputs(node))
 }
 
-func environmentInputs(node *workflowlang.Env) *mapping.DeclaredMapping {
+func environmentInputs(node *definition.Env) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
@@ -231,7 +231,7 @@ func environmentInputs(node *workflowlang.Env) *mapping.DeclaredMapping {
 	return inputs
 }
 
-func actionInputs(node *workflowlang.ExecAction) *mapping.DeclaredMapping {
+func actionInputs(node *definition.ExecAction) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
@@ -250,7 +250,7 @@ func actionInputs(node *workflowlang.ExecAction) *mapping.DeclaredMapping {
 	return inputs
 }
 
-func actionMappingInputs(node *workflowlang.ActionInputMapping) *mapping.DeclaredMapping {
+func actionMappingInputs(node *definition.ActionInputMapping) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
@@ -269,14 +269,14 @@ func actionMappingInputs(node *workflowlang.ActionInputMapping) *mapping.Declare
 	return inputs
 }
 
-func sourceText(node *workflowlang.String) string {
+func sourceText(node *definition.String) string {
 	if node == nil {
 		return ""
 	}
 	return node.Value
 }
 
-func matrixMappingInputs(node *workflowlang.Matrix) *mapping.DeclaredMapping {
+func matrixMappingInputs(node *definition.Matrix) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
@@ -290,21 +290,21 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.DeclaredMapping {
 			source = row.Name.Value
 			name = mappingScalar(row.Name)
 			if row.Evaluated {
-				name = value.YAMLScalar(row.Name.Value, workflowlang.YamlTagStr, origin(row.Name.Pos, true))
+				name = value.YAMLScalar(row.Name.Value, definition.YamlTagStr, origin(row.Name.Pos, true))
 			}
 		} else {
-			name = value.YAMLScalar(key, workflowlang.YamlTagStr, value.Origin{})
+			name = value.YAMLScalar(key, definition.YamlTagStr, value.Origin{})
 		}
 		inputs.Values[key] = mapping.DeclaredEntry{Name: name, Source: source, Evaluated: row.Evaluated}
 	}
-	for key, filters := range map[string]*workflowlang.MatrixCombinations{"include": node.Include, "exclude": node.Exclude} {
+	for key, filters := range map[string]*definition.MatrixCombinations{"include": node.Include, "exclude": node.Exclude} {
 		if filters == nil {
 			continue
 		}
 		name := mappingScalar(filters.Name)
 		source := sourceText(filters.Name)
 		if filters.Evaluated && filters.Name != nil {
-			name = value.YAMLScalar(filters.Name.Value, workflowlang.YamlTagStr, origin(filters.Name.Pos, true))
+			name = value.YAMLScalar(filters.Name.Value, definition.YamlTagStr, origin(filters.Name.Pos, true))
 		}
 		inputs.Values[key] = mapping.DeclaredEntry{Name: name, Source: source, Evaluated: filters.Evaluated}
 	}
@@ -315,7 +315,7 @@ func matrixMappingInputs(node *workflowlang.Matrix) *mapping.DeclaredMapping {
 }
 
 // Scalar decodes a scalar as a YAML value or template.
-func Scalar(node *workflowlang.String) value.Value { return scalar(node) }
+func Scalar(node *definition.String) value.Value { return scalar(node) }
 
 // Condition decodes a scalar as an if condition.
-func Condition(node *workflowlang.String) value.Value { return condition(node) }
+func Condition(node *definition.String) value.Value { return condition(node) }

@@ -1,11 +1,11 @@
-package declaration
+package workflows
 
 import (
 	"maps"
 	"slices"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
@@ -33,7 +33,7 @@ func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Depende
 	return set.mappings, set.dependencies
 }
 
-func (d *declarationSet) job(b *Bound, job *workflowlang.Job, ref sourcepos.Reference) {
+func (d *declarationSet) job(b *Bound, job *definition.Job, ref sourcepos.Reference) {
 	scope := ref.Address
 	if job.WorkflowCall != nil {
 		d.dependency(job.WorkflowCall.Uses, "workflow", ref)
@@ -50,23 +50,23 @@ func (d *declarationSet) job(b *Bound, job *workflowlang.Job, ref sourcepos.Refe
 	if job.Strategy != nil && job.Strategy.Matrix != nil {
 		d.mapping(scope+".strategy.matrix", ref, MatrixMapping(job.Strategy.Matrix))
 	}
-	for step := range workflowlang.AllSteps(job.Steps) {
+	for step := range definition.AllSteps(job.Steps) {
 		ref := b.references.Steps[step]
 		d.env(ref.Address+".env", ref, step.Env)
-		if exec, ok := step.Exec.(*workflowlang.ExecAction); ok {
+		if exec, ok := step.Exec.(*definition.ExecAction); ok {
 			d.dependency(exec.Uses, "action", ref)
 			d.mapping(ref.Address+".with", ref, ResolvedInputs(exec))
 		}
 	}
 }
 
-func (d *declarationSet) env(scope string, owner sourcepos.Reference, env *workflowlang.Env) {
+func (d *declarationSet) env(scope string, owner sourcepos.Reference, env *definition.Env) {
 	if env != nil {
 		d.mapping(scope, owner, Environment(env))
 	}
 }
 
-func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref sourcepos.Reference) {
+func (d *declarationSet) dependency(value *definition.String, kind string, ref sourcepos.Reference) {
 	if value == nil || value.ContainsExpression() {
 		return
 	}

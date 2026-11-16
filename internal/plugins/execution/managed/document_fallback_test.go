@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -63,7 +63,7 @@ func documentBatchFixture(tb testing.TB, count int) scriptexecution.Batch {
 	for _, occurrence := range batch.CallGraph.Scripts() {
 		batch.Scripts = append(batch.Scripts, scriptexecution.Unit{
 			Occurrence: occurrence.ID, Reference: occurrence.Declaration, Path: "workflow.yml",
-			Run:       &workflowlang.ExecRun{Run: &workflowlang.String{Value: "echo test"}},
+			Run:       &definition.ExecRun{Run: &definition.String{Value: "echo test"}},
 			Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true},
 		})
 	}

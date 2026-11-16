@@ -7,7 +7,7 @@ import (
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -107,7 +107,7 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 		result = append(result, refs.Steps[step])
 	}
 	for _, step := range workflow.Jobs["build"].Steps {
-		if parallel, ok := step.Exec.(*workflowlang.ExecParallel); ok {
+		if parallel, ok := step.Exec.(*definition.ExecParallel); ok {
 			for _, child := range parallel.Steps {
 				result = append(result, refs.Steps[child])
 			}

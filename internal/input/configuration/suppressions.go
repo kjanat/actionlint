@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 type SuppressionReport uint8
@@ -39,7 +39,7 @@ func parseSuppressionReport(value string) (SuppressionReport, bool) {
 // A nil pointer or zero value permits suppressions. Use DisallowSuppressions
 // to construct an enabled policy.
 type SuppressionsPolicy struct {
-	names     rulemeta.Names `clone:"shared"`
+	names     rule.Names `clone:"shared"`
 	report    SuppressionReport
 	rules     []string
 	locations map[string]int

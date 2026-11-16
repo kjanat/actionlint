@@ -9,14 +9,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // ScriptInputAction removes the ref and lowercases the owner and repository.
 // It preserves the case of any action subpath.
-func ScriptInputAction(action *workflowlang.ExecAction) (string, bool) {
+func ScriptInputAction(action *definition.ExecAction) (string, bool) {
 	if action == nil || action.Uses == nil || action.Uses.ContainsExpression() {
 		return "", false
 	}
@@ -45,7 +45,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 	if _, exists := collection.Declarations.Lookup(graph.Entry().Reference); !exists {
 		return nil, fmt.Errorf("%w: entry source is absent from declaration registry", ErrInvalidBatch)
 	}
-	declarations := make(map[source.Reference]workflowdecl.Step)
+	declarations := make(map[source.Reference]workflows.Step)
 	contents := make(map[source.Reference][]byte)
 	units := make([]Unit, 0, len(requests))
 	for _, record := range graph.Scripts() {
@@ -117,7 +117,7 @@ func scriptJob(graph invocation.Graph, declarations *parsing.SourceSnapshots, ow
 	return outer.DeclaringJob(), nil
 }
 
-func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflowdecl.Step) error {
+func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, declaration workflows.Step) error {
 	switch record.Kind {
 	case invocation.ScriptRun:
 		run, hasRun := declaration.Run()
@@ -134,8 +134,8 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 	case invocation.ScriptActionInput:
 		site := request.Input
 		action, hasAction := declaration.Action()
-		var input *workflowlang.ActionArgument
-		inputs, _ := workflowdecl.InputNames(action)
+		var input *definition.ActionArgument
+		inputs, _ := workflows.InputNames(action)
 		for name, candidate := range inputs {
 			if name == record.Input {
 				input = candidate
@@ -162,7 +162,7 @@ func bindScript(unit *Unit, record invocation.Script, request ScriptRequest, dec
 	return nil
 }
 
-func hasPosition(s *workflowlang.String) bool {
+func hasPosition(s *definition.String) bool {
 	_, present := s.Position()
 	return present
 }

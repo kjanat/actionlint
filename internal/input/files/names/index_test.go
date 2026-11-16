@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
@@ -142,8 +142,8 @@ func TestIndexRecordsPlainTextNamesWithPaths(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
 	declared := map[string]namemodel.Declared{
-		filepath.Join(dir, "plain.yml"):      namemodel.Declare(&workflowlang.String{Value: "CI"}),
-		filepath.Join(dir, "expression.yml"): namemodel.Declare(&workflowlang.String{Value: "${{ 'CI' }}"}),
+		filepath.Join(dir, "plain.yml"):      namemodel.Declare(&definition.String{Value: "CI"}),
+		filepath.Join(dir, "expression.yml"): namemodel.Declare(&definition.String{Value: "${{ 'CI' }}"}),
 		filepath.Join(dir, "unnamed.yml"):    namemodel.Declare(nil),
 		filepath.Join(dir, "unknown.yml"):    namemodel.Unknown(),
 	}
@@ -279,7 +279,7 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 				t.Errorf("loaded stale disk spelling %q", path)
 				return namemodel.Unknown(), nil
 			}
-			return namemodel.Declare(&workflowlang.String{Value: name}), nil
+			return namemodel.Declare(&definition.String{Value: name}), nil
 		})
 		got, err := index.ForRoot(root)
 		if err != nil || !got.Complete() || loads != 1 || got.Len() != 1 {

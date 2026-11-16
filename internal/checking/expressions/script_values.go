@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
@@ -45,7 +45,7 @@ func (rule *Checker) safeScriptEnv(name string, argument bool) bool {
 	if rule.scriptEnv == nil {
 		return false
 	}
-	semantic := workflowdecl.Environment(rule.scriptEnv).Lookup(name)
+	semantic := workflows.Environment(rule.scriptEnv).Lookup(name)
 	text, known := semantic.ScalarString()
 	return known && scriptLiteralProof(text).safe(argument)
 }
@@ -57,7 +57,7 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 		if rule.scriptEnv == nil {
 			return false
 		}
-		values, complete = workflowdecl.Environment(rule.scriptEnv).Lookup(name).StringAlternatives()
+		values, complete = workflows.Environment(rule.scriptEnv).Lookup(name).StringAlternatives()
 	} else {
 		values, complete = expreval.StringAlternatives(node)
 	}
@@ -72,11 +72,11 @@ func (rule *Checker) safeScriptArgumentList(node exprsyntax.Node) bool {
 	return true
 }
 
-func (rule *Checker) matrixResolution(strategy *workflowlang.Strategy) matrixcheck.Resolution {
+func (rule *Checker) matrixResolution(strategy *definition.Strategy) matrixcheck.Resolution {
 	if strategy == nil {
 		return matrixcheck.Resolution{}
 	}
-	return workflowdecl.MatrixResolution(strategy)
+	return workflows.MatrixResolution(strategy)
 }
 
 // safeMatrixScriptReferences proves individual paths across all declared axis

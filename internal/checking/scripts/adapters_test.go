@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rulemetadata "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
@@ -70,9 +70,9 @@ func (a sourceTool) Analyze(_ context.Context, batch scripts.Batch) ([]contract.
 
 func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 	t.Parallel()
-	rules, err := configuration.NewRuleSet([]rulemetadata.Declaration{{
+	rules, err := configuration.NewRuleSet([]rule.Declaration{{
 		Name: "shellcheck", Category: "correctness", Recommended: true,
-		Scope: rulemetadata.SourceConfiguration,
+		Scope: rule.SourceConfiguration,
 	}})
 	if err != nil {
 		t.Fatal(err)

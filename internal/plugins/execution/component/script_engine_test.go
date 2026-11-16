@@ -16,7 +16,7 @@ import (
 	"time"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"github.com/kjanat/wacogo"
 )
 
@@ -57,7 +57,7 @@ func TestScriptDescriptorShellValidation(t *testing.T) {
 			value := wacogo.NewValRecord(field("id", original.Field("id")), field("version", original.Field("version")),
 				field("name", original.Field("name")), field("engine", original.Field("engine")), field("engine-version", original.Field("engine-version")),
 				field("shells", wacogo.NewValListOf(tc.shells...)), field("rule", original.Field("rule")))
-			descriptor, err := liftScriptDescriptor(value, rulemeta.Names{})
+			descriptor, err := liftScriptDescriptor(value, rule.Names{})
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%t: %v", tc.valid, err)
 			}
@@ -103,7 +103,7 @@ func TestScriptDescriptorRuleNameFitsInlineSuppressionSelector(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = liftScriptDescriptor(descriptor, rulemeta.Names{})
+			_, err = liftScriptDescriptor(descriptor, rule.Names{})
 			if (err == nil) != test.valid {
 				t.Fatalf("name=%q valid=%v: %v", test.name, test.valid, err)
 			}

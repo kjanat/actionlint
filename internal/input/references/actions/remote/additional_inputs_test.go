@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	actionfixtures "actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
+	"actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -13,7 +13,7 @@ import (
 
 func requestActionSource(t *testing.T) string {
 	t.Helper()
-	fixture, err := actionfixtures.ReadManifest("request-action.yml")
+	fixture, err := fixtures.ReadManifest("request-action.yml")
 	if err != nil {
 		t.Fatal(err)
 	}

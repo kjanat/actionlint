@@ -14,7 +14,7 @@ import (
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2"
 )

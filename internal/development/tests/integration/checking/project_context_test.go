@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results/report"

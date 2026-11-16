@@ -4,10 +4,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // RunnerLabelRule is the single definition of the runner-label rule.
@@ -32,7 +32,7 @@ var RunnerLabelRule = &define.Rule{
 // it checks labels against the supplied repository label set.
 func RunnerLabelChecks(runners *runnerlang.Knowledge, labels runnerlang.LabelSet) define.Checks {
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.StepFinding {
+		Job: func(job workflows.Job) []reporting.StepFinding {
 			var rejections []runnerapi.Rejection
 			if runners != nil {
 				rejections = runners.Job(job).Rejections

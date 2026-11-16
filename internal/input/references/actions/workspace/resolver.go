@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -393,7 +393,7 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 }
 
 // ObserveCheckout updates action resolution after a checkout step.
-func (c *Resolver) ObserveCheckout(step workflowdecl.Step) {
+func (c *Resolver) ObserveCheckout(step workflows.Step) {
 	enabled, known := workflowconditions.Condition(step.Condition())
 	if known && !enabled {
 		return
@@ -410,13 +410,13 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.Step) {
 	if !versioned || !strings.EqualFold(name, "actions/checkout") {
 		return
 	}
-	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(workflowdecl.Environment(step.Env), c.platform) {
+	if c.checkoutEnvUnknown || c.persistentEnvUnknown || execution.CheckoutEnvironmentUnknown(workflows.Environment(step.Env), c.platform) {
 		// Git may write outside the requested path or execute a wrapper. Literal
 		// metadata fallback is not evidence of the resulting repository contents.
 		c.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryUnknown}, Redirected: true}, execution.CheckoutPlacement{}))
 		return
 	}
-	checkoutPath, pathKnown := checkoutInput(workflowdecl.ResolvedInputs(action), "path")
+	checkoutPath, pathKnown := checkoutInput(workflows.ResolvedInputs(action), "path")
 	checkoutPath, representable := execution.RunnerRelativePath(checkoutPath, c.platform)
 	if !pathKnown || !representable {
 		c.setCheckout(execution.Directory{Kind: execution.DirectoryUnknown})
@@ -430,13 +430,13 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.Step) {
 			return
 		}
 	}
-	certain := known && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.Background))
+	certain := known && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.Background))
 	if !certain {
 		checkout.Kind = execution.DirectoryUnknown
 	}
 	foreign, self := false, true
 	for _, key := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
-		item, inputKnown := checkoutInput(workflowdecl.ResolvedInputs(action), key)
+		item, inputKnown := checkoutInput(workflows.ResolvedInputs(action), key)
 		if !inputKnown || item != "" {
 			checkout.Kind = execution.DirectoryUnknown
 			self = false
@@ -448,7 +448,7 @@ func (c *Resolver) ObserveCheckout(step workflowdecl.Step) {
 		}
 	}
 	previous := c.CheckoutState()
-	if self && !known && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflowdecl.Bool(step.Background)) && !workflowconditions.CanRunAfterFailure(step.Condition()) {
+	if self && !known && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.Background)) && !workflowconditions.CanRunAfterFailure(step.Condition()) {
 		// Skipping or successfully refreshing the same self checkout both
 		// preserve its placement. A failed refresh cannot reach ordinary steps.
 		if previous.SameSelfCheckout(checkout.Path) {

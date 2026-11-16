@@ -9,7 +9,7 @@ import (
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -28,7 +28,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Bind("caller", source, decoded, false, "").Workflow()
+	workflow := workflows.Bind("caller", source, decoded, false, "").Workflow()
 	allowed, _ := workflow.Job("allowed")
 	inherited, _ := workflow.Job("inherited")
 	root := t.TempDir()

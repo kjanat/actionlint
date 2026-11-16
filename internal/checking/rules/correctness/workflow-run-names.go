@@ -7,8 +7,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -30,20 +30,20 @@ var WorkflowRunNamesRule = &define.Rule{
 // It does not read files or depend on prior callbacks.
 func WorkflowRunNamesChecks(inventory namemodel.Inventory) define.Checks {
 	return define.Checks{
-		Workflow: func(workflow workflowdecl.Workflow) []reporting.StepFinding {
+		Workflow: func(workflow workflows.Workflow) []reporting.StepFinding {
 			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
 		},
 	}
 }
 
 // WorkflowRunFilters returns declared producer-name filters without loading an inventory.
-func WorkflowRunFilters(w workflowdecl.Workflow) []*workflowlang.String {
+func WorkflowRunFilters(w workflows.Workflow) []*definition.String {
 	if !w.Present() {
 		return nil
 	}
-	var references []*workflowlang.String
+	var references []*definition.String
 	for _, event := range w.On {
-		if hook, ok := event.(*workflowlang.WebhookEvent); ok && hook != nil && hook.Hook.Text() == "workflow_run" {
+		if hook, ok := event.(*definition.WebhookEvent); ok && hook != nil && hook.Hook.Text() == "workflow_run" {
 			references = append(references, hook.Workflows...)
 		}
 	}
@@ -52,7 +52,7 @@ func WorkflowRunFilters(w workflowdecl.Workflow) []*workflowlang.String {
 
 // workflowRunNameDiagnostics verifies name filters against a complete repository inventory.
 // Unknown expressions and incomplete inventories cannot establish missing producers.
-func workflowRunNameDiagnostics(n namemodel.Inventory, references []*workflowlang.String) []results.Diagnostic {
+func workflowRunNameDiagnostics(n namemodel.Inventory, references []*definition.String) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if len(references) == 0 {
 		return findings

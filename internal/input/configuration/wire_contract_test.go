@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestSettingsDTOsHaveNoYAMLMutationHooks(t *testing.T) {

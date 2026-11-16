@@ -8,7 +8,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -77,7 +77,7 @@ func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
 				t.Fatal(errs)
 			}
 			matrix := workflow.Jobs["test"].Strategy.Matrix
-			var sourceKey *workflowlang.String
+			var sourceKey *definition.String
 			if section == "include" && matrix.Include != nil {
 				sourceKey = matrix.Include.Name
 			} else if section == "exclude" && matrix.Exclude != nil {

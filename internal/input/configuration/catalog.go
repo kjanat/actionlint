@@ -1,7 +1,7 @@
 package configuration
 
 import (
-	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // policySetting projects a rule's resolved setting into the legacy policy
@@ -48,13 +48,13 @@ var policySettings = map[string]policySetting{
 const suppressionsPolicy = "disallow-suppressions"
 
 // suppressionsRule returns the rule that replaced the suppressions policy.
-func (ruleSet RuleSet) suppressionsRule() (rulescope.Declaration, bool) {
+func (ruleSet RuleSet) suppressionsRule() (rule.Declaration, bool) {
 	for _, entry := range ruleSet.entries {
 		if entry.Policy == suppressionsPolicy {
 			return ruleSet.FindRule(entry.Name)
 		}
 	}
-	return rulescope.Declaration{}, false
+	return rule.Declaration{}, false
 }
 
 // defaultPolicy projects a boolean policy that applies unless disabled.

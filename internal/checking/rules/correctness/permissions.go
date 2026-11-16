@@ -8,9 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	permissionmodel "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
@@ -29,7 +29,7 @@ var PermissionsRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Workflow: checkWorkflowPermissions, Job: checkJobPermissions}),
 }
 
-func checkPermissionMapping(p *workflowlang.Permissions) []reporting.StepFinding {
+func checkPermissionMapping(p *definition.Permissions) []reporting.StepFinding {
 	if p == nil {
 		return nil
 	}
@@ -43,11 +43,11 @@ func checkPermissionMapping(p *workflowlang.Permissions) []reporting.StepFinding
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }
 
-func checkWorkflowPermissions(w declaration.Workflow) []reporting.StepFinding {
+func checkWorkflowPermissions(w workflows.Workflow) []reporting.StepFinding {
 	return checkPermissionMapping(w.Permissions)
 }
 
-func checkJobPermissions(job declaration.Job) []reporting.StepFinding {
+func checkJobPermissions(job workflows.Job) []reporting.StepFinding {
 	return checkPermissionMapping(job.Permissions)
 }
 

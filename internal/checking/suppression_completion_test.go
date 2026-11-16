@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
@@ -21,7 +21,7 @@ import (
 type suppressionCompletionProbe struct{ failure error }
 
 func (suppressionCompletionProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestParseMetadataRejectsDuplicateKeys(t *testing.T) {
@@ -63,7 +63,7 @@ func TestParseMetadataAliasedDeclarations(t *testing.T) {
 	}
 	for _, name := range []string{"definition", "first", "second"} {
 		in, ok := got.Inputs[name]
-		if !ok || !in.Required || in.Type != workflowlang.WorkflowCallEventInputTypeBoolean {
+		if !ok || !in.Required || in.Type != definition.WorkflowCallEventInputTypeBoolean {
 			t.Errorf("input %q = %#v, want required boolean", name, in)
 		}
 	}
@@ -97,7 +97,7 @@ on:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if shared, ok := got.Inputs["shared"]; len(got.Inputs) != 1 || !ok || shared.Type != workflowlang.WorkflowCallEventInputTypeString {
+	if shared, ok := got.Inputs["shared"]; len(got.Inputs) != 1 || !ok || shared.Type != definition.WorkflowCallEventInputTypeString {
 		t.Fatalf("inputs = %#v, want alias-expanded Shared string input", got.Inputs)
 	}
 }

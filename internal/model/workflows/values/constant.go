@@ -6,11 +6,11 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // Constant evaluates an assigned expression when all its required inputs are known.
-func Constant(value *workflowlang.String) (any, bool) {
+func Constant(value *definition.String) (any, bool) {
 	if value == nil {
 		return nil, false
 	}

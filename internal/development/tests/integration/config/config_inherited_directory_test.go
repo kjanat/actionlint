@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 

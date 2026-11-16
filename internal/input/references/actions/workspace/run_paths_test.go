@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
@@ -94,7 +94,7 @@ func TestCheckoutPlacementUsesOwnedRunnerAndInputs(t *testing.T) {
 		t.Fatal("job view unavailable")
 	}
 	resolver := NewResolver(newCapturedActionCache(t, t.TempDir(), nil), nil)
-	resolver.BeginJob(declaration.Environment(workflow.Env), declaration.DefaultsRun(workflow.Defaults), job)
+	resolver.BeginJob(workflows.Environment(workflow.Env), workflows.DefaultsRun(workflow.Defaults), job)
 	checkout := slices.Collect(job.Steps())[0]
 	resolver.ObserveCheckout(checkout)
 	placement := resolver.CheckoutState()

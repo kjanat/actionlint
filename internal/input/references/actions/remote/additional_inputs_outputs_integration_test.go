@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	actionfixtures "actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
+	"actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 
 	"actionlint.kjanat.dev/v2/internal/checking/expressions"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
@@ -14,13 +14,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 	t.Parallel()
-	fixture, err := actionfixtures.ReadManifest("request-action.yml")
+	fixture, err := fixtures.ReadManifest("request-action.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			view := workflowdecl.Bind("request-contract", text, parsed, false, "").Workflow()
+			view := workflows.Bind("request-contract", text, parsed, false, "").Workflow()
 			job, exists := view.Job("test")
 			if !exists {
 				t.Fatal("fixture job is missing")

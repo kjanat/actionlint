@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"

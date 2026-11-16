@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -24,7 +24,7 @@ import (
 type suppressionAnalyzer struct{ name string }
 
 func (a suppressionAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: a.name, Category: "security", RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
 func (a suppressionAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

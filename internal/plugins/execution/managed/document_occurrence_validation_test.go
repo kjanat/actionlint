@@ -8,11 +8,11 @@ import (
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
@@ -77,7 +77,7 @@ func TestDocumentBatchHeaderRequiredForSkippedInputs(t *testing.T) {
 	batch.Scripts[0].Run, batch.Scripts[0].Execution = nil, nil
 	batch.Scripts[0].Input = &scriptexecution.ActionInput{
 		Site:  checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"},
-		Value: &workflowlang.ActionArgument{Name: &workflowlang.String{Value: "script"}, Value: &workflowlang.String{Value: "echo test"}},
+		Value: &definition.ActionArgument{Name: &definition.String{Value: "script"}, Value: &definition.String{Value: "echo test"}},
 	}
 	guest := &negotiationObserver{}
 	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest}

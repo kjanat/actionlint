@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/results"
 

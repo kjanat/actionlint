@@ -7,8 +7,8 @@ import (
 	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // MissingActionMetadataRule is the single definition of the missing-action-metadata rule.
@@ -31,12 +31,12 @@ var MissingActionMetadataRule = &define.Rule{
 // MissingActionMetadataChecks reads acquisition outcomes prepared by the host.
 // It does not start provider requests or depend on preceding step callbacks.
 func MissingActionMetadataChecks(remote *actionremote.ResolvedActions) define.Checks {
-	return define.Checks{Step: func(step workflowdecl.Step) []reporting.StepFinding {
+	return define.Checks{Step: func(step workflows.Step) []reporting.StepFinding {
 		return missingActionMetadata(step, remote)
 	}}
 }
 
-func missingActionMetadata(step workflowdecl.Step, remote *actionremote.ResolvedActions) []reporting.StepFinding {
+func missingActionMetadata(step workflows.Step, remote *actionremote.ResolvedActions) []reporting.StepFinding {
 	action, ok := step.Action()
 	if !ok || action.Uses == nil || action.Uses.ContainsExpression() {
 		return nil

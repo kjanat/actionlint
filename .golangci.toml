@@ -138,7 +138,7 @@ text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/development/(generators/files/write_new|tests/support/ruff)\.go$'
+path    = '^internal/development/(generators/genfile/write_new|tests/testutil/ruff)\.go$'
 text    = 'use of `os\.OpenFile`'
 linters = ["forbidigo"]
 

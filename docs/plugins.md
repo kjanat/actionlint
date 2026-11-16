@@ -757,7 +757,7 @@ and checksums. Plugins do not implement their own Wasm section traversal or vend
 ### Shared declaration facts
 
 [`plugins/examples/pinned-actions/src/lib.rs`](../plugins/examples/pinned-actions/src/lib.rs) and its
-[native comparison check](../internal/development/tests/conformance/wasm/dependency-pins/check.go) request only `dependencies`.
+[native comparison check](../internal/development/tests/conformance/wasm/dependencypins/check.go) request only `dependencies`.
 Both flag remote action and reusable-workflow references that do not use a full commit hash, while excluding
 local references and Docker images. They use the host's parsed `uses` values, dependency kinds, source identities
 and scalar ranges; neither reparses the workflow or reads `input.content`.

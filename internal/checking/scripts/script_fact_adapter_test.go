@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -40,7 +40,7 @@ func TestFactAnalyzerJoinsUnitErrorsAndKeepsPartialFindings(t *testing.T) {
 	failures := []error{errors.New("first failed"), errors.New("second failed")}
 	calls := 0
 	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{
-		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "partial", Explanation: "why", Help: "help", DocumentationURL: "https://example.invalid/rule"}},
+		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "partial", Explanation: "why", Help: "help", DocumentationURL: "https://example.invalid/rule"}},
 		run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			index := calls
 			calls++
@@ -75,7 +75,7 @@ func TestFactAnalyzerCancellationKeepsPriorErrorAndFinding(t *testing.T) {
 	failure := errors.New("first failed")
 	calls := 0
 	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{
-		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "partial"}},
+		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "partial"}},
 		run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			calls++
 			cancel()
@@ -96,8 +96,8 @@ func TestFactAnalyzerEnforcesRegistrationRequirements(t *testing.T) {
 		descriptor checkinputs.Descriptor
 		want       string
 	}{
-		{"missing source", checkinputs.Descriptor{Name: "source", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}, `requires unavailable input kind "source"`},
-		{"unsupported fact", checkinputs.Descriptor{Name: "future", RequiredInputs: []rulemeta.InputKind{"future"}}, `requires unsupported input kind "future"`},
+		{"missing source", checkinputs.Descriptor{Name: "source", RequiredInputs: []rule.InputKind{rule.Source}}, `requires unavailable input kind "source"`},
+		{"unsupported fact", checkinputs.Descriptor{Name: "future", RequiredInputs: []rule.InputKind{"future"}}, `requires unsupported input kind "future"`},
 		{"missing name", checkinputs.Descriptor{}, "analyzer name must not be empty"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestFactAnalyzerPreparesRegistrationOnceIncludingNoEligibleUnits(t *testing
 				t.Fatal(err)
 			}
 			for _, valid := range []bool{false, true} {
-				a := &factDescriptorCounter{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "prepared", OptionsSchema: json.RawMessage(`{"required":["mode"]}`), RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}}}}
+				a := &factDescriptorCounter{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "prepared", OptionsSchema: json.RawMessage(`{"required":["mode"]}`), RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations}}}}
 				options := json.RawMessage(`{}`)
 				if valid {
 					options = json.RawMessage(`{"mode":"safe"}`)
@@ -182,7 +182,7 @@ func TestFactAnalyzerPreparesRegistrationOnceIncludingNoEligibleUnits(t *testing
 			}
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
-			a := &factDescriptorCounter{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "canceled"}}}
+			a := &factDescriptorCounter{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "canceled"}}}
 			if _, err := (FactAnalyzer{Analyzer: a}).AnalyzeScripts(ctx, batch); !errors.Is(err, context.Canceled) || a.analyzeCalls != 0 {
 				t.Fatalf("canceled batch executed or lost cancellation: calls=%d error=%v", a.analyzeCalls, err)
 			}
@@ -211,7 +211,7 @@ func TestFactAnalyzerCancellationBoundaryAndDeduplication(t *testing.T) {
 				cancel()
 			}
 			calls := 0
-			adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "canceling"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+			adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "canceling"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 				calls++
 				if calls == tc.cancelAt {
 					cancel()
@@ -241,7 +241,7 @@ func TestFactAnalyzerValidatesRegisteredOptions(t *testing.T) {
 			t.Parallel()
 			calls := 0
 			adapter := FactAnalyzer{Options: json.RawMessage(tc.options), Analyzer: factAdapterAnalyzer{
-				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "options", OptionsSchema: json.RawMessage(tc.schema)}},
+				descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options", OptionsSchema: json.RawMessage(tc.schema)}},
 				run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 					calls++
 					return nil, nil
@@ -270,14 +270,14 @@ func TestFactAnalyzerProjectsOnlySelectedScriptFacts(t *testing.T) {
 			units := batch.Scripts
 			calls := 0
 			adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{
-				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "selected", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}}},
+				descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "selected", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations}}},
 				run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 					unit := units[calls]
 					calls++
 					if err := input.ValidateInvocations(); err != nil {
 						t.Fatal(err)
 					}
-					if input.Reference != batch.CallGraph.Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}) {
+					if input.Reference != batch.CallGraph.Entry().Reference || input.Path != unit.Path || input.Content != "" || input.Kind != "" || input.ParseStatus != "" || !slices.Equal(input.AvailableInputs, []rule.InputKind{rule.Scripts, rule.Invocations}) {
 						t.Fatalf("script call invented a source/header or lost unit path: %+v", input)
 					}
 					scripts := slices.Concat(input.Scripts, input.Invoked)
@@ -308,11 +308,11 @@ func TestFactAnalyzerSuppliesRequestedExecution(t *testing.T) {
 	batch := twoRunFactBatch(t)
 	calls := 0
 	adapter := FactAnalyzer{IncludeExecution: true, Analyzer: factAdapterAnalyzer{
-		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "execution", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}},
+		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "execution", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}},
 		run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			calls++
 			scripts := slices.Concat(input.Scripts, input.Invoked)
-			if !slices.Contains(input.AvailableInputs, rulemeta.Execution) || len(scripts) != 1 || scripts[0].Runtime == nil {
+			if !slices.Contains(input.AvailableInputs, rule.Execution) || len(scripts) != 1 || scripts[0].Runtime == nil {
 				t.Fatalf("requested execution facts are absent: %+v", input)
 			}
 			return nil, nil
@@ -330,14 +330,14 @@ func TestFactAnalyzerInputMutationDoesNotReachLaterUnitsOrBatch(t *testing.T) {
 	options := json.RawMessage(`{"mode":"safe"}`)
 	calls := 0
 	adapter := FactAnalyzer{Options: options, Analyzer: factAdapterAnalyzer{
-		descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "mutating", OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`)}},
+		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "mutating", OptionsSchema: json.RawMessage(`{"type":"object","required":["mode"]}`)}},
 		run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
-			if string(input.Options) != `{"mode":"safe"}` || input.AvailableInputs[0] != rulemeta.Scripts || !reflect.DeepEqual(input.CallGraph, want) {
+			if string(input.Options) != `{"mode":"safe"}` || input.AvailableInputs[0] != rule.Scripts || !reflect.DeepEqual(input.CallGraph, want) {
 				t.Fatalf("earlier analyzer call corrupted current input: %+v", input)
 			}
 			calls++
 			input.Options[0] = '!'
-			input.AvailableInputs[0] = rulemeta.Source
+			input.AvailableInputs[0] = rule.Source
 			input.SelectedScripts[0] = "forged"
 			input.Scripts[0].Occurrence.Owner = "forged"
 			input.Scripts[0].Spans[0].End = 999
@@ -368,7 +368,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 	}
 	want := batch.CallGraph
 	calls := 0
-	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "invoked-mutator"}}, run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "invoked-mutator"}}, run: func(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		calls++
 		if len(input.Invoked) != 1 || len(input.Scripts) != 0 {
 			t.Fatalf("invoked script was not selected: %+v", input)
@@ -377,7 +377,7 @@ func TestFactAnalyzerInvokedInputMutationDoesNotReachBatch(t *testing.T) {
 		input.Invoked[0].Occurrence.Owner = "changed"
 		input.Invoked[0].Spans[0].End = 999
 		input.SelectedScripts[0] = "changed"
-		input.AvailableInputs[0] = rulemeta.Source
+		input.AvailableInputs[0] = rule.Source
 		return nil, nil
 	}}}
 	if _, err := adapter.AnalyzeScripts(t.Context(), batch); err != nil || calls != len(batch.Scripts) {
@@ -401,7 +401,7 @@ func TestFactAnalyzerRejectsUnavailablePreparedFact(t *testing.T) {
 	corrupted.Scripts = slices.Clone(batch.Scripts)
 	corrupted.Scripts[0].Occurrence = "forged"
 	calls := 0
-	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		calls++
 		return nil, nil
 	}}}
@@ -417,7 +417,7 @@ func TestFactAnalyzerPreservesForeignDiagnosticPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "foreign"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	adapter := FactAnalyzer{Analyzer: factAdapterAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "foreign"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		return []results.Diagnostic{{Path: "sourced/helper.sh", Message: "foreign", Snippet: "captured foreign snippet"}}, nil
 	}}}
 	findings, err := adapter.AnalyzeScripts(t.Context(), batch)

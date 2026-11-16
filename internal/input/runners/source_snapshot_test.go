@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
@@ -63,7 +63,7 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 	if got := knowledge.Job(foreignJob); !reflect.DeepEqual(got, runnermodel.JobKnowledge{}) {
 		t.Fatalf("foreign registry handle received prepared facts: %+v", got)
 	}
-	if got := knowledge.Job(workflowdecl.Job{}); !reflect.DeepEqual(got, runnermodel.JobKnowledge{}) {
+	if got := knowledge.Job(workflows.Job{}); !reflect.DeepEqual(got, runnermodel.JobKnowledge{}) {
 		t.Fatalf("zero handle received prepared facts: %+v", got)
 	}
 }

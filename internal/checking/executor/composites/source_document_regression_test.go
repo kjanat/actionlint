@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"

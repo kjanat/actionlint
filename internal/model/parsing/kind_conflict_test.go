@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
@@ -37,7 +37,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]SourceSnapshot
 			var failures [2]error
-			var earlierView workflowdecl.Step
+			var earlierView workflows.Step
 			var earlierReference source.Reference
 			bind := func(index int) {
 				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])

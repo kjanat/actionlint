@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -65,7 +65,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	}
 	var inputs []string
 	reader := inputfiles.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-	script := scriptexecution.Unit{Path: "ci.yml", Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root, Analysis: root}, Reader: reader}, Execution: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}, Run: &workflowlang.ExecRun{Run: &workflowlang.String{Pos: &sourcepos.Position{Line: 6}}, RunPos: &sourcepos.Position{Line: 6}}}
+	script := scriptexecution.Unit{Path: "ci.yml", Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root, Analysis: root}, Reader: reader}, Execution: &scriptmodel.Execution{Directory: root, DirectoryKnown: true}, Run: &definition.ExecRun{Run: &definition.String{Pos: &sourcepos.Position{Line: 6}}, RunPos: &sourcepos.Position{Line: 6}}}
 	sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 	if err != nil {
 		t.Fatal(err)
@@ -170,7 +170,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			}
 			var inputs []string
 			reader := inputfiles.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-			script := scriptexecution.Unit{Path: "ci.yml", Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root}, Reader: reader}, Execution: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}, Run: &workflowlang.ExecRun{Run: &workflowlang.String{Pos: &sourcepos.Position{Line: 1}}, RunPos: &sourcepos.Position{Line: 1}}}
+			script := scriptexecution.Unit{Path: "ci.yml", Scope: &scriptexecution.Scope{Config: cfg, Paths: workflowexecution.Paths{Workspace: root}, Reader: reader}, Execution: &scriptmodel.Execution{Directory: tc.directory, DirectoryKnown: true}, Run: &definition.ExecRun{Run: &definition.String{Pos: &sourcepos.Position{Line: 1}}, RunPos: &sourcepos.Position{Line: 1}}}
 			sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 			if err != nil {
 				t.Fatal(err)

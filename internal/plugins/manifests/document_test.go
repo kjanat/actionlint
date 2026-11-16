@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -19,7 +19,7 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Role != manifests.RoleDocument || len(manifest.Rule.RequiredInputs) != 2 || manifest.Rule.RequiredInputs[1] != rulemeta.Dependencies || len(manifest.Selectors.Documents) != 2 {
+	if manifest.Role != manifests.RoleDocument || len(manifest.Rule.RequiredInputs) != 2 || manifest.Rule.RequiredInputs[1] != rule.Dependencies || len(manifest.Selectors.Documents) != 2 {
 		t.Fatal("document facts or selectors lost", manifest)
 	}
 	for name, invalid := range map[string]string{

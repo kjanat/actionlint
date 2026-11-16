@@ -16,14 +16,14 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"github.com/google/go-cmp/cmp"
 )
 
 var testReusableWorkflowWantedMetadata *calls.Metadata = &calls.Metadata{
 	Inputs: calls.Inputs{
-		"input1": {Name: "input1", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
-		"input2": {Name: "input2", Required: true, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
+		"input1": {Name: "input1", Required: false, Type: definition.WorkflowCallEventInputTypeString},
+		"input2": {Name: "input2", Required: true, Type: definition.WorkflowCallEventInputTypeBoolean},
 	},
 	Outputs: calls.Outputs{
 		"output1": {Name: "output1"},
@@ -238,70 +238,70 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		what   string
-		inputs map[string]*workflowlang.WorkflowCallEventInput
+		inputs map[string]*definition.WorkflowCallEventInput
 		want   calls.Inputs
 	}{
 		{
 			what: "type of inputs",
-			inputs: map[string]*workflowlang.WorkflowCallEventInput{
-				"string_input":  {Type: workflowlang.WorkflowCallEventInputTypeString},
-				"number_input":  {Type: workflowlang.WorkflowCallEventInputTypeNumber},
-				"bool_input":    {Type: workflowlang.WorkflowCallEventInputTypeBoolean},
+			inputs: map[string]*definition.WorkflowCallEventInput{
+				"string_input":  {Type: definition.WorkflowCallEventInputTypeString},
+				"number_input":  {Type: definition.WorkflowCallEventInputTypeNumber},
+				"bool_input":    {Type: definition.WorkflowCallEventInputTypeBoolean},
 				"unknown_input": {},
 			},
 			want: calls.Inputs{
-				"string_input":  {Name: "string_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
-				"number_input":  {Name: "number_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeNumber},
-				"bool_input":    {Name: "bool_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeBoolean},
-				"unknown_input": {Name: "unknown_input", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"string_input":  {Name: "string_input", Required: false, Type: definition.WorkflowCallEventInputTypeString},
+				"number_input":  {Name: "number_input", Required: false, Type: definition.WorkflowCallEventInputTypeNumber},
+				"bool_input":    {Name: "bool_input", Required: false, Type: definition.WorkflowCallEventInputTypeBoolean},
+				"unknown_input": {Name: "unknown_input", Required: false, Type: definition.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 		{
 			what: "required or optional",
-			inputs: map[string]*workflowlang.WorkflowCallEventInput{
+			inputs: map[string]*definition.WorkflowCallEventInput{
 				"unspecified":  {},
-				"not_required": {Required: &workflowlang.Bool{Value: false, Pos: &source.Position{}}},
-				"required":     {Required: &workflowlang.Bool{Value: true, Pos: &source.Position{}}},
+				"not_required": {Required: &definition.Bool{Value: false, Pos: &source.Position{}}},
+				"required":     {Required: &definition.Bool{Value: true, Pos: &source.Position{}}},
 				"required_but_default": {
-					Required: &workflowlang.Bool{Value: true, Pos: &source.Position{}},
-					Default:  &workflowlang.String{Pos: &source.Position{}},
+					Required: &definition.Bool{Value: true, Pos: &source.Position{}},
+					Default:  &definition.String{Pos: &source.Position{}},
 				},
 				"expression": {
-					Required: &workflowlang.Bool{
-						Expression: &workflowlang.String{Pos: &source.Position{}},
+					Required: &definition.Bool{
+						Expression: &definition.String{Pos: &source.Position{}},
 						Pos:        &source.Position{},
 					},
 				},
 			},
 			want: calls.Inputs{
-				"unspecified":          {Name: "unspecified", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
-				"not_required":         {Name: "not_required", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
-				"required":             {Name: "required", Required: true, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
-				"required_but_default": {Name: "required_but_default", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
-				"expression":           {Name: "expression", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"unspecified":          {Name: "unspecified", Required: false, Type: definition.WorkflowCallEventInputTypeInvalid},
+				"not_required":         {Name: "not_required", Required: false, Type: definition.WorkflowCallEventInputTypeInvalid},
+				"required":             {Name: "required", Required: true, Type: definition.WorkflowCallEventInputTypeInvalid},
+				"required_but_default": {Name: "required_but_default", Required: false, Type: definition.WorkflowCallEventInputTypeInvalid},
+				"expression":           {Name: "expression", Required: false, Type: definition.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 		{
 			what:   "empty",
-			inputs: map[string]*workflowlang.WorkflowCallEventInput{},
+			inputs: map[string]*definition.WorkflowCallEventInput{},
 			want:   calls.Inputs{},
 		},
 		{
 			what: "upper case input",
-			inputs: map[string]*workflowlang.WorkflowCallEventInput{
-				"MY_INPUT": {Type: workflowlang.WorkflowCallEventInputTypeString},
+			inputs: map[string]*definition.WorkflowCallEventInput{
+				"MY_INPUT": {Type: definition.WorkflowCallEventInputTypeString},
 			},
 			want: calls.Inputs{
-				"my_input": {Name: "MY_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeString},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: definition.WorkflowCallEventInputTypeString},
 			},
 		},
 		{
 			what: "upper case inputs",
-			inputs: map[string]*workflowlang.WorkflowCallEventInput{
+			inputs: map[string]*definition.WorkflowCallEventInput{
 				"MY_INPUT": {},
 			},
 			want: calls.Inputs{
-				"my_input": {Name: "MY_INPUT", Required: false, Type: workflowlang.WorkflowCallEventInputTypeInvalid},
+				"my_input": {Name: "MY_INPUT", Required: false, Type: definition.WorkflowCallEventInputTypeInvalid},
 			},
 		},
 	}
@@ -312,9 +312,9 @@ func TestReusableWorkflowMetadataFromASTNodeInputs(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := cwd
 			c := newCapturedWorkflowCache(t, proj, cwd, nil)
-			e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
+			e := &definition.WorkflowCallEvent{Inputs: []*definition.WorkflowCallEventInput{}}
 			for n, i := range tc.inputs {
-				i.Name = &workflowlang.String{Value: n, Pos: &source.Position{}}
+				i.Name = &definition.String{Value: n, Pos: &source.Position{}}
 				i.ID = strings.ToLower(n)
 				e.Inputs = append(e.Inputs, i)
 			}
@@ -353,10 +353,10 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := cwd
 			c := newCapturedWorkflowCache(t, proj, cwd, nil)
-			e := &workflowlang.WorkflowCallEvent{Outputs: map[string]*workflowlang.WorkflowCallEventOutput{}}
+			e := &definition.WorkflowCallEvent{Outputs: map[string]*definition.WorkflowCallEventOutput{}}
 			for _, o := range outputs {
-				e.Outputs[strings.ToLower(o)] = &workflowlang.WorkflowCallEventOutput{
-					Name: &workflowlang.String{Value: o, Pos: &source.Position{}},
+				e.Outputs[strings.ToLower(o)] = &definition.WorkflowCallEventOutput{
+					Name: &definition.String{Value: o, Pos: &source.Position{}},
 				}
 			}
 
@@ -387,20 +387,20 @@ func TestReusableWorkflowMetadataFromASTNodeOutputs(t *testing.T) {
 
 func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 	t.Parallel()
-	tests := []map[string]*workflowlang.Bool{
+	tests := []map[string]*definition.Bool{
 		{},
 		{"a": nil},
-		{"a": &workflowlang.Bool{Value: false, Pos: &source.Position{}}},
-		{"a": &workflowlang.Bool{Value: true, Pos: &source.Position{}}},
-		{"a": &workflowlang.Bool{Expression: &workflowlang.String{Pos: &source.Position{}}, Pos: &source.Position{}}},
+		{"a": &definition.Bool{Value: false, Pos: &source.Position{}}},
+		{"a": &definition.Bool{Value: true, Pos: &source.Position{}}},
+		{"a": &definition.Bool{Expression: &definition.String{Pos: &source.Position{}}, Pos: &source.Position{}}},
 		{
-			"a": &workflowlang.Bool{Value: false, Pos: &source.Position{}},
-			"b": &workflowlang.Bool{Value: true, Pos: &source.Position{}},
+			"a": &definition.Bool{Value: false, Pos: &source.Position{}},
+			"b": &definition.Bool{Value: true, Pos: &source.Position{}},
 			"c": nil,
 		},
 		{
-			"A": &workflowlang.Bool{Value: false, Pos: &source.Position{}},
-			"B": &workflowlang.Bool{Value: true, Pos: &source.Position{}},
+			"A": &definition.Bool{Value: false, Pos: &source.Position{}},
+			"B": &definition.Bool{Value: true, Pos: &source.Position{}},
 			"C": nil,
 		},
 	}
@@ -410,10 +410,10 @@ func TestReusableWorkflowMetadataFromASTNodeSecrets(t *testing.T) {
 			cwd := filepath.Join("path", "to", "project")
 			proj := cwd
 			c := newCapturedWorkflowCache(t, proj, cwd, nil)
-			e := &workflowlang.WorkflowCallEvent{Secrets: map[string]*workflowlang.WorkflowCallEventSecret{}}
+			e := &definition.WorkflowCallEvent{Secrets: map[string]*definition.WorkflowCallEventSecret{}}
 			for n, r := range secrets {
-				e.Secrets[strings.ToLower(n)] = &workflowlang.WorkflowCallEventSecret{
-					Name:     &workflowlang.String{Value: n, Pos: &source.Position{}},
+				e.Secrets[strings.ToLower(n)] = &definition.WorkflowCallEventSecret{
+					Name:     &definition.String{Value: n, Pos: &source.Position{}},
 					Required: r,
 				}
 			}
@@ -450,7 +450,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	t.Parallel()
 	cwd := filepath.Join("path", "to", "project")
 	c := newCapturedWorkflowCache(t, "", cwd, nil)
-	c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
+	c.WriteWorkflowCallEvent("workflow.yaml", &definition.WorkflowCallEvent{})
 	m, _, ok := c.Lookup("./workflow.yaml")
 	if ok {
 		t.Fatal("Metadata created:", m)
@@ -458,7 +458,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 
 	proj := cwd
 	c = newCapturedWorkflowCache(t, proj, filepath.Join("path", "to", "another-project"), nil)
-	c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
+	c.WriteWorkflowCallEvent("workflow.yaml", &definition.WorkflowCallEvent{})
 	m, _, ok = c.Lookup("./workflow.yaml")
 	if ok {
 		t.Fatal("Metadata created:", m)
@@ -467,7 +467,7 @@ func TestReusableWorkflowMetadataFromASTNodeDoNothing(t *testing.T) {
 	m1 := &calls.Metadata{}
 	c = newCapturedWorkflowCache(t, proj, cwd, nil)
 	c.Store("./dir/workflow.yaml", m1)
-	c.WriteWorkflowCallEvent(filepath.Join("dir", "workflow.yaml"), &workflowlang.WorkflowCallEvent{})
+	c.WriteWorkflowCallEvent(filepath.Join("dir", "workflow.yaml"), &definition.WorkflowCallEvent{})
 	m2, _, ok := c.Lookup("./dir/workflow.yaml")
 	if !ok {
 		t.Fatal("Metadata was not created for ./dir/workflow.yaml")
@@ -547,7 +547,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 		ret <- struct{}{}
 	}
 	fromNode := func() {
-		c.WriteWorkflowCallEvent("workflow.yaml", &workflowlang.WorkflowCallEvent{})
+		c.WriteWorkflowCallEvent("workflow.yaml", &definition.WorkflowCallEvent{})
 		if _, _, ok := c.Lookup("./workflow.yaml"); !ok {
 			err <- errors.New("Cache was not created from WorkflowCallEvent")
 			return
@@ -587,7 +587,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 func TestReusableWorkflowNullCache(t *testing.T) {
 	t.Parallel()
 	c := &ASTComparisonCache{Cache: NewCache("", io.Discard)}
-	e := &workflowlang.WorkflowCallEvent{Inputs: []*workflowlang.WorkflowCallEventInput{}}
+	e := &definition.WorkflowCallEvent{Inputs: []*definition.WorkflowCallEventInput{}}
 
 	// This should do nothing
 	c.WriteWorkflowCallEvent(filepath.Join("foo", "test.yaml"), e)
@@ -661,7 +661,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 
 	cwd := filepath.Join("path", "to", "project")
 	c := newCapturedWorkflowCache(t, cwd, cwd, nil)
-	c.WriteWorkflowCallEventFromWorkflow("test.yaml", &workflowlang.WorkflowCallEvent{}, w)
+	c.WriteWorkflowCallEventFromWorkflow("test.yaml", &definition.WorkflowCallEvent{}, w)
 	fromNode, _, ok := c.Lookup("./test.yaml")
 	if !ok {
 		t.Fatal("metadata was not created")
@@ -705,7 +705,7 @@ jobs:
 				if !exact && (len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || !strings.Contains(diagnostics[0].Message, fmt.Sprintf("unexpected key %q", key))) {
 					t.Fatalf("expected only the case-invalid key diagnostic, got %v", diagnostics)
 				}
-				event, ok := workflowlang.FindWorkflowCallEvent(workflow)
+				event, ok := definition.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("workflow_call was not parsed")
 				}
@@ -769,7 +769,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 
 	cwd := filepath.Join("path", "to", "project")
 	c2 := newCapturedWorkflowCache(t, cwd, cwd, nil)
-	c2.WriteWorkflowCallEventFromWorkflow("test.yaml", &workflowlang.WorkflowCallEvent{}, w)
+	c2.WriteWorkflowCallEventFromWorkflow("test.yaml", &definition.WorkflowCallEvent{}, w)
 	fromNode, _, ok := c2.Lookup("./test.yaml")
 	if !ok {
 		t.Fatal("metadata was not created from the AST")

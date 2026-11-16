@@ -7,7 +7,7 @@ import (
 	slices "slices"
 
 	commands "actionlint.kjanat.dev/v2/internal/model/commands"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	toolsettings "actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 

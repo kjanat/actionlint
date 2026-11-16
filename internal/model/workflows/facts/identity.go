@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type References struct {
 	Document  source.Reference
-	Steps     map[*workflowlang.Step]source.Reference
-	StepJobs  map[*workflowlang.Step]string
+	Steps     map[*definition.Step]source.Reference
+	StepJobs  map[*definition.Step]string
 	Jobs      map[string]source.Reference
 	Positions map[[2]int]source.Reference
 }
@@ -39,7 +39,7 @@ func (r References) SourceIndex() SourceIndex {
 
 // Index derives the source references of workflow for the document named path.
 // action selects action-manifest step addresses.
-func Index(path string, content []byte, workflow *workflowlang.Workflow, action bool) References {
+func Index(path string, content []byte, workflow *definition.Workflow, action bool) References {
 	return buildSkeleton(workflow, action).bind(path, content)
 }
 
@@ -56,7 +56,7 @@ type skeletonJob struct {
 }
 
 type skeletonStep struct {
-	step                      *workflowlang.Step
+	step                      *definition.Step
 	key, fingerprint, address string
 	job                       string
 	position                  source.Position
@@ -64,13 +64,13 @@ type skeletonStep struct {
 	children                  []skeletonStep
 }
 
-func buildSkeleton(workflow *workflowlang.Workflow, action bool) skeleton {
+func buildSkeleton(workflow *definition.Workflow, action bool) skeleton {
 	var built skeleton
 	if workflow == nil {
 		return built
 	}
-	var walk func(string, string, []*workflowlang.Step) []skeletonStep
-	walk = func(address, job string, steps []*workflowlang.Step) []skeletonStep {
+	var walk func(string, string, []*definition.Step) []skeletonStep
+	walk = func(address, job string, steps []*definition.Step) []skeletonStep {
 		result := make([]skeletonStep, 0, len(steps))
 		for i, step := range steps {
 			place := fmt.Sprintf("%s[%d]", address, i)
@@ -78,7 +78,7 @@ func buildSkeleton(workflow *workflowlang.Workflow, action bool) skeleton {
 			if step.Pos != nil {
 				node.position, node.hasPosition = *step.Pos, true
 			}
-			if parallel, ok := step.Exec.(*workflowlang.ExecParallel); ok {
+			if parallel, ok := step.Exec.(*definition.ExecParallel); ok {
 				node.children = walk(place+".parallel", job, parallel.Steps)
 			}
 			result = append(result, node)
@@ -108,7 +108,7 @@ func buildSkeleton(workflow *workflowlang.Workflow, action bool) skeleton {
 
 func (s skeleton) bind(path string, content []byte) References {
 	index := source.NewReferenceIndex(path, content)
-	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*workflowlang.Step]source.Reference{}, StepJobs: map[*workflowlang.Step]string{}, Jobs: map[string]source.Reference{}, Positions: map[[2]int]source.Reference{}}
+	refs := References{Document: index.Ref("", "document", "", "$"), Steps: map[*definition.Step]source.Reference{}, StepJobs: map[*definition.Step]string{}, Jobs: map[string]source.Reference{}, Positions: map[[2]int]source.Reference{}}
 	var walk func(string, []skeletonStep)
 	walk = func(owner string, steps []skeletonStep) {
 		for _, step := range steps {
@@ -131,14 +131,14 @@ func (s skeleton) bind(path string, content []byte) References {
 	return refs
 }
 
-func stringPos(value *workflowlang.String) *source.Position {
+func stringPos(value *definition.String) *source.Position {
 	if value == nil {
 		return nil
 	}
 	return value.Pos
 }
 
-func stringValue(value *workflowlang.String) string {
+func stringValue(value *definition.String) string {
 	if value == nil {
 		return ""
 	}

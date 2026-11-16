@@ -13,7 +13,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -389,7 +389,7 @@ func (r documentRunner) validateDocumentBatch(batch scriptexecution.Batch) error
 
 func (r documentRunner) input(script checkinputs.Script, graph invocation.Graph) checkinputs.AnalyzerInput {
 	input := r.context.Document
-	input.AvailableInputs = []rulemeta.InputKind{rulemeta.Source, rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}
+	input.AvailableInputs = []rule.InputKind{rule.Source, rule.Scripts, rule.Invocations, rule.Execution}
 	input.CallGraph = graph
 	input.SelectedScripts = []invocation.ID{script.Occurrence.ID}
 	if graph.Valid() && script.Occurrence.Owner == graph.RootID() {

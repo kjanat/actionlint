@@ -23,7 +23,7 @@ import (
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -258,9 +258,9 @@ func (rule *standaloneEntryFailure) EnterInvocation(workflowvisit.Invocation) er
 	return rule.failure
 }
 
-func (*standaloneEntryFailure) VisitInvocationStep(workflowdecl.Step) error { return nil }
-func (*standaloneEntryFailure) VisitOpaqueAction(workflowdecl.Step) error   { return nil }
-func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error    { return nil }
+func (*standaloneEntryFailure) VisitInvocationStep(workflows.Step) error { return nil }
+func (*standaloneEntryFailure) VisitOpaqueAction(workflows.Step) error   { return nil }
+func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error { return nil }
 
 func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	t.Parallel()

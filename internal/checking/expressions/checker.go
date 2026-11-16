@@ -15,9 +15,9 @@ import (
 
 	runner "actionlint.kjanat.dev/v2/internal/model/runners"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -42,24 +42,24 @@ type Checker struct {
 	// The *Ty context types are nil while the context keeps its built-in type.
 	matrixTy          *exprtypes.ObjectType
 	matrixScriptSafe  map[string]scriptValueProof
-	scriptEnv         *workflowlang.Env
-	jobEnv            *workflowlang.Env
+	scriptEnv         *definition.Env
+	jobEnv            *definition.Env
 	stepsTy           *exprtypes.ObjectType
 	needsTy           *exprtypes.ObjectType
 	secretsTy         *exprtypes.ObjectType
 	inputsTy          *exprtypes.ObjectType
 	dispatchInputsTy  *exprtypes.ObjectType
 	jobsTy            *exprtypes.ObjectType
-	workflow          workflowdecl.Workflow
+	workflow          workflows.Workflow
 	eventTy           *exprtypes.ObjectType
-	expressionSource  *workflowlang.ScriptSource
-	scriptSources     map[source.Position]*workflowlang.ScriptSource
+	expressionSource  *definition.ScriptSource
+	scriptSources     map[source.Position]*definition.ScriptSource
 	expressionOffset  int
 	scriptScalarArgs  map[int]bool
 	scriptWordLists   map[int]bool
 	scriptEnvironment map[int]scriptEnvironmentReplacement
 	scriptInsertion   correctness.ScriptInsertionKind
-	scriptJob         workflowdecl.Job
+	scriptJob         workflows.Job
 	compositeScript   bool
 	jobReferences     *ReferenceNames
 }
@@ -81,7 +81,7 @@ type Options struct {
 	MixedTypeComparisons      bool
 	CaseInsensitiveConditions bool
 	ScriptInjectionDisabled   bool
-	JobReferences             func(workflowdecl.Job) ReferenceNames
+	JobReferences             func(workflows.Job) ReferenceNames
 }
 
 // Dependencies supplies runner facts and action/workflow definitions for expression inference.

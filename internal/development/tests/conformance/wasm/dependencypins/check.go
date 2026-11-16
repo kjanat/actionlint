@@ -5,7 +5,7 @@ import (
 	"context"
 	"strings"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -19,7 +19,7 @@ func (Checker) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{
 		Name:        "pinned-actions",
 		Description: "Pin remote dependencies to full commit hashes",
-		Category:    "security", RequiredInputs: []rulemeta.InputKind{rulemeta.Dependencies},
+		Category:    "security", RequiredInputs: []rule.InputKind{rule.Dependencies},
 	}
 }
 

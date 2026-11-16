@@ -20,7 +20,7 @@ import (
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -42,9 +42,9 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 	if err != nil {
 		return nil, err
 	}
-	requires := []rulemeta.InputKind{rulemeta.Source}
+	requires := []rule.InputKind{rule.Source}
 	for _, fact := range manifest.Rule.RequiredInputs {
-		if fact != rulemeta.Source && fact != rulemeta.Dependencies {
+		if fact != rule.Source && fact != rule.Dependencies {
 			return nil, fmt.Errorf("unsupported document input kind %q", fact)
 		}
 		if !slices.Contains(requires, fact) {
@@ -92,7 +92,7 @@ func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.A
 			return nil, err
 		}
 	}
-	if slices.Contains(d.descriptor.RequiredInputs, rulemeta.Dependencies) {
+	if slices.Contains(d.descriptor.RequiredInputs, rule.Dependencies) {
 		request.Dependencies = make([]checkinputs.DocumentDependency, 0, len(input.Dependencies))
 		for _, dependency := range input.Dependencies {
 			if dependency.Reference.Document != input.Revision.Document() || dependency.Reference.Revision != input.Revision.Digest() {

@@ -1,5 +1,5 @@
-// Package files writes source files used by tests.
-package files
+// Package fixturefiles writes source files used by tests.
+package fixturefiles
 
 import (
 	"os"

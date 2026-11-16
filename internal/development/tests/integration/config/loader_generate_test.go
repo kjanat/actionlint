@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"github.com/kjanat/go-yaml/v4"

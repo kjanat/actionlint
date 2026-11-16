@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -17,7 +17,7 @@ import (
 type actionSourceReferenceProbe struct{ path string }
 
 func (actionSourceReferenceProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (p actionSourceReferenceProbe) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

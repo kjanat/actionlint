@@ -11,8 +11,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // Document is one decode of a source's bytes. Over the captured bytes it adds
@@ -23,14 +23,14 @@ import (
 type Document struct {
 	kind DocumentKind
 	// Workflow is the decoded workflow; nil for action documents.
-	Workflow *workflowlang.Workflow
+	Workflow *definition.Workflow
 	// Metadata is the decoded action manifest; nil for workflow documents.
 	Metadata     *actionmeta.Metadata
 	SyntaxErrors []*workflowparser.SyntaxError
 	// Facts supplies declaration projections: the workflow itself, or the
 	// projection of an action's steps. Action projections are never workflow
 	// traversal inputs. It is nil when decoding recovered no semantic input.
-	Facts *workflowlang.Workflow
+	Facts *definition.Workflow
 	// ParseError holds action decode and admission failures, preserving their causes.
 	ParseError error
 	// Provenance is the parse record SourceSnapshots binds on admission.
@@ -45,13 +45,13 @@ type Document struct {
 type Provenance struct {
 	parsed   bool
 	text     string
-	workflow *workflowlang.Workflow
+	workflow *definition.Workflow
 	action   bool
 	using    string
 }
 
-func (p Provenance) bind(identity string) *declaration.Bound {
-	return declaration.Bind(identity, p.text, p.workflow, p.action, p.using)
+func (p Provenance) bind(identity string) *workflows.Bound {
+	return workflows.Bind(identity, p.text, p.workflow, p.action, p.using)
 }
 
 func Workflow(content []byte) Document {
@@ -67,7 +67,7 @@ func Action(sourcePath string, content []byte) Document {
 	owned := bytes.Clone(content)
 	metadata, err := actionmeta.ParseActionMetadata(sourcePath, owned)
 	document := Document{kind: KindAction, Metadata: metadata, ParseError: err}
-	var provenance *workflowlang.Workflow
+	var provenance *definition.Workflow
 	_, rejected := errors.AsType[*codec.AdmissionError](err)
 	if metadata != nil && !rejected {
 		provenance = actionFacts(metadata)
@@ -117,10 +117,10 @@ func (d Document) ParseStatus() string {
 // CanAnalyze reports whether decoding recovered a semantic input for either language.
 func (d Document) CanAnalyze() bool { return d.Facts != nil }
 
-func actionFacts(metadata *actionmeta.Metadata) *workflowlang.Workflow {
+func actionFacts(metadata *actionmeta.Metadata) *definition.Workflow {
 	parser := workflowparser.NewSourceParser(metadata.Source)
 	parser.IndexScalarSources(metadata.Root)
-	job := &workflowlang.Job{}
+	job := &definition.Job{}
 	for _, step := range metadata.Runs.Steps {
 		job.Steps = append(job.Steps, actionStep(step, parser))
 	}
@@ -131,11 +131,11 @@ func actionFacts(metadata *actionmeta.Metadata) *workflowlang.Workflow {
 			continue
 		}
 		if job.Outputs == nil {
-			job.Outputs = make(map[string]*workflowlang.Output)
+			job.Outputs = make(map[string]*definition.Output)
 		}
-		job.Outputs[field.FieldPath] = &workflowlang.Output{Value: &workflowlang.String{Value: field.Value.Value, Pos: &source.Position{Line: field.Value.Line, Column: field.Value.Column}}}
+		job.Outputs[field.FieldPath] = &definition.Output{Value: &definition.String{Value: field.Value.Value, Pos: &source.Position{Line: field.Value.Line, Column: field.Value.Column}}}
 	}
-	workflow := &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"": job}, ExpressionSources: parser.ExpressionSources(metadata.Root)}
+	workflow := &definition.Workflow{Jobs: map[string]*definition.Job{"": job}, ExpressionSources: parser.ExpressionSources(metadata.Root)}
 	parser.IndexDependencySpans(workflow)
 	return workflow
 }

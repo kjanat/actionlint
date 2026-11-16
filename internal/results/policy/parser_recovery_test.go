@@ -9,7 +9,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -193,7 +193,7 @@ jobs: [`,
 	}
 }
 
-func parseSuppressionSource(source []byte) (*workflowlang.Workflow, []*findingmodel.Finding) {
+func parseSuppressionSource(source []byte) (*definition.Workflow, []*findingmodel.Finding) {
 	workflow, diagnostics := workflowparser.ParseWorkflow(source)
 	findings := make([]*findingmodel.Finding, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {

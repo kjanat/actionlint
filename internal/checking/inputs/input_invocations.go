@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 var ErrInvalidCallGraph = errors.New("analyzer: invalid invocation graph")
@@ -25,11 +25,11 @@ func ValidateOccurrence(graph invocation.Graph, actual invocation.Script) error 
 
 // ValidateInvocations checks supplied facts against the captured occurrence graph.
 func (input AnalyzerInput) ValidateInvocations() error {
-	available := slices.Contains(input.AvailableInputs, rulemeta.Invocations)
+	available := slices.Contains(input.AvailableInputs, rule.Invocations)
 	if available != input.CallGraph.Valid() {
 		return invalidGraph("invocations availability disagrees with graph presence")
 	}
-	textsAvailable := slices.Contains(input.AvailableInputs, rulemeta.Scripts)
+	textsAvailable := slices.Contains(input.AvailableInputs, rule.Scripts)
 	if len(input.Scripts)+len(input.Invoked)+len(input.ActionInputs) > 0 && !textsAvailable {
 		return invalidGraph("script text supplied without the scripts input")
 	}

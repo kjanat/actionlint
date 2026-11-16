@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -18,7 +18,7 @@ import (
 	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -27,7 +27,7 @@ import (
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -38,7 +38,7 @@ import (
 type metadataAdmissionAnalyzer struct{ inspect func() error }
 
 func (metadataAdmissionAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
@@ -168,7 +168,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal("metadata parse record absent")
 			}
 			producer := correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), cache, nil)
-			if err := producer.VisitStep(ownedApplicationStep(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &sourcepos.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcepos.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]

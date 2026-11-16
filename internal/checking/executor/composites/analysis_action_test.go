@@ -11,7 +11,7 @@ import (
 
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"

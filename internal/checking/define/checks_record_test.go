@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -30,9 +30,9 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
 	}
 	adapter := NewChecksVisitor(rules, declaration.Name, Checks{
-		Workflow: func(workflowdecl.Workflow) []reporting.StepFinding { return []reporting.StepFinding{{Finding: want}} },
+		Workflow: func(workflows.Workflow) []reporting.StepFinding { return []reporting.StepFinding{{Finding: want}} },
 	})
-	if err := adapter.VisitWorkflowPre(workflowdecl.Workflow{}); err != nil {
+	if err := adapter.VisitWorkflowPre(workflows.Workflow{}); err != nil {
 		t.Fatal(err)
 	}
 	got := adapter.Errs()

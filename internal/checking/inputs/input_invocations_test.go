@@ -4,18 +4,18 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 	t.Parallel()
 	for name, change := range map[string]func(*AnalyzerInput){
 		"graph absent":             func(input *AnalyzerInput) { input.CallGraph = invocation.Graph{} },
-		"invocations input absent": func(input *AnalyzerInput) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Scripts} },
-		"scripts input absent":     func(input *AnalyzerInput) { input.AvailableInputs = []rulemeta.InputKind{rulemeta.Invocations} },
+		"invocations input absent": func(input *AnalyzerInput) { input.AvailableInputs = []rule.InputKind{rule.Scripts} },
+		"scripts input absent":     func(input *AnalyzerInput) { input.AvailableInputs = []rule.InputKind{rule.Invocations} },
 		"entry reference":          func(input *AnalyzerInput) { input.Reference.Node = "another" },
 		"unknown occurrence":       func(input *AnalyzerInput) { input.Invoked[0].Occurrence.ID = "unknown" },
 		"reference":                func(input *AnalyzerInput) { input.Invoked[0].Reference.Revision = "stale" },
@@ -28,7 +28,7 @@ func TestInputRejectsDisagreementWithInvocationGraph(t *testing.T) {
 			t.Parallel()
 			graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "script"})
 			occurrence := graph.Scripts()[0]
-			input := AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations}, CallGraph: graph, Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
+			input := AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Scripts, rule.Invocations}, CallGraph: graph, Invoked: []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}}
 			if err := input.ValidateInvocations(); err != nil {
 				t.Fatal(err)
 			}
@@ -61,13 +61,13 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			input := AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph, SelectedScripts: test.selection, Invoked: test.scripts}
+			input := AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Invocations, rule.Scripts}, CallGraph: graph, SelectedScripts: test.selection, Invoked: test.scripts}
 			if err := input.ValidateInvocations(); (err == nil) != test.valid {
 				t.Fatalf("valid=%v: %v", test.valid, err)
 			}
 		})
 	}
-	input := AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations}, CallGraph: graph}
+	input := AnalyzerInput{Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Invocations}, CallGraph: graph}
 	if err := input.ValidateInvocations(); err != nil {
 		t.Fatalf("graph without collected text: %v", err)
 	}
@@ -86,9 +86,9 @@ func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			for _, input := range []AnalyzerInput{
-				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
-				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, Invoked: []Script{{Occurrence: occurrence}}},
-				{AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts}, ActionInputs: []ActionInput{{Occurrence: occurrence}}},
+				{AvailableInputs: []rule.InputKind{rule.Scripts}, Scripts: []Script{{Occurrence: occurrence}}},
+				{AvailableInputs: []rule.InputKind{rule.Scripts}, Invoked: []Script{{Occurrence: occurrence}}},
+				{AvailableInputs: []rule.InputKind{rule.Scripts}, ActionInputs: []ActionInput{{Occurrence: occurrence}}},
 			} {
 				if err := input.ValidateInvocations(); !errors.Is(err, ErrInvalidCallGraph) {
 					t.Fatalf("orphan occurrence accepted: %v", err)

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -29,7 +29,7 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 	}
 	context := actionmeta.LifecycleContext{AsOf: date, Service: service}
 	caller := &sourcepos.Position{Line: 8, Column: 11}
-	exec := ownedActionFixture(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "example/script@v1", Pos: caller}})
+	exec := ownedActionFixture(&definition.ExecAction{Uses: &definition.String{Value: "example/script@v1", Pos: caller}})
 	for _, tc := range []struct {
 		name     string
 		findings []*findingmodel.Finding

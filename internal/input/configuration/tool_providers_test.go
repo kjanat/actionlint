@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -25,7 +25,7 @@ func TestToolProvidersMatchManifests(t *testing.T) {
 		if !ok {
 			t.Fatalf("configuration does not know bundled provider %s", name)
 		}
-		scopes := map[pluginmanifests.Scope]rulescope.ConfigurationScope{pluginmanifests.ScopeComposite: rulescope.CompositeConfiguration, pluginmanifests.ScopeSource: rulescope.SourceConfiguration}
+		scopes := map[pluginmanifests.Scope]rule.ConfigurationScope{pluginmanifests.ScopeComposite: rule.CompositeConfiguration, pluginmanifests.ScopeSource: rule.SourceConfiguration}
 		if tool.scope != scopes[manifest.Scope] {
 			t.Errorf("%s: scope %v, manifest %q", name, tool.scope, manifest.Scope)
 		}

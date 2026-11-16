@@ -9,18 +9,18 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestCacheModeLiteralExpressionMetadata(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []workflowlang.CacheModeKind{workflowlang.CacheModeRead, workflowlang.CacheModeWrite, workflowlang.CacheModeWriteOnly, workflowlang.CacheModeNone} {
+	for _, kind := range []definition.CacheModeKind{definition.CacheModeRead, definition.CacheModeWrite, definition.CacheModeWriteOnly, definition.CacheModeNone} {
 		for _, aliased := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/alias=%v", kind, aliased), func(t *testing.T) {
 				t.Parallel()
@@ -60,7 +60,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, ok := workflowlang.FindWorkflowCallEvent(workflow)
+				_, ok := definition.FindWorkflowCallEvent(workflow)
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
@@ -86,7 +86,7 @@ jobs:
 						t.Fatalf("%s: metadata recorded %s (declared %t), want %s", id, recorded, declared, kind)
 					}
 					// Metadata keeps only the mode; the parsed declaration keeps its source.
-					mode := workflowlang.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
+					mode := definition.EffectiveCacheMode(workflow.CacheMode, workflow.Jobs[id].CacheMode)
 					want := sourcepos.Position{Line: line, Column: 17}
 					if line == 2 || aliased {
 						want = sourcepos.Position{Line: 2, Column: 13}

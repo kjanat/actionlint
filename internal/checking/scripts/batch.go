@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -28,7 +28,7 @@ type Unit struct {
 	Coordinates source.Coordinates
 	Occurrence  invocation.ID
 	Reference   source.Reference
-	Run         *workflowlang.ExecRun
+	Run         *definition.ExecRun
 	Input       *ActionInput
 	Shell       *string
 	Path        string
@@ -46,7 +46,7 @@ type Unit struct {
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
 	Site  checkinputs.ScriptInput
-	Value *workflowlang.ActionArgument
+	Value *definition.ActionArgument
 }
 
 // Text returns the script text: the action input value or the run body.
@@ -61,7 +61,7 @@ func (u Unit) Text() string {
 }
 
 // Source maps Text back to its declaring YAML scalar.
-func (u Unit) Source() *workflowlang.ScriptSource {
+func (u Unit) Source() *definition.ScriptSource {
 	if u.Input != nil {
 		return u.Input.Value.Source
 	}

@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -34,7 +34,7 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			if len(parsed.SyntaxErrors) != 0 {
 				t.Fatal(parsed.SyntaxErrors)
 			}
-			_, _, snapshots := fixturedecl.NewCapturedSnapshots(t, capturefixture.CurrentDir(t))
+			_, _, snapshots := declarations.NewCapturedSnapshots(t, capturefixture.CurrentDir(t))
 			snapshot, err := snapshots.Document("workflow.yml", content, parsed)
 			if err != nil {
 				t.Fatal(err)

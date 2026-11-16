@@ -4,8 +4,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // JobTimeoutRule is the single definition of the job-timeout rule.
@@ -50,12 +50,12 @@ func JobTimeoutChecks(policy TimeoutPolicy) define.Checks {
 	if policy.Max != nil {
 		policy.Max = new(*policy.Max)
 	}
-	return define.Checks{Job: func(job declaration.Job) []reporting.StepFinding {
+	return define.Checks{Job: func(job workflows.Job) []reporting.StepFinding {
 		return JobTimeout(job, policy)
 	}}
 }
 
-func JobTimeout(n declaration.Job, policy TimeoutPolicy) []reporting.StepFinding {
+func JobTimeout(n workflows.Job, policy TimeoutPolicy) []reporting.StepFinding {
 	rule := reporting.Collector{}
 
 	if !policy.Enabled {

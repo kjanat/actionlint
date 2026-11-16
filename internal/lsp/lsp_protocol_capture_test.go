@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	reportfixture "actionlint.kjanat.dev/v2/internal/development/tests/support/reportfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"

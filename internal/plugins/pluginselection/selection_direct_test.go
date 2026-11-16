@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"

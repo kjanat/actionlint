@@ -1,12 +1,12 @@
 package action_test
 
 import (
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func ownedActionFixture(action *workflowlang.ExecAction) *workflowlang.ExecAction {
-	workflow := workflowdecl.Bind("unit-action", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"test": {Steps: []*workflowlang.Step{{Exec: action}}}}}, false, "").Workflow()
+func ownedActionFixture(action *definition.ExecAction) *definition.ExecAction {
+	workflow := workflows.Bind("unit-action", "", &definition.Workflow{Jobs: map[string]*definition.Job{"test": {Steps: []*definition.Step{{Exec: action}}}}}, false, "").Workflow()
 	job, _ := workflow.Job("test")
 	for step := range job.Steps() {
 		action, _ := step.Action()

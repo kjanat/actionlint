@@ -3,7 +3,7 @@ package parser
 import (
 	"strings"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -28,7 +28,7 @@ func (p *Parser) checkFlowMappingNulls(node *codec.Node, flow bool) {
 
 func (p *Parser) compactFlowNull(key, value *codec.Node) bool {
 	if key.Kind != codec.ScalarNode || key.Value == "" || key.Style&(codec.SingleQuotedStyle|codec.DoubleQuotedStyle) != 0 ||
-		value.Kind != codec.ScalarNode || value.Tag != workflowlang.YamlTagNull || value.Value != "" {
+		value.Kind != codec.ScalarNode || value.Tag != definition.YamlTagNull || value.Value != "" {
 		return false
 	}
 	row := value.Line - 1

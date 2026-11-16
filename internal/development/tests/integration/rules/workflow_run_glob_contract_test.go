@@ -11,9 +11,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -49,7 +49,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 				t.Fatal(errs)
 			}
 			rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil {
+			if err := rule.VisitWorkflowPre(declarations.Workflow(workflow)); err != nil {
 				t.Fatal(err)
 			}
 			if got := rule.Errs(); (len(got) != 0) != tc.invalid || len(got) > 1 || len(got) == 1 && (got[0].Start.Line != 3 || !strings.Contains(got[0].Message, "positive")) {
@@ -62,8 +62,8 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
 	t.Parallel()
 	rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-	workflow := &workflowlang.Workflow{On: []workflowlang.Event{&workflowlang.WebhookEvent{Workflows: []*workflowlang.String{{Value: "${{ inputs.pattern }}", Pos: &source.Position{Line: 1, Column: 1}}}}}}
-	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(workflow)); err != nil || len(rule.Errs()) != 0 {
+	workflow := &definition.Workflow{On: []definition.Event{&definition.WebhookEvent{Workflows: []*definition.String{{Value: "${{ inputs.pattern }}", Pos: &source.Position{Line: 1, Column: 1}}}}}}
+	if err := rule.VisitWorkflowPre(declarations.Workflow(workflow)); err != nil || len(rule.Errs()) != 0 {
 		t.Fatalf("unknown expression treated as a literal glob: %v, %v", rule.Errs(), err)
 	}
 }

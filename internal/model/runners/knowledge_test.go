@@ -6,14 +6,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type runnerFixture struct {
-	Jobs     map[string]*workflowlang.Job
+	Jobs     map[string]*definition.Job
 	Snapshot parsing.SourceSnapshot
-	Views    map[string]workflowdecl.Job
+	Views    map[string]workflows.Job
 }
 
 func TestJobOperatingSystemsPreserveUncertainty(t *testing.T) {
@@ -62,7 +62,7 @@ func runnerSource(t *testing.T, source string) *runnerFixture {
 	if !available {
 		t.Fatal("workflow snapshot is unavailable")
 	}
-	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]workflowdecl.Job{}}
+	fixture := &runnerFixture{Jobs: document.Workflow.Jobs, Snapshot: snapshot, Views: map[string]workflows.Job{}}
 	for id := range fixture.Jobs {
 		view, ok := workflow.Job(id)
 		if !ok {

@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -22,7 +22,7 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Bind("test", src, ast, false, "").Workflow()
+	w := workflows.Bind("test", src, ast, false, "").Workflow()
 	check := correctness.IdRule.Checks(define.RuleInputs{})
 	if check.Step != nil || check.Workflow != nil {
 		t.Fatal("ID checking requests more than job declarations")
@@ -48,7 +48,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Bind("test", "", ast, false, "").Workflow()
+	w := workflows.Bind("test", "", ast, false, "").Workflow()
 	findings := correctness.EnvVarRule.Checks(define.RuleInputs{}).Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
@@ -81,7 +81,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	w := declaration.Bind("test", "", ast, false, "").Workflow()
+	w := workflows.Bind("test", "", ast, false, "").Workflow()
 	want := correctness.ParallelSteps(jobView(w, "consumer"))
 	if len(want) != 1 || want[0].Step.Reference() != slices.Collect(jobView(w, "consumer").Steps())[0].Reference() {
 		t.Fatalf("expected unknown background step with its owner: %+v", want)
@@ -100,7 +100,7 @@ jobs:
 	workers.Wait()
 }
 
-func jobView(w declaration.Workflow, key string) declaration.Job {
+func jobView(w workflows.Workflow, key string) workflows.Job {
 	job, _ := w.Job(key)
 	return job
 }

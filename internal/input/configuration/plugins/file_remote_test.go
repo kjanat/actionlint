@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 )
 
 func TestPluginManifestRemoteDependencySnapshot(t *testing.T) {

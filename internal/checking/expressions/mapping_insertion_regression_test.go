@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -58,7 +58,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 	}
 	// Preserve expression delimiters in evaluated keys as literal data.
 	const key = "${{ vars.AXIS }}"
-	strategy := &workflowlang.Strategy{Matrix: &workflowlang.Matrix{Expression: &workflowlang.String{
+	strategy := &definition.Strategy{Matrix: &definition.Matrix{Expression: &definition.String{
 		Value: `${{ fromJSON('{"${{ vars.AXIS }}":["ubuntu-latest"]}') }}`,
 		Pos:   &source.Position{Line: 1, Column: 1},
 	}}}

@@ -11,7 +11,7 @@ import (
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
@@ -205,7 +205,7 @@ func (r Resolution) ReachableNames() iter.Seq[string] {
 	return slices.Values(names)
 }
 
-func Resolve(strategy *workflowlang.Strategy) Resolution {
+func Resolve(strategy *definition.Strategy) Resolution {
 	if strategy == nil {
 		return Resolution{state: value.Missing, filterKnown: true, includeKnown: true, excludeKnown: true}
 	}
@@ -223,18 +223,18 @@ func Resolve(strategy *workflowlang.Strategy) Resolution {
 	return resolveDeclaration(strategy.Matrix)
 }
 
-func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
+func resolveDeclaration(matrix *definition.Matrix) Resolution {
 	if matrix.Expression != nil {
 		return resolveSemanticMatrix(expression(matrix.Expression))
 	}
 	r := Resolution{state: value.Literal, filterKnown: true, includeKnown: true, excludeKnown: true, origin: origin(matrix.Pos, false)}
 	for _, name := range slices.Sorted(maps.Keys(matrix.Rows)) {
 		row := matrix.Rows[name]
-		key := value.YAMLScalar(name, workflowlang.YamlTagStr, value.Origin{})
+		key := value.YAMLScalar(name, definition.YamlTagStr, value.Origin{})
 		if row.Name != nil {
-			key = workflowlang.SemanticValue(row.Name)
+			key = definition.SemanticValue(row.Name)
 			if row.Evaluated {
-				key = value.YAMLScalar(row.Name.Value, workflowlang.YamlTagStr, key.Origin())
+				key = value.YAMLScalar(row.Name.Value, definition.YamlTagStr, key.Origin())
 			}
 		}
 		axisName, keyState := mapping.ResolveKey(key)
@@ -256,7 +256,7 @@ func resolveDeclaration(matrix *workflowlang.Matrix) Resolution {
 			}
 		} else {
 			for _, raw := range row.Values {
-				scalar, isScalar := raw.(*workflowlang.RawYAMLString)
+				scalar, isScalar := raw.(*definition.RawYAMLString)
 				isExpression := isScalar && !row.Evaluated && strings.Contains(scalar.Value, "${{")
 				v := rawValue(raw, !row.Evaluated)
 				if dynamic(v) {
@@ -777,7 +777,7 @@ func looseEqual(left, right value.Value) bool {
 	return aok && bok && a == b
 }
 
-func declarationCombinations(filters *workflowlang.MatrixCombinations, complete bool) ([]Combination, bool) {
+func declarationCombinations(filters *definition.MatrixCombinations, complete bool) ([]Combination, bool) {
 	if filters.Expression != nil {
 		v := expression(filters.Expression)
 		result, ok := semanticCombinations(v, false)
@@ -801,11 +801,11 @@ func declarationCombinations(filters *workflowlang.MatrixCombinations, complete 
 		}
 		for key, assign := range filter.Assigns {
 			if assign != nil {
-				name := value.YAMLScalar(key, workflowlang.YamlTagStr, value.Origin{})
+				name := value.YAMLScalar(key, definition.YamlTagStr, value.Origin{})
 				if assign.Key != nil {
-					name = workflowlang.SemanticValue(assign.Key)
+					name = definition.SemanticValue(assign.Key)
 					if filter.Evaluated {
-						name = value.YAMLScalar(assign.Key.Value, workflowlang.YamlTagStr, name.Origin())
+						name = value.YAMLScalar(assign.Key.Value, definition.YamlTagStr, name.Origin())
 					}
 				}
 				resolved, state := mapping.ResolveKey(name)
@@ -849,18 +849,18 @@ func semanticCombinations(v value.Value, allowObject bool) ([]Combination, bool)
 	return result, true
 }
 
-func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
+func rawValue(raw definition.RawYAMLValue, expressions bool) value.Value {
 	switch node := raw.(type) {
-	case *workflowlang.RawYAMLString:
+	case *definition.RawYAMLString:
 		origin := origin(node.Pos(), expressions)
 		if expressions && strings.Contains(node.Value, "${{") {
 			return value.Template(node.Value, origin)
 		}
 		return value.YAMLScalar(node.Value, node.Tag, origin)
-	case *workflowlang.RawYAMLArray:
+	case *definition.RawYAMLArray:
 		items := make([]value.Value, 0, len(node.Elems))
 		for _, child := range node.Elems {
-			scalar, isScalar := child.(*workflowlang.RawYAMLString)
+			scalar, isScalar := child.(*definition.RawYAMLString)
 			isExpression := expressions && isScalar && strings.Contains(scalar.Value, "${{")
 			item := rawValue(child, expressions)
 			if isExpression && item.Known() && item.Kind() == value.Array {
@@ -872,7 +872,7 @@ func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
 			}
 		}
 		return value.Seq(origin(node.Pos(), false), items...)
-	case *workflowlang.RawYAMLObject:
+	case *definition.RawYAMLObject:
 		props := make([]value.Prop, 0, len(node.Props))
 		for _, name := range slices.Sorted(maps.Keys(node.Props)) {
 			props = append(props, value.Prop{Name: name, Value: rawValue(node.Props[name], expressions)})
@@ -883,7 +883,7 @@ func rawValue(raw workflowlang.RawYAMLValue, expressions bool) value.Value {
 	}
 }
 
-func expression(text *workflowlang.String) value.Value {
+func expression(text *definition.String) value.Value {
 	if text == nil {
 		return value.Value{}
 	}
@@ -898,7 +898,7 @@ func origin(pos *sourcepos.Position, fromExpression bool) value.Origin {
 	return o
 }
 
-func rowPosition(row *workflowlang.MatrixRow) *sourcepos.Position {
+func rowPosition(row *definition.MatrixRow) *sourcepos.Position {
 	if row.Expression != nil {
 		return row.Expression.Pos
 	}

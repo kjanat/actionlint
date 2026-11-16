@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -32,7 +32,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Bind("test", source, parsed, false, "").Workflow()
+	workflow := workflows.Bind("test", source, parsed, false, "").Workflow()
 	duplicate, _ := workflow.Job("duplicate")
 	clean, _ := workflow.Job("clean")
 	mixed, _ := workflow.Job("mixed")

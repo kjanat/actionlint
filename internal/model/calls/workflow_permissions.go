@@ -8,7 +8,7 @@ import (
 	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 var allPermissionScopes = permission.Scopes()
@@ -85,7 +85,7 @@ type ResolvedPermissions struct {
 // EffectivePermissions applies job, workflow and repository defaults in that
 // order. An explicit invalid declaration stops inheritance. The returned map
 // does not share storage with defaults or the published declarations.
-func EffectivePermissions(workflow, job *workflowlang.Permissions, defaults ResolvedPermissions) ResolvedPermissions {
+func EffectivePermissions(workflow, job *definition.Permissions, defaults ResolvedPermissions) ResolvedPermissions {
 	if job != nil {
 		return ResolvePermissions(job)
 	}
@@ -136,7 +136,7 @@ func resolvePermissions(src permissionsSource) ResolvedPermissions {
 
 // ResolvePermissions resolves a parsed "permissions:" section. A nil node
 // means the section is absent.
-func ResolvePermissions(p *workflowlang.Permissions) ResolvedPermissions {
+func ResolvePermissions(p *definition.Permissions) ResolvedPermissions {
 	if p == nil {
 		return ResolvedPermissions{Kind: PermissionsAbsent}
 	}

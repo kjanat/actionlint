@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflownames "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
@@ -29,11 +29,11 @@ var GlobRule = &define.Rule{
 type globCheck struct{ reporting.Collector }
 
 // GlobWorkflow validates patterns in event declarations.
-func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
+func GlobWorkflow(n workflows.Workflow) []reporting.StepFinding {
 	rule := &globCheck{}
 
 	for _, e := range n.On {
-		if webhook, ok := e.(*workflowlang.WebhookEvent); ok {
+		if webhook, ok := e.(*definition.WebhookEvent); ok {
 			rule.checkGitRefGlobs(webhook.Branches)
 			rule.checkGitRefGlobs(webhook.BranchesIgnore)
 			rule.checkGitRefGlobs(webhook.Tags)
@@ -41,7 +41,7 @@ func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
 			rule.checkFilePathGlobs(webhook.Paths)
 			rule.checkFilePathGlobs(webhook.PathsIgnore)
 			rule.checkWorkflowNameGlobs(webhook.Workflows)
-		} else if image, ok := e.(*workflowlang.ImageVersionEvent); ok {
+		} else if image, ok := e.(*definition.ImageVersionEvent); ok {
 			for _, v := range image.Versions {
 				rule.checkRefGlob(v)
 			}
@@ -50,7 +50,7 @@ func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkWorkflowNameGlobs(names []*workflowlang.String) {
+func (rule *globCheck) checkWorkflowNameGlobs(names []*definition.String) {
 	allValid, positive := len(names) != 0, false
 	for _, name := range names {
 		if name == nil {
@@ -88,7 +88,7 @@ func (rule *globCheck) checkWorkflowNameGlobs(names []*workflowlang.String) {
 	}
 }
 
-func GlobJob(n declaration.Job) []reporting.StepFinding {
+func GlobJob(n workflows.Job) []reporting.StepFinding {
 	rule := &globCheck{}
 	if n.Snapshot == nil {
 		return rule.Findings
@@ -110,7 +110,7 @@ func GlobJob(n declaration.Job) []reporting.StepFinding {
 }
 
 func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcepos.Position) {
-	pattern, known := workflowlang.WorkflowScalarString(value)
+	pattern, known := definition.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
 	}
@@ -121,7 +121,7 @@ func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcepos.Position) {
 	rule.globErrors(errs, pos, false)
 }
 
-func (rule *globCheck) checkRefGlob(s *workflowlang.String) {
+func (rule *globCheck) checkRefGlob(s *definition.String) {
 	// Empty value is already checked by parser. Avoid duplicate errors
 	if s == nil || s.Value == "" {
 		return
@@ -129,7 +129,7 @@ func (rule *globCheck) checkRefGlob(s *workflowlang.String) {
 	rule.globErrors(glob.ValidateRefGlob(s.Value), s.Pos, s.Quoted)
 }
 
-func (rule *globCheck) checkGitRefGlobs(filter *workflowlang.WebhookEventFilter) {
+func (rule *globCheck) checkGitRefGlobs(filter *definition.WebhookEventFilter) {
 	if filter == nil {
 		return
 	}
@@ -138,7 +138,7 @@ func (rule *globCheck) checkGitRefGlobs(filter *workflowlang.WebhookEventFilter)
 	}
 }
 
-func (rule *globCheck) checkFilePathGlobs(filter *workflowlang.WebhookEventFilter) {
+func (rule *globCheck) checkFilePathGlobs(filter *definition.WebhookEventFilter) {
 	if filter == nil {
 		return
 	}

@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -22,14 +22,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 type invocationFixture struct {
 	options         Options
 	root            parsing.SourceSnapshot
-	original        *workflowlang.Workflow
+	original        *definition.Workflow
 	registry        *parsing.SourceSnapshots
 	snapshots       *capturedSnapshots
 	cache           *workspaceactions.Cache

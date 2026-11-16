@@ -8,7 +8,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -16,9 +16,9 @@ func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 	t.Parallel()
 	meta := &actionmeta.Metadata{Inputs: calls.Inputs{"token": {Name: "token", Required: true}}}
 	for _, dynamic := range []bool{false, true} {
-		exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &sourcepos.Position{Line: 1, Column: 1}}}
+		exec := &definition.ExecAction{Uses: &definition.String{Value: "./audit", Pos: &sourcepos.Position{Line: 1, Column: 1}}}
 		if dynamic {
-			exec.InputsExpression = &workflowlang.String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &sourcepos.Position{Line: 2, Column: 1}}
+			exec.InputsExpression = &definition.String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &sourcepos.Position{Line: 2, Column: 1}}
 		}
 		findings := actioncheck.Inputs(meta, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "audit" })
 		if (len(findings) == 0) != dynamic {

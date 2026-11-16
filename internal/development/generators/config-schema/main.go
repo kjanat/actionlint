@@ -13,7 +13,7 @@ import (
 	"unicode"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	genfile "actionlint.kjanat.dev/v2/internal/development/generators/files"
+	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"

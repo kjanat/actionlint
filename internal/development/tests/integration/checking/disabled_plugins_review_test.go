@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
-	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"

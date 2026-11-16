@@ -3,18 +3,18 @@ package manifests
 import (
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestConfigurationScope(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		scope   Scope
-		want    rulemeta.ConfigurationScope
+		want    rule.ConfigurationScope
 		invalid bool
 	}{
-		{ScopeSource, rulemeta.SourceConfiguration, false},
-		{ScopeComposite, rulemeta.CompositeConfiguration, false},
+		{ScopeSource, rule.SourceConfiguration, false},
+		{ScopeComposite, rule.CompositeConfiguration, false},
 		{"unknown", 0, true},
 		{"", 0, true},
 	} {

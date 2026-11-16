@@ -8,7 +8,7 @@ import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // CollectionComparisonRule is the single definition of the collection-comparison rule.

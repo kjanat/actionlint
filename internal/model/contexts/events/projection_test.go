@@ -12,7 +12,7 @@ import (
 
 	expr "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -120,7 +120,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contextspec.SetEventPayloadType(c, Type(declaration.Bind("unit-event-payload", "", w, false, "").Workflow()))
+	contextspec.SetEventPayloadType(c, Type(workflows.Bind("unit-event-payload", "", w, false, "").Workflow()))
 	c.SetContextAvailability([]string{"github"})
 	n, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
 	if err != nil {

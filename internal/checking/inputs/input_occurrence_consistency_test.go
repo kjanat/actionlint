@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
@@ -24,7 +24,7 @@ func TestInputRejectsCorruptCanonicalOccurrence(t *testing.T) {
 			occurrence := graph.Scripts()[0]
 			input := AnalyzerInput{
 				Reference: graph.Entry().Reference, CallGraph: graph,
-				AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts},
+				AvailableInputs: []rule.InputKind{rule.Invocations, rule.Scripts},
 				Invoked:         []Script{{Reference: occurrence.Declaration, Occurrence: occurrence}},
 			}
 			if err := input.ValidateInvocations(); err != nil {

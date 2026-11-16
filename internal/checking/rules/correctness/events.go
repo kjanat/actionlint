@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 	"github.com/robfig/cron/v3"
 )
@@ -30,7 +30,7 @@ var EventsRule = &define.Rule{
 type eventsCheck struct{ reporting.Collector }
 
 // Events validates event declarations.
-func Events(n declaration.Workflow) []reporting.StepFinding {
+func Events(n workflows.Workflow) []reporting.StepFinding {
 	rule := &eventsCheck{}
 
 	for _, e := range n.On {
@@ -39,23 +39,23 @@ func Events(n declaration.Workflow) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *eventsCheck) checkEvent(event workflowlang.Event) {
-	if e, ok := event.(*workflowlang.ScheduledEvent); ok {
+func (rule *eventsCheck) checkEvent(event definition.Event) {
+	if e, ok := event.(*definition.ScheduledEvent); ok {
 		for _, s := range e.Schedules {
 			rule.checkCron(s.Cron)
 			if s.Timezone != nil {
 				rule.checkTimezone(s.Timezone)
 			}
 		}
-	} else if e, ok := event.(*workflowlang.WorkflowDispatchEvent); ok {
+	} else if e, ok := event.(*definition.WorkflowDispatchEvent); ok {
 		rule.checkWorkflowDispatchEvent(e)
-	} else if _, ok := event.(*workflowlang.RepositoryDispatchEvent); ok {
+	} else if _, ok := event.(*definition.RepositoryDispatchEvent); ok {
 		return
-	} else if e, ok := event.(*workflowlang.WorkflowCallEvent); ok {
+	} else if e, ok := event.(*definition.WorkflowCallEvent); ok {
 		rule.checkWorkflowCallEvent(e)
-	} else if e, ok := event.(*workflowlang.WebhookEvent); ok {
+	} else if e, ok := event.(*definition.WebhookEvent); ok {
 		rule.checkWebhookEvent(e)
-	} else if e, ok := event.(*workflowlang.ImageVersionEvent); ok {
+	} else if e, ok := event.(*definition.ImageVersionEvent); ok {
 		rule.checkImageVersionEvent(e)
 	} else {
 		panic("unreachable")
@@ -63,7 +63,7 @@ func (rule *eventsCheck) checkEvent(event workflowlang.Event) {
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onschedule
-func (rule *eventsCheck) checkCron(spec *workflowlang.String) {
+func (rule *eventsCheck) checkCron(spec *definition.String) {
 	p := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	sched, err := p.Parse(spec.Value)
 	if err != nil {
@@ -84,7 +84,7 @@ func (rule *eventsCheck) checkCron(spec *workflowlang.String) {
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule
-func (rule *eventsCheck) checkTimezone(tz *workflowlang.String) {
+func (rule *eventsCheck) checkTimezone(tz *definition.String) {
 	// Local is a Go host-timezone selector; UTC is a valid IANA alias for Etc/UTC.
 	ok := tz.Value != "" && !strings.EqualFold(tz.Value, "local")
 	if ok {
@@ -104,7 +104,7 @@ func (rule *eventsCheck) filterNotAvailable(pos *sourcepos.Position, filter, hoo
 	rule.Errorf(pos, "%q filter is not available for %s event. it is only for %s %s", filter, hook, strings.Join(available, ", "), e)
 }
 
-func (rule *eventsCheck) checkExclusiveFilters(filter, ignore *workflowlang.WebhookEventFilter, hook string, available []string) {
+func (rule *eventsCheck) checkExclusiveFilters(filter, ignore *definition.WebhookEventFilter, hook string, available []string) {
 	ok := slices.Contains(available, hook)
 
 	if ok {
@@ -126,7 +126,7 @@ func (rule *eventsCheck) checkExclusiveFilters(filter, ignore *workflowlang.Webh
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#webhook-events
-func (rule *eventsCheck) checkWebhookEvent(event *workflowlang.WebhookEvent) {
+func (rule *eventsCheck) checkWebhookEvent(event *definition.WebhookEvent) {
 	hook := event.Hook.Text()
 
 	types, ok := events.AllWebhookTypes[hook]
@@ -173,7 +173,7 @@ func (rule *eventsCheck) checkWebhookEvent(event *workflowlang.WebhookEvent) {
 	)
 }
 
-func (rule *eventsCheck) checkTypes(hook string, pos *sourcepos.Position, types []*workflowlang.String, expected []string) {
+func (rule *eventsCheck) checkTypes(hook string, pos *sourcepos.Position, types []*definition.String, expected []string) {
 	if len(expected) == 0 && len(types) > 0 {
 		rule.Errorf(pos, "\"types\" cannot be specified for %q Webhook event", hook)
 		return
@@ -194,7 +194,7 @@ func (rule *eventsCheck) checkTypes(hook string, pos *sourcepos.Position, types 
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCallEvent) {
+func (rule *eventsCheck) checkWorkflowCallEvent(event *definition.WorkflowCallEvent) {
 	for _, i := range event.Inputs {
 		if i.Default == nil {
 			continue
@@ -202,7 +202,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 		// ${{ }} is available in the default value
 		if !i.Default.ContainsExpression() {
 			switch i.Type {
-			case workflowlang.WorkflowCallEventInputTypeNumber:
+			case definition.WorkflowCallEventInputTypeNumber:
 				if _, err := strconv.ParseFloat(i.Default.Text(), 64); err != nil {
 					rule.Errorf(
 						sourcepos.NilUnlessPresent(i.Default.Position()),
@@ -212,7 +212,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 						err,
 					)
 				}
-			case workflowlang.WorkflowCallEventInputTypeBoolean:
+			case definition.WorkflowCallEventInputTypeBoolean:
 				if d := strings.ToLower(i.Default.Text()); d != "true" && d != "false" {
 					rule.Errorf(
 						sourcepos.NilUnlessPresent(i.Default.Position()),
@@ -221,7 +221,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 						i.Default.Text(),
 					)
 				}
-			case workflowlang.WorkflowCallEventInputTypeInvalid, workflowlang.WorkflowCallEventInputTypeString:
+			case definition.WorkflowCallEventInputTypeInvalid, definition.WorkflowCallEventInputTypeString:
 			}
 		}
 		if i.Required != nil && i.Required.Value {
@@ -237,9 +237,9 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 
 // https://github.blog/changelog/2021-11-10-github-actions-input-types-for-manual-workflows/
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_dispatchinputs
-func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.WorkflowDispatchEvent) {
+func (rule *eventsCheck) checkWorkflowDispatchEvent(event *definition.WorkflowDispatchEvent) {
 	for n, i := range event.Inputs {
-		if i.Type == workflowlang.WorkflowDispatchEventInputTypeChoice {
+		if i.Type == definition.WorkflowDispatchEventInputTypeChoice {
 			if len(i.Options) == 0 {
 				rule.Errorf(sourcepos.NilUnlessPresent(i.Name.Position()), "input type of %q is \"choice\" but \"options\" is not set", n)
 				continue
@@ -269,7 +269,7 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 				// TODO: Can some check be done for WorkflowDispatchEventInputTypeEnvironment?
 				// What is suitable for default value of the type? (Or is a default value never suitable?)
 				switch i.Type {
-				case workflowlang.WorkflowDispatchEventInputTypeNumber:
+				case definition.WorkflowDispatchEventInputTypeNumber:
 					if _, err := strconv.ParseFloat(i.Default.Text(), 64); err != nil {
 						rule.Errorf(
 							sourcepos.NilUnlessPresent(i.Default.Position()),
@@ -279,14 +279,14 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 							err,
 						)
 					}
-				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
+				case definition.WorkflowDispatchEventInputTypeBoolean:
 					if d := strings.ToLower(i.Default.Text()); d != "true" && d != "false" {
 						rule.Errorf(sourcepos.NilUnlessPresent(i.Default.Position()), "type of %q input is \"boolean\". its default value %q must be \"true\" or \"false\"", n, i.Default.Text())
 					}
-				case workflowlang.WorkflowDispatchEventInputTypeNone,
-					workflowlang.WorkflowDispatchEventInputTypeString,
-					workflowlang.WorkflowDispatchEventInputTypeChoice,
-					workflowlang.WorkflowDispatchEventInputTypeEnvironment:
+				case definition.WorkflowDispatchEventInputTypeNone,
+					definition.WorkflowDispatchEventInputTypeString,
+					definition.WorkflowDispatchEventInputTypeChoice,
+					definition.WorkflowDispatchEventInputTypeEnvironment:
 				}
 			}
 		}
@@ -304,6 +304,6 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#image_version
-func (rule *eventsCheck) checkImageVersionEvent(event *workflowlang.ImageVersionEvent) {
+func (rule *eventsCheck) checkImageVersionEvent(event *definition.ImageVersionEvent) {
 	rule.checkTypes("image_version", event.Pos, event.Types, events.AllWebhookTypes["image_version"])
 }

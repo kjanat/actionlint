@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -16,7 +16,7 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "run"})
 	occurrence := graph.Scripts()[0]
 	input := checkinputs.AnalyzerInput{
-		Reference: graph.Entry().Reference, CallGraph: graph, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts},
+		Reference: graph.Entry().Reference, CallGraph: graph, AvailableInputs: []rule.InputKind{rule.Invocations, rule.Scripts},
 		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}, SelectedScripts: []invocation.ID{occurrence.ID},
 	}
 	changed := make(chan struct{})

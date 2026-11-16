@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/invocationfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
@@ -22,7 +22,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	inputText := Script{Reference: actionInput.Declaration, Text: "input", Occurrence: actionInput}
 	valid := func() AnalyzerInput {
 		return AnalyzerInput{
-			Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
+			Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Invocations, rule.Scripts}, CallGraph: graph,
 			Scripts: []Script{rootText}, Invoked: []Script{invokedText},
 			ActionInputs: []ActionInput{{Script: inputText, Site: ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 		}
@@ -70,7 +70,7 @@ func TestCollectedInvocationGraphCanHaveZeroScripts(t *testing.T) {
 	t.Parallel()
 	graph := invocationfixture.Graph(t)
 	input := AnalyzerInput{
-		Reference: graph.Entry().Reference, AvailableInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, CallGraph: graph,
+		Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Invocations, rule.Scripts}, CallGraph: graph,
 		SelectedScripts: []invocation.ID{},
 	}
 	if err := input.ValidateInvocations(); err != nil {

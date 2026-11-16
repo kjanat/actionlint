@@ -7,7 +7,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -24,18 +24,18 @@ func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name      string
-		available []rulemeta.InputKind
+		available []rule.InputKind
 		selection []invocation.ID
 		wantNil   bool
 	}{
-		{name: "nil", available: []rulemeta.InputKind{rulemeta.Invocations}, wantNil: true},
-		{name: "empty nonnil", available: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}, selection: []invocation.ID{}},
+		{name: "nil", available: []rule.InputKind{rule.Invocations}, wantNil: true},
+		{name: "empty nonnil", available: []rule.InputKind{rule.Invocations, rule.Scripts}, selection: []invocation.ID{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			input := checkinputs.AnalyzerInput{Reference: entry, AvailableInputs: tc.available, CallGraph: graph, SelectedScripts: tc.selection}
 			registration := checkinputs.Registration{Checker: testAnalyzer{
-				descriptor: checkinputs.Descriptor{Descriptor: rulemeta.Descriptor{Name: "selection-clone"}},
+				descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "selection-clone"}},
 				run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 					if (supplied.SelectedScripts == nil) != tc.wantNil {
 						t.Errorf("selected scripts nil=%v, want %v", supplied.SelectedScripts == nil, tc.wantNil)

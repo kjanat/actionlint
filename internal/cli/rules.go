@@ -11,16 +11,16 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 
-	rulemetadata "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-func commandRules() []rulemetadata.Descriptor {
+func commandRules() []rule.Descriptor {
 	rules := checking.ConfigurationRules().RuleInfos()
-	slices.SortFunc(rules, func(a, b rulemetadata.Descriptor) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(rules, func(a, b rule.Descriptor) int { return strings.Compare(a.Name, b.Name) })
 	return rules
 }
 
-func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.Descriptor) error {
+func writeRules(out io.Writer, name string, asJSON bool, rules []rule.Descriptor) error {
 	if name != "" {
 		for _, rule := range rules {
 			if rule.Name == name {
@@ -53,7 +53,7 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.De
 		return commandstreams.WriteJSON(out, rules)
 	}
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	groups := map[string][]rulemetadata.Descriptor{}
+	groups := map[string][]rule.Descriptor{}
 	for _, rule := range rules {
 		category := rule.Category
 		if category == "" {
@@ -61,7 +61,7 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []rulemetadata.De
 		}
 		groups[category] = append(groups[category], rule)
 	}
-	order := rulemetadata.Categories()
+	order := rule.Categories()
 	var other []string
 	for category := range groups {
 		if !slices.Contains(order, category) {

@@ -7,8 +7,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"

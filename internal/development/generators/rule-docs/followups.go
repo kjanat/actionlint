@@ -1,6 +1,6 @@
 package main
 
-import rule "actionlint.kjanat.dev/v2/internal/model/rules"
+import "actionlint.kjanat.dev/v2/internal/model/rule"
 
 // Additional documentation examples build on the rule's before/after pair.
 var exampleFollowups = map[string]rule.Example{

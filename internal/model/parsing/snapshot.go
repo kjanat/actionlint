@@ -9,8 +9,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 // SourceSnapshot is a read-only handle to the declarations of one admitted
@@ -29,7 +29,7 @@ type admission struct {
 	registry *SourceSnapshots
 	captured capture.CapturedDocument
 	action   bool
-	bound    *workflowdecl.Bound
+	bound    *workflows.Bound
 }
 
 // Present reports whether s came from a registry. A present snapshot can still
@@ -194,7 +194,7 @@ func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *ac
 	// never declaration provenance. Parsing and publication happen outside mu.
 	// Schema errors preserve recovered declarations; resource rejection prevents expansion.
 	recovered, parseErr := actionmeta.ParseActionMetadata(metadata.Path(), []byte(text))
-	var traversal *workflowlang.Workflow
+	var traversal *definition.Workflow
 	if _, rejected := errors.AsType[*codec.AdmissionError](parseErr); !rejected {
 		traversal = actionFacts(recovered)
 	}
@@ -287,36 +287,36 @@ func (s SourceSnapshot) Kind() DocumentKind {
 	return KindWorkflow
 }
 
-func (s SourceSnapshot) WorkflowView() (workflowdecl.Workflow, bool) {
+func (s SourceSnapshot) WorkflowView() (workflows.Workflow, bool) {
 	if s.Kind() != KindWorkflow {
-		return workflowdecl.Workflow{}, false
+		return workflows.Workflow{}, false
 	}
 	view := s.admission.bound.Workflow()
 	return view, view.Present()
 }
 
-func (s SourceSnapshot) ActionView() (workflowdecl.ActionBody, bool) {
+func (s SourceSnapshot) ActionView() (workflows.ActionBody, bool) {
 	if s.Kind() != KindAction {
-		return workflowdecl.ActionBody{}, false
+		return workflows.ActionBody{}, false
 	}
 	view := s.admission.bound.ActionBody()
 	return view, view.Present()
 }
 
-func (s *SourceSnapshots) Declaration(reference source.Reference) (workflowdecl.Step, bool) {
+func (s *SourceSnapshots) Declaration(reference source.Reference) (workflows.Step, bool) {
 	if s == nil {
-		return workflowdecl.Step{}, false
+		return workflows.Step{}, false
 	}
 	s.mu.Lock()
 	admitted := s.documents[reference.Document]
 	s.mu.Unlock()
 	if admitted == nil || admitted.verify() != nil {
-		return workflowdecl.Step{}, false
+		return workflows.Step{}, false
 	}
 	return admitted.bound.Step(reference)
 }
 
-func (s *SourceSnapshots) Owns(step workflowdecl.Step) bool {
+func (s *SourceSnapshots) Owns(step workflows.Step) bool {
 	if s == nil || !step.Present() {
 		return false
 	}
@@ -329,7 +329,7 @@ func (s *SourceSnapshots) Owns(step workflowdecl.Step) bool {
 // Bound returns the snapshot's declarations while its capture remains
 // admitted, and nil otherwise. Bound's SourceIndex and Declarations accept a
 // nil receiver, so callers read either through this method directly.
-func (s SourceSnapshot) Bound() *workflowdecl.Bound {
+func (s SourceSnapshot) Bound() *workflows.Bound {
 	if s.verify() != nil {
 		return nil
 	}
@@ -340,7 +340,7 @@ func (s SourceSnapshot) Bound() *workflowdecl.Bound {
 // that view was bound by this snapshot, returning the quarantine cause when the
 // capture is no longer admitted. It also rejects the workflow view of an action
 // body. ValidateJob and ValidateStep apply the same checks to jobs and steps.
-func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.Workflow) error {
+func (s SourceSnapshot) ValidateWorkflow(view workflows.Workflow) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func (s SourceSnapshot) ValidateWorkflow(view workflowdecl.Workflow) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateJob(view workflowdecl.Job) error {
+func (s SourceSnapshot) ValidateJob(view workflows.Job) error {
 	if err := s.verify(); err != nil {
 		return err
 	}
@@ -360,7 +360,7 @@ func (s SourceSnapshot) ValidateJob(view workflowdecl.Job) error {
 	return nil
 }
 
-func (s SourceSnapshot) ValidateStep(view workflowdecl.Step) error {
+func (s SourceSnapshot) ValidateStep(view workflows.Step) error {
 	if err := s.verify(); err != nil {
 		return err
 	}

@@ -7,7 +7,7 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"github.com/kjanat/wacogo"
 )
@@ -93,7 +93,7 @@ func TestLoweredScriptSpansMatchSourceLookup(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatalf("parse errors: %v", errs)
 			}
-			exec, ok := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecRun)
+			exec, ok := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecRun)
 			if !ok || exec.Source == nil {
 				t.Fatal("run step lost its script source")
 			}

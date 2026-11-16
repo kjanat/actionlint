@@ -7,26 +7,26 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestTrustReadsPublishedDeclarations(t *testing.T) {
 	t.Parallel()
-	mode := &workflowlang.CacheMode{Kind: workflowlang.CacheModeWrite, Pos: &source.Position{Line: 2, Column: 13}}
-	hook := &workflowlang.String{Value: "pull_request_target"}
-	job := &workflowlang.Job{}
-	model := &workflowlang.Workflow{
-		On:        []workflowlang.Event{&workflowlang.WebhookEvent{Hook: hook}},
+	mode := &definition.CacheMode{Kind: definition.CacheModeWrite, Pos: &source.Position{Line: 2, Column: 13}}
+	hook := &definition.String{Value: "pull_request_target"}
+	job := &definition.Job{}
+	model := &definition.Workflow{
+		On:        []definition.Event{&definition.WebhookEvent{Hook: hook}},
 		CacheMode: mode,
-		Jobs:      map[string]*workflowlang.Job{"build": job},
+		Jobs:      map[string]*definition.Job{"build": job},
 	}
 	view := policyWorkflowView(model)
 	trust := NewTrust(view)
-	mode.Kind = workflowlang.CacheModeNone
+	mode.Kind = definition.CacheModeNone
 	hook.Value = "push"
-	job.If = &workflowlang.String{Value: "false"}
+	job.If = &definition.String{Value: "false"}
 	ownedJob, exists := view.Job("build")
 	if !exists {
 		t.Fatal("published job missing")
@@ -97,9 +97,9 @@ func TestReusableMetadataGrantBoundary(t *testing.T) {
 		ceiling, operation int
 	}{
 		{"inherited", calls.CacheModeDeclaration{}, 0, 1},
-		{"invalid", calls.DeclaredCacheMode(workflowlang.CacheModeInvalid), 0, 0},
-		{"explicit read", calls.DeclaredCacheMode(workflowlang.CacheModeRead), 0, 0},
-		{"explicit write exceeds caller", calls.DeclaredCacheMode(workflowlang.CacheModeWrite), 1, 0},
+		{"invalid", calls.DeclaredCacheMode(definition.CacheModeInvalid), 0, 0},
+		{"explicit read", calls.DeclaredCacheMode(definition.CacheModeRead), 0, 0},
+		{"explicit write exceeds caller", calls.DeclaredCacheMode(definition.CacheModeWrite), 1, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

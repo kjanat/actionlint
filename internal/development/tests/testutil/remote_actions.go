@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	actionfixtures "actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
+	"actionlint.kjanat.dev/v2/internal/development/tests/integration/actions/fixtures"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -84,7 +84,7 @@ func fixtureRepositoryID(fields map[string]string) (repository.ID, error) {
 func FixtureActions(t *testing.T) actions.Provider {
 	t.Helper()
 	const directory = "testdata/remote-actions"
-	entries, err := actionfixtures.Manifests.ReadDir(directory)
+	entries, err := fixtures.Manifests.ReadDir(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func FixtureActions(t *testing.T) actions.Provider {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yml" {
 			continue
 		}
-		data, err := actionfixtures.ReadManifest(entry.Name())
+		data, err := fixtures.ReadManifest(entry.Name())
 		if err != nil {
 			t.Fatal(err)
 		}

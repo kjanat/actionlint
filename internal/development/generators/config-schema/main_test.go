@@ -14,11 +14,11 @@ import (
 	"time"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	genfile "actionlint.kjanat.dev/v2/internal/development/generators/files"
+	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 
 	"github.com/google/go-cmp/cmp"

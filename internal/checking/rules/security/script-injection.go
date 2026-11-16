@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // ScriptInjectionRule is the single definition of the script-injection rule.

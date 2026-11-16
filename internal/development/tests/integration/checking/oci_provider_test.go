@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/ocitest"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"

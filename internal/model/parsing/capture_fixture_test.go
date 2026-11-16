@@ -6,14 +6,14 @@ import (
 	"slices"
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
-func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflowdecl.Workflow {
+func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflows.Workflow {
 	tb.Helper()
 	workflow, present := snapshot.WorkflowView()
 	if !present {
@@ -22,7 +22,7 @@ func snapshotWorkflow(tb testing.TB, snapshot SourceSnapshot) workflowdecl.Workf
 	return workflow
 }
 
-func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []workflowdecl.Step {
+func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []workflows.Step {
 	tb.Helper()
 	job, present := snapshotWorkflow(tb, snapshot).Job(key)
 	if !present {
@@ -31,7 +31,7 @@ func snapshotJobSteps(tb testing.TB, snapshot SourceSnapshot, key string) []work
 	return slices.Collect(job.Steps())
 }
 
-func snapshotActionSteps(tb testing.TB, snapshot SourceSnapshot) []workflowdecl.Step {
+func snapshotActionSteps(tb testing.TB, snapshot SourceSnapshot) []workflows.Step {
 	tb.Helper()
 	action, present := snapshot.ActionView()
 	if !present {
@@ -54,12 +54,12 @@ func sourceFixtureBase(tb testing.TB) string {
 type capturedSnapshots struct {
 	*SourceSnapshots
 	store   *capture.Store
-	sources *testutil.CapturedSources
+	sources *capturefixture.CapturedSources
 }
 
 func newCapturedSnapshots(tb testing.TB, base string) *capturedSnapshots {
 	tb.Helper()
-	store, sources := testutil.NewCapturedSources(tb, base)
+	store, sources := capturefixture.NewCapturedSources(tb, base)
 	registry, err := NewSourceSnapshots(store)
 	if err != nil {
 		tb.Fatal(err)

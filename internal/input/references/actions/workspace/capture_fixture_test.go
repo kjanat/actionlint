@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 )
 
 func sourceFixtureBase(tb testing.TB) string {
 	tb.Helper()
-	return testutil.CurrentDir(tb)
+	return capturefixture.CurrentDir(tb)
 }
 
 func newCapturedActionCache(tb testing.TB, root string, debug io.Writer, overlays ...capture.Overlay) *Cache {
@@ -40,7 +40,7 @@ func bindCapturedActionSources(tb testing.TB, cache *Cache, overlays ...capture.
 		explicit[document] = struct{}{}
 	}
 	cache.Configure(Options{Captures: store, Context: tb.Context(), WorkingDir: sourceFixtureBase(tb), ExplicitDocuments: explicit})
-	testutil.CloseCaptures(tb, store)
+	capturefixture.CloseCaptures(tb, store)
 }
 
 type capturedSnapshots = declarations.CapturedSnapshots

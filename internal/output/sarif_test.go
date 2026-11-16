@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"testing"
 
-	sarifcheck "actionlint.kjanat.dev/v2/internal/development/tests/support/sarif"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -46,7 +46,7 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 					}
 				}
 			}
-			sarifcheck.RequireValid(t, out.Bytes())
+			sarif.RequireValid(t, out.Bytes())
 			if err := json.Unmarshal(out.Bytes(), &document); err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +84,7 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 				}
 			}
 		}
-		sarifcheck.RequireValid(t, out.Bytes())
+		sarif.RequireValid(t, out.Bytes())
 		if err := json.Unmarshal(out.Bytes(), &document); err != nil {
 			t.Fatal(err)
 		}
@@ -131,7 +131,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 					}
 				}
 			}
-			sarifcheck.RequireValid(t, out.Bytes())
+			sarif.RequireValid(t, out.Bytes())
 			if err := json.Unmarshal(out.Bytes(), &document); err != nil {
 				t.Fatal(err)
 			}
@@ -184,7 +184,7 @@ func TestSARIFUnknownSourcePositions(t *testing.T) {
 			if err := WriteSARIF(&output, "test", nil, []results.Diagnostic{finding}); err != nil {
 				t.Fatal(err)
 			}
-			sarifcheck.RequireValid(t, output.Bytes())
+			sarif.RequireValid(t, output.Bytes())
 			var document struct {
 				Runs []struct {
 					Results []struct {
@@ -241,7 +241,7 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 				t.Fatal(err)
 			}
 			var document sarifDocument
-			sarifcheck.RequireValid(t, output.Bytes())
+			sarif.RequireValid(t, output.Bytes())
 			if err := json.Unmarshal(output.Bytes(), &document); err != nil {
 				t.Fatal(err)
 			}
@@ -274,7 +274,7 @@ func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	var document sarifDocument
-	sarifcheck.RequireValid(t, output.Bytes())
+	sarif.RequireValid(t, output.Bytes())
 	if err := json.Unmarshal(output.Bytes(), &document); err != nil {
 		t.Fatal(err)
 	}

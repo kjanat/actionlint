@@ -11,7 +11,7 @@ import (
 
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -36,12 +36,12 @@ type ContainerTarget struct {
 
 // ContainerLimitations uses provider evidence rather than inferring an
 // external provider's capabilities from the spelling of its labels.
-func (k *Knowledge) ContainerLimitations(job workflowdecl.Job) []ContainerTarget {
+func (k *Knowledge) ContainerLimitations(job workflows.Job) []ContainerTarget {
 	if k == nil || k.report.Target != "github" {
 		return nil
 	}
 	if job.Strategy != nil && job.Strategy.Matrix != nil {
-		if rows, complete := workflowdecl.MatrixResolution(job.Strategy).Combinations(256); complete && len(rows) == 0 {
+		if rows, complete := workflows.MatrixResolution(job.Strategy).Combinations(256); complete && len(rows) == 0 {
 			return nil
 		}
 	}

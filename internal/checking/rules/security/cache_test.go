@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -22,7 +22,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Bind("test", source, decoded, false, "").Workflow()
+	workflow := workflows.Bind("test", source, decoded, false, "").Workflow()
 	first, _ := workflow.Job("z_first")
 	second, _ := workflow.Job("a_second")
 	check := CacheWriteUntrustedChecks(workflow)
@@ -41,11 +41,11 @@ jobs:
 	}
 	// Without a declared ceiling, both reusable calls require their own finding.
 	decoded.CacheMode = nil
-	workflow = declaration.Bind("without-ceiling", source, decoded, false, "").Workflow()
+	workflow = workflows.Bind("without-ceiling", source, decoded, false, "").Workflow()
 	first, _ = workflow.Job("z_first")
 	second, _ = workflow.Job("a_second")
 	check = CacheCallUnrestrictedChecks(workflow)
-	for _, job := range []declaration.Job{second, first, second} {
+	for _, job := range []workflows.Job{second, first, second} {
 		findings := check.Job(job)
 		if len(findings) != 1 || findings[0].Rule != "cache-call-unrestricted" {
 			t.Fatalf("call lost its independent ceiling check: %+v", findings)

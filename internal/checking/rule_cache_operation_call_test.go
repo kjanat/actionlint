@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
@@ -425,7 +425,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 				if w == nil || len(errs) != 0 {
 					continue
 				}
-				_, found := workflowlang.FindWorkflowCallEvent(w)
+				_, found := definition.FindWorkflowCallEvent(w)
 				if !found {
 					continue
 				}

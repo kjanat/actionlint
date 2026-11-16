@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
@@ -75,7 +75,7 @@ jobs:
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "is duplicated") {
 				t.Fatalf("expected one duplicate key diagnostic, got %v", errs)
 			}
-			_, ok := workflowlang.FindWorkflowCallEvent(workflow)
+			_, ok := definition.FindWorkflowCallEvent(workflow)
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}

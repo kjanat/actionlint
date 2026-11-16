@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -17,7 +17,7 @@ import (
 type detailedAnalyzer struct{ findings []results.Diagnostic }
 
 func (a detailedAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "detailed-check", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Source}}
+	return checkinputs.Descriptor{Name: "detailed-check", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
 func (a detailedAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

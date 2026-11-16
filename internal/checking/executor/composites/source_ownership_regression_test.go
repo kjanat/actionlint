@@ -14,19 +14,19 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 type sourceMutationRule struct {
 	workflowvisit.Base
-	mutate   func(workflowdecl.Step)
+	mutate   func(workflows.Step)
 	visits   int
 	metadata int
 }
 
-func (r *sourceMutationRule) VisitStep(step workflowdecl.Step) error {
+func (r *sourceMutationRule) VisitStep(step workflows.Step) error {
 	r.visits++
 	r.mutate(step)
 	return nil
@@ -34,11 +34,11 @@ func (r *sourceMutationRule) VisitStep(step workflowdecl.Step) error {
 
 func (r *sourceMutationRule) EnterInvocation(workflowvisit.Invocation) error { return nil }
 func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error       { return nil }
-func (r *sourceMutationRule) VisitInvocationStep(step workflowdecl.Step) error {
+func (r *sourceMutationRule) VisitInvocationStep(step workflows.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) VisitOpaqueAction(step workflowdecl.Step) error {
+func (r *sourceMutationRule) VisitOpaqueAction(step workflows.Step) error {
 	return r.VisitStep(step)
 }
 
@@ -71,7 +71,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 			if level == "job" {
 				defaults = parsed.Jobs["test"].Defaults
 			}
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflowdecl.Step) {
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflows.Step) {
 				defaults.Run.Shell.Value = "pwsh"
 			}}
 			f.options.Rules = append(f.options.Rules, probe)
@@ -101,7 +101,7 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 	f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 	captureMutableMetadata(f)
 	mutations := 0
-	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflowdecl.Step) {
+	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflows.Step) {
 		if action, ok := step.Action(); ok && action.Uses.Text() == "$/a" {
 			mutateCallInput(t, f, step, "$/b")
 			mutations++
@@ -134,12 +134,12 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 
 type workflowPreMutation struct {
 	workflowvisit.Base
-	mutate   func(*workflowlang.Workflow)
-	original *workflowlang.Workflow
+	mutate   func(*definition.Workflow)
+	original *definition.Workflow
 	runs     int
 }
 
-func (rule *workflowPreMutation) VisitWorkflowPre(_ workflowdecl.Workflow) error {
+func (rule *workflowPreMutation) VisitWorkflowPre(_ workflows.Workflow) error {
 	rule.runs++
 	rule.mutate(rule.original)
 	return nil
@@ -155,8 +155,8 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	}
 	baselineScopes := checkoutSnapshot(baseline)
 	workflow := f.original
-	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-checkout", ""), mutate: func(*workflowlang.Workflow) {
-		checkout := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
+	probe := &workflowPreMutation{original: f.original, Base: workflowvisit.NewBase("mutate-checkout", ""), mutate: func(*definition.Workflow) {
+		checkout := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
 		checkout.Uses.Value = "actions/checkout@v5"
 		checkout.Inputs["path"].Value.Value = "mutated-repo"
 	}}
@@ -188,14 +188,14 @@ func captureMutableMetadata(f *invocationFixture) {
 	f.mutateMeta = func(meta *actionmeta.Metadata) { f.mutableMetadata[filepath.Clean(meta.Path())] = meta }
 }
 
-func mutateCallInput(t *testing.T, f *invocationFixture, view workflowdecl.Step, text string) {
+func mutateCallInput(t *testing.T, f *invocationFixture, view workflows.Step, text string) {
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
 		for key, job := range f.original.Jobs {
 			owned := workflowStepViews(t, workflowView(t, f.root), key)
 			for index, step := range job.Steps {
 				if owned[index].Reference() == view.Reference() {
-					step.Exec.(*workflowlang.ExecAction).Uses.Value = text
+					step.Exec.(*definition.ExecAction).Uses.Value = text
 					return
 				}
 			}

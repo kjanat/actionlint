@@ -8,7 +8,7 @@ import (
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // JoinLiteralRule is the single definition of the join-literal rule.

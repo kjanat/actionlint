@@ -3,8 +3,8 @@ package runners
 import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )
@@ -51,15 +51,15 @@ func containerUse(target ContainerTarget, kind ContainerUseKind, name string, po
 
 // JobContainerUses evaluates job containers and services using established
 // runner and matrix facts. It does not read action metadata or acquire sources.
-func (k *Knowledge) JobContainerUses(job workflowdecl.Job) []ContainerUse {
+func (k *Knowledge) JobContainerUses(job workflows.Job) []ContainerUse {
 	targets := k.ContainerLimitations(job)
 	var uses []ContainerUse
-	add := func(container *workflowlang.Container, kind ContainerUseKind, name string) {
+	add := func(container *definition.Container, kind ContainerUseKind, name string) {
 		if container == nil {
 			return
 		}
 		for _, target := range targets {
-			image := workflowdecl.Scalar(container.Image)
+			image := workflows.Scalar(container.Image)
 			if container.Expression != nil {
 				image = target.Evaluate(container.Expression.Value)
 				if objectImage, ok := image.Prop("image"); ok {
@@ -98,7 +98,7 @@ func (k *Knowledge) JobContainerUses(job workflowdecl.Job) []ContainerUse {
 
 // DockerActionUses supplies execution alternatives after the caller has
 // established that the action uses Docker. Guards belong to its enclosing calls.
-func DockerActionUses(step workflowdecl.Step, targets []ContainerTarget, guards []string) []ContainerUse {
+func DockerActionUses(step workflows.Step, targets []ContainerTarget, guards []string) []ContainerUse {
 	action, present := step.Action()
 	if !present {
 		return nil

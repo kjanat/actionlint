@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	testutil "actionlint.kjanat.dev/v2/internal/development/tests/support"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 )
 
 // Whole-workflow examples from GitHub's expression reference, checked 2026-11-04:

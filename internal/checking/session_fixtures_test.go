@@ -11,7 +11,7 @@ import (
 
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 )
 
 func executableFixture(t *testing.T) (string, func(...string)) {

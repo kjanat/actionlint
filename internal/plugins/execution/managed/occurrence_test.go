@@ -18,7 +18,7 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -33,7 +33,7 @@ func (g *occurrenceGuest) CheckDocument(_ context.Context, input checkinputs.Ana
 type occurrenceObserver struct{ input checkinputs.AnalyzerInput }
 
 func (*occurrenceObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Scripts, rulemeta.Invocations, rulemeta.Execution}}
+	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
 func (observer *occurrenceObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

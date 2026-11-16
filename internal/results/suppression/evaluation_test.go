@@ -3,7 +3,7 @@ package suppression
 import (
 	"testing"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {

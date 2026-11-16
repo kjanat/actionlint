@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -50,7 +50,7 @@ func TestMissingPermissions(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			view := declaration.Bind("test", source, ast, false, "").Workflow()
+			view := workflows.Bind("test", source, ast, false, "").Workflow()
 			var lines []int
 			for _, finding := range security.MissingPermissionsChecks(nil).Workflow(view) {
 				if finding.Severity != "" || finding.Start.Column != 3 {

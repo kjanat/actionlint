@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )

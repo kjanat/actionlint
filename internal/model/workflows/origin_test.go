@@ -1,11 +1,11 @@
-package declaration
+package workflows
 
 import (
 	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
@@ -17,9 +17,9 @@ func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			value := &workflowlang.String{Value: tc.value}
-			step := &workflowlang.Step{Pos: &source.Position{Line: 3, Column: 7}, ID: value, Name: value, Exec: &workflowlang.ExecAction{Uses: value}}
-			bound := Bind("origin-fixture", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {Steps: []*workflowlang.Step{step}}}}, false, "")
+			value := &definition.String{Value: tc.value}
+			step := &definition.Step{Pos: &source.Position{Line: 3, Column: 7}, ID: value, Name: value, Exec: &definition.ExecAction{Uses: value}}
+			bound := Bind("origin-fixture", "", &definition.Workflow{Jobs: map[string]*definition.Job{"build": {Steps: []*definition.Step{step}}}}, false, "")
 			job, present := bound.Workflow().Job("build")
 			if !present {
 				t.Fatal("owned job unavailable")
@@ -50,9 +50,9 @@ func TestJobOriginReadsUsesSelector(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			uses := &workflowlang.String{Value: tc.value}
-			job := &workflowlang.Job{ID: &workflowlang.String{Value: "Build"}, WorkflowCall: &workflowlang.WorkflowCall{Uses: uses}}
-			bound := Bind("origin-fixture", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}, false, "")
+			uses := &definition.String{Value: tc.value}
+			job := &definition.Job{ID: &definition.String{Value: "Build"}, WorkflowCall: &definition.WorkflowCall{Uses: uses}}
+			bound := Bind("origin-fixture", "", &definition.Workflow{Jobs: map[string]*definition.Job{"build": job}}, false, "")
 			view, present := bound.Workflow().Job("build")
 			if !present {
 				t.Fatal("owned job unavailable")

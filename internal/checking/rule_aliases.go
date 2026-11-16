@@ -3,7 +3,7 @@ package checking
 import (
 	"slices"
 
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // ResolveRuleAlias looks up historical spellings declared by the built-in rules.

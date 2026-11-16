@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -58,12 +58,12 @@ const (
 )
 
 // ConfigurationScope maps a manifest scope to its rule configuration scope.
-func (s Scope) ConfigurationScope() (rulemeta.ConfigurationScope, error) {
+func (s Scope) ConfigurationScope() (rule.ConfigurationScope, error) {
 	switch s {
 	case ScopeSource:
-		return rulemeta.SourceConfiguration, nil
+		return rule.SourceConfiguration, nil
 	case ScopeComposite:
-		return rulemeta.CompositeConfiguration, nil
+		return rule.CompositeConfiguration, nil
 	default:
 		return 0, fmt.Errorf("unknown configuration scope %q", s)
 	}
@@ -77,13 +77,13 @@ type Manifest struct {
 	InvocationDefinitions []commands.Definition `json:"invocation_definitions,omitempty"`
 	// Metadata declares publisher identity for registry admission. It does not
 	// grant capabilities or change the provider's execution contract.
-	Metadata  json.RawMessage     `json:"metadata,omitempty"`
-	ID        string              `json:"id"`
-	Version   string              `json:"version"`
-	Role      Role                `json:"role"`
-	Rule      rulemeta.Descriptor `json:"rule"`
-	Scope     Scope               `json:"scope"`
-	Transport Transport           `json:"transport"`
+	Metadata  json.RawMessage `json:"metadata,omitempty"`
+	ID        string          `json:"id"`
+	Version   string          `json:"version"`
+	Role      Role            `json:"role"`
+	Rule      rule.Descriptor `json:"rule"`
+	Scope     Scope           `json:"scope"`
+	Transport Transport       `json:"transport"`
 	// Artifacts lists per-platform executables or modules; empty means the
 	// process entry is discovered on PATH.
 	Artifacts []Artifact `json:"artifacts,omitempty"`

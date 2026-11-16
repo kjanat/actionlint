@@ -9,14 +9,14 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func (rule *Checker) scopeExpressionSource(value string, pos *source.Position) func() {
 	previous, offset := rule.expressionSource, rule.expressionOffset
 	rule.expressionSource, rule.expressionOffset = nil, 0
 	if pos != nil {
-		var source *workflowlang.ScriptSource
+		var source *definition.ScriptSource
 		if rule.workflow.Present() {
 			source = rule.workflow.ExpressionSources[*pos]
 		}
@@ -46,7 +46,7 @@ func (rule *Checker) expressionPosition(offset int, end bool) *source.Position {
 }
 
 // scalarPosition returns the position of an optional scalar.
-func scalarPosition(s *workflowlang.String) *source.Position {
+func scalarPosition(s *definition.String) *source.Position {
 	if s == nil {
 		return nil
 	}
@@ -61,7 +61,7 @@ func expressionLiteral(text string) (any, bool) {
 	return expreval.ConditionConstantValue(expression)
 }
 
-func rawValuePosition(value workflowlang.RawYAMLValue) *source.Position {
+func rawValuePosition(value definition.RawYAMLValue) *source.Position {
 	if value == nil {
 		return nil
 	}

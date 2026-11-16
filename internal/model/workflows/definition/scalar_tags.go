@@ -1,4 +1,4 @@
-package workflow
+package definition
 
 // Scalar tags preserve source type facts independently of the YAML decoder.
 const (

@@ -17,8 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -72,12 +72,12 @@ func (rule *ExecutableChecker) Errorf(pos *source.Position, format string, args 
 	}
 }
 
-func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflowdecl.Workflow) error {
+func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflows.Workflow) error {
 	if !declaration.Present() {
 		return errors.New("executable-bit workflow declaration is unavailable")
 	}
-	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
-	env := workflowdecl.Environment(declaration.Env)
+	defaults := workflows.DefaultsRun(declaration.Defaults)
+	env := workflows.Environment(declaration.Env)
 	rule.workflowDir = execution.DefaultDirectory(defaults)
 	rule.workflowShell = execution.DefaultShell(defaults)
 	rule.workflowEnv = execution.ShellEnvironmentUnknown(env)
@@ -85,7 +85,7 @@ func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflowdecl.Workflo
 	rule.workflowPathUnknown = execution.ShellPathUnknown(env)
 	rule.callerRepositoryUnknown = false
 	for _, event := range declaration.On {
-		if _, call := event.(*workflowlang.WorkflowCallEvent); call {
+		if _, call := event.(*definition.WorkflowCallEvent); call {
 			rule.callerRepositoryUnknown = true
 			break
 		}
@@ -93,16 +93,16 @@ func (rule *ExecutableChecker) VisitWorkflowPre(declaration workflowdecl.Workflo
 	return nil
 }
 
-func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.Job) error {
+func (rule *ExecutableChecker) VisitJobPre(declaration workflows.Job) error {
 	if !declaration.Present() {
 		return errors.New("executable-bit job declaration is unavailable")
 	}
-	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
-	jobEnv := workflowdecl.Environment(declaration.Env)
+	defaults := workflows.DefaultsRun(declaration.Defaults)
+	jobEnv := workflows.Environment(declaration.Env)
 	rule.jobDir, rule.jobShell = execution.DefaultDirectory(defaults), execution.DefaultShell(defaults)
 	rule.jobEnv = rule.workflowEnv || execution.ShellEnvironmentUnknown(jobEnv)
 	knowledge := rule.context.Runners.Job(declaration)
-	rule.runnerShell = scriptmodel.DefaultShell(workflowdecl.Container(declaration.Container), knowledge.Shell)
+	rule.runnerShell = scriptmodel.DefaultShell(workflows.Container(declaration.Container), knowledge.Shell)
 	platform := knowledge.Platform
 	rule.jobGitEnv = execution.CheckoutEnvironmentUnknown(rule.workflowGitEnv, platform) || execution.CheckoutEnvironmentUnknown(jobEnv, platform)
 	rule.jobPathUnknown = rule.workflowPathUnknown || execution.ShellPathUnknown(jobEnv)
@@ -118,7 +118,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.Job) error {
 		hasNeeds = true
 		break
 	}
-	if enabled, known := workflowconditions.JobCondition(workflowdecl.Condition(declaration.If), hasNeeds); known && !enabled {
+	if enabled, known := workflowconditions.JobCondition(workflows.Condition(declaration.If), hasNeeds); known && !enabled {
 		rule.unix = false
 	}
 	rule.executableState = newExecutableState(knowledge.Ephemeral, rule.callerRepositoryUnknown)
@@ -126,7 +126,7 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflowdecl.Job) error {
 	return nil
 }
 
-func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.Step) error {
+func (rule *ExecutableChecker) VisitStep(declaration workflows.Step) error {
 	if !declaration.Present() {
 		return errors.New("executable-bit step declaration is unavailable")
 	}
@@ -140,20 +140,20 @@ func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.Step) error {
 	if workflowconditions.CanRunAfterFailure(declaration.Condition()) {
 		rule.afterPossibleFailure()
 	}
-	if workflowconditions.BoolMayBeTrue(workflowdecl.Bool(declaration.Background)) {
+	if workflowconditions.BoolMayBeTrue(workflows.Bool(declaration.Background)) {
 		rule.afterConcurrentExecution()
 		return nil
 	}
 	kind, _ := declaration.Kind()
 	switch kind {
-	case workflowlang.ExecKindParallel:
+	case definition.ExecKindParallel:
 		rule.afterConcurrentExecution()
-	case workflowlang.ExecKindAction:
+	case definition.ExecKindAction:
 		action, ok := declaration.Action()
 		if !ok {
 			return nil
 		}
-		if rule.jobGitEnv || execution.CheckoutEnvironmentUnknown(workflowdecl.Environment(declaration.Env), rule.paths.Platform) {
+		if rule.jobGitEnv || execution.CheckoutEnvironmentUnknown(workflows.Environment(declaration.Env), rule.paths.Platform) {
 			rule.repositoryUnknown = true
 			rule.actionPristine = false
 		}
@@ -162,19 +162,19 @@ func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.Step) error {
 		} else if name, _, versioned := strings.Cut(action.Uses.Text(), "@"); !versioned || !strings.EqualFold(name, "actions/checkout") {
 			rule.actionPristine = false
 		}
-		rule.checkout(action, !conditionKnown || workflowconditions.BoolMayBeTrue(workflowdecl.Bool(declaration.ContinueOnError)))
-	case workflowlang.ExecKindRun:
+		rule.checkout(action, !conditionKnown || workflowconditions.BoolMayBeTrue(workflows.Bool(declaration.ContinueOnError)))
+	case definition.ExecKindRun:
 		runView, ok := declaration.Run()
 		if !ok {
 			return nil
 		}
 		workspacePristine := rule.pristine
-		independent := rule.paths.EffectiveDirectory(workflowdecl.Scalar(runView.WorkingDirectory), rule.jobDir, rule.workflowDir).Kind == execution.DirectoryActionKnown
+		independent := rule.paths.EffectiveDirectory(workflows.Scalar(runView.WorkingDirectory), rule.jobDir, rule.workflowDir).Kind == execution.DirectoryActionKnown
 		if independent {
 			rule.pristine = rule.actionPristine
 		}
-		rule.pathUnknown = rule.jobPathUnknown || execution.ShellPathUnknown(workflowdecl.Environment(declaration.Env))
-		if rule.jobEnv || execution.ShellEnvironmentUnknown(workflowdecl.Environment(declaration.Env)) {
+		rule.pathUnknown = rule.jobPathUnknown || execution.ShellPathUnknown(workflows.Environment(declaration.Env))
+		if rule.jobEnv || execution.ShellEnvironmentUnknown(workflows.Environment(declaration.Env)) {
 			rule.pristine = false
 		}
 		if rule.pristine {
@@ -193,12 +193,12 @@ func (rule *ExecutableChecker) VisitStep(declaration workflowdecl.Step) error {
 		if !rule.pristine {
 			rule.repositoryUnknown = true
 		}
-	case workflowlang.ExecKindWait, workflowlang.ExecKindCancel:
+	case definition.ExecKindWait, definition.ExecKindCancel:
 	}
 	return nil
 }
 
-func (rule *ExecutableChecker) checkout(action *workflowlang.ExecAction, mayNotComplete bool) {
+func (rule *ExecutableChecker) checkout(action *definition.ExecAction, mayNotComplete bool) {
 	rule.pristine = false
 	if rule.repositoryUnknown {
 		return
@@ -213,14 +213,14 @@ func (rule *ExecutableChecker) checkout(action *workflowlang.ExecAction, mayNotC
 		return
 	}
 	for _, input := range []string{"repository", "ref", "sparse-checkout", "github-server-url"} {
-		if inputValue, known := checkoutInput(workflowdecl.ResolvedInputs(action), input); !known || inputValue != "" {
+		if inputValue, known := checkoutInput(workflows.ResolvedInputs(action), input); !known || inputValue != "" {
 			return
 		}
 	}
-	if clean, known := checkoutInput(workflowdecl.ResolvedInputs(action), "clean"); !known || clean != "" && !strings.EqualFold(clean, "true") {
+	if clean, known := checkoutInput(workflows.ResolvedInputs(action), "clean"); !known || clean != "" && !strings.EqualFold(clean, "true") {
 		return
 	}
-	checkout, known := checkoutInput(workflowdecl.ResolvedInputs(action), "path")
+	checkout, known := checkoutInput(workflows.ResolvedInputs(action), "path")
 	checkout, representable := execution.RunnerRelativePath(checkout, rule.paths.Platform)
 	if !known || !representable {
 		return
@@ -244,8 +244,8 @@ func checkoutInput(inputs mapping.Mapping, name string) (string, bool) {
 	return strings.TrimSpace(text), known
 }
 
-func (rule *ExecutableChecker) checkScript(run *workflowlang.ExecRun) {
-	semanticRun := workflowdecl.Scalar(run.Run)
+func (rule *ExecutableChecker) checkScript(run *definition.ExecRun) {
+	semanticRun := workflows.Scalar(run.Run)
 	runText, known := semanticRun.Text()
 	if !known {
 		if semanticRun.State() != value.Missing {
@@ -253,14 +253,14 @@ func (rule *ExecutableChecker) checkScript(run *workflowlang.ExecRun) {
 		}
 		return
 	}
-	shell := execution.ResolveShell(workflowdecl.Scalar(run.Shell), rule.jobShell, rule.workflowShell, rule.runnerShell)
+	shell := execution.ResolveShell(workflows.Scalar(run.Shell), rule.jobShell, rule.workflowShell, rule.runnerShell)
 	shellName := strings.ToLower(shell.Name)
 	if shellName != "bash" && shellName != "sh" {
 		rule.pristine = false
 		return
 	}
 	// Expressions can inject shell syntax, including additional commands.
-	if workflowdecl.Scalar(run.Run).State() == value.Dynamic || workflowdecl.Scalar(run.Run).State() == value.Invalid {
+	if workflows.Scalar(run.Run).State() == value.Dynamic || workflows.Scalar(run.Run).State() == value.Invalid {
 		rule.pristine = false
 		return
 	}
@@ -273,13 +273,13 @@ func (rule *ExecutableChecker) checkScript(run *workflowlang.ExecRun) {
 		rule.pristine = false
 		return
 	}
-	directory := rule.paths.EffectiveDirectory(workflowdecl.Scalar(run.WorkingDirectory), rule.jobDir, rule.workflowDir)
+	directory := rule.paths.EffectiveDirectory(workflows.Scalar(run.WorkingDirectory), rule.jobDir, rule.workflowDir)
 	for _, statement := range file.Stmts {
 		rule.statement(statement, run, runText, &directory)
 	}
 }
 
-func (rule *ExecutableChecker) statement(statement *syntax.Stmt, run *workflowlang.ExecRun, runText string, directory *execution.Directory) {
+func (rule *ExecutableChecker) statement(statement *syntax.Stmt, run *definition.ExecRun, runText string, directory *execution.Directory) {
 	if !rule.pristine {
 		return
 	}
@@ -410,12 +410,12 @@ func standardShellDescriptor(value string) bool {
 	return value == "0" || value == "1" || value == "2"
 }
 
-func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *workflowlang.ExecRun, runText string, directory *execution.Directory) {
+func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.ExecRun, runText string, directory *execution.Directory) {
 	if len(command.Args) == 0 {
 		rule.pristine = false
 		return
 	}
-	shell := execution.ResolveShell(workflowdecl.Scalar(run.Shell), rule.jobShell, rule.workflowShell, rule.runnerShell)
+	shell := execution.ResolveShell(workflows.Scalar(run.Shell), rule.jobShell, rule.workflowShell, rule.runnerShell)
 	bashReadonly := !rule.shIsDash || !strings.EqualFold(shell.Name, "sh")
 	for _, assignment := range command.Assigns {
 		if assignment.Append || assignment.Naked || assignment.Index != nil || assignment.Array != nil {
@@ -598,7 +598,7 @@ func (rule *ExecutableChecker) scriptPath(directory execution.Directory, script 
 	return executableLocation{repository: filepath.ToSlash(relative), runner: runnerPath}, true
 }
 
-func (rule *ExecutableChecker) checkInvocation(run *workflowlang.ExecRun, runText string, word *syntax.Word, directory execution.Directory, script string) {
+func (rule *ExecutableChecker) checkInvocation(run *definition.ExecRun, runText string, word *syntax.Word, directory execution.Directory, script string) {
 	if rule.skipFindings {
 		return
 	}

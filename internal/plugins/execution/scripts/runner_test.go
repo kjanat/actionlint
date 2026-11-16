@@ -23,8 +23,8 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
@@ -37,7 +37,7 @@ func scriptFixture(t *testing.T, input string) scriptexecution.Unit {
 	t.Helper()
 	content := strings.Replace(input, "run:", "run: &script", 1) + "\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: *script\n"
 	document := parsing.Workflow([]byte(content))
-	run, ok := document.Workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecRun)
+	run, ok := document.Workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecRun)
 	if !ok {
 		t.Fatal("fixture is not a run step")
 	}
@@ -57,7 +57,7 @@ func scriptFixture(t *testing.T, input string) scriptexecution.Unit {
 	if !ok {
 		t.Fatal("fixture has no run")
 	}
-	return scriptexecution.Unit{Run: &workflowlang.ExecRun{Run: run.Run, Source: view.Source, RunPos: run.RunPos}, Path: "fix.yml", Content: []byte(content), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
+	return scriptexecution.Unit{Run: &definition.ExecRun{Run: run.Run, Source: view.Source, RunPos: run.RunPos}, Path: "fix.yml", Content: []byte(content), Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
 }
 
 // generated prepares a script as a shell preparation does: a kept shebang,

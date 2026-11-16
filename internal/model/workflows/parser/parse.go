@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
@@ -46,19 +46,19 @@ func PosAt(n *codec.Node) *source.Position {
 	return &source.Position{Line: n.Line, Column: n.Column}
 }
 
-func newString(n *codec.Node) *workflowlang.String {
+func newString(n *codec.Node) *definition.String {
 	quoted := n.Style&(codec.DoubleQuotedStyle|codec.SingleQuotedStyle) != 0
 	switch n.Kind {
 	case codec.DocumentNode, codec.SequenceNode, codec.MappingNode, codec.ScalarNode, codec.AliasNode:
 	default:
-		return &workflowlang.String{Value: n.Value, Quoted: quoted, Pos: PosAt(n)}
+		return &definition.String{Value: n.Value, Quoted: quoted, Pos: PosAt(n)}
 	}
 	pos := source.Position{Line: n.Line, Column: n.Column}
-	return &workflowlang.String{
+	return &definition.String{
 		Value:  n.Value,
 		Quoted: quoted,
 		Pos:    &pos,
-		SourceScalar: workflowlang.SourceScalar{
+		SourceScalar: definition.SourceScalar{
 			HasSource: true,
 			Kind:      n.Kind,
 			Tag:       n.Tag,
@@ -72,7 +72,7 @@ func newString(n *codec.Node) *workflowlang.String {
 type workflowMappingEntry struct {
 	// id is a key in lower case for comparing case-insensitive keys.
 	id  string
-	key *workflowlang.String
+	key *definition.String
 	val *codec.Node
 }
 
@@ -102,7 +102,7 @@ type Parser struct {
 	sourceLines        []string
 	aliases            map[*codec.Node]*codec.Node
 	scalarContexts     map[source.Position]sourcemap.Context
-	scalarSources      map[source.Position]*workflowlang.ScriptSource
+	scalarSources      map[source.Position]*definition.ScriptSource
 	scalarComments     map[source.Position]scalarCommentNodes
 	scalarDeclarations map[source.Position]scalarCommentNodes
 	// workflowCallFindings holds the findings reported while reading the
@@ -147,7 +147,7 @@ func (p *Parser) kindErrorf(n *codec.Node, code Code, format string, args ...any
 	p.error(n, code, m)
 }
 
-func (p *Parser) unexpectedKey(s *workflowlang.String, sec string, expected []string) {
+func (p *Parser) unexpectedKey(s *definition.String, sec string, expected []string) {
 	if !strings.ContainsRune(sec, ' ') {
 		sec = fmt.Sprintf("%q section", sec)
 	}
@@ -200,27 +200,27 @@ func (p *Parser) missingExpression(n *codec.Node, expecting string) {
 	p.kindErrorf(n, CodeExpressionForm, "expecting a single ${{...}} expression or %s, but found plain text node", expecting)
 }
 
-func (p *Parser) parseExpression(n *codec.Node, expecting string) *workflowlang.String {
-	if !workflowlang.IsExprAssigned(n.Value) {
+func (p *Parser) parseExpression(n *codec.Node, expecting string) *definition.String {
+	if !definition.IsExprAssigned(n.Value) {
 		p.missingExpression(n, expecting)
 		return nil
 	}
 	return newString(n)
 }
 
-func (p *Parser) mayParseExpression(n *codec.Node) *workflowlang.String {
-	if n.Tag != workflowlang.YamlTagStr {
+func (p *Parser) mayParseExpression(n *codec.Node) *definition.String {
+	if n.Tag != definition.YamlTagStr {
 		return nil
 	}
-	if !workflowlang.IsExprAssigned(n.Value) {
+	if !definition.IsExprAssigned(n.Value) {
 		return nil
 	}
 	return newString(n)
 }
 
-func (p *Parser) parseString(n *codec.Node, allowEmpty bool) *workflowlang.String {
+func (p *Parser) parseString(n *codec.Node, allowEmpty bool) *definition.String {
 	if !p.CheckString(n, allowEmpty) {
-		return &workflowlang.String{Value: "", Quoted: false, Pos: PosAt(n)}
+		return &definition.String{Value: "", Quoted: false, Pos: PosAt(n)}
 	}
 	return newString(n)
 }
@@ -228,12 +228,12 @@ func (p *Parser) parseString(n *codec.Node, allowEmpty bool) *workflowlang.Strin
 // parseCondition preserves the distinction between YAML null and the String "null".
 // GitHub normalises plain YAML booleans such as True or FALSE before compiling the
 // condition, so they read as the expression literals true and false.
-func (p *Parser) parseCondition(n *codec.Node) *workflowlang.String {
+func (p *Parser) parseCondition(n *codec.Node) *definition.String {
 	s := p.parseString(n, true)
 	switch n.Tag {
-	case workflowlang.YamlTagNull:
+	case definition.YamlTagNull:
 		s.Value = ""
-	case workflowlang.YamlTagBool:
+	case definition.YamlTagBool:
 		s.Value = strings.ToLower(s.Value)
 	}
 	if strings.TrimSpace(s.Value) == "" {
@@ -243,7 +243,7 @@ func (p *Parser) parseCondition(n *codec.Node) *workflowlang.String {
 }
 
 // parseStaticString folds a sole literal expression before downstream validation.
-func (p *Parser) parseStaticString(n *codec.Node) *workflowlang.String {
+func (p *Parser) parseStaticString(n *codec.Node) *definition.String {
 	if value := exprsyntax.LiteralExpressionValue(n.Value); value != nil {
 		source := newString(n).SourceScalar
 		literal := *n
@@ -258,12 +258,12 @@ func (p *Parser) parseStaticString(n *codec.Node) *workflowlang.String {
 	return p.parseString(n, false)
 }
 
-func (p *Parser) parseStringSequence(sec string, n *codec.Node, allowEmpty bool) []*workflowlang.String {
+func (p *Parser) parseStringSequence(sec string, n *codec.Node, allowEmpty bool) []*definition.String {
 	if ok := p.checkSequence(sec, n, allowEmpty); !ok {
 		return nil
 	}
 
-	ss := make([]*workflowlang.String, 0, len(n.Content))
+	ss := make([]*definition.String, 0, len(n.Content))
 	for _, c := range n.Content {
 		s := p.parseString(c, false)
 		if s != nil {
@@ -273,23 +273,23 @@ func (p *Parser) parseStringSequence(sec string, n *codec.Node, allowEmpty bool)
 	return ss
 }
 
-func (p *Parser) parseStringOrStringSequence(sec string, n *codec.Node) []*workflowlang.String {
+func (p *Parser) parseStringOrStringSequence(sec string, n *codec.Node) []*definition.String {
 	if n.Kind == codec.ScalarNode {
-		return []*workflowlang.String{p.parseString(n, false)}
+		return []*definition.String{p.parseString(n, false)}
 	}
 	return p.parseStringSequence(sec, n, false)
 }
 
-func (p *Parser) parseLiteralBool(n *codec.Node) *workflowlang.Bool {
-	if n.Kind != codec.ScalarNode || n.Tag != workflowlang.YamlTagBool {
+func (p *Parser) parseLiteralBool(n *codec.Node) *definition.Bool {
+	if n.Kind != codec.ScalarNode || n.Tag != definition.YamlTagBool {
 		p.typeErrorf(n, "expected boolean literal but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
 		return nil
 	}
 	return p.parseBool(n)
 }
 
-func (p *Parser) parseBool(n *codec.Node) *workflowlang.Bool {
-	if n.Kind != codec.ScalarNode || (n.Tag != workflowlang.YamlTagBool && n.Tag != workflowlang.YamlTagStr) {
+func (p *Parser) parseBool(n *codec.Node) *definition.Bool {
+	if n.Kind != codec.ScalarNode || (n.Tag != definition.YamlTagBool && n.Tag != definition.YamlTagStr) {
 		p.typeErrorf(n, "expected bool value but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
 		return nil
 	}
@@ -297,22 +297,22 @@ func (p *Parser) parseBool(n *codec.Node) *workflowlang.Bool {
 		return nil
 	}
 
-	if n.Tag == workflowlang.YamlTagStr {
+	if n.Tag == definition.YamlTagStr {
 		e := p.parseExpression(n, "boolean literal \"true\" or \"false\"")
-		return &workflowlang.Bool{
+		return &definition.Bool{
 			Expression: e,
 			Pos:        PosAt(n),
 		}
 	}
 
-	return &workflowlang.Bool{
+	return &definition.Bool{
 		Value: strings.EqualFold(n.Value, "true"),
 		Pos:   PosAt(n),
 	}
 }
 
-func (p *Parser) parseInt(n *codec.Node) *workflowlang.Int {
-	if n.Kind != codec.ScalarNode || (n.Tag != workflowlang.YamlTagInt && n.Tag != workflowlang.YamlTagFloat && n.Tag != workflowlang.YamlTagStr) {
+func (p *Parser) parseInt(n *codec.Node) *definition.Int {
+	if n.Kind != codec.ScalarNode || (n.Tag != definition.YamlTagInt && n.Tag != definition.YamlTagFloat && n.Tag != definition.YamlTagStr) {
 		p.typeErrorf(n, "expected scalar node for integer value but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
 		return nil
 	}
@@ -320,25 +320,25 @@ func (p *Parser) parseInt(n *codec.Node) *workflowlang.Int {
 		return nil
 	}
 
-	if n.Tag == workflowlang.YamlTagStr {
+	if n.Tag == definition.YamlTagStr {
 		e := p.parseExpression(n, "integer literal")
 		if e == nil {
 			return nil
 		}
-		return &workflowlang.Int{
+		return &definition.Int{
 			Expression: e,
 			Pos:        PosAt(n),
 		}
 	}
 
-	if n.Tag == workflowlang.YamlTagFloat {
+	if n.Tag == definition.YamlTagFloat {
 		// GitHub converts a fractional literal by truncating toward zero.
 		f, err := strconv.ParseFloat(n.Value, 64)
 		if err != nil || math.IsNaN(f) || math.Trunc(f) < math.MinInt32 || math.Trunc(f) > math.MaxInt32 {
 			p.errorf(n, CodeInvalidValue, "invalid integer value: %q", n.Value)
 			return nil
 		}
-		return &workflowlang.Int{
+		return &definition.Int{
 			Value:         int(math.Trunc(f)),
 			TruncatedFrom: n.Value,
 			Pos:           PosAt(n),
@@ -351,7 +351,7 @@ func (p *Parser) parseInt(n *codec.Node) *workflowlang.Int {
 		return nil
 	}
 
-	return &workflowlang.Int{
+	return &definition.Int{
 		Value: i,
 		Pos:   PosAt(n),
 	}
@@ -384,8 +384,8 @@ func parseYAMLInteger(value string) (int, error) {
 	return -1 - int(math.MaxUint32-n), nil
 }
 
-func (p *Parser) parseFloat(n *codec.Node) *workflowlang.Float {
-	if n.Kind != codec.ScalarNode || (n.Tag != workflowlang.YamlTagFloat && n.Tag != workflowlang.YamlTagInt && n.Tag != workflowlang.YamlTagStr) {
+func (p *Parser) parseFloat(n *codec.Node) *definition.Float {
+	if n.Kind != codec.ScalarNode || (n.Tag != definition.YamlTagFloat && n.Tag != definition.YamlTagInt && n.Tag != definition.YamlTagStr) {
 		p.typeErrorf(n, "expected scalar node for float value but found %s node with %q tag", NodeKindName(n.Kind), n.Tag)
 		return nil
 	}
@@ -393,12 +393,12 @@ func (p *Parser) parseFloat(n *codec.Node) *workflowlang.Float {
 		return nil
 	}
 
-	if n.Tag == workflowlang.YamlTagStr {
+	if n.Tag == definition.YamlTagStr {
 		e := p.parseExpression(n, "float number literal")
 		if e == nil {
 			return nil
 		}
-		return &workflowlang.Float{
+		return &definition.Float{
 			Expression: e,
 			Pos:        PosAt(n),
 		}
@@ -422,7 +422,7 @@ func (p *Parser) parseFloat(n *codec.Node) *workflowlang.Float {
 		return nil
 	}
 
-	return &workflowlang.Float{
+	return &definition.Float{
 		Value: f,
 		Pos:   PosAt(n),
 	}
@@ -434,7 +434,7 @@ func (p *Parser) parseMapping(where delayedSprintf, n *codec.Node, allowEmpty, c
 
 func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowEmpty, caseSensitive, insertions bool) iter.Seq[workflowMappingEntry] {
 	return func(yield func(workflowMappingEntry) bool) {
-		if n.Kind == codec.ScalarNode && n.Tag == workflowlang.YamlTagNull {
+		if n.Kind == codec.ScalarNode && n.Tag == definition.YamlTagNull {
 			if !allowEmpty {
 				p.errorf(n, CodeEmptyValue, "%s should not be empty. please remove this section if it's unnecessary", where.String())
 			}
@@ -463,7 +463,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 				continue
 			}
 			k := newString(n.Content[i])
-			if insertions && emptyResolvedMappingKey(workflowlang.SemanticValue(k)) {
+			if insertions && emptyResolvedMappingKey(definition.SemanticValue(k)) {
 				p.errorAt(k.Pos, CodeEmptyValue, "string should not be empty")
 				p.checkRawYAMLTags(n.Content[i+1])
 				empty = false
@@ -490,12 +490,12 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 					break
 				}
 				inserted := resolveInsertedMapping(n.Content[i+1])
-				insertedKeys := map[string]*workflowlang.String{}
+				insertedKeys := map[string]*definition.String{}
 				for declaration := range inserted.Declarations() {
 					switch declaration.State {
 					case mapping.KnownKey:
 						origin := declaration.Origin.Span.Start
-						insertedKeys[strings.ToLower(declaration.Name)] = &workflowlang.String{
+						insertedKeys[strings.ToLower(declaration.Name)] = &definition.String{
 							Value: declaration.Name,
 							Pos:   &source.Position{Line: origin.Line, Column: origin.Column},
 						}
@@ -553,14 +553,14 @@ func (p *Parser) parseMappingAt(where string, n *codec.Node, allowEmpty, caseSen
 	return p.parseMapping(sprintf(where, ""), n, allowEmpty, caseSensitive)
 }
 
-func (p *Parser) parseScheduleEvent(pos *source.Position, n *codec.Node) *workflowlang.ScheduledEvent {
+func (p *Parser) parseScheduleEvent(pos *source.Position, n *codec.Node) *definition.ScheduledEvent {
 	if ok := p.checkSequence("schedule", n, false); !ok {
 		return nil
 	}
 
-	schedules := make([]*workflowlang.ScheduleEntry, 0, len(n.Content))
+	schedules := make([]*definition.ScheduleEntry, 0, len(n.Content))
 	for _, c := range n.Content {
-		entry := &workflowlang.ScheduleEntry{}
+		entry := &definition.ScheduleEntry{}
 		cronGiven := false
 		for e := range p.parseMappingAt("element of \"schedule\" section", c, false, true) {
 			switch e.id {
@@ -584,12 +584,12 @@ func (p *Parser) parseScheduleEvent(pos *source.Position, n *codec.Node) *workfl
 		}
 	}
 
-	return &workflowlang.ScheduledEvent{Schedules: schedules, Pos: pos}
+	return &definition.ScheduledEvent{Schedules: schedules, Pos: pos}
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_dispatchinputs
-func (p *Parser) parseWorkflowDispatchEventInput(name *workflowlang.String, n *codec.Node) *workflowlang.DispatchInput {
-	ret := &workflowlang.DispatchInput{Name: name}
+func (p *Parser) parseWorkflowDispatchEventInput(name *definition.String, n *codec.Node) *definition.DispatchInput {
+	ret := &definition.DispatchInput{Name: name}
 
 	for e := range p.parseMappingAt("input settings of workflow_dispatch event", n, true, true) {
 		switch e.id {
@@ -605,15 +605,15 @@ func (p *Parser) parseWorkflowDispatchEventInput(name *workflowlang.String, n *c
 			}
 			switch e.val.Value {
 			case "string":
-				ret.Type = workflowlang.WorkflowDispatchEventInputTypeString
+				ret.Type = definition.WorkflowDispatchEventInputTypeString
 			case "number":
-				ret.Type = workflowlang.WorkflowDispatchEventInputTypeNumber
+				ret.Type = definition.WorkflowDispatchEventInputTypeNumber
 			case "boolean":
-				ret.Type = workflowlang.WorkflowDispatchEventInputTypeBoolean
+				ret.Type = definition.WorkflowDispatchEventInputTypeBoolean
 			case "choice":
-				ret.Type = workflowlang.WorkflowDispatchEventInputTypeChoice
+				ret.Type = definition.WorkflowDispatchEventInputTypeChoice
 			case "environment":
-				ret.Type = workflowlang.WorkflowDispatchEventInputTypeEnvironment
+				ret.Type = definition.WorkflowDispatchEventInputTypeEnvironment
 			default:
 				p.errorf(e.val, CodeInvalidValue, `input type of workflow_dispatch event must be one of "string", "number", "boolean", "choice", "environment" but got %q`, e.val.Value)
 			}
@@ -633,8 +633,8 @@ func (p *Parser) parseWorkflowDispatchEventInput(name *workflowlang.String, n *c
 
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_dispatch
-func (p *Parser) parseWorkflowDispatchEvent(pos *source.Position, n *codec.Node) *workflowlang.WorkflowDispatchEvent {
-	ret := &workflowlang.WorkflowDispatchEvent{Pos: pos}
+func (p *Parser) parseWorkflowDispatchEvent(pos *source.Position, n *codec.Node) *definition.WorkflowDispatchEvent {
+	ret := &definition.WorkflowDispatchEvent{Pos: pos}
 
 	for e := range p.parseSectionMapping("workflow_dispatch", n, true, true) {
 		if e.id != "inputs" {
@@ -642,7 +642,7 @@ func (p *Parser) parseWorkflowDispatchEvent(pos *source.Position, n *codec.Node)
 			continue
 		}
 
-		ret.Inputs = map[string]*workflowlang.DispatchInput{}
+		ret.Inputs = map[string]*definition.DispatchInput{}
 		for e := range p.parseSectionMapping("inputs", e.val, true, false) {
 			ret.Inputs[e.id] = p.parseWorkflowDispatchEventInput(e.key, e.val)
 		}
@@ -652,8 +652,8 @@ func (p *Parser) parseWorkflowDispatchEvent(pos *source.Position, n *codec.Node)
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#repository_dispatch
-func (p *Parser) parseRepositoryDispatchEvent(pos *source.Position, n *codec.Node) *workflowlang.RepositoryDispatchEvent {
-	ret := &workflowlang.RepositoryDispatchEvent{Pos: pos}
+func (p *Parser) parseRepositoryDispatchEvent(pos *source.Position, n *codec.Node) *definition.RepositoryDispatchEvent {
+	ret := &definition.RepositoryDispatchEvent{Pos: pos}
 
 	// Note: Omitting 'types' is ok. In the case, all types trigger the workflow
 	for e := range p.parseSectionMapping("repository_dispatch", n, true, true) {
@@ -668,13 +668,13 @@ func (p *Parser) parseRepositoryDispatchEvent(pos *source.Position, n *codec.Nod
 }
 
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#using-filters
-func (p *Parser) parseWebhookEventFilter(name *workflowlang.String, n *codec.Node) *workflowlang.WebhookEventFilter {
+func (p *Parser) parseWebhookEventFilter(name *definition.String, n *codec.Node) *definition.WebhookEventFilter {
 	v := p.parseStringOrStringSequence(name.Value, n)
-	return &workflowlang.WebhookEventFilter{Name: name, Values: v}
+	return &definition.WebhookEventFilter{Name: name, Values: v}
 }
 
-func (p *Parser) parseWebhookEvent(name *workflowlang.String, n *codec.Node) *workflowlang.WebhookEvent {
-	ret := &workflowlang.WebhookEvent{Hook: name, Pos: name.Pos}
+func (p *Parser) parseWebhookEvent(name *definition.String, n *codec.Node) *definition.WebhookEvent {
+	ret := &definition.WebhookEvent{Hook: name, Pos: name.Pos}
 
 	// Note: 'tags', 'tags-ignore', 'branches', 'branches-ignore' can be empty. Since there are
 	// some cases where setting empty values to them is necessary.
@@ -722,8 +722,8 @@ func (p *Parser) parseWebhookEvent(name *workflowlang.String, n *codec.Node) *wo
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#onworkflow_callinputs
-func (p *Parser) parseWorkflowCallEventInput(id string, name *workflowlang.String, n *codec.Node) *workflowlang.WorkflowCallEventInput {
-	ret := &workflowlang.WorkflowCallEventInput{Name: name, ID: id}
+func (p *Parser) parseWorkflowCallEventInput(id string, name *definition.String, n *codec.Node) *definition.WorkflowCallEventInput {
+	ret := &definition.WorkflowCallEventInput{Name: name, ID: id}
 	typed := false
 
 	for e := range p.parseMappingAt("input of workflow_call event", n, true, true) {
@@ -740,7 +740,7 @@ func (p *Parser) parseWorkflowCallEventInput(id string, name *workflowlang.Strin
 				continue
 			}
 			var known bool
-			ret.Type, known = workflowlang.ParseWorkflowCallEventInputType(e.val.Value)
+			ret.Type, known = definition.ParseWorkflowCallEventInputType(e.val.Value)
 			if !known {
 				p.errorf(e.val, CodeInvalidValue, "invalid value %q for input type of workflow_call event. it must be one of \"boolean\", \"number\", or \"string\"", e.val.Value)
 			}
@@ -757,8 +757,8 @@ func (p *Parser) parseWorkflowCallEventInput(id string, name *workflowlang.Strin
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#example-of-onworkflow_callsecrets
-func (p *Parser) parseWorkflowCallEventSecret(name *workflowlang.String, n *codec.Node) *workflowlang.WorkflowCallEventSecret {
-	ret := &workflowlang.WorkflowCallEventSecret{Name: name}
+func (p *Parser) parseWorkflowCallEventSecret(name *definition.String, n *codec.Node) *definition.WorkflowCallEventSecret {
+	ret := &definition.WorkflowCallEventSecret{Name: name}
 
 	for e := range p.parseMappingAt("secret of workflow_call event", n, true, true) {
 		switch e.id {
@@ -775,8 +775,8 @@ func (p *Parser) parseWorkflowCallEventSecret(name *workflowlang.String, n *code
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#example-of-onworkflow_calloutputs
-func (p *Parser) parseWorkflowCallEventOutput(name *workflowlang.String, n *codec.Node) *workflowlang.WorkflowCallEventOutput {
-	output := &workflowlang.WorkflowCallEventOutput{Name: name}
+func (p *Parser) parseWorkflowCallEventOutput(name *definition.String, n *codec.Node) *definition.WorkflowCallEventOutput {
+	output := &definition.WorkflowCallEventOutput{Name: name}
 
 	for e := range p.parseMappingAt("output of workflow_call event", n, true, true) {
 		switch e.id {
@@ -799,25 +799,25 @@ func (p *Parser) parseWorkflowCallEventOutput(name *workflowlang.String, n *code
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow-reuse-events
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_call
 // - https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-func (p *Parser) parseWorkflowCallEvent(pos *source.Position, n *codec.Node) *workflowlang.WorkflowCallEvent {
-	ret := &workflowlang.WorkflowCallEvent{Pos: pos}
+func (p *Parser) parseWorkflowCallEvent(pos *source.Position, n *codec.Node) *definition.WorkflowCallEvent {
+	ret := &definition.WorkflowCallEvent{Pos: pos}
 	reported := len(p.errs)
 	defer func() { p.workflowCallFindings = append(p.workflowCallFindings, p.errs[reported:]...) }()
 
 	for e := range p.parseSectionMapping("workflow_call", n, true, true) {
 		switch e.id {
 		case "inputs":
-			ret.Inputs = []*workflowlang.WorkflowCallEventInput{}
+			ret.Inputs = []*definition.WorkflowCallEventInput{}
 			for e := range p.parseSectionMapping("inputs", e.val, true, false) {
 				ret.Inputs = append(ret.Inputs, p.parseWorkflowCallEventInput(e.id, e.key, e.val))
 			}
 		case "secrets":
-			ret.Secrets = map[string]*workflowlang.WorkflowCallEventSecret{}
+			ret.Secrets = map[string]*definition.WorkflowCallEventSecret{}
 			for e := range p.parseSectionMapping("secrets", e.val, true, false) {
 				ret.Secrets[e.id] = p.parseWorkflowCallEventSecret(e.key, e.val)
 			}
 		case "outputs":
-			ret.Outputs = map[string]*workflowlang.WorkflowCallEventOutput{}
+			ret.Outputs = map[string]*definition.WorkflowCallEventOutput{}
 			for e := range p.parseSectionMapping("outputs", e.val, true, false) {
 				ret.Outputs[e.id] = p.parseWorkflowCallEventOutput(e.key, e.val)
 			}
@@ -829,8 +829,8 @@ func (p *Parser) parseWorkflowCallEvent(pos *source.Position, n *codec.Node) *wo
 	return ret
 }
 
-func (p *Parser) parseImageVersionEvent(pos *source.Position, n *codec.Node) *workflowlang.ImageVersionEvent {
-	ret := &workflowlang.ImageVersionEvent{Pos: pos}
+func (p *Parser) parseImageVersionEvent(pos *source.Position, n *codec.Node) *definition.ImageVersionEvent {
+	ret := &definition.ImageVersionEvent{Pos: pos}
 
 	for e := range p.parseSectionMapping("image_version", n, true, true) {
 		switch e.id {
@@ -848,7 +848,7 @@ func (p *Parser) parseImageVersionEvent(pos *source.Position, n *codec.Node) *wo
 	return ret
 }
 
-func (p *Parser) parseEventWithNoConfig(n *codec.Node) workflowlang.Event {
+func (p *Parser) parseEventWithNoConfig(n *codec.Node) definition.Event {
 	s := p.parseString(n, false)
 	switch s.Value {
 	case "":
@@ -857,31 +857,31 @@ func (p *Parser) parseEventWithNoConfig(n *codec.Node) workflowlang.Event {
 		p.error(n, CodeTypeMismatch, "schedule event must be configured with mapping")
 		return nil
 	case "repository_dispatch":
-		return &workflowlang.RepositoryDispatchEvent{Pos: PosAt(n)}
+		return &definition.RepositoryDispatchEvent{Pos: PosAt(n)}
 	case "workflow_dispatch":
-		return &workflowlang.WorkflowDispatchEvent{Pos: PosAt(n)}
+		return &definition.WorkflowDispatchEvent{Pos: PosAt(n)}
 	case "workflow_call":
-		return &workflowlang.WorkflowCallEvent{Pos: PosAt(n)}
+		return &definition.WorkflowCallEvent{Pos: PosAt(n)}
 	case "image_version":
-		return &workflowlang.ImageVersionEvent{Pos: PosAt(n)}
+		return &definition.ImageVersionEvent{Pos: PosAt(n)}
 	default:
-		return &workflowlang.WebhookEvent{Hook: s, Pos: PosAt(n)}
+		return &definition.WebhookEvent{Hook: s, Pos: PosAt(n)}
 	}
 }
 
-func (p *Parser) parseEvents(n *codec.Node) []workflowlang.Event {
+func (p *Parser) parseEvents(n *codec.Node) []definition.Event {
 	switch n.Kind {
 	case codec.ScalarNode:
 		// GitHub accepts an empty "on"; the empty-triggers rule reports it.
-		if n.Tag == workflowlang.YamlTagNull {
-			return []workflowlang.Event{}
+		if n.Tag == definition.YamlTagNull {
+			return []definition.Event{}
 		}
 		if e := p.parseEventWithNoConfig(n); e != nil {
-			return []workflowlang.Event{e}
+			return []definition.Event{e}
 		}
 		return nil
 	case codec.MappingNode:
-		ret := []workflowlang.Event{}
+		ret := []definition.Event{}
 		for e := range p.parseSectionMapping("on", n, true, true) {
 			pos := e.key.Pos
 			switch e.id {
@@ -904,7 +904,7 @@ func (p *Parser) parseEvents(n *codec.Node) []workflowlang.Event {
 
 		return declaredEvents(ret, n)
 	case codec.SequenceNode:
-		ret := make([]workflowlang.Event, 0, len(n.Content))
+		ret := make([]definition.Event, 0, len(n.Content))
 		for _, c := range n.Content {
 			if e := p.parseEventWithNoConfig(c); e != nil {
 				ret = append(ret, e)
@@ -920,7 +920,7 @@ func (p *Parser) parseEvents(n *codec.Node) []workflowlang.Event {
 
 // declaredEvents keeps an empty result only for an empty collection, which GitHub
 // accepts. When every declared event failed to parse, the error already says so.
-func declaredEvents(events []workflowlang.Event, n *codec.Node) []workflowlang.Event {
+func declaredEvents(events []definition.Event, n *codec.Node) []definition.Event {
 	if len(events) == 0 && len(n.Content) != 0 {
 		return nil
 	}
@@ -928,16 +928,16 @@ func declaredEvents(events []workflowlang.Event, n *codec.Node) []workflowlang.E
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-func (p *Parser) parsePermissions(pos *source.Position, n *codec.Node) *workflowlang.Permissions {
-	ret := &workflowlang.Permissions{Pos: pos}
+func (p *Parser) parsePermissions(pos *source.Position, n *codec.Node) *definition.Permissions {
+	ret := &definition.Permissions{Pos: pos}
 
 	if n.Kind == codec.ScalarNode {
 		ret.All = p.parseString(n, false)
 	} else {
 		// XXX: Is the permission scope case insensitive?
-		scopes := map[string]*workflowlang.PermissionScope{}
+		scopes := map[string]*definition.PermissionScope{}
 		for e := range p.parseSectionMapping("permissions", n, true, false) {
-			scopes[e.id] = &workflowlang.PermissionScope{
+			scopes[e.id] = &definition.PermissionScope{
 				Name:  e.key,
 				Value: p.parseString(e.val, false),
 			}
@@ -949,24 +949,24 @@ func (p *Parser) parsePermissions(pos *source.Position, n *codec.Node) *workflow
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#env
-func (p *Parser) parseEnv(n *codec.Node) *workflowlang.Env {
+func (p *Parser) parseEnv(n *codec.Node) *definition.Env {
 	return p.parseEnvMapping(n, false)
 }
 
-func (p *Parser) parseEnvMapping(n *codec.Node, allowEmpty bool) *workflowlang.Env {
+func (p *Parser) parseEnvMapping(n *codec.Node, allowEmpty bool) *definition.Env {
 	if n.Kind == codec.ScalarNode {
-		return &workflowlang.Env{
+		return &definition.Env{
 			Expression: p.parseExpression(n, "mapping value for \"env\" section"),
 		}
 	}
 
-	env := &workflowlang.Env{Vars: map[string]*workflowlang.EnvVar{}}
+	env := &definition.Env{Vars: map[string]*definition.EnvVar{}}
 	for e := range p.parseMappingEntries(sprintf("%q section", "env"), n, allowEmpty, false, true) {
 		if exprsyntax.IsMappingInsertion(e.key.Value) {
 			env.Insertions = append(env.Insertions, p.parseEnvMapping(e.val, true))
 			continue
 		}
-		env.Vars[e.id] = &workflowlang.EnvVar{
+		env.Vars[e.id] = &definition.EnvVar{
 			Name:  e.key,
 			Value: p.parseString(e.val, true),
 		}
@@ -976,15 +976,15 @@ func (p *Parser) parseEnvMapping(n *codec.Node, allowEmpty bool) *workflowlang.E
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#defaults
-func (p *Parser) parseDefaults(pos *source.Position, n *codec.Node) *workflowlang.Defaults {
-	ret := &workflowlang.Defaults{Pos: pos}
+func (p *Parser) parseDefaults(pos *source.Position, n *codec.Node) *definition.Defaults {
+	ret := &definition.Defaults{Pos: pos}
 
 	for e := range p.parseSectionMapping("defaults", n, false, true) {
 		if e.id != "run" {
 			p.unexpectedKey(e.key, "defaults", []string{"run"})
 			continue
 		}
-		ret.Run = &workflowlang.DefaultsRun{Pos: e.key.Pos}
+		ret.Run = &definition.DefaultsRun{Pos: e.key.Pos}
 		if expr := p.mayParseExpression(e.val); expr != nil {
 			ret.Run.Expression = expr
 			continue
@@ -1010,8 +1010,8 @@ func (p *Parser) parseDefaults(pos *source.Position, n *codec.Node) *workflowlan
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idconcurrency
-func (p *Parser) parseConcurrency(pos *source.Position, n *codec.Node) *workflowlang.Concurrency {
-	ret := &workflowlang.Concurrency{Pos: pos}
+func (p *Parser) parseConcurrency(pos *source.Position, n *codec.Node) *definition.Concurrency {
+	ret := &definition.Concurrency{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
 		return ret
@@ -1056,8 +1056,8 @@ func (p *Parser) parseConcurrency(pos *source.Position, n *codec.Node) *workflow
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idenvironment
-func (p *Parser) parseEnvironment(pos *source.Position, n *codec.Node) *workflowlang.Environment {
-	ret := &workflowlang.Environment{Pos: pos}
+func (p *Parser) parseEnvironment(pos *source.Position, n *codec.Node) *definition.Environment {
+	ret := &definition.Environment{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
 		return ret
@@ -1087,10 +1087,10 @@ func (p *Parser) parseEnvironment(pos *source.Position, n *codec.Node) *workflow
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idoutputs
-func (p *Parser) parseOutputs(n *codec.Node) map[string]*workflowlang.Output {
-	ret := map[string]*workflowlang.Output{}
+func (p *Parser) parseOutputs(n *codec.Node) map[string]*definition.Output {
+	ret := map[string]*definition.Output{}
 	for e := range p.parseSectionMapping("outputs", n, false, false) {
-		ret[e.id] = &workflowlang.Output{
+		ret[e.id] = &definition.Output{
 			Name:  e.key,
 			Value: p.parseString(e.val, true),
 		}
@@ -1128,7 +1128,7 @@ func rawYAMLTagProblem(n *codec.Node) (Code, string) {
 	if n.Kind == codec.ScalarNode && n.Tag == "!" && n.Style == 0 {
 		return CodeUnknownTag, "the non-specific tag \"!\" is not supported by GitHub Actions; remove it or quote the value"
 	}
-	if n.Kind != codec.ScalarNode || n.Style&codec.TaggedStyle == 0 || n.Tag == workflowlang.YamlTagStr {
+	if n.Kind != codec.ScalarNode || n.Style&codec.TaggedStyle == 0 || n.Tag == definition.YamlTagStr {
 		return "", ""
 	}
 	if n.Style&(codec.DoubleQuotedStyle|codec.SingleQuotedStyle|codec.LiteralStyle|codec.FoldedStyle) != 0 {
@@ -1136,13 +1136,13 @@ func rawYAMLTagProblem(n *codec.Node) (Code, string) {
 	}
 	var ok bool
 	switch n.Tag {
-	case workflowlang.YamlTagBool:
+	case definition.YamlTagBool:
 		ok = codec.IsCoreSchemaBool(n.Value)
-	case workflowlang.YamlTagNull:
+	case definition.YamlTagNull:
 		ok = codec.IsCoreSchemaNull(n.Value)
-	case workflowlang.YamlTagInt:
+	case definition.YamlTagInt:
 		ok = codec.IsCoreSchemaInt(n.Value)
-	case workflowlang.YamlTagFloat:
+	case definition.YamlTagFloat:
 		ok = codec.IsCoreSchemaFloat(n.Value)
 	default:
 		return CodeUnknownTag, fmt.Sprintf("tag of a YAML scalar must be one of \"!!str\", \"!!bool\", \"!!int\", \"!!float\", \"!!null\" but got %q", n.Tag)
@@ -1153,30 +1153,30 @@ func rawYAMLTagProblem(n *codec.Node) (Code, string) {
 	return "", ""
 }
 
-func (p *Parser) ParseRawYAMLValue(n *codec.Node) workflowlang.RawYAMLValue {
+func (p *Parser) ParseRawYAMLValue(n *codec.Node) definition.RawYAMLValue {
 	switch n.Kind {
 	case codec.ScalarNode:
 		tag := n.Tag
 		if !p.checkRawYAMLTag(n) {
-			tag = workflowlang.YamlTagStr
+			tag = definition.YamlTagStr
 		}
-		return &workflowlang.RawYAMLString{Value: n.Value, Tag: tag, Position: PosAt(n)}
+		return &definition.RawYAMLString{Value: n.Value, Tag: tag, Position: PosAt(n)}
 	case codec.SequenceNode:
-		vs := make([]workflowlang.RawYAMLValue, 0, len(n.Content))
+		vs := make([]definition.RawYAMLValue, 0, len(n.Content))
 		for _, c := range n.Content {
 			if v := p.ParseRawYAMLValue(c); v != nil {
 				vs = append(vs, v)
 			}
 		}
-		return &workflowlang.RawYAMLArray{Elems: vs, Position: PosAt(n)}
+		return &definition.RawYAMLArray{Elems: vs, Position: PosAt(n)}
 	case codec.MappingNode:
-		m := map[string]workflowlang.RawYAMLValue{}
+		m := map[string]definition.RawYAMLValue{}
 		for e := range p.parseMappingAt("matrix row value", n, true, false) {
 			if v := p.ParseRawYAMLValue(e.val); v != nil {
 				m[e.id] = v
 			}
 		}
-		return &workflowlang.RawYAMLObject{Props: m, Position: PosAt(n)}
+		return &definition.RawYAMLObject{Props: m, Position: PosAt(n)}
 	case codec.DocumentNode, codec.AliasNode:
 	}
 	p.typeErrorf(n, "unexpected %s node on parsing value in matrix row", NodeKindName(n.Kind))
@@ -1186,9 +1186,9 @@ func (p *Parser) ParseRawYAMLValue(n *codec.Node) workflowlang.RawYAMLValue {
 // ParseMatrixCombinations parses matrix include/exclude combinations.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-including-additional-values-into-combinations
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-excluding-configurations-from-a-matrix
-func (p *Parser) ParseMatrixCombinations(sec string, n *codec.Node) *workflowlang.MatrixCombinations {
+func (p *Parser) ParseMatrixCombinations(sec string, n *codec.Node) *definition.MatrixCombinations {
 	if n.Kind == codec.ScalarNode {
-		return &workflowlang.MatrixCombinations{
+		return &definition.MatrixCombinations{
 			Expression: p.parseExpression(n, "array of matrix combination"),
 		}
 	}
@@ -1197,40 +1197,40 @@ func (p *Parser) ParseMatrixCombinations(sec string, n *codec.Node) *workflowlan
 		return nil
 	}
 
-	ret := make([]*workflowlang.MatrixCombination, 0, len(n.Content))
+	ret := make([]*definition.MatrixCombination, 0, len(n.Content))
 	for _, c := range n.Content {
 		if c.Kind == codec.ScalarNode {
 			if e := p.parseExpression(c, "mapping of matrix combination"); e != nil {
-				ret = append(ret, &workflowlang.MatrixCombination{Expression: e})
+				ret = append(ret, &definition.MatrixCombination{Expression: e})
 			}
 			continue
 		}
 
-		assigns := map[string]*workflowlang.MatrixAssign{}
+		assigns := map[string]*definition.MatrixAssign{}
 		for e := range p.parseMapping(sprintf("element in %q section", sec), c, false, false) {
 			if v := p.ParseRawYAMLValue(e.val); v != nil {
-				assigns[e.id] = &workflowlang.MatrixAssign{Key: e.key, Value: v}
+				assigns[e.id] = &definition.MatrixAssign{Key: e.key, Value: v}
 			}
 		}
-		ret = append(ret, &workflowlang.MatrixCombination{Assigns: assigns})
+		ret = append(ret, &definition.MatrixCombination{Assigns: assigns})
 	}
-	return &workflowlang.MatrixCombinations{Combinations: ret}
+	return &definition.MatrixCombinations{Combinations: ret}
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
-func (p *Parser) parseMatrix(pos *source.Position, n *codec.Node) *workflowlang.Matrix {
+func (p *Parser) parseMatrix(pos *source.Position, n *codec.Node) *definition.Matrix {
 	return p.ParseMatrixMapping(pos, n, false, false)
 }
 
-func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEmpty, evaluated bool) *workflowlang.Matrix {
+func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEmpty, evaluated bool) *definition.Matrix {
 	if n.Kind == codec.ScalarNode {
-		return &workflowlang.Matrix{
+		return &definition.Matrix{
 			Expression: p.parseExpression(n, "matrix"),
 			Pos:        PosAt(n),
 		}
 	}
 
-	ret := &workflowlang.Matrix{Pos: pos, Rows: make(map[string]*workflowlang.MatrixRow)}
+	ret := &definition.Matrix{Pos: pos, Rows: make(map[string]*definition.MatrixRow)}
 
 	for e := range p.parseMappingEntries(sprintf("%q section", "matrix"), n, allowEmpty, false, !evaluated) {
 		if !evaluated && exprsyntax.IsMappingInsertion(e.key.Value) {
@@ -1252,7 +1252,7 @@ func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEm
 			}
 		default:
 			if e.val.Kind == codec.ScalarNode {
-				ret.Rows[e.id] = &workflowlang.MatrixRow{
+				ret.Rows[e.id] = &definition.MatrixRow{
 					Name:       e.key,
 					Expression: p.parseExpression(e.val, "array value for matrix variations"),
 				}
@@ -1263,14 +1263,14 @@ func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEm
 				continue
 			}
 
-			values := make([]workflowlang.RawYAMLValue, 0, len(e.val.Content))
+			values := make([]definition.RawYAMLValue, 0, len(e.val.Content))
 			for _, c := range e.val.Content {
 				if v := p.ParseRawYAMLValue(c); v != nil {
 					values = append(values, v)
 				}
 			}
 
-			ret.Rows[e.id] = &workflowlang.MatrixRow{
+			ret.Rows[e.id] = &definition.MatrixRow{
 				Name:   e.key,
 				Values: values,
 			}
@@ -1280,7 +1280,7 @@ func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEm
 	for _, row := range ret.Rows {
 		row.Evaluated = evaluated
 	}
-	for _, filters := range []*workflowlang.MatrixCombinations{ret.Include, ret.Exclude} {
+	for _, filters := range []*definition.MatrixCombinations{ret.Include, ret.Exclude} {
 		if filters != nil {
 			for _, combination := range filters.Combinations {
 				combination.Evaluated = evaluated
@@ -1291,8 +1291,8 @@ func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEm
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy
-func (p *Parser) parseStrategy(pos *source.Position, n *codec.Node) *workflowlang.Strategy {
-	ret := &workflowlang.Strategy{Pos: pos}
+func (p *Parser) parseStrategy(pos *source.Position, n *codec.Node) *definition.Strategy {
+	ret := &definition.Strategy{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
 		return ret
@@ -1314,8 +1314,8 @@ func (p *Parser) parseStrategy(pos *source.Position, n *codec.Node) *workflowlan
 	return ret
 }
 
-func (p *Parser) parseCredentials(pos *source.Position, n *codec.Node) *workflowlang.Credentials {
-	ret := &workflowlang.Credentials{Pos: pos}
+func (p *Parser) parseCredentials(pos *source.Position, n *codec.Node) *definition.Credentials {
+	ret := &definition.Credentials{Pos: pos}
 
 	if e := p.mayParseExpression(n); e != nil {
 		ret.Expression = e
@@ -1342,8 +1342,8 @@ func (p *Parser) parseCredentials(pos *source.Position, n *codec.Node) *workflow
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainer
-func (p *Parser) parseContainer(sec string, pos *source.Position, n *codec.Node) *workflowlang.Container {
-	ret := &workflowlang.Container{Pos: pos}
+func (p *Parser) parseContainer(sec string, pos *source.Position, n *codec.Node) *definition.Container {
+	ret := &definition.Container{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
 		return ret
@@ -1413,15 +1413,15 @@ func (p *Parser) parseContainer(sec string, pos *source.Position, n *codec.Node)
 	return ret
 }
 
-func (p *Parser) parseServices(n *codec.Node) *workflowlang.Services {
-	ret := &workflowlang.Services{Pos: PosAt(n)}
+func (p *Parser) parseServices(n *codec.Node) *definition.Services {
+	ret := &definition.Services{Pos: PosAt(n)}
 	if e := p.mayParseExpression(n); e != nil {
 		ret.Expression = e
 	} else {
 		// XXX: Is the key case-insensitive?
-		ss := map[string]*workflowlang.Service{}
+		ss := map[string]*definition.Service{}
 		for e := range p.parseSectionMapping("services", n, false, false) {
-			ss[e.id] = &workflowlang.Service{
+			ss[e.id] = &definition.Service{
 				Name:      e.key,
 				Container: p.parseContainer("services", e.key.Pos, e.val),
 			}
@@ -1432,7 +1432,7 @@ func (p *Parser) parseServices(n *codec.Node) *workflowlang.Services {
 }
 
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
-func (p *Parser) parseTimeoutMinutes(n *codec.Node) *workflowlang.Float {
+func (p *Parser) parseTimeoutMinutes(n *codec.Node) *definition.Float {
 	f := p.parseFloat(n)
 	if f != nil && f.Expression == nil && f.Value <= 0.0 {
 		p.errorf(n, CodeInvalidValue, "value at \"timeout-minutes\" must be greater than zero: %v", f.Value)
@@ -1440,26 +1440,26 @@ func (p *Parser) parseTimeoutMinutes(n *codec.Node) *workflowlang.Float {
 	return f
 }
 
-func (p *Parser) parseActionInputMapping(n *codec.Node, allowEmpty bool, docker *workflowlang.ExecAction) *workflowlang.ActionInputMapping {
+func (p *Parser) parseActionInputMapping(n *codec.Node, allowEmpty bool, docker *definition.ExecAction) *definition.ActionInputMapping {
 	if n.Kind == codec.ScalarNode {
 		expression := p.parseExpression(n, "mapping value for \"with\" section")
 		p.parseDockerInputExpression(n, expression, docker)
-		return &workflowlang.ActionInputMapping{Expression: expression}
+		return &definition.ActionInputMapping{Expression: expression}
 	}
-	mapping := &workflowlang.ActionInputMapping{Inputs: map[string]*workflowlang.ActionArgument{}}
+	mapping := &definition.ActionInputMapping{Inputs: map[string]*definition.ActionArgument{}}
 	for e := range p.parseMappingEntries(sprintf("%q section", "with"), n, allowEmpty, false, true) {
 		switch {
 		case exprsyntax.IsMappingInsertion(e.key.Value):
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
 		case p.parseDockerInput(e, docker):
 		default:
-			mapping.Inputs[e.id] = &workflowlang.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
+			mapping.Inputs[e.id] = &definition.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 		}
 	}
 	return mapping
 }
 
-func (p *Parser) parseDockerInput(entry workflowMappingEntry, docker *workflowlang.ExecAction) bool {
+func (p *Parser) parseDockerInput(entry workflowMappingEntry, docker *definition.ExecAction) bool {
 	if docker == nil {
 		return false
 	}
@@ -1483,11 +1483,11 @@ func (p *Parser) parseDockerInput(entry workflowMappingEntry, docker *workflowla
 	return true
 }
 
-func (p *Parser) parseDockerInputExpression(n *codec.Node, expression *workflowlang.String, docker *workflowlang.ExecAction) {
+func (p *Parser) parseDockerInputExpression(n *codec.Node, expression *definition.String, docker *definition.ExecAction) {
 	if docker == nil || expression == nil {
 		return
 	}
-	literal, known := workflowlang.WorkflowExpressionLiteral(expression)
+	literal, known := definition.WorkflowExpressionLiteral(expression)
 	object, isObject := literal.(map[string]any)
 	if !known || !isObject {
 		return
@@ -1497,7 +1497,7 @@ func (p *Parser) parseDockerInputExpression(n *codec.Node, expression *workflowl
 		if key != "entrypoint" && key != "args" {
 			continue
 		}
-		value, scalar := workflowlang.WorkflowScalarString(object[name])
+		value, scalar := definition.WorkflowScalarString(object[name])
 		if !scalar {
 			continue
 		}
@@ -1505,7 +1505,7 @@ func (p *Parser) parseDockerInputExpression(n *codec.Node, expression *workflowl
 			p.error(n, CodeEmptyValue, "string should not be empty")
 			continue
 		}
-		resolved := &workflowlang.String{Value: value, Pos: expression.Pos}
+		resolved := &definition.String{Value: value, Pos: expression.Pos}
 		if key == "entrypoint" {
 			docker.Entrypoint, docker.EntrypointEvaluated = resolved, true
 		} else {
@@ -1514,8 +1514,8 @@ func (p *Parser) parseDockerInputExpression(n *codec.Node, expression *workflowl
 	}
 }
 
-func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bool) *workflowlang.ExecAction {
-	ret := &workflowlang.ExecAction{}
+func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bool) *definition.ExecAction {
+	ret := &definition.ExecAction{}
 
 	for _, e := range entries {
 		switch e.id {
@@ -1531,7 +1531,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 				}
 				continue
 			}
-			ret.Inputs = map[string]*workflowlang.ActionArgument{}
+			ret.Inputs = map[string]*definition.ActionArgument{}
 			with := p.parseMappingEntries(sprintf("%q section", "with"), e.val, false, false, true)
 			if isDocker {
 				for e := range with {
@@ -1540,7 +1540,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						continue
 					}
 					if !p.parseDockerInput(e, ret) {
-						ret.Inputs[e.id] = &workflowlang.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
+						ret.Inputs[e.id] = &definition.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 					}
 				}
 			} else {
@@ -1549,7 +1549,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, nil))
 						continue
 					}
-					ret.Inputs[e.id] = &workflowlang.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
+					ret.Inputs[e.id] = &definition.ActionArgument{Name: e.key, Value: p.parseString(e.val, true), Source: p.ScriptSourceForDeclaration(e.val, e.key.Pos)}
 				}
 			}
 		case "id", "if", "name", "env", "continue-on-error", "timeout-minutes", "background":
@@ -1572,8 +1572,8 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 	return ret
 }
 
-func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *workflowlang.ExecRun {
-	ret := &workflowlang.ExecRun{}
+func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *definition.ExecRun {
+	ret := &definition.ExecRun{}
 
 	for _, e := range entries {
 		switch e.id {
@@ -1611,8 +1611,8 @@ func (p *Parser) parseStepExecRun(entries []workflowMappingEntry) *workflowlang.
 
 // parseStepExecWait parses a 'wait' or 'wait-all' step that waits for background steps to complete.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
-func (p *Parser) parseStepExecWait(entries []workflowMappingEntry) *workflowlang.ExecWait {
-	ret := &workflowlang.ExecWait{}
+func (p *Parser) parseStepExecWait(entries []workflowMappingEntry) *definition.ExecWait {
+	ret := &definition.ExecWait{}
 	waitGiven := false
 
 	for _, e := range entries {
@@ -1622,7 +1622,7 @@ func (p *Parser) parseStepExecWait(entries []workflowMappingEntry) *workflowlang
 			ret.Names = p.parseStringOrStringSequence("wait", e.val)
 		case "wait-all":
 			// The schema allows null or a static boolean; false is diagnosed as a no-op.
-			if e.val.Tag != workflowlang.YamlTagNull {
+			if e.val.Tag != definition.YamlTagNull {
 				if b := p.parseLiteralBool(e.val); b != nil && !b.Value {
 					p.error(e.val, CodeInvalidValue, "the value of \"wait-all\" must be true or omitted")
 				}
@@ -1653,8 +1653,8 @@ func (p *Parser) parseStepExecWait(entries []workflowMappingEntry) *workflowlang
 
 // parseStepExecCancel parses a 'cancel' step that cancels running background steps.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
-func (p *Parser) parseStepExecCancel(entries []workflowMappingEntry) *workflowlang.ExecCancel {
-	ret := &workflowlang.ExecCancel{}
+func (p *Parser) parseStepExecCancel(entries []workflowMappingEntry) *definition.ExecCancel {
+	ret := &definition.ExecCancel{}
 
 	for _, e := range entries {
 		switch e.id {
@@ -1678,8 +1678,8 @@ func (p *Parser) parseStepExecCancel(entries []workflowMappingEntry) *workflowla
 
 // parseStepExecParallel parses a 'parallel' step that runs a group of steps in parallel.
 // https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
-func (p *Parser) parseStepExecParallel(entries []workflowMappingEntry) *workflowlang.ExecParallel {
-	ret := &workflowlang.ExecParallel{}
+func (p *Parser) parseStepExecParallel(entries []workflowMappingEntry) *definition.ExecParallel {
+	ret := &definition.ExecParallel{}
 
 	for _, e := range entries {
 		switch e.id {
@@ -1697,7 +1697,7 @@ func (p *Parser) parseStepExecParallel(entries []workflowMappingEntry) *workflow
 
 // ParseStepIsolated decodes one step and reports whether it decoded without
 // syntax errors. The step's errors are not retained by the parser.
-func (p *Parser) ParseStepIsolated(n *codec.Node) (*workflowlang.Step, bool) {
+func (p *Parser) ParseStepIsolated(n *codec.Node) (*definition.Step, bool) {
 	before := len(p.errs)
 	step := p.ParseStep(n)
 	clean := len(p.errs) == before
@@ -1707,8 +1707,8 @@ func (p *Parser) ParseStepIsolated(n *codec.Node) (*workflowlang.Step, bool) {
 
 // ParseStep parses a workflow or composite-action step.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
-func (p *Parser) ParseStep(n *codec.Node) *workflowlang.Step {
-	ret := &workflowlang.Step{Pos: PosAt(n)}
+func (p *Parser) ParseStep(n *codec.Node) *definition.Step {
+	ret := &definition.Step{Pos: PosAt(n)}
 
 	const (
 		isUnknown = iota
@@ -1721,7 +1721,7 @@ func (p *Parser) ParseStep(n *codec.Node) *workflowlang.Step {
 	)
 
 	kind := isUnknown
-	var declaredUses *workflowlang.String
+	var declaredUses *definition.String
 	entries := slices.Collect(p.parseMappingAt("element of \"steps\" section", n, false, true))
 	for _, e := range entries {
 		switch e.id {
@@ -1789,13 +1789,13 @@ func (p *Parser) ParseStep(n *codec.Node) *workflowlang.Step {
 
 // ParseSteps parses a sequence of workflow steps.
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idsteps
-func (p *Parser) ParseSteps(n *codec.Node) []*workflowlang.Step {
+func (p *Parser) ParseSteps(n *codec.Node) []*definition.Step {
 	// The empty-job rule reports jobs without steps or a reusable workflow call.
 	if ok := p.checkSequence("steps", n, true); !ok {
 		return nil
 	}
 
-	ret := make([]*workflowlang.Step, 0, len(n.Content))
+	ret := make([]*definition.Step, 0, len(n.Content))
 
 	for _, c := range n.Content {
 		if s := p.ParseStep(c); s != nil {
@@ -1807,17 +1807,17 @@ func (p *Parser) ParseSteps(n *codec.Node) []*workflowlang.Step {
 }
 
 // https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idruns-on
-func (p *Parser) parseRunsOn(n *codec.Node) *workflowlang.Runner {
+func (p *Parser) parseRunsOn(n *codec.Node) *definition.Runner {
 	if expr := p.mayParseExpression(n); expr != nil {
-		return &workflowlang.Runner{Expression: expr}
+		return &definition.Runner{Expression: expr}
 	}
 
 	if n.Kind == codec.ScalarNode || n.Kind == codec.SequenceNode {
 		labels := p.parseStringOrStringSequence("runs-on", n)
-		return &workflowlang.Runner{Labels: labels}
+		return &definition.Runner{Labels: labels}
 	}
 
-	r := &workflowlang.Runner{}
+	r := &definition.Runner{}
 	for e := range p.parseSectionMapping("runs-on", n, false, true) {
 		switch e.id {
 		case "labels":
@@ -1836,15 +1836,15 @@ func (p *Parser) parseRunsOn(n *codec.Node) *workflowlang.Runner {
 	return r
 }
 
-func (p *Parser) parseSnapshot(pos *source.Position, n *codec.Node) *workflowlang.Snapshot {
+func (p *Parser) parseSnapshot(pos *source.Position, n *codec.Node) *definition.Snapshot {
 	if expr := p.mayParseExpression(n); expr != nil {
-		return &workflowlang.Snapshot{Expression: expr}
+		return &definition.Snapshot{Expression: expr}
 	}
 	switch n.Kind {
 	case codec.ScalarNode:
-		return &workflowlang.Snapshot{ImageName: p.parseString(n, false)}
+		return &definition.Snapshot{ImageName: p.parseString(n, false)}
 	case codec.MappingNode:
-		ret := &workflowlang.Snapshot{}
+		ret := &definition.Snapshot{}
 		for e := range p.parseSectionMapping("on", n, false, true) {
 			switch e.id {
 			case "image-name":
@@ -1879,14 +1879,14 @@ func JobKeyRequiresSteps(key string) bool {
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_id
-func (p *Parser) parseJob(id *workflowlang.String, n *codec.Node) *workflowlang.Job {
-	ret := &workflowlang.Job{ID: id, Pos: id.Pos}
-	call := &workflowlang.WorkflowCall{}
+func (p *Parser) parseJob(id *definition.String, n *codec.Node) *definition.Job {
+	ret := &definition.Job{ID: id, Pos: id.Pos}
+	call := &definition.WorkflowCall{}
 
 	// JobKeyRequiresSteps identifies keys excluded from reusable workflow calls.
 	// https://docs.github.com/en/actions/using-workflows/reusing-workflows#supported-keywords-for-jobs-that-call-a-reusable-workflow
-	var stepsOnlyKey *workflowlang.String
-	var callOnlyKey *workflowlang.String
+	var stepsOnlyKey *definition.String
+	var callOnlyKey *definition.String
 
 	for e := range p.parseMapping(sprintf("%q job", id.Value), n, false, true) {
 		k, v := e.key, e.val
@@ -1899,7 +1899,7 @@ func (p *Parser) parseJob(id *workflowlang.String, n *codec.Node) *workflowlang.
 		case "needs":
 			if v.Kind == codec.ScalarNode {
 				// needs: job1
-				ret.Needs = []*workflowlang.String{p.parseString(v, false)}
+				ret.Needs = []*definition.String{p.parseString(v, false)}
 			} else {
 				// needs: [job1, job2]
 				ret.Needs = p.parseStringSequence("needs", v, false)
@@ -1940,9 +1940,9 @@ func (p *Parser) parseJob(id *workflowlang.String, n *codec.Node) *workflowlang.
 			call.Uses = p.parseStaticString(v)
 			callOnlyKey = k
 		case "with":
-			call.Inputs = map[string]*workflowlang.WorkflowCallInput{}
+			call.Inputs = map[string]*definition.WorkflowCallInput{}
 			for e := range p.parseSectionMapping("with", v, false, false) {
-				call.Inputs[e.id] = &workflowlang.WorkflowCallInput{
+				call.Inputs[e.id] = &definition.WorkflowCallInput{
 					Name:  e.key,
 					Value: p.parseString(e.val, true),
 				}
@@ -1958,9 +1958,9 @@ func (p *Parser) parseJob(id *workflowlang.String, n *codec.Node) *workflowlang.
 					p.errorf(e.val, CodeTypeMismatch, "expected mapping node for secrets or \"inherit\" string node but found %q node", e.val.Value)
 				}
 			} else {
-				call.Secrets = map[string]*workflowlang.WorkflowCallSecret{}
+				call.Secrets = map[string]*definition.WorkflowCallSecret{}
 				for e := range p.parseSectionMapping("secrets", v, false, false) {
-					call.Secrets[e.id] = &workflowlang.WorkflowCallSecret{
+					call.Secrets[e.id] = &definition.WorkflowCallSecret{
 						Name:  e.key,
 						Value: p.parseString(e.val, true),
 					}
@@ -2029,8 +2029,8 @@ func (p *Parser) parseJob(id *workflowlang.String, n *codec.Node) *workflowlang.
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobs
-func (p *Parser) parseJobs(n *codec.Node) map[string]*workflowlang.Job {
-	ret := map[string]*workflowlang.Job{}
+func (p *Parser) parseJobs(n *codec.Node) map[string]*definition.Job {
+	ret := map[string]*definition.Job{}
 	for e := range p.parseSectionMapping("jobs", n, false, false) {
 		ret[e.id] = p.parseJob(e.key, e.val)
 	}
@@ -2039,8 +2039,8 @@ func (p *Parser) parseJobs(n *codec.Node) map[string]*workflowlang.Job {
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
 // parse consumes an alias-projected document without changing its nodes.
-func (p *Parser) parse(n *codec.Node) *workflowlang.Workflow {
-	w := &workflowlang.Workflow{}
+func (p *Parser) parse(n *codec.Node) *definition.Workflow {
+	w := &definition.Workflow{}
 
 	if len(n.Content) == 0 {
 		position := PosAt(n)
@@ -2131,7 +2131,7 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 
 // ParseWorkflow recovers workflow syntax and diagnostics. YAML load or expansion-admission
 // failures return a nil workflow; recoverable syntax errors accompany the tree.
-func ParseWorkflow(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
+func ParseWorkflow(b []byte) (*definition.Workflow, []*SyntaxError) {
 	n, err := codec.ParseYAML(b)
 	if err != nil {
 		return nil, HandleYAMLUnmarshalError(err)
@@ -2145,7 +2145,7 @@ func ParseWorkflow(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
 // reusable-workflow call. workflowCallFindings is the subset of findings
 // reported while reading the declarations of the on.workflow_call event;
 // GitHub refuses to call a workflow when any of them exists.
-func ParseReusableWorkflow(b []byte) (workflow *workflowlang.Workflow, findings, workflowCallFindings []*SyntaxError) {
+func ParseReusableWorkflow(b []byte) (workflow *definition.Workflow, findings, workflowCallFindings []*SyntaxError) {
 	n, err := codec.ParseYAML(b)
 	if err != nil {
 		return nil, HandleYAMLUnmarshalError(err), nil
@@ -2168,14 +2168,14 @@ func documentFindings(b []byte) []*SyntaxError {
 }
 
 // parseDocument owns one parser and one projection for the complete physical source.
-func parseDocument(source []byte, root *codec.Node) (*workflowlang.Workflow, []*SyntaxError) {
+func parseDocument(source []byte, root *codec.Node) (*definition.Workflow, []*SyntaxError) {
 	workflow, p := runDocumentParser(source, root)
 	return workflow, p.errs
 }
 
 // runDocumentParser parses the complete physical source and returns the parser
 // that holds its findings.
-func runDocumentParser(source []byte, root *codec.Node) (*workflowlang.Workflow, *Parser) {
+func runDocumentParser(source []byte, root *codec.Node) (*definition.Workflow, *Parser) {
 	p := NewSourceParser(source)
 	p.IndexScalarSources(root)
 	p.checkFlowMappingNulls(root, false)

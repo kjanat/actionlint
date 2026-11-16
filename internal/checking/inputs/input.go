@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -19,7 +19,7 @@ import (
 
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
-	rulemeta.Declaration
+	rule.Declaration
 	InvocationDefinitions []commands.Definition
 }
 
@@ -58,7 +58,7 @@ type AnalyzerInput struct {
 	Content         string
 	Kind            string
 	ParseStatus     string
-	AvailableInputs []rulemeta.InputKind
+	AvailableInputs []rule.InputKind
 	Options         json.RawMessage
 	Scripts         []Script
 	Invoked         []Script

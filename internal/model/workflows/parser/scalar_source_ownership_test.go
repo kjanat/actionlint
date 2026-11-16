@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -26,7 +26,7 @@ func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 			entries := projected.Content[0].Content
 			pristine := NewSourceParser([]byte(input))
 			pristine.IndexScalarSources(root)
-			get := func(p *Parser) *workflowlang.ScriptSource {
+			get := func(p *Parser) *definition.ScriptSource {
 				switch mode {
 				case "alias":
 					return p.ScriptSourceForDeclaration(entries[3], PosAt(entries[2]))

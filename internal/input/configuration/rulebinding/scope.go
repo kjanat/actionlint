@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 // Rule is a prepared configuration decision. Execution and publication retain
@@ -109,11 +109,11 @@ func (r *Registry) Prepare(caller, source, composite *configuration.Config) *Sco
 	for _, declaration := range r.rules.Rules() {
 		selected := caller
 		switch declaration.Scope {
-		case rulemeta.SourceConfiguration:
+		case rule.SourceConfiguration:
 			selected = source
-		case rulemeta.CompositeConfiguration:
+		case rule.CompositeConfiguration:
 			selected = composite
-		case rulemeta.CallerConfiguration:
+		case rule.CallerConfiguration:
 		}
 		policy := selected
 		if caller != nil && caller.Lint.Enabled != nil && !*caller.Lint.Enabled {

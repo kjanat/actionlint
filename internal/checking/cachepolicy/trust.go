@@ -10,8 +10,8 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
@@ -73,7 +73,7 @@ var cacheEventClasses = map[string]cacheEventClass{
 // cacheRestrictedEvents includes unclassified triggers conservatively.
 //
 // Inventory tests require an explicit decision before a new generated event can ship.
-func cacheRestrictedEvents(w declaration.Workflow) []string {
+func cacheRestrictedEvents(w workflows.Workflow) []string {
 	events := make([]string, 0, len(w.On))
 	for _, event := range w.On {
 		name := event.EventName()
@@ -92,17 +92,17 @@ func cacheRestrictedEvents(w declaration.Workflow) []string {
 // Each shared declaration is assigned to its first reachable job in source order.
 // Construction prepares that assignment; checks do not mutate it.
 type Trust struct {
-	workflow     *workflowlang.CacheMode
+	workflow     *definition.CacheMode
 	events       []string
 	declarations []cacheDeclaration
 }
 type cacheDeclaration struct {
-	mode      *workflowlang.CacheMode
-	job       declaration.Job
+	mode      *definition.CacheMode
+	job       workflows.Job
 	reachable []string
 }
 
-func (r *Trust) declaration(mode *workflowlang.CacheMode, job declaration.Job) *cacheDeclaration {
+func (r *Trust) declaration(mode *definition.CacheMode, job workflows.Job) *cacheDeclaration {
 	for i := range r.declarations {
 		if r.declarations[i].mode == mode {
 			return &r.declarations[i]
@@ -113,13 +113,13 @@ func (r *Trust) declaration(mode *workflowlang.CacheMode, job declaration.Job) *
 }
 
 // NewTrust prepares event reachability and shared cache declarations for one workflow.
-func NewTrust(w declaration.Workflow) *Trust {
+func NewTrust(w workflows.Workflow) *Trust {
 	r := &Trust{workflow: w.CacheMode, events: cacheRestrictedEvents(w)}
-	var jobs []declaration.Job
+	var jobs []workflows.Job
 	for _, job := range w.Jobs() {
 		jobs = append(jobs, job)
 	}
-	slices.SortFunc(jobs, func(a, b declaration.Job) int {
+	slices.SortFunc(jobs, func(a, b workflows.Job) int {
 		left, right := sourcepos.ZeroIfNil(a.Pos), sourcepos.ZeroIfNil(b.Pos)
 		if order := cmp.Compare(left.Line, right.Line); order != 0 {
 			return order
@@ -149,7 +149,7 @@ func NewTrust(w declaration.Workflow) *Trust {
 }
 
 // CheckWrites reports effective write grants reachable from low-trust events.
-func (r *Trust) CheckWrites(job declaration.Job) []results.Diagnostic {
+func (r *Trust) CheckWrites(job workflows.Job) []results.Diagnostic {
 	for _, declaration := range r.declarations {
 		if declaration.job == job {
 			mode := declaration.mode
@@ -160,7 +160,7 @@ func (r *Trust) CheckWrites(job declaration.Job) []results.Diagnostic {
 }
 
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
-func (r *Trust) CheckCall(job declaration.Job) []results.Diagnostic {
+func (r *Trust) CheckCall(job workflows.Job) []results.Diagnostic {
 	call := job.WorkflowCall
 	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cachemodel.EffectiveMode(r.workflow, job.CacheMode) != nil {
 		return nil

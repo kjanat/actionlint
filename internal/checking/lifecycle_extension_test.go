@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -49,7 +49,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 		Sources:    []sourceUnit{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			check := define.Checks{
-				Step: func(step workflowdecl.Step) []reporting.StepFinding {
+				Step: func(step workflows.Step) []reporting.StepFinding {
 					if _, run := step.Run(); !run {
 						return nil
 					}

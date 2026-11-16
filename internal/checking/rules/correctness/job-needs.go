@@ -7,8 +7,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/jobneeds"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
 // JobNeedsRule is the single definition of the job-needs rule.
@@ -24,15 +24,15 @@ var JobNeedsRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Workflow: checkJobDependencies}),
 }
 
-func checkJobDependencies(w declaration.Workflow) []reporting.StepFinding {
-	jobs := slices.Collect(func(yield func(declaration.Job) bool) {
+func checkJobDependencies(w workflows.Workflow) []reporting.StepFinding {
+	jobs := slices.Collect(func(yield func(workflows.Job) bool) {
 		for _, job := range w.Jobs() {
 			if !yield(job) {
 				return
 			}
 		}
 	})
-	slices.SortStableFunc(jobs, func(a, b declaration.Job) int {
+	slices.SortStableFunc(jobs, func(a, b workflows.Job) int {
 		left, _ := a.Position()
 		right, _ := b.Position()
 		if left.Line != right.Line {

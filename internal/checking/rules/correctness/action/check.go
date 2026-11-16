@@ -17,10 +17,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -81,7 +81,7 @@ func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*
 }
 
 // Inputs validates supplied and required inputs against resolved action metadata.
-func Inputs(meta *actionmeta.Metadata, exec *workflowlang.ExecAction, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
+func Inputs(meta *actionmeta.Metadata, exec *definition.ExecAction, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
 	rule := validator{}
 	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
@@ -451,8 +451,8 @@ func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, calle
 
 var reNewlineWithIndent = regexp.MustCompile(`\s*\r?\n\s*`)
 
-func (rule *validator) checkAction(meta actionmeta.Definition, exec *workflowlang.ExecAction, description string) {
-	inputs := workflowdecl.ResolvedInputs(exec)
+func (rule *validator) checkAction(meta actionmeta.Definition, exec *definition.ExecAction, description string) {
+	inputs := workflows.ResolvedInputs(exec)
 	known := inputs.Complete()
 	// Check specified inputs are defined in action's inputs spec
 	for key := range inputs.KeyedEntries() {

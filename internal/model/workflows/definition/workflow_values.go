@@ -1,4 +1,4 @@
-package workflow
+package definition
 
 import (
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"

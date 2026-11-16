@@ -29,7 +29,7 @@ import (
 	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
@@ -99,15 +99,15 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow(declaration workflowdecl.Workflow) error {
+func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow) error {
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
 	analysis.beginEntryScope(scriptexecution.Deployment{})
-	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
+	defaults := workflows.DefaultsRun(declaration.Defaults)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults)
-	analysis.workflowEnv = workflowdecl.Environment(declaration.Env)
+	analysis.workflowEnv = workflows.Environment(declaration.Env)
 	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv)}
 	analysis.workflowShell = execution.DefaultShell(defaults)
 	return nil
@@ -136,17 +136,17 @@ func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.De
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 }
 
-func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.Job) error {
+func (analysis *compositeAnalyzer) beginJob(declaration workflows.Job) error {
 	if err := analysis.sourceSnapshot.ValidateJob(declaration); err != nil {
 		return err
 	}
 	analysis.jobScriptShell = scriptDefaultShell(declaration.Defaults)
-	defaults := workflowdecl.DefaultsRun(declaration.Defaults)
+	defaults := workflows.DefaultsRun(declaration.Defaults)
 	analysis.scriptJobShell = execution.DefaultShell(defaults)
 	analysis.scriptJobDir = execution.DefaultDirectory(defaults)
 	knowledge := analysis.runners.Job(declaration)
 	analysis.operatingSystems = knowledge.OperatingSystems()
-	if container := scriptmodel.ContainerShell(workflowdecl.Container(declaration.Container)); container.State() != value.Missing {
+	if container := scriptmodel.ContainerShell(workflows.Container(declaration.Container)); container.State() != value.Missing {
 		analysis.operatingSystems = []runnerapi.OS{runnerapi.UnknownOS}
 		if container.Known() {
 			analysis.operatingSystems = []runnerapi.OS{runnerapi.Linux}
@@ -154,9 +154,9 @@ func (analysis *compositeAnalyzer) beginJob(declaration workflowdecl.Job) error 
 	}
 	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{
 		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentWorkflow, analysis.workflowEnv),
-		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentJob, workflowdecl.Environment(declaration.Env)),
+		scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentJob, workflows.Environment(declaration.Env)),
 	}
-	analysis.scriptRunnerShell = scriptmodel.DefaultShell(workflowdecl.Container(declaration.Container), knowledge.Shell)
+	analysis.scriptRunnerShell = scriptmodel.DefaultShell(workflows.Container(declaration.Container), knowledge.Shell)
 	analysis.jobID = ""
 	if id := declaration.ID; id != nil {
 		analysis.jobID = id.Value
@@ -169,7 +169,7 @@ func (analysis *compositeAnalyzer) invalidateCheckout() {
 	analysis.actions.InvalidateCheckout()
 }
 
-func (analysis *compositeAnalyzer) visitStep(step workflowdecl.Step) error {
+func (analysis *compositeAnalyzer) visitStep(step workflows.Step) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (analysis *compositeAnalyzer) visitStep(step workflowdecl.Step) error {
 	return analysis.visitActionScripts(step, scripts, func() error { return analysis.visitStepPasses(step) })
 }
 
-func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.Step) error {
+func (analysis *compositeAnalyzer) visitStepPasses(step workflows.Step) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -210,15 +210,15 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflowdecl.Step) error
 }
 
 // visitJobPass attributes what a pass reports while visiting a job to that job.
-func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflowdecl.Job, visit func() error) error {
+func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflows.Job, visit func() error) error {
 	return selection.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), selection.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }
 
-func canonicalStepOrigin(step workflowdecl.Step, job string) *findingmodel.IgnoreOrigin {
+func canonicalStepOrigin(step workflows.Step, job string) *findingmodel.IgnoreOrigin {
 	return canonicalOrigin(step.Origin(job))
 }
 
-func canonicalOrigin(owned workflowdecl.Origin) *findingmodel.IgnoreOrigin {
+func canonicalOrigin(owned workflows.Origin) *findingmodel.IgnoreOrigin {
 	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
 	if owned.HasPosition {
 		position := owned.Position

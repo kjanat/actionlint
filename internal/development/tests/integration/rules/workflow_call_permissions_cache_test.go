@@ -11,14 +11,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 
-	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
@@ -27,7 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func testParseWorkflowPermissions(t *testing.T, src string) *workflowlang.Permissions {
+func testParseWorkflowPermissions(t *testing.T, src string) *definition.Permissions {
 	t.Helper()
 	if src == "" {
 		return nil
@@ -55,20 +55,20 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
 			t.Fatal(err)
 		}
-		r := workflowCallVisitor(t, fixturedecl.Workflow(&workflowlang.Workflow{}), cache, repofacts.Snapshot{})
-		if err := r.VisitWorkflowPre(fixturedecl.Workflow(&workflowlang.Workflow{})); err != nil {
+		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repofacts.Snapshot{})
+		if err := r.VisitWorkflowPre(declarations.Workflow(&definition.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
-		j := &workflowlang.Job{
-			ID:          &workflowlang.String{Value: "caller", Pos: &source.Position{}},
+		j := &definition.Job{
+			ID:          &definition.String{Value: "caller", Pos: &source.Position{}},
 			Permissions: testParseWorkflowPermissions(t, "permissions: {}"),
-			WorkflowCall: &workflowlang.WorkflowCall{
-				Uses:    &workflowlang.String{Value: "./permissions.yaml", Pos: &source.Position{}},
-				Inputs:  map[string]*workflowlang.WorkflowCallInput{},
-				Secrets: map[string]*workflowlang.WorkflowCallSecret{},
+			WorkflowCall: &definition.WorkflowCall{
+				Uses:    &definition.String{Value: "./permissions.yaml", Pos: &source.Position{}},
+				Inputs:  map[string]*definition.WorkflowCallInput{},
+				Secrets: map[string]*definition.WorkflowCallSecret{},
 			},
 		}
-		if err := r.VisitJobPre(fixturedecl.Job(j)); err != nil {
+		if err := r.VisitJobPre(declarations.Job(j)); err != nil {
 			t.Fatal(err)
 		}
 		msgs := []string{}
@@ -88,9 +88,9 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if w == nil {
 		t.Fatal("callee was not parsed:", errs)
 	}
-	var event *workflowlang.WorkflowCallEvent
+	var event *definition.WorkflowCallEvent
 	for _, e := range w.On {
-		if ev, ok := e.(*workflowlang.WorkflowCallEvent); ok {
+		if ev, ok := e.(*definition.WorkflowCallEvent); ok {
 			event = ev
 		}
 	}
@@ -319,25 +319,25 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache := newCapturedWorkflowCache(t, cwd, cwd, nil)
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
-			w := &workflowlang.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			r := workflowCallVisitor(t, fixturedecl.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
-			if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
+			w := &definition.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
+			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
+			if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
 
-			j := &workflowlang.Job{
-				ID:          &workflowlang.String{Value: "caller", Pos: &source.Position{}},
+			j := &definition.Job{
+				ID:          &definition.String{Value: "caller", Pos: &source.Position{}},
 				Permissions: testParseWorkflowPermissions(t, tc.jobPerms),
-				WorkflowCall: &workflowlang.WorkflowCall{
-					Uses:    &workflowlang.String{Value: "./callee.yaml", Pos: &source.Position{}},
-					Inputs:  map[string]*workflowlang.WorkflowCallInput{},
-					Secrets: map[string]*workflowlang.WorkflowCallSecret{},
+				WorkflowCall: &definition.WorkflowCall{
+					Uses:    &definition.String{Value: "./callee.yaml", Pos: &source.Position{}},
+					Inputs:  map[string]*definition.WorkflowCallInput{},
+					Secrets: map[string]*definition.WorkflowCallSecret{},
 				},
 			}
 			if tc.jobIf {
-				j.If = &workflowlang.String{Value: "${{ github.event_name == 'push' }}", Pos: &source.Position{}}
+				j.If = &definition.String{Value: "${{ github.event_name == 'push' }}", Pos: &source.Position{}}
 			}
-			if err := r.VisitJobPre(fixturedecl.Job(j)); err != nil {
+			if err := r.VisitJobPre(declarations.Job(j)); err != nil {
 				t.Fatal(err)
 			}
 

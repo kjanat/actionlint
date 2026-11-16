@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
-	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
@@ -126,7 +126,7 @@ type remoteGraphChecker struct {
 }
 
 func (remoteGraphChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rulemeta.InputKind{rulemeta.Invocations, rulemeta.Scripts}}
+	return checkinputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
 }
 
 func (c remoteGraphChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
@@ -86,7 +86,7 @@ func EnvironmentLiteral(semantic value.Value) (string, bool) {
 
 // ServicesMayChangeWorkspace reports service mounts or options that can expose
 // the workspace even when the job itself does not run in a container.
-func ServicesMayChangeWorkspace(services *workflowlang.Services) bool {
+func ServicesMayChangeWorkspace(services *definition.Services) bool {
 	if services == nil {
 		return false
 	}
@@ -94,7 +94,7 @@ func ServicesMayChangeWorkspace(services *workflowlang.Services) bool {
 		return true
 	}
 	for _, service := range services.Value {
-		var container *workflowlang.Container
+		var container *definition.Container
 		if service != nil {
 			container = service.Container
 		}
