@@ -1587,6 +1587,7 @@ commit that file. Registry evidence and verified resolutions stay in the user ca
 Check, fix, rules and LSP load declared plugins using their pins. `plugin install`
 without a name resolves manually edited declarations.
 `plugin sync` restores exact pins; `plugin update` explicitly refreshes declared versions.
+`plugins` is an alias for `plugin`, and `add` is an alias for `install`.
 See [plugin installation](plugins.md#install-from-the-registry)
 for version selection, overrides and offline behavior.
 

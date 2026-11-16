@@ -17,8 +17,9 @@ import (
 )
 
 func (a *commandApp) pluginCommand() *cobra.Command {
+	// Cobra resolves aliases everywhere; help and completion list only names.
 	parent := &cobra.Command{
-		Use: "plugin", Short: "Discover, install and inspect plugins", Args: cobra.NoArgs,
+		Use: "plugin", Aliases: []string{"plugins"}, Short: "Discover, install and inspect plugins", Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, args []string) error { a.help(c, args); return nil },
 	}
 	a.commonFlags(parent, parent.PersistentFlags())
@@ -30,18 +31,19 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	parent.AddCommand(a.pluginAuthoringCommands()...)
 	for _, item := range []struct {
 		use, description string
+		aliases          []string
 		op               operation
 		args             cobra.PositionalArgs
 	}{
-		{"search [query]", "Search the published plugin catalogue", operationPluginSearch, cobra.MaximumNArgs(1)},
-		{"versions <plugin>", "List published tags and host-specific compatibility evidence", operationPluginVersions, cobra.ExactArgs(1)},
-		{"install [plugin]", "Install plugins and save canonical packages with exact versions", operationPluginInstall, cobra.MaximumNArgs(1)},
-		{"list", "List configured exact plugin releases", operationPluginList, cobra.NoArgs},
-		{"update [plugin]", "Resolve declared versions and update their pins", operationPluginUpdate, cobra.MaximumNArgs(1)},
-		{"remove <plugin>", "Remove a plugin from configuration", operationPluginRemove, cobra.ExactArgs(1)},
-		{"sync", "Refresh release status and restore configured artifacts", operationPluginSync, cobra.NoArgs},
+		{"search [query]", "Search the published plugin catalogue", nil, operationPluginSearch, cobra.MaximumNArgs(1)},
+		{"versions <plugin>", "List published tags and host-specific compatibility evidence", nil, operationPluginVersions, cobra.ExactArgs(1)},
+		{"install [plugin]", "Install plugins and save canonical packages with exact versions", []string{"add"}, operationPluginInstall, cobra.MaximumNArgs(1)},
+		{"list", "List configured exact plugin releases", nil, operationPluginList, cobra.NoArgs},
+		{"update [plugin]", "Resolve declared versions and update their pins", nil, operationPluginUpdate, cobra.MaximumNArgs(1)},
+		{"remove <plugin>", "Remove a plugin from configuration", nil, operationPluginRemove, cobra.ExactArgs(1)},
+		{"sync", "Refresh release status and restore configured artifacts", nil, operationPluginSync, cobra.NoArgs},
 	} {
-		c := &cobra.Command{Use: item.use, Short: item.description, Args: item.args, RunE: a.capture(item.op)}
+		c := &cobra.Command{Use: item.use, Aliases: item.aliases, Short: item.description, Args: item.args, RunE: a.capture(item.op)}
 		if item.op == operationPluginSearch || item.op == operationPluginVersions || item.op == operationPluginInstall || item.op == operationPluginUpdate || item.op == operationPluginRemove {
 			c.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+pluginregistry.DefaultURL+")")
 			annotateFlag(c.Flags(), "registry", "Registry")
