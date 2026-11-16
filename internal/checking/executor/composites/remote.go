@@ -127,6 +127,9 @@ func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta
 			return nil, address, invocation.Outcome{}, err
 		}
 		parsed := parsing.Action(address, captured.Bytes())
+		if analysis.onRemoteDocument != nil {
+			analysis.onRemoteDocument(captured, parsed)
+		}
 		snapshot, err := analysis.sourceSnapshots.Document(captured, parsed)
 		if err != nil {
 			return nil, address, invocation.Outcome{}, err

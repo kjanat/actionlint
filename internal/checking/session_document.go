@@ -74,6 +74,7 @@ type analysisSession struct {
 	reader          *files.Reader
 	captures        *capture.Store
 	snapshots       *parsing.SourceSnapshots
+	actionDocuments *actionDocuments
 	gitModes        *gitModes
 	ignorePats      configuration.IgnorePatterns
 	ignoreSelectors resultpolicy.IgnoreSelectors
@@ -365,9 +366,10 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	requires := selection.RequiredFacts(registrations)
 	options := composites.Options{
 		Bindings: settings.bindings[sourcePath], BindSource: settings.bindInvocation,
-		SourceSnapshots: s.snapshots,
-		Captures:        s.captures,
-		RemoteActions:   remoteActions,
+		SourceSnapshots:        s.snapshots,
+		Captures:               s.captures,
+		RemoteActions:          remoteActions,
+		OnRemoteActionDocument: s.actionDocuments.parsed,
 		PrepareSource: func(_ parsing.SourceSnapshot, references []string) error {
 			var lookups errgroup.Group
 			lookups.SetLimit(concurrentMetadataLookups)
