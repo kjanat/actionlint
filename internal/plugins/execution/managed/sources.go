@@ -18,6 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -340,8 +341,10 @@ func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, scr
 		result.Source.Content, result.Source.RawScript = content, true
 		result.Source.Unavailable = results.ReportedSourceUnavailable(name, result.Path, false)
 		last := script.Value().Line
-		for _, span := range script.Source().LineSpans() {
-			last = max(last, span.YamlLine)
+		if source := script.Source(); source != nil {
+			for _, span := range sourcemap.LineSpans(source.Value, source.Spans) {
+				last = max(last, span.Document.Line)
+			}
 		}
 		result.Suppression = &results.SuppressionOrigin{Path: script.Path, First: script.Key().Line, Last: last}
 		return result, nil

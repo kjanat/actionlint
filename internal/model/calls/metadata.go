@@ -163,27 +163,18 @@ func jobCacheAccess(mode *workflowlang.CacheMode, uses string, steps []*workflow
 		local = ""
 		uses = ""
 	}
-	operations := collectCacheOperations(nil, steps)
+	var operations []string
+	for step := range workflowlang.AllSteps(steps) {
+		if exec, ok := step.Exec.(*workflowlang.ExecAction); ok && exec.Uses != nil {
+			if name := references.CacheAction(exec.Uses.Value); name != "" {
+				operations = append(operations, name)
+			}
+		}
+	}
 	if mode == nil && local == "" && len(operations) == 0 {
 		return CacheAccess{}, false
 	}
 	return CacheAccess{Mode: cacheModeDeclaration(mode), Uses: local, SourceUses: uses, Operations: operations}, true
-}
-
-func collectCacheOperations(operations []string, steps []*workflowlang.Step) []string {
-	for _, step := range steps {
-		switch exec := step.Exec.(type) {
-		case *workflowlang.ExecAction:
-			if exec.Uses != nil {
-				if name := references.CacheAction(exec.Uses.Value); name != "" {
-					operations = append(operations, name)
-				}
-			}
-		case *workflowlang.ExecParallel:
-			operations = collectCacheOperations(operations, exec.Steps)
-		}
-	}
-	return operations
 }
 
 // JobPermissionsAndCacheAccess collects effective permissions and cache declarations by job ID.

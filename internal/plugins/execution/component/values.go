@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -75,22 +76,36 @@ func lowerInputKinds(facts []rulemeta.InputKind) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-func lowerSpan(span scriptmodel.Span) *wacogo.ValRecord {
-	documentEnd := wacogo.ValOptionNone()
-	if span.DocumentEnd.Line != 0 {
-		documentEnd = wacogo.ValOptionSome(lowerPosition(span.DocumentEnd))
+// lowerSpans lowers byte-offset spans of text to the WIT span records, which
+// address one text line by line and character columns.
+func lowerSpans(text string, spans []sourcemap.Span) []wacogo.Val {
+	lineSpans := sourcemap.LineSpans(text, spans)
+	values := make([]wacogo.Val, 0, len(lineSpans))
+	// LineSpans orders spans by Start, so the line scan only moves forward.
+	line, lineStart, scanned := 1, 0, 0
+	for _, span := range lineSpans {
+		for i := scanned; i < span.Start; i++ {
+			if text[i] == '\n' {
+				line, lineStart = line+1, i+1
+			}
+		}
+		scanned = max(scanned, span.Start)
+		documentEnd := wacogo.ValOptionNone()
+		if span.DocumentEnd.Line != 0 {
+			documentEnd = wacogo.ValOptionSome(lowerPosition(span.DocumentEnd))
+		}
+		start := utf8.RuneCountInString(text[lineStart:span.Start]) + 1
+		end := utf8.RuneCountInString(text[lineStart:span.End]) + 1
+		values = append(values, wacogo.NewValRecord(
+			field("line", lowerU32(line)), field("start", lowerU32(start)), field("end", lowerU32(end)),
+			field("document", lowerPosition(span.Document)), field("document-end", documentEnd),
+		))
 	}
-	return wacogo.NewValRecord(
-		field("line", lowerU32(span.Line)), field("start", lowerU32(span.Start)), field("end", lowerU32(span.End)),
-		field("document", lowerPosition(span.Document)), field("document-end", documentEnd),
-	)
+	return values
 }
 
 func lowerScript(script checkinputs.Script) *wacogo.ValRecord {
-	spans := make([]wacogo.Val, 0, len(script.Spans))
-	for _, span := range script.Spans {
-		spans = append(spans, lowerSpan(span))
-	}
+	spans := lowerSpans(script.Text, script.Spans)
 	occurrence := wacogo.ValOptionNone()
 	if script.Occurrence.ID != "" {
 		occurrence = wacogo.ValOptionSome(wacogo.ValString(script.Occurrence.ID))

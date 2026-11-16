@@ -50,19 +50,12 @@ func (d *declarationSet) job(b *Bound, job *workflowlang.Job, ref sourcepos.Refe
 	if job.Strategy != nil && job.Strategy.Matrix != nil {
 		d.mapping(scope+".strategy.matrix", ref, MatrixMapping(job.Strategy.Matrix))
 	}
-	d.steps(b, job.Steps)
-}
-
-func (d *declarationSet) steps(b *Bound, nodes []*workflowlang.Step) {
-	for _, step := range nodes {
+	for step := range workflowlang.AllSteps(job.Steps) {
 		ref := b.references.Steps[step]
 		d.env(ref.Address+".env", ref, step.Env)
-		switch exec := step.Exec.(type) {
-		case *workflowlang.ExecAction:
+		if exec, ok := step.Exec.(*workflowlang.ExecAction); ok {
 			d.dependency(exec.Uses, "action", ref)
 			d.mapping(ref.Address+".with", ref, ResolvedInputs(exec))
-		case *workflowlang.ExecParallel:
-			d.steps(b, exec.Steps)
 		}
 	}
 }
