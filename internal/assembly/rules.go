@@ -5,14 +5,14 @@ import (
 	"errors"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 // RulesWithPluginPaths discovers selected providers without analyzing a document.
-func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition pluginacquisition.Options) (result []rule.Descriptor, err error) {
+func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition dependencycache.Acquisition) (result []rule.Descriptor, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err

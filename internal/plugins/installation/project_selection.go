@@ -6,13 +6,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 // OpenForSelection reads declarations without granting permission to edit a symlinked configuration.
 // files shares the parsed sources with later loads in the same run; it may be nil.
-func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, directory, configPath string, readMode plugins.ReadMode, files *document.Files) (*Project, error) {
+func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition dependencycache.Acquisition, directory, configPath string, readMode plugins.ReadMode, files *document.Files) (*Project, error) {
 	configPath, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err

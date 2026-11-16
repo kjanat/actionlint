@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestPluginInspectMissingLocalFileDoesNotQueryRegistry(t *testing.T) {
@@ -18,7 +18,7 @@ func TestPluginInspectMissingLocalFileDoesNotQueryRegistry(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewPluginRegistry(t)
-			acquisition := pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			status, out, log := runOfflineCommand(t, acquisition, "", "plugin", "inspect", source, "--registry", fixtureregistry.FixtureRegistryURL)
 			if status != 3 || !strings.Contains(log, "plugin.wasm") && !strings.Contains(log, "missing.wasm") {
 				t.Fatalf("missing local file: status=%d stdout=%s stderr=%s", status, out, log)
@@ -46,7 +46,7 @@ func TestPluginInspectRegistry(t *testing.T) {
 			}
 			registry.Add(t, version, []byte{0, 97, 115, 109, 13, 0, 1, 0})
 			var stdout, stderr bytes.Buffer
-			command := Command{Stdout: &stdout, Stderr: &stderr, Acquisition: pluginacquisition.Options{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+			command := Command{Stdout: &stdout, Stderr: &stderr, Acquisition: dependencycache.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
 			code := command.Main([]string{"actionlint", "plugin", "inspect", source, "--registry", fixtureregistry.FixtureRegistryURL, "--json"})
 			if code != 0 {
 				t.Fatalf("inspect %s exited %d: %s", source, code, stderr.String())

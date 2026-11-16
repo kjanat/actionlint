@@ -1,7 +1,6 @@
 package github
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 )
@@ -27,15 +26,11 @@ func TestEnvironmentOptionsModesAndCredentials(t *testing.T) {
 			t.Fatalf("mode=%q: mode=%q cache=%q credential matched=%t", tc.mode, options.Mode, options.CacheDir, options.Token == tc.wantToken)
 		}
 	}
-	want := ""
-	if cache, err := os.UserCacheDir(); err == nil {
-		want = filepath.Join(cache, "actionlint", "action-metadata", "v2")
-	}
-	if options := EnvironmentOptions(Online, func(string) string { return "" }, ""); options.CacheDir != want {
-		t.Fatalf("cache directory = %q, want %q", options.CacheDir, want)
+	if options := EnvironmentOptions(Online, func(string) string { return "" }, ""); options.CacheDir != "" {
+		t.Fatalf("cache directory = %q without an actionlint cache directory", options.CacheDir)
 	}
 	selected := t.TempDir()
-	if options := EnvironmentOptions(Online, func(string) string { return "" }, selected); options.CacheDir != filepath.Join(selected, "actionlint", "action-metadata", "v2") {
+	if options := EnvironmentOptions(Online, func(string) string { return "" }, selected); options.CacheDir != filepath.Join(selected, "action-metadata", "v2") {
 		t.Fatalf("selected cache directory = %q", options.CacheDir)
 	}
 }

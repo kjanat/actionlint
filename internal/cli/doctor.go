@@ -14,10 +14,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 type doctorTool struct {
@@ -29,7 +29,7 @@ type doctorTool struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition pluginacquisition.Options) error {
+func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisition dependencycache.Acquisition) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

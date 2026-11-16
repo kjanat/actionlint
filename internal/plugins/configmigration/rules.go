@@ -11,19 +11,19 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/localproviders"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 // cachedMigrationRules reads declarative metadata without running a guest or
 // acquiring an artifact. Registry selection can consult release metadata; a
 // missing cached manifest requires an explicit installation before migration.
-func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, path string) ([]rule.Descriptor, error) {
+func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition dependencycache.Acquisition, path string) ([]rule.Descriptor, error) {
 	directory := filepath.Dir(path)
 	sources, err := (pluginselection.PluginSelection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {

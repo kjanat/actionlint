@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
@@ -76,7 +77,7 @@ func projectConfigPath(directory, selected string) (string, error) {
 	return plugins.FindOrDefaultPath(directory)
 }
 
-func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Options, directory, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition dependencycache.Acquisition, directory, configPath string) (*Project, error) {
 	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err
@@ -330,7 +331,7 @@ func (p *Project) Save(ctx context.Context, refs []pluginreference.Reference) er
 }
 
 func (p *Project) artifactOptions() artifacts.Options {
-	options := p.StatusOptions.Acquisition.ArtifactOptions()
+	options := pluginacquisition.ArtifactOptions(p.StatusOptions.Acquisition)
 	options.Network = p.StatusOptions.Network
 	return options
 }

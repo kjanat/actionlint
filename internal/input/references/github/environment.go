@@ -1,23 +1,19 @@
 package github
 
 import (
-	"os"
 	"path/filepath"
 )
 
-// EnvironmentOptions uses the user's cache and GitHub credentials for metadata lookups.
-func EnvironmentOptions(mode Mode, env func(string) string, userCacheDir string) Options {
+// EnvironmentOptions uses actionlint's cache directory and the user's GitHub
+// credentials for metadata lookups. An empty cacheDirectory disables the
+// metadata cache.
+func EnvironmentOptions(mode Mode, env func(string) string, cacheDirectory string) Options {
 	if mode == "" {
 		mode = Online
 	}
 	options := Options{Mode: mode}
-	if mode != Off {
-		if userCacheDir == "" {
-			userCacheDir, _ = os.UserCacheDir()
-		}
-		if userCacheDir != "" {
-			options.CacheDir = filepath.Join(userCacheDir, "actionlint", "action-metadata", "v2")
-		}
+	if mode != Off && cacheDirectory != "" {
+		options.CacheDir = filepath.Join(cacheDirectory, "action-metadata", "v2")
 	}
 	if mode == Online {
 		options.Token = env("GH_TOKEN")

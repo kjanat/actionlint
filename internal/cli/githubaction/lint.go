@@ -25,10 +25,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/output"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 const lintTimeout = 300 * time.Second
@@ -56,7 +56,7 @@ type lintRequest struct {
 	sarif        bool
 	files        []string
 	hints        []string
-	acquisition  pluginacquisition.Options
+	acquisition  dependencycache.Acquisition
 }
 
 type lintOutcome struct {

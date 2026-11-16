@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
@@ -28,7 +29,7 @@ type editorPluginHost struct {
 	sources pluginselection.Sources
 }
 
-func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition pluginacquisition.Options) (*editorPluginHost, error) {
+func newEditorPluginHost(ctx context.Context, options checking.Options, paths []string, acquisition dependencycache.Acquisition) (*editorPluginHost, error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -71,7 +72,7 @@ type editorEngines struct {
 	customLoad  func(context.Context, string) (scriptengine.Backend, error)
 	log         io.Writer
 	debug       bool
-	acquisition pluginacquisition.Options
+	acquisition dependencycache.Acquisition
 }
 
 func (s *editorEngines) load(ctx context.Context, source string) (scriptengine.Backend, error) {
@@ -97,7 +98,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (scriptengine.B
 		if err := artifacts.RequireRemotePin(source); err != nil {
 			return nil, err
 		}
-		artifact, resolveErr := artifacts.Resolve(ctx, source, s.acquisition.ArtifactOptions())
+		artifact, resolveErr := artifacts.Resolve(ctx, source, pluginacquisition.ArtifactOptions(s.acquisition))
 		if resolveErr != nil {
 			return nil, resolveErr
 		}

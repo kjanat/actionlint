@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // CachePlan describes portable artifact bytes, never compiled native code.
@@ -26,7 +27,7 @@ type CachePlan struct {
 // It never fetches executable layers or executes plugins. Configuration backends
 // are included so their pinned bytes can be restored before runtime loading.
 func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
-	cacheDir, err := s.Acquisition.ArtifactCacheDir()
+	cacheDir, err := pluginacquisition.ArtifactCacheDir(s.Acquisition)
 	if err != nil {
 		return CachePlan{}, err
 	}

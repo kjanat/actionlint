@@ -13,10 +13,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -61,7 +61,7 @@ func WritePath(out io.Writer, req PathOptions) error {
 	return err
 }
 
-func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition pluginacquisition.Options) error {
+func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, acquisition dependencycache.Acquisition) error {
 	inspection, err := assembly.InspectConfig(ctx, req.Config, req.Plugins, false, acquisition)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 // WriteSchema writes the configuration JSON schema to out. Beyond the
 // published actionlint.schema.json, it describes tools.<name> for every tool
 // provider that the --plugin flags or the selected configuration install.
-func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition pluginacquisition.Options) error {
+func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisition dependencycache.Acquisition) error {
 	manifests, err := assembly.InstalledProviders(ctx, req.Config, req.Plugins, acquisition)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 	return err
 }
 
-func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition pluginacquisition.Options) error {
+func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition dependencycache.Acquisition) error {
 	inspection, err := assembly.InspectConfig(ctx, req.Config, req.Plugins, req.Origin, acquisition)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 }
 
 // Run migrates the selected configuration.
-func (req MigrateOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Options) (int, error) {
+func (req MigrateOptions) Run(ctx context.Context, streams commandio.Streams, acquisition dependencycache.Acquisition) (int, error) {
 	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err

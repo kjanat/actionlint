@@ -12,10 +12,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -52,7 +52,7 @@ type RegistryRequest struct {
 }
 
 // Run executes the plugin registry operation.
-func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Options) (int, error) {
+func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acquisition dependencycache.Acquisition) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
 		name = r.Paths[0]
@@ -378,7 +378,7 @@ func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []p
 	return index, nil
 }
 
-func (r RegistryRequest) discover(ctx context.Context, streams commandio.Streams, registry, name string, acquisition pluginacquisition.Options) error {
+func (r RegistryRequest) discover(ctx context.Context, streams commandio.Streams, registry, name string, acquisition dependencycache.Acquisition) error {
 	client, err := pluginregistry.New(registry, acquisition)
 	if err != nil {
 		return arguments.UsageError{Cause: err}

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 type responseTransport func(*http.Request) (*http.Response, error)
@@ -33,7 +33,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c, err := New("https://example.org/catalogue/", pluginacquisition.Options{})
+			c, err := New("https://example.org/catalogue/", dependencycache.Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -50,7 +50,7 @@ func TestCatalogueTransportLimits(t *testing.T) {
 			}
 		})
 	}
-	c, err := New(DefaultURL, pluginacquisition.Options{})
+	c, err := New(DefaultURL, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestCatalogueRedirectHostCasing(t *testing.T) {
 			if base == "" {
 				base = "https://EXAMPLE.ORG:8443/catalogue/"
 			}
-			client, err := New(base, pluginacquisition.Options{})
+			client, err := New(base, dependencycache.Acquisition{})
 			if err != nil {
 				t.Fatal(err)
 			}

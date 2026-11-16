@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -58,7 +59,7 @@ type StatusOptions struct {
 	// CacheDir defaults to the user's actionlint/registry cache.
 	CacheDir    string
 	Warning     func(string)
-	Acquisition pluginacquisition.Options
+	Acquisition dependencycache.Acquisition
 }
 
 func (o StatusOptions) warn(message string) {
@@ -107,7 +108,7 @@ func statusDirectory(registry string, options StatusOptions) (string, error) {
 	endpoint.Host = strings.ToLower(endpoint.Host)
 	base := options.CacheDir
 	if base == "" {
-		base, err = options.Acquisition.RegistryCacheDir()
+		base, err = pluginacquisition.RegistryCacheDir(options.Acquisition)
 		if err != nil {
 			return "", err
 		}

@@ -6,18 +6,18 @@ import (
 	"os"
 
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // checkingOptions builds the checking options that `check` and `lsp` share
 // from the flags and environment both commands read. legacy selects the
 // legacy grammar, in which an explicit configuration file does not replace
 // the project's configuration. Each command sets its own remaining fields.
-func (c checkInvocation) checkingOptions(workingDir string, acquisition pluginacquisition.Options, log io.Writer, legacy bool) (checking.Options, error) {
+func (c checkInvocation) checkingOptions(workingDir string, acquisition dependencycache.Acquisition, log io.Writer, legacy bool) (checking.Options, error) {
 	options := checking.Options{
 		WorkingDir:           workingDir,
 		ConfigFile:           c.Config.Path,

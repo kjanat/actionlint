@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -38,7 +38,7 @@ func TestRequiredToolsWithPluginsUsesRemoteConfigConnections(t *testing.T) {
 				}
 			}
 			options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
-			sources := pluginselection.Sources{Acquisition: pluginacquisition.Options{UserCacheDir: fixture.UserCacheDir(), Connections: fixture.Connections()}}
+			sources := pluginselection.Sources{Acquisition: dependencycache.Acquisition{UserCacheDir: fixture.UserCacheDir(), Connections: fixture.Connections()}}
 			needed, err := RequiredToolsWithPlugins(t.Context(), options, []string{workflow}, sources)
 			if err != nil || needed["shellcheck"] != tc.want {
 				t.Fatalf("required tools = %v, error = %v; want shellcheck=%t", needed, err, tc.want)

@@ -18,9 +18,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"golang.org/x/mod/semver"
 )
 
@@ -54,7 +54,7 @@ func registryURL(raw string) (*url.URL, error) {
 
 // New constructs a client for an endpoint explicitly selected by its caller.
 // Repository declarations use NewWithGrant with invocation-owned authority.
-func New(raw string, acquisition pluginacquisition.Options) (*Client, error) {
+func New(raw string, acquisition dependencycache.Acquisition) (*Client, error) {
 	u, err := registryURL(raw)
 	if err != nil {
 		return nil, err

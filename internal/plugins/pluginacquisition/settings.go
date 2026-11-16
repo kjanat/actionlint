@@ -1,68 +1,54 @@
-// Package pluginacquisition holds the settings that locate plugin caches and
-// make the network connections used to acquire plugins.
+// Package pluginacquisition lays out the plugin artifacts, registry records
+// and compiled modules in actionlint's dependency cache.
 package pluginacquisition
 
 import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
-// Options selects the user cache directory and network connections for
-// acquiring plugin artifacts and registry records.
-type Options struct {
-	UserCacheDir string
-	Connections  acquisitionhttp.Connections
-}
-
-func (s Options) userCacheDir() (string, error) {
-	if s.UserCacheDir != "" {
-		return s.UserCacheDir, nil
-	}
-	return os.UserCacheDir()
-}
-
 // ArtifactCacheDir returns the directory that stores verified plugin artifacts.
-func (s Options) ArtifactCacheDir() (string, error) {
-	base, err := s.userCacheDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "actionlint", "artifacts"), nil
+func ArtifactCacheDir(acquisition dependencycache.Acquisition) (string, error) {
+	return cacheSubdirectory(acquisition, "artifacts")
 }
 
 // RegistryCacheDir returns the directory that stores verified registry
 // releases, selections and release statuses.
-func (s Options) RegistryCacheDir() (string, error) {
-	base, err := s.userCacheDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "actionlint", "registry"), nil
+func RegistryCacheDir(acquisition dependencycache.Acquisition) (string, error) {
+	return cacheSubdirectory(acquisition, "registry")
 }
 
-// ArtifactOptions caches artifacts in the user cache directory and pulls
-// oci:// sources.
-func (s Options) ArtifactOptions() artifacts.Options {
-	options := artifacts.Options{PullOCI: oci.Pull, Connections: s.Connections}
-	if directory, err := s.ArtifactCacheDir(); err == nil {
+// ArtifactOptions caches artifacts in the dependency cache and pulls oci://
+// sources over the acquisition's connections.
+func ArtifactOptions(acquisition dependencycache.Acquisition) artifacts.Options {
+	options := artifacts.Options{PullOCI: oci.Pull, Connections: acquisition.Connections}
+	if directory, err := ArtifactCacheDir(acquisition); err == nil {
 		options.CacheDir = directory
 	}
 	return options
 }
 
-// CompiledModuleCacheDir creates the user cache directory for compiled modules, or returns empty on failure.
-func (s Options) CompiledModuleCacheDir() string {
-	base, err := s.userCacheDir()
+// CompiledModuleCacheDir creates the directory for compiled modules, or
+// returns empty on failure.
+func CompiledModuleCacheDir(acquisition dependencycache.Acquisition) string {
+	directory, err := cacheSubdirectory(acquisition, "wazero")
 	if err != nil {
 		return ""
 	}
-	dir := filepath.Join(base, "actionlint", "wazero")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return ""
 	}
-	return dir
+	return directory
+}
+
+func cacheSubdirectory(acquisition dependencycache.Acquisition, name string) (string, error) {
+	directory, err := acquisition.Directory()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(directory, name), nil
 }

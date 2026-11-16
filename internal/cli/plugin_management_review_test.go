@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 )
 
 func TestPluginMutationsWithoutDependenciesPreserveProject(t *testing.T) {
@@ -30,7 +30,7 @@ func TestPluginMutationsWithoutDependenciesPreserveProject(t *testing.T) {
 				}
 			}
 			for _, operation := range []string{"update", "install"} {
-				output := pluginCommandTest(t, pluginacquisition.Options{}, 0, "plugin", operation)
+				output := pluginCommandTest(t, dependencycache.Acquisition{}, 0, "plugin", operation)
 				if !strings.Contains(output, "No plugins installed.") {
 					t.Fatal(output)
 				}
@@ -59,7 +59,7 @@ func TestPluginInstallMissingExplicitPathsPreservesProject(t *testing.T) {
 			t.Chdir(t.TempDir())
 			t.Setenv("ACTIONLINT_CONFIG", "")
 			t.Setenv("ACTIONLINT_NO_CONFIG", "")
-			pluginCommandTest(t, pluginacquisition.Options{}, 0, "plugin", "install", flag, filepath.Join("missing", "project.yaml"))
+			pluginCommandTest(t, dependencycache.Acquisition{}, 0, "plugin", "install", flag, filepath.Join("missing", "project.yaml"))
 			entries, err := os.ReadDir(".")
 			if err != nil || len(entries) != 0 {
 				t.Fatalf("empty install created files: %v, %v", entries, err)
@@ -83,7 +83,7 @@ func TestPluginManagementIgnoresUnrelatedProjectJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, operation := range []string{"install", "update", "list", "sync"} {
-		pluginCommandTest(t, pluginacquisition.Options{}, 0, "plugin", operation)
+		pluginCommandTest(t, dependencycache.Acquisition{}, 0, "plugin", operation)
 	}
 	after, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(after, content) {

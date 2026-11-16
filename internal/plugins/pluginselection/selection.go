@@ -20,12 +20,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -49,7 +49,7 @@ type PluginSelection struct {
 	DisableTools bool
 	// WithTools copies DisabledTools and NamedTools.
 	DisabledTools, NamedTools []string
-	Acquisition               pluginacquisition.Options
+	Acquisition               dependencycache.Acquisition
 }
 
 // WithTools returns a copy of selection that stores the tool ids
@@ -84,7 +84,7 @@ type Sources struct {
 	DisableTools bool
 	// Configured identifies configuration-selected providers that require process opt-in.
 	Configured  bool
-	Acquisition pluginacquisition.Options
+	Acquisition dependencycache.Acquisition
 }
 
 func (s PluginSelection) Resolve(ctx context.Context, directory string, input checkrequest.Request) (Sources, error) {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -16,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"github.com/spf13/cobra"
 )
@@ -28,7 +27,7 @@ type Command struct {
 	Stdin       io.Reader
 	Stdout      io.Writer
 	Stderr      io.Writer
-	Acquisition pluginacquisition.Options
+	Acquisition dependencycache.Acquisition
 }
 
 func (cmd *Command) commandStreams() commandio.Streams {
@@ -139,15 +138,9 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 	if err := app.prepareNetwork(); err != nil {
 		return app.reportError(err)
 	}
-	cacheDirectory := cmd.Acquisition.UserCacheDir
-	if cacheDirectory == "" {
-		cacheDirectory, err = os.UserCacheDir()
-		if err != nil && (app.inv.Check.WarmCache || strings.HasPrefix(string(app.inv.Operation), "cache ")) {
-			return app.reportError(err)
-		}
-	}
-	if cacheDirectory != "" {
-		cacheDirectory = filepath.Join(cacheDirectory, "actionlint")
+	cacheDirectory, err := cmd.Acquisition.Directory()
+	if err != nil && (app.inv.Check.WarmCache || strings.HasPrefix(string(app.inv.Operation), "cache ")) {
+		return app.reportError(err)
 	}
 	ctx, networkSession := network.WithSession(ctx, network.Options{
 		Offline: app.inv.Check.Offline, CacheDirectory: cacheDirectory, WarmCache: app.inv.Check.WarmCache,

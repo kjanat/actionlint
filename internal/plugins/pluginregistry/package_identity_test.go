@@ -13,9 +13,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func publishPackageFixture(t *testing.T, network *fixtureregistry.PluginRegistry, id, tag string, process bool) (CatalogPlugin, string) {
@@ -91,7 +91,7 @@ func TestMonorepoPackagesResolveAndSyncIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	network.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", data)
-	client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+	client, err := New(fixtureregistry.FixtureRegistryURL, dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestPackageCatalogueRejectsIdentitySubstitution(t *testing.T) {
 				}
 				network.SetFile(url, data)
 			}
-			client, err := New(fixtureregistry.FixtureRegistryURL, pluginacquisition.Options{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
+			client, err := New(fixtureregistry.FixtureRegistryURL, dependencycache.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -220,7 +220,7 @@ func TestCandidateRepositoryCasePreservesIdentity(t *testing.T) {
 				}
 			}
 			u := url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(root), "/") + "/"}
-			client, err := New(u.String(), pluginacquisition.Options{UserCacheDir: t.TempDir()})
+			client, err := New(u.String(), dependencycache.Acquisition{UserCacheDir: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

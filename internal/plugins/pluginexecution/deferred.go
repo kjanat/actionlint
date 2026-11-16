@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scriptengine"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -30,7 +31,7 @@ type deferredScriptEngine struct {
 	gate        chan struct{}
 	descriptor  scriptengine.Descriptor
 	pin         pluginregistry.Pin
-	acquisition pluginacquisition.Options
+	acquisition dependencycache.Acquisition
 	backend     deferredBackend
 	failure     error
 	retryAfter  time.Time
@@ -38,7 +39,7 @@ type deferredScriptEngine struct {
 	closed      bool
 }
 
-func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition pluginacquisition.Options, reserved rule.Names) (*deferredScriptEngine, error) {
+func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition dependencycache.Acquisition, reserved rule.Names) (*deferredScriptEngine, error) {
 	var descriptor scriptengine.Descriptor
 	if pin.Kind == artifacts.Component {
 		var err error
@@ -89,7 +90,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	if err := releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition}); err != nil {
 		return nil, err
 	}
-	artifact, err := artifacts.Resolve(ctx, b.pin.Source(), b.acquisition.ArtifactOptions())
+	artifact, err := artifacts.Resolve(ctx, b.pin.Source(), pluginacquisition.ArtifactOptions(b.acquisition))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +128,7 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 
 func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Artifact) (deferredBackend, error) {
 	if b.pin.Kind == artifacts.Core {
-		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: b.acquisition.CompiledModuleCacheDir()})
+		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(b.acquisition)})
 	}
 	engine, err := component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
 	if err != nil {

@@ -19,6 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -45,7 +46,7 @@ type Loaded struct {
 	SkippedTools []string
 	// ToolIDs lists selected release names and aliases, plus engine and rule names from plugin metadata.
 	ToolIDs      []string
-	Acquisition  pluginacquisition.Options
+	Acquisition  dependencycache.Acquisition
 	DisableTools bool
 }
 
@@ -158,7 +159,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			loaded.ToolIDs = append(loaded.ToolIDs, ids...)
 		}
 		if artifact.Info.Kind == artifacts.Core {
-			engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: sources.Acquisition.CompiledModuleCacheDir()})
+			engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: pluginacquisition.CompiledModuleCacheDir(sources.Acquisition)})
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}

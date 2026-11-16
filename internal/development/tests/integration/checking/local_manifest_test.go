@@ -13,10 +13,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // TestLocalManifestToolHelper is the tool a local manifest runs: the test
@@ -67,7 +67,7 @@ func TestLocalManifestRunsBinaryWithJQ(t *testing.T) {
 		}
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ${{ github.ref }}\n        shell: bash\n      - run: print(1)\n        shell: python\n"
-	result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{path}, pluginacquisition.Options{})
+	result, err := assembly.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{path}, dependencycache.Acquisition{})
 	if err != nil {
 		t.Fatal(err)
 	}
