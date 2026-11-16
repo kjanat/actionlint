@@ -92,7 +92,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 			}
 			directory := tc.directory(alias)
 			guest := &sourceProbeGuest{directory: directory, file: tc.file}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -143,7 +143,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 			}
 			directory := tc.directory(alias)
 			guest := &sourceProbeGuest{directory: directory, file: "value.txt"}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -228,7 +228,7 @@ func TestDocumentPluginRetainsShellcheckControlsAndFixes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			guest := &documentGuest{fail: tc.partial}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck", Process: tc.process}).WithAnalyzer(guest)
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck", Process: tc.process}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -301,7 +301,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(&documentGuest{})
+			registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: &documentGuest{}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -315,7 +315,7 @@ func TestDocumentPluginPreservesExplicitNativeSettings(t *testing.T) {
 		{Command: "custom-shellcheck"},
 		{Command: "shellcheck", Process: &hostprocess.CommandOptions{Arguments: []string{"--norc"}}},
 	} {
-		registration, err := shellcheckRegistration(options).WithAnalyzer(&documentGuest{})
+		registration, err := shellcheckRegistration(options).WithAnalyzer(checkinputs.Registration{Analyzer: &documentGuest{}})
 		if err != nil {
 			t.Fatal(err)
 		}

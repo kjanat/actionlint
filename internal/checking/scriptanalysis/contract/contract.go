@@ -55,8 +55,9 @@ type Registration struct {
 	WithBackend       func(scriptengine.Backend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error)
-	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
-	WithAnalyzer func(checkinputs.Analyzer) (Registration, error)
+	// WithAnalyzer adapts a document analyzer to this tool's configuration and
+	// policy. The registration's options replace the configured rule options.
+	WithAnalyzer func(checkinputs.Registration) (Registration, error)
 }
 
 // Runner analyzes the batch prepared for one tool. ToolFinding.Script indexes

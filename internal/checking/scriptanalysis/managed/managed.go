@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -32,8 +33,8 @@ func Bind(base contract.Registration, p backends.Provider) contract.Registration
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shell.ID {
 		return base
 	}
-	base.WithAnalyzer = func(guest checkinputs.Analyzer) (contract.Registration, error) {
-		return withAnalyzer(base, p, guest)
+	base.WithAnalyzer = func(registration checkinputs.Registration) (contract.Registration, error) {
+		return withAnalyzer(base, p, registration)
 	}
 	return base
 }
@@ -53,9 +54,12 @@ func defaultSelection(sel backends.ToolSelection, name string) bool {
 
 // withAnalyzer selects a document analyzer or the provider's transport per
 // document, accounting for settings in overrides and composite actions.
-func withAnalyzer(base contract.Registration, p backends.Provider, guest checkinputs.Analyzer) (contract.Registration, error) {
+// Options in registration take precedence over the options configuration
+// gives the analyzer's rule.
+func withAnalyzer(base contract.Registration, p backends.Provider, registration checkinputs.Registration) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
+	guest := registration.Analyzer
 	integrator, ok := guest.(checkinputs.ToolIntegrator)
 	if !ok || integrator.ToolIntegration() == nil || integrator.ToolIntegration().Contract != m.Integration.Contract || integrator.ToolIntegration().Tool != m.Integration.Tool {
 		return contract.Registration{}, fmt.Errorf("analyzer does not advertise the %s configuration contract", name)
@@ -68,9 +72,10 @@ func withAnalyzer(base contract.Registration, p backends.Provider, guest checkin
 	if err != nil {
 		return contract.Registration{}, err
 	}
-	route := documentRoute{name: name, capabilities: m.Capabilities, settingsResolver: settingsResolver}
+	descriptor := guest.Descriptor().Descriptor
+	route := documentRoute{name: name, capabilities: m.Capabilities, settingsResolver: settingsResolver, optionsSchema: descriptor.OptionsSchema, analyzerOptions: slices.Clone(registration.Options)}
 	next := base
-	next.Descriptor = guest.Descriptor().Descriptor
+	next.Descriptor = descriptor
 	integration := *integrator.ToolIntegration()
 	next.ToolIntegration = &integration
 	next.NeedsProcess = func(ctx context.Context, cfg, project *configuration.Config) (bool, error) {
@@ -131,6 +136,10 @@ type documentRoute struct {
 	settingsResolver *integrationconfig.SettingsResolver
 	name             string
 	capabilities     toolmanifest.Capabilities
+	// optionsSchema validates the options the guest negotiates with.
+	optionsSchema json.RawMessage
+	// analyzerOptions replaces the options configuration gives the guest's rule.
+	analyzerOptions json.RawMessage
 }
 
 // enabled reports whether configuration leaves the provider on.
@@ -221,6 +230,14 @@ func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolInte
 			if err != nil {
 				return nil, err
 			}
+		}
+	}
+	if len(r.analyzerOptions) != 0 {
+		pluginOptions = slices.Clone(r.analyzerOptions)
+	}
+	if len(pluginOptions) != 0 {
+		if err := executor.ValidateOptions(r.optionsSchema, pluginOptions); err != nil {
+			return nil, fmt.Errorf("analyzer %q options: %w", r.name, err)
 		}
 	}
 	negotiated, err := guest.NegotiateTool(ctx, data, pluginOptions)

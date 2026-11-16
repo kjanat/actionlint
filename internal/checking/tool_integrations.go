@@ -1,8 +1,6 @@
 package checking
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -59,8 +57,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 			if tool.WithAnalyzer == nil {
 				return options, fmt.Errorf("tool %q cannot use a document analyzer", descriptor.Tool)
 			}
-			bound := boundToolAnalyzer{Analyzer: registration.Analyzer, integrator: integrator, options: slices.Clone(registration.Options)}
-			replacement, err := tool.WithAnalyzer(bound)
+			replacement, err := tool.WithAnalyzer(checkinputs.Registration{Analyzer: registration.Analyzer, Options: slices.Clone(registration.Options)})
 			if err != nil {
 				return options, err
 			}
@@ -74,30 +71,6 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 	}
 	options.Analyzers = remaining
 	return options, nil
-}
-
-// boundToolAnalyzer keeps caller options opaque until guest negotiation.
-type boundToolAnalyzer struct {
-	checkinputs.Analyzer
-	integrator checkinputs.ToolIntegrator
-	options    json.RawMessage
-}
-
-func (b boundToolAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {
-	return b.integrator.ToolIntegration()
-}
-
-func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*checkinputs.ToolNegotiation, error) {
-	effective := configured
-	if len(b.options) != 0 {
-		effective = b.options
-	}
-	if len(effective) != 0 {
-		if err := executor.ValidateOptions(b.Analyzer.Descriptor().OptionsSchema, effective); err != nil {
-			return nil, fmt.Errorf("analyzer %q options: %w", b.Analyzer.Descriptor().Name, err)
-		}
-	}
-	return b.integrator.NegotiateTool(ctx, config, slices.Clone(effective))
 }
 
 func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {

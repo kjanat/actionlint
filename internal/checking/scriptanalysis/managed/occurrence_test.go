@@ -80,7 +80,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 		}
 	}
 	guest, observer := &occurrenceGuest{}, &occurrenceObserver{}
-	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func (observer *actionInputObserver) Analyze(_ context.Context, batch scriptanal
 func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 	t.Parallel()
 	guest, observer := &occurrenceGuest{}, &actionInputObserver{}
-	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	guest, observer := &occurrenceGuest{}, &occurrenceObserver{}
-	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(guest)
+	registration, err := shellcheckRegistration(backends.ToolSelection{Command: "shellcheck"}).WithAnalyzer(checkinputs.Registration{Analyzer: guest})
 	if err != nil {
 		t.Fatal(err)
 	}
