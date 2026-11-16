@@ -5,10 +5,10 @@ import (
 	"io"
 	"os"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -17,7 +17,7 @@ import (
 // from the flags and environment both commands read. legacy selects the
 // legacy grammar, in which an explicit configuration file does not replace
 // the project's configuration. Each command sets its own remaining fields.
-func (c checkInvocation) checkingOptions(workingDir string, acquisition pluginacquisition.Settings, log io.Writer, legacy bool) (checking.Options, error) {
+func (c checkInvocation) checkingOptions(workingDir string, acquisition pluginacquisition.Options, log io.Writer, legacy bool) (checking.Options, error) {
 	options := checking.Options{
 		WorkingDir:           workingDir,
 		ConfigFile:           c.Config.Path,
@@ -35,7 +35,7 @@ func (c checkInvocation) checkingOptions(workingDir string, acquisition pluginac
 	})
 	if err != nil {
 		if _, ok := errors.AsType[*checkoptions.MetadataError](err); ok {
-			return options, commandargs.UsageError{Cause: err}
+			return options, arguments.UsageError{Cause: err}
 		}
 		return options, err
 	}

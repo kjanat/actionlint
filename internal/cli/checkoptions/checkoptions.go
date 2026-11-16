@@ -27,7 +27,7 @@ type GitHubAccess struct {
 	Getenv func(string) string
 	// Acquisition supplies the cache directory and the HTTP connections used
 	// for action metadata and remote configuration.
-	Acquisition pluginacquisition.Settings
+	Acquisition pluginacquisition.Options
 	// Offline reads action metadata from the cache only and starts no resolver.
 	Offline  bool
 	Resolver Resolver
