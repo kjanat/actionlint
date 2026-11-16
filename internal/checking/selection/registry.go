@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
-// CheckSelection holds the workflow rules and script checkers that
+// CheckSelection holds the workflow rules and script analyzers that
 // configuration enables, and the checks that cannot run because their
 // required inputs are unknown.
 type CheckSelection struct {

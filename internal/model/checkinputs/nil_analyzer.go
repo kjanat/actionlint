@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-// IsNilAnalyzer detects both nil interfaces and typed nil checkers before
+// IsNilAnalyzer detects both nil interfaces and typed nil analyzers before
 // metadata or execution methods are called.
 func IsNilAnalyzer(value Analyzer) bool {
 	if value == nil {

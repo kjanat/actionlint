@@ -198,11 +198,11 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			checker, err := process.NewDocumentAnalyzer(local.Files.Manifest, command, process.Options{Programs: local.Files.Programs, Required: true})
+			analyzer, err := process.NewDocumentAnalyzer(local.Files.Manifest, command, process.Options{Programs: local.Files.Programs, Required: true})
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Analyzer: checker})
+			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Analyzer: analyzer})
 			continue
 		}
 		selection := backends.ToolSelection{Command: name}
