@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/services"
@@ -21,7 +21,7 @@ func TestLifecycleMergeByID(t *testing.T) {
 	doc := func(p ...any) any {
 		return map[string]any{"lint": map[string]any{"lifecycle": map[string]any{"policies": p}}}
 	}
-	merged := configtree.Overlay(configtree.Capture(doc(policy("a", "original"), policy("b", "retained")), nil), configtree.Capture(doc(policy("a", "replacement"), policy("c", "added")), nil), MergePlan()).Value()
+	merged := document.Overlay(document.Capture(doc(policy("a", "original"), policy("b", "retained")), nil), document.Capture(doc(policy("a", "replacement"), policy("c", "added")), nil), MergePlan()).Value()
 	var cfg Config
 	if err := binding.Decode(merged, &cfg); err != nil {
 		t.Fatal(err)

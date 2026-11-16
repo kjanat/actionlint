@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
@@ -29,7 +29,7 @@ type Override struct {
 	Repository RepositoryConfig `yaml:"repository" jsonschema:"nullable"`
 	// LocalActions overlays generated action source mappings for matching files.
 	LocalActions LocalActionSources `yaml:"local-actions" jsonschema:"nullable"`
-	partial      *configtree.Node
+	partial      *document.Node
 }
 
 // DecodeConfig validates paths and records which fields were omitted or reset.
@@ -58,7 +58,7 @@ func (o *Override) DecodeConfig(value any) error {
 	if !positive {
 		return binding.At("includes", errors.New("overrides.includes requires at least one positive file glob"))
 	}
-	next.partial = configtree.Capture(object, nil)
+	next.partial = document.Capture(object, nil)
 	*o = Override(next)
 	return nil
 }
@@ -76,7 +76,7 @@ func (o Override) CopyConfig() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		next.partial = configtree.Capture(value, o.partial.Origins())
+		next.partial = document.Capture(value, o.partial.Origins())
 	}
 	return Override(next), nil
 }
@@ -169,7 +169,7 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 	}
 	setField(encoded, "lint", ruleSet.expandLintShorthands(value))
 	delete(members(encoded), "overrides")
-	current := configtree.Capture(ruleSet.normalizeToolSwitch(encoded), config.Lint.locations)
+	current := document.Capture(ruleSet.normalizeToolSwitch(encoded), config.Lint.locations)
 	for _, override := range config.Overrides {
 		if !override.matches(path) {
 			continue
@@ -190,11 +190,11 @@ func (ruleSet RuleSet) ForFile(config *Config, path, root string) (*Config, erro
 			}
 			setField(patch, "lint", ruleSet.expandLintShorthands(lint))
 		}
-		var origins map[string]Input
+		var origins map[string]document.Location
 		if override.partial != nil {
 			origins = override.partial.Origins()
 		}
-		current = configtree.Overlay(current, configtree.Capture(ruleSet.normalizeToolSwitch(patch), origins), MergePlan())
+		current = document.Overlay(current, document.Capture(ruleSet.normalizeToolSwitch(patch), origins), MergePlan())
 	}
 	merged := current.Value()
 	if err := ruleSet.validateToolSettings(merged); err != nil {

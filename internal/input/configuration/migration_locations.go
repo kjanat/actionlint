@@ -8,10 +8,10 @@ import (
 )
 
 // migrationInputs associates moved settings with their original source text.
-func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]Input) map[string]Input {
+func (ruleSet RuleSet) migrationInputs(value any, inputs map[string]document.Location) map[string]document.Location {
 	next := maps.Clone(inputs)
 	if next == nil {
-		next = map[string]Input{}
+		next = map[string]document.Location{}
 	}
 	move := func(from, to string) {
 		for path, origin := range inputs {

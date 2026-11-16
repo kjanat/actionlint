@@ -1,12 +1,37 @@
-package tree
+package document
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
+
+// Mode selects how a configuration field combines with the preceding layer.
+type Mode uint8
+
+const (
+	// Recursive merges objects member by member. Other values replace.
+	Recursive Mode = iota
+	// Replace replaces the whole field.
+	Replace
+	// AtomicMembers replaces the object's members as a unit. After an
+	// inherited null, members that the patch omits are reset too.
+	AtomicMembers
+	// KeyedList merges list entries that share the value of Rule.Key.
+	KeyedList
+)
+
+// Rule assigns merge semantics to one JSON pointer. Members lists the object
+// members that AtomicMembers resets; Key names the identifying member of a
+// KeyedList entry.
+type Rule struct {
+	Mode    Mode
+	Members []string
+	Key     string
+}
+
+// Plan maps JSON pointers to their merge rules. Pointers without a rule merge recursively.
+type Plan map[string]Rule
 
 // WireShape identifies the public wire fields of a private domain value.
 type WireShape interface{ MergeWire() reflect.Type }
@@ -35,7 +60,7 @@ func CompilePlan(root reflect.Type) (Plan, error) {
 			if name == "" || name == "-" {
 				continue
 			}
-			child := document.Path(path, name)
+			child := Path(path, name)
 			tag := field.Tag.Get("merge")
 			switch {
 			case tag == "replace":

@@ -1,5 +1,5 @@
 // Package source acquires local and public HTTPS configuration
-// sources. Parsing and inheritance remain in package tree.
+// sources. Parsing and inheritance live in package document.
 package source
 
 import (

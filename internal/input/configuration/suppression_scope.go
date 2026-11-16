@@ -2,7 +2,7 @@ package configuration
 
 import (
 	rulescope "actionlint.kjanat.dev/v2/internal/checking/rules"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 // ForSuppressions resolves source-scoped checks and their tool settings without workflow-only rule options.
@@ -20,7 +20,7 @@ func (ruleSet RuleSet) ForAction(config *Config, path, root string) (*Config, er
 		return descriptor.SupportsActions || descriptor.Scope == rulescope.SourceConfiguration
 	})
 	return ruleSet.scopedConfigForFile(config, path, root, func(node any) any {
-		return configtree.SelectLintRules(node, selected)
+		return selectLintRules(node, selected)
 	})
 }
 
@@ -53,11 +53,11 @@ func (ruleSet RuleSet) scopedConfigForFile(config *Config, path, root string, se
 		if lint := field(partial, "lint"); lint != nil {
 			setField(partial, "lint", selectLint(rawValue(lint)))
 		}
-		var origins map[string]Input
+		var origins map[string]document.Location
 		if override.partial != nil {
 			origins = override.partial.Origins()
 		}
-		override.partial = configtree.Capture(partial, origins)
+		override.partial = document.Capture(partial, origins)
 	}
 	return ruleSet.ForFile(&next, path, root)
 }
@@ -66,7 +66,7 @@ func (ruleSet RuleSet) scopedConfigForFile(config *Config, path, root string, se
 // source itself, including tool providers scoped to the source.
 func (ruleSet RuleSet) suppressionLintNode(node any) any {
 	selected := ruleSet.scopedRuleNames(func(descriptor Rule) bool { return descriptor.Scope == rulescope.SourceConfiguration })
-	return configtree.SelectLintRules(node, selected)
+	return selectLintRules(node, selected)
 }
 
 func (ruleSet RuleSet) scopedRuleNames(include func(Rule) bool) map[string][]string {

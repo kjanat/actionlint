@@ -1,4 +1,4 @@
-package tree
+package document
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func TestRemoteExtendsFormatsAndOrigins(t *testing.T) {
 			return nil, fmt.Errorf("unexpected source %q", name)
 		}
 		return []byte(content), nil
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestRemoteExtendsFormatsAndOrigins(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]string{"shared": shared, "base": remote, "leaf": leaf} {
-		if got := loaded.Origins["/"+key].File; got != want {
+		if got := loaded.Root.Origins()["/"+key].File; got != want {
 			t.Fatalf("origin of %s = %q, want %q", key, got, want)
 		}
 	}
@@ -55,7 +55,7 @@ func TestRemoteExtendsCycle(t *testing.T) {
 			return []byte("extends: [./b.yaml]"), nil
 		}
 		return []byte("extends: [./a.yaml]"), nil
-	}, nil)
+	}, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "cyclic config extends") {
 		t.Fatalf("cycle error = %v", err)
 	}
@@ -74,7 +74,7 @@ func TestRemoteReaderReceivesDeclaredURL(t *testing.T) {
 		default:
 			return nil, fmt.Errorf("source reader received rewritten URL %q", name)
 		}
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestRemoteDependencyCancellation(t *testing.T) {
 			return []byte("extends: [https://example.test/base.yaml]"), nil
 		}
 		return nil, context.Canceled
-	}, nil)
+	}, nil, nil)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("dependency lost cancellation: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestRemoteExtendsRejectsUnsafeAddressesBeforeReading(t *testing.T) {
 			_, err := Load("https://example.test/base.yaml", func(string) ([]byte, error) {
 				reads++
 				return []byte("extends: [\"" + reference + "\"]"), nil
-			}, nil)
+			}, nil, nil)
 			if err == nil || reads != 1 {
 				t.Fatalf("error = %v, reads = %d", err, reads)
 			}
@@ -124,16 +124,16 @@ func TestInheritedNullThenPartialMappingOrigin(t *testing.T) {
 			return nil, fmt.Errorf("unknown path %q", path)
 		}
 		return []byte(data), nil
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := loaded.Origins["/tools"]
+	source := loaded.Root.Origins()["/tools"]
 	if source.File != leaf || source.Reset == nil || source.Reset.File != base || source.Reset.Line != 1 {
 		t.Fatalf("lost inherited reset: %+v", source)
 	}
-	if loaded.Origins["/tools/shellcheck"].File != middle || loaded.Origins["/tools/pyflakes"].File != leaf {
-		t.Fatalf("wrong child origins: %+v", loaded.Origins)
+	if loaded.Root.Origins()["/tools/shellcheck"].File != middle || loaded.Root.Origins()["/tools/pyflakes"].File != leaf {
+		t.Fatalf("wrong child origins: %+v", loaded.Root.Origins())
 	}
 }
 
@@ -156,7 +156,7 @@ func TestExtendsPreservesCauseWithoutExposingMissingBase(t *testing.T) {
 					return []byte("extends: [./base.yaml]"), nil
 				}
 				return nil, tc.cause
-			}, nil)
+			}, nil, nil)
 			var got *testSourceError
 			if errors.As(err, &got) != tc.wantMarker || errors.Is(err, os.ErrNotExist) != tc.wantMissing {
 				t.Fatalf("lost cause boundary: %v", err)

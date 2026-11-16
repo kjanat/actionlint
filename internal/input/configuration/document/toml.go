@@ -9,8 +9,8 @@ import (
 	"github.com/pelletier/go-toml/v2/unstable"
 )
 
-func parseTOML(path string, data []byte) (Document, error) {
-	d := newDocument(path)
+func parseTOML(path string, data []byte) (*parsedSource, error) {
+	d := newParsedSource(path)
 	var value map[string]any
 	if err := toml.Unmarshal(data, &value); err != nil {
 		if decode, ok := errors.AsType[*toml.DecodeError](err); ok {
@@ -26,12 +26,12 @@ func parseTOML(path string, data []byte) (Document, error) {
 	if err != nil {
 		return d, err
 	}
-	d.Value = normalized
+	d.value = normalized
 	var parser unstable.Parser
 	parser.Reset(data)
 	current := ""
 	arrays := map[string]int{}
-	loc := func(n *unstable.Node) Location { return location(path, data, int(n.Raw.Offset)) }
+	loc := func(n *unstable.Node) position { return offsetPosition(data, int(n.Raw.Offset)) }
 	var indexValue func(*unstable.Node, string, int)
 	keyPath := func(base string, n *unstable.Node, resolveArrays bool) string {
 		it := n.Key()
@@ -39,8 +39,8 @@ func parseTOML(path string, data []byte) (Document, error) {
 		for it.Next() {
 			key := it.Node()
 			p = Path(p, string(key.Data))
-			if _, ok := d.Locations[p]; !ok {
-				d.Locations[p] = loc(key)
+			if _, ok := d.keys[p]; !ok {
+				d.keys[p] = loc(key)
 			}
 			if resolveArrays {
 				if i, ok := arrays[p]; ok {
@@ -75,9 +75,9 @@ func parseTOML(path string, data []byte) (Document, error) {
 		if n.Raw.Length > 0 {
 			fallback = int(n.Raw.Offset)
 		}
-		d.ValueLocations[p] = location(path, data, fallback)
+		d.values[p] = offsetPosition(data, fallback)
 		if n.Kind == unstable.LocalDate || n.Kind == unstable.LocalTime || n.Kind == unstable.LocalDateTime || n.Kind == unstable.DateTime {
-			setPath(d.Value, p, string(n.Data))
+			setPath(d.value, p, string(n.Data))
 		}
 		switch n.Kind {
 		case unstable.Array:
@@ -91,7 +91,7 @@ func parseTOML(path string, data []byte) (Document, error) {
 				if it.Node().Raw.Length > 0 {
 					start = int(it.Node().Raw.Offset)
 				}
-				d.Locations[child] = location(path, data, start)
+				d.keys[child] = offsetPosition(data, start)
 				indexValue(it.Node(), child, start)
 				cursor = tomlValueEnd(data, start)
 				i++
@@ -120,7 +120,7 @@ func parseTOML(path string, data []byte) (Document, error) {
 					pos = int(it.Node().Raw.Offset)
 				}
 			}
-			d.ValueLocations[current] = location(path, data, pos)
+			d.values[current] = offsetPosition(data, pos)
 		case unstable.ArrayTable:
 			parts := n.Key()
 			p := ""
@@ -138,7 +138,7 @@ func parseTOML(path string, data []byte) (Document, error) {
 			}
 			if last != nil {
 				p = Path(p, string(last.Data))
-				d.Locations[p] = loc(last)
+				d.keys[p] = loc(last)
 			}
 			i := -1
 			if prev, ok := arrays[p]; ok {
@@ -158,8 +158,8 @@ func parseTOML(path string, data []byte) (Document, error) {
 					pos = int(it.Node().Raw.Offset)
 				}
 			}
-			d.Locations[current] = location(path, data, pos)
-			d.ValueLocations[current] = location(path, data, pos)
+			d.keys[current] = offsetPosition(data, pos)
+			d.values[current] = offsetPosition(data, pos)
 		case unstable.Invalid, unstable.Comment, unstable.Key, unstable.Array, unstable.InlineTable,
 			unstable.String, unstable.Bool, unstable.Float, unstable.Integer, unstable.LocalDate, unstable.LocalTime, unstable.LocalDateTime, unstable.DateTime:
 		case unstable.KeyValue:

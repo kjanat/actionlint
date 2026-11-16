@@ -175,7 +175,7 @@ func encodeOptions(options any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return parsed.Value, nil
+		return parsed.Value(), nil
 	}
 	return binding.Encode(options)
 }

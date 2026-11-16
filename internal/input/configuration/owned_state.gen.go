@@ -6,7 +6,7 @@ import (
 	maps "maps"
 	slices "slices"
 
-	tree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	document "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func copyOwnedruleState(in ruleState) ruleState {
@@ -21,7 +21,7 @@ func copyOwnedruleState(in ruleState) ruleState {
 
 func copyOwnedlintState(in lintState) lintState {
 	out := in
-	out.locations = copyOwnedValue_3ee038ef4a67f7cc16a445d7bb30447b(in.locations)
+	out.locations = copyOwnedValue_b50c66f3b9df52570bd9a532c0205c2b(in.locations)
 	return out
 }
 
@@ -55,13 +55,13 @@ func copyOwnedValue_80276ba9563d54f0e7f21456230a44d2(in []bindingSource) []bindi
 	return out
 }
 
-func copyOwnedValue_3ee038ef4a67f7cc16a445d7bb30447b(in map[string]Input) map[string]Input {
+func copyOwnedValue_b50c66f3b9df52570bd9a532c0205c2b(in map[string]document.Location) map[string]document.Location {
 	if in == nil {
 		return nil
 	}
-	out := make(map[string]Input, len(in))
+	out := make(map[string]document.Location, len(in))
 	for key, value := range in {
-		out[key] = copyOwnedInput_ece8cd52d845a631acb8651692d9dae2(value)
+		out[key] = copyOwnedLocation_f0e456858be22e3079893c094046f7e0(value)
 	}
 	return out
 }
@@ -76,14 +76,14 @@ func copyOwnedMetadataMirrorsConfig_8281025ae69267b838b82b224505157d(in Metadata
 func copyOwnedbindingSource_957605900e67a7425a02224fd81f937d(in bindingSource) bindingSource {
 	out := in
 	out.rules = copyOwnedLintRulesConfig_93e7b950654b73871497d3d404121028(in.rules)
-	out.inputs = copyOwnedValue_3ee038ef4a67f7cc16a445d7bb30447b(in.inputs)
+	out.inputs = copyOwnedValue_b50c66f3b9df52570bd9a532c0205c2b(in.inputs)
 	out.prefix = slices.Clone(in.prefix)
 	return out
 }
 
-func copyOwnedInput_ece8cd52d845a631acb8651692d9dae2(in tree.Input) tree.Input {
+func copyOwnedLocation_f0e456858be22e3079893c094046f7e0(in document.Location) document.Location {
 	out := in
-	out.Reset = copyOwnedValue_d930507abe548cfc883d13348955a558(in.Reset)
+	out.Reset = copyOwnedValue_a3e9c91d73c82592eb92c8399c623487(in.Reset)
 	return out
 }
 
@@ -110,10 +110,10 @@ func copyOwnedLintRulesConfig_93e7b950654b73871497d3d404121028(in LintRulesConfi
 	return out
 }
 
-func copyOwnedValue_d930507abe548cfc883d13348955a558(in *tree.Input) *tree.Input {
+func copyOwnedValue_a3e9c91d73c82592eb92c8399c623487(in *document.Location) *document.Location {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedInput_ece8cd52d845a631acb8651692d9dae2(*in)
-	return (*tree.Input)(&out)
+	out := copyOwnedLocation_f0e456858be22e3079893c094046f7e0(*in)
+	return (*document.Location)(&out)
 }

@@ -13,7 +13,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
@@ -80,7 +79,7 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 	}
 	manifest.original, manifest.Exists = data, true
 	manifest.snapshots[absolute] = bytes.Clone(data)
-	loaded, err := tree.LoadWithMerge(absolute, func(name string) ([]byte, error) {
+	loaded, err := configuration.LoadSources(absolute, func(name string) ([]byte, error) {
 		if name == absolute {
 			return bytes.Clone(data), nil
 		}
@@ -95,35 +94,40 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 			manifest.snapshots[name] = bytes.Clone(content)
 		}
 		return content, err
-	}, func(origin string, doc document.Document) (document.Document, error) {
-		if err := ValidateRoot(doc.Value); err != nil {
-			return doc, err
+	}, func(origin string, source *document.Node) (*document.Node, error) {
+		value := source.Value()
+		if err := ValidateRoot(value); err != nil {
+			return nil, err
 		}
-		if err := configuration.ValidateSourcePaths(origin, doc.Value); err != nil {
-			return doc, err
+		if err := configuration.ValidateSourcePaths(origin, value); err != nil {
+			return nil, err
 		}
 		var err error
 		if mode == PluginDeclarationsOnly {
-			doc.Value, err = pluginDependencyNode(doc.Value)
+			value, err = pluginDependencyNode(value)
 			if err == nil {
-				doc.Value, err = rules.NormalizeForMerge(doc.Value)
+				value, err = rules.NormalizeForMerge(value)
 			}
 		} else {
-			doc.Value, err = rules.NormalizeForMerge(doc.Value)
+			value, err = rules.NormalizeForMerge(value)
 		}
-		return doc, err
-	}, configuration.MergePlan())
+		if err != nil {
+			return nil, err
+		}
+		return document.Capture(value, source.Origins()), nil
+	})
 	if err != nil {
 		return nil, err
 	}
 	manifest.original = manifest.snapshots[absolute]
-	manifest.node = loaded.Value
-	manifest.References, manifest.Declared, err = References(loaded.Value)
+	merged := loaded.Root.Value()
+	manifest.node = merged
+	manifest.References, manifest.Declared, err = References(merged)
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
 	}
 	if mode == PluginDeclarationsOnly && manifest.Declared {
-		root, ok := loaded.Value.(map[string]any)
+		root, ok := merged.(map[string]any)
 		if !ok {
 			return nil, errors.New("config must be a mapping")
 		}

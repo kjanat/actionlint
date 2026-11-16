@@ -38,7 +38,7 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 	if err != nil {
 		return Migration{}, err
 	}
-	root := parsed.Value
+	root := parsed.Value()
 	for _, warning := range configWarnings(root, nil) {
 		if strings.Contains(warning.Message, `"self-hosted-runner.`) || strings.Contains(warning.Message, `"paths[`) {
 			return Migration{}, fmt.Errorf("cannot migrate without dropping an unknown setting: %s", warning.Message)
@@ -71,7 +71,7 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 	case ".json", ".jsonc":
 		result.Content, err = document.Marshal(path, next)
 	default:
-		relocated := ruleSet.migrationInputs(root, documentInputs(parsed))
+		relocated := ruleSet.migrationInputs(root, parsed.Origins())
 		locations := map[string]document.Location{}
 		for pointer, origin := range relocated {
 			line, column := origin.KeyLine, origin.KeyColumn

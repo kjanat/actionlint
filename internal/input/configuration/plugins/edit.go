@@ -64,7 +64,7 @@ func EditManifest(path string, original []byte, refs []pluginreference.Reference
 	if err != nil {
 		return nil, err
 	}
-	if err = ValidateRoot(before.Value); err != nil {
+	if err = ValidateRoot(before.Value()); err != nil {
 		return nil, err
 	}
 	sequence, err := pluginManifestSequence(refs)
@@ -87,10 +87,10 @@ func EditManifest(path string, original []byte, refs []pluginreference.Reference
 	if err != nil {
 		return nil, fmt.Errorf("cannot safely edit plugin config: %w", err)
 	}
-	if !reflect.DeepEqual(withoutManifestPlugins(before.Value), withoutManifestPlugins(after.Value)) {
+	if !reflect.DeepEqual(withoutManifestPlugins(before.Value()), withoutManifestPlugins(after.Value())) {
 		return nil, errors.New("cannot edit plugins without changing other config settings")
 	}
-	actual, declared, err := References(after.Value)
+	actual, declared, err := References(after.Value())
 	if err != nil {
 		return nil, fmt.Errorf("invalid edited plugin declarations: %w", err)
 	}

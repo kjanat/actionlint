@@ -57,7 +57,7 @@ func PrepareConfigurationMigration(ctx context.Context, path string, options Def
 	if err != nil {
 		return nil, err
 	}
-	_, declaredLocally, err := configplugins.References(leaf.Value)
+	_, declaredLocally, err := configplugins.References(leaf.Value())
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, a
 	if err != nil {
 		return "", err
 	}
-	defaults, _, err := configplugins.References(node.Value)
+	defaults, _, err := configplugins.References(node.Value())
 	if err != nil {
 		return "", err
 	}
