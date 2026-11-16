@@ -11,7 +11,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -202,7 +201,7 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflows.BoundStep) err
 	origin := declaration.IgnoreOrigin(analysis.jobID)
 	for _, pass := range analysis.passes {
 		compositeCheckoutPaths(pass, analysis.actions)
-		if err := selection.VisitWithOrigin(pass, origin, selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
+		if err := workflowvisit.VisitWithOrigin(pass, origin, workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), func() error { return pass.VisitStep(step) }); err != nil {
 			return err
 		}
 	}
@@ -211,5 +210,5 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflows.BoundStep) err
 
 // visitJobPass attributes what a pass reports while visiting a job to that job.
 func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflows.BoundJob, visit func() error) error {
-	return selection.VisitWithOrigin(pass, job.IgnoreOrigin(), selection.HasConfiguredIgnores(analysis.scriptConfig), visit)
+	return workflowvisit.VisitWithOrigin(pass, job.IgnoreOrigin(), workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }

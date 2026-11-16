@@ -135,7 +135,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err := configuration.ValidateToolNames(projectConfig, s.checks.toolNames()...); err != nil {
 		return nil, nil, nil, err
 	}
-	registrations, err := selection.ConfigureAnalyzers(entryBinding, s.checks.analyzers)
+	registrations, err := configureAnalyzers(entryBinding, s.checks.analyzers)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -359,7 +359,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			participant.attachScope(process.Scope)
 		}
 	}
-	requires := selection.RequiredFacts(registrations)
+	requires := requiredInputs(registrations)
 	options := composites.Options{
 		Bindings: settings.bindings[sourcePath], BindSource: settings.bindInvocation,
 		SourceSnapshots:        s.snapshots,

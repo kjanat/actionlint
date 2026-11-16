@@ -12,7 +12,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -107,7 +106,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflows.BoundStep, 
 		for _, parent := range parents {
 			if participant, ok := parent.(workflowvisit.ExpandedActionParticipant); ok {
 				if err := invocationOutput(analysis.bindings, participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), call.Reference(), func() error {
-					return selection.VisitWithOrigin(participant, call.IgnoreOrigin(analysis.jobID), selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return participant.VisitExpandedAction(call) })
+					return workflowvisit.VisitWithOrigin(participant, call.IgnoreOrigin(analysis.jobID), workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), func() error { return participant.VisitExpandedAction(call) })
 				}); err != nil {
 					return err
 				}
@@ -130,7 +129,7 @@ func (analysis *compositeAnalyzer) visitOpaqueAction(call workflows.BoundStep, d
 	for _, rule := range parents {
 		compositeCheckoutPaths(rule, analysis.actions)
 		visit := func() error {
-			return selection.VisitWithOrigin(rule, declaration.IgnoreOrigin(analysis.jobID), selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return rule.VisitOpaqueAction(call) })
+			return workflowvisit.VisitWithOrigin(rule, declaration.IgnoreOrigin(analysis.jobID), workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), func() error { return rule.VisitOpaqueAction(call) })
 		}
 		var err error
 		if analysis.scriptScope != nil && analysis.scriptScope.Composite {
@@ -254,7 +253,7 @@ func (analysis *compositeAnalyzer) visitInvocationStep(step workflows.BoundStep,
 	for _, participant := range participants {
 		compositeCheckoutPaths(participant, analysis.actions)
 		if err := invocationOutput(analysis.bindings, participant, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), step.Reference(), func() error {
-			return selection.VisitWithOrigin(participant, step.IgnoreOrigin(analysis.jobID), selection.HasConfiguredIgnores(analysis.scriptConfig), func() error { return participant.VisitInvocationStep(step) })
+			return workflowvisit.VisitWithOrigin(participant, step.IgnoreOrigin(analysis.jobID), workflowvisit.HasConfiguredIgnores(analysis.scriptConfig), func() error { return participant.VisitInvocationStep(step) })
 		}); err != nil {
 			return err
 		}
@@ -271,7 +270,7 @@ func (analysis *compositeAnalyzer) validateMetadataStep(step workflows.BoundStep
 		if parent, enabled := pass.(workflowvisit.MetadataParticipant); enabled {
 			validation := parent.ForMetadata(analysis.actions)
 			err := invocationOutput(analysis.bindings, validation, analysis.sourceSnapshot, analysis.scriptScope.Deployment.SourcePath(), step.Reference(), func() error {
-				return selection.VisitWithOrigin(validation, declaration.IgnoreOrigin(analysis.jobID), selection.HasConfiguredIgnores(config), func() error { return validation.VisitStep(step) })
+				return workflowvisit.VisitWithOrigin(validation, declaration.IgnoreOrigin(analysis.jobID), workflowvisit.HasConfiguredIgnores(config), func() error { return validation.VisitStep(step) })
 			})
 			analysis.metadataFindings = append(analysis.metadataFindings, validation.Errs()...)
 			if err != nil {
