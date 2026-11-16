@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // Bundled provider rules use the semantic categories declared by their manifests.

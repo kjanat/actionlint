@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 // deprecatedToolFlag is one use of a deprecated flag whose value is ignored,

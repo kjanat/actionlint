@@ -16,9 +16,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // The package is optional for Go-only contributors. This check exercises the

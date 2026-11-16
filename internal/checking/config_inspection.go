@@ -18,9 +18,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.

@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/managed"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 // Selections chooses how each bundled provider runs, keyed by its rule name.

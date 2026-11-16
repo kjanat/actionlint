@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/jq"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // ReadAccess identifies configured directories. The host separately checks that

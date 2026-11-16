@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 // materializeProgram writes exact verified source into a new private directory.

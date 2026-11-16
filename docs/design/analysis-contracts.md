@@ -33,14 +33,17 @@ declarations through manifests.
 
 The declaration types, rule names, aliases, categories and maturities are
 defined in `internal/model/rule`. Packages under `internal/model`,
-`internal/input` and `internal/results` use them without importing
-`internal/checking`. Tool settings schemas, bundled tool provider manifests
-and plugin references are defined in `internal/model` too, so these packages
-do not depend on `internal/plugins` either.
+`internal/input`, `internal/results` and `internal/languages` use them without
+importing `internal/checking`. Tool settings schemas, tool provider manifests,
+output format names, plugin references and the checker contract in
+`internal/model/checkinputs` are defined in `internal/model` too, so these
+packages do not depend on `internal/plugins`, `internal/output`,
+`internal/cli` or `internal/lsp` either. `internal/checking` hosts plugins, so
+it may import `internal/plugins`; no `internal/plugins` package imports
+`internal/checking`.
 `TestLowerLayersDoNotDependOnHigherLayers` in
-`internal/development/tests/integration/layering` fails if production code in
-one of these packages imports `internal/checking` or `internal/plugins`,
-directly or through another package.
+`internal/development/tests/integration/layering` fails if production code
+breaks either rule, directly or through another package.
 
 `checking.ConfigurationRules` collects rule declarations for the CLI and editor
 integrations. Configuration loading receives these declarations as a
@@ -92,7 +95,7 @@ defines the component checker contract. The host converts between that contract
 and its private checker inputs. `describe` returns metadata and input requirements;
 `analyze` returns diagnostics and an optional explanation of incomplete analysis.
 
-`internal/plugins/manifests` validates manifests. `internal/plugins/artifacts`
+`internal/model/manifests` validates manifests. `internal/plugins/artifacts`
 resolves and verifies artifacts. `internal/plugins/execution` loads and invokes
 components, core Wasm modules and native processes through their declared
 contracts. `internal/plugins/pluginregistry` resolves and verifies registry

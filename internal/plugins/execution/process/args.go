@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 // argInputs are the values argument placeholders take for one check.

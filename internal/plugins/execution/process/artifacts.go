@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // ProviderFiles describes a process plugin's manifest, transforms and executable path.

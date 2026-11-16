@@ -13,10 +13,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // AuthoringResult is the host's evaluation of one fixture stdout. It never

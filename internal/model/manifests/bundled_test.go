@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // Bundled decodes once, so a caller that edits its result, as tests that

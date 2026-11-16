@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 func TestSourcePlannerRejectsMalformedPlans(t *testing.T) {

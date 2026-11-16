@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // ReadProviderArtifact parses a distributed process-provider manifest. A standalone

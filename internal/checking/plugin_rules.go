@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 

@@ -7,9 +7,9 @@ import (
 	"errors"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/jq"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // SourcePlanInput supplies source, interpreter facts and integration settings to

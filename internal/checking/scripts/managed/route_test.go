@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 // shellcheckManifest is the bundled ShellCheck provider.

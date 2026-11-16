@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // minimal is the smallest valid process manifest; cases below patch it.

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 
 	"github.com/invopop/jsonschema"
 )

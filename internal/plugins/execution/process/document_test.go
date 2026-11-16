@@ -18,9 +18,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {

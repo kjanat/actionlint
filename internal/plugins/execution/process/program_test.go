@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *process.Command) {

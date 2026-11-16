@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 func shellcheckConfiguration(t *testing.T, inline []byte) (configuration.Settings, error) {

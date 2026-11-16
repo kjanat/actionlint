@@ -5,12 +5,12 @@ import (
 	"slices"
 	"testing"
 
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-// Configuration reads bundled manifests without the provider package; its
-// view must equal the validated manifests.
+// Configuration indexes the validated bundled manifests; each entry keeps
+// its manifest's scope, config files, schema and shorthands.
 func TestToolProvidersMatchManifests(t *testing.T) {
 	t.Parallel()
 	manifests, err := pluginmanifests.Bundled()

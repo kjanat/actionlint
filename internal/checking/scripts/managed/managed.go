@@ -21,9 +21,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // Bind lets a managed document analyzer replace a provider whose manifest

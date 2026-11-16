@@ -5,8 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
+	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 var builtins = registration.Declarations()

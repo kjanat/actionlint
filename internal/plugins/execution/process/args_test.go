@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
 func bundledManifest(t *testing.T, name string) pluginmanifests.Manifest {
