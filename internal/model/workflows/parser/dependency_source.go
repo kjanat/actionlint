@@ -1,6 +1,9 @@
 package parser
 
-import workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+import (
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+)
 
 // IndexDependencySpans records physical scalar ends before the decoded model
 // leaves parsing. Aliases reuse the cached source mapping of their declaration.
@@ -16,7 +19,7 @@ func (p *Parser) IndexDependencySpans(workflow *workflowlang.Workflow) {
 		if scalar := p.scalarSource(value.SourceScalar.Pos, value.SourceScalar.Value); scalar != nil {
 			value.SourceScalar.End = scalar.ScalarEnd
 			if workflow.ExpressionSources == nil {
-				workflow.ExpressionSources = make(map[workflowlang.Pos]*workflowlang.ScriptSource)
+				workflow.ExpressionSources = make(map[source.Position]*workflowlang.ScriptSource)
 			}
 			workflow.ExpressionSources[value.SourceScalar.Pos] = scalar
 		}

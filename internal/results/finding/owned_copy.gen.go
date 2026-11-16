@@ -8,7 +8,6 @@ import (
 
 	source "actionlint.kjanat.dev/v2/internal/input/source"
 	lifecycle "actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	workflow "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	results "actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -143,13 +142,13 @@ func (ctx *ownedCopyContext) copyOwnedEvidence_b6de2083f6a13cb13415ac74865b5030(
 
 func (ctx *ownedCopyContext) copyOwnedIgnoreOrigin_a1370ab1e0d227e8e22f7d6653cb694e(in IgnoreOrigin) IgnoreOrigin {
 	out := in
-	out.StepPosition = ctx.copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in.StepPosition)
+	out.StepPosition = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.StepPosition)
 	return out
 }
 
 func (ctx *ownedCopyContext) copyOwnedOwner_04cdcfd326366ef897e9d060f96b402e(in Owner) Owner {
 	out := in
-	out.Step = ctx.copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in.Step)
+	out.Step = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.Step)
 	return out
 }
 
@@ -177,10 +176,10 @@ func (ctx *ownedCopyContext) copyOwnedValue_1322c9e5dd27dde9d49a9a553ec6e340(in 
 	return out
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_0457dedaa1edef23e7049cab9a46f8a9(in *workflow.Pos) *workflow.Pos {
+func (ctx *ownedCopyContext) copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in *source.Position) *source.Position {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	return (*workflow.Pos)(&out)
+	return (*source.Position)(&out)
 }

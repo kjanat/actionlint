@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -144,6 +145,6 @@ func (analysis *compositeAnalyzer) resolveAction(action *workflowlang.ExecAction
 	return meta, sourceDocument.Address(), outcome, err
 }
 
-func invalidActionReference(spec string, position workflowlang.Pos, hasPosition bool) bool {
+func invalidActionReference(spec string, position source.Position, hasPosition bool) bool {
 	return actioncheck.InvalidActionReference(spec, position, hasPosition)
 }

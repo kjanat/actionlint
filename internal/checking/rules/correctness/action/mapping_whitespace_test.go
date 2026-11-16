@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestExpressionWhitespaceActionMappingBoundaries(t *testing.T) {
@@ -36,7 +36,7 @@ runs:
 					t.Fatal(err)
 				}
 				meta.Filename, meta.Source = "action.yml", source
-				findings := actioncheck.Check(meta, &workflowlang.Pos{Line: 1, Col: 1}, actionmeta.ReferencedFiles{})
+				findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 				errs := findings
 				if tc.invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "expected a mapping") {

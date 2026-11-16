@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
@@ -27,7 +28,7 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	context := actionmeta.LifecycleContext{AsOf: date, Service: service}
-	caller := &workflowlang.Pos{Line: 8, Col: 11}
+	caller := &sourcepos.Position{Line: 8, Column: 11}
 	exec := ownedActionFixture(&workflowlang.ExecAction{Uses: &workflowlang.String{Value: "example/script@v1", Pos: caller}})
 	for _, tc := range []struct {
 		name     string

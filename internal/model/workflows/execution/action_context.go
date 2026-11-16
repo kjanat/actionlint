@@ -3,6 +3,7 @@ package execution
 import (
 	"errors"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -22,9 +23,9 @@ func CallFacts(view workflowdecl.Step, platform runnerlang.Platform) (invocation
 	if !ok {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}
-	position := invocation.Position{}
+	position := source.Position{}
 	if pos, present := view.Position(); present {
-		position = invocation.Position{Line: pos.Line, Column: pos.Col}
+		position = pos
 	}
 	env := workflowdecl.Environment(view.Env)
 	effects := invocation.Facts{

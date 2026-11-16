@@ -49,7 +49,7 @@ type Skeleton struct {
 
 type skeletonJob struct {
 	id, address string
-	positions   []workflowlang.Pos
+	positions   []source.Position
 	steps       []skeletonStep
 }
 
@@ -57,7 +57,7 @@ type skeletonStep struct {
 	step                      *workflowlang.Step
 	key, fingerprint, address string
 	job                       string
-	position                  workflowlang.Pos
+	position                  source.Position
 	hasPosition               bool
 	children                  []skeletonStep
 }
@@ -89,7 +89,7 @@ func BuildSkeleton(workflow *workflowlang.Workflow, action bool) Skeleton {
 			continue
 		}
 		entry := skeletonJob{id: id, address: "jobs[" + strconv.Quote(id) + "]"}
-		for _, pos := range []*workflowlang.Pos{job.Pos, stringPos(job.ID)} {
+		for _, pos := range []*source.Position{job.Pos, stringPos(job.ID)} {
 			if pos != nil {
 				entry.positions = append(entry.positions, *pos)
 			}
@@ -114,7 +114,7 @@ func (s Skeleton) Bind(path string, content []byte) References {
 			refs.Steps[step.step] = ref
 			refs.StepJobs[step.step] = step.job
 			if step.hasPosition {
-				refs.Positions[[2]int{step.position.Line, step.position.Col}] = ref
+				refs.Positions[[2]int{step.position.Line, step.position.Column}] = ref
 			}
 			walk(ref.Node, step.children)
 		}
@@ -122,14 +122,14 @@ func (s Skeleton) Bind(path string, content []byte) References {
 	for _, job := range s.jobs {
 		refs.Jobs[job.id] = index.Ref("", "job:"+job.id, "", job.address)
 		for _, pos := range job.positions {
-			refs.Positions[[2]int{pos.Line, pos.Col}] = refs.Jobs[job.id]
+			refs.Positions[[2]int{pos.Line, pos.Column}] = refs.Jobs[job.id]
 		}
 		walk("job:"+job.id, job.steps)
 	}
 	return refs
 }
 
-func stringPos(value *workflowlang.String) *workflowlang.Pos {
+func stringPos(value *workflowlang.String) *source.Position {
 	if value == nil {
 		return nil
 	}

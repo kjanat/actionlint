@@ -30,8 +30,8 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		t.Fatal("owned suppression position unavailable")
 	}
 	refs := workflowfacts.Index("ci.yml", content, workflow, false)
-	firstRef := refs.Positions[[2]int{first.Pos.Line, first.Pos.Col}]
-	secondRef := refs.Positions[[2]int{second.Pos.Line, second.Pos.Col}]
+	firstRef := refs.Positions[[2]int{first.Pos.Line, first.Pos.Column}]
+	secondRef := refs.Positions[[2]int{second.Pos.Line, second.Pos.Column}]
 	explicit := sourcepos.Reference{Document: "provider", Node: "explicit"}
 	for _, tc := range []struct {
 		name      string
@@ -48,7 +48,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			finding := &findingmodel.Finding{
-				Start: sourcepos.Position{Line: first.Pos.Line, Column: first.Pos.Col}, Owner: tc.owner,
+				Start: *first.Pos, Owner: tc.owner,
 				IgnoreOrigin: &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
 			}
 			InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]workflowfacts.SourceIndex{"ci.yml": refs.SourceIndex()})

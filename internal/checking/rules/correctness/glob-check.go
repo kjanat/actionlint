@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -100,7 +101,7 @@ func GlobJob(n declaration.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkKnownRefGlob(value any, pos *workflowlang.Pos) {
+func (rule *globCheck) checkKnownRefGlob(value any, pos *source.Position) {
 	pattern, known := workflowlang.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
@@ -141,15 +142,15 @@ func (rule *globCheck) checkFilePathGlobs(filter *workflowlang.WebhookEventFilte
 	}
 }
 
-func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *workflowlang.Pos, quoted bool) {
+func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *source.Position, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos
 		if quoted {
-			p.Col++
+			p.Column++
 		}
 		if err.Column != 0 {
-			p.Col += err.Column - 1
+			p.Column += err.Column - 1
 		}
 		rule.Errorf(&p, "%s. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet", err.Message)
 	}

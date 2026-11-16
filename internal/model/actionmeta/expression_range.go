@@ -4,11 +4,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // ExpressionEndPosition returns a verified exclusive end, or nil without a mapping.
-func ExpressionEndPosition(meta *Metadata, value *ExprString, violation ExpressionProblem) *workflowlang.Pos {
+func ExpressionEndPosition(meta *Metadata, value *ExprString, violation ExpressionProblem) *source.Position {
 	if violation.Offset <= 0 || violation.EndOffset < violation.Offset || violation.EndOffset > len(value.Value)+1 {
 		return nil
 	}

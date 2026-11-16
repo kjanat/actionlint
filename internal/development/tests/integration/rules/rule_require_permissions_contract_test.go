@@ -6,6 +6,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
@@ -40,7 +41,7 @@ on: push`} {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `, "\n", ending)
 				workflow, findings := workflowparser.Parse([]byte(source))
-				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (workflowlang.Pos{Line: tc.line, Col: 1}) {
+				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (sourcepos.Position{Line: tc.line, Column: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}
 				rule := declarationchecks.New(checking.ConfigurationRules(), security.MissingPermissionsCheck(locations))

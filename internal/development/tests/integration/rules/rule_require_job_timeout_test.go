@@ -6,6 +6,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
@@ -16,14 +17,14 @@ import (
 
 func TestRuleRequireJobTimeout(t *testing.T) {
 	t.Parallel()
-	jobPos := &workflowlang.Pos{Line: 4, Col: 3}
-	valuePos := &workflowlang.Pos{Line: 6, Col: 22}
+	jobPos := &source.Position{Line: 4, Column: 3}
+	valuePos := &source.Position{Line: 6, Column: 22}
 	missing := ":4:3: \"timeout-minutes\" is not set in job \"test\". Set an explicit timeout for this job [job-timeout]"
 
 	newJob := func(timeout *workflowlang.Float) *workflowlang.Job {
 		return &workflowlang.Job{
 			ID:             &workflowlang.String{Value: "test", Pos: jobPos},
-			Steps:          []*workflowlang.Step{{Pos: &workflowlang.Pos{Line: 7, Col: 7}}},
+			Steps:          []*workflowlang.Step{{Pos: &source.Position{Line: 7, Column: 7}}},
 			TimeoutMinutes: timeout,
 			Pos:            jobPos,
 		}
@@ -111,9 +112,9 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 			job: &workflowlang.Job{
 				ID: &workflowlang.String{Value: "test", Pos: jobPos},
 				WorkflowCall: &workflowlang.WorkflowCall{
-					Uses: &workflowlang.String{Value: "./.github/workflows/ci.yaml", Pos: &workflowlang.Pos{Line: 5, Col: 11}},
+					Uses: &workflowlang.String{Value: "./.github/workflows/ci.yaml", Pos: &source.Position{Line: 5, Column: 11}},
 				},
-				Steps: []*workflowlang.Step{{Pos: &workflowlang.Pos{Line: 7, Col: 7}}},
+				Steps: []*workflowlang.Step{{Pos: &source.Position{Line: 7, Column: 7}}},
 				Pos:   jobPos,
 			},
 		},
@@ -182,8 +183,8 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pos := &workflowlang.Pos{Line: 6, Col: 22}
-			job := &workflowlang.Job{ID: &workflowlang.String{Value: "test"}, Pos: &workflowlang.Pos{Line: 4, Col: 3}, Steps: []*workflowlang.Step{}, TimeoutMinutes: &workflowlang.Float{Value: tc.value, Pos: pos}}
+			pos := &source.Position{Line: 6, Column: 22}
+			job := &workflowlang.Job{ID: &workflowlang.String{Value: "test"}, Pos: &source.Position{Line: 4, Column: 3}, Steps: []*workflowlang.Step{}, TimeoutMinutes: &workflowlang.Float{Value: tc.value, Pos: pos}}
 			if tc.expression {
 				job.TimeoutMinutes.Expression = &workflowlang.String{Value: "matrix.timeout", Pos: pos}
 			}
@@ -201,7 +202,7 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 				}
 				return
 			}
-			if len(errs) != 1 || errs[0].Start.Line != pos.Line || errs[0].Start.Column != pos.Col || !strings.Contains(errs[0].Message, tc.kind) {
+			if len(errs) != 1 || errs[0].Start.Line != pos.Line || errs[0].Start.Column != pos.Column || !strings.Contains(errs[0].Message, tc.kind) {
 				t.Fatalf("expected %s error at %v, got %v", tc.kind, pos, errs)
 			}
 		})

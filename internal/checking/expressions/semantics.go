@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -24,15 +25,13 @@ import (
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
+func (rule *Checker) checkExprsIn(s string, pos *source.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
 	restore := rule.scopeExpressionSource(s, pos)
 	defer restore()
 
-	line, col := pos.Line, pos.Col
+	line, col := pos.Line, pos.Column
 	if quoted {
 		col++ // when the string is quoted like 'foo' or "foo", column should be incremented
 	}
@@ -70,7 +69,7 @@ func (rule *Checker) checkExprsIn(s string, pos *workflowlang.Pos, quoted, check
 		} else {
 			refinement.state = value.Invalid
 		}
-		position := workflowlang.Pos{Line: line, Col: col - 3}
+		position := source.Position{Line: line, Column: col - 3}
 		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
 			position = *mapped
 		}
@@ -244,7 +243,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr exprsyntax.Node, line, col in
 	}
 	if workflowKey == "" && result.Valid {
 		if _, literal := expr.(*exprsyntax.StringNode); !literal {
-			position := &workflowlang.Pos{Line: line, Col: col}
+			position := &source.Position{Line: line, Column: col}
 			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
 				position = mapped
 			}
@@ -304,10 +303,10 @@ func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bo
 	return rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey), l.Offset(), true
 }
 
-func convertExprLineColToPos(line, col, lineBase, colBase int) workflowlang.Pos {
+func convertExprLineColToPos(line, col, lineBase, colBase int) source.Position {
 	// Line and column in ExprError are 1-based
-	return workflowlang.Pos{
-		Line: line - 1 + lineBase,
-		Col:  col - 1 + colBase,
+	return source.Position{
+		Line:   line - 1 + lineBase,
+		Column: col - 1 + colBase,
 	}
 }

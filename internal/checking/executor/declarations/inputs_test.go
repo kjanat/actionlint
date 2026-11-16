@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -76,7 +77,7 @@ func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 					}
 					calls++
 					collector := reporting.Collector{Rule: check.Name, Step: input}
-					collector.Errorf(reporting.OptionalPosition(input.Position()), "test finding")
+					collector.Errorf(sourcepos.NilUnlessPresent(input.Position()), "test finding")
 					return collector.Findings
 				}
 			}

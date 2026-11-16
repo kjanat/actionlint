@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -61,14 +61,14 @@ jobs:
 			} else if len(findings) != 1 || !strings.Contains(findings[0].Message, tc.want) || findings[0].Start.Line != 6 || findings[0].Start.Column < 16 {
 				t.Fatalf("want one %q at matrix source, got %v", tc.want, findings)
 			}
-			var position *workflowlang.Pos
+			var position *sourcepos.Position
 			switch tc.name {
 			case "axis insertion duplicate":
 				position = workflow.Jobs["test"].Strategy.Matrix.Rows["os"].Values[1].Pos()
 			case "exclude insertion mismatch", "exclude insertion unknown axis":
 				position = workflow.Jobs["test"].Strategy.Matrix.Exclude.Combinations[0].Expression.Pos
 			}
-			if position != nil && (findings[0].Start.Line != position.Line || findings[0].Start.Column != position.Col) {
+			if position != nil && (findings[0].Start.Line != position.Line || findings[0].Start.Column != position.Column) {
 				t.Fatalf("expanded finding position = %v, want %v", findings[0], position)
 			}
 		})

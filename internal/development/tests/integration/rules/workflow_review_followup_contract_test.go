@@ -40,7 +40,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 		}
 		if want {
 			pos := workflow.On[0].(*workflowlang.WebhookEvent).Workflows[0].Pos
-			if rule.Errs()[0].Start.Line != pos.Line || rule.Errs()[0].Start.Column != pos.Col {
+			if rule.Errs()[0].Start.Line != pos.Line || rule.Errs()[0].Start.Column != pos.Column {
 				t.Fatalf("evaluated pattern finding should retain expression position: %v", rule.Errs()[0])
 			}
 		}

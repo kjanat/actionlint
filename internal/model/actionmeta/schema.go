@@ -174,7 +174,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 						message = fmt.Sprintf("context %q is not available", violation.Context)
 					}
 					pos := ExpressionPosition(meta, value, violation.Offset)
-					rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, value, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
+					rule.metadataErrorfAt(meta, pos.Line, pos.Column, ExpressionEndPosition(meta, value, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
 				}
 			}
 			if definition == "step-if" {
@@ -256,7 +256,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 							message = fmt.Sprintf("context %q is not available in keys", violation.Context)
 						}
 						pos := ExpressionPosition(meta, expr, violation.Offset)
-						rule.metadataErrorfAt(meta, pos.Line, pos.Col, ExpressionEndPosition(meta, expr, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
+						rule.metadataErrorfAt(meta, pos.Line, pos.Column, ExpressionEndPosition(meta, expr, violation), violation.Code, "%s at \"%s\" in action metadata", message, location.Display())
 					}
 				}
 			}
@@ -381,10 +381,10 @@ func (rule *schemaChecker) expressionFindings(value *ExprString, field, location
 	return read.Problems
 }
 
-func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *workflowlang.Pos, code ProblemCode, format string, args ...any) {
+func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *sourcepos.Position, code ProblemCode, format string, args ...any) {
 	d := MetadataProblem{Path: meta.Path(), Start: sourcepos.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
 	if end != nil {
-		d.End = sourcepos.Position{Line: end.Line, Column: end.Col}
+		d.End = *end
 	}
 	rule.problems = append(rule.problems, d)
 }

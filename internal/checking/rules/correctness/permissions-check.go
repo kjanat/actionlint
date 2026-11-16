@@ -20,10 +20,10 @@ func checkPermissionMapping(p *workflowlang.Permissions) []reporting.StepFinding
 	}
 	input := permissionDeclaration{}
 	if p.All != nil {
-		input.All = &permissionValue{Text: p.All.Value, Start: reporting.Position(p.All.Pos)}
+		input.All = &permissionValue{Text: p.All.Value, Start: sourcepos.ZeroIfNil(p.All.Pos)}
 	}
 	for _, scope := range p.Scopes {
-		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: reporting.Position(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: reporting.Position(reporting.SourcePosition(scope.Value))}})
+		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: sourcepos.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: sourcepos.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
 	}
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }

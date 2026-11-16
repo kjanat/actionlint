@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
@@ -86,7 +87,7 @@ func (rule *eventsCheck) checkTimezone(tz *workflowlang.String) {
 	}
 }
 
-func (rule *eventsCheck) filterNotAvailable(pos *workflowlang.Pos, filter, hook string, available []string) {
+func (rule *eventsCheck) filterNotAvailable(pos *source.Position, filter, hook string, available []string) {
 	e := "events"
 	if len(available) < 2 {
 		e = "event"
@@ -99,18 +100,18 @@ func (rule *eventsCheck) checkExclusiveFilters(filter, ignore *workflowlang.Webh
 
 	if ok {
 		if !filter.IsEmpty() && !ignore.IsEmpty() {
-			p := reporting.OptionalPosition(filter.Name.Position())
-			if p.IsBefore(reporting.OptionalPosition(ignore.Name.Position())) {
-				p = reporting.OptionalPosition(ignore.Name.Position())
+			p := source.NilUnlessPresent(filter.Name.Position())
+			if q := source.NilUnlessPresent(ignore.Name.Position()); p.IsBefore(*q) {
+				p = q
 			}
 			rule.Errorf(p, "both %q and %q filters cannot be used for the same event %q. note: use '!' to negate patterns", filter.Name.Text(), ignore.Name.Text(), hook)
 		}
 	} else {
 		if !filter.IsEmpty() {
-			rule.filterNotAvailable(reporting.OptionalPosition(filter.Name.Position()), filter.Name.Text(), hook, available)
+			rule.filterNotAvailable(source.NilUnlessPresent(filter.Name.Position()), filter.Name.Text(), hook, available)
 		}
 		if !ignore.IsEmpty() {
-			rule.filterNotAvailable(reporting.OptionalPosition(ignore.Name.Position()), ignore.Name.Text(), hook, available)
+			rule.filterNotAvailable(source.NilUnlessPresent(ignore.Name.Position()), ignore.Name.Text(), hook, available)
 		}
 	}
 }
@@ -125,7 +126,7 @@ func (rule *eventsCheck) checkWebhookEvent(event *workflowlang.WebhookEvent) {
 		return
 	}
 
-	rule.checkTypes(event.Hook.Text(), reporting.OptionalPosition(event.Hook.Position()), event.Types, types)
+	rule.checkTypes(event.Hook.Text(), source.NilUnlessPresent(event.Hook.Position()), event.Types, types)
 
 	if hook == "workflow_run" {
 		if len(event.Workflows) == 0 {
@@ -163,7 +164,7 @@ func (rule *eventsCheck) checkWebhookEvent(event *workflowlang.WebhookEvent) {
 	)
 }
 
-func (rule *eventsCheck) checkTypes(hook string, pos *workflowlang.Pos, types []*workflowlang.String, expected []string) {
+func (rule *eventsCheck) checkTypes(hook string, pos *source.Position, types []*workflowlang.String, expected []string) {
 	if len(expected) == 0 && len(types) > 0 {
 		rule.Errorf(pos, "\"types\" cannot be specified for %q Webhook event", hook)
 		return
@@ -195,7 +196,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 			case workflowlang.WorkflowCallEventInputTypeNumber:
 				if _, err := strconv.ParseFloat(i.Default.Text(), 64); err != nil {
 					rule.Errorf(
-						reporting.OptionalPosition(i.Default.Position()),
+						source.NilUnlessPresent(i.Default.Position()),
 						"input of workflow_call event %q is typed as number but its default value %q cannot be parsed as a float number: %s",
 						i.Name.Text(),
 						i.Default.Text(),
@@ -205,7 +206,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 			case workflowlang.WorkflowCallEventInputTypeBoolean:
 				if d := strings.ToLower(i.Default.Text()); d != "true" && d != "false" {
 					rule.Errorf(
-						reporting.OptionalPosition(i.Default.Position()),
+						source.NilUnlessPresent(i.Default.Position()),
 						"input of workflow_call event %q is typed as boolean. its default value must be true or false but got %q",
 						i.Name.Text(),
 						i.Default.Text(),
@@ -216,7 +217,7 @@ func (rule *eventsCheck) checkWorkflowCallEvent(event *workflowlang.WorkflowCall
 		}
 		if i.Required != nil && i.Required.Value {
 			rule.Errorf(
-				reporting.OptionalPosition(i.Default.Position()),
+				source.NilUnlessPresent(i.Default.Position()),
 				"input %q of workflow_call event has the default value %q, but it is also required. if an input is marked as required, its default value will never be used",
 				i.Name.Text(),
 				i.Default.Text(),
@@ -231,7 +232,7 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 	for n, i := range event.Inputs {
 		if i.Type == workflowlang.WorkflowDispatchEventInputTypeChoice {
 			if len(i.Options) == 0 {
-				rule.Errorf(reporting.OptionalPosition(i.Name.Position()), "input type of %q is \"choice\" but \"options\" is not set", n)
+				rule.Errorf(source.NilUnlessPresent(i.Name.Position()), "input type of %q is \"choice\" but \"options\" is not set", n)
 				continue
 			}
 			seen := make(map[string]struct{}, len(i.Options))
@@ -248,12 +249,12 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 					b.Append(o.Value)
 				}
 				if _, ok := seen[i.Default.Text()]; !ok {
-					rule.Errorf(reporting.OptionalPosition(i.Default.Position()), "default value %q of %q input is not included in its options %q", i.Default.Text(), n, b.Build())
+					rule.Errorf(source.NilUnlessPresent(i.Default.Position()), "default value %q of %q input is not included in its options %q", i.Default.Text(), n, b.Build())
 				}
 			}
 		} else {
 			if len(i.Options) > 0 {
-				rule.Errorf(reporting.OptionalPosition(i.Name.Position()), "\"options\" can not be set to %q input because its input type is not \"choice\"", n)
+				rule.Errorf(source.NilUnlessPresent(i.Name.Position()), "\"options\" can not be set to %q input because its input type is not \"choice\"", n)
 			}
 			if i.Default != nil {
 				// TODO: Can some check be done for WorkflowDispatchEventInputTypeEnvironment?
@@ -262,7 +263,7 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 				case workflowlang.WorkflowDispatchEventInputTypeNumber:
 					if _, err := strconv.ParseFloat(i.Default.Text(), 64); err != nil {
 						rule.Errorf(
-							reporting.OptionalPosition(i.Default.Position()),
+							source.NilUnlessPresent(i.Default.Position()),
 							"type of %q input is \"number\" but its default value %q cannot be parsed as a float number: %s",
 							i.Name.Text(),
 							i.Default.Text(),
@@ -271,7 +272,7 @@ func (rule *eventsCheck) checkWorkflowDispatchEvent(event *workflowlang.Workflow
 					}
 				case workflowlang.WorkflowDispatchEventInputTypeBoolean:
 					if d := strings.ToLower(i.Default.Text()); d != "true" && d != "false" {
-						rule.Errorf(reporting.OptionalPosition(i.Default.Position()), "type of %q input is \"boolean\". its default value %q must be \"true\" or \"false\"", n, i.Default.Text())
+						rule.Errorf(source.NilUnlessPresent(i.Default.Position()), "type of %q input is \"boolean\". its default value %q must be \"true\" or \"false\"", n, i.Default.Text())
 					}
 				case workflowlang.WorkflowDispatchEventInputTypeNone,
 					workflowlang.WorkflowDispatchEventInputTypeString,

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -65,7 +66,7 @@ func (rule *ExecutableChecker) Paths() execution.Paths { return rule.paths }
 // SetPaths replaces the checkout scope after a composite checkout moved it.
 func (rule *ExecutableChecker) SetPaths(paths execution.Paths) { rule.paths = paths }
 
-func (rule *ExecutableChecker) Errorf(pos *workflowlang.Pos, format string, args ...any) {
+func (rule *ExecutableChecker) Errorf(pos *source.Position, format string, args ...any) {
 	if rule.context.Report != nil {
 		rule.context.Report(findingmodel.Errorf(pos, "executable-bit", format, args...))
 	}

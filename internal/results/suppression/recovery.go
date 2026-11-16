@@ -100,7 +100,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			case len(flow) > 0 && c == ',':
 				plain = false
 			case !plain && len(flow) == 0 && (c == '|' || c == '>'):
-				position := sourcemap.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
+				position := sourcepos.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
 				if scalar, err := document.Decode(position, sourcemap.Context{Indent: parentIndent}); err == nil {
 					blockEnds[lineNumber] = scalar.End.Line
 				}

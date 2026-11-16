@@ -8,7 +8,6 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -62,7 +61,7 @@ func VendorLockIn(w declaration.Workflow, uses *workflowlang.String, target stri
 	}
 	location, _ := uses.Position()
 	finding := results.Diagnostic{
-		Rule: "vendor-lock-in", Severity: "error", Start: sourcepos.Position{Line: location.Line, Column: location.Col},
+		Rule: "vendor-lock-in", Severity: "error", Start: location,
 		Message: fmt.Sprintf("GitHub Actions requires owner/repo[/path]@ref in uses, not a full repository URL (host %q)", ref.Host()),
 	}
 	if ref.Shorthand() != "" {
@@ -73,7 +72,7 @@ func VendorLockIn(w declaration.Workflow, uses *workflowlang.String, target stri
 			if startOK && endOK {
 				finding.Fixes = []results.Fix{{
 					Description: "Remove the GitHub URL prefix", Applicability: results.FixSafe,
-					Edits: []results.Edit{{Start: sourcepos.Position{Line: start.Line, Column: start.Col}, End: sourcepos.Position{Line: end.Line, Column: end.Col}}},
+					Edits: []results.Edit{{Start: *start, End: *end}},
 				}}
 			}
 		}

@@ -4,13 +4,13 @@ import (
 	"reflect"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
 func TestOwnedReferenceValidationMatchesLegacyFindings(t *testing.T) {
 	t.Parallel()
-	position := workflowlang.Pos{Line: 7, Col: 11}
+	position := source.Position{Line: 7, Column: 11}
 	for _, spec := range []string{"owner/repo@v1", "owner/repo", "./child", "$/child", "$/", "$/child@v1", "builtin:name", "self:owner/repo@v1", "docker://ghcr.io/team/image", "docker://ghcr.io/team/image:"} {
 		t.Run(spec, func(t *testing.T) {
 			t.Parallel()
@@ -44,10 +44,10 @@ func TestOwnedReferenceValidationMatchesLegacyFindings(t *testing.T) {
 
 func TestOwnedReferenceValidationPreservesAbsentPosition(t *testing.T) {
 	t.Parallel()
-	if got := RepositoryReferenceValue("owner/repo@v1", workflowlang.Pos{}, false); got != nil {
+	if got := RepositoryReferenceValue("owner/repo@v1", source.Position{}, false); got != nil {
 		t.Fatalf("valid reference without source position findings = %v, want nil", got)
 	}
-	findings := RepositoryReferenceValue("owner/repo", workflowlang.Pos{}, true)
+	findings := RepositoryReferenceValue("owner/repo", source.Position{}, true)
 	if findings == nil {
 		t.Fatal("invalid reference unexpectedly returned nil findings")
 	}

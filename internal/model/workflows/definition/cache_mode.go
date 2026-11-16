@@ -1,5 +1,7 @@
 package workflow
 
+import "actionlint.kjanat.dev/v2/internal/input/source"
+
 // CacheModeKind identifies the cache access granted to a workflow or job.
 type CacheModeKind uint8
 
@@ -35,7 +37,7 @@ func (k CacheModeKind) String() string {
 // CacheMode is an explicit cache-mode declaration. An omitted declaration is a nil pointer.
 type CacheMode struct {
 	Kind CacheModeKind
-	Pos  *Pos
+	Pos  *source.Position
 }
 
 func (m *CacheMode) Capabilities() (uint8, bool) {

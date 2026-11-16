@@ -13,7 +13,7 @@ func SourceComments(source []workflowlang.ScalarComment) []SourceComment {
 		if comment.Trailing {
 			placement = TrailingComment
 		}
-		comments = append(comments, SourceComment{Text: comment.Text, Start: Position(&comment.Pos), Placement: placement})
+		comments = append(comments, SourceComment{Text: comment.Text, Start: comment.Pos, Placement: placement})
 	}
 	return comments
 }

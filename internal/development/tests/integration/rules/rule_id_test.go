@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
@@ -34,16 +35,16 @@ func TestCheckInvalidJobNames(t *testing.T) {
 			{
 				"jobs.<job_id>",
 				&workflowlang.Job{
-					ID: &workflowlang.String{Value: input, Pos: &workflowlang.Pos{}},
+					ID: &workflowlang.String{Value: input, Pos: &source.Position{}},
 				},
 				"invalid job ID",
 			},
 			{
 				"jobs.<job_id>.needs",
 				&workflowlang.Job{
-					ID: &workflowlang.String{Value: "test", Pos: &workflowlang.Pos{}},
+					ID: &workflowlang.String{Value: "test", Pos: &source.Position{}},
 					Needs: []*workflowlang.String{
-						{Value: input, Pos: &workflowlang.Pos{}},
+						{Value: input, Pos: &source.Position{}},
 					},
 				},
 				"invalid job ID",
@@ -52,7 +53,7 @@ func TestCheckInvalidJobNames(t *testing.T) {
 				"steps.*.id",
 				&workflowlang.Job{
 					Steps: []*workflowlang.Step{
-						{ID: &workflowlang.String{Value: input, Pos: &workflowlang.Pos{}}},
+						{ID: &workflowlang.String{Value: input, Pos: &source.Position{}}},
 					},
 				},
 				"invalid step ID",
@@ -105,12 +106,12 @@ func TestCheckValidJobNames(t *testing.T) {
 				stepID = "step" + stepID
 			}
 			job := &workflowlang.Job{
-				ID: &workflowlang.String{Value: input, Pos: &workflowlang.Pos{}},
+				ID: &workflowlang.String{Value: input, Pos: &source.Position{}},
 				Needs: []*workflowlang.String{
-					{Value: input, Pos: &workflowlang.Pos{}},
+					{Value: input, Pos: &source.Position{}},
 				},
 				Steps: []*workflowlang.Step{
-					{ID: &workflowlang.String{Value: stepID, Pos: &workflowlang.Pos{}}},
+					{ID: &workflowlang.String{Value: stepID, Pos: &source.Position{}}},
 				},
 			}
 			r := declarationchecks.New(checking.ConfigurationRules(), correctness.IdCheck())

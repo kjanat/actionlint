@@ -36,7 +36,7 @@ func InferReferences(all []*findingmodel.Finding, path string, references map[st
 				ref = job
 			}
 			if owner.Step != nil {
-				if step, exists := refs.Positions[[2]int{owner.Step.Line, owner.Step.Col}]; exists {
+				if step, exists := refs.Positions[[2]int{owner.Step.Line, owner.Step.Column}]; exists {
 					ref = step
 				}
 			}

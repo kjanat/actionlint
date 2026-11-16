@@ -66,7 +66,7 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 		finding := store.copies.Clone(template)
 		key := metadataFindingKey(meta, document, finding)
 		if finding.Source.Content == nil {
-			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses).Line, reporting.SourcePosition(action.Uses).Col
+			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses).Line, reporting.SourcePosition(action.Uses).Column
 		}
 		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}
 		rule.Report(finding)

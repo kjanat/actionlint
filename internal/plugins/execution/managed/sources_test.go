@@ -19,7 +19,6 @@ import (
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -63,7 +62,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	}
 	var inputs []string
 	reader := inputfiles.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-	script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, AnalysisDir: root, Reader: reader}, Execution: tools.Execution{Directory: root, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 6}, Value: &workflowlang.Pos{Line: 6}}
+	script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, AnalysisDir: root, Reader: reader}, Execution: tools.Execution{Directory: root, DirectoryKnown: true}, Key: &sourcepos.Position{Line: 6}, Value: &sourcepos.Position{Line: 6}}
 	sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
 	if err != nil {
 		t.Fatal(err)
@@ -168,7 +167,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			}
 			var inputs []string
 			reader := inputfiles.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-			script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: reader}, Execution: tools.Execution{Directory: tc.directory, DirectoryKnown: true}, Key: &workflowlang.Pos{Line: 1}, Value: &workflowlang.Pos{Line: 1}}
+			script := tools.Script{Path: "ci.yml", Config: cfg, Scope: &tools.Scope{Workspace: root, Reader: reader}, Execution: tools.Execution{Directory: tc.directory, DirectoryKnown: true}, Key: &sourcepos.Position{Line: 1}, Value: &sourcepos.Position{Line: 1}}
 			sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config))
 			if err != nil {
 				t.Fatal(err)

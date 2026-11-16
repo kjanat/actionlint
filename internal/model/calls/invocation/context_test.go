@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
@@ -65,7 +66,7 @@ func TestContextsCannotCrossGraphsWithIdenticalIDs(t *testing.T) {
 	if first.RootID() != second.RootID() || first.Owns(second.RootContext()) || first.Owns(invocation.Context{}) {
 		t.Fatal("entry handle escaped its owner")
 	}
-	facts := invocation.Facts{Uses: "./child", HasUses: true, Condition: invocation.ConditionEnabled, Step: invocation.Position{Line: 3, Column: 7}, Background: true}
+	facts := invocation.Facts{Uses: "./child", HasUses: true, Condition: invocation.ConditionEnabled, Step: source.Position{Line: 3, Column: 7}, Background: true}
 	site := reference("entry", "call")
 	if _, err := first.Begin(second.RootContext(), site, facts); !errors.Is(err, invocation.ErrForeignContext) {
 		t.Fatalf("foreign parent: %v", err)
@@ -184,8 +185,8 @@ func TestFactsRejectContradictoryAndMalformedValues(t *testing.T) {
 		"invalid condition":    {},
 		"absent nonempty uses": {Uses: "./child", Condition: invocation.ConditionEnabled},
 		"invalid UTF8":         {Uses: "\xff", HasUses: true, Condition: invocation.ConditionEnabled},
-		"negative line":        {Step: invocation.Position{Line: -1, Column: 1}, Condition: invocation.ConditionEnabled},
-		"partial position":     {Step: invocation.Position{Line: 1}, Condition: invocation.ConditionEnabled},
+		"negative line":        {Step: source.Position{Line: -1, Column: 1}, Condition: invocation.ConditionEnabled},
+		"partial position":     {Step: source.Position{Line: 1}, Condition: invocation.ConditionEnabled},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

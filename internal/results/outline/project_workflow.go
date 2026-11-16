@@ -89,9 +89,10 @@ func outlineString(value *workflowlang.String) string {
 	return value.Value
 }
 
-func outlinePosition(pos *workflowlang.Pos) *sourcepos.Position {
+func outlinePosition(pos *sourcepos.Position) *sourcepos.Position {
 	if pos == nil {
 		return nil
 	}
-	return &sourcepos.Position{Line: pos.Line, Column: pos.Col}
+	clone := *pos
+	return &clone
 }

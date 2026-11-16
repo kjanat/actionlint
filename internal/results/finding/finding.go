@@ -7,7 +7,6 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -46,26 +45,26 @@ func (e *Finding) String() string {
 }
 
 // At creates a finding at a workflow source position.
-func At(pos *workflowlang.Pos, kind string, msg string) *Finding {
+func At(pos *sourcepos.Position, kind string, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
-		Start: sourcepos.Position{Line: pos.Line, Column: pos.Col},
+		Start: *pos,
 	}
 }
 
 // Errorf formats a finding at a workflow source position.
-func Errorf(pos *workflowlang.Pos, kind string, format string, args ...any) *Finding {
+func Errorf(pos *sourcepos.Position, kind string, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
-		Start: sourcepos.Position{Line: pos.Line, Column: pos.Col},
+		Start: *pos,
 	}
 }
 
 // EndAt sets the exclusive end of the finding's range. A nil end keeps the
 // range open, so rendering infers the token ending at Start.
-func (e *Finding) EndAt(end *workflowlang.Pos) {
+func (e *Finding) EndAt(end *sourcepos.Position) {
 	if end != nil {
-		e.End = sourcepos.Position{Line: end.Line, Column: end.Col}
+		e.End = *end
 	}
 }
 
