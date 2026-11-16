@@ -32,7 +32,7 @@ func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
 				}, nil)
 				cache := actionfixture.NewCache(t, t.TempDir(), nil, reader)
 				rule := NewRuleAction(t.Context(), ActionRule.Base(), cache, nil)
-				err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}))
+				err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &source.Position{Line: 1, Column: 1}}}}))
 				if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 					t.Fatalf("interruption became a lint finding: error=%v findings=%+v", err, rule.Errs())
 				}

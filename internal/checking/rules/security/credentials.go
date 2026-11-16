@@ -1,6 +1,7 @@
 package security
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
@@ -86,19 +87,19 @@ func (rule *credentialsCheck) checkContainer(where string, n *workflowlang.Conta
 	}
 }
 
-func (rule *credentialsCheck) checkContainerValue(where string, value any, pos *workflowlang.Pos) {
+func (rule *credentialsCheck) checkContainerValue(where string, value any, pos *sourcepos.Position) {
 	if container, ok := value.(map[string]any); ok {
 		rule.checkCredentialsValue(where, schema.Property(container, "credentials"), pos)
 	}
 }
 
-func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos *workflowlang.Pos) {
+func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos *sourcepos.Position) {
 	if credentials, ok := value.(map[string]any); ok {
 		rule.checkPasswordValue(where, schema.Property(credentials, "password"), pos)
 	}
 }
 
-func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *workflowlang.Pos) {
+func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *sourcepos.Position) {
 	// Known strings are data, including expression delimiters inside JSON.
 	// Invalid value types are reported by expression validation.
 	switch value := value.(type) {
@@ -113,6 +114,6 @@ func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *w
 	rule.reportPassword(where, pos)
 }
 
-func (rule *credentialsCheck) reportPassword(where string, pos *workflowlang.Pos) {
+func (rule *credentialsCheck) reportPassword(where string, pos *sourcepos.Position) {
 	rule.Errorf(pos, "\"password\" section in %s should be specified via secrets. do not put password value directly", where)
 }

@@ -1,6 +1,7 @@
 package correctness
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
@@ -108,7 +109,7 @@ func GlobJob(n declaration.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkKnownRefGlob(value any, pos *workflowlang.Pos) {
+func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcepos.Position) {
 	pattern, known := workflowlang.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
@@ -149,15 +150,15 @@ func (rule *globCheck) checkFilePathGlobs(filter *workflowlang.WebhookEventFilte
 	}
 }
 
-func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *workflowlang.Pos, quoted bool) {
+func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *sourcepos.Position, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos
 		if quoted {
-			p.Col++
+			p.Column++
 		}
 		if err.Column != 0 {
-			p.Col += err.Column - 1
+			p.Column += err.Column - 1
 		}
 		rule.Errorf(&p, "%s. note: filter pattern syntax is explained at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet", err.Message)
 	}

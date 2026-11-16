@@ -27,7 +27,7 @@ var IdRule = &define.Rule{
 
 func checkIdentifiers(job declaration.Job) []reporting.StepFinding {
 	name := func(value *workflowlang.String) identifier.Name {
-		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: reporting.Position(value.Pos)}
+		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: sourcepos.ZeroIfNil(value.Pos)}
 	}
 	input := identifier.Job{}
 	if job.ID != nil {
@@ -42,7 +42,7 @@ func checkIdentifiers(job declaration.Job) []reporting.StepFinding {
 		for step := range steps {
 			if step.ID != nil {
 				input.Steps = append(input.Steps, name(step.ID))
-				owners[reporting.Position(reporting.OptionalPosition(step.ID.Position()))] = step
+				owners[sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(step.ID.Position()))] = step
 			}
 			if parallel, ok := step.ParallelSteps(); ok {
 				collect(parallel)

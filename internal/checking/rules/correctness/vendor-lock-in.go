@@ -65,7 +65,7 @@ func VendorLockIn(w declaration.Workflow, uses *workflowlang.String, target stri
 	}
 	location, _ := uses.Position()
 	finding := results.Diagnostic{
-		Severity: "error", Start: sourcepos.Position{Line: location.Line, Column: location.Col},
+		Severity: "error", Start: location,
 		Message: fmt.Sprintf("GitHub Actions requires owner/repo[/path]@ref in uses, not a full repository URL (host %q)", ref.Host()),
 	}
 	if ref.Shorthand() != "" {

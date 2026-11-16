@@ -1,6 +1,7 @@
 package suspicious
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"strings"
 	"unicode/utf8"
 
@@ -59,7 +60,7 @@ func UncancellableCondition(w declaration.Workflow, value *workflowlang.String) 
 			finding.Fixes = []results.Fix{{
 				Description: "Skip this job when cancelled (changes behavior)", Applicability: results.FixUnsafe,
 				Edits: []results.Edit{{
-					Start: reporting.Position(start), End: reporting.Position(end), Replacement: replacement,
+					Start: sourcepos.ZeroIfNil(start), End: sourcepos.ZeroIfNil(end), Replacement: replacement,
 				}},
 			}}
 		}

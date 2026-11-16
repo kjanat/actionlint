@@ -1,6 +1,7 @@
 package correctness
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
@@ -37,13 +38,13 @@ func checkJobDependencies(w declaration.Workflow) []reporting.StepFinding {
 		if left.Line != right.Line {
 			return left.Line - right.Line
 		}
-		return left.Col - right.Col
+		return left.Column - right.Column
 	})
 	input := make([]jobneeds.Job, 0, len(jobs))
 	for _, job := range jobs {
-		item := jobneeds.Job{ID: jobneeds.Name{Value: job.ID.Text(), Start: reporting.Position(reporting.OptionalPosition(job.ID.Position()))}}
+		item := jobneeds.Job{ID: jobneeds.Name{Value: job.ID.Text(), Start: sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(job.ID.Position()))}}
 		for _, dep := range job.Needs {
-			item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value, Start: reporting.Position(dep.Pos)})
+			item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value, Start: sourcepos.ZeroIfNil(dep.Pos)})
 		}
 		input = append(input, item)
 	}

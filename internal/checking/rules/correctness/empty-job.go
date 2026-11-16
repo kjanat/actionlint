@@ -1,6 +1,7 @@
 package correctness
 
 import (
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
@@ -31,5 +32,5 @@ func EmptyJob(job declaration.Job) []reporting.StepFinding {
 	for range job.Steps() {
 		return nil
 	}
-	return []reporting.StepFinding{{Severity: "error", Start: reporting.Position(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
+	return []reporting.StepFinding{{Severity: "error", Start: sourcepos.ZeroIfNil(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
 }
