@@ -41,7 +41,7 @@ func TestWorkflowAdmissionRejectsAmplificationBeforeASTConstruction(t *testing.T
 			}
 			physical := false
 			for node := range before {
-				physical = physical || failure.Line == node.Line && failure.Column == node.Column
+				physical = physical || failure.Position.Line == node.Line && failure.Position.Column == node.Column
 			}
 			if !physical {
 				t.Fatalf("admission failure lost its physical source: %+v", failure)

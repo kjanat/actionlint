@@ -261,7 +261,7 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 		{anchor, `anchor "a" is defined but not used`},
 	} {
 		got := diagnostics[i]
-		if got.Message != want.message || got.Line != want.node.Line || got.Column != want.node.Column || got.Kind != "syntax-check" {
+		if got.Message != want.message || got.Position.Line != want.node.Line || got.Position.Column != want.node.Column || got.Kind != "syntax-check" {
 			t.Errorf("alias diagnostic %d=%+v want %q at %d:%d", i, got, want.message, want.node.Line, want.node.Column)
 		}
 	}
@@ -279,7 +279,7 @@ func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 	}
 	assertAliasTestProjection(t, projected, before)
 	leaf := NewSourceParser([]byte(source))
-	if value := leaf.ParseRawYAMLValue(projectedAlias); value != nil || len(leaf.errs) != 1 || leaf.errs[0].Message != "unexpected alias node on parsing value in matrix row" || leaf.errs[0].Line != alias.Line || leaf.errs[0].Column != alias.Column {
+	if value := leaf.ParseRawYAMLValue(projectedAlias); value != nil || len(leaf.errs) != 1 || leaf.errs[0].Message != "unexpected alias node on parsing value in matrix row" || leaf.errs[0].Position.Line != alias.Line || leaf.errs[0].Position.Column != alias.Column {
 		t.Fatalf("raw value followed unresolved alias: value=%+v errors=%+v", value, leaf.errs)
 	}
 }

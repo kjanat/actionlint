@@ -120,7 +120,7 @@ jobs:
 				t.Fatalf("wanted anchor and alias errors, got %v", errs)
 			}
 			for i, err := range errs {
-				if err.Line != 6+i || err.Column != 14 || !strings.Contains(err.Message, `"git+opts"`) {
+				if err.Position.Line != 6+i || err.Position.Column != 14 || !strings.Contains(err.Message, `"git+opts"`) {
 					t.Fatalf("unexpected anchor diagnostic: %v", err)
 				}
 			}
@@ -169,8 +169,8 @@ second: *value
 				t.Fatalf("wanted one error per alias use, got %v", p.errs)
 			}
 			for i, err := range p.errs {
-				if err.Line != i+2 || err.Column != i+8 {
-					t.Errorf("error points to %d:%d, want %d:%d", err.Line, err.Column, i+2, i+8)
+				if err.Position.Line != i+2 || err.Position.Column != i+8 {
+					t.Errorf("error points to %d:%d, want %d:%d", err.Position.Line, err.Position.Column, i+2, i+8)
 				}
 				if !strings.Contains(err.Message, tt.message) || !strings.Contains(err.Message, `alias "value" refers to the anchor at line:1, column:9`) {
 					t.Errorf("error lost the type mismatch or anchor location: %s", err.Message)

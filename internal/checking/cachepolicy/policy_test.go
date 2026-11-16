@@ -28,7 +28,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	parsed, syntaxErrors := parser.ParseWorkflow([]byte(source))
 	findings := make([]results.Diagnostic, 0, len(syntaxErrors))
 	for _, issue := range syntaxErrors {
-		finding := finding.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: sourcepos.Position{Line: issue.Line, Column: issue.Column}}
+		finding := finding.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: issue.Position}
 		findings = append(findings, finding.Publish([]byte(source)).Diagnostic)
 	}
 	if parsed == nil {

@@ -60,7 +60,7 @@ func hasDefault(input *definition.WorkflowCallEventInput) bool {
 }
 
 func findingError(finding *parser.SyntaxError) error {
-	return fmt.Errorf("line:%d, column:%d: %s", finding.Line, finding.Column, finding.Message)
+	return fmt.Errorf("line:%d, column:%d: %s", finding.Position.Line, finding.Position.Column, finding.Message)
 }
 
 func checkMetadataAliases(doc *codec.Node) error {

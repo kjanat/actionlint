@@ -157,7 +157,7 @@ func TestActupFlowNullWhitespace(t *testing.T) {
 		t.Fatal("missing flow-null mutation target")
 	}
 	_, findings := parser.ParseWorkflow([]byte(mutated))
-	if len(findings) != 1 || findings[0].Code != parser.CodeFlowNull || findings[0].Line != 8 || findings[0].Column != 7 {
+	if len(findings) != 1 || findings[0].Code != parser.CodeFlowNull || findings[0].Position.Line != 8 || findings[0].Position.Column != 7 {
 		t.Fatalf("missing compatibility finding at the original flow key: %v", findings)
 	}
 }

@@ -116,11 +116,11 @@ func NewSourceParser(source []byte) *Parser {
 }
 
 func (p *Parser) error(n *codec.Node, code Code, m string) {
-	p.errs = append(p.errs, &SyntaxError{Message: m, Line: n.Line, Column: n.Column, Kind: "syntax-check", Code: code})
+	p.errs = append(p.errs, &SyntaxError{Message: m, Position: source.Position{Line: n.Line, Column: n.Column}, Kind: "syntax-check", Code: code})
 }
 
 func (p *Parser) errorAt(pos *source.Position, code Code, m string) {
-	p.errs = append(p.errs, &SyntaxError{Message: m, Line: pos.Line, Column: pos.Column, Kind: "syntax-check", Code: code})
+	p.errs = append(p.errs, &SyntaxError{Message: m, Position: *pos, Kind: "syntax-check", Code: code})
 }
 
 func (p *Parser) errorfAt(pos *source.Position, code Code, format string, args ...any) {
@@ -2120,10 +2120,9 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 	for _, diagnostic := range diagnostics {
 		findings = append(findings, &SyntaxError{
 			Message: "could not parse as YAML: " + diagnostic.Message(),
-			Line:    diagnostic.Mark().Line,
-			Column:  diagnostic.Mark().Column,
-			Kind:    "syntax-check",
-			Code:    CodeYAML,
+			Position: source.Position{Line: diagnostic.Mark().Line, Column: diagnostic.Mark().Column},
+			Kind:     "syntax-check",
+			Code:     CodeYAML,
 		})
 	}
 	return findings
@@ -2159,10 +2158,10 @@ func ParseReusableWorkflow(b []byte) (workflow *definition.Workflow, findings, w
 func documentFindings(b []byte) []*SyntaxError {
 	var findings []*SyntaxError
 	if bytes.HasPrefix(b, []byte("\xef\xbb\xbf")) {
-		findings = append(findings, &SyntaxError{Message: "a byte order mark makes GitHub read the first key with a U+FEFF prefix; remove it", Line: 1, Column: 1, Kind: "syntax-check", Code: CodeBOM})
+		findings = append(findings, &SyntaxError{Message: "a byte order mark makes GitHub read the first key with a U+FEFF prefix; remove it", Position: source.Position{Line: 1, Column: 1}, Kind: "syntax-check", Code: CodeBOM})
 	}
 	if mark, ok := codec.FollowingDocument(b); ok {
-		findings = append(findings, &SyntaxError{Message: "GitHub Actions reads one YAML document; remove the document starting here", Line: mark.Line, Column: mark.Column, Kind: "syntax-check", Code: CodeMultipleDocuments})
+		findings = append(findings, &SyntaxError{Message: "GitHub Actions reads one YAML document; remove the document starting here", Position: source.Position{Line: mark.Line, Column: mark.Column}, Kind: "syntax-check", Code: CodeMultipleDocuments})
 	}
 	return findings
 }

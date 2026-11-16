@@ -68,7 +68,7 @@ permissions: {}
 				}
 			}
 			workflow, diagnostics := parser.ParseWorkflow(callee)
-			if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
+			if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Position.Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
 			_, ok := definition.FindWorkflowCallEvent(workflow)
@@ -192,7 +192,7 @@ permissions: {}
 					}
 				}
 				workflow, diagnostics := parser.ParseWorkflow(callee)
-				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
+				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Position.Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
 				_, ok := definition.FindWorkflowCallEvent(workflow)

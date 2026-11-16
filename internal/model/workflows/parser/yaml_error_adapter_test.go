@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"errors"
 	"fmt"
 	"reflect"
@@ -22,7 +23,7 @@ func TestYAMLErrorAdapterPreservesLocatedWrappersAndJoinedAdmission(t *testing.T
 	defer session.Close()
 	inner := &codec.DecodeError{Errors: []*codec.LoadError{codec.NewLoadError("first", codec.Mark{Line: 3, Column: 4}), codec.NewLoadError("second", codec.Mark{Line: 5, Column: 6})}}
 	located := session.Wrap(root, fmt.Errorf("outer: %w", inner))
-	want := []*SyntaxError{{Message: "could not parse as YAML: outer: first", Line: 3, Column: 4, Kind: "syntax-check", Code: CodeYAML}, {Message: "could not parse as YAML: outer: second", Line: 5, Column: 6, Kind: "syntax-check", Code: CodeYAML}}
+	want := []*SyntaxError{{Message: "could not parse as YAML: outer: first", Position: source.Position{Line: 3, Column: 4}, Kind: "syntax-check", Code: CodeYAML}, {Message: "could not parse as YAML: outer: second", Position: source.Position{Line: 5, Column: 6}, Kind: "syntax-check", Code: CodeYAML}}
 	if got := HandleYAMLUnmarshalError(located); !reflect.DeepEqual(got, want) {
 		t.Fatalf("located wrapper context changed: got %v, want %v", got, want)
 	}
@@ -30,7 +31,7 @@ func TestYAMLErrorAdapterPreservesLocatedWrappersAndJoinedAdmission(t *testing.T
 		t.Fatalf("single wrapper lost its diagnostic context: got %v, want %v", got, want)
 	}
 	admission := codec.NewAdmissionError(codec.NewLoadError("document contains excessive aliasing", codec.Mark{Line: 7, Column: 8}))
-	wantAdmission := &SyntaxError{Message: "could not parse as YAML: document contains excessive aliasing", Line: 7, Column: 8, Kind: "syntax-check", Code: CodeYAML}
+	wantAdmission := &SyntaxError{Message: "could not parse as YAML: document contains excessive aliasing", Position: source.Position{Line: 7, Column: 8}, Kind: "syntax-check", Code: CodeYAML}
 	if got := HandleYAMLUnmarshalError(admission); !reflect.DeepEqual(got, []*SyntaxError{wantAdmission}) {
 		t.Fatalf("bare admission error changed: %v", got)
 	}

@@ -63,7 +63,7 @@ jobs:
       - run: echo test
 `
 	_, errs := parser.ParseWorkflow([]byte(src))
-	if len(errs) != 1 || !strings.Contains(errs[0].Message, `"cron" is missing`) || errs[0].Line != 4 {
+	if len(errs) != 1 || !strings.Contains(errs[0].Message, `"cron" is missing`) || errs[0].Position.Line != 4 {
 		t.Fatalf("wanted missing cron diagnostic at second schedule entry, got %v", errs)
 	}
 }

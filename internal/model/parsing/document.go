@@ -75,7 +75,7 @@ func Action(sourcePath string, content []byte) Document {
 	if err != nil {
 		document.SyntaxErrors = parser.HandleYAMLUnmarshalError(err)
 		for _, issue := range document.SyntaxErrors {
-			issue.Line, issue.Column = max(1, issue.Line), max(1, issue.Column)
+			issue.Position.Line, issue.Position.Column = max(1, issue.Position.Line), max(1, issue.Position.Column)
 		}
 	} else {
 		document.Facts = provenance

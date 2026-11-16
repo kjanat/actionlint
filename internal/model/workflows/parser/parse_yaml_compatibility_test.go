@@ -58,7 +58,7 @@ func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
 				t.Fatalf("want one compatibility diagnostic, got %v", findings)
 			}
 			finding := findings[0]
-			if finding.Kind != "syntax-check" || finding.Line != tc.line || finding.Column != tc.column ||
+			if finding.Kind != "syntax-check" || finding.Position.Line != tc.line || finding.Position.Column != tc.column ||
 				!strings.Contains(finding.Message, "GitHub Actions") || !strings.Contains(finding.Message, "space") {
 				t.Fatalf("unexpected diagnostic: %v", finding)
 			}

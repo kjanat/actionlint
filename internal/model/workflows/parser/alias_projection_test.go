@@ -94,7 +94,7 @@ func TestWorkflowEmptyParseDoesNotChangePhysicalSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	workflow, findings := parseDocument(nil, root)
-	if !reflect.ValueOf(*root).IsZero() || workflow == nil || len(findings) != 1 || findings[0].Message != "workflow is empty" || findings[0].Line != 1 || findings[0].Column != 1 {
+	if !reflect.ValueOf(*root).IsZero() || workflow == nil || len(findings) != 1 || findings[0].Message != "workflow is empty" || findings[0].Position.Line != 1 || findings[0].Position.Column != 1 {
 		t.Fatalf("empty document: source=%+v workflow=%+v findings=%+v", root, workflow, findings)
 	}
 }
@@ -103,7 +103,7 @@ func TestWorkflowParseEmptyInputs(t *testing.T) {
 	t.Parallel()
 	for _, data := range [][]byte{nil, {}, []byte(" \n \n"), []byte("# comment\n")} {
 		workflow, findings := ParseWorkflow(data)
-		if workflow == nil || len(findings) != 1 || findings[0].Kind != "syntax-check" || findings[0].Message != "workflow is empty" || findings[0].Line != 1 || findings[0].Column != 1 {
+		if workflow == nil || len(findings) != 1 || findings[0].Kind != "syntax-check" || findings[0].Message != "workflow is empty" || findings[0].Position.Line != 1 || findings[0].Position.Column != 1 {
 			t.Fatalf("empty source %q: workflow=%+v findings=%+v", data, workflow, findings)
 		}
 	}
@@ -164,7 +164,7 @@ func TestWorkflowParsePreservesAliasTypeErrorProvenance(t *testing.T) {
 	for _, finding := range findings {
 		if strings.Contains(finding.Message, `alias "flag"`) {
 			aliases++
-			if finding.Line != 7 || finding.Column != 24 || finding.Kind != "syntax-check" || !strings.Contains(finding.Message, "expected bool value") || !strings.Contains(finding.Message, `alias "flag" refers to the anchor at line:3, column:9`) {
+			if finding.Position.Line != 7 || finding.Position.Column != 24 || finding.Kind != "syntax-check" || !strings.Contains(finding.Message, "expected bool value") || !strings.Contains(finding.Message, `alias "flag" refers to the anchor at line:3, column:9`) {
 				t.Fatalf("alias type diagnostic lost provenance: %+v", finding)
 			}
 		}
@@ -185,7 +185,7 @@ func TestWorkflowParseRejectsRecursiveMatrixAlias(t *testing.T) {
 	for _, finding := range findings {
 		if strings.Contains(finding.Message, `recursive alias "cycle"`) {
 			recursive++
-			if finding.Line != 7 || finding.Column != strings.Index(strings.Split(source, "\n")[6], "*cycle")+1 || finding.Kind != "syntax-check" {
+			if finding.Position.Line != 7 || finding.Position.Column != strings.Index(strings.Split(source, "\n")[6], "*cycle")+1 || finding.Kind != "syntax-check" {
 				t.Fatalf("recursive alias location lost: %+v", finding)
 			}
 		}
@@ -202,7 +202,7 @@ func TestWorkflowParseReportsAnchoredFlowNullOnce(t *testing.T) {
 	if workflow == nil || len(workflow.Jobs) != 2 {
 		t.Fatal(findings)
 	}
-	if len(findings) != 1 || findings[0].Line != 2 || findings[0].Column != 12 || !strings.Contains(findings[0].Message, "space after ':'") {
+	if len(findings) != 1 || findings[0].Position.Line != 2 || findings[0].Position.Column != 12 || !strings.Contains(findings[0].Message, "space after ':'") {
 		t.Fatalf("flow-null should be reported once on physical anchor: %+v", findings)
 	}
 }

@@ -96,8 +96,8 @@ func TestParseCacheMode(t *testing.T) {
 					if err.Kind != "syntax-check" || !strings.Contains(err.Message, "cache-mode") {
 						t.Errorf("unexpected diagnostic: %v", err)
 					}
-					if tt.value != "" && (err.Line != wantPos.Line || err.Column != wantPos.Column) {
-						t.Errorf("diagnostic position is %d:%d, want %v", err.Line, err.Column, wantPos)
+					if tt.value != "" && (err.Position.Line != wantPos.Line || err.Position.Column != wantPos.Column) {
+						t.Errorf("diagnostic position is %d:%d, want %v", err.Position.Line, err.Position.Column, wantPos)
 					}
 				}
 			})
