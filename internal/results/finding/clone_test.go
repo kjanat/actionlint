@@ -24,7 +24,7 @@ func referenceFinding() *Finding {
 		Rule:              "rule",
 		Message:           "message",
 		End:               sourcetext.Position{Line: 1, Column: 2},
-		Source:            results.DiagnosticSource{Content: []byte("source"), Suppression: &results.SuppressionOrigin{Path: "target", First: 1, Last: 2}},
+		Source:            results.DiagnosticSource{Content: []byte("source"), Suppression: &results.SuppressionOrigin{Path: "target", Lines: sourcetext.LineRange{First: 1, Last: 2}}},
 		SuppressionOrigin: &results.SuppressionOrigin{Path: "path"},
 		IgnoreOrigin:      &IgnoreOrigin{StepPosition: &sourcetext.Position{Line: 3}, Job: "job"},
 		Owner:             &Owner{Job: "job", Step: &sourcetext.Position{Line: 4}},

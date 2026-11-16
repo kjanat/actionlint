@@ -181,7 +181,7 @@ func TestEditorSuppressionTargetsCapturedOrigin(t *testing.T) {
 		result := &report.Analysis{
 			Diagnostics: []results.PublishedDiagnostic{{
 				Path: script, Rule: "plugin-check", Start: sourcetext.Position{Line: 1, Column: 1},
-				Source: results.DiagnosticSource{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, First: 1, Last: 2}},
+				Source: results.DiagnosticSource{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, Lines: sourcetext.LineRange{First: 1, Last: 2}}},
 			}},
 			CapturedSources: map[string]report.CapturedSource{script: reportfixture.CapturedSource(t, script, raw, sourcetext.YAML)},
 			Rules:           []rule.Descriptor{{Name: "plugin-check"}},

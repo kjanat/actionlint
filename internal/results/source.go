@@ -1,11 +1,13 @@
 package results
 
-// SuppressionOrigin identifies the YAML run declaration, as a line range in
+import "actionlint.kjanat.dev/v2/internal/input/sourcetext"
+
+// SuppressionOrigin identifies the YAML run declaration, as the Lines of
 // Path, that a suppression comment applies to. An empty Path means the
 // analyzed file itself.
 type SuppressionOrigin struct {
-	Path        string
-	First, Last int
+	Path  string
+	Lines sourcetext.LineRange
 }
 
 // DiagnosticSource is the source text a diagnostic is rendered from. It

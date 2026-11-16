@@ -154,9 +154,9 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 			id := s.ID.Value
 			switch {
 			case !identifier.Valid(id) || len(id) >= 100 || strings.HasPrefix(id, "__"):
-				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, actionmeta.CodeInvalidStepID, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
+				rule.compositeStepErrorfAt(meta, i, s.ID.Position.Line, s.ID.Position.Column, nil, actionmeta.CodeInvalidStepID, "has invalid ID %q; IDs must start with a letter or _, contain only alphanumeric characters, - or _, be shorter than 100 characters, and must not start with __", id)
 			case ids[strings.ToLower(id)]:
-				rule.compositeStepErrorfAt(meta, i, s.ID.Line, s.ID.Column, nil, actionmeta.CodeDuplicateStepID, "has duplicate ID %q; step IDs are case insensitive", id)
+				rule.compositeStepErrorfAt(meta, i, s.ID.Position.Line, s.ID.Position.Column, nil, actionmeta.CodeDuplicateStepID, "has duplicate ID %q; step IDs are case insensitive", id)
 			}
 			ids[strings.ToLower(id)] = true
 		}
@@ -167,7 +167,7 @@ func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, 
 
 // compositeStepErrorf reports an error at the step's position in its action metadata file.
 func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionmeta.CompositeStep, idx int, code actionmeta.ProblemCode, format string, args ...any) {
-	rule.compositeStepErrorfAt(meta, idx, s.Line, s.Column, nil, code, format, args...)
+	rule.compositeStepErrorfAt(meta, idx, s.Position.Line, s.Position.Column, nil, code, format, args...)
 }
 
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.

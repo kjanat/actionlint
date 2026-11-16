@@ -248,7 +248,7 @@ func toolFindings(t *testing.T, result *report.Analysis, err error, recorder *pa
 			report.Unavailable = &parityUnavailable{Reason: finding.Source.Unavailable.Reason(), Address: finding.Source.Unavailable.Address()}
 		}
 		if finding.Suppression != nil {
-			report.Suppression = &paritySuppression{Path: finding.Suppression.Path, First: finding.Suppression.First, Last: finding.Suppression.Last}
+			report.Suppression = &paritySuppression{Path: finding.Suppression.Path, First: finding.Suppression.Lines.First, Last: finding.Suppression.Lines.Last}
 		}
 		out.Reported = append(out.Reported, report)
 	}

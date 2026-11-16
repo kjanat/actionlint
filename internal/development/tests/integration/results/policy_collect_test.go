@@ -43,9 +43,9 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	t.Parallel()
-	item := &finding.Finding{Rule: "shellcheck", Message: "finding", Start: sourcetext.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 3}}
+	item := &finding.Finding{Rule: "shellcheck", Message: "finding", Start: sourcetext.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{Lines: sourcetext.LineRange{First: 2, Last: 3}}}
 	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*finding.Finding{item}}}).Diagnostics
-	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
+	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "workflow.yml", Lines: sourcetext.LineRange{First: 2, Last: 3}}) {
 		t.Fatalf("same-source target not resolved: %+v", reported)
 	}
 	item.Path = "action.yml"
@@ -57,7 +57,7 @@ func TestCollectProjectsSuppressionTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	reported = published.Diagnostics
-	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", First: 2, Last: 3}) {
+	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", Lines: sourcetext.LineRange{First: 2, Last: 3}}) {
 		t.Fatalf("foreign target not projected: %+v", reported)
 	}
 }

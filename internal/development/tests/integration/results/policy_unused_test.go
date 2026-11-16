@@ -28,7 +28,7 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 		{name: "plugin", source: "run: echo ok # ignore plugin-rule\n", findings: []*finding.Finding{{Rule: "plugin-rule", Start: sourcetext.Position{Line: 1}}}},
 		{name: "explicit audit exception", source: "run: echo ok # ignore unused-suppression expression-reference\n"},
 		{name: "script text", source: "run: |\n  # ignore expression-reference\n  echo hi\n"},
-		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*finding.Finding{{Rule: "shellcheck", Start: sourcetext.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 2}}}},
+		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*finding.Finding{{Rule: "shellcheck", Start: sourcetext.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{Lines: sourcetext.LineRange{First: 2, Last: 2}}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -28,7 +28,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 	}
 	directives, invalid := ParseInlineSuppressions(content, allowed, names)
 	for _, directive := range directives {
-		if line < directive.First || line > directive.Last {
+		if !directive.Lines.Contains(line) {
 			continue
 		}
 		if slices.Contains(directive.Rules, rule) {
@@ -37,7 +37,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 		text, _ := document.Line(directive.Position.Line - 1)
 		rules := append(slices.Clone(directive.Rules), rule)
 		replacement := "# ignore[" + strings.Join(rules, ", ") + "]"
-		if directive.Position.Line < directive.First {
+		if directive.Position.Line < directive.Lines.First {
 			replacement = "# actionlint-ignore-next-line " + strings.Join(rules, ", ")
 		}
 		if directive.Reason != "" {
@@ -94,5 +94,5 @@ func validateEdit(content []byte, edit results.Edit, line int, rule string, allo
 		}
 	}
 	evaluation, _ := Evaluate(directives, nil, names)
-	return edit, evaluation.Suppresses(rule, line+shift, line+shift)
+	return edit, evaluation.Suppresses(rule, sourcetext.LineRange{First: line + shift, Last: line + shift})
 }

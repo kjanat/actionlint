@@ -307,7 +307,7 @@ func TestReportedSourceFindings(t *testing.T) {
 		t.Errorf("reported finding: %+v", read)
 	}
 	for _, f := range findings {
-		if !f.Source.Unavailable.Present() || f.Source.Unavailable.Provider() != "tool" || f.Suppression == nil || f.Suppression.First != script.Key().Line {
+		if !f.Source.Unavailable.Present() || f.Source.Unavailable.Provider() != "tool" || f.Suppression == nil || f.Suppression.Lines.First != script.Key().Line {
 			t.Errorf("reported finding provenance: %+v", f)
 		}
 	}

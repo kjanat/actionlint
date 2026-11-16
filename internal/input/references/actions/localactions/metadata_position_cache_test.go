@@ -10,7 +10,7 @@ import (
 
 func TestMetadataPositionCacheConstruction(t *testing.T) {
 	t.Parallel()
-	value := &actionmeta.ExprString{Value: "example", Line: 2, Column: 3}
+	value := &actionmeta.ExprString{Value: "example", Position: sourcetext.Position{Line: 2, Column: 3}}
 	checkSourceLess := func(meta *actionmeta.Metadata) {
 		t.Helper()
 		if _, parsed := meta.OriginalSource(); parsed {

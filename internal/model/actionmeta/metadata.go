@@ -21,9 +21,8 @@ import (
 // ExprString is a string value from action metadata that may contain
 // ${{ }} expressions, together with the position of the value node in the metadata file.
 type ExprString struct {
-	Value  string `json:"value"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
+	Value    string              `json:"value"`
+	Position sourcetext.Position `json:"position"`
 }
 
 // KeyValue is a named, positioned string in action metadata, used for input defaults
@@ -38,10 +37,8 @@ type KeyValue struct {
 // keys, or a step which runs another action with "uses" key.
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runssteps
 type CompositeStep struct {
-	// Line is the line where the step starts in action.yaml.
-	Line int `json:"line"`
-	// Column is the column where the step starts in action.yaml.
-	Column int `json:"column"`
+	// Position is where the step starts in action.yaml.
+	Position sourcetext.Position `json:"position"`
 	// IsMapping is whether the step is a mapping node. The runner requires every step to be a
 	// mapping.
 	IsMapping bool `json:"is_mapping"`
@@ -77,7 +74,7 @@ func yamlActionExprString(n *codec.Node) *ExprString {
 		return value
 	}
 	if value := Scalar(n); value != nil {
-		return &ExprString{Value: *value, Line: n.Line, Column: n.Column}
+		return &ExprString{Value: *value, Position: sourcetext.Position{Line: n.Line, Column: n.Column}}
 	}
 	return nil
 }
@@ -87,7 +84,7 @@ func yamlExprString(n *codec.Node) *ExprString {
 		n = n.Alias
 	}
 	if n.Kind == codec.ScalarNode && n.Tag == "!!str" {
-		return &ExprString{Value: n.Value, Line: n.Line, Column: n.Column}
+		return &ExprString{Value: n.Value, Position: sourcetext.Position{Line: n.Line, Column: n.Column}}
 	}
 	return nil
 }

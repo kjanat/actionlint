@@ -212,13 +212,13 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scripte
 		finding.End = sourcetext.Position{Line: d.EndLocation.Line, Column: d.EndLocation.Column}
 	}
 	if key := script.Key(); key != nil {
-		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}
+		origin := &results.SuppressionOrigin{Path: script.Path, Lines: sourcetext.LineRange{First: key.Line, Last: key.Line}}
 		if value := script.Value(); value != nil {
-			origin.Last = max(origin.Last, value.Line)
+			origin.Lines.Last = max(origin.Lines.Last, value.Line)
 		}
 		if source := script.Source(); source != nil {
 			for _, span := range source.Spans {
-				origin.Last = max(origin.Last, span.Document.Line)
+				origin.Lines.Last = max(origin.Lines.Last, span.Document.Line)
 			}
 		}
 		finding.Suppression = origin

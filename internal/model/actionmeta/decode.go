@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -325,7 +326,7 @@ func (d manifestDecoder) steps(root codec.Entered) (actionCompositeSteps, error)
 
 func (d manifestDecoder) step(root codec.Entered) (*CompositeStep, error) {
 	n := root.Node()
-	s := &CompositeStep{Line: n.Line, Column: n.Column, Node: n}
+	s := &CompositeStep{Position: sourcetext.Position{Line: n.Line, Column: n.Column}, Node: n}
 	if n.Kind != codec.MappingNode {
 		return s, nil
 	}

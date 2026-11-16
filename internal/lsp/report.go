@@ -153,7 +153,7 @@ func FromReport(result *report.Analysis, directory string, documents map[string]
 			captured, exists := result.CapturedSources[targetPath]
 			alias, admitted := preferredAlias(captured.Revision, targetPath)
 			if exists && admitted && captured.Coordinates == sourcetext.YAML && captured.CoordinatesAvailable {
-				if edit, ok := suppression.Edit(captured.Content, target.First, d.Rule, allowed, checking.RuleNames()); ok {
+				if edit, ok := suppression.Edit(captured.Content, target.Lines.First, d.Rule, allowed, checking.RuleNames()); ok {
 					edit.Path = alias
 					d.Fixes = append(d.Fixes, results.Fix{
 						Description: "Suppress " + d.Rule + " for this declaration", Applicability: results.FixSuggested,

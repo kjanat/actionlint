@@ -44,7 +44,7 @@ func TestMetadataValidationSuppliesExpressionFieldsWithoutPolicy(t *testing.T) {
 	if field.SchemaPath != "outputs.*.value" || field.FieldPath != "outputs.value.value" || field.IsKey || len(field.Expressions) != 1 {
 		t.Fatalf("wrong expression field: %+v", field)
 	}
-	if field.Value.Line != 6 || field.Value.Column != 12 || field.Expressions[0].Offset == 0 {
+	if field.Value.Position.Line != 6 || field.Value.Position.Column != 12 || field.Expressions[0].Offset == 0 {
 		t.Fatalf("source position lost: %+v", field)
 	}
 	result.ExpressionFields[0].Value.Value = "changed"

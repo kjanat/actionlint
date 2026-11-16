@@ -160,11 +160,11 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		{Rule: "forbidden-suppression", Start: sourcetext.Position{Line: 11}},
 	}
 	got := fixtureInline(t, []byte("workflow"), findings, policy, "plugin-rule")
-	want := &results.SuppressionOrigin{First: 4, Last: 4}
+	want := &results.SuppressionOrigin{Lines: sourcetext.LineRange{First: 4, Last: 4}}
 	if len(got) != len(findings) || got[0].Source.Suppression == nil || *got[0].Source.Suppression != *want {
 		t.Fatalf("allowed rule target missing: %+v", got)
 	}
-	if got[2].Source.Suppression == nil || got[2].Source.Suppression.First != 9 || got[2].Source.Suppression.Last != 9 {
+	if got[2].Source.Suppression == nil || got[2].Source.Suppression.Lines.First != 9 || got[2].Source.Suppression.Lines.Last != 9 {
 		t.Fatalf("plugin rule target missing: %+v", got[2])
 	}
 	for _, index := range []int{1, 3, 4} {
@@ -174,9 +174,9 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 	}
 
 	foreign := &finding.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcetext.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}}
-	origin := &finding.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcetext.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
+	origin := &finding.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcetext.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", Lines: sourcetext.LineRange{First: 12, Last: 14}}}
 	got = fixtureForeign(t, "action.yml", []byte("run: echo hi"), []*finding.Finding{foreign, origin}, nil)
-	if len(got) != 2 || got[0].Source.Suppression == nil || *got[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", First: 2, Last: 2}) || got[1].Source.Suppression == nil || *got[1].Source.Suppression != *origin.SuppressionOrigin {
+	if len(got) != 2 || got[0].Source.Suppression == nil || *got[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", Lines: sourcetext.LineRange{First: 2, Last: 2}}) || got[1].Source.Suppression == nil || *got[1].Source.Suppression != *origin.SuppressionOrigin {
 		t.Fatalf("foreign targets lost declaration scope: %+v", got)
 	}
 }
