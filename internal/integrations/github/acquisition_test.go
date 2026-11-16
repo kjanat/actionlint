@@ -22,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 var (
@@ -116,8 +117,8 @@ func TestFullSHACacheHitMakesNoRequests(t *testing.T) {
 func TestOnlineRepairsInvalidMetadataCache(t *testing.T) {
 	t.Parallel()
 	for name, record := range map[string]string{
-		"previous version": cacheRecordJSON(1, `"repository_id":42,`, actionSource, digest(actionSource)),
-		"tampered content": cacheRecordJSON(2, "", "tampered", digest(actionSource)),
+		"previous version": cacheRecordJSON(1, `"repository_id":42,`, actionSource, sha256hex.Digest([]byte(actionSource))),
+		"tampered content": cacheRecordJSON(2, "", "tampered", sha256hex.Digest([]byte(actionSource))),
 		"unparseable":      `{"version":2,"content":`,
 	} {
 		t.Run(name, func(t *testing.T) {

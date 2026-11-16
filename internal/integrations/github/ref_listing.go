@@ -2,7 +2,6 @@ package github
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -17,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 const (
@@ -234,8 +234,7 @@ func parseRefAdvertisement(body []byte) (*refListing, error) {
 			objects[tag] = references.RepositoryPeeledTag{Commit: commit}
 		}
 	}
-	sum := sha256.Sum256(body)
-	return &refListing{refs: refs, objects: objects, peeled: peeled, digest: hex.EncodeToString(sum[:])}, nil
+	return &refListing{refs: refs, objects: objects, peeled: peeled, digest: sha256hex.Digest(body)}, nil
 }
 
 type refListings struct {

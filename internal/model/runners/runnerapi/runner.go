@@ -4,13 +4,12 @@ package runnerapi
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Term distinguishes literal labels from unresolved expressions.
@@ -76,7 +75,7 @@ type Snapshot struct {
 
 func (s Snapshot) Digest() string {
 	data, _ := json.Marshal(s)
-	return fmt.Sprintf("%x", sha256.Sum256(data))
+	return sha256hex.Digest(data)
 }
 
 type Request struct {

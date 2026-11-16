@@ -19,6 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"golang.org/x/mod/semver"
 )
@@ -206,17 +207,17 @@ func (c *Client) manifest(ctx context.Context, name string) (CatalogPlugin, mani
 		}
 		i := m.Plugin
 		repository := i.Provider + ".com/" + i.Repository
-		name, key := repository, hash(i.Issuer+"\n"+i.RepositoryID)
+		name, key := repository, sha256hex.Digest([]byte(i.Issuer+"\n"+i.RepositoryID))
 		if i.SchemaVersion == 2 {
 			name = strings.ToLower(i.PluginID)
-			key = hash("package-v2\n" + i.Issuer + "\n" + i.RepositoryID + "\n" + i.PluginID)
+			key = sha256hex.Digest([]byte("package-v2\n" + i.Issuer + "\n" + i.RepositoryID + "\n" + i.PluginID))
 		}
 		if m.Source != "" || i.SchemaVersion != 1 && i.SchemaVersion != 2 || i.Issuer == "" || i.Issuer != publisherIssuer(i.Provider) || !numericID(i.RepositoryID) || !numericID(i.OwnerID) || !pluginreference.ValidRepository(repository) || name != p.Name || i.SchemaVersion == 2 && !strings.HasPrefix(name, repository+"/") || i.PluginID != p.PluginID || p.Manifest != "plugins/"+key+"/index.json" || m.Versions == nil {
 			return p, m, errors.New("registry manifest disagrees with catalogue identity")
 		}
 		seen := map[string]bool{}
 		for _, v := range m.Versions {
-			if !pluginreference.ValidVersion(v.Version) || seen[v.Version] || v.Record != "versions/"+hash(v.Version)+".json" {
+			if !pluginreference.ValidVersion(v.Version) || seen[v.Version] || v.Record != "versions/"+sha256hex.Digest([]byte(v.Version))+".json" {
 				return p, m, errors.New("invalid or duplicate registry version")
 			}
 			seen[v.Version] = true

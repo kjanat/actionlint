@@ -2,13 +2,12 @@ package runners
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 type builtinProvider struct{ custom LabelSet }
@@ -36,7 +35,7 @@ var builtinDataset = func() string {
 		Compatibility                 map[string]runnerOSCompat
 		Architectures                 map[string]string
 	}{"6", allGitHubHostedRunnerLabels, selfHostedRunnerPresetOSLabels, selfHostedRunnerPresetOtherLabels, defaultRunnerOSCompats, githubHostedArchitectures})
-	return fmt.Sprintf("github:%x", sha256.Sum256(data))
+	return "github:" + sha256hex.Digest(data)
 }()
 
 func (builtinProvider) RunnerDescriptor() runnerapi.Descriptor {

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
@@ -71,7 +72,7 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 		t.Fatalf("work survived Close: running=%d reads=%d", running.Load(), reads.Load())
 	}
 	rows, err := store.Sources()
-	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != sourcetext.ContentDigest([]byte("joined")) {
+	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != sha256hex.Digest([]byte("joined")) {
 		t.Fatalf("sealed sources = %#v, %v", rows, err)
 	}
 }
@@ -106,7 +107,7 @@ func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshot, state, err := store.Lookup(path)
-	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != sourcetext.ContentDigest(content) {
+	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != sha256hex.Digest(content) {
 		t.Fatalf("completed bytes lost after cancellation: %q, %v", state, err)
 	}
 }

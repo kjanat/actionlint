@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func testSource(tb testing.TB, path, text string) Source {
 	tb.Helper()
-	revision, err := sourcetext.NewRevision(sourcetext.DocumentID(path), sourcetext.ContentDigest([]byte(text)))
+	revision, err := sourcetext.NewRevision(sourcetext.DocumentID(path), sha256hex.Digest([]byte(text)))
 	if err != nil {
 		tb.Fatal(err)
 	}

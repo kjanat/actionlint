@@ -3,7 +3,6 @@ package invocation
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"slices"
@@ -11,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Errors returned for programming or input misuse.
@@ -133,8 +133,7 @@ func digest(domain string, fields ...string) ID {
 		buf = append(buf, ':')
 		buf = append(buf, f...)
 	}
-	sum := sha256.Sum256(buf)
-	return ID(hex.EncodeToString(sum[:]))
+	return ID(sha256hex.Digest(buf))
 }
 
 func validateRef(name string, ref sourcetext.Reference) error {

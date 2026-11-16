@@ -13,6 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
@@ -42,7 +43,7 @@ func TestFileEntryUsesBufferThroughAlternateCanonicalAlias(t *testing.T) {
 		t.Fatalf("disk selection conflicted with its open canonical source: result=%+v error=%v", result, err)
 	}
 	finding := result.Diagnostics[0]
-	if finding.Reference == nil || finding.Reference.Revision != sourcetext.ContentDigest([]byte(unsaved)) || reads.Load() != 1 {
+	if finding.Reference == nil || finding.Reference.Revision != sha256hex.Digest([]byte(unsaved)) || reads.Load() != 1 {
 		t.Fatalf("selected source was reread or used stale bytes: finding=%+v reads=%d", finding, reads.Load())
 	}
 	for _, path := range []string{entryAlias, realPath} {

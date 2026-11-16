@@ -4,7 +4,6 @@ package github
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,6 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -529,13 +529,8 @@ const (
 	cacheFilename = "metadata.json"
 )
 
-func digest(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
-}
-
 func (g *GitHub) bucket(ref actions.Reference, commit string) string {
-	return filepath.Join(g.cacheDir, digest(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+strings.ToLower(commit)+"\x00"+ref.Directory()))
+	return filepath.Join(g.cacheDir, sha256hex.Digest([]byte(ref.Host()+"\x00"+strings.ToLower(ref.Repository())+"\x00"+strings.ToLower(commit)+"\x00"+ref.Directory())))
 }
 
 func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repository.ID, object string, filenames []string) (cacheRecord, bool, error) {
@@ -559,7 +554,7 @@ func (g *GitHub) cached(ctx context.Context, ref actions.Reference, learned repo
 		return cacheRecord{}, false, err
 	}
 	var record cacheRecord
-	if len(content) > maxCache || json.Unmarshal(content, &record) != nil || record.Version != cacheVersion || record.Host != ref.Host() || !strings.EqualFold(record.Repository, ref.Repository()) || record.RepositoryID.Conflicts(learned) || !record.selectedBy(object) || record.Directory != ref.Directory() || record.SHA256 != digest(record.Content) || len(record.Content) > maxBody || !slices.Contains(filenames, record.Filename) {
+	if len(content) > maxCache || json.Unmarshal(content, &record) != nil || record.Version != cacheVersion || record.Host != ref.Host() || !strings.EqualFold(record.Repository, ref.Repository()) || record.RepositoryID.Conflicts(learned) || !record.selectedBy(object) || record.Directory != ref.Directory() || record.SHA256 != sha256hex.Digest([]byte(record.Content)) || len(record.Content) > maxBody || !slices.Contains(filenames, record.Filename) {
 		return cacheRecord{}, false, errors.New("invalid repository metadata cache record")
 	}
 	if _, err := time.Parse(time.RFC3339Nano, record.ObservedAt); err != nil {
@@ -634,7 +629,7 @@ func (g *GitHub) storeAt(ctx context.Context, manifest repositoryFile, tagObject
 		return err
 	}
 	i := manifest.Identity()
-	record := cacheRecord{Version: cacheVersion, Host: i.Host(), Repository: i.Repository(), RepositoryID: i.RepositoryID(), Commit: i.Commit(), TagObject: tagObject, Directory: i.Directory(), ObservedAt: manifest.observedAt, Filename: manifest.Filename(), Content: manifest.Content(), SHA256: digest(manifest.Content())}
+	record := cacheRecord{Version: cacheVersion, Host: i.Host(), Repository: i.Repository(), RepositoryID: i.RepositoryID(), Commit: i.Commit(), TagObject: tagObject, Directory: i.Directory(), ObservedAt: manifest.observedAt, Filename: manifest.Filename(), Content: manifest.Content(), SHA256: sha256hex.Digest([]byte(manifest.Content()))}
 	content, err := json.Marshal(record)
 	if err != nil {
 		return err

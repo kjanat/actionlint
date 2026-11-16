@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Reader receives the Store lifetime context and canonical document address.
@@ -139,7 +140,7 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 		variants := make(map[string]struct{})
 		for _, overlay := range group {
 			e.aliases[overlay.Path] = struct{}{}
-			variants[string(overlay.Coordinates)+":"+sourcetext.ContentDigest(overlay.Content)] = struct{}{}
+			variants[string(overlay.Coordinates)+":"+sha256hex.Digest(overlay.Content)] = struct{}{}
 		}
 		if len(variants) != 1 {
 			keys := make([]string, 0, len(variants))

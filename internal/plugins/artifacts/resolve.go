@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.
@@ -128,7 +128,7 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 	if err != nil {
 		return nil, fmt.Errorf("plugin artifact %s: %w", display, err)
 	}
-	digest := fmt.Sprintf("%x", sha256.Sum256(data))
+	digest := sha256hex.Digest(data)
 	if pin != "" && pin != digest {
 		return nil, fmt.Errorf("plugin artifact %s: SHA256 mismatch: expected %s, got %s", display, pin, digest)
 	}
@@ -172,7 +172,7 @@ func Import(ctx context.Context, input io.Reader, digest string, options Options
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if fmt.Sprintf("%x", sha256.Sum256(data)) != digest {
+	if sha256hex.Digest(data) != digest {
 		return errors.New("candidate artifact SHA256 mismatch")
 	}
 	return cacheFile(ctx, filepath.Join(options.CacheDir, digest), data)
@@ -222,7 +222,7 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 		cachePath = filepath.Join(options.CacheDir, pin)
 		data, err := readFile(ctx, cachePath, options.MaxBytes)
 		if err == nil {
-			if fmt.Sprintf("%x", sha256.Sum256(data)) != pin {
+			if sha256hex.Digest(data) != pin {
 				return nil, errors.New("cached plugin artifact SHA256 mismatch")
 			}
 			return data, nil
@@ -280,11 +280,11 @@ func download(ctx context.Context, u *url.URL, pin string, options Options) ([]b
 	if err != nil {
 		return nil, err
 	}
-	if pin != "" && fmt.Sprintf("%x", sha256.Sum256(data)) != pin {
+	if pin != "" && sha256hex.Digest(data) != pin {
 		return nil, errors.New("downloaded plugin artifact SHA256 mismatch")
 	}
 	if cachePath == "" && options.CacheDir != "" {
-		cachePath = filepath.Join(options.CacheDir, fmt.Sprintf("%x", sha256.Sum256(data)))
+		cachePath = filepath.Join(options.CacheDir, sha256hex.Digest(data))
 	}
 	if cachePath != "" {
 		if err := cacheFile(ctx, cachePath, data); err != nil {
