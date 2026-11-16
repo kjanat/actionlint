@@ -106,7 +106,9 @@ deny  = [
 default-signifies-exhaustive = true
 
 [linters.settings.recvcheck]
-exclusions = ["*.DecodeConfig"]
+# UnmarshalJSONFrom joins recvcheck's built-in Unmarshal* exclusions upstream
+# (raeperd/recvcheck analyzer.go); the pinned release predates it.
+exclusions = ["*.DecodeConfig", "*.UnmarshalJSONFrom"]
 
 [linters.settings.gochecksumtype]
 default-signifies-exhaustive = false
