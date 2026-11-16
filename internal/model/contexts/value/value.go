@@ -312,34 +312,9 @@ func YAMLScalar(text, tag string, origin Origin) Value {
 			value.p.text = ""
 		}
 	case "!!int", "!!float":
-		if !codec.IsCoreSchemaNumber(text) {
-			break
-		}
-		value.p.kind = Number
-		switch strings.ToLower(text) {
-		case ".inf", "+.inf":
-			value.p.number = math.Inf(1)
-		case "-.inf":
-			value.p.number = math.Inf(-1)
-		case ".nan":
-			value.p.number = math.NaN()
-		default:
-			if strings.HasPrefix(text, "0x") || strings.HasPrefix(text, "0o") {
-				n, err := strconv.ParseUint(text, 0, 32)
-				if err != nil {
-					value.p.kind = String
-					break
-				}
-				if n > math.MaxInt32 {
-					value.p.number = float64(n) - (1 << 32)
-				} else {
-					value.p.number = float64(n)
-				}
-			} else if n, err := strconv.ParseFloat(text, 64); err == nil {
-				value.p.number = n
-			} else {
-				value.p.kind = String
-			}
+		if number, ok := codec.CoreSchemaNumber(text); ok {
+			value.p.kind = Number
+			value.p.number = number
 		}
 	}
 	return value
