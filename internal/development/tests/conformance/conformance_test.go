@@ -511,7 +511,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 		}
 		errs := make([]*findingmodel.Finding, 0, len(result.Diagnostics))
 		for _, d := range result.Diagnostics {
-			errs = append(errs, &findingmodel.Finding{Diagnostic: d})
+			errs = append(errs, &findingmodel.Finding{Diagnostic: d.Diagnostic})
 		}
 		return upstreamDiagnostics(errs)
 	case "action":
