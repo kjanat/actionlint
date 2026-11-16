@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
@@ -46,7 +47,7 @@ func TestCheckProjectsParsesConfigurationOnce(t *testing.T) {
 
 	options := checking.Options{WorkingDir: root, ConfigFile: config, SkipProjectConfig: true, ConfigSources: files}
 	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: config, DisableTools: true}
-	result, err := checking.CheckProjects(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}, selection)
+	result, err := assembly.CheckProjects(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}}, selection)
 	if err != nil {
 		t.Fatalf("check parsed configuration again: %v", err)
 	}
