@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -283,11 +282,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 
 func testFileURI(t *testing.T) string {
 	t.Helper()
-	path := filepath.ToSlash(filepath.Join(t.TempDir(), "workflow.yml"))
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return (&url.URL{Scheme: "file", Path: path}).String()
+	return sourcetext.FileURI(filepath.Join(t.TempDir(), "workflow.yml"))
 }
 
 func TestDependencyDiagnosticsPublishedAndCleared(t *testing.T) {

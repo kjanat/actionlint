@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/url"
 	"path/filepath"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -118,18 +117,10 @@ type sarifFix struct {
 }
 
 func sarifArtifact(path string) sarifArtifactLocation {
-	slash := filepath.ToSlash(path)
-	if filepath.IsAbs(path) {
-		if filepath.Separator == '\\' && strings.HasPrefix(slash, "//") {
-			host, rest, _ := strings.Cut(slash[2:], "/")
-			return sarifArtifactLocation{URI: (&url.URL{Scheme: "file", Host: host, Path: "/" + rest}).String()}
-		}
-		if !strings.HasPrefix(slash, "/") {
-			slash = "/" + slash
-		}
-		return sarifArtifactLocation{URI: (&url.URL{Scheme: "file", Path: slash}).String()}
+	if uri := sourcetext.FileURI(path); uri != "" {
+		return sarifArtifactLocation{URI: uri}
 	}
-	return sarifArtifactLocation{URI: (&url.URL{Path: slash}).String(), URIBaseID: "%SRCROOT%"}
+	return sarifArtifactLocation{URI: (&url.URL{Path: filepath.ToSlash(path)}).String(), URIBaseID: "%SRCROOT%"}
 }
 
 func sarifSourceLocation(path string, start, end sourcetext.Position) *sarifPhysicalLocation {

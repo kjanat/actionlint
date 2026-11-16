@@ -37,10 +37,33 @@ func terminalURLs(word string) []terminalURL {
 	return links
 }
 
+// OSC 8 terminal hyperlinks open with terminalLinkOpen, the target and
+// terminalLinkClose, and end with the same pair around an empty target.
+// https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feff
+const (
+	terminalLinkOpen  = "\x1b]8;;"
+	terminalLinkClose = "\x1b\\"
+)
+
 func writeTerminalLinkStart(out *strings.Builder, target string) {
-	out.WriteString("\x1b]8;;")
+	out.WriteString(terminalLinkOpen)
 	out.WriteString(target)
-	out.WriteString("\x1b\\")
+	out.WriteString(terminalLinkClose)
 }
 
-func writeTerminalLinkEnd(out *strings.Builder) { out.WriteString("\x1b]8;;\x1b\\") }
+func writeTerminalLinkEnd(out *strings.Builder) {
+	out.WriteString(terminalLinkOpen + terminalLinkClose)
+}
+
+// TerminalLink wraps label in an OSC 8 hyperlink to target. An empty target
+// leaves label unlinked.
+func TerminalLink(label, target string) string {
+	if target == "" {
+		return label
+	}
+	var link strings.Builder
+	writeTerminalLinkStart(&link, target)
+	link.WriteString(label)
+	writeTerminalLinkEnd(&link)
+	return link.String()
+}

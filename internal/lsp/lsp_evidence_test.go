@@ -185,14 +185,14 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 		t.Fatalf("fixture did not exercise the Windows display/capture mismatch: %q %v", relative, err)
 	}
 	text := "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: 'echo 😀::set-output name=result::value'}]}}\npermissions: {}\n"
-	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]Document{path: {URI: FileURI(path), Version: 4, Text: text}})
+	analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true}, map[string]Document{path: {URI: sourcetext.FileURI(path), Version: 4, Text: text}})
 	if err != nil || len(analysis.Diagnostics) != 1 || analysis.Diagnostics[0].Path != path || analysis.Sources[path].Text != text {
 		t.Fatalf("case alias lost its captured identity: %+v %v", analysis, err)
 	}
 	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != analysis.Sources[path].Revision.Digest() {
 		t.Fatal("published alias was not bound to its captured revision")
 	}
-	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: sourcetext.FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
 		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
 	}
