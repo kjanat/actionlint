@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -19,7 +19,7 @@ func (p *Parser) IndexDependencySpans(workflow *definition.Workflow) {
 		if scalar := p.scalarSource(value.SourceScalar.Pos, value.SourceScalar.Value); scalar != nil {
 			value.SourceScalar.End = scalar.ScalarEnd
 			if workflow.ExpressionSources == nil {
-				workflow.ExpressionSources = make(map[source.Position]*definition.ScriptSource)
+				workflow.ExpressionSources = make(map[sourcetext.Position]*definition.ScriptSource)
 			}
 			workflow.ExpressionSources[value.SourceScalar.Pos] = scalar
 		}

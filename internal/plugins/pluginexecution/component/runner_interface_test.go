@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
@@ -81,7 +81,7 @@ func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
 	request := runnerapi.Request{
 		Target: "buildkite", Scope: "org/repo",
 		Snapshot:  runnerapi.Snapshot{Scope: "org/repo", Freshness: runnerapi.Fresh, Complete: true, Content: `{"queues":[{"name":"windows-queue","labels":["windows"],"os":"windows","architecture":"x64","shell":"pwsh"}]}`},
-		Selectors: []runnerapi.Selector{{Labels: []runnerapi.Constraint{{Value: runnerapi.Literal("windows"), Position: source.Position{Line: 4, Column: 15}}}}},
+		Selectors: []runnerapi.Selector{{Labels: []runnerapi.Constraint{{Value: runnerapi.Literal("windows"), Position: sourcetext.Position{Line: 4, Column: 15}}}}},
 	}
 	response, err := plugin.ResolveRunners(t.Context(), request)
 	answers := response.Answers

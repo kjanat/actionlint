@@ -6,8 +6,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -44,7 +44,7 @@ func actionStepViews(tb testing.TB, snapshot parsing.SourceSnapshot) []workflows
 	return slices.Collect(action.Steps())
 }
 
-func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflows.Step) source.Reference {
+func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflows.Step) sourcetext.Reference {
 	tb.Helper()
 	if err := snapshot.ValidateStep(step); err != nil {
 		tb.Fatal(err)
@@ -52,7 +52,7 @@ func stepReference(tb testing.TB, snapshot parsing.SourceSnapshot, step workflow
 	return step.Reference()
 }
 
-func stepPosition(tb testing.TB, step workflows.Step) source.Position {
+func stepPosition(tb testing.TB, step workflows.Step) sourcetext.Position {
 	tb.Helper()
 	position, present := step.Position()
 	if !present {

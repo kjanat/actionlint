@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -16,8 +16,8 @@ import (
 // Standalone ScriptSource calls without indexing use an independently parsed graph.
 // Decode lazily: most workflow scalars never need source-level diagnostics.
 func (p *Parser) IndexScalarSources(root *codec.Node) {
-	p.scalarContexts = make(map[source.Position]sourcemap.Context)
-	p.scalarSources = make(map[source.Position]*definition.ScriptSource)
+	p.scalarContexts = make(map[sourcetext.Position]sourcemap.Context)
+	p.scalarSources = make(map[sourcetext.Position]*definition.ScriptSource)
 	p.indexScalarComments(root)
 	var visit func(*codec.Node, sourcemap.Context)
 	visit = func(n *codec.Node, context sourcemap.Context) {
@@ -102,7 +102,7 @@ func (p *Parser) ScriptSource(n *codec.Node) *definition.ScriptSource {
 
 // scalarSource retains the decoder result inside the parser. Public source
 // mappings are copied; parse-boundary metadata only reads its value fields.
-func (p *Parser) scalarSource(key source.Position, value string) *definition.ScriptSource {
+func (p *Parser) scalarSource(key sourcetext.Position, value string) *definition.ScriptSource {
 	if scriptSource, exists := p.scalarSources[key]; exists {
 		if scriptSource != nil && scriptSource.Value != value {
 			return nil

@@ -1,7 +1,7 @@
 package correctness
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -14,7 +14,7 @@ func SyntaxCheckDiagnostic(issue *parser.SyntaxError, source []byte) results.Dia
 	return results.Diagnostic{
 		Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message,
 		Start:   issue.Position,
-		End:     sourcepos.Position{Line: issue.Position.Line, Column: sourcepos.TokenEndColumn(snippet, issue.Position.Column)},
+		End:     sourcetext.Position{Line: issue.Position.Line, Column: sourcetext.TokenEndColumn(snippet, issue.Position.Column)},
 		Snippet: snippet,
 	}
 }

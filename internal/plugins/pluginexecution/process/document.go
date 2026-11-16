@@ -15,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -192,13 +192,13 @@ func (d *DocumentChecker) finding(input checkinputs.AnalyzerInput, entry checkin
 	if err != nil {
 		return results.Diagnostic{}, err
 	}
-	var end source.Position
+	var end sourcetext.Position
 	if entry.EndLocation != (checkinputs.ScriptPosition{}) {
 		end, err = documentPosition(input, entry.EndLocation)
 		if err != nil {
 			return results.Diagnostic{}, err
 		}
-		if _, _, err := sourceposition.Range([]byte(input.Content), input.Coordinates, start, end); err != nil {
+		if _, _, err := byteoffset.Range([]byte(input.Content), input.Coordinates, start, end); err != nil {
 			return results.Diagnostic{}, err
 		}
 	}
@@ -219,7 +219,7 @@ func (d *DocumentChecker) finding(input checkinputs.AnalyzerInput, entry checkin
 			if err != nil {
 				return results.Diagnostic{}, err
 			}
-			if _, _, err := sourceposition.Range([]byte(input.Content), input.Coordinates, start, end); err != nil {
+			if _, _, err := byteoffset.Range([]byte(input.Content), input.Coordinates, start, end); err != nil {
 				return results.Diagnostic{}, err
 			}
 			mapped.Edits = append(mapped.Edits, results.Edit{Path: input.Path, Start: start, End: end, Replacement: replacement.Text})
@@ -234,13 +234,13 @@ func (d *DocumentChecker) finding(input checkinputs.AnalyzerInput, entry checkin
 
 // Process decoders normalize positions to LF/scalar coordinates. Resolve their
 // exact byte offset, then map it to the captured document's coordinate model.
-func documentPosition(input checkinputs.AnalyzerInput, p checkinputs.ScriptPosition) (source.Position, error) {
-	point := source.Position{Line: p.Row, Column: p.Column}
-	offset, err := sourceposition.Offset([]byte(input.Content), source.RawLF, point)
+func documentPosition(input checkinputs.AnalyzerInput, p checkinputs.ScriptPosition) (sourcetext.Position, error) {
+	point := sourcetext.Position{Line: p.Row, Column: p.Column}
+	offset, err := byteoffset.Offset([]byte(input.Content), sourcetext.RawLF, point)
 	if err != nil {
-		return source.Position{}, err
+		return sourcetext.Position{}, err
 	}
-	if input.Coordinates == source.RawLF {
+	if input.Coordinates == sourcetext.RawLF {
 		return point, nil
 	}
 	document := sourcemap.NewDocument(input.Content)
@@ -251,9 +251,9 @@ func documentPosition(input checkinputs.AnalyzerInput, p checkinputs.ScriptPosit
 	for row := range document.LineCount() {
 		text, ending := document.Line(row)
 		if offset >= begin && offset <= begin+len(text) {
-			return source.Position{Line: row + 1, Column: utf8.RuneCountInString(input.Content[begin:offset]) + 1}, nil
+			return sourcetext.Position{Line: row + 1, Column: utf8.RuneCountInString(input.Content[begin:offset]) + 1}, nil
 		}
 		begin += len(text) + len(ending)
 	}
-	return source.Position{}, fmt.Errorf("document position %v lies inside a physical line break or BOM", p)
+	return sourcetext.Position{}, fmt.Errorf("document position %v lies inside a physical line break or BOM", p)
 }

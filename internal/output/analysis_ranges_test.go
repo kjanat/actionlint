@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -16,19 +16,19 @@ func TestStructuredRenderRanges(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name       string
-		end        sourcepos.Position
+		end        sourcetext.Position
 		github     string
 		legacySpan string
 	}{
-		{"single line", sourcepos.Position{Line: 1, Column: 4}, "line=1,endLine=1,col=2,endColumn=3", "1:2-3"},
-		{"multiple lines", sourcepos.Position{Line: 2, Column: 4}, "line=1,endLine=2", "1:2-5"},
-		{"next line boundary", sourcepos.Position{Line: 2, Column: 1}, "line=1,endLine=1", "1:2-5"},
-		{"later line boundary", sourcepos.Position{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
+		{"single line", sourcetext.Position{Line: 1, Column: 4}, "line=1,endLine=1,col=2,endColumn=3", "1:2-3"},
+		{"multiple lines", sourcetext.Position{Line: 2, Column: 4}, "line=1,endLine=2", "1:2-5"},
+		{"next line boundary", sourcetext.Position{Line: 2, Column: 1}, "line=1,endLine=1", "1:2-5"},
+		{"later line boundary", sourcetext.Position{Line: 3, Column: 1}, "line=1,endLine=2", "1:2-5"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("abcde\nfghij\n")
-			finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
+			finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcetext.Position{Line: 1, Column: 2}, End: tc.end}
 			result := report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{Content: source})}}
 
 			legacy, err := New("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false, testVersion, nil)
@@ -86,7 +86,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 	t.Parallel()
-	diagnostic := results.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
+	diagnostic := results.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcetext.Position{Line: 1, Column: 6}, End: sourcetext.Position{Line: 1, Column: 6}}
 	source := results.DiagnosticSource{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: results.ReportedSourceUnavailable("tool", "reported.sh", false)}
 	result := FromAnalysis(report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(diagnostic, source)}})
 	fields := TemplateFieldsOf(result.Findings[0])
@@ -119,7 +119,7 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	t.Parallel()
 	source := []byte("on: push\n")
-	finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
+	finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcetext.Position{Line: 1, Column: 1}}
 	result := report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{Content: source})}}
 
 	textRenderer, err := New(outputformat.Text, "", true, testVersion, nil)
@@ -151,7 +151,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	t.Parallel()
 	finding := results.Diagnostic{
 		Path: "input.yml", Rule: "expression", Message: "bad text",
-		Start: sourcepos.Position{Line: 1, Column: 1}, Snippet: "on: push",
+		Start: sourcetext.Position{Line: 1, Column: 1}, Snippet: "on: push",
 	}
 	for _, format := range []outputformat.Format{"", outputformat.Oneline} {
 		t.Run(string(format), func(t *testing.T) {

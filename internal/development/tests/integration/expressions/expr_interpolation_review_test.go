@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -105,7 +105,7 @@ jobs:
 						}
 						line := strings.Count(before, "\n") + 1
 						column := len(before) - strings.LastIndex(before, "\n")
-						if diagnostic.Start != (source.Position{Line: line, Column: column}) {
+						if diagnostic.Start != (sourcetext.Position{Line: line, Column: column}) {
 							t.Errorf("later interpolation location: got %+v, want %d:%d", diagnostic.Start, line, column)
 						}
 						if levels.ternary == "warn" && diagnostic.Severity != "warning" {

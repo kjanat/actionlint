@@ -6,8 +6,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 )
 
 func TestSuppressionEdit(t *testing.T) {
@@ -35,7 +35,7 @@ func TestSuppressionEdit(t *testing.T) {
 				if !ok {
 					t.Fatal("no suppression edit")
 				}
-				first, last, err := sourceposition.Range(content, source.YAML, edit.Start, edit.End)
+				first, last, err := byteoffset.Range(content, sourcetext.YAML, edit.Start, edit.End)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -25,7 +25,7 @@ var IdRule = &define.Rule{
 
 func checkIdentifiers(job workflows.Job) []reporting.StepFinding {
 	name := func(value *definition.String) identifier.Name {
-		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: source.ZeroIfNil(value.Pos)}
+		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: sourcetext.ZeroIfNil(value.Pos)}
 	}
 	input := identifier.JobIdentifiers{}
 	if job.ID != nil {
@@ -34,11 +34,11 @@ func checkIdentifiers(job workflows.Job) []reporting.StepFinding {
 	for _, value := range job.Needs {
 		input.Needs = append(input.Needs, name(value))
 	}
-	owners := map[source.Position]workflows.Step{}
+	owners := map[sourcetext.Position]workflows.Step{}
 	for step := range job.AllSteps() {
 		if step.ID != nil {
 			input.Steps = append(input.Steps, name(step.ID))
-			owners[source.ZeroIfNil(source.NilUnlessPresent(step.ID.Position()))] = step
+			owners[sourcetext.ZeroIfNil(sourcetext.NilUnlessPresent(step.ID.Position()))] = step
 		}
 	}
 	out := reporting.FromDiagnostics(identifier.Check(input))

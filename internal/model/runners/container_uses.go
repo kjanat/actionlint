@@ -1,7 +1,7 @@
 package runners
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -23,7 +23,7 @@ type ContainerUse struct {
 	Target   ContainerTarget
 	Kind     ContainerUseKind
 	Name     string
-	Position source.Position
+	Position sourcetext.Position
 }
 
 // MayRun excludes an alternative only when a condition is provably false.
@@ -41,7 +41,7 @@ func (target ContainerTarget) MayRun(conditionList ...string) bool {
 	return true
 }
 
-func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *source.Position) ContainerUse {
+func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *sourcetext.Position) ContainerUse {
 	use := ContainerUse{Target: target, Kind: kind, Name: name}
 	if pos != nil {
 		use.Position = *pos
@@ -106,7 +106,7 @@ func DockerActionUses(step workflows.Step, targets []ContainerTarget, guards []s
 	var uses []ContainerUse
 	for _, target := range targets {
 		if target.MayRun(guards...) && target.MayRun(step.If.Text()) {
-			var pos *source.Position
+			var pos *sourcetext.Position
 			if action.Uses != nil {
 				pos = action.Uses.Pos
 			}

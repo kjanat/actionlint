@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -120,7 +120,7 @@ func NewTrust(w workflows.Workflow) *Trust {
 		jobs = append(jobs, job)
 	}
 	slices.SortFunc(jobs, func(a, b workflows.Job) int {
-		left, right := source.ZeroIfNil(a.Pos), source.ZeroIfNil(b.Pos)
+		left, right := sourcetext.ZeroIfNil(a.Pos), sourcetext.ZeroIfNil(b.Pos)
 		if order := cmp.Compare(left.Line, right.Line); order != 0 {
 			return order
 		}
@@ -153,7 +153,7 @@ func (r *Trust) CheckWrites(job workflows.Job) []results.Diagnostic {
 	for _, declaration := range r.declarations {
 		if declaration.job == job {
 			mode := declaration.mode
-			return []results.Diagnostic{report(source.ZeroIfNil(mode.Pos), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), messages.SortedQuotes(declaration.reachable))}
+			return []results.Diagnostic{report(sourcetext.ZeroIfNil(mode.Pos), "cache-write-untrusted", "cache-mode %q grants cache writes for low-trust trigger(s) %s. untrusted code or input can poison caches consumed by privileged workflows. use \"read\" or \"none\", or document a reviewed exception with an inline suppression", mode.Kind.String(), messages.SortedQuotes(declaration.reachable))}
 		}
 	}
 	return nil
@@ -174,9 +174,9 @@ func (r *Trust) CheckCall(job workflows.Job) []results.Diagnostic {
 	if len(events) == 0 {
 		return nil
 	}
-	return []results.Diagnostic{report(source.ZeroIfNil(call.Uses.Pos), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, messages.SortedQuotes(events))}
+	return []results.Diagnostic{report(sourcetext.ZeroIfNil(call.Uses.Pos), "cache-call-unrestricted", "reusable workflow call %q has no explicit cache access limit for low-trust trigger(s) %s. the callee can request writes despite the trigger's read-only default. set \"cache-mode: read\" or \"cache-mode: none\" on this job or workflow", call.Uses.Value, messages.SortedQuotes(events))}
 }
 
-func report(pos source.Position, kind, format string, args ...any) results.Diagnostic {
+func report(pos sourcetext.Position, kind, format string, args ...any) results.Diagnostic {
 	return results.Diagnostic{Rule: kind, Message: fmt.Sprintf(format, args...), Start: pos}
 }

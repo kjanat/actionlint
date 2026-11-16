@@ -10,14 +10,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type invocationSourceAnalyzer struct {
 	t     *testing.T
-	paths map[source.Reference]string
+	paths map[sourcetext.Reference]string
 }
 
 func (a invocationSourceAnalyzer) Descriptor() checkinputs.Descriptor {
@@ -96,7 +96,7 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 	if len(units) != len(want) || units[0].Reference != units[2].Reference || units[1].Reference != units[3].Reference || units[0].Scope.Context.ID() == units[2].Scope.Context.ID() {
 		t.Fatal("fixture did not reuse declarations under distinct invocations")
 	}
-	byCall := map[source.Reference]string{}
+	byCall := map[sourcetext.Reference]string{}
 	for i, unit := range units {
 		if unit.Path != want[i] || string(unit.Content) != string(content) || &unit.Content[0] != &units[0].Content[0] || unit.Scope.Deployment.ActionPath() != filepath.Dir(want[i]) || unit.Scope.Paths.ActionPath != filepath.Dir(want[i]) {
 			t.Fatalf("source cache erased per-invocation deployment: %+v", unit)

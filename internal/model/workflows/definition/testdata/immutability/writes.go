@@ -2,7 +2,7 @@
 package immutability
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -17,7 +17,7 @@ func Rejected(step *definition.Step, workflow *definition.Workflow, job *definit
 }
 
 // Allowed writes a local copy and builds a fresh node.
-func Allowed(pos *source.Position) *definition.Step {
+func Allowed(pos *sourcetext.Position) *definition.Step {
 	local := *pos
 	local.Column++
 	return &definition.Step{Pos: &local}

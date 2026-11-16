@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -41,7 +41,7 @@ on: push`} {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `, "\n", ending)
 				workflow, findings := parser.ParseWorkflow([]byte(source))
-				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (sourcepos.Position{Line: tc.line, Column: 1}) {
+				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (sourcetext.Position{Line: tc.line, Column: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}
 				rule := define.NewChecksVisitor(checking.ConfigurationRules(), security.MissingPermissionsRule.Name, security.MissingPermissionsChecks(locations))

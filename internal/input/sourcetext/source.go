@@ -1,6 +1,6 @@
-// Package source defines document revisions, stable node references and
+// Package sourcetext defines document revisions, stable node references and
 // identities, and the Unicode column and LF line helpers they rely on.
-package source
+package sourcetext
 
 // Reference separates identity from an address in a particular document revision.
 type Reference struct {

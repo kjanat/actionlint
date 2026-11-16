@@ -6,16 +6,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestVerifyHandleRejectsForeignAndQuarantinedEvidence(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "source.yml")
 	reader := func(context.Context, string) ([]byte, error) { return nil, errors.New("unexpected read") }
-	overlays := []Overlay{{Path: path, Content: []byte("captured"), Coordinates: source.YAML}}
+	overlays := []Overlay{{Path: path, Content: []byte("captured"), Coordinates: sourcetext.YAML}}
 	store, other := newStore(t, overlays, reader), newStore(t, overlays, reader)
-	snapshot := readSnapshot(t, store, path, source.YAML)
-	foreign := readSnapshot(t, other, path, source.YAML)
+	snapshot := readSnapshot(t, store, path, sourcetext.YAML)
+	foreign := readSnapshot(t, other, path, sourcetext.YAML)
 	for _, invalid := range []CapturedDocument{{}, foreign} {
 		if err := store.VerifyHandle(invalid); !errors.Is(err, ErrInvalidSnapshot) {
 			t.Fatalf("invalid snapshot check = %v", err)

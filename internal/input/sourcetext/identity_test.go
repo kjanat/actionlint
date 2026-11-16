@@ -1,4 +1,4 @@
-package source
+package sourcetext
 
 import "testing"
 

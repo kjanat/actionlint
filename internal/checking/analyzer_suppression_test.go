@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -132,19 +132,19 @@ func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	t.Parallel()
 	const path = "actions/check/action.yml"
 	source := []byte("runs:\n  using: composite\n  steps:\n    - run: echo ok # actionlint:ignore no-sudo -- reviewed\n      shell: bash\n")
-	item := &finding.Finding{Rule: "no-sudo", Start: sourcepos.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
+	item := &finding.Finding{Rule: "no-sudo", Start: sourcetext.Position{Line: 4, Column: 12}, Path: path, Message: "plugin finding"}
 	rules := ConfigurationRules()
 	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(nil, nil, nil)
 	item.Binding = scope.Rule(item.Rule).ID()
 	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
 	_, fixture := capturefixture.NewCapturedSources(t, t.TempDir())
-	snapshot, err := fixture.Capture(path, source, sourcepos.YAML)
+	snapshot, err := fixture.Capture(path, source, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 	revision := snapshot.Revision()
-	refs := map[string]facts.SourceIndex{path: {Document: sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()}}}
+	refs := map[string]facts.SourceIndex{path: {Document: sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()}}}
 	got, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, InputPath: "workflow.yml", Findings: []*finding.Finding{item}, Sources: map[string][]byte{path: source}, References: refs}}, nil)
 	if err != nil || len(got.Findings[0]) != 0 {
 		t.Fatalf("registered plugin finding escaped composite suppression: %+v %v", got.Findings, err)

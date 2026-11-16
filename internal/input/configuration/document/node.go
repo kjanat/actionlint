@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Location records where a configuration value came from. File names the
@@ -17,7 +17,7 @@ import (
 // Reset points at an inherited null that this value replaced.
 type Location struct {
 	Name, File string
-	Value, Key sourcepos.Position
+	Value, Key sourcetext.Position
 	Reset      *Location
 }
 

@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/jobneeds"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -42,9 +42,9 @@ func checkJobDependencies(w workflows.Workflow) []reporting.StepFinding {
 	})
 	input := make([]jobneeds.JobDependencies, 0, len(jobs))
 	for _, job := range jobs {
-		item := jobneeds.JobDependencies{ID: jobneeds.Name{Value: job.ID.Text(), Start: source.ZeroIfNil(source.NilUnlessPresent(job.ID.Position()))}}
+		item := jobneeds.JobDependencies{ID: jobneeds.Name{Value: job.ID.Text(), Start: sourcetext.ZeroIfNil(sourcetext.NilUnlessPresent(job.ID.Position()))}}
 		for _, dep := range job.Needs {
-			item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value, Start: source.ZeroIfNil(dep.Pos)})
+			item.Needs = append(item.Needs, jobneeds.Name{Value: dep.Value, Start: sourcetext.ZeroIfNil(dep.Pos)})
 		}
 		input = append(input, item)
 	}

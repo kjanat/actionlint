@@ -3,7 +3,7 @@ package finding
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -23,7 +23,7 @@ func TestCanonicalSnippetLineEndings(t *testing.T) {
 			t.Parallel()
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
-				finding := &Finding{Start: sourcepos.Position{Line: 1}, Source: results.DiagnosticSource{RawScript: raw}}
+				finding := &Finding{Start: sourcetext.Position{Line: 1}, Source: results.DiagnosticSource{RawScript: raw}}
 				got := finding.Publish(source).Snippet
 				want := "token"
 				if raw {

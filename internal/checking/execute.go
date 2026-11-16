@@ -39,8 +39,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 
@@ -260,7 +260,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if path != "<stdin>" {
 			path = filepath.Clean(path)
 		}
-		overlays = append(overlays, capture.Overlay{Path: path, Content: overlay.Content, Coordinates: sourcepos.YAML})
+		overlays = append(overlays, capture.Overlay{Path: path, Content: overlay.Content, Coordinates: sourcetext.YAML})
 	}
 	sourcePaths := make([]string, len(allSources))
 	for index := range allSources {
@@ -275,7 +275,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		unit.InputPath = path
 		sourcePaths[index] = path
 		if !request.DiskSources {
-			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcepos.YAML})
+			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcetext.YAML})
 		}
 	}
 	// The capture reader reuses selected file contents from allSources.
@@ -413,7 +413,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	session.gitModes = &gitModes{}
 	result = &analysisResult{Diagnostics: []results.PublishedDiagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
 	session.workflowNames = nameindex.NewIndex(sourcePaths, reader, func(path string) (names.Declared, error) {
-		captured, err := captures.Read(lifetime, path, sourcepos.YAML)
+		captured, err := captures.Read(lifetime, path, sourcetext.YAML)
 		if err != nil {
 			return names.Unknown(), err
 		}
@@ -462,7 +462,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 				documents.add(captured.Revision().Document(), outline.FromAction(path, meta, parseErr))
 				if parseErr != nil || meta == nil {
 					revision := captured.Revision()
-					session.checkCompletion.markIncomplete(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()})
+					session.checkCompletion.markIncomplete(sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()})
 				}
 			},
 		})
@@ -482,7 +482,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
-			captured, err := captures.Read(lifetime, source.InputPath, sourcepos.YAML)
+			captured, err := captures.Read(lifetime, source.InputPath, sourcetext.YAML)
 			if err == nil {
 				file.captured = captured
 				file.source.Content = captured.Bytes()
@@ -490,7 +490,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			}
 			if err != nil {
 				if revision := file.captured.Revision(); revision.Valid() {
-					session.checkCompletion.markIncomplete(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()})
+					session.checkCompletion.markIncomplete(sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()})
 				}
 				entryErrors[i] = &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
 			}
@@ -641,11 +641,11 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 		d.mu.Lock()
 		_, requested := d.requests[address]
 		d.mu.Unlock()
-		if !requested && (!sourcepos.RemoteAddress(address) || !isActionInput(address)) {
+		if !requested && (!sourcetext.RemoteAddress(address) || !isActionInput(address)) {
 			continue
 		}
 		snapshot, state, err := captures.Lookup(address)
-		if err != nil || state != capture.Captured || snapshot.Coordinates() != sourcepos.YAML {
+		if err != nil || state != capture.Captured || snapshot.Coordinates() != sourcetext.YAML {
 			continue
 		}
 		identity := snapshot.Revision().Document()

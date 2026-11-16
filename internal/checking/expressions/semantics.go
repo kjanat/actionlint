@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -27,7 +27,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
-func (rule *Checker) checkExprsIn(s string, pos *source.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
+func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
 	restore := rule.scopeExpressionSource(s, pos)
 	defer restore()
 
@@ -69,7 +69,7 @@ func (rule *Checker) checkExprsIn(s string, pos *source.Position, quoted, checkU
 		} else {
 			refinement.state = value.Invalid
 		}
-		position := source.Position{Line: line, Column: col - 3}
+		position := sourcetext.Position{Line: line, Column: col - 3}
 		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
 			position = *mapped
 		}
@@ -243,7 +243,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, line, col int, c
 	}
 	if workflowKey == "" && result.Valid {
 		if _, literal := expr.(*syntax.StringNode); !literal {
-			position := &source.Position{Line: line, Column: col}
+			position := &sourcetext.Position{Line: line, Column: col}
 			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
 				position = mapped
 			}
@@ -303,9 +303,9 @@ func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bo
 	return rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey), l.Offset(), true
 }
 
-func convertExprLineColToPos(line, col, lineBase, colBase int) source.Position {
+func convertExprLineColToPos(line, col, lineBase, colBase int) sourcetext.Position {
 	// Line and column in ExprError are 1-based
-	return source.Position{
+	return sourcetext.Position{
 		Line:   line - 1 + lineBase,
 		Column: col - 1 + colBase,
 	}

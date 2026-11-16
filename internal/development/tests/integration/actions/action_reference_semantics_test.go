@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -43,7 +43,7 @@ runs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+			findings := actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			var diagnostics []results.Diagnostic
 			for _, finding := range findings {
 				diagnostics = append(diagnostics, finding.Diagnostic)

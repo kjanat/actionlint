@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
@@ -20,11 +20,11 @@ func TestIdentityVectors(t *testing.T) {
 			Name  string
 			Entry struct {
 				Kind      invocation.EntryKind
-				Reference source.Reference
+				Reference sourcetext.Reference
 			}
 			Calls []struct {
 				Key, Parent string
-				Reference   source.Reference
+				Reference   sourcetext.Reference
 			}
 			Expected struct {
 				RootID invocation.ID `json:"root_id"`
@@ -36,7 +36,7 @@ func TestIdentityVectors(t *testing.T) {
 		}
 		Scripts []struct {
 			Owner       invocation.ID
-			Declaration source.Reference
+			Declaration sourcetext.Reference
 			Kind        invocation.ScriptKind
 			Input       string
 			Expected    invocation.ID
@@ -93,7 +93,7 @@ func TestEntryKindSeparatesOccurrences(t *testing.T) {
 func TestInvalidIdentityInputs(t *testing.T) {
 	t.Parallel()
 	good := reference("entry", "document")
-	for name, ref := range map[string]source.Reference{
+	for name, ref := range map[string]sourcetext.Reference{
 		"missing-document": {Node: "node"},
 		"missing-node":     {Document: "doc"},
 		"invalid-document": {Document: "\xff", Node: "node"},

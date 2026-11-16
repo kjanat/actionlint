@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -100,13 +100,13 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 			}
 			type manifestFinding struct {
 				message string
-				start   source.Position
+				start   sourcetext.Position
 			}
 			var expected []manifestFinding
 			if kind == "action" {
 				expected = []manifestFinding{
-					{`YAML anchors are not supported in action metadata; remove anchor "command"`, source.Position{Line: 9, Column: 12}},
-					{`YAML aliases are not supported in action metadata; replace alias "command"`, source.Position{Line: 13, Column: 12}},
+					{`YAML anchors are not supported in action metadata; remove anchor "command"`, sourcetext.Position{Line: 9, Column: 12}},
+					{`YAML aliases are not supported in action metadata; replace alias "command"`, sourcetext.Position{Line: 13, Column: 12}},
 				}
 			}
 			if len(result.Diagnostics) != len(expected) {

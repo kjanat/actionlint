@@ -3,7 +3,7 @@ package finding
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -15,8 +15,8 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 	f := &Finding{
 		Path:      "workflow.yml",
 		Rule:      "rule",
-		Start:     source.Position{Line: 1, Column: 1},
-		Reference: &source.Reference{Document: "doc", Revision: "rev"},
+		Start:     sourcetext.Position{Line: 1, Column: 1},
+		Reference: &sourcetext.Reference{Document: "doc", Revision: "rev"},
 		Related:   []results.Related{{Message: "related", Path: "other.yml"}},
 		Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
 		Fixes: []results.Fix{{

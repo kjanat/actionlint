@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
@@ -130,11 +130,11 @@ func checkScalarDecoderMapping(t *testing.T, p *parser.Parser, document *sourcem
 	if source.Value != node.Value {
 		t.Fatalf("decoded value %q differs from YAML parser value %q", source.Value, node.Value)
 	}
-	for _, pos := range []sourcepos.Position{source.ContentStart, source.ScalarEnd} {
+	for _, pos := range []sourcetext.Position{source.ContentStart, source.ScalarEnd} {
 		if pos.Line < 1 || pos.Line > len(lines) {
 			t.Fatalf("scalar boundary outside source: %+v", pos)
 		}
-		if _, ok := sourcepos.ByteOffsetAtColumn(lines[pos.Line-1], pos.Column); !ok {
+		if _, ok := sourcetext.ByteOffsetAtColumn(lines[pos.Line-1], pos.Column); !ok {
 			t.Fatalf("scalar boundary outside line: %+v", pos)
 		}
 	}
@@ -152,7 +152,7 @@ func checkScalarDecoderMapping(t *testing.T, p *parser.Parser, document *sourcem
 			t.Fatalf("span outside source lines: %+v", span)
 		}
 		rawLine := lines[span.Document.Line-1]
-		start, ok := sourcepos.ByteOffsetAtColumn(rawLine, span.Document.Column)
+		start, ok := sourcetext.ByteOffsetAtColumn(rawLine, span.Document.Column)
 		if !ok {
 			t.Fatalf("span starts outside source line: %+v", span)
 		}
@@ -170,7 +170,7 @@ func checkScalarDecoderMapping(t *testing.T, p *parser.Parser, document *sourcem
 				t.Fatalf("copied span %+v decodes to %q, source is %q", span, value, rawLine[start:])
 			}
 		default:
-			end, ok := sourcepos.ByteOffsetAtColumn(rawLine, span.DocumentEnd.Column)
+			end, ok := sourcetext.ByteOffsetAtColumn(rawLine, span.DocumentEnd.Column)
 			if !ok || end < start {
 				t.Fatalf("escape ends outside source line: %+v", span)
 			}

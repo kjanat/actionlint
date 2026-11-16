@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
@@ -40,7 +40,7 @@ func (s *CapturedSnapshots) Path(path string) string { return s.sources.Path(pat
 
 // Capture stores content as the fixture bytes for path and captures it
 // without admitting it into the registry.
-func (s *CapturedSnapshots) Capture(path string, content []byte, coordinates source.Coordinates) (capture.CapturedDocument, error) {
+func (s *CapturedSnapshots) Capture(path string, content []byte, coordinates sourcetext.Coordinates) (capture.CapturedDocument, error) {
 	return s.sources.Capture(path, content, coordinates)
 }
 
@@ -49,7 +49,7 @@ func (s *CapturedSnapshots) Document(path string, content []byte, document parsi
 	if path == "" {
 		return parsing.SourceSnapshot{}, errors.New("fixture source identity is empty")
 	}
-	captured, err := s.sources.Capture(path, content, source.YAML)
+	captured, err := s.sources.Capture(path, content, sourcetext.YAML)
 	if err != nil {
 		return parsing.SourceSnapshot{}, err
 	}
@@ -65,7 +65,7 @@ func (s *CapturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (
 	if !parsed {
 		return parsing.SourceSnapshot{}, errors.New("fixture action has no parse provenance")
 	}
-	captured, err := s.sources.Capture(path, []byte(text), source.YAML)
+	captured, err := s.sources.Capture(path, []byte(text), sourcetext.YAML)
 	if err != nil {
 		return parsing.SourceSnapshot{}, err
 	}

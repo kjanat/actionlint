@@ -4,7 +4,7 @@ import (
 	"context"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -24,12 +24,12 @@ type Analysis struct {
 // Source pairs captured text with its revision and coordinate model.
 type Source struct {
 	Text        string
-	Revision    source.Revision
-	Coordinates source.Coordinates
+	Revision    sourcetext.Revision
+	Coordinates sourcetext.Coordinates
 }
 
 func (s Source) valid() bool {
-	return s.Coordinates == source.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == source.ContentDigest([]byte(s.Text))
+	return s.Coordinates == sourcetext.YAML && s.Revision.Valid() && utf8.ValidString(s.Text) && s.Revision.Digest() == sourcetext.ContentDigest([]byte(s.Text))
 }
 
 type (

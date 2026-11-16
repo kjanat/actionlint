@@ -6,7 +6,7 @@ import (
 	maps "maps"
 	slices "slices"
 
-	source "actionlint.kjanat.dev/v2/internal/input/source"
+	sourcetext "actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	lifecycle "actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	results "actionlint.kjanat.dev/v2/internal/results"
 )
@@ -52,7 +52,7 @@ func (ctx *ownedCopyContext) copyOwnedFinding(in Finding) Finding {
 
 func (ctx *ownedCopyContext) copyOwnedDiagnostic_7e9304eab05e88fed387b3b0ef071edf(in results.Diagnostic) results.Diagnostic {
 	out := in
-	out.Reference = ctx.copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in.Reference)
+	out.Reference = ctx.copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in.Reference)
 	out.Related = slices.Clone(in.Related)
 	out.Lifecycle = ctx.copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in.Lifecycle)
 	out.Fixes = ctx.copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in.Fixes)
@@ -106,12 +106,12 @@ func (ctx *ownedCopyContext) copyOwnedValue_42b6878d647d4ff2cce39f1e3f24130d(in 
 	return (*MetadataIdentity)(&out)
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in *source.Reference) *source.Reference {
+func (ctx *ownedCopyContext) copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in *sourcetext.Reference) *sourcetext.Reference {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	return (*source.Reference)(&out)
+	return (*sourcetext.Reference)(&out)
 }
 
 func (ctx *ownedCopyContext) copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in *results.LifecycleReport) *results.LifecycleReport {
@@ -142,13 +142,13 @@ func (ctx *ownedCopyContext) copyOwnedEvidence_b6de2083f6a13cb13415ac74865b5030(
 
 func (ctx *ownedCopyContext) copyOwnedIgnoreOrigin_a1370ab1e0d227e8e22f7d6653cb694e(in IgnoreOrigin) IgnoreOrigin {
 	out := in
-	out.StepPosition = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.StepPosition)
+	out.StepPosition = ctx.copyOwnedValue_eceace1df987374cf9dcf7980dcfde93(in.StepPosition)
 	return out
 }
 
 func (ctx *ownedCopyContext) copyOwnedOwner_04cdcfd326366ef897e9d060f96b402e(in Owner) Owner {
 	out := in
-	out.Step = ctx.copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in.Step)
+	out.Step = ctx.copyOwnedValue_eceace1df987374cf9dcf7980dcfde93(in.Step)
 	return out
 }
 
@@ -176,10 +176,10 @@ func (ctx *ownedCopyContext) copyOwnedValue_1322c9e5dd27dde9d49a9a553ec6e340(in 
 	return out
 }
 
-func (ctx *ownedCopyContext) copyOwnedValue_dc01c7a76c32e405c589e75d7e4d56a1(in *source.Position) *source.Position {
+func (ctx *ownedCopyContext) copyOwnedValue_eceace1df987374cf9dcf7980dcfde93(in *sourcetext.Position) *sourcetext.Position {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	return (*source.Position)(&out)
+	return (*sourcetext.Position)(&out)
 }

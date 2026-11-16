@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
@@ -55,7 +55,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 					}
 					visitedScripts++
 					position, present := step.Position()
-					return []reporting.StepFinding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: source.ZeroIfNil(source.NilUnlessPresent(position, present)), Step: step, LifecycleEvidence: &evidence}}
+					return []reporting.StepFinding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: sourcetext.ZeroIfNil(sourcetext.NilUnlessPresent(position, present)), Step: step, LifecycleEvidence: &evidence}}
 				},
 			}
 			return []workflowvisit.Rule{define.NewChecksVisitor(ConfigurationRules(), correctness.RuntimeLifecycleRule.Name, check)}

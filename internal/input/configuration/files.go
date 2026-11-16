@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func (cfg *Config) IncludesFile(path, root string) bool {
@@ -241,7 +241,7 @@ func expandInheritedConfigDirectory(value, directory string) string {
 // SourceError identifies the source location of a configuration error.
 type SourceError struct {
 	File     string
-	Position sourcepos.Position
+	Position sourcetext.Position
 	Cause    error
 }
 

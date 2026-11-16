@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -21,7 +21,7 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 				if shell == "" {
 					key = "jobs.<job_id>.steps.with"
 				}
-				rule.checkScriptString(ownedStringFixture(&definition.String{Value: "const value = ${{ " + expression + " }}", Pos: &source.Position{Line: 1, Column: 1}}), key, shell)
+				rule.checkScriptString(ownedStringFixture(&definition.String{Value: "const value = ${{ " + expression + " }}", Pos: &sourcetext.Position{Line: 1, Column: 1}}), key, shell)
 				positionDependent := expression == "github.sha" || expression == "hashFiles('**/go.sum')"
 				unsafe := positionDependent || shell != "bash" && shell != "sh"
 				findings := rule.Findings()

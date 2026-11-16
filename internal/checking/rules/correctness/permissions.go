@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -35,10 +35,10 @@ func checkPermissionMapping(p *definition.Permissions) []reporting.StepFinding {
 	}
 	input := permissionDeclaration{}
 	if p.All != nil {
-		input.All = &permissionValue{Text: p.All.Value, Start: source.ZeroIfNil(p.All.Pos)}
+		input.All = &permissionValue{Text: p.All.Value, Start: sourcetext.ZeroIfNil(p.All.Pos)}
 	}
 	for _, scope := range p.Scopes {
-		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: source.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: source.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
+		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: sourcetext.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: sourcetext.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
 	}
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }
@@ -53,7 +53,7 @@ func checkJobPermissions(job workflows.Job) []reporting.StepFinding {
 
 type permissionValue struct {
 	Text  string
-	Start source.Position
+	Start sourcetext.Position
 }
 type (
 	permissionScope       struct{ Name, Level permissionValue }
@@ -67,7 +67,7 @@ type (
 func permissionDiagnostics(input permissionDeclaration) []results.Diagnostic {
 	scopes := permissions.Scopes()
 	var findings []results.Diagnostic
-	report := func(start source.Position, message string) {
+	report := func(start sourcetext.Position, message string) {
 		findings = append(findings, results.Diagnostic{Start: start, Message: message})
 	}
 	if all := input.All; all != nil {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -51,13 +51,13 @@ func TestBatchValidatesScopeOutcome(t *testing.T) {
 	for _, state := range []string{"depth", "cycle", "pending interrupted", "interrupted", "noncomposite"} {
 		t.Run(state, func(t *testing.T) {
 			t.Parallel()
-			entry := source.Reference{Document: "entry", Node: "document"}
+			entry := sourcetext.Reference{Document: "entry", Node: "document"}
 			builder, err := invocation.NewBuilder(invocation.EntryAction, entry, invocation.Budget{MaxDepth: 1, MaxCalls: 5, MaxScripts: 5})
 			if err != nil {
 				t.Fatal(err)
 			}
 			scopes := []*Scope{{Context: builder.RootContext(), Composite: true, Deployment: Deployment{reference: entry}}}
-			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "entry", Node: "call"}, invocation.Facts{Condition: invocation.ConditionEnabled})
+			ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "entry", Node: "call"}, invocation.Facts{Condition: invocation.ConditionEnabled})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -65,7 +65,7 @@ func TestBatchValidatesScopeOutcome(t *testing.T) {
 			if !admitted {
 				t.Fatal("call was not admitted")
 			}
-			target := source.Reference{Document: "child", Node: "document"}
+			target := sourcetext.Reference{Document: "child", Node: "document"}
 			if state == "cycle" {
 				target = entry
 			}
@@ -80,7 +80,7 @@ func TestBatchValidatesScopeOutcome(t *testing.T) {
 			}
 			scopes = append(scopes, &Scope{Context: call, Composite: state != "noncomposite", Deployment: Deployment{reference: target}})
 			if state == "depth" {
-				frontier, err := builder.Begin(call, source.Reference{Document: "child", Node: "nested"}, invocation.Facts{Condition: invocation.ConditionEnabled})
+				frontier, err := builder.Begin(call, sourcetext.Reference{Document: "child", Node: "nested"}, invocation.Facts{Condition: invocation.ConditionEnabled})
 				if err != nil || frontier.Status() != invocation.DepthLimited {
 					t.Fatalf("depth fixture: %v", err)
 				}

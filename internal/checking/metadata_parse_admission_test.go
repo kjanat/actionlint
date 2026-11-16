@@ -18,8 +18,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -47,7 +47,7 @@ func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.An
 			return nil, err
 		}
 	}
-	return []results.Diagnostic{{Message: "unrelated entry observation", Start: source.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Message: "unrelated entry observation", Start: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t *testing.T) {
@@ -152,11 +152,11 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			root := t.TempDir()
 			entryPath, metadataPath := filepath.Join(root, "ci.yml"), filepath.Join(root, "broken", "action.yml")
 			store, fixture := capturefixture.NewCapturedSources(t, root)
-			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), source.YAML)
+			entry, err := fixture.Capture(entryPath, []byte(commandGoodWorkflow), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
-			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), source.YAML)
+			metadata, err := fixture.Capture(metadataPath, []byte("name: [\n"), sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -168,7 +168,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 				t.Fatal("metadata parse record absent")
 			}
 			producer := correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), cache, nil)
-			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &source.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
+			if err := producer.VisitStep(ownedApplicationStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}})); err != nil || len(producer.Errs()) != 1 {
 				t.Fatalf("real parse producer failed: %v", err)
 			}
 			parse := producer.Errs()[0]

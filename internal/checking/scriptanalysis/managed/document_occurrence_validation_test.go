@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
@@ -57,7 +57,7 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 	batch := documentBatchFixture(t, 1)
 	wrong := batch.CallGraph.Entry().Reference
 	wrong.Revision = "wrong"
-	for _, reference := range []source.Reference{{}, wrong} {
+	for _, reference := range []sourcetext.Reference{{}, wrong} {
 		guest := &negotiationObserver{}
 		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: reference}}}
 		_, err := runner.Analyze(t.Context(), batch)

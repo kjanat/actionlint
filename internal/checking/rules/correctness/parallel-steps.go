@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -36,12 +36,12 @@ type parallelCheck struct {
 	// inParallel identifies direct children of a 'parallel' group.
 	// Only run and uses steps are allowed there. Invalid wait and cancel steps
 	// receive that finding, and their references are excluded from validation.
-	inParallel map[source.Reference]struct{}
+	inParallel map[sourcetext.Reference]struct{}
 }
 
 // ParallelSteps analyzes one complete job independently of visitor order.
 func ParallelSteps(job workflows.Job) []reporting.StepFinding {
-	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[source.Reference]struct{}{}}
+	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[sourcetext.Reference]struct{}{}}
 	for step := range job.AllSteps() {
 		rule.Step = step
 		rule.checkStep(step)

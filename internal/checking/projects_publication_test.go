@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -16,8 +16,8 @@ import (
 func TestCombinedProjectsPreserveIncompleteChecks(t *testing.T) {
 	t.Parallel()
 	checks := []report.IncompleteCheck{
-		{Source: source.Reference{Document: "first/ci.yml", Revision: "first"}, Rule: "shellcheck", Reason: "tool unavailable"},
-		{Source: source.Reference{Document: "second/ci.yml", Revision: "second"}, Reason: "policy evaluation failed"},
+		{Source: sourcetext.Reference{Document: "first/ci.yml", Revision: "first"}, Rule: "shellcheck", Reason: "tool unavailable"},
+		{Source: sourcetext.Reference{Document: "second/ci.yml", Revision: "second"}, Reason: "policy evaluation failed"},
 	}
 	var combined report.Analysis
 	for _, check := range checks {

@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -168,7 +168,7 @@ func (a partialFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 	if len(facts) != 1 || facts[0].Text != "echo ok" {
 		a.t.Fatalf("changed script facts: %+v", input)
 	}
-	return []results.Diagnostic{{Rule: "test", Message: "partial finding", Start: source.Position{Line: 1, Column: 1}}}, a.failure
+	return []results.Diagnostic{{Rule: "test", Message: "partial finding", Start: sourcetext.Position{Line: 1, Column: 1}}}, a.failure
 }
 
 type partialTool struct {
@@ -184,7 +184,7 @@ func (a partialTool) Analyze(_ context.Context, batch scriptanalysis.Batch) ([]c
 	if batch.Scripts[0].Path != "" || batch.Scripts[0].Content != nil {
 		a.t.Fatal("workflow script lost the native adapter's root-source fallback")
 	}
-	return []contract.ToolFinding{{Rule: "test", Message: "partial finding", Start: source.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
+	return []contract.ToolFinding{{Rule: "test", Message: "partial finding", Start: sourcetext.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
 }
 
 func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {

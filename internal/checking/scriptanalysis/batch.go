@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -24,10 +24,10 @@ import (
 
 // Unit snapshots invocation context before analyzers run.
 type Unit struct {
-	Revision    source.Revision
-	Coordinates source.Coordinates
+	Revision    sourcetext.Revision
+	Coordinates sourcetext.Coordinates
 	Occurrence  invocation.ID
-	Reference   source.Reference
+	Reference   sourcetext.Reference
 	Run         *definition.ExecRun
 	Input       *ActionInput
 	Shell       *string
@@ -72,7 +72,7 @@ func (u Unit) Source() *definition.ScriptSource {
 }
 
 // Key is the position of the input name or the run key.
-func (u Unit) Key() *source.Position {
+func (u Unit) Key() *sourcetext.Position {
 	if u.Input != nil {
 		return u.Input.Value.Name.Pos
 	}
@@ -83,7 +83,7 @@ func (u Unit) Key() *source.Position {
 }
 
 // Value is the position of the script value.
-func (u Unit) Value() *source.Position {
+func (u Unit) Value() *sourcetext.Position {
 	if u.Input != nil {
 		return u.Input.Value.Value.Pos
 	}

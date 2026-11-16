@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -60,10 +60,10 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 			t.Fatal(err)
 		}
 		j := &definition.Job{
-			ID:          &definition.String{Value: "caller", Pos: &source.Position{}},
+			ID:          &definition.String{Value: "caller", Pos: &sourcetext.Position{}},
 			Permissions: testParseWorkflowPermissions(t, "permissions: {}"),
 			WorkflowCall: &definition.WorkflowCall{
-				Uses:    &definition.String{Value: "./permissions.yaml", Pos: &source.Position{}},
+				Uses:    &definition.String{Value: "./permissions.yaml", Pos: &sourcetext.Position{}},
 				Inputs:  map[string]*definition.WorkflowCallInput{},
 				Secrets: map[string]*definition.WorkflowCallSecret{},
 			},
@@ -326,16 +326,16 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			}
 
 			j := &definition.Job{
-				ID:          &definition.String{Value: "caller", Pos: &source.Position{}},
+				ID:          &definition.String{Value: "caller", Pos: &sourcetext.Position{}},
 				Permissions: testParseWorkflowPermissions(t, tc.jobPerms),
 				WorkflowCall: &definition.WorkflowCall{
-					Uses:    &definition.String{Value: "./callee.yaml", Pos: &source.Position{}},
+					Uses:    &definition.String{Value: "./callee.yaml", Pos: &sourcetext.Position{}},
 					Inputs:  map[string]*definition.WorkflowCallInput{},
 					Secrets: map[string]*definition.WorkflowCallSecret{},
 				},
 			}
 			if tc.jobIf {
-				j.If = &definition.String{Value: "${{ github.event_name == 'push' }}", Pos: &source.Position{}}
+				j.If = &definition.String{Value: "${{ github.event_name == 'push' }}", Pos: &sourcetext.Position{}}
 			}
 			if err := r.VisitJobPre(declarations.Job(j)); err != nil {
 				t.Fatal(err)

@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -22,7 +22,7 @@ func (a namedFindingAnalyzer) Descriptor() checkinputs.Descriptor {
 }
 
 func (namedFindingAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
-	return []results.Diagnostic{{Message: "same observation", Start: source.Position{Line: 6, Column: 14}}}, nil
+	return []results.Diagnostic{{Message: "same observation", Start: sourcetext.Position{Line: 6, Column: 14}}}, nil
 }
 
 func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {

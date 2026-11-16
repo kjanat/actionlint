@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -131,7 +131,7 @@ func sarifArtifact(path string) sarifArtifactLocation {
 	return sarifArtifactLocation{URI: (&url.URL{Path: slash}).String(), URIBaseID: "%SRCROOT%"}
 }
 
-func sarifSourceLocation(path string, start, end source.Position) *sarifPhysicalLocation {
+func sarifSourceLocation(path string, start, end sourcetext.Position) *sarifPhysicalLocation {
 	if path == "" {
 		return nil
 	}

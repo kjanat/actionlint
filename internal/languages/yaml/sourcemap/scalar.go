@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Scalar is the result of a single token scan. Folding and line normalization
@@ -16,7 +16,7 @@ import (
 type Scalar struct {
 	Value      string
 	Spans      []Span
-	Start, End source.Position
+	Start, End sourcetext.Position
 	Literal    bool
 }
 
@@ -40,7 +40,7 @@ type decoder struct {
 
 // Decode scans a scalar at start, including any tag and anchor properties.
 // The caller validates Value against its YAML parser before publishing mappings.
-func decode(document *Document, start source.Position, context Context) (Scalar, error) {
+func decode(document *Document, start sourcetext.Position, context Context) (Scalar, error) {
 	lines := document.lines
 	d := decoder{document: document, lines: lines, row: start.Line - 1, context: context}
 	if d.row < 0 || d.row >= len(lines) || start.Column < 1 {
@@ -81,19 +81,19 @@ func (d *decoder) peek() byte {
 	return d.lines[d.row][d.col]
 }
 
-func (d *decoder) position() source.Position {
+func (d *decoder) position() sourcetext.Position {
 	if d.row >= len(d.lines) {
-		return source.Position{Line: len(d.lines), Column: utf8.RuneCountInString(d.lines[len(d.lines)-1]) + 1}
+		return sourcetext.Position{Line: len(d.lines), Column: utf8.RuneCountInString(d.lines[len(d.lines)-1]) + 1}
 	}
 	if d.positionColumn == 0 || d.positionRow != d.row || d.positionByte > d.col {
 		d.positionRow, d.positionByte, d.positionColumn = d.row, d.col, d.document.column(d.row, d.col)
 	}
 	d.positionColumn += utf8.RuneCountInString(d.lines[d.row][d.positionByte:d.col])
 	d.positionByte = d.col
-	return source.Position{Line: d.row + 1, Column: d.positionColumn}
+	return sourcetext.Position{Line: d.row + 1, Column: d.positionColumn}
 }
 
-func (d *decoder) properties() (source.Position, bool) {
+func (d *decoder) properties() (sourcetext.Position, bool) {
 	var tag, anchor bool
 	end := d.position()
 	for d.peek() == '!' || d.peek() == '&' {
@@ -154,12 +154,12 @@ func (d *decoder) properties() (source.Position, bool) {
 			}
 		}
 	}
-	return source.Position{}, false
+	return sourcetext.Position{}, false
 }
 
 // emit is the sole writer of decoded bytes and their corresponding provenance.
 // end is zero for copied text and the exclusive source end of a decoded token.
-func (d *decoder) emit(value string, pos, end source.Position) {
+func (d *decoder) emit(value string, pos, end sourcetext.Position) {
 	start := d.value.Len()
 	d.value.WriteString(value)
 	if value == "" || pos.Line == 0 {
@@ -180,7 +180,7 @@ func (d *decoder) emit(value string, pos, end source.Position) {
 
 func (d *decoder) copyRune() {
 	_, size := utf8.DecodeRuneInString(d.lines[d.row][d.col:])
-	d.emit(d.lines[d.row][d.col:d.col+size], d.position(), source.Position{})
+	d.emit(d.lines[d.row][d.col:d.col+size], d.position(), sourcetext.Position{})
 	d.col += size
 }
 
@@ -196,7 +196,7 @@ func (d *decoder) flow(quote byte) error {
 		if quote != 0 && c == quote {
 			if quote == '\'' && strings.HasPrefix(d.lines[d.row][d.col:], "''") {
 				pos := d.position()
-				d.emit("'", pos, source.Position{Line: pos.Line, Column: pos.Column + 2})
+				d.emit("'", pos, sourcetext.Position{Line: pos.Line, Column: pos.Column + 2})
 				d.col += 2
 				continue
 			}
@@ -273,7 +273,7 @@ func (d *decoder) whitespace(quote byte, continued bool) bool {
 		if quote == 0 && d.plainEnd() {
 			return false
 		}
-		d.emit(d.lines[d.row][start:d.col], pos, source.Position{})
+		d.emit(d.lines[d.row][start:d.col], pos, sourcetext.Position{})
 		d.result.End = d.position()
 		return true
 	}
@@ -309,11 +309,11 @@ func (d *decoder) emitBreaks(rows []int, fold bool) {
 		value := d.document.breaks[row]
 		switch {
 		case value == "\u2028" || value == "\u2029":
-			d.emit(value, source.Position{Line: row + 1, Column: utf8.RuneCountInString(d.lines[row]) + 1}, source.Position{Line: row + 2, Column: 1})
+			d.emit(value, sourcetext.Position{Line: row + 1, Column: utf8.RuneCountInString(d.lines[row]) + 1}, sourcetext.Position{Line: row + 2, Column: 1})
 		case i != 0 || !fold:
-			d.emit("\n", source.Position{}, source.Position{})
+			d.emit("\n", sourcetext.Position{}, sourcetext.Position{})
 		case len(rows) == 1:
-			d.emit(" ", source.Position{}, source.Position{})
+			d.emit(" ", sourcetext.Position{}, sourcetext.Position{})
 		}
 	}
 }
@@ -341,7 +341,7 @@ func (d *decoder) escape() error {
 		value = string(rune(r))
 		d.col += width
 	}
-	d.emit(value, pos, source.Position{Line: pos.Line, Column: pos.Column + d.col - start})
+	d.emit(value, pos, sourcetext.Position{Line: pos.Line, Column: pos.Column + d.col - start})
 	d.result.End = d.position()
 	return nil
 }
@@ -377,7 +377,7 @@ func (d *decoder) block() {
 		if spaces == len(raw) && (spaces <= indent || !hadContent && increment == 0) {
 			if d.row+1 < len(d.lines) {
 				pending = append(pending, d.row)
-				d.result.End = source.Position{Line: d.row + 1, Column: len(raw) + 1}
+				d.result.End = sourcetext.Position{Line: d.row + 1, Column: len(raw) + 1}
 			}
 			d.row++
 			continue

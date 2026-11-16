@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -18,14 +18,14 @@ import (
 
 func TestRuleRequireJobTimeout(t *testing.T) {
 	t.Parallel()
-	jobPos := &source.Position{Line: 4, Column: 3}
-	valuePos := &source.Position{Line: 6, Column: 22}
+	jobPos := &sourcetext.Position{Line: 4, Column: 3}
+	valuePos := &sourcetext.Position{Line: 6, Column: 22}
 	missing := ":4:3: \"timeout-minutes\" is not set in job \"test\". Set an explicit timeout for this job [job-timeout]"
 
 	newJob := func(timeout *definition.Float) *definition.Job {
 		return &definition.Job{
 			ID:             &definition.String{Value: "test", Pos: jobPos},
-			Steps:          []*definition.Step{{Pos: &source.Position{Line: 7, Column: 7}}},
+			Steps:          []*definition.Step{{Pos: &sourcetext.Position{Line: 7, Column: 7}}},
 			TimeoutMinutes: timeout,
 			Pos:            jobPos,
 		}
@@ -113,9 +113,9 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 			job: &definition.Job{
 				ID: &definition.String{Value: "test", Pos: jobPos},
 				WorkflowCall: &definition.WorkflowCall{
-					Uses: &definition.String{Value: "./.github/workflows/ci.yaml", Pos: &source.Position{Line: 5, Column: 11}},
+					Uses: &definition.String{Value: "./.github/workflows/ci.yaml", Pos: &sourcetext.Position{Line: 5, Column: 11}},
 				},
-				Steps: []*definition.Step{{Pos: &source.Position{Line: 7, Column: 7}}},
+				Steps: []*definition.Step{{Pos: &sourcetext.Position{Line: 7, Column: 7}}},
 				Pos:   jobPos,
 			},
 		},
@@ -184,8 +184,8 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			pos := &source.Position{Line: 6, Column: 22}
-			job := &definition.Job{ID: &definition.String{Value: "test"}, Pos: &source.Position{Line: 4, Column: 3}, Steps: []*definition.Step{}, TimeoutMinutes: &definition.Float{Value: tc.value, Pos: pos}}
+			pos := &sourcetext.Position{Line: 6, Column: 22}
+			job := &definition.Job{ID: &definition.String{Value: "test"}, Pos: &sourcetext.Position{Line: 4, Column: 3}, Steps: []*definition.Step{}, TimeoutMinutes: &definition.Float{Value: tc.value, Pos: pos}}
 			if tc.expression {
 				job.TimeoutMinutes.Expression = &definition.String{Value: "matrix.timeout", Pos: pos}
 			}

@@ -6,7 +6,7 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -19,7 +19,7 @@ type Batch struct {
 	Processor          Processor
 	Policy             Policy
 	Project, InputPath string
-	Source             source.Revision
+	Source             sourcetext.Revision
 	Action             bool
 	Findings           []*finding.Finding
 	Sources            map[string][]byte
@@ -56,7 +56,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 		}
 	}
 	markIncomplete := func(batch Batch) {
-		observe := func(ref source.Reference) {
+		observe := func(ref sourcetext.Reference) {
 			key := checkRevision{ref.Document, ref.Revision}
 			if ref.Document != "" && ref.Revision != "" && !failedSources[key] {
 				failedSources[key] = true
@@ -64,7 +64,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 			}
 		}
 		if batch.Source.Valid() {
-			observe(source.Reference{Document: batch.Source.Document(), Revision: batch.Source.Digest()})
+			observe(sourcetext.Reference{Document: batch.Source.Document(), Revision: batch.Source.Digest()})
 		}
 		for _, path := range slices.Sorted(maps.Keys(batch.References)) {
 			observe(batch.References[path].Document)
@@ -89,7 +89,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 		if p.Content != nil {
 			p.Content = sourceCopies.of(p.Content)
 		}
-		p.usedSuppression = func(path string, position source.Position, rule string) {
+		p.usedSuppression = func(path string, position sourcetext.Position, rule string) {
 			if index, ok := batch.References[path]; ok {
 				usage.observe(index.Document, position, rule)
 			}

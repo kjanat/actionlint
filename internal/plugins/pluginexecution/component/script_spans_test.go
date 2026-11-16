@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -15,7 +15,7 @@ import (
 // wireSpan is a lifted WIT span record.
 type wireSpan struct {
 	line, start, end      int
-	document, documentEnd source.Position
+	document, documentEnd sourcetext.Position
 }
 
 func liftWireSpan(t *testing.T, value wacogo.Val) wireSpan {
@@ -49,7 +49,7 @@ func liftWireSpan(t *testing.T, value wacogo.Val) wireSpan {
 
 // wirePosition maps a text (line, column) as plugins/protocol/wit/analyzer.wit
 // tells guests to read the span records.
-func wirePosition(spans []wireSpan, line, column int, exclusive bool) (source.Position, bool) {
+func wirePosition(spans []wireSpan, line, column int, exclusive bool) (sourcetext.Position, bool) {
 	for _, span := range spans {
 		if span.line != line {
 			continue
@@ -67,9 +67,9 @@ func wirePosition(spans []wireSpan, line, column int, exclusive bool) (source.Po
 			}
 			return span.document, true
 		}
-		return source.Position{Line: span.document.Line, Column: span.document.Column + column - span.start}, true
+		return sourcetext.Position{Line: span.document.Line, Column: span.document.Column + column - span.start}, true
 	}
-	return source.Position{}, false
+	return sourcetext.Position{}, false
 }
 
 // TestLoweredScriptSpansMatchSourceLookup checks that every text position maps
@@ -114,9 +114,9 @@ func TestLoweredScriptSpansMatchSourceLookup(t *testing.T) {
 							lookup = exec.Source.EndPos
 						}
 						want, wantOK := lookup(line, column)
-						for reader, mapped := range map[string]func() (source.Position, bool){
-							"declaration": func() (source.Position, bool) { return declaration.Position(line, column, exclusive) },
-							"wire":        func() (source.Position, bool) { return wirePosition(spans, line, column, exclusive) },
+						for reader, mapped := range map[string]func() (sourcetext.Position, bool){
+							"declaration": func() (sourcetext.Position, bool) { return declaration.Position(line, column, exclusive) },
+							"wire":        func() (sourcetext.Position, bool) { return wirePosition(spans, line, column, exclusive) },
 						} {
 							got, ok := mapped()
 							if ok != wantOK || ok && got != *want {

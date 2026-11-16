@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
@@ -73,17 +73,17 @@ runs:
 						steps = "- uses: ./local"
 					}
 					result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
-					manifest := map[string]source.Position{}
+					manifest := map[string]sourcetext.Position{}
 					if composite && tc.name == "split-anchor" {
-						manifest[`YAML anchors are not supported in action metadata; remove anchor "script"`] = source.Position{Line: 9, Column: 9}
-						manifest[`YAML aliases are not supported in action metadata; replace alias "script"`] = source.Position{Line: 13, Column: 13}
+						manifest[`YAML anchors are not supported in action metadata; remove anchor "script"`] = sourcetext.Position{Line: 9, Column: 9}
+						manifest[`YAML aliases are not supported in action metadata; replace alias "script"`] = sourcetext.Position{Line: 13, Column: 13}
 					}
 					manifestCount := len(manifest)
 					counts := map[string]int{}
 					for _, diagnostic := range result.Diagnostics {
 						counts[diagnostic.Rule]++
 						if diagnostic.Rule == "shellcheck" {
-							if filepath.ToSlash(diagnostic.Path) != "scripts/check.sh" || diagnostic.Code != "SC2086" || diagnostic.Severity != "info" || diagnostic.Start != (source.Position{Line: 1, Column: 6}) || diagnostic.End != (source.Position{Line: 1, Column: 12}) || diagnostic.Snippet != "echo $VALUE" {
+							if filepath.ToSlash(diagnostic.Path) != "scripts/check.sh" || diagnostic.Code != "SC2086" || diagnostic.Severity != "info" || diagnostic.Start != (sourcetext.Position{Line: 1, Column: 6}) || diagnostic.End != (sourcetext.Position{Line: 1, Column: 12}) || diagnostic.Snippet != "echo $VALUE" {
 								t.Fatalf("source diagnostic was changed: %+v", diagnostic)
 							}
 						} else if expected, ok := manifest[diagnostic.Message]; ok {
@@ -299,7 +299,7 @@ runs:
 						t.Fatalf("sourced script comment changed diagnostics: %+v", result.Diagnostics)
 					}
 					finding := result.Diagnostics[0]
-					if finding.Rule != "shellcheck" || finding.Code != "SC2086" || filepath.ToSlash(finding.Path) != name || finding.Start != (source.Position{Line: 1, Column: 6}) {
+					if finding.Rule != "shellcheck" || finding.Code != "SC2086" || filepath.ToSlash(finding.Path) != name || finding.Start != (sourcetext.Position{Line: 1, Column: 6}) {
 						t.Fatalf("sourced finding lost or replaced: %+v", finding)
 					}
 				})

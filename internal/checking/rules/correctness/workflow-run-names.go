@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -57,7 +57,7 @@ func workflowRunNameDiagnostics(n names.Inventory, references []*definition.Stri
 	if len(references) == 0 {
 		return findings
 	}
-	report := func(pos *source.Position, format string, args ...any) {
+	report := func(pos *sourcetext.Position, format string, args ...any) {
 		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: *pos})
 	}
 	if !n.Complete() {

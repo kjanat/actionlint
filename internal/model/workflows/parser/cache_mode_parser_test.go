@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -55,10 +55,10 @@ func TestParseCacheMode(t *testing.T) {
 			t.Run(placement+"/"+tt.value, func(t *testing.T) {
 				t.Parallel()
 				src := "on: push\n"
-				wantPos := source.Position{Line: 4, Column: 17}
+				wantPos := sourcetext.Position{Line: 4, Column: 17}
 				if placement == "workflow" {
 					src += "cache-mode: " + tt.value + "\n"
-					wantPos = source.Position{Line: 2, Column: 13}
+					wantPos = sourcetext.Position{Line: 2, Column: 13}
 				}
 				src += `jobs:
   test:

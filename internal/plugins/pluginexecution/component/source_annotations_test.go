@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
@@ -15,16 +15,16 @@ import (
 
 func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	t.Parallel()
-	root := source.Reference{Document: "ci.yml", Revision: "root", Node: "step1", Address: "jobs.test.steps[0]"}
-	invoked := source.Reference{Document: "action.yml", Revision: "action", Node: "step1", Address: "runs.steps[0]"}
-	actionInput := source.Reference{Document: "ci.yml", Revision: "root", Node: "input1", Address: "jobs.test.steps[1].with.script"}
-	inputScript := checkinputs.Script{Reference: actionInput, Comments: []facts.SourceComment{{Text: "# action input", Start: source.Position{Line: 12, Column: 7}}}}
+	root := sourcetext.Reference{Document: "ci.yml", Revision: "root", Node: "step1", Address: "jobs.test.steps[0]"}
+	invoked := sourcetext.Reference{Document: "action.yml", Revision: "action", Node: "step1", Address: "runs.steps[0]"}
+	actionInput := sourcetext.Reference{Document: "ci.yml", Revision: "root", Node: "input1", Address: "jobs.test.steps[1].with.script"}
+	inputScript := checkinputs.Script{Reference: actionInput, Comments: []facts.SourceComment{{Text: "# action input", Start: sourcetext.Position{Line: 12, Column: 7}}}}
 	input := checkinputs.AnalyzerInput{
-		Scripts:      []checkinputs.Script{{Reference: root, Comments: []facts.SourceComment{{Text: "# root", Start: source.Position{Line: 1, Column: 3}}}}},
-		Invoked:      []checkinputs.Script{{Reference: invoked, Comments: []facts.SourceComment{{Text: "# invoked", Start: source.Position{Line: 9, Column: 5}, Placement: facts.TrailingComment}}}},
+		Scripts:      []checkinputs.Script{{Reference: root, Comments: []facts.SourceComment{{Text: "# root", Start: sourcetext.Position{Line: 1, Column: 3}}}}},
+		Invoked:      []checkinputs.Script{{Reference: invoked, Comments: []facts.SourceComment{{Text: "# invoked", Start: sourcetext.Position{Line: 9, Column: 5}, Placement: facts.TrailingComment}}}},
 		ActionInputs: []checkinputs.ActionInput{{Script: inputScript}},
 	}
-	query := func(ctx context.Context, ref source.Reference) []sourceannotations.Comment {
+	query := func(ctx context.Context, ref sourcetext.Reference) []sourceannotations.Comment {
 		t.Helper()
 		comments, err := (sourceAnnotations{}).Comments(ctx, invocationcontext.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 		if err != nil {
@@ -50,7 +50,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	if got := query(ctx, root); len(got) != 1 || got[0].Text != "# root" {
 		t.Fatalf("returned comments alias the snapshot: %+v", got)
 	}
-	for _, forged := range []source.Reference{
+	for _, forged := range []sourcetext.Reference{
 		{Document: "other.yml", Revision: root.Revision, Node: root.Node, Address: root.Address},
 		{Document: root.Document, Revision: "other", Node: root.Node, Address: root.Address},
 		{Document: root.Document, Revision: root.Revision, Node: "other", Address: root.Address},
@@ -62,8 +62,8 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	}
 	for _, scope := range []struct {
 		ctx context.Context
-		ref source.Reference
-	}{{ctx, source.Reference{}}, {t.Context(), root}, {context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(checkinputs.AnalyzerInput{})), root}} {
+		ref sourcetext.Reference
+	}{{ctx, sourcetext.Reference{}}, {t.Context(), root}, {context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(checkinputs.AnalyzerInput{})), root}} {
 		if got := query(scope.ctx, scope.ref); len(got) != 0 {
 			t.Fatalf("unauthorized comments=%+v", got)
 		}
@@ -72,7 +72,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 
 func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
 	t.Parallel()
-	comment := facts.SourceComment{Text: "# unidentified", Start: source.Position{Line: 1, Column: 1}}
+	comment := facts.SourceComment{Text: "# unidentified", Start: sourcetext.Position{Line: 1, Column: 1}}
 	unidentified := checkinputs.Script{Comments: []facts.SourceComment{comment}}
 	input := checkinputs.AnalyzerInput{
 		Scripts:      []checkinputs.Script{unidentified},
@@ -88,11 +88,11 @@ func TestSourceAnnotationsDoNotGrantUnidentifiedScripts(t *testing.T) {
 
 func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 	t.Parallel()
-	ref := source.Reference{Document: "ci.yml", Revision: "root", Node: "step", Address: "jobs.test.steps[0]"}
-	valid := facts.SourceComment{Text: "# shellcheck disable=SC2086", Start: source.Position{Line: 3, Column: 7}}
+	ref := sourcetext.Reference{Document: "ci.yml", Revision: "root", Node: "step", Address: "jobs.test.steps[0]"}
+	valid := facts.SourceComment{Text: "# shellcheck disable=SC2086", Start: sourcetext.Position{Line: 3, Column: 7}}
 	for _, test := range []struct {
 		name, text string
-		start      source.Position
+		start      sourcetext.Position
 		placement  facts.CommentPlacement
 		want       string
 	}{
@@ -100,10 +100,10 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 		{"missing marker", "shellcheck disable=SC2086", valid.Start, facts.LeadingComment, "invalid physical source comment at 3:7"},
 		{"line feed", "# first\n# second", valid.Start, facts.LeadingComment, "invalid physical source comment at 3:7"},
 		{"carriage return", "# first\r# second", valid.Start, facts.LeadingComment, "invalid physical source comment at 3:7"},
-		{"zero line", valid.Text, source.Position{Line: 0, Column: 7}, facts.LeadingComment, "invalid physical source comment at 0:7"},
-		{"negative line", valid.Text, source.Position{Line: -1, Column: 7}, facts.LeadingComment, "invalid physical source comment at -1:7"},
-		{"zero column", valid.Text, source.Position{Line: 3, Column: 0}, facts.LeadingComment, "invalid physical source comment at 3:0"},
-		{"negative column", valid.Text, source.Position{Line: 3, Column: -1}, facts.LeadingComment, "invalid physical source comment at 3:-1"},
+		{"zero line", valid.Text, sourcetext.Position{Line: 0, Column: 7}, facts.LeadingComment, "invalid physical source comment at 0:7"},
+		{"negative line", valid.Text, sourcetext.Position{Line: -1, Column: 7}, facts.LeadingComment, "invalid physical source comment at -1:7"},
+		{"zero column", valid.Text, sourcetext.Position{Line: 3, Column: 0}, facts.LeadingComment, "invalid physical source comment at 3:0"},
+		{"negative column", valid.Text, sourcetext.Position{Line: 3, Column: -1}, facts.LeadingComment, "invalid physical source comment at 3:-1"},
 		{"unknown placement", valid.Text, valid.Start, facts.CommentPlacement(2), "invalid source comment placement 2"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 			}
 		})
 	}
-	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Reference: ref, Comments: []facts.SourceComment{valid, {Text: "#", Start: source.Position{Line: 4, Column: 1}, Placement: facts.TrailingComment}}}}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Reference: ref, Comments: []facts.SourceComment{valid, {Text: "#", Start: sourcetext.Position{Line: 4, Column: 1}, Placement: facts.TrailingComment}}}}}
 	ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
 	got, err := (sourceAnnotations{}).Comments(ctx, invocationcontext.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 	want := []sourceannotations.Comment{

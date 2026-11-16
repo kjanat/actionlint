@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -45,8 +45,8 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 	if _, exists := collection.Declarations.Lookup(graph.Entry().Reference); !exists {
 		return nil, fmt.Errorf("%w: entry source is absent from declaration registry", ErrInvalidBatch)
 	}
-	declarations := make(map[source.Reference]workflows.Step)
-	contents := make(map[source.Reference][]byte)
+	declarations := make(map[sourcetext.Reference]workflows.Step)
+	contents := make(map[sourcetext.Reference][]byte)
 	units := make([]Unit, 0, len(requests))
 	for _, record := range graph.Scripts() {
 		scope := scopes[record.Owner]
@@ -77,7 +77,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			Scope: scope, Execution: request.Execution,
 			Environment:  slices.Clone(request.Environment),
 			Interpreters: request.Interpreters,
-			Origin:       origin, Owner: &finding.Owner{Job: job, Step: source.NilUnlessPresent(decl.Position())},
+			Origin:       origin, Owner: &finding.Owner{Job: job, Step: sourcetext.NilUnlessPresent(decl.Position())},
 			Path: scope.Deployment.SourcePath(),
 		}
 		captured, found := collection.Declarations.LookupDocument(record.Declaration.Document)

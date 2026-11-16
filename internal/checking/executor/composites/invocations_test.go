@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
@@ -57,7 +57,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 	}
 	explicit := map[string]struct{}{}
 	for path, content := range actions {
-		captured, err := f.snapshots.Capture(filepath.Join(directory, filepath.FromSlash(path)), []byte(content), source.YAML)
+		captured, err := f.snapshots.Capture(filepath.Join(directory, filepath.FromSlash(path)), []byte(content), sourcetext.YAML)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ jobs:
 				}
 			}
 			root, _ := f.root.WorkflowView()
-			var rootSites []source.Reference
+			var rootSites []sourcetext.Reference
 			for _, step := range slices.Concat(workflowStepViews(t, root, "first"), workflowStepViews(t, root, "second")) {
 				ref := stepReference(t, f.root, step)
 				rootSites = append(rootSites, ref)
@@ -154,7 +154,7 @@ jobs:
 			seen := map[invocation.ID]bool{}
 			for i, unit := range result.Batch.Scripts {
 				chain := []invocation.ID{graph.RootID()}
-				sites := []source.Reference{rootSites[i/2]}
+				sites := []sourcetext.Reference{rootSites[i/2]}
 				if middle {
 					ref := stepReference(t, outer, outerSteps[0])
 					sites = append(sites, ref)

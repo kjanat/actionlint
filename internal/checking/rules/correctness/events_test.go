@@ -3,7 +3,7 @@ package correctness
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -20,7 +20,7 @@ func TestSchemaNestedTimezoneAliases(t *testing.T) {
 		t.Run(tz.name, func(t *testing.T) {
 			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
-			rule.checkTimezone(ownedString(&definition.String{Value: tz.name, Pos: &source.Position{Line: 1, Column: 1}}))
+			rule.checkTimezone(ownedString(&definition.String{Value: tz.name, Pos: &sourcetext.Position{Line: 1, Column: 1}}))
 			if valid := len(rule.Findings) == 0; valid != tz.valid {
 				t.Fatalf("valid=%v, expected %v: %v", valid, tz.valid, rule.Findings)
 			}
@@ -49,7 +49,7 @@ func TestWebhookOnlyActivitiesRejected(t *testing.T) {
 		t.Run(tc.event+"/"+tc.activity, func(t *testing.T) {
 			t.Parallel()
 			rule := &eventsCheck{Rule: "events"}
-			pos := &source.Position{Line: 1, Column: 1}
+			pos := &sourcetext.Position{Line: 1, Column: 1}
 			rule.checkTypes(tc.event, pos, []*definition.String{{Value: tc.activity, Pos: pos}}, events.AllWebhookTypes[tc.event])
 			if valid := len(rule.Findings) == 0; valid != tc.valid {
 				t.Fatalf("valid=%v, want %v: %v", valid, tc.valid, rule.Findings)

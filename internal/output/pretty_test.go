@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/mattn/go-runewidth"
@@ -78,9 +78,9 @@ func TestPrettyRemoteLocationsAndURLsStayIntact(t *testing.T) {
 	for _, hyperlinks := range []bool{false, true} {
 		var out strings.Builder
 		f := publishedFinding(results.Diagnostic{
-			Path: address, Start: source.Position{Line: 168, Column: 11},
+			Path: address, Start: sourcetext.Position{Line: 168, Column: 11},
 			Message: "See " + address + ".", DocumentationURL: address,
-			Related: []results.Related{{Path: address, Start: source.Position{Line: 10, Column: 2}}},
+			Related: []results.Related{{Path: address, Start: sourcetext.Position{Line: 10, Column: 2}}},
 		}, nil)
 		if err := printPretty(&out, f, 100, hyperlinks, false, ""); err != nil {
 			t.Fatal(err)
@@ -120,19 +120,19 @@ func TestPrettyRemoteLocationLinksToLine(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		path     string
-		position source.Position
+		position sourcetext.Position
 		want     string
 	}{
 		{
-			name: "line", path: address, position: source.Position{Line: 42, Column: 7},
+			name: "line", path: address, position: sourcetext.Position{Line: 42, Column: 7},
 			want: "  --> \x1b]8;;" + address + "#L42\x1b\\" + address + "\x1b]8;;\x1b\\ (line 42, column 7)\n",
 		},
 		{
-			name: "existing fragment", path: address + "#readme", position: source.Position{Line: 3, Column: 1},
+			name: "existing fragment", path: address + "#readme", position: sourcetext.Position{Line: 3, Column: 1},
 			want: "  --> \x1b]8;;" + address + "#L3\x1b\\" + address + "#readme\x1b]8;;\x1b\\ (line 3, column 1)\n",
 		},
 		{
-			name: "no line", path: address, position: source.Position{},
+			name: "no line", path: address, position: sourcetext.Position{},
 			want: "  --> \x1b]8;;" + address + "\x1b\\" + address + "\x1b]8;;\x1b\\ (line 0, column 0)\n",
 		},
 	} {
@@ -179,8 +179,8 @@ func TestPrettyDiagnostic(t *testing.T) {
 	}
 	d := results.Diagnostic{
 		Severity: "warning", Rule: "expression-reference", Message: "unknown variable",
-		Path: "ci.yml", Start: source.Position{Line: 1, Column: 3}, End: source.Position{Line: 1, Column: 6},
-		Help: "Use a declared value.", Related: []results.Related{{Message: "declaration", Path: "other.yml", Start: source.Position{Line: 4, Column: 2}}},
+		Path: "ci.yml", Start: sourcetext.Position{Line: 1, Column: 3}, End: sourcetext.Position{Line: 1, Column: 6},
+		Help: "Use a declared value.", Related: []results.Related{{Message: "declaration", Path: "other.yml", Start: sourcetext.Position{Line: 4, Column: 2}}},
 	}
 	var out strings.Builder
 	if err := r.Render(&out, RenderedReport{Findings: []results.PublishedDiagnostic{publishedFinding(d, []byte("  bad"))}}); err != nil {
@@ -200,7 +200,7 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 	rule := Rule{Name: "shellcheck", Help: "Configure this plugin.", Explanation: "Checks shell snippets.", DocumentationURL: "https://example.com/rule"}
 	d := results.Diagnostic{
 		Rule: rule.Name, Code: "SC2035", Severity: "info", Message: "Use ./*glob* or -- *glob*",
-		Path: "ci.yml", Start: source.Position{Line: 440, Column: 36},
+		Path: "ci.yml", Start: sourcetext.Position{Line: 440, Column: 36},
 		Help: rule.Help, Explanation: rule.Explanation,
 		DocumentationURL: rule.DocumentationURL,
 	}
@@ -300,7 +300,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 		{"abc", 4, 4, "abc", 3, 1},
 		{"abc", 8, 8, "abc", -1, 1},
 	} {
-		f := publishedFinding(results.Diagnostic{Start: source.Position{Line: 1, Column: tc.column}, End: source.Position{Line: 1, Column: tc.end}}, []byte(tc.line))
+		f := publishedFinding(results.Diagnostic{Start: sourcetext.Position{Line: 1, Column: tc.column}, End: sourcetext.Position{Line: 1, Column: tc.end}}, []byte(tc.line))
 		line, start, length := prettySource(f, 30)
 		if line != tc.want || start != tc.start || length != tc.length {
 			t.Errorf("%q: got %q %d %d, want %q %d %d", tc.line, line, start, length, tc.want, tc.start, tc.length)
@@ -326,7 +326,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 
 func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	t.Parallel()
-	d := results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: source.Position{Line: 8, Column: 4}}
+	d := results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: sourcetext.Position{Line: 8, Column: 4}}
 	renderer, err := New(outputformat.Pretty, "", false, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -348,7 +348,7 @@ func TestRendererColorMode(t *testing.T) {
 	t.Parallel()
 	d := results.Diagnostic{
 		Severity: "warning", Rule: "expression-reference", Message: "unknown variable",
-		Path: "ci.yml", Start: source.Position{Line: 1, Column: 3}, End: source.Position{Line: 1, Column: 6},
+		Path: "ci.yml", Start: sourcetext.Position{Line: 1, Column: 3}, End: sourcetext.Position{Line: 1, Column: 6},
 	}
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	for _, format := range []outputformat.Format{outputformat.Pretty, outputformat.Text, outputformat.Oneline} {

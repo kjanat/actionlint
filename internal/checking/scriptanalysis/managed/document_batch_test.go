@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
@@ -16,7 +16,7 @@ func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
 	valid := documentBatchFixture(t, 1)
 	missingFact := valid
 	missingFact.Scripts = append([]scriptanalysis.Unit(nil), valid.Scripts...)
-	missingFact.Scripts[0].Reference = source.Reference{}
+	missingFact.Scripts[0].Reference = sourcetext.Reference{}
 	foreign := valid
 	foreign.Scripts = append([]scriptanalysis.Unit(nil), valid.Scripts...)
 	foreign.Scripts[0].Occurrence = "unknown"

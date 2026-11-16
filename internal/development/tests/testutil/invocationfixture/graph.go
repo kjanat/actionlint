@@ -4,15 +4,15 @@ package invocationfixture
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
 // Workflow is the entry declaration of every fixture graph.
-var Workflow = source.Reference{Document: "workflow", Revision: "r", Node: "document"}
+var Workflow = sourcetext.Reference{Document: "workflow", Revision: "r", Node: "document"}
 
 // Action is the body the fixture call expands into.
-var Action = source.Reference{Document: "action", Revision: "r", Node: "document"}
+var Action = sourcetext.Reference{Document: "action", Revision: "r", Node: "document"}
 
 // Script declares one occurrence. Entry scripts belong to Workflow, others to
 // the call's Action body. A non-empty Input makes it an action-input script.
@@ -29,7 +29,7 @@ func Graph(tb testing.TB, scripts ...Script) invocation.Graph {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	add := func(owner invocation.Context, body source.Reference, entry bool) {
+	add := func(owner invocation.Context, body sourcetext.Reference, entry bool) {
 		for _, script := range scripts {
 			if script.Entry != entry {
 				continue
@@ -38,14 +38,14 @@ func Graph(tb testing.TB, scripts ...Script) invocation.Graph {
 			if script.Input != "" {
 				kind = invocation.ScriptActionInput
 			}
-			declaration := source.Reference{Document: body.Document, Revision: body.Revision, Node: script.Node}
+			declaration := sourcetext.Reference{Document: body.Document, Revision: body.Revision, Node: script.Node}
 			if _, err := builder.AddScript(owner, declaration, kind, script.Input); err != nil {
 				tb.Fatal(err)
 			}
 		}
 	}
 	add(builder.RootContext(), Workflow, true)
-	site := source.Reference{Document: Workflow.Document, Revision: Workflow.Revision, Node: "call"}
+	site := sourcetext.Reference{Document: Workflow.Document, Revision: Workflow.Revision, Node: "call"}
 	ticket, err := builder.Begin(builder.RootContext(), site, invocation.Facts{Condition: invocation.ConditionEnabled, Uses: "./action", HasUses: true})
 	if err != nil {
 		tb.Fatal(err)

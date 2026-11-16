@@ -3,7 +3,7 @@ package sourcemap
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestUnicodeEscapeBounds(t *testing.T) {
@@ -29,7 +29,7 @@ func TestUnicodeEscapeBounds(t *testing.T) {
 		t.Run(tc.escape, func(t *testing.T) {
 			t.Parallel()
 			source := `"` + tc.escape + `"`
-			got, err := NewDocument(source).Decode(sourcepos.Position{Line: 1, Column: 1}, Context{Indent: -1})
+			got, err := NewDocument(source).Decode(sourcetext.Position{Line: 1, Column: 1}, Context{Indent: -1})
 			if (err == nil) != tc.valid {
 				t.Fatalf("Decode(%q) error = %v, valid = %v", source, err, tc.valid)
 			}

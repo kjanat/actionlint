@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/output"
 )
@@ -116,7 +116,7 @@ permissions: {}
 				t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 			}
 			assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
-			if finding.Start != (source.Position{Line: tc.line, Column: 6}) || finding.End != (source.Position{Line: tc.line, Column: 12}) {
+			if finding.Start != (sourcetext.Position{Line: tc.line, Column: 6}) || finding.End != (sourcetext.Position{Line: tc.line, Column: 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {

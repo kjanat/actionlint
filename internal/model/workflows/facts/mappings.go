@@ -1,14 +1,14 @@
 package facts
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // Mapping contains normalized names and source provenance for a declaration.
 // Complete is false when an insertion or key depends on runtime values.
 type Mapping struct {
-	Reference source.Reference
+	Reference sourcetext.Reference
 	Scope     string
 	Complete  bool
 	// Entries are the mapping's declarations in source traversal order.

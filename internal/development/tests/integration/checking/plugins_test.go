@@ -14,7 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -33,8 +33,8 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (source.Position{Line: 6, Column: 25}) ||
-		result.Diagnostics[0].End != (source.Position{Line: 6, Column: 32}) {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (sourcetext.Position{Line: 6, Column: 25}) ||
+		result.Diagnostics[0].End != (sourcetext.Position{Line: 6, Column: 32}) {
 		t.Fatalf("escaped CR lost token coordinates: %+v", result.Diagnostics)
 	}
 }

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -21,14 +21,14 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 		unused       []string
 	}{
 		{name: "none", source: "run: echo ok # ignore[expression-reference]\n", unused: []string{"expression-reference"}},
-		{name: "used", source: "run: echo ok # actionlint-ignore expression-reference\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 1}}}},
-		{name: "partial", source: "run: | # ignore[expression-reference shellcheck]\n  echo hi\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 2}}}, unused: []string{"shellcheck"}},
+		{name: "used", source: "run: echo ok # actionlint-ignore expression-reference\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcetext.Position{Line: 1}}}},
+		{name: "partial", source: "run: | # ignore[expression-reference shellcheck]\n  echo hi\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcetext.Position{Line: 2}}}, unused: []string{"shellcheck"}},
 		{name: "next line", source: "# ignore-next-line expression-reference\nrun: echo ok\n", unused: []string{"expression-reference"}},
-		{name: "wrong declaration", source: "run: echo ok # ignore expression-reference\nnext: value\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 2}}}, unused: []string{"expression-reference"}},
-		{name: "plugin", source: "run: echo ok # ignore plugin-rule\n", findings: []*finding.Finding{{Rule: "plugin-rule", Start: sourcepos.Position{Line: 1}}}},
+		{name: "wrong declaration", source: "run: echo ok # ignore expression-reference\nnext: value\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcetext.Position{Line: 2}}}, unused: []string{"expression-reference"}},
+		{name: "plugin", source: "run: echo ok # ignore plugin-rule\n", findings: []*finding.Finding{{Rule: "plugin-rule", Start: sourcetext.Position{Line: 1}}}},
 		{name: "explicit audit exception", source: "run: echo ok # ignore unused-suppression expression-reference\n"},
 		{name: "script text", source: "run: |\n  # ignore expression-reference\n  echo hi\n"},
-		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*finding.Finding{{Rule: "shellcheck", Start: sourcepos.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 2}}}},
+		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*finding.Finding{{Rule: "shellcheck", Start: sourcetext.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 2}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -75,7 +75,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*finding.Finding{{Rule: tc.canonical, Start: sourcepos.Position{Line: 1}}}, nil, nil)
+				findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*finding.Finding{{Rule: tc.canonical, Start: sourcetext.Position{Line: 1}}}, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -94,7 +94,7 @@ func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
 			t.Parallel()
 			source := []byte("run: echo ok # ignore[" + selector + "]\n")
 			findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, nil,
-				[]*finding.Finding{{Rule: "missing-permissions", Start: sourcepos.Position{Line: 1}}}, nil, nil)
+				[]*finding.Finding{{Rule: "missing-permissions", Start: sourcetext.Position{Line: 1}}}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +121,7 @@ func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			item := &finding.Finding{Rule: "job-timeout", Path: path, Start: sourcepos.Position{Line: 1}}
+			item := &finding.Finding{Rule: "job-timeout", Path: path, Start: sourcetext.Position{Line: 1}}
 			got, err := publishFindings(t, policy.Policy{Path: path, ConfigPath: path, Root: root}, cfg, []*finding.Finding{item}, nil, nil)
 			if err != nil {
 				t.Fatal(err)

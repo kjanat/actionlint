@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -207,9 +207,9 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d checkin
 	}
 	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
 	finding.Message = r.message(d, d.Location.Row, d.Location.Column)
-	finding.Start = source.Position{Line: d.Location.Row, Column: d.Location.Column}
+	finding.Start = sourcetext.Position{Line: d.Location.Row, Column: d.Location.Column}
 	if d.EndLocation.Row >= d.Location.Row && d.EndLocation.Column > 0 {
-		finding.End = source.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
+		finding.End = sourcetext.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
 	}
 	if key := script.Key(); key != nil {
 		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}

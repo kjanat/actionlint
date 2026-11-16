@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
@@ -382,8 +382,8 @@ func (rule *schemaChecker) expressionFindings(value *ExprString, field, location
 	return read.Problems
 }
 
-func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *source.Position, code ProblemCode, format string, args ...any) {
-	d := MetadataProblem{Path: meta.Path(), Start: source.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
+func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *sourcetext.Position, code ProblemCode, format string, args ...any) {
+	d := MetadataProblem{Path: meta.Path(), Start: sourcetext.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
 	if end != nil {
 		d.End = *end
 	}

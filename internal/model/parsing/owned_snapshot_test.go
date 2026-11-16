@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -80,7 +80,7 @@ func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
 	if len(refs.Steps) != 1 || refs.Steps[0] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
 		t.Fatal("final declaration projection lost the anonymous step")
 	}
-	refs.Steps[0] = source.Reference{}
+	refs.Steps[0] = sourcetext.Reference{}
 	if snapshot.Bound().SourceIndex().Steps[0] != view.Reference() {
 		t.Fatal("consumer changed canonical index")
 	}
@@ -115,7 +115,7 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 		t.Fatal("missing declaration accepted")
 	}
 	zero := workflows.Step{}
-	if zero.Present() || zero.Reference() != (source.Reference{}) {
+	if zero.Present() || zero.Reference() != (sourcetext.Reference{}) {
 		t.Fatal("zero handle exposes declarations")
 	}
 }

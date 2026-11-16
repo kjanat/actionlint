@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -13,8 +13,8 @@ import (
 func TestResolvedReferenceUsesCapturedTargets(t *testing.T) {
 	t.Parallel()
 	commit := strings.Repeat("a", 40)
-	ref := source.Reference{Document: "workflow.yml", Revision: "captured", Node: "step"}
-	dependency := facts.Dependency{Reference: ref, Uses: "owner/repo/subpath@v1", Start: source.Position{Line: 3, Column: 15}, End: source.Position{Line: 3, Column: 40}}
+	ref := sourcetext.Reference{Document: "workflow.yml", Revision: "captured", Node: "step"}
+	dependency := facts.Dependency{Reference: ref, Uses: "owner/repo/subpath@v1", Start: sourcetext.Position{Line: 3, Column: 15}, End: sourcetext.Position{Line: 3, Column: 40}}
 	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []facts.Dependency{dependency}}
 	rule := NewResolvedReferenceCheck()
 	if findings, err := rule.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {

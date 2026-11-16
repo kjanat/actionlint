@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func TestResolvedWorkflowLookupNeverLoadsAndDetachesMetadata(t *testing.T) {
@@ -72,7 +72,7 @@ func TestInvalidWorkflowMetadataRejectsQuarantinedCapture(t *testing.T) {
 	if _, err := cache.LoadForCall(t.Context(), "./broken.yml"); err == nil {
 		t.Fatal("broken metadata was accepted")
 	}
-	captured, err := store.Read(t.Context(), filepath.Join(root, "broken.yml"), source.YAML)
+	captured, err := store.Read(t.Context(), filepath.Join(root, "broken.yml"), sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}

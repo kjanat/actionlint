@@ -3,7 +3,7 @@ package composites
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -27,7 +27,7 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
 		return executor.SourceInput(document, path, content, refs.Document), scriptanalysis.ErrInvalidBatch
 	}
-	if input.Reference == (source.Reference{}) {
+	if input.Reference == (sourcetext.Reference{}) {
 		input.Reference = input.CallGraph.Entry().Reference
 	} else if input.Reference != input.CallGraph.Entry().Reference {
 		return executor.SourceInput(document, path, content, refs.Document), scriptanalysis.ErrInvalidBatch

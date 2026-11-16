@@ -4,7 +4,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestIndexedColumnsMatchRawCodepointColumns(t *testing.T) {
@@ -13,7 +13,7 @@ func TestIndexedColumnsMatchRawCodepointColumns(t *testing.T) {
 		document := NewDocument(line)
 		for column := 0; column <= utf8.RuneCountInString(line)+2; column++ {
 			indexed, indexedOK := document.ByteOffset(0, column)
-			raw, rawOK := source.ByteOffsetAtColumn(line, column)
+			raw, rawOK := sourcetext.ByteOffsetAtColumn(line, column)
 			if indexedOK != rawOK || indexedOK && indexed != raw {
 				t.Errorf("line %q column %d: indexed=(%d,%v), raw=(%d,%v)", line, column, indexed, indexedOK, raw, rawOK)
 			}

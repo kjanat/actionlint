@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
@@ -135,12 +135,12 @@ export default defineDocumentProvider({
 	content := "on: push\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/action@v1\n"
 	path := filepath.Join(runtimeDirectory, "workflow.yml")
 	sum := sha256.Sum256([]byte(content))
-	revision, err := source.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := sourcetext.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependency := facts.Dependency{Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: source.Position{Line: 6, Column: 15}, End: source.Position{Line: 6, Column: 30}}
-	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: source.YAML, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}, Dependencies: []facts.Dependency{dependency}}
+	dependency := facts.Dependency{Reference: sourcetext.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcetext.Position{Line: 6, Column: 15}, End: sourcetext.Position{Line: 6, Column: 30}}
+	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcetext.YAML, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}, Dependencies: []facts.Dependency{dependency}}
 	findings, err := checker.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)

@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -31,11 +31,11 @@ func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256([]byte(content))
-	revision, err := source.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := sourcetext.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return checkinputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
+	return checkinputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcetext.YAML, Reference: sourcetext.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
 }
 
 func documentManifest(spec toolmanifest.ProcessSpec) toolmanifest.Manifest {
@@ -74,7 +74,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			t.Parallel()
 			input := documentInput(t, "on: push\njobs:\n  one:\n    if: ${{ github.actor == 'raw' }}\n")
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
-			input.Dependencies = []facts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: source.Position{Line: 2, Column: 1}, End: source.Position{Line: 2, Column: 5}}, {Reference: source.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
+			input.Dependencies = []facts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: sourcetext.Position{Line: 2, Column: 1}, End: sourcetext.Position{Line: 2, Column: 5}}, {Reference: sourcetext.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
 			manifest := documentManifest(toolmanifest.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderNone}})
 			manifest.Rule.RequiredInputs = []rule.InputKind{rule.Dependencies}
 			manifest.Capabilities.Resources = []toolmanifest.Resource{toolmanifest.ResourceDirectory}
@@ -128,7 +128,7 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 		t.Fatal(findings, err)
 	}
 	finding := findings[0]
-	if finding.Start != (source.Position{Line: 3, Column: 1}) || finding.End != (source.Position{Line: 3, Column: 4}) || finding.Path != input.Path || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[input.Path] != input.Revision.Digest() || finding.Fixes[0].Edits[0].Start != finding.Start {
+	if finding.Start != (sourcetext.Position{Line: 3, Column: 1}) || finding.End != (sourcetext.Position{Line: 3, Column: 4}) || finding.Path != input.Path || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[input.Path] != input.Revision.Digest() || finding.Fixes[0].Edits[0].Start != finding.Start {
 		t.Fatal("document coordinates/fix provenance lost", finding)
 	}
 	manifest.Capabilities.Fixes = false
@@ -161,7 +161,7 @@ func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 				t.Fatal(err)
 			}
 			findings, err := checker.CheckDocument(t.Context(), input)
-			if err != nil || len(findings) != 1 || findings[0].Start != (source.Position{Line: 2, Column: 2}) {
+			if err != nil || len(findings) != 1 || findings[0].Start != (sourcetext.Position{Line: 2, Column: 2}) {
 				t.Fatal(findings, err)
 			}
 		})

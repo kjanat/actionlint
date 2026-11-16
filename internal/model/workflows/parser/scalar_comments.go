@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -22,8 +22,8 @@ type scalarCommentNodes struct {
 // Index physical comment attachments before building the parser projection. Source
 // lines only recover positions of comments already classified by the YAML parser.
 func (p *Parser) indexScalarComments(root *codec.Node) {
-	p.scalarComments = make(map[source.Position]scalarCommentNodes)
-	p.scalarDeclarations = make(map[source.Position]scalarCommentNodes)
+	p.scalarComments = make(map[sourcetext.Position]scalarCommentNodes)
+	p.scalarDeclarations = make(map[sourcetext.Position]scalarCommentNodes)
 	var visit func(*codec.Node, []string)
 	visit = func(node *codec.Node, inherited []string) {
 		if node == nil {
@@ -74,7 +74,7 @@ func (p *Parser) indexScalarComments(root *codec.Node) {
 
 // ScriptSourceForDeclaration attaches comments at the alias use to source spans
 // from the anchored scalar.
-func (p *Parser) ScriptSourceForDeclaration(node *codec.Node, declaration *source.Position) *definition.ScriptSource {
+func (p *Parser) ScriptSourceForDeclaration(node *codec.Node, declaration *sourcetext.Position) *definition.ScriptSource {
 	scriptSource := p.ScriptSource(node)
 	if scriptSource == nil || declaration == nil {
 		return scriptSource
@@ -85,8 +85,8 @@ func (p *Parser) ScriptSourceForDeclaration(node *codec.Node, declaration *sourc
 	}
 	alias := attachment.scalar
 	physical := &definition.ScriptSource{
-		ContentStart: source.Position{Line: alias.Line, Column: alias.Column},
-		ScalarEnd:    source.Position{Line: alias.Line, Column: alias.Column + utf8.RuneCountInString(alias.Value) + 1},
+		ContentStart: sourcetext.Position{Line: alias.Line, Column: alias.Column},
+		ScalarEnd:    sourcetext.Position{Line: alias.Line, Column: alias.Column + utf8.RuneCountInString(alias.Value) + 1},
 	}
 	scriptSource.Comments = attachment.comments(p.sourceLines, physical)
 	return scriptSource
@@ -112,7 +112,7 @@ func (nodes scalarCommentNodes) comments(lines []string, scriptSource *definitio
 			break
 		}
 		column := strings.Index(lines[line-1], "#")
-		comments = append(comments, definition.ScalarComment{Text: text, Pos: source.Position{Line: line, Column: utf8.RuneCountInString(lines[line-1][:column]) + 1}})
+		comments = append(comments, definition.ScalarComment{Text: text, Pos: sourcetext.Position{Line: line, Column: utf8.RuneCountInString(lines[line-1][:column]) + 1}})
 	}
 	slices.Reverse(comments)
 	for _, text := range parts(nodes.trailing) {
@@ -122,7 +122,7 @@ func (nodes scalarCommentNodes) comments(lines []string, scriptSource *definitio
 				continue
 			}
 			prefix, _, _ := strings.CutLast(physical, text)
-			pos := source.Position{Line: line, Column: utf8.RuneCountInString(prefix) + 1}
+			pos := sourcetext.Position{Line: line, Column: utf8.RuneCountInString(prefix) + 1}
 			// Trailing comments lie before block/quoted content or after its closing token.
 			// Matching text inside a scalar is not another attachment.
 			before := line < scriptSource.ContentStart.Line || line == scriptSource.ContentStart.Line && (nodes.block || pos.Column < scriptSource.ContentStart.Column)

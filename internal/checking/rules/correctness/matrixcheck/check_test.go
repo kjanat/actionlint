@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -117,13 +117,13 @@ func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
 	}
 	resolution := matrix.Resolve(workflow.Jobs["test"].Strategy)
 	findings := Check(resolution, false)
-	wantPosition := sourcepos.Position{Line: 10, Column: 13}
+	wantPosition := sourcetext.Position{Line: 10, Column: 13}
 	wantMessage := `"missing" in "exclude" section does not exist in matrix. available matrix configurations are "arch", "os"`
 	if len(findings) != 1 || findings[0].Start != wantPosition || findings[0].Message != wantMessage {
 		t.Fatalf("unknown axis diagnostic=%v, want %v: %s", findings, wantPosition, wantMessage)
 	}
 	original := resolution.Exclusions()[0]
-	newOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 25, Column: 30}}}
+	newOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 25, Column: 30}}}
 	derived := original.With("extra", value.YAMLScalar("new", "!!str", newOrigin))
 	replaced := derived.With("MISSING", value.YAMLScalar("replacement", "!!str", newOrigin))
 	if original.KeyOrigin("missing").Span.Start != wantPosition || derived.KeyOrigin("missing").Span.Start != wantPosition || replaced.KeyOrigin("missing").Span.Start != wantPosition || derived.KeyOrigin("extra") != newOrigin {

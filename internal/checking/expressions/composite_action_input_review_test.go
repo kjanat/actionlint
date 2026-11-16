@@ -3,7 +3,7 @@ package expressions
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -19,7 +19,7 @@ func TestCompositeActionInputPreservesPreviousFindings(t *testing.T) {
 	view := ownedWorkflowFixture(workflow)
 	job := testJob(t, view, "test")
 	rule.BeginComposite(workflows.ActionBody{})
-	rule.Error(&source.Position{Line: 1, Column: 1}, "existing finding")
+	rule.Error(&sourcetext.Position{Line: 1, Column: 1}, "existing finding")
 	originalFinding := rule.errs[0]
 	if err := rule.CheckCompositeStep(testStep(t, job, 0)); err != nil {
 		t.Fatal(err)

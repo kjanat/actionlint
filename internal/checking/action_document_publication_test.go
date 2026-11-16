@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
@@ -43,7 +43,7 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 				documents := actionDocuments{byPath: map[string]outline.Action{}}
 				_, _, captures := newCapturedSnapshots(t, filepath.Dir(physical))
 				add := func(path string) {
-					captured, err := captures.Capture(path, nil, source.YAML)
+					captured, err := captures.Capture(path, nil, sourcetext.YAML)
 					if err != nil {
 						t.Error(err)
 						return

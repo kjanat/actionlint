@@ -61,7 +61,7 @@ For each fact the rule uses, read where it is produced and how existing checks
 interpret it. Check which inputs produce a known value, an unknown value, or an
 error before deciding when to report a finding.
 
-`internal/results/finding`, `internal/results`, and `internal/input/source` carry findings, fixes, and source
+`internal/results/finding`, `internal/results`, and `internal/input/sourcetext` carry findings, fixes, and source
 identity. Trace the adapter through `internal/checking/source_admission.go`
 before attaching a finding to another file. Use existing span/source-map helpers
 for decoded scalars; decoded string offsets are not YAML source offsets.

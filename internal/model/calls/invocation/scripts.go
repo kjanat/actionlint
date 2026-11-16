@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Script binds one declaration to the entry or expanded call executing it.
 type Script struct {
 	ID          ID
 	Owner       ID
-	Declaration source.Reference
+	Declaration sourcetext.Reference
 	Kind        ScriptKind
 	Input       string
 }
 
 // AddScript registers a declaration while its owner is the current traversal body.
-func (b *Builder) AddScript(context Context, declaration source.Reference, kind ScriptKind, input string) (ID, error) {
+func (b *Builder) AddScript(context Context, declaration sourcetext.Reference, kind ScriptKind, input string) (ID, error) {
 	if !b.Owns(context) {
 		return "", ErrForeignContext
 	}

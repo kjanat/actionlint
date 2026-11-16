@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -12,14 +12,14 @@ import (
 
 func TestSuppressionUseAcrossInvocations(t *testing.T) {
 	t.Parallel()
-	ref := source.Reference{Document: "shared-action", Revision: "revision-one"}
-	position := source.Position{Line: 4, Column: 15}
+	ref := sourcetext.Reference{Document: "shared-action", Revision: "revision-one"}
+	position := sourcetext.Position{Line: 4, Column: 15}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
 	candidate := func(document, revision, rule string) *finding.Finding {
 		return &finding.Finding{
 			Rule: "unused-suppression", Start: position,
-			Reference: &source.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: rule,
+			Reference: &sourcetext.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: rule,
 		}
 	}
 	files := []evaluatedBatch{
@@ -39,8 +39,8 @@ func TestSuppressionUseAcrossInvocations(t *testing.T) {
 func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 	t.Parallel()
 	const content = "run: echo ok # ignore shellcheck expression-reference -- keep reason\n"
-	position := source.Position{Line: 1, Column: strings.Index(content, "#") + 1}
-	ref := source.Reference{Document: "physical-action.yml", Revision: source.ContentDigest([]byte(content))}
+	position := sourcetext.Position{Line: 1, Column: strings.Index(content, "#") + 1}
+	ref := sourcetext.Reference{Document: "physical-action.yml", Revision: sourcetext.ContentDigest([]byte(content))}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
 	files := []evaluatedBatch{{Policy: Policy{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}
@@ -62,12 +62,12 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 
 func TestIncompleteSuppressionInvocationInvalidatesOnlyItsRevision(t *testing.T) {
 	t.Parallel()
-	ref := source.Reference{Document: "shared-action", Revision: "revision-one"}
+	ref := sourcetext.Reference{Document: "shared-action", Revision: "revision-one"}
 	var usage suppressionUses
 	checks := []report.IncompleteCheck{{Source: ref}}
 	candidate := func(document, revision string) *finding.Finding {
 		return &finding.Finding{
-			Rule: "unused-suppression", Reference: &source.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
+			Rule: "unused-suppression", Reference: &sourcetext.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
 		}
 	}
 	files := []evaluatedBatch{

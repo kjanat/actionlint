@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -14,7 +14,7 @@ import (
 func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (diagnostics []results.PublishedDiagnostic) {
 	type location struct {
 		project, path, rule string
-		start               source.Position
+		start               sourcetext.Position
 	}
 	seen := make(map[location][]int)
 	var retained []*finding.Finding
@@ -37,7 +37,7 @@ func retain(files []evaluatedBatch, authority map[*finding.Finding]obligation) (
 		finding finding.MetadataKey
 	}
 	declarations := make(map[declarationLocation]bool)
-	parseDeclarations := make(map[source.Revision]bool)
+	parseDeclarations := make(map[sourcetext.Revision]bool)
 	for _, file := range files {
 		project := file.Project
 		for _, finding := range file.Findings {

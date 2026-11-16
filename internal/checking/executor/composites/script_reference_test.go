@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -68,7 +68,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	cache := localactions.NewCache(t.Context(), root, nil)
-	actionCapture, err := snapshots.Capture(actionPath, actionContent, source.YAML)
+	actionCapture, err := snapshots.Capture(actionPath, actionContent, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestMappedCompositeReferencesMatchSourceIndexes(t *testing.T) {
 		t.Fatalf("script count = %d, want 4", len(result.Batch.Scripts))
 	}
 	indexes := parsing.References(path, content, document, result.Sources, files.PhysicalPath)
-	declarations := map[source.Reference]bool{}
+	declarations := map[sourcetext.Reference]bool{}
 	for _, reference := range indexes[actionPath].Steps {
 		declarations[reference] = true
 	}

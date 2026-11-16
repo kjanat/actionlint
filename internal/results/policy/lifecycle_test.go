@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -40,7 +40,7 @@ func lifecycleFinding(t *testing.T, asOf string, current bool) *finding.Finding 
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &finding.Finding{Rule: "runner-support", Code: "unsupported", Severity: "warning", Message: "retirement", Start: source.Position{Line: 2, Column: 1}, LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.Runners, Name: "runner", Kind: lifecycle.SupportEnds, Service: svc, Effective: lifecycleDate(t, "2026-12-01"), AsOf: lifecycleDate(t, asOf), Current: current}}
+	return &finding.Finding{Rule: "runner-support", Code: "unsupported", Severity: "warning", Message: "retirement", Start: sourcetext.Position{Line: 2, Column: 1}, LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.Runners, Name: "runner", Kind: lifecycle.SupportEnds, Service: svc, Effective: lifecycleDate(t, "2026-12-01"), AsOf: lifecycleDate(t, asOf), Current: current}}
 }
 
 func lifecycleRulesConfig(t *testing.T, text string) *configuration.Config {

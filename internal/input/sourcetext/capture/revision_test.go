@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestRevisionLookupRequiresSealingAndPerformsNoIO(t *testing.T) {
@@ -23,7 +23,7 @@ func TestRevisionLookupRequiresSealingAndPerformsNoIO(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	snapshot, err := store.Read(t.Context(), path, source.YAML)
+	snapshot, err := store.Read(t.Context(), path, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestRevisionLookupRequiresSealingAndPerformsNoIO(t *testing.T) {
 	}
 	readCount, resolveCount := reads.Load(), resolves.Load()
 	got, ok := store.Revision(snapshot.Revision())
-	if !ok || got.Revision() != snapshot.Revision() || got.Coordinates() != source.YAML {
+	if !ok || got.Revision() != snapshot.Revision() || got.Coordinates() != sourcetext.YAML {
 		t.Fatal("sealed revision unavailable")
 	}
 	data := got.Bytes()
@@ -44,14 +44,14 @@ func TestRevisionLookupRequiresSealingAndPerformsNoIO(t *testing.T) {
 	if !ok || string(again.Bytes()) != "abc" {
 		t.Fatal("snapshot bytes were mutable")
 	}
-	stale, err := source.NewRevision(snapshot.Revision().Document(), strings.Repeat("a", 64))
+	stale, err := sourcetext.NewRevision(snapshot.Revision().Document(), strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := store.Revision(stale); ok {
 		t.Fatal("stale revision accepted")
 	}
-	if _, ok := store.Revision(source.Revision{}); ok {
+	if _, ok := store.Revision(sourcetext.Revision{}); ok {
 		t.Fatal("zero revision accepted")
 	}
 	if reads.Load() != readCount || resolves.Load() != resolveCount {

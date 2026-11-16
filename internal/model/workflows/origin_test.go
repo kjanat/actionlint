@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -18,14 +18,14 @@ func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			value := &definition.String{Value: tc.value}
-			step := &definition.Step{Pos: &source.Position{Line: 3, Column: 7}, ID: value, Name: value, Exec: &definition.ExecAction{Uses: value}}
+			step := &definition.Step{Pos: &sourcetext.Position{Line: 3, Column: 7}, ID: value, Name: value, Exec: &definition.ExecAction{Uses: value}}
 			bound := Bind("origin-fixture", "", &definition.Workflow{Jobs: map[string]*definition.Job{"build": {Steps: []*definition.Step{step}}}}, false, "")
 			job, present := bound.Workflow().Job("build")
 			if !present {
 				t.Fatal("owned job unavailable")
 			}
 			view := slices.Collect(job.Steps())[0]
-			want := Origin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, Position: source.Position{Line: 3, Column: 7}, HasPosition: true}
+			want := Origin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, Position: sourcetext.Position{Line: 3, Column: 7}, HasPosition: true}
 			origin := view.Origin("Build")
 			if origin != want {
 				t.Fatalf("origin = %+v; want %+v", origin, want)

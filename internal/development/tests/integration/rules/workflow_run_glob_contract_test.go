@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -62,7 +62,7 @@ jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 func TestWorkflowRunGlobUnknownExpression(t *testing.T) {
 	t.Parallel()
 	rule := correctness.GlobRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
-	workflow := &definition.Workflow{On: []definition.Event{&definition.WebhookEvent{Workflows: []*definition.String{{Value: "${{ inputs.pattern }}", Pos: &source.Position{Line: 1, Column: 1}}}}}}
+	workflow := &definition.Workflow{On: []definition.Event{&definition.WebhookEvent{Workflows: []*definition.String{{Value: "${{ inputs.pattern }}", Pos: &sourcetext.Position{Line: 1, Column: 1}}}}}}
 	if err := rule.VisitWorkflowPre(declarations.Workflow(workflow)); err != nil || len(rule.Errs()) != 0 {
 		t.Fatalf("unknown expression treated as a literal glob: %v, %v", rule.Errs(), err)
 	}

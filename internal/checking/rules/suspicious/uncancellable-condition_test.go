@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -111,7 +111,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					t.Fatalf("unexpected fix: %+v", fix)
 				}
 				edit := fix.Edits[0]
-				offset := func(pos source.Position) int {
+				offset := func(pos sourcetext.Position) int {
 					lines := strings.SplitAfter(content, "\n")
 					prefix := strings.Join(lines[:pos.Line-1], "")
 					return len(prefix) + len(string([]rune(lines[pos.Line-1])[:pos.Column-1]))

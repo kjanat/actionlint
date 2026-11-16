@@ -3,7 +3,7 @@ package checking
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -11,9 +11,9 @@ import (
 func TestIncompleteChecksPreserveRevisionRuleAndReason(t *testing.T) {
 	t.Parallel()
 	var usage checkCompletion
-	usage.markUnavailable(source.Reference{Document: "z-action", Revision: "revision-one"}, "shellcheck", "tool unavailable")
-	usage.markUnavailable(source.Reference{Document: "a-workflow", Revision: "revision-two"}, "workflow-run-names", "producer names unavailable")
-	usage.markIncomplete(source.Reference{Document: "a-workflow", Revision: "revision-one"})
+	usage.markUnavailable(sourcetext.Reference{Document: "z-action", Revision: "revision-one"}, "shellcheck", "tool unavailable")
+	usage.markUnavailable(sourcetext.Reference{Document: "a-workflow", Revision: "revision-two"}, "workflow-run-names", "producer names unavailable")
+	usage.markIncomplete(sourcetext.Reference{Document: "a-workflow", Revision: "revision-one"})
 	checks := usage.incompleteChecks()
 	if len(checks) != 3 || checks[0].Source.Document != "a-workflow" || checks[0].Source.Revision != "revision-one" || checks[0].Rule != "" || checks[0].Reason == "" {
 		t.Fatalf("source-wide interruption or ordering lost: %+v", checks)
@@ -29,8 +29,8 @@ func TestIncompleteChecksPreserveRevisionRuleAndReason(t *testing.T) {
 
 func TestIncompleteChecksSeparateCallsEntriesAndRevisions(t *testing.T) {
 	t.Parallel()
-	ref := source.Reference{Document: "shared-action", Revision: "action-revision"}
-	entry := source.Reference{Document: "workflow", Revision: "workflow-revision", Node: "root"}
+	ref := sourcetext.Reference{Document: "shared-action", Revision: "action-revision"}
+	entry := sourcetext.Reference{Document: "workflow", Revision: "workflow-revision", Node: "root"}
 	var completion checkCompletion
 	rootID, err := invocation.NewRootID(invocation.EntryWorkflow, entry)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestIncompleteChecksSeparateCallsEntriesAndRevisions(t *testing.T) {
 	}
 	var firstID invocation.ID
 	for _, node := range []string{"first-call", "second-call"} {
-		id, err := invocation.NewCallID(rootID, source.Reference{Document: entry.Document, Revision: entry.Revision, Node: node})
+		id, err := invocation.NewCallID(rootID, sourcetext.Reference{Document: entry.Document, Revision: entry.Revision, Node: node})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +68,7 @@ func TestIncompleteChecksSeparateCallsEntriesAndRevisions(t *testing.T) {
 
 func TestCheckInvocationIndexDoesNotBorrowAnotherSourceRevision(t *testing.T) {
 	t.Parallel()
-	ref := source.Reference{Document: "workflow", Revision: "revision-one", Node: "root"}
+	ref := sourcetext.Reference{Document: "workflow", Revision: "revision-one", Node: "root"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, ref, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)

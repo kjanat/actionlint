@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -58,7 +58,7 @@ permissions: {}
 			t.Fatal(err)
 		}
 		var rules []rule.Descriptor
-		captured, err := declarations.Capture(workflow, source, sourcepos.YAML)
+		captured, err := declarations.Capture(workflow, source, sourcetext.YAML)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // RejectedRelatedError counts withheld related locations, never primary diagnostics.
@@ -67,14 +67,14 @@ func ConsolidateRejectedRelated(prior error, withheld int) error {
 
 // BindRelated applies only the trusted exact-request-path grant. Explicit bindings are
 // claims for sealed revalidation; mixed or unsupported bindings are rejected.
-func BindRelated(locations []Related, path string, revision source.Revision, model source.Coordinates) ([]Related, error) {
+func BindRelated(locations []Related, path string, revision sourcetext.Revision, model sourcetext.Coordinates) ([]Related, error) {
 	if locations == nil {
 		return nil, nil
 	}
 	kept := make([]Related, 0, len(locations))
 	count := 0
 	for _, location := range locations {
-		if location.Revision == (source.Revision{}) && location.Coordinates == "" {
+		if location.Revision == (sourcetext.Revision{}) && location.Coordinates == "" {
 			if path == "" || location.Path != path || !revision.Valid() || !model.Valid() {
 				count++
 				continue
@@ -93,7 +93,7 @@ func BindRelated(locations []Related, path string, revision source.Revision, mod
 }
 
 // BindRelatedInDiagnostics retains every primary and reports one exact withheld count.
-func BindRelatedInDiagnostics(findings []Diagnostic, path string, revision source.Revision, model source.Coordinates) error {
+func BindRelatedInDiagnostics(findings []Diagnostic, path string, revision sourcetext.Revision, model sourcetext.Coordinates) error {
 	count := 0
 	for i := range findings {
 		kept, err := BindRelated(findings[i].Related, path, revision, model)

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
@@ -49,7 +49,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 
 func TestProviderPointerResolutionValidation(t *testing.T) {
 	t.Parallel()
-	for _, resolution := range []runnerapi.Resolution{(*runnerapi.Resolved)(nil), (*runnerapi.NoMatch)(nil), (*runnerapi.Unknown)(nil), (*runnerapi.NotApplicable)(nil), &runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "wrong source", Position: source.Position{Line: 99, Column: 1}}}}} {
+	for _, resolution := range []runnerapi.Resolution{(*runnerapi.Resolved)(nil), (*runnerapi.NoMatch)(nil), (*runnerapi.Unknown)(nil), (*runnerapi.NotApplicable)(nil), &runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "wrong source", Position: sourcetext.Position{Line: 99, Column: 1}}}}} {
 		p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 			return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 		}}

@@ -1,7 +1,7 @@
 package expressions
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -54,7 +54,7 @@ func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolut
 	}
 	// inferred holds the element type of each row declaration. A missing
 	// position reads as any, which means nothing was inferred.
-	inferred := map[source.Position]exprtypes.Type{}
+	inferred := map[sourcetext.Position]exprtypes.Type{}
 	if m.Expression != nil {
 		rule.checkMatrixExpression(m.Expression)
 	} else {

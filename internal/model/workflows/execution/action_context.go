@@ -3,7 +3,7 @@ package execution
 import (
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -23,7 +23,7 @@ func CallFacts(view workflows.Step, platform runners.Platform) (invocation.Facts
 	if !ok {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}
-	position := source.Position{}
+	position := sourcetext.Position{}
 	if pos, present := view.Position(); present {
 		position = pos
 	}

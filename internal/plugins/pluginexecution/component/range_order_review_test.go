@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"github.com/kjanat/wacogo"
 )
 
@@ -12,14 +12,14 @@ func TestComponentRejectsReversedRanges(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name       string
-		start, end source.Position
+		start, end sourcetext.Position
 		valid      bool
 	}{
-		{"earlier line", source.Position{Line: 10, Column: 2}, source.Position{Line: 9, Column: 8}, false},
-		{"earlier column", source.Position{Line: 10, Column: 8}, source.Position{Line: 10, Column: 2}, false},
-		{"empty insertion", source.Position{Line: 10, Column: 2}, source.Position{Line: 10, Column: 2}, true},
-		{"later column", source.Position{Line: 10, Column: 2}, source.Position{Line: 10, Column: 8}, true},
-		{"later line", source.Position{Line: 9, Column: 8}, source.Position{Line: 10, Column: 2}, true},
+		{"earlier line", sourcetext.Position{Line: 10, Column: 2}, sourcetext.Position{Line: 9, Column: 8}, false},
+		{"earlier column", sourcetext.Position{Line: 10, Column: 8}, sourcetext.Position{Line: 10, Column: 2}, false},
+		{"empty insertion", sourcetext.Position{Line: 10, Column: 2}, sourcetext.Position{Line: 10, Column: 2}, true},
+		{"later column", sourcetext.Position{Line: 10, Column: 2}, sourcetext.Position{Line: 10, Column: 8}, true},
+		{"later line", sourcetext.Position{Line: 9, Column: 8}, sourcetext.Position{Line: 10, Column: 2}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

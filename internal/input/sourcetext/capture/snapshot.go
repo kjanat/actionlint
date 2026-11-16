@@ -5,12 +5,12 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 type captured struct {
-	revision source.Revision
-	model    source.Coordinates
+	revision sourcetext.Revision
+	model    sourcetext.Coordinates
 	content  []byte
 	utf8     bool
 }
@@ -25,14 +25,14 @@ type CapturedDocument struct {
 
 func (s CapturedDocument) Valid() bool { return s.store != nil && s.value != nil }
 
-func (s CapturedDocument) Revision() source.Revision {
+func (s CapturedDocument) Revision() sourcetext.Revision {
 	if s.value == nil {
-		return source.Revision{}
+		return sourcetext.Revision{}
 	}
 	return s.value.revision
 }
 
-func (s CapturedDocument) Coordinates() source.Coordinates {
+func (s CapturedDocument) Coordinates() sourcetext.Coordinates {
 	if s.value == nil {
 		return ""
 	}
@@ -51,9 +51,9 @@ func (s CapturedDocument) Bytes() []byte {
 
 func (s CapturedDocument) Aliases() []string { return slices.Clone(s.aliases) }
 
-func capture(document string, model source.Coordinates, content []byte) (*captured, error) {
+func capture(document string, model sourcetext.Coordinates, content []byte) (*captured, error) {
 	content = bytes.Clone(content)
-	revision, err := source.NewRevision(document, source.ContentDigest(content))
+	revision, err := sourcetext.NewRevision(document, sourcetext.ContentDigest(content))
 	if err != nil {
 		return nil, err
 	}

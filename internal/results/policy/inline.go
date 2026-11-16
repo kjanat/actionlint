@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -24,7 +24,7 @@ func (processor Processor) SuppressionRules(additional ...string) []string {
 
 type inlineAudit struct {
 	level func(string) ruleconfig.Level
-	used  func(source.Position, string)
+	used  func(sourcetext.Position, string)
 }
 
 func (processor Processor) filterInlineSuppressionsAt(source []byte, findings []*finding.Finding, policy *configuration.SuppressionsPolicy, scope string, audit *inlineAudit, additional ...string) []*finding.Finding {

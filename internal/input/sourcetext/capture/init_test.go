@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
@@ -59,8 +59,8 @@ func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
 	go func() {
 		defer close(constructionDone)
 		store, err := newStoreWithResolver(ctx, []Overlay{
-			{Path: first, Content: []byte("first"), Coordinates: source.YAML},
-			{Path: later, Content: []byte("later"), Coordinates: source.YAML},
+			{Path: first, Content: []byte("first"), Coordinates: sourcetext.YAML},
+			{Path: later, Content: []byte("later"), Coordinates: sourcetext.YAML},
 		}, func(context.Context, string) ([]byte, error) {
 			reads.Add(1)
 			return nil, nil
@@ -132,7 +132,7 @@ func TestNewCancelledMetadataWaitRetainsJoinOwnership(t *testing.T) {
 
 func TestNewValidatesEverythingBeforeStartingMetadata(t *testing.T) {
 	t.Parallel()
-	valid := Overlay{Path: filepath.Join(t.TempDir(), "valid.yml"), Coordinates: source.YAML}
+	valid := Overlay{Path: filepath.Join(t.TempDir(), "valid.yml"), Coordinates: sourcetext.YAML}
 	for _, tc := range []struct {
 		name     string
 		overlays []Overlay
@@ -141,9 +141,9 @@ func TestNewValidatesEverythingBeforeStartingMetadata(t *testing.T) {
 	}{
 		{name: "pre-cancelled", overlays: []Overlay{valid}, cancel: true},
 		{name: "pre-deadline", overlays: []Overlay{valid}, deadline: true},
-		{name: "later relative address", overlays: []Overlay{valid, {Path: "relative", Coordinates: source.YAML}}},
+		{name: "later relative address", overlays: []Overlay{valid, {Path: "relative", Coordinates: sourcetext.YAML}}},
 		{name: "later missing coordinates", overlays: []Overlay{valid, {Path: valid.Path}}},
-		{name: "later NUL", overlays: []Overlay{valid, {Path: "invalid\x00", Coordinates: source.YAML}}},
+		{name: "later NUL", overlays: []Overlay{valid, {Path: "invalid\x00", Coordinates: sourcetext.YAML}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -193,21 +193,21 @@ func TestNewOverlayAliasesShareCanonicalMemoAndMergeDocuments(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		content string
-		model   source.Coordinates
+		model   sourcetext.Coordinates
 		state   State
 	}{
-		{"matching", "same", source.YAML, Captured},
-		{"content conflict", "other", source.YAML, Conflicted},
-		{"model conflict", "same", source.RawLF, Conflicted},
+		{"matching", "same", sourcetext.YAML, Captured},
+		{"content conflict", "other", sourcetext.YAML, Conflicted},
+		{"model conflict", "same", sourcetext.RawLF, Conflicted},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var conflictMessage string
 			for _, reverse := range []bool{false, true} {
 				overlays := []Overlay{
-					{Path: a, Content: []byte("same"), Coordinates: source.YAML},
+					{Path: a, Content: []byte("same"), Coordinates: sourcetext.YAML},
 					{Path: b, Content: []byte(tc.content), Coordinates: tc.model},
-					{Path: a, Content: []byte("same"), Coordinates: source.YAML},
+					{Path: a, Content: []byte("same"), Coordinates: sourcetext.YAML},
 				}
 				if reverse {
 					slices.Reverse(overlays)
@@ -244,7 +244,7 @@ func TestNewOverlayAliasesShareCanonicalMemoAndMergeDocuments(t *testing.T) {
 					t.Fatalf("registered overlay documents not merged: rows=%+v error=%v", rows, err)
 				}
 				if tc.state == Conflicted {
-					if rows[0].Coordinates != "" || rows[0].CoordinatesAvailable || rows[0].Revision != (source.Revision{}) {
+					if rows[0].Coordinates != "" || rows[0].CoordinatesAvailable || rows[0].Revision != (sourcetext.Revision{}) {
 						t.Fatalf("conflicted row exposed first-arrival coordinates/revision: %+v", rows[0])
 					}
 					for _, path := range []string{a, b} {

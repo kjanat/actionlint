@@ -19,7 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -36,7 +36,7 @@ type validator struct {
 }
 
 // CheckWithAdvisories includes optional expression findings for host policy.
-func CheckWithAdvisories(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*finding.Finding {
+func CheckWithAdvisories(meta *actionmeta.Metadata, caller *sourcetext.Position, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*finding.Finding {
 	rule := validator{advisories: true, files: files, lifecycle: context}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
@@ -45,7 +45,7 @@ func CheckWithAdvisories(meta *actionmeta.Metadata, caller *source.Position, fil
 // StandaloneWithAdvisories includes optional expression findings for host policy.
 func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*finding.Finding {
 	rule := validator{files: files, standalone: meta, advisories: true, lifecycle: context}
-	rule.checkLocalActionMetadata(meta, &source.Position{Line: 1, Column: 1})
+	rule.checkLocalActionMetadata(meta, &sourcetext.Position{Line: 1, Column: 1})
 	return rule.errs
 }
 
@@ -54,20 +54,20 @@ func (rule *validator) expressionFindings(s string, bare bool, field string, inp
 	return append(read.Problems, expressionSemanticFindings(read.Expressions, field, rule.advisories)...)
 }
 
-func (rule *validator) Error(pos *source.Position, code actionmeta.ProblemCode, message string) {
+func (rule *validator) Error(pos *sourcetext.Position, code actionmeta.ProblemCode, message string) {
 	ruleName, diagnosticCode := problemRule(code)
 	item := finding.At(pos, ruleName, message)
 	item.Code = diagnosticCode
 	rule.errs = append(rule.errs, item)
 }
 
-func (rule *validator) Errorf(pos *source.Position, code actionmeta.ProblemCode, format string, args ...any) {
+func (rule *validator) Errorf(pos *sourcetext.Position, code actionmeta.ProblemCode, format string, args ...any) {
 	rule.Error(pos, code, fmt.Sprintf(format, args...))
 }
 
 // Check validates a manifest reached from a workflow call site. Findings which
 // cannot point inside the manifest point to the caller's uses position.
-func Check(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.ReferencedFiles) []*finding.Finding {
+func Check(meta *actionmeta.Metadata, caller *sourcetext.Position, files actionmeta.ReferencedFiles) []*finding.Finding {
 	rule := validator{files: files}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
@@ -76,7 +76,7 @@ func Check(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.
 // Standalone validates a manifest's declarations at their own source positions.
 func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*finding.Finding {
 	rule := validator{files: files, standalone: meta}
-	rule.checkLocalActionMetadata(meta, &source.Position{Line: 1, Column: 1})
+	rule.checkLocalActionMetadata(meta, &sourcetext.Position{Line: 1, Column: 1})
 	return rule.errs
 }
 
@@ -87,12 +87,12 @@ func Inputs(meta *actionmeta.Metadata, exec *definition.ExecAction, describe fun
 	return rule.errs
 }
 
-func (rule *validator) missingRunsProp(pos *source.Position, prop, ty, action, path string) {
+func (rule *validator) missingRunsProp(pos *sourcetext.Position, prop, ty, action, path string) {
 	pos = rule.metadataFieldPosition(pos, "runs", prop)
 	rule.Errorf(pos, actionmeta.CodeMissingField, `%q is required in "runs" section because %q is a %s action. the action is defined at %q`, prop, action, ty, path)
 }
 
-func (rule *validator) checkInvalidRunsProps(pos *source.Position, r *actionmeta.Runs, ty, action, path string, props []string) {
+func (rule *validator) checkInvalidRunsProps(pos *sourcetext.Position, r *actionmeta.Runs, ty, action, path string, props []string) {
 	for _, prop := range props {
 		invalid := prop == "main" && r.Main != "" ||
 			prop == "pre" && r.Pre != "" ||
@@ -114,7 +114,7 @@ func (rule *validator) checkInvalidRunsProps(pos *source.Position, r *actionmeta
 	}
 }
 
-func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *source.Position) {
+func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *sourcetext.Position) {
 	pos = rule.metadataFieldPosition(pos, "runs", prop)
 	f := filepath.FromSlash(file)
 	if f == "" {
@@ -127,7 +127,7 @@ func (rule *validator) checkRunsFileExists(file, dir, prop, name string, pos *so
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-docker-container-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *validator) checkLocalDockerActionRuns(r *actionmeta.Runs, dir, name string, pos *source.Position) {
+func (rule *validator) checkLocalDockerActionRuns(r *actionmeta.Runs, dir, name string, pos *sourcetext.Position) {
 	if r.Image == "" {
 		rule.missingRunsProp(pos, "image", "Docker", name, dir)
 	} else if !actionmeta.ImageOnRegistry(r.Image) {
@@ -143,7 +143,7 @@ func (rule *validator) checkLocalDockerActionRuns(r *actionmeta.Runs, dir, name 
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-composite-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, pos *source.Position) {
+func (rule *validator) checkLocalCompositeActionRuns(meta *actionmeta.Metadata, pos *sourcetext.Position) {
 	r := &meta.Runs
 	if r.Steps == nil {
 		rule.missingRunsProp(pos, "steps", "Composite", meta.Name, meta.Dir())
@@ -171,10 +171,10 @@ func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionm
 }
 
 // compositeStepErrorfAt reports a position inside the step, with an optional exclusive end.
-func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *source.Position, code actionmeta.ProblemCode, format string, args ...any) {
+func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *sourcetext.Position, code actionmeta.ProblemCode, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	ruleName, diagnosticCode := problemRule(code)
-	err := finding.At(&source.Position{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
+	err := finding.At(&sourcetext.Position{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
 	err.Source.Content = meta.Source
@@ -202,9 +202,9 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 }
 
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
-func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *source.Position, code actionmeta.ProblemCode, format string, args ...any) {
+func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *sourcetext.Position, code actionmeta.ProblemCode, format string, args ...any) {
 	ruleName, diagnosticCode := problemRule(code)
-	err := finding.Errorf(&source.Position{Line: line, Column: col}, ruleName, format, args...)
+	err := finding.Errorf(&sourcetext.Position{Line: line, Column: col}, ruleName, format, args...)
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
 	err.Source.Content = meta.Source
@@ -344,7 +344,7 @@ func compositeStepContextHint(ctx string) string {
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs-for-javascript-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *validator) checkLocalJavaScriptActionRuns(r *actionmeta.Runs, dir, name string, pos *source.Position) {
+func (rule *validator) checkLocalJavaScriptActionRuns(r *actionmeta.Runs, dir, name string, pos *sourcetext.Position) {
 	if r.Main == "" {
 		rule.missingRunsProp(pos, "main", "JavaScript", name, dir)
 	} else {
@@ -366,7 +366,7 @@ func (rule *validator) checkLocalJavaScriptActionRuns(r *actionmeta.Runs, dir, n
 	rule.checkInvalidRunsProps(pos, r, "JavaScript", name, dir, []string{"steps", "image", "pre-entrypoint", "entrypoint", "post-entrypoint", "args", "env"})
 }
 
-func (rule *validator) checkLocalActionInputs(meta *actionmeta.Metadata, pos *source.Position) {
+func (rule *validator) checkLocalActionInputs(meta *actionmeta.Metadata, pos *sourcetext.Position) {
 	for _, i := range meta.Inputs {
 		if i.Deprecated && i.DeprecationMessage == "" {
 			rule.Errorf(
@@ -383,7 +383,7 @@ func (rule *validator) checkLocalActionInputs(meta *actionmeta.Metadata, pos *so
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions#runs
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *source.Position) {
+func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *sourcetext.Position) {
 	pos = rule.metadataFieldPosition(pos, "runs", "using")
 	r := &meta.Runs
 	using := strings.ToLower(r.Using)
@@ -412,7 +412,7 @@ func (rule *validator) checkLocalActionRuns(meta *actionmeta.Metadata, pos *sour
 
 // https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/metadata-syntax
-func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, caller *source.Position) {
+func (rule *validator) checkLocalActionMetadata(meta *actionmeta.Metadata, caller *sourcetext.Position) {
 	rule.checkActionMetadataSchema(meta)
 	if meta.Name == "" {
 		rule.Errorf(rule.metadataFieldPosition(caller, "name"), actionmeta.CodeMissingField, "name is required in action metadata %q", meta.Path())
@@ -499,7 +499,7 @@ func (rule *validator) checkAction(meta actionmeta.Definition, exec *definition.
 	supplied := func(id string) bool { return inputs.Lookup(id).State() != value.Missing }
 	for _, i := range meta.MissingRequiredInputs(supplied) {
 		rule.Errorf(
-			source.NilUnlessPresent(exec.Uses.Position()),
+			sourcetext.NilUnlessPresent(exec.Uses.Position()),
 			actionmeta.CodeRequiredInput,
 			"missing input %q which is required by action %s. all required inputs are %s",
 			i.Name,
@@ -537,12 +537,12 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 
 // Missing fields point at their nearest declared parent. Existing fields point
 // at their key. Workflow-call diagnostics point to the caller's uses: value.
-func (rule *validator) metadataFieldPosition(fallback *source.Position, fields ...string) *source.Position {
+func (rule *validator) metadataFieldPosition(fallback *sourcetext.Position, fields ...string) *sourcetext.Position {
 	if rule.standalone == nil {
 		return fallback
 	}
 	node := actionmeta.Node(rule.standalone.Root)
-	pos := &source.Position{Line: 1, Column: 1}
+	pos := &sourcetext.Position{Line: 1, Column: 1}
 	for _, field := range fields {
 		if node == nil || node.Kind != codec.MappingNode {
 			break
@@ -551,7 +551,7 @@ func (rule *validator) metadataFieldPosition(fallback *source.Position, fields .
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key := node.Content[i]
 			if strings.EqualFold(actionmeta.Key(key), field) {
-				pos = &source.Position{Line: key.Line, Column: key.Column}
+				pos = &sourcetext.Position{Line: key.Line, Column: key.Column}
 				next = actionmeta.Node(node.Content[i+1])
 				break
 			}

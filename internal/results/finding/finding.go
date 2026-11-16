@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -36,7 +36,7 @@ type Finding struct {
 	MetadataIdentity *MetadataIdentity
 	// MetadataParseSource is the captured revision whose parse failure was
 	// observed, bound by the producer before the finding is published.
-	MetadataParseSource source.Revision
+	MetadataParseSource sourcetext.Revision
 }
 
 // String returns a diagnostic with its source location and rule name.
@@ -45,7 +45,7 @@ func (e *Finding) String() string {
 }
 
 // At creates a finding at a workflow source position.
-func At(pos *source.Position, kind string, msg string) *Finding {
+func At(pos *sourcetext.Position, kind string, msg string) *Finding {
 	return &Finding{
 		Rule: kind, Message: msg,
 		Start: *pos,
@@ -53,7 +53,7 @@ func At(pos *source.Position, kind string, msg string) *Finding {
 }
 
 // Errorf formats a finding at a workflow source position.
-func Errorf(pos *source.Position, kind string, format string, args ...any) *Finding {
+func Errorf(pos *sourcetext.Position, kind string, format string, args ...any) *Finding {
 	return &Finding{
 		Rule: kind, Message: fmt.Sprintf(format, args...),
 		Start: *pos,
@@ -62,7 +62,7 @@ func Errorf(pos *source.Position, kind string, format string, args ...any) *Find
 
 // EndAt sets the exclusive end of the finding's range. A nil end keeps the
 // range open, so rendering infers the token ending at Start.
-func (e *Finding) EndAt(end *source.Position) {
+func (e *Finding) EndAt(end *sourcetext.Position) {
 	if end != nil {
 		e.End = *end
 	}

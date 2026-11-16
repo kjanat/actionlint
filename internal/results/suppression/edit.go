@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -43,7 +43,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 		if directive.Reason != "" {
 			replacement += " -- " + directive.Reason
 		}
-		edit := results.Edit{Start: directive.Position, End: source.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
+		edit := results.Edit{Start: directive.Position, End: sourcetext.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
 		return validateEdit(content, edit, line, rule, allowed, invalid, 0, names)
 	}
 	target := line
@@ -71,7 +71,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 		}
 	}
 	indent := text[:len(text)-len(strings.TrimLeft(text, " \t"))]
-	point := source.Position{Line: target, Column: 1}
+	point := sourcetext.Position{Line: target, Column: 1}
 	edit := results.Edit{Start: point, End: point, Replacement: indent + "# actionlint-ignore-next-line " + rule + ending}
 	return validateEdit(content, edit, line, rule, allowed, invalid, 1, names)
 }
@@ -79,7 +79,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 // Validate through the suppression parser itself, including malformed YAML
 // recovery. An edit must suppress its target without hiding grammar errors.
 func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rule.Names) (results.Edit, bool) {
-	first, last, err := sourceposition.Range(content, source.YAML, edit.Start, edit.End)
+	first, last, err := byteoffset.Range(content, sourcetext.YAML, edit.Start, edit.End)
 	if err != nil {
 		return results.Edit{}, false
 	}

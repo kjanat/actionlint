@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -113,7 +113,7 @@ func fixtureConfigured(t *testing.T, path, root string, source []byte, findings 
 // fixtureIdentity keeps the attributes under test while publication adds bindings and paths.
 type fixtureIdentity struct {
 	Rule    string
-	Start   source.Position
+	Start   sourcetext.Position
 	Message string
 	Source  string
 }

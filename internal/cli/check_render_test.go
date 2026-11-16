@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/output"
@@ -44,7 +44,7 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 	finding := results.Publish(results.Diagnostic{
 		Rule: "expression-reference", Message: "unknown variable", Path: "ci.yml",
-		Start: source.Position{Line: 1, Column: 3}, End: source.Position{Line: 1, Column: 6},
+		Start: sourcetext.Position{Line: 1, Column: 3}, End: sourcetext.Position{Line: 1, Column: 6},
 	}, results.DiagnosticSource{Content: []byte("  bad")})
 	stop := make(chan struct{})
 	failures := make(chan error, 4)

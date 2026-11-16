@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
@@ -196,7 +196,7 @@ func (c *Cache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.M
 	if c.captures == nil || c.ctx == nil {
 		return nil, errors.New("reusable workflow cache requires a capture store")
 	}
-	captured, err := c.captures.Read(ctx, file, source.YAML)
+	captured, err := c.captures.Read(ctx, file, sourcetext.YAML)
 	if err != nil {
 		failure := readFailure(spec, err)
 		c.store(spec, reusableWorkflowMetadataResult{failure: failure})

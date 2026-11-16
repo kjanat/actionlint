@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -13,7 +13,7 @@ import (
 
 func TestRunPreservesNilAndEmptyScriptSelection(t *testing.T) {
 	t.Parallel()
-	entry := source.Reference{Document: "workflow.yml", Revision: "r", Node: "root"}
+	entry := sourcetext.Reference{Document: "workflow.yml", Revision: "r", Node: "root"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)

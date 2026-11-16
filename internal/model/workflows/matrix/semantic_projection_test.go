@@ -3,7 +3,7 @@ package matrix
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -225,11 +225,11 @@ func TestIncludeAddedKeyOriginsSurviveImmutableCopies(t *testing.T) {
 		}
 		for i, line := range []int{11, 13} {
 			original := combinations[i]
-			want := sourcepos.Position{Line: line, Column: 13}
+			want := sourcetext.Position{Line: line, Column: 13}
 			if got := original.KeyOrigin("extra").Span.Start; got != want {
 				t.Fatalf("include key origin=%v, want %v", got, want)
 			}
-			newOrigin := value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 99, Column: 2}}}
+			newOrigin := value.Origin{Span: value.Span{Start: sourcetext.Position{Line: 99, Column: 2}}}
 			derived := original.With("new", value.YAMLScalar("new", "!!str", newOrigin)).With("extra", value.YAMLScalar("replacement", "!!str", newOrigin))
 			if original.KeyOrigin("extra").Span.Start != want || derived.KeyOrigin("extra").Span.Start != want || derived.KeyOrigin("new") != newOrigin || derived.origin != original.origin {
 				t.Fatal("include key metadata lost through immutable copy")

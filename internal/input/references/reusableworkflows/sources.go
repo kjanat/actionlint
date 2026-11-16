@@ -4,7 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func (c *Cache) SetRemote(remote *Remote) { c.remote = remote }

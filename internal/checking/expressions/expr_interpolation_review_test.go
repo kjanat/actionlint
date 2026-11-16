@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
@@ -33,7 +33,7 @@ func TestExpressionFailurePhases(t *testing.T) {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
 			rule := newTestChecker()
-			types, valid := rule.checkExprsIn(tc.source, &sourcepos.Position{Line: 1, Column: 1}, false, false, "env")
+			types, valid := rule.checkExprsIn(tc.source, &sourcetext.Position{Line: 1, Column: 1}, false, false, "env")
 			if valid || len(types) != 1 {
 				t.Fatalf("unexpected expression results: valid=%v results=%+v", valid, types)
 			}
@@ -49,7 +49,7 @@ func TestInvalidCallRetainsReturnType(t *testing.T) {
 	t.Parallel()
 	rule := newTestChecker()
 	source := "${{ startsWith('only-one') }}"
-	ty, valid := rule.checkOneExpression(ownedStringFixture(&definition.String{Value: source, Pos: &sourcepos.Position{Line: 1, Column: 1}}), "value", "env")
+	ty, valid := rule.checkOneExpression(ownedStringFixture(&definition.String{Value: source, Pos: &sourcetext.Position{Line: 1, Column: 1}}), "value", "env")
 	if valid || ty.Kind() != exprtypes.KindBool {
 		t.Fatalf("invalid call must retain its declared bool result: type=%s valid=%v", ty, valid)
 	}
@@ -70,7 +70,7 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 		{"${{ hosttest(github.event.unknown) }}", []exprtypes.TypeKind{exprtypes.KindAny, exprtypes.KindBool}, exprtypes.KindAny},
 	} {
 		rule := newTestChecker()
-		types, valid := rule.checkExprsIn(tc.source, &sourcepos.Position{Line: 1, Column: 1}, false, false, "env")
+		types, valid := rule.checkExprsIn(tc.source, &sourcetext.Position{Line: 1, Column: 1}, false, false, "env")
 		if !valid || len(types) != 1 || types[0].semantics.Call == nil {
 			t.Fatalf("missing call facts for %q: %+v", tc.source, types)
 		}
@@ -90,7 +90,7 @@ func TestExpressionPreservesCallFacts(t *testing.T) {
 	functions.Builtins["startswith"] = changed
 	t.Cleanup(func() { functions.Builtins["startswith"] = original })
 	rule := newTestChecker()
-	types, valid := rule.checkExprsIn("${{ startsWith('x', 'x') }}", &sourcepos.Position{Line: 1, Column: 1}, false, false, "env")
+	types, valid := rule.checkExprsIn("${{ startsWith('x', 'x') }}", &sourcetext.Position{Line: 1, Column: 1}, false, false, "env")
 	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindNumber || types[0].semantics.Call == nil || types[0].semantics.Call.ReturnDomain != functions.ReturnDomainExcludesValue {
 		t.Fatalf("contradictory evaluated value replaced return contract: %+v", types)
 	}
@@ -101,7 +101,7 @@ func TestAdvisoryDoesNotInvalidateExpression(t *testing.T) {
 	rule := newTestChecker()
 	rule.options.SuspiciousCoercion = true
 	source := "${{ startsWith(true, 'TR') }}"
-	types, valid := rule.checkExprsIn(source, &sourcepos.Position{Line: 1, Column: 1}, false, false, "env")
+	types, valid := rule.checkExprsIn(source, &sourcetext.Position{Line: 1, Column: 1}, false, false, "env")
 	if !valid || len(types) != 1 || types[0].ty.Kind() != exprtypes.KindBool || types[0].semantics.Type.Kind() != exprtypes.KindBool {
 		t.Fatalf("advisory must preserve validity and result types: valid=%v types=%+v", valid, types)
 	}
@@ -118,7 +118,7 @@ func TestAdvisoryDoesNotHideScriptInterpolation(t *testing.T) {
 	rule := newTestChecker()
 	rule.options.SuspiciousCoercion = true
 	source := "${{ startsWith(true, 'TR') && github.event.issue.title }}"
-	_, valid := rule.checkExprsIn(source, &sourcepos.Position{Line: 1, Column: 1}, false, true, "jobs.<job_id>.steps.run")
+	_, valid := rule.checkExprsIn(source, &sourcetext.Position{Line: 1, Column: 1}, false, true, "jobs.<job_id>.steps.run")
 	if !valid {
 		t.Fatal("advisory or script finding invalidated expression")
 	}
@@ -141,7 +141,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			"${{ missingFunction('}}') }} ${{ github.ref && '' || 'fallback' }}",
 		} {
 			rule := newTestChecker()
-			types, valid := rule.checkExprsIn(source, &sourcepos.Position{Line: 1, Column: 1}, false, script, "env")
+			types, valid := rule.checkExprsIn(source, &sourcetext.Position{Line: 1, Column: 1}, false, script, "env")
 			if valid || len(types) != strings.Count(source, "${{") {
 				t.Fatalf("must scan all parsed interpolations without treating their types as valid: %v, %+v", valid, types)
 			}
@@ -154,7 +154,7 @@ func TestInterpolationSemanticErrorsRemainInvalid(t *testing.T) {
 			if ternaries != 1 {
 				t.Fatalf("later diagnostic missing: %+v", rule.Findings())
 			}
-			if ty, ok := rule.checkOneExpression(ownedStringFixture(&definition.String{Value: source, Pos: &sourcepos.Position{Line: 1, Column: 1}}), "value", "env"); ok {
+			if ty, ok := rule.checkOneExpression(ownedStringFixture(&definition.String{Value: source, Pos: &sourcetext.Position{Line: 1, Column: 1}}), "value", "env"); ok {
 				t.Fatalf("invalid interpolation types escaped into type checking: %v", ty)
 			}
 		}
@@ -170,7 +170,7 @@ func TestInterpolationParseErrorsStillStopScanning(t *testing.T) {
 			"${{ unknown.value",
 		} {
 			rule := newTestChecker()
-			types, valid := rule.checkExprsIn(source, &sourcepos.Position{Line: 1, Column: 1}, false, script, "env")
+			types, valid := rule.checkExprsIn(source, &sourcetext.Position{Line: 1, Column: 1}, false, script, "env")
 			if valid || types != nil || len(rule.Findings()) == 0 {
 				t.Fatalf("unparsed interpolation must remain invalid: %v, %+v, %+v", valid, types, rule.Findings())
 			}

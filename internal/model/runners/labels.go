@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -96,7 +96,7 @@ var defaultRunnerOSCompats = map[string]runnerOSCompat{
 type labelFact struct {
 	text   string
 	source string
-	start  source.Position
+	start  sourcetext.Position
 }
 
 type checker struct {
@@ -255,7 +255,7 @@ func (rule *checker) checkCompat(compat runnerOSCompat, label labelFact) {
 	}
 }
 
-func (rule *checker) Errorf(position source.Position, format string, args ...any) {
+func (rule *checker) Errorf(position sourcetext.Position, format string, args ...any) {
 	rule.rejections = append(rule.rejections, runnerapi.Rejection{Position: position, Reason: fmt.Sprintf(format, args...)})
 }
 

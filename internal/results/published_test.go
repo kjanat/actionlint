@@ -3,18 +3,18 @@ package results
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestPublishResolvesEndSnippetAndExcerptOnce(t *testing.T) {
 	t.Parallel()
-	at := func(line, column int) source.Position { return source.Position{Line: line, Column: column} }
+	at := func(line, column int) sourcetext.Position { return sourcetext.Position{Line: line, Column: column} }
 	unavailable := ReportedSourceUnavailable("tool", "reported.sh", false)
 	for _, tc := range []struct {
 		name    string
 		d       Diagnostic
 		source  DiagnosticSource
-		end     source.Position
+		end     sourcetext.Position
 		snippet string
 		excerpt Excerpt
 	}{

@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/glob"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -109,7 +109,7 @@ func GlobJob(n workflows.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkKnownRefGlob(value any, pos *source.Position) {
+func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcetext.Position) {
 	pattern, known := definition.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
@@ -150,7 +150,7 @@ func (rule *globCheck) checkFilePathGlobs(filter *definition.WebhookEventFilter)
 	}
 }
 
-func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *source.Position, quoted bool) {
+func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *sourcetext.Position, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos

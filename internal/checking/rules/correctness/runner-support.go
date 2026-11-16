@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -50,7 +50,7 @@ func RunnerSupportChecks(runners *runners.Knowledge) define.Checks {
 	}
 }
 
-func supportPosition(job workflows.Job, selector runnerapi.Selector) source.Position {
+func supportPosition(job workflows.Job, selector runnerapi.Selector) sourcetext.Position {
 	for _, label := range selector.Labels {
 		if label.Position.Line > 0 {
 			return label.Position

@@ -3,7 +3,7 @@ package policy
 import (
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -11,7 +11,7 @@ import (
 
 type suppressionUse struct {
 	document, revision, rule string
-	position                 source.Position
+	position                 sourcetext.Position
 }
 
 type checkRevision struct{ document, revision string }
@@ -24,7 +24,7 @@ type checkRule struct{ document, revision, rule string }
 func addUnusedSuppressionFixes(files []evaluatedBatch) {
 	type comment struct {
 		document, revision string
-		position           source.Position
+		position           sourcetext.Position
 	}
 	type group struct {
 		content   []byte
@@ -64,7 +64,7 @@ func addUnusedSuppressionFixes(files []evaluatedBatch) {
 	}
 	for key, entry := range groups {
 		fix, ok := entry.processor.unusedSuppressionFix(entry.content, entry.path,
-			source.Reference{Document: key.document, Revision: key.revision}, key.position, entry.rules, entry.allowed)
+			sourcetext.Reference{Document: key.document, Revision: key.revision}, key.position, entry.rules, entry.allowed)
 		if ok {
 			for _, finding := range entry.findings {
 				finding.Fixes = []results.Fix{fix}
@@ -80,7 +80,7 @@ type suppressionUses struct {
 	seen map[suppressionUse]bool
 }
 
-func (u *suppressionUses) observe(ref source.Reference, position source.Position, rule string) {
+func (u *suppressionUses) observe(ref sourcetext.Reference, position sourcetext.Position, rule string) {
 	if u.seen == nil {
 		u.seen = make(map[suppressionUse]bool)
 	}

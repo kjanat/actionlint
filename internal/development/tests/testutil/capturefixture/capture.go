@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 // CapturedSources supplies a test filesystem to one immutable capture owner.
@@ -72,7 +72,7 @@ func (f *CapturedSources) Path(path string) string {
 	return filepath.Join(f.base, path)
 }
 
-func (f *CapturedSources) Capture(path string, content []byte, coordinates source.Coordinates) (capture.CapturedDocument, error) {
+func (f *CapturedSources) Capture(path string, content []byte, coordinates sourcetext.Coordinates) (capture.CapturedDocument, error) {
 	path = f.Path(path)
 	document, err := f.store.Canonical(f.ctx, path)
 	if err != nil {

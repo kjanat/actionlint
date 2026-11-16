@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
 // Deployment binds an action's display path and runtime placement to its source.
 // Its zero value belongs to a workflow entry.
 type Deployment struct {
-	reference  source.Reference
+	reference  sourcetext.Reference
 	address    string
 	sourcePath string
 	actionPath string
@@ -35,7 +35,7 @@ func NewDeployment(snapshots *parsing.SourceSnapshots, snapshot parsing.SourceSn
 		return Deployment{}, fmt.Errorf("%w: action deployment path disagrees with source", ErrInvalidBatch)
 	}
 	d := Deployment{reference: ref, address: address, sourcePath: displayPath}
-	if !mapped && !source.RemoteAddress(address) {
+	if !mapped && !sourcetext.RemoteAddress(address) {
 		d.actionPath = filepath.Dir(displayPath)
 	}
 	return d, nil

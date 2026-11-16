@@ -12,7 +12,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // parsedSource collects a decoded value and the positions of its keys and
@@ -20,13 +20,13 @@ import (
 type parsedSource struct {
 	file   string
 	value  any
-	keys   map[string]sourcepos.Position
-	values map[string]sourcepos.Position
+	keys   map[string]sourcetext.Position
+	values map[string]sourcetext.Position
 }
 
 func newParsedSource(file string) *parsedSource {
-	start := sourcepos.Position{Line: 1, Column: 1}
-	return &parsedSource{file: file, keys: map[string]sourcepos.Position{"": start}, values: map[string]sourcepos.Position{"": start}}
+	start := sourcetext.Position{Line: 1, Column: 1}
+	return &parsedSource{file: file, keys: map[string]sourcetext.Position{"": start}, values: map[string]sourcetext.Position{"": start}}
 }
 
 // node locates every pointer that has a value position. Key positions without

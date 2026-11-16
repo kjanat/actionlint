@@ -6,14 +6,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestPermissionDiagnostics(t *testing.T) {
 	t.Parallel()
-	at := func(line, column int) source.Position { return source.Position{Line: line, Column: column} }
+	at := func(line, column int) sourcetext.Position { return sourcetext.Position{Line: line, Column: column} }
 	value := func(line, column int, text string) permissionValue {
 		return permissionValue{Text: text, Start: at(line, column)}
 	}

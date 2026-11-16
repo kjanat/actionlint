@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -109,9 +109,9 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 	t.Parallel()
 	provider := &fakeResolver{}
 	rule := newReferenceCheck(provider)
-	ref := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "step", Address: "jobs.build.steps[0]"}
+	ref := sourcetext.Reference{Document: "workflow.yml", Revision: "revision", Node: "step", Address: "jobs.build.steps[0]"}
 	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []facts.Dependency{
-		{Reference: ref, Uses: "owner/repo/path@v1", Kind: "action", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 24}},
+		{Reference: ref, Uses: "owner/repo/path@v1", Kind: "action", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 24}},
 		{Reference: ref, Uses: "owner/repo/.github/workflows/build.yml@v1", Kind: "workflow"},
 		{Uses: "./local", Kind: "action"},
 	}}

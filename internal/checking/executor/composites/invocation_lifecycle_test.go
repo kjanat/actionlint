@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -27,12 +27,12 @@ type invocationLifecycleProbe struct {
 	cancel       context.CancelFunc
 }
 
-func (p *invocationLifecycleProbe) emit(phase string, ref source.Reference) {
+func (p *invocationLifecycleProbe) emit(phase string, ref sourcetext.Reference) {
 	p.t.Helper()
 	call := p.frames[len(p.frames)-1]
 	*p.events = append(*p.events, p.Name()+":"+phase+":"+call.Path)
 	before := len(p.Errs())
-	p.Error(&source.Position{Line: 1, Column: 1}, phase)
+	p.Error(&sourcetext.Position{Line: 1, Column: 1}, phase)
 	p.t.Cleanup(func() {
 		finding := p.Errs()[before]
 		if finding.Path != call.Path || !bytes.Equal(finding.Source.Content, call.Source.Content()) || finding.Reference == nil || *finding.Reference != ref {

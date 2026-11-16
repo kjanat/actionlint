@@ -3,7 +3,7 @@ package policy_test
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 
@@ -14,10 +14,10 @@ func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
 	t.Parallel()
 	source := []byte("name: café # actionlint:ignore cache-operation -- reviewed\n")
 	errs := []*finding.Finding{
-		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation"},
-		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation", Source: results.DiagnosticSource{Content: []byte("other file")}},
-		{Start: sourcepos.Position{Line: 1}, Rule: "syntax-check"},
-		{Start: sourcepos.Position{Line: 2}, Rule: "cache-operation"},
+		{Start: sourcetext.Position{Line: 1}, Rule: "cache-operation"},
+		{Start: sourcetext.Position{Line: 1}, Rule: "cache-operation", Source: results.DiagnosticSource{Content: []byte("other file")}},
+		{Start: sourcetext.Position{Line: 1}, Rule: "syntax-check"},
+		{Start: sourcetext.Position{Line: 2}, Rule: "cache-operation"},
 	}
 	if diff := cmp.Diff(fixtureIdentities(errs[1:]), fixtureIdentities(fixtureInline(t, source, errs, nil))); diff != "" {
 		t.Fatal(diff)

@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -49,9 +49,9 @@ type Registration struct {
 type AnalyzerInput struct {
 	// Revision and Coordinates bind this request's own Path to captured bytes.
 	// They are independent of the invocation graph's entry Reference.
-	Revision    source.Revision
-	Coordinates source.Coordinates
-	Reference   source.Reference
+	Revision    sourcetext.Revision
+	Coordinates sourcetext.Coordinates
+	Reference   sourcetext.Reference
 	Path        string
 	// Directory names the analysis root. Filesystem access requires a separate grant.
 	Directory       string

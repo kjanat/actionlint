@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -32,13 +32,13 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	refs := facts.Index("ci.yml", content, workflow, false)
 	firstRef := refs.Positions[[2]int{first.Pos.Line, first.Pos.Column}]
 	secondRef := refs.Positions[[2]int{second.Pos.Line, second.Pos.Column}]
-	explicit := source.Reference{Document: "provider", Node: "explicit"}
+	explicit := sourcetext.Reference{Document: "provider", Node: "explicit"}
 	for _, tc := range []struct {
 		name      string
 		owner     *finding.Owner
-		reference *source.Reference
+		reference *sourcetext.Reference
 		raw       bool
-		want      source.Reference
+		want      sourcetext.Reference
 	}{
 		{name: "explicit owner", owner: &finding.Owner{Job: "test", Step: second.Pos}, want: secondRef},
 		{name: "ignore alone", want: firstRef},
@@ -72,7 +72,7 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 	}
 	refs := facts.Index("ci.yml", content, workflow, false)
 	item := &finding.Finding{
-		Start: source.Position{Line: 1, Column: 1},
+		Start: sourcetext.Position{Line: 1, Column: 1},
 		Owner: &finding.Owner{Job: job.ID.Value},
 	}
 	InferReferences([]*finding.Finding{item}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
@@ -84,7 +84,7 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 
 func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
 	t.Parallel()
-	references := facts.References{Document: source.Reference{Document: "entry", Revision: "revision", Node: "document"}}
+	references := facts.References{Document: sourcetext.Reference{Document: "entry", Revision: "revision", Node: "document"}}
 	foreign := &finding.Finding{Path: "unrelated.sh"}
 	alias := &finding.Finding{Path: "entry-alias.yml"}
 	InferReferences([]*finding.Finding{foreign, alias}, "entry.yml", map[string]facts.SourceIndex{"entry.yml": references.SourceIndex()}, "entry-alias.yml")

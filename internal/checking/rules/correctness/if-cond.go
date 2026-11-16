@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
@@ -35,7 +35,7 @@ func checkCondition(value *definition.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
-	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, source.ZeroIfNil(value.Pos)))
+	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcetext.ZeroIfNil(value.Pos)))
 }
 
 func checkJobConditions(job workflows.Job) []reporting.StepFinding {
@@ -51,7 +51,7 @@ func checkStepCondition(step workflows.Step) []reporting.StepFinding {
 }
 
 // conditionDiagnostics reports explicit if: conditions that are constant or have text around ${{ }}.
-func conditionDiagnostics(value string, start source.Position) []results.Diagnostic {
+func conditionDiagnostics(value string, start sourcetext.Position) []results.Diagnostic {
 	expr, err, _ := syntax.ParseConditionExpression(value)
 	if err != nil {
 		return nil

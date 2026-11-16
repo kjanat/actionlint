@@ -19,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -31,7 +31,7 @@ var sourceRunner = documentRunner{documentRoute: shellcheckRoute}
 
 func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.T) {
 	t.Parallel()
-	reference := source.Reference{Document: "captured-action", Revision: "captured-revision", Node: "run", Address: "runs.steps[0].run"}
+	reference := sourcetext.Reference{Document: "captured-action", Revision: "captured-revision", Node: "run", Address: "runs.steps[0].run"}
 	script := scriptanalysis.Unit{Path: filepath.Join(t.TempDir(), "action.yml"), Content: []byte("captured action"), Reference: reference}
 	files := pluginSourceFiles{}
 	finding := results.Diagnostic{Path: "actions/example/action.yml", Reference: &reference, Message: "shell issue"}
@@ -39,7 +39,7 @@ func TestPluginFindingUsesCapturedScriptReferenceAcrossPathSpellings(t *testing.
 	if err != nil || got.Path != script.Path || got.Reference == nil || *got.Reference != reference || got.Script != 2 || string(got.Source.Content) != string(script.Content) || got.Source.RawScript || got.Source.Unavailable.Present() {
 		t.Fatalf("captured script mapping=%+v error=%v", got, err)
 	}
-	for _, foreign := range []*source.Reference{nil, {}, {Document: "other", Revision: reference.Revision, Node: reference.Node}, {Document: reference.Document, Revision: "stale", Node: reference.Node}, {Document: reference.Document, Revision: reference.Revision, Node: "other"}} {
+	for _, foreign := range []*sourcetext.Reference{nil, {}, {Document: "other", Revision: reference.Revision, Node: reference.Node}, {Document: reference.Document, Revision: "stale", Node: reference.Node}, {Document: reference.Document, Revision: reference.Revision, Node: "other"}} {
 		finding.Reference = foreign
 		if _, err := files.finding("shellcheck", finding, script, 2); err == nil {
 			t.Fatalf("accepted a path without the selected script reference: %+v", foreign)
@@ -65,7 +65,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 	}
 	var inputs []string
 	reader := files.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-	script := scriptanalysis.Unit{Path: "ci.yml", Scope: &scriptanalysis.Scope{Config: cfg, Paths: execution.Paths{Workspace: root, Analysis: root}, Reader: reader}, Execution: &scripts.Execution{Directory: root, DirectoryKnown: true}, Run: &definition.ExecRun{Run: &definition.String{Pos: &source.Position{Line: 6}}, RunPos: &source.Position{Line: 6}}}
+	script := scriptanalysis.Unit{Path: "ci.yml", Scope: &scriptanalysis.Scope{Config: cfg, Paths: execution.Paths{Workspace: root, Analysis: root}, Reader: reader}, Execution: &scripts.Execution{Directory: root, DirectoryKnown: true}, Run: &definition.ExecRun{Run: &definition.String{Pos: &sourcetext.Position{Line: 6}}, RunPos: &sourcetext.Position{Line: 6}}}
 	sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 			t.Fatalf("dependency missing: %s from %v", path, inputs)
 		}
 	}
-	finding, err := sources.finding("shellcheck", results.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: source.Position{Line: 1, Column: 1}, Fixes: []results.Fix{{Description: "must not survive"}}}, script, 3)
+	finding, err := sources.finding("shellcheck", results.Diagnostic{Path: "/workspace/lib/./clean.sh", Start: sourcetext.Position{Line: 1, Column: 1}, Fixes: []results.Fix{{Description: "must not survive"}}}, script, 3)
 	if err != nil || finding.Path != sourcePath(file, root) || !finding.Source.RawScript || string(finding.Source.Content) != "VALUE=one\n" || finding.Script != 3 {
 		t.Fatalf("mapping=%+v error=%v", finding, err)
 	}
@@ -170,7 +170,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 			}
 			var inputs []string
 			reader := files.New(t.Context(), nil, func(path string) { inputs = append(inputs, path) })
-			script := scriptanalysis.Unit{Path: "ci.yml", Scope: &scriptanalysis.Scope{Config: cfg, Paths: execution.Paths{Workspace: root}, Reader: reader}, Execution: &scripts.Execution{Directory: tc.directory, DirectoryKnown: true}, Run: &definition.ExecRun{Run: &definition.String{Pos: &source.Position{Line: 1}}, RunPos: &source.Position{Line: 1}}}
+			script := scriptanalysis.Unit{Path: "ci.yml", Scope: &scriptanalysis.Scope{Config: cfg, Paths: execution.Paths{Workspace: root}, Reader: reader}, Execution: &scripts.Execution{Directory: tc.directory, DirectoryKnown: true}, Run: &definition.ExecRun{Run: &definition.String{Pos: &sourcetext.Position{Line: 1}}, RunPos: &sourcetext.Position{Line: 1}}}
 			sources, err := sourceRunner.sourceFiles(t.Context(), script, requestedSourceGrants(t, script.Config()))
 			if err != nil {
 				t.Fatal(err)

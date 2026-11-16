@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -23,28 +23,28 @@ func TestCallPositionAdmission(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name    string
-		pos     *source.Position
-		want    source.Position
+		pos     *sourcetext.Position
+		want    sourcetext.Position
 		invalid bool
 	}{
 		{name: "absent"},
-		{name: "unknown", pos: &source.Position{}},
-		{name: "known", pos: &source.Position{Line: 2, Column: 3}, want: source.Position{Line: 2, Column: 3}},
-		{name: "partial line", pos: &source.Position{Line: 2}, invalid: true},
-		{name: "partial column", pos: &source.Position{Column: 3}, invalid: true},
+		{name: "unknown", pos: &sourcetext.Position{}},
+		{name: "known", pos: &sourcetext.Position{Line: 2, Column: 3}, want: sourcetext.Position{Line: 2, Column: 3}},
+		{name: "partial line", pos: &sourcetext.Position{Line: 2}, invalid: true},
+		{name: "partial column", pos: &sourcetext.Position{Column: 3}, invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			position := source.Position{}
+			position := sourcetext.Position{}
 			if tc.pos != nil {
 				position = *tc.pos
 			}
 			facts := invocation.Facts{HasUses: true, Uses: "$/action", Step: position, Condition: invocation.ConditionEnabled}
-			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 			if err != nil {
 				t.Fatal(err)
 			}
-			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
+			ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "fixture", Node: "call"}, facts)
 			if tc.invalid {
 				if !errors.Is(err, invocation.ErrInvalidFacts) {
 					t.Fatalf("malformed position admitted: %v", err)
@@ -108,7 +108,7 @@ func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 		{&definition.String{Value: "false"}, invocation.ConditionSkipped},
 		{&definition.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
 	} {
-		call := &definition.Step{Pos: &source.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &definition.ExecAction{Uses: &definition.String{Value: "$/action"}}}
+		call := &definition.Step{Pos: &sourcetext.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &definition.ExecAction{Uses: &definition.String{Value: "$/action"}}}
 		context, err := testCallContext(t, call, runners.MacOrLinux)
 		if err != nil {
 			t.Fatal(err)
@@ -206,7 +206,7 @@ func TestCanonicalActionInputsPreserveSourceScalarTags(t *testing.T) {
 
 func testEntryContext(t *testing.T) invocation.Context {
 	t.Helper()
-	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	builder, err := invocation.NewBuilder(invocation.EntryAction, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,11 +261,11 @@ func testCallContext(t *testing.T, step *definition.Step, platform runners.Platf
 
 func testFactsContext(t *testing.T, facts invocation.Facts) invocation.Context {
 	t.Helper()
-	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
 	}
-	ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
+	ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "fixture", Node: "call"}, facts)
 	if err != nil {
 		t.Fatal(err)
 	}

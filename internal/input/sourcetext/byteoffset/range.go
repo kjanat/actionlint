@@ -1,5 +1,5 @@
-// Package position validates strict source ranges against captured bytes.
-package position
+// Package byteoffset validates strict source ranges against captured bytes.
+package byteoffset
 
 import (
 	"bytes"
@@ -7,17 +7,17 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
 // Offset resolves a physical Unicode-scalar position without inference or clamping.
-func Offset(content []byte, model source.Coordinates, p source.Position) (int, error) {
+func Offset(content []byte, model sourcetext.Coordinates, p sourcetext.Position) (int, error) {
 	if p.Line < 1 || p.Column < 1 || !utf8.Valid(content) {
 		return 0, fmt.Errorf("invalid source position %v", p)
 	}
 	switch model {
-	case source.YAML:
+	case sourcetext.YAML:
 		document := sourcemap.NewDocument(string(content))
 		if p.Line > document.LineCount() {
 			break
@@ -35,7 +35,7 @@ func Offset(content []byte, model source.Coordinates, p source.Position) (int, e
 			offset += len(text) + len(ending)
 		}
 		return offset, nil
-	case source.RawLF:
+	case sourcetext.RawLF:
 		start := 0
 		for line := 1; ; line++ {
 			end := len(content)
@@ -43,7 +43,7 @@ func Offset(content []byte, model source.Coordinates, p source.Position) (int, e
 				end = start + relative
 			}
 			if line == p.Line {
-				if column, ok := source.ByteOffsetAtColumn(string(content[start:end]), p.Column); ok {
+				if column, ok := sourcetext.ByteOffsetAtColumn(string(content[start:end]), p.Column); ok {
 					return start + column, nil
 				}
 				break
@@ -59,13 +59,13 @@ func Offset(content []byte, model source.Coordinates, p source.Position) (int, e
 	return 0, fmt.Errorf("source position %v is outside the document", p)
 }
 
-// RawLFPosition returns the source.RawLF position of a byte offset in content,
+// RawLFPosition returns the sourcetext.RawLF position of a byte offset in content,
 // clamping the offset to the content. It is the inverse of Offset for RawLF:
 // lines end at LF only, and columns count Unicode scalars.
-func RawLFPosition(content []byte, offset int) source.Position {
+func RawLFPosition(content []byte, offset int) sourcetext.Position {
 	offset = max(0, min(offset, len(content)))
 	prefix := content[:offset]
-	return source.Position{
+	return sourcetext.Position{
 		Line:   1 + bytes.Count(prefix, []byte{'\n'}),
 		Column: 1 + utf8.RuneCount(prefix[bytes.LastIndexByte(prefix, '\n')+1:]),
 	}
@@ -73,7 +73,7 @@ func RawLFPosition(content []byte, offset int) source.Position {
 
 // Range validates both endpoints and order; zero-width ranges, including EOF,
 // are valid. Zero endpoints, reversed ranges and YAML CRLF interiors are not.
-func Range(content []byte, model source.Coordinates, start, end source.Position) (int, int, error) {
+func Range(content []byte, model sourcetext.Coordinates, start, end sourcetext.Position) (int, int, error) {
 	a, err := Offset(content, model, start)
 	if err != nil {
 		return 0, 0, err

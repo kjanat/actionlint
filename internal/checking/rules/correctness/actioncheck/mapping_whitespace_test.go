@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
@@ -36,7 +36,7 @@ runs:
 					t.Fatal(err)
 				}
 				meta.Filename, meta.Source = "action.yml", source
-				findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+				findings := actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 				errs := findings
 				if tc.invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "expected a mapping") {

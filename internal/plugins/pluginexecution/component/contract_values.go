@@ -5,21 +5,21 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
 )
 
-func lowerReference(ref source.Reference) *wacogo.ValRecord {
+func lowerReference(ref sourcetext.Reference) *wacogo.ValRecord {
 	return wacogo.NewValRecord(field("document", wacogo.ValString(ref.Document)), field("revision", wacogo.ValString(ref.Revision)), field("node", wacogo.ValString(ref.Node)), field("address", wacogo.ValString(ref.Address)))
 }
 
-func liftReference(value wacogo.Val) (source.Reference, error) {
+func liftReference(value wacogo.Val) (sourcetext.Reference, error) {
 	record, err := liftRecord(value, "source reference")
 	if err != nil {
-		return source.Reference{}, err
+		return sourcetext.Reference{}, err
 	}
-	ref := source.Reference{}
+	ref := sourcetext.Reference{}
 	for name, dest := range map[string]*string{"document": &ref.Document, "revision": &ref.Revision, "node": &ref.Node, "address": &ref.Address} {
 		value, err := liftString(record, name)
 		if err != nil {

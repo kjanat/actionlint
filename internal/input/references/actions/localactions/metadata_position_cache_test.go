@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
@@ -17,7 +17,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 			t.Fatal("source-less metadata has source provenance")
 		}
 		for range 2 {
-			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (source.Position{Line: 2, Column: 3}) || actionmeta.ExpressionEndPosition(meta, value, actionmeta.ExpressionProblem{Offset: 1, EndOffset: 2}) != nil {
+			if got := actionmeta.ExpressionPosition(meta, value, 2); *got != (sourcetext.Position{Line: 2, Column: 3}) || actionmeta.ExpressionEndPosition(meta, value, actionmeta.ExpressionProblem{Offset: 1, EndOffset: 2}) != nil {
 				t.Fatal("source-less metadata did not retain its fallback position")
 			}
 		}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -29,7 +29,7 @@ func TestGCCOutput(t *testing.T) {
 			}
 			finding := results.Diagnostic{
 				Path: `C:\repo with space\wørkflow.yml`, Rule: "expression-reference", Code: tc.code,
-				Severity: tc.severity, Message: tc.message, Start: source.Position{Line: 7, Column: 12}, Snippet: "not emitted",
+				Severity: tc.severity, Message: tc.message, Start: sourcetext.Position{Line: 7, Column: 12}, Snippet: "not emitted",
 			}
 			var out strings.Builder
 			if err := renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{finding}}); err != nil {

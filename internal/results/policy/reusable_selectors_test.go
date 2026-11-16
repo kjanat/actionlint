@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -44,7 +44,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		item := &finding.Finding{Rule: "expression-reference", Start: source.Position{Line: 10, Column: 20}}
+		item := &finding.Finding{Rule: "expression-reference", Start: sourcetext.Position{Line: 10, Column: 20}}
 		got := fixtureConfigured(t, "ci.yml", "", []byte(reusableIgnoreSource), []*finding.Finding{item}, cfg)
 		var kinds []string
 		for _, e := range got {
@@ -60,7 +60,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign := &finding.Finding{Rule: "expression-reference", Start: source.Position{Line: 10, Column: 20}, Path: "action.yml", Source: results.DiagnosticSource{Content: []byte("foreign")}}
+	foreign := &finding.Finding{Rule: "expression-reference", Start: sourcetext.Position{Line: 10, Column: 20}, Path: "action.yml", Source: results.DiagnosticSource{Content: []byte("foreign")}}
 	if got := fixtureConfigured(t, "ci.yml", "", []byte(reusableIgnoreSource), []*finding.Finding{foreign}, cfg); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign finding: %#v", got)
 	}
@@ -90,7 +90,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			item := &finding.Finding{Rule: "shellcheck", Start: source.Position{Line: 1, Column: 6}, Path: script, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}, SuppressionOrigin: &results.SuppressionOrigin{First: 10, Last: 10}}
+			item := &finding.Finding{Rule: "shellcheck", Start: sourcetext.Position{Line: 1, Column: 6}, Path: script, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}, SuppressionOrigin: &results.SuppressionOrigin{First: 10, Last: 10}}
 			got := fixtureConfigured(t, workflow, root, []byte(reusableIgnoreSource), []*finding.Finding{item}, cfg)
 			if len(got) != tc.want {
 				t.Fatalf("got %d findings, want %d", len(got), tc.want)
@@ -124,7 +124,7 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			item := &finding.Finding{Rule: "expression-reference", Start: source.Position{Line: 10, Column: 20}}
+			item := &finding.Finding{Rule: "expression-reference", Start: sourcetext.Position{Line: 10, Column: 20}}
 			got := fixtureConfigured(t, filepath.Join(root, ".github", "workflows", "ci.yml"), root, []byte(reusableIgnoreSource), []*finding.Finding{item}, cfg)
 			if (len(got) == 0) != tc.suppressed {
 				t.Fatalf("got %#v", got)

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -59,10 +59,10 @@ run:
 next: value
 `, "\n", ending)
 				findings := []*finding.Finding{
-					{Start: sourcepos.Position{Line: start + 1}, Rule: "expression-reference"},
-					{Start: sourcepos.Position{Line: start + 2}, Rule: "shellcheck"},
-					{Start: sourcepos.Position{Line: start + 2}, Rule: "action"},
-					{Start: sourcepos.Position{Line: start + 3}, Rule: "expression-reference"},
+					{Start: sourcetext.Position{Line: start + 1}, Rule: "expression-reference"},
+					{Start: sourcetext.Position{Line: start + 2}, Rule: "shellcheck"},
+					{Start: sourcetext.Position{Line: start + 2}, Rule: "action"},
+					{Start: sourcetext.Position{Line: start + 3}, Rule: "expression-reference"},
 				}
 				got := fixtureInline(t, []byte(source), findings, nil)
 				if diff := cmp.Diff(fixtureIdentities(findings[2:]), fixtureIdentities(got)); diff != "" {
@@ -88,9 +88,9 @@ func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 			t.Parallel()
 			source := []byte("run: | # " + declaration + "\n  echo ok\nnext: value\n")
 			findings := []*finding.Finding{
-				{Start: sourcepos.Position{Line: 2}, Rule: "expression-reference"},
-				{Start: sourcepos.Position{Line: 2}, Rule: "shellcheck"},
-				{Start: sourcepos.Position{Line: 3}, Rule: "expression-reference"},
+				{Start: sourcetext.Position{Line: 2}, Rule: "expression-reference"},
+				{Start: sourcetext.Position{Line: 2}, Rule: "shellcheck"},
+				{Start: sourcetext.Position{Line: 3}, Rule: "expression-reference"},
 			}
 			got := fixtureInline(t, source, findings, cfg.Policy.DisallowSuppressions)
 			if len(got) != 3 || got[0].Rule != findings[0].Rule || got[0].Start != findings[0].Start || got[1].Rule != findings[2].Rule || got[1].Start != findings[2].Start || got[2].Rule != "forbidden-suppression" || got[2].Start.Line != 1 {
@@ -110,7 +110,7 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 				t.Fatal(err)
 			}
 			source := []byte("first: value\nsecond: value\nthird: value\n# actionlint:ignore-next-line " + name + " -- reviewed\nfifth: value\n")
-			item := &finding.Finding{Start: sourcepos.Position{Line: 5}, Rule: name}
+			item := &finding.Finding{Start: sourcetext.Position{Line: 5}, Rule: name}
 			got := fixtureInline(t, source, []*finding.Finding{item}, nil)
 			if name == "unused-suppression" {
 				if len(got) != 1 || got[0].UnusedSuppressionRule != name || got[0].Start.Line != 4 {
@@ -139,7 +139,7 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
   ${{ github.event.issue.title }}
   '''
 `)
-	item := &finding.Finding{Start: sourcepos.Position{Line: 4}, Rule: "expression-reference"}
+	item := &finding.Finding{Start: sourcetext.Position{Line: 4}, Rule: "expression-reference"}
 	got := fixtureInline(t, source, []*finding.Finding{item}, nil)
 	if len(got) != 1 || got[0].Rule != item.Rule || got[0].Start != item.Start {
 		t.Fatalf("script text changed findings: %+v", got)
@@ -153,11 +153,11 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings := []*finding.Finding{
-		{Rule: "expression-reference", Start: sourcepos.Position{Line: 4}},
-		{Rule: "shellcheck", Start: sourcepos.Position{Line: 7}},
-		{Rule: "plugin-rule", Start: sourcepos.Position{Line: 9}},
-		{Rule: "inline-suppression", Start: sourcepos.Position{Line: 10}},
-		{Rule: "forbidden-suppression", Start: sourcepos.Position{Line: 11}},
+		{Rule: "expression-reference", Start: sourcetext.Position{Line: 4}},
+		{Rule: "shellcheck", Start: sourcetext.Position{Line: 7}},
+		{Rule: "plugin-rule", Start: sourcetext.Position{Line: 9}},
+		{Rule: "inline-suppression", Start: sourcetext.Position{Line: 10}},
+		{Rule: "forbidden-suppression", Start: sourcetext.Position{Line: 11}},
 	}
 	got := fixtureInline(t, []byte("workflow"), findings, policy, "plugin-rule")
 	want := &results.SuppressionOrigin{First: 4, Last: 4}
@@ -173,8 +173,8 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		}
 	}
 
-	foreign := &finding.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}}
-	origin := &finding.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
+	foreign := &finding.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcetext.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}}
+	origin := &finding.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcetext.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
 	got = fixtureForeign(t, "action.yml", []byte("run: echo hi"), []*finding.Finding{foreign, origin}, nil)
 	if len(got) != 2 || got[0].Source.Suppression == nil || *got[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", First: 2, Last: 2}) || got[1].Source.Suppression == nil || *got[1].Source.Suppression != *origin.SuppressionOrigin {
 		t.Fatalf("foreign targets lost declaration scope: %+v", got)
@@ -196,7 +196,7 @@ run:
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(header+"\n    echo body\n", "\n", ending)
 			line := strings.Count(header, "\n") + 2
-			findings := []*finding.Finding{{Start: sourcepos.Position{Line: line}, Rule: "expression-reference"}, {Start: sourcepos.Position{Line: line}, Rule: "shellcheck"}}
+			findings := []*finding.Finding{{Start: sourcetext.Position{Line: line}, Rule: "expression-reference"}, {Start: sourcetext.Position{Line: line}, Rule: "shellcheck"}}
 			if got := fixtureInline(t, []byte(source), findings, nil); len(got) != 2 {
 				t.Fatalf("unrelated prefix suppressed body: %q: %+v", source, got)
 			}

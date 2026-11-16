@@ -3,7 +3,7 @@ package syntax
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // SyntaxError reports a syntax failure and its range in the decoded expression text.
@@ -11,7 +11,7 @@ type SyntaxError struct {
 	Message           string
 	Offset, EndOffset int
 	// Position is where the failure starts in the expression.
-	Position source.Position
+	Position sourcetext.Position
 }
 
 func (issue *SyntaxError) Error() string {

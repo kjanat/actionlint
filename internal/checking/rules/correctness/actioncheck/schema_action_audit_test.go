@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -16,9 +16,9 @@ func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 	t.Parallel()
 	meta := &actionmeta.Metadata{Inputs: calls.Inputs{"token": {Name: "token", Required: true}}}
 	for _, dynamic := range []bool{false, true} {
-		exec := &definition.ExecAction{Uses: &definition.String{Value: "./audit", Pos: &sourcepos.Position{Line: 1, Column: 1}}}
+		exec := &definition.ExecAction{Uses: &definition.String{Value: "./audit", Pos: &sourcetext.Position{Line: 1, Column: 1}}}
 		if dynamic {
-			exec.InputsExpression = &definition.String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &sourcepos.Position{Line: 2, Column: 1}}
+			exec.InputsExpression = &definition.String{Value: "${{ fromJSON(inputs.parameters) }}", Pos: &sourcetext.Position{Line: 2, Column: 1}}
 		}
 		findings := actioncheck.Inputs(meta, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "audit" })
 		if (len(findings) == 0) != dynamic {
@@ -178,7 +178,7 @@ runs:
 			var findings []*finding.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
-				findings = actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+				findings = actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			}
 			valid := err == nil && len(findings) == 0
 			if valid != tc.valid {
@@ -198,7 +198,7 @@ func TestActionStepValueShapes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+			findings := actioncheck.Check(meta, &sourcetext.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			if len(findings) == 0 {
 				t.Fatal("invalid step value was accepted")
 			}

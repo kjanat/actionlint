@@ -30,8 +30,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -287,7 +287,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		defer skippedMu.Unlock()
 		invocations := indexCheckInvocations(result.Invocations)
 		for name := range skipped {
-			markUnavailable := func(ref source.Reference) {
+			markUnavailable := func(ref sourcetext.Reference) {
 				for _, context := range invocations.forSource(ref) {
 					s.checkCompletion.markUnavailableInvocation(ref, context, name, "tool was unavailable for this analysis")
 				}
@@ -295,7 +295,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			markUnavailable(snapshot.Reference())
 			for _, document := range result.SourceDocuments {
 				revision := document.Capture().Revision()
-				markUnavailable(source.Reference{Document: revision.Document(), Revision: revision.Digest()})
+				markUnavailable(sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()})
 			}
 		}
 	}()

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/results"
 
@@ -167,7 +167,7 @@ func TestErrorPrettyPrint(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.message, func(t *testing.T) {
 			t.Parallel()
-			err := testFinding(&source.Position{Line: tc.line, Column: tc.column}, "kind", tc.message)
+			err := testFinding(&sourcetext.Position{Line: tc.line, Column: tc.column}, "kind", tc.message)
 			err.Path = "filename.txt"
 
 			var buf bytes.Buffer
@@ -220,7 +220,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
-			err := testFinding(&source.Position{Line: 1, Column: tc.column}, "kind", tc.message)
+			err := testFinding(&sourcetext.Position{Line: 1, Column: tc.column}, "kind", tc.message)
 			err.Path = "filename.txt"
 			f := testFields(err, []byte(tc.source))
 			if f.Message != tc.message {
@@ -251,7 +251,7 @@ func TestErrorGetTemplateFieldsOK(t *testing.T) {
 // Regression test for #128
 func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 	t.Parallel()
-	err := testFinding(&source.Position{Line: 1, Column: 9999}, "kind", "this is message")
+	err := testFinding(&sourcetext.Position{Line: 1, Column: 9999}, "kind", "this is message")
 	err.Path = "filename.yaml"
 	f := testFields(err, []byte("this is source"))
 	if strings.Contains(f.Snippet, "\n") {
@@ -261,8 +261,8 @@ func TestErrorGetTemplateFieldsColumnIsOutOfBounds(t *testing.T) {
 
 func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 	t.Parallel()
-	err := testFinding(&source.Position{Line: 1, Column: 6}, "kind", "this is message")
-	err.End = source.Position{Line: 1, Column: 10}
+	err := testFinding(&sourcetext.Position{Line: 1, Column: 6}, "kind", "this is message")
+	err.End = sourcetext.Position{Line: 1, Column: 10}
 	f := testFields(err, []byte("echo $foo bar"))
 	if f.Snippet != "echo $foo bar\n     ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -274,8 +274,8 @@ func TestErrorGetTemplateFieldsExplicitEndColumn(t *testing.T) {
 
 func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 	t.Parallel()
-	err := testFinding(&source.Position{Line: 1, Column: 8}, "kind", "this is message")
-	err.End = source.Position{Line: 1, Column: 12}
+	err := testFinding(&sourcetext.Position{Line: 1, Column: 8}, "kind", "this is message")
+	err.End = sourcetext.Position{Line: 1, Column: 12}
 	f := testFields(err, []byte("echo é $foo"))
 	if f.Snippet != "echo é $foo\n       ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -287,7 +287,7 @@ func TestErrorGetTemplateFieldsExplicitEndColumnAfterUnicode(t *testing.T) {
 
 func TestErrorGetTemplateFieldsEndColumnAfterWideRunes(t *testing.T) {
 	t.Parallel()
-	err := testFinding(&source.Position{Line: 1, Column: 5}, "kind", "this is message")
+	err := testFinding(&sourcetext.Position{Line: 1, Column: 5}, "kind", "this is message")
 	f := testFields(err, []byte("日本語 $foo"))
 	if f.Snippet != "日本語 $foo\n       ^~~~" {
 		t.Fatalf("unexpected snippet: %q", f.Snippet)
@@ -368,8 +368,8 @@ func TestErrorPrintFormattedWithTemplateFields(t *testing.T) {
 func TestErrorPrintFormattedErrors(t *testing.T) {
 	t.Parallel()
 	errs := []*results.PublishedDiagnostic{
-		testFinding(&source.Position{Line: 1, Column: 1}, "kind1", "error1"),
-		testFinding(&source.Position{Line: 1, Column: 0}, "kind2", "error2"),
+		testFinding(&sourcetext.Position{Line: 1, Column: 1}, "kind1", "error1"),
+		testFinding(&sourcetext.Position{Line: 1, Column: 0}, "kind2", "error2"),
 	}
 
 	f, err := newTestFormatter("{{range $ = .}}({{$.Message | printf \"%q\"}},{{$.Snippet | printf \"%q\"}}){{end}}")
@@ -523,7 +523,7 @@ func TestErrorFormatterPrintGetVersion(t *testing.T) {
 }
 
 // Fixtures construct presentation inputs directly; no engine or compatibility API is involved.
-func testFinding(pos *source.Position, kind, message string) *results.PublishedDiagnostic {
+func testFinding(pos *sourcetext.Position, kind, message string) *results.PublishedDiagnostic {
 	return &results.PublishedDiagnostic{Start: *pos, Rule: kind, Message: message}
 }
 

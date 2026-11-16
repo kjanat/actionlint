@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"github.com/kjanat/wacogo"
 )
 
@@ -15,11 +15,11 @@ func TestLiftAnalysisPreservesValidSiblings(t *testing.T) {
 		t.Run(strconv.FormatBool(independentError), func(t *testing.T) {
 			t.Parallel()
 			values := wacogo.NewValListOf[wacogo.Val](
-				mixedDiagnostic("before", source.Position{Line: 1, Column: 1}, source.Position{Line: 1, Column: 2}),
-				mixedDiagnostic("zero", source.Position{}, source.Position{Line: 2, Column: 2}),
-				mixedDiagnostic("between", source.Position{Line: 3, Column: 1}, source.Position{Line: 3, Column: 2}),
-				mixedDiagnostic("reversed", source.Position{Line: 4, Column: 8}, source.Position{Line: 4, Column: 2}),
-				mixedDiagnostic("after", source.Position{Line: 5, Column: 1}, source.Position{Line: 5, Column: 2}),
+				mixedDiagnostic("before", sourcetext.Position{Line: 1, Column: 1}, sourcetext.Position{Line: 1, Column: 2}),
+				mixedDiagnostic("zero", sourcetext.Position{}, sourcetext.Position{Line: 2, Column: 2}),
+				mixedDiagnostic("between", sourcetext.Position{Line: 3, Column: 1}, sourcetext.Position{Line: 3, Column: 2}),
+				mixedDiagnostic("reversed", sourcetext.Position{Line: 4, Column: 8}, sourcetext.Position{Line: 4, Column: 2}),
+				mixedDiagnostic("after", sourcetext.Position{Line: 5, Column: 1}, sourcetext.Position{Line: 5, Column: 2}),
 			)
 			completion := wacogo.ValOptionNone()
 			if independentError {
@@ -64,7 +64,7 @@ func TestLiftAnalysisRejectsMalformedEnvelope(t *testing.T) {
 	}
 }
 
-func mixedDiagnostic(message string, start, end source.Position) *wacogo.ValRecord {
+func mixedDiagnostic(message string, start, end sourcetext.Position) *wacogo.ValRecord {
 	return wacogo.NewValRecord(
 		field("reference", wacogo.ValOptionNone()), field("related", wacogo.NewValListOf[wacogo.Val]()),
 		field("rule", wacogo.ValString("example")), field("code", wacogo.ValString("EX001")),

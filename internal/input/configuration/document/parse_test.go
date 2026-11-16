@@ -8,18 +8,18 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestFormats(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name, src  string
-		key, value sourcepos.Position
+		key, value sourcetext.Position
 	}{
-		{"config.yaml", "repository:\n  runners: [gpu]\n", sourcepos.Position{Line: 2, Column: 3}, sourcepos.Position{Line: 2, Column: 12}},
-		{"config.jsonc", "{\n // comment\n \"repository\": {\"runners\": [\"gpu\"],},\n}", sourcepos.Position{Line: 3, Column: 17}, sourcepos.Position{Line: 3, Column: 28}},
-		{"config.toml", "[repository]\nrunners = [\"gpu\"]\n", sourcepos.Position{Line: 2, Column: 1}, sourcepos.Position{Line: 2, Column: 11}},
+		{"config.yaml", "repository:\n  runners: [gpu]\n", sourcetext.Position{Line: 2, Column: 3}, sourcetext.Position{Line: 2, Column: 12}},
+		{"config.jsonc", "{\n // comment\n \"repository\": {\"runners\": [\"gpu\"],},\n}", sourcetext.Position{Line: 3, Column: 17}, sourcetext.Position{Line: 3, Column: 28}},
+		{"config.toml", "[repository]\nrunners = [\"gpu\"]\n", sourcetext.Position{Line: 2, Column: 1}, sourcetext.Position{Line: 2, Column: 11}},
 	}
 	want := map[string]any{"repository": map[string]any{"runners": []any{"gpu"}}}
 	for _, tc := range tests {
@@ -47,10 +47,10 @@ func TestFormats(t *testing.T) {
 }
 
 // keyAt returns the position of the key or list item at pointer.
-func keyAt(n *Node, pointer string) sourcepos.Position { return n.Origins()[pointer].Key }
+func keyAt(n *Node, pointer string) sourcetext.Position { return n.Origins()[pointer].Key }
 
 // valueAt returns the position of the value at pointer.
-func valueAt(n *Node, pointer string) sourcepos.Position { return n.Origins()[pointer].Value }
+func valueAt(n *Node, pointer string) sourcetext.Position { return n.Origins()[pointer].Value }
 
 func TestDuplicateKeys(t *testing.T) {
 	t.Parallel()

@@ -3,7 +3,7 @@ package definition_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -23,7 +23,7 @@ func TestCacheModeSyntax(t *testing.T) {
 		{definition.CacheModeWrite, "write", 3, true},
 		{definition.CacheModeWriteOnly, "write-only", 2, true},
 	} {
-		mode := &definition.CacheMode{Kind: tc.kind, Pos: &source.Position{Line: 1, Column: 1}}
+		mode := &definition.CacheMode{Kind: tc.kind, Pos: &sourcetext.Position{Line: 1, Column: 1}}
 		capabilities, valid := mode.Capabilities()
 		if tc.kind.String() != tc.name || capabilities != tc.capabilities || valid != tc.valid {
 			t.Fatalf("kind=%v capabilities=%d valid=%t", tc.kind, capabilities, valid)

@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Reader receives the Store lifetime context and canonical document address.
@@ -25,7 +25,7 @@ type Reader func(context.Context, string) ([]byte, error)
 type Overlay struct {
 	Path        string
 	Content     []byte
-	Coordinates source.Coordinates
+	Coordinates sourcetext.Coordinates
 }
 
 // Store canonicalizes file paths through PhysicalPath and uses remote URLs unchanged.
@@ -53,7 +53,7 @@ type alias struct {
 }
 
 type entry struct {
-	model       source.Coordinates
+	model       sourcetext.Coordinates
 	aliases     map[string]struct{}
 	readAliases map[string]struct{}
 	done        chan struct{}
@@ -75,10 +75,10 @@ func New(ctx context.Context, overlays []Overlay, reader Reader) (*Store, error)
 }
 
 func physicalDocument(path string) string {
-	if path == "<stdin>" || source.RemoteAddress(path) {
+	if path == "<stdin>" || sourcetext.RemoteAddress(path) {
 		return path
 	}
-	return source.DocumentID(files.PhysicalPath(path))
+	return sourcetext.DocumentID(files.PhysicalPath(path))
 }
 
 func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader, resolve func(string) string) (*Store, error) {
@@ -139,7 +139,7 @@ func newStoreWithResolver(ctx context.Context, overlays []Overlay, reader Reader
 		variants := make(map[string]struct{})
 		for _, overlay := range group {
 			e.aliases[overlay.Path] = struct{}{}
-			variants[string(overlay.Coordinates)+":"+source.ContentDigest(overlay.Content)] = struct{}{}
+			variants[string(overlay.Coordinates)+":"+sourcetext.ContentDigest(overlay.Content)] = struct{}{}
 		}
 		if len(variants) != 1 {
 			keys := make([]string, 0, len(variants))
@@ -178,7 +178,7 @@ func validatePath(path string) error {
 	if path == "" || strings.ContainsRune(path, 0) {
 		return errors.New("source capture requires a nonempty address without NUL")
 	}
-	if path != "<stdin>" && !filepath.IsAbs(path) && !source.RemoteAddress(path) {
+	if path != "<stdin>" && !filepath.IsAbs(path) && !sourcetext.RemoteAddress(path) {
 		return errors.New("source capture requires an absolute address or <stdin>")
 	}
 	return nil
@@ -297,7 +297,7 @@ func (s *Store) registerDocument(path, document string) {
 
 // Read shares one capture per canonical document. Caller cancellation only
 // cancels its wait; backing IO belongs to the Store lifetime context.
-func (s *Store) Read(ctx context.Context, path string, model source.Coordinates) (CapturedDocument, error) {
+func (s *Store) Read(ctx context.Context, path string, model sourcetext.Coordinates) (CapturedDocument, error) {
 	if ctx == nil || !model.Valid() {
 		return CapturedDocument{}, errors.New("source capture requires a caller context and coordinates")
 	}
@@ -328,7 +328,7 @@ func (s *Store) Read(ctx context.Context, path string, model source.Coordinates)
 			return CapturedDocument{}, err
 		}
 		e.model, e.done = model, make(chan struct{})
-		if document == "<stdin>" || source.RemoteAddress(document) {
+		if document == "<stdin>" || sourcetext.RemoteAddress(document) {
 			e.err = &CaptureError{document, errors.New("source bytes must be supplied before reading this address")}
 			close(e.done)
 		} else {

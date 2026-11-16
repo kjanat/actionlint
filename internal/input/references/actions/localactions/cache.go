@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
@@ -284,7 +284,7 @@ func (c *Cache) readLocalActionMetadataFile(dir string) (capture.CapturedDocumen
 		if c.onManifestRequest != nil {
 			c.onManifestRequest(path)
 		}
-		captured, err := c.captures.Read(c.ctx, path, source.YAML)
+		captured, err := c.captures.Read(c.ctx, path, sourcetext.YAML)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}

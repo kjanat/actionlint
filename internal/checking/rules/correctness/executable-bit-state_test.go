@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -45,11 +45,11 @@ func TestCompositeConditionalModeCheckoutReset(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+			builder, err := invocation.NewBuilder(invocation.EntryWorkflow, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 			if err != nil {
 				t.Fatal(err)
 			}
-			ticket, err := builder.Begin(builder.RootContext(), source.Reference{Document: "fixture", Node: "call"}, facts)
+			ticket, err := builder.Begin(builder.RootContext(), sourcetext.Reference{Document: "fixture", Node: "call"}, facts)
 			if err != nil {
 				t.Fatal(err)
 			}

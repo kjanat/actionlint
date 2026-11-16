@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -14,20 +14,20 @@ func TestRefuseInvalidTransactions(t *testing.T) {
 	t.Parallel()
 	content := []byte("hello\n")
 	base := func(path string) results.Edit {
-		return results.Edit{Path: path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 4}, Replacement: "ok"}
+		return results.Edit{Path: path, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 4}, Replacement: "ok"}
 	}
 	for _, tc := range []struct {
 		name, revision string
 		edits          func(path string) []results.Edit
 	}{
-		{"empty alternative", source.ContentDigest(content), func(string) []results.Edit { return nil }},
+		{"empty alternative", sourcetext.ContentDigest(content), func(string) []results.Edit { return nil }},
 		{"missing revision", "", func(path string) []results.Edit { return []results.Edit{base(path)} }},
 		{"stale revision", "bad", func(path string) []results.Edit { return []results.Edit{base(path)} }},
-		{"overlap", source.ContentDigest(content), func(path string) []results.Edit {
-			return []results.Edit{base(path), {Path: path, Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 1, Column: 5}}}
+		{"overlap", sourcetext.ContentDigest(content), func(path string) []results.Edit {
+			return []results.Edit{base(path), {Path: path, Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 1, Column: 5}}}
 		}},
-		{"outside", source.ContentDigest(content), func(path string) []results.Edit {
-			return []results.Edit{{Path: path, Start: source.Position{Line: 9, Column: 1}, End: source.Position{Line: 9, Column: 2}}}
+		{"outside", sourcetext.ContentDigest(content), func(path string) []results.Edit {
+			return []results.Edit{{Path: path, Start: sourcetext.Position{Line: 9, Column: 1}, End: sourcetext.Position{Line: 9, Column: 2}}}
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -56,11 +56,11 @@ func TestRemoteFixesDoNotPreventLocalEdits(t *testing.T) {
 		t.Fatal(err)
 	}
 	const remote = "https://github.com/example/action/blob/abc/action.yml"
-	localEdit := results.Edit{Path: path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 6}, Replacement: "local"}
+	localEdit := results.Edit{Path: path, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 6}, Replacement: "local"}
 	remoteEdit := localEdit
 	remoteEdit.Path, remoteEdit.Replacement = remote, "remote"
 	fix := func(edits ...results.Edit) results.Fix {
-		return results.Fix{Applicability: results.FixSafe, Revisions: map[string]string{path: source.ContentDigest(content), remote: source.ContentDigest(content)}, Edits: edits}
+		return results.Fix{Applicability: results.FixSafe, Revisions: map[string]string{path: sourcetext.ContentDigest(content), remote: sourcetext.ContentDigest(content)}, Edits: edits}
 	}
 	findings := []results.Diagnostic{
 		{Fixes: []results.Fix{fix(remoteEdit)}},

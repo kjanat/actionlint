@@ -3,7 +3,7 @@ package executor
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -27,7 +27,7 @@ func TestSourceInputKindAndParseStatus(t *testing.T) {
 			if tc.kind == "action" {
 				document = parsing.Action("action.yml", content)
 			}
-			input := SourceInput(document, "source.yml", content, source.Reference{})
+			input := SourceInput(document, "source.yml", content, sourcetext.Reference{})
 			if input.Kind != tc.kind || input.ParseStatus != tc.status || input.Content != tc.content {
 				t.Fatalf("kind=%s status=%s content=%q", input.Kind, input.ParseStatus, input.Content)
 			}

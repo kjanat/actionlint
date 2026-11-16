@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
@@ -36,7 +36,7 @@ runs:
 		t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 	}
 	testutil.AssertSourceFile(t, filepath.Join(root, finding.Path), path)
-	if finding.Start != (source.Position{Line: 1, Column: 6}) || finding.Snippet != "echo $VALUE" {
+	if finding.Start != (sourcetext.Position{Line: 1, Column: 6}) || finding.Snippet != "echo $VALUE" {
 		t.Fatalf("sourced finding attributed to composite: %+v", finding)
 	}
 }

@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
 
-var invocationContextEntry = source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
+var invocationContextEntry = sourcetext.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
 
 func invocationContextBuilder(t *testing.T, budget invocation.Budget) *invocation.Builder {
 	t.Helper()
@@ -139,11 +139,11 @@ func invocationContextPagedGraph(t *testing.T, count int) (invocation.Graph, []i
 	builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: count, MaxCalls: count, MaxScripts: count})
 	owner, contexts := builder.RootContext(), make([]invocation.Context, 0, count)
 	callIDs, scriptIDs := make([]invocation.ID, 0, count), make([]invocation.ID, 0, count)
-	at := func(node string) source.Reference {
-		return source.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
+	at := func(node string) sourcetext.Reference {
+		return sourcetext.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 	}
 	for index := range count {
-		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: source.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
+		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: sourcetext.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -263,10 +263,10 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 	t.Run("stop", func(t *testing.T) {
 		t.Parallel()
 		builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1})
-		at := func(node string) source.Reference {
-			return source.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
+		at := func(node string) sourcetext.Reference {
+			return sourcetext.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 		}
-		facts := invocation.Facts{Step: source.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
+		facts := invocation.Facts{Step: sourcetext.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
 		ticket, err := builder.Begin(builder.RootContext(), at("call"), facts)
 		if err != nil {
 			t.Fatal(err)

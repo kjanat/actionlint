@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -33,5 +33,5 @@ func EmptyJob(job workflows.Job) []reporting.StepFinding {
 	for range job.Steps() {
 		return nil
 	}
-	return []reporting.StepFinding{{Severity: "error", Start: source.ZeroIfNil(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
+	return []reporting.StepFinding{{Severity: "error", Start: sourcetext.ZeroIfNil(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
 }

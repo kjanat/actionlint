@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 
 // Facts are resolved once per call, including platform-dependent effects.
 type Facts struct {
-	Step                                                 source.Position
+	Step                                                 sourcetext.Position
 	Uses                                                 string
 	HasUses                                              bool
 	Condition                                            Condition
@@ -43,7 +43,7 @@ type Context struct{ data *contextData }
 type contextData struct {
 	id, parent ID
 	depth      int
-	site       source.Reference
+	site       sourcetext.Reference
 	facts      Facts
 }
 
@@ -70,9 +70,9 @@ func (context Context) Depth() int {
 	return context.data.depth
 }
 
-func (context Context) Site() source.Reference {
+func (context Context) Site() sourcetext.Reference {
 	if !context.Valid() {
-		return source.Reference{}
+		return sourcetext.Reference{}
 	}
 	return context.data.site
 }

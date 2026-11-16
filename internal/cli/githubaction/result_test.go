@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/output"
@@ -29,7 +29,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	const file = `D:\shared\workflow.yml`
 	analysis := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{
 		Rule: "shellcheck", Path: file, Message: "Quote variable",
-		Start: source.Position{Line: 1, Column: 6}, End: source.Position{Line: 1, Column: 8},
+		Start: sourcetext.Position{Line: 1, Column: 6}, End: sourcetext.Position{Line: 1, Column: 8},
 		Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{{Path: file}}}},
 	}}}
 	renderer, err := output.New(outputformat.SARIF, "", false, buildinfo.Version, nil)

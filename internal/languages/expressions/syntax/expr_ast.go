@@ -1,6 +1,6 @@
 package syntax
 
-import "actionlint.kjanat.dev/v2/internal/input/source"
+import "actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 // Node is a Node of expression syntax tree. To know the syntax, see
 // https://docs.github.com/en/actions/learn-github-actions/expressions
@@ -17,7 +17,7 @@ type Node interface {
 // Position locates Start; a zero Position means the span is unknown.
 type Span struct {
 	Start, End int
-	Position   source.Position
+	Position   sourcetext.Position
 }
 
 // Location places a node in the expression it was parsed from. Every node

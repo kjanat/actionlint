@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -39,12 +39,12 @@ func preparePublicationBatchAt(t *testing.T, batch policy.Batch, caller *configu
 			if path == "" {
 				return
 			}
-			snapshot, err := fixture.Capture(path, content, source.YAML)
+			snapshot, err := fixture.Capture(path, content, sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}
 			rev := snapshot.Revision()
-			batch.References[path] = facts.SourceIndex{Document: source.Reference{Document: rev.Document(), Revision: rev.Digest()}}
+			batch.References[path] = facts.SourceIndex{Document: sourcetext.Reference{Document: rev.Document(), Revision: rev.Digest()}}
 		}
 		if batch.Policy.Content != nil {
 			admit(batch.Policy.ConfigPath, batch.Policy.Content)

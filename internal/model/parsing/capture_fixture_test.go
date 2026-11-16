@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -71,7 +71,7 @@ func (s *capturedSnapshots) Document(path string, content []byte, document Docum
 	if path == "" {
 		return SourceSnapshot{}, errors.New("fixture source identity is empty")
 	}
-	captured, err := s.sources.Capture(path, content, source.YAML)
+	captured, err := s.sources.Capture(path, content, sourcetext.YAML)
 	if err != nil {
 		return SourceSnapshot{}, err
 	}
@@ -86,7 +86,7 @@ func (s *capturedSnapshots) Action(path string, metadata *actionmeta.Metadata) (
 	if !parsed {
 		return SourceSnapshot{}, errors.New("fixture action has no parse provenance")
 	}
-	captured, err := s.sources.Capture(path, []byte(text), source.YAML)
+	captured, err := s.sources.Capture(path, []byte(text), sourcetext.YAML)
 	if err != nil {
 		return SourceSnapshot{}, err
 	}

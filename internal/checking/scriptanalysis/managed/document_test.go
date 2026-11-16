@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -263,11 +263,11 @@ permissions: {}
 				t.Fatalf("duplicate/missing findings: %d %+v", len(guest.inputs), result.Diagnostics)
 			}
 			comments := guest.inputs[0].Scripts[0].Comments
-			if len(comments) != 1 || comments[0].Text != "# shellcheck disable=SC2034" || comments[0].Placement != facts.TrailingComment || comments[0].Start != (source.Position{Line: 6, Column: 26}) {
+			if len(comments) != 1 || comments[0].Text != "# shellcheck disable=SC2034" || comments[0].Placement != facts.TrailingComment || comments[0].Start != (sourcetext.Position{Line: 6, Column: 26}) {
 				t.Fatalf("document plugin lost attached YAML comments: %+v", comments)
 			}
 			finding := result.Diagnostics[0]
-			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != source.ContentDigest([]byte(workflow)) {
+			if finding.Rule != "shellcheck" || finding.Start.Line != 6 || finding.Start.Column != 19 || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[finding.Path] != sourcetext.ContentDigest([]byte(workflow)) {
 				t.Fatalf("mapping/fix changed: %+v", finding)
 			}
 			if finding.Reference == nil || finding.Reference.Document == "" || finding.Reference.Node == "" || finding.Reference.Address == "$" {

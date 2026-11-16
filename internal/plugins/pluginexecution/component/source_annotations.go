@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
@@ -15,10 +15,10 @@ import (
 
 type sourceCommentsKey struct{}
 
-func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]facts.SourceComment {
-	comments := make(map[source.Reference][]facts.SourceComment)
+func suppliedComments(input checkinputs.AnalyzerInput) map[sourcetext.Reference][]facts.SourceComment {
+	comments := make(map[sourcetext.Reference][]facts.SourceComment)
 	add := func(script checkinputs.Script) {
-		if script.Reference != (source.Reference{}) {
+		if script.Reference != (sourcetext.Reference{}) {
 			comments[script.Reference] = slices.Clone(script.Comments)
 		}
 	}
@@ -37,8 +37,8 @@ func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]fa
 type sourceAnnotations struct{}
 
 func (sourceAnnotations) Comments(ctx context.Context, reference invocationcontext.SourceReference) ([]sourceannotations.Comment, error) {
-	comments, _ := ctx.Value(sourceCommentsKey{}).(map[source.Reference][]facts.SourceComment)
-	key := source.Reference{Document: reference.Document, Revision: reference.Revision, Node: reference.Node, Address: reference.Address}
+	comments, _ := ctx.Value(sourceCommentsKey{}).(map[sourcetext.Reference][]facts.SourceComment)
+	key := sourcetext.Reference{Document: reference.Document, Revision: reference.Revision, Node: reference.Node, Address: reference.Address}
 	var result []sourceannotations.Comment
 	for _, comment := range comments[key] {
 		if !strings.HasPrefix(comment.Text, "#") || strings.ContainsAny(comment.Text, "\r\n") || comment.Start.Line < 1 || comment.Start.Column < 1 {

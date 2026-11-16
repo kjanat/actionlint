@@ -5,13 +5,13 @@ import (
 	"context"
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // CaptureRemote records downloaded bytes without reading the URL or filesystem.
 // Supplying different bytes for the same address invalidates its earlier captures.
-func (s *Store) CaptureRemote(ctx context.Context, address string, content []byte, model source.Coordinates) (CapturedDocument, error) {
-	if !source.RemoteAddress(address) || !model.Valid() {
+func (s *Store) CaptureRemote(ctx context.Context, address string, content []byte, model sourcetext.Coordinates) (CapturedDocument, error) {
+	if !sourcetext.RemoteAddress(address) || !model.Valid() {
 		return CapturedDocument{}, errors.New("remote source capture requires an HTTPS address and coordinates")
 	}
 	document, err := s.Canonical(ctx, address)

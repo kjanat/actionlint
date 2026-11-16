@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -84,13 +84,13 @@ type containerAdapter struct {
 	targets    []runners.ContainerTarget
 	guards     []string
 	frames     []containerFrame
-	conditions map[source.Reference]string
+	conditions map[sourcetext.Reference]string
 }
 
 // newContainerRunner supplies container facts to the rule and tracks enclosing
 // composite conditions. The composition coordinator acquires action metadata.
 func newContainerRunner(ctx context.Context, base workflowvisit.Base, runners *runners.Knowledge, actions *localactions.Resolver, remote *remote.ResolvedActions) workflowvisit.Rule {
-	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[source.Reference]string{}}
+	return &containerAdapter{Base: base, ctx: ctx, runners: runners, actions: actions.Prepared(), remote: remote, conditions: map[sourcetext.Reference]string{}}
 }
 
 func (r *containerAdapter) VisitJobPre(job workflows.Job) error {

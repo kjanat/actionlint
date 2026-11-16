@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -52,7 +52,7 @@ func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey 
 
 // checkObjectTy reports ty unless it is an object or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *source.Position, what string) bool {
+func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindObject || k == exprtypes.KindAny {
 		return true
 	}
@@ -62,7 +62,7 @@ func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *source.Position, what
 
 // checkArrayTy reports ty unless it is an array or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *source.Position, what string) bool {
+func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindArray || k == exprtypes.KindAny {
 		return true
 	}
@@ -72,7 +72,7 @@ func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *source.Position, what 
 
 // checkNumberTy reports ty unless it is a number or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *source.Position, what string) bool {
+func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindNumber || k == exprtypes.KindAny {
 		return true
 	}

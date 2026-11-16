@@ -3,14 +3,14 @@ package parser
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // SyntaxError describes a syntax failure independently of lint rule state.
 type SyntaxError struct {
 	Message string
 	// Position is where the failure starts in the workflow or action file.
-	Position source.Position
+	Position sourcetext.Position
 	Kind     string
 	// Code names why GitHub rejects the document; empty outside the workflow parser.
 	Code Code

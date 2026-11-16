@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -46,7 +46,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	problem := actionmeta.MetadataProblem{Code: actionmeta.CodeInvalidFieldType, Message: "metadata unavailable", Path: "action.yml", Start: source.Position{}, End: source.Position{}}
+	problem := actionmeta.MetadataProblem{Code: actionmeta.CodeInvalidFieldType, Message: "metadata unavailable", Path: "action.yml", Start: sourcetext.Position{}, End: sourcetext.Position{}}
 	reports := []actions.MetadataReport{
 		(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.MissingMetadata(availability.Offline())}).Report(),
 	}

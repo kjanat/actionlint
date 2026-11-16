@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -13,7 +13,7 @@ import (
 func TestGitHubAnnotationEscaping(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	diagnostics := []results.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: source.Position{Line: 2, Column: 3}, End: source.Position{Line: 2, Column: 5}}}
+	diagnostics := []results.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 2, Column: 5}}}
 	if err := output.WriteGitHub(&out, diagnostics); err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestGitHubAnnotationLevels(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
 		var out bytes.Buffer
-		if err := output.WriteGitHub(&out, []results.Diagnostic{{Severity: tc.severity, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}}}); err != nil {
+		if err := output.WriteGitHub(&out, []results.Diagnostic{{Severity: tc.severity, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {
@@ -51,7 +51,7 @@ func TestGitHubAnnotationUsesDiagnosticCode(t *testing.T) {
 
 func TestTemplateRangeUsesInclusiveEndColumn(t *testing.T) {
 	t.Parallel()
-	d := results.Diagnostic{Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 2, Column: 4}}
+	d := results.Diagnostic{Start: sourcetext.Position{Line: 1, Column: 2}, End: sourcetext.Position{Line: 2, Column: 4}}
 	if got := output.TemplateFieldsOf(results.Publish(d, results.DiagnosticSource{Content: []byte("abc\ndefgh")})).EndColumn; got != 3 {
 		t.Fatalf("want inclusive column 3, got %d", got)
 	}

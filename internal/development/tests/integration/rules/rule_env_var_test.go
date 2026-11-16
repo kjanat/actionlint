@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -18,10 +18,10 @@ import (
 
 func testValidateEnvVarName(t *testing.T, name string) []*finding.Finding {
 	t.Helper()
-	n := &definition.String{Value: name, Pos: &source.Position{}}
+	n := &definition.String{Value: name, Pos: &sourcetext.Position{}}
 	e := &definition.Env{
 		Vars: map[string]*definition.EnvVar{
-			name: {Name: n, Value: &definition.String{Value: "", Pos: &source.Position{}}},
+			name: {Name: n, Value: &definition.String{Value: "", Pos: &sourcetext.Position{}}},
 		},
 	}
 	w := &definition.Workflow{Env: e}

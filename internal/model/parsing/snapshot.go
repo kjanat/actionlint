@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -36,9 +36,9 @@ type admission struct {
 // fail verification after its capture is quarantined.
 func (s SourceSnapshot) Present() bool { return s.admission != nil }
 
-func (s SourceSnapshot) Reference() source.Reference {
+func (s SourceSnapshot) Reference() sourcetext.Reference {
 	if s.admission == nil {
-		return source.Reference{}
+		return sourcetext.Reference{}
 	}
 	return s.admission.bound.Reference()
 }
@@ -105,7 +105,7 @@ func (s *SourceSnapshots) Capture(path string) (capture.CapturedDocument, error)
 }
 
 // Lookup requires the complete document reference, including revision and node.
-func (s *SourceSnapshots) Lookup(reference source.Reference) (SourceSnapshot, bool) {
+func (s *SourceSnapshots) Lookup(reference sourcetext.Reference) (SourceSnapshot, bool) {
 	if s == nil {
 		return SourceSnapshot{}, false
 	}
@@ -208,7 +208,7 @@ func (s *SourceSnapshots) verify(captured capture.CapturedDocument, content []by
 	if err := s.store.Verify(captured, content); err != nil {
 		return err
 	}
-	if captured.Coordinates() != source.YAML {
+	if captured.Coordinates() != sourcetext.YAML {
 		return errors.New("source declarations require YAML coordinates")
 	}
 	return nil
@@ -232,7 +232,7 @@ func (s *SourceSnapshots) bind(captured capture.CapturedDocument, provenance Pro
 	bound := provenance.bind(document)
 	references := bound.SourceIndex()
 	admitted := &admission{registry: s, captured: captured, bound: bound, action: action}
-	seen := make(map[source.Reference]struct{}, len(references.Steps))
+	seen := make(map[sourcetext.Reference]struct{}, len(references.Steps))
 	for _, reference := range references.Steps {
 		if _, duplicate := seen[reference]; duplicate {
 			return SourceSnapshot{}, fmt.Errorf("source document %q has duplicate step references", document)
@@ -303,7 +303,7 @@ func (s SourceSnapshot) ActionView() (workflows.ActionBody, bool) {
 	return view, view.Present()
 }
 
-func (s *SourceSnapshots) Declaration(reference source.Reference) (workflows.Step, bool) {
+func (s *SourceSnapshots) Declaration(reference sourcetext.Reference) (workflows.Step, bool) {
 	if s == nil {
 		return workflows.Step{}, false
 	}

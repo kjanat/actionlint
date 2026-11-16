@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func TestActionSnapshotManifestPrecedence(t *testing.T) {
@@ -31,7 +31,7 @@ func TestActionSnapshotManifestPrecedence(t *testing.T) {
 			}
 			for name, content := range map[string]string{"action.yaml": tc.explicitYAML, "action.yml": tc.explicitYML} {
 				if content != "" {
-					overlays = append(overlays, capture.Overlay{Path: filepath.Join(root, name), Content: []byte(content), Coordinates: source.YAML})
+					overlays = append(overlays, capture.Overlay{Path: filepath.Join(root, name), Content: []byte(content), Coordinates: sourcetext.YAML})
 				}
 			}
 			cache := newCapturedActionCache(t, root, nil, overlays...)

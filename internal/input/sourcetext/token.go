@@ -1,4 +1,4 @@
-package source
+package sourcetext
 
 // TokenEndColumn returns the exclusive rune column of the token delimited by
 // space, tab, CR or LF at column, with a minimum span of one character.

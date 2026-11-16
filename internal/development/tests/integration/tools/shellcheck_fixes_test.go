@@ -12,14 +12,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func applyDiagnosticFix(t *testing.T, input string, fix results.Fix) string {
 	t.Helper()
-	offset := func(pos source.Position) int {
+	offset := func(pos sourcetext.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')
@@ -29,7 +29,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix results.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := source.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := sourcetext.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}

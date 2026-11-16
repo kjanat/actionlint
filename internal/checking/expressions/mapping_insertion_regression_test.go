@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -60,7 +60,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 	const key = "${{ vars.AXIS }}"
 	strategy := &definition.Strategy{Matrix: &definition.Matrix{Expression: &definition.String{
 		Value: `${{ fromJSON('{"${{ vars.AXIS }}":["ubuntu-latest"]}') }}`,
-		Pos:   &source.Position{Line: 1, Column: 1},
+		Pos:   &sourcetext.Position{Line: 1, Column: 1},
 	}}}
 	resolution := matrix.Resolve(strategy)
 	if combinations, complete := resolution.Combinations(8); !complete || len(combinations) != 1 {

@@ -19,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -96,7 +96,7 @@ func generated(script string) preparation.Prepared {
 
 func applyFix(t *testing.T, input string, fix results.Fix) string {
 	t.Helper()
-	offset := func(pos source.Position) int {
+	offset := func(pos sourcetext.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')
@@ -106,7 +106,7 @@ func applyFix(t *testing.T, input string, fix results.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := source.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := sourcetext.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -301,7 +301,7 @@ func TestReportedSourceFindings(t *testing.T) {
 		t.Fatalf("findings: %+v", findings)
 	}
 	read, missing := findings[0], findings[1]
-	if read.Message != "tool: X2086:info:1:6: quote it" || read.Start != (source.Position{Line: 1, Column: 6}) || read.End != (source.Position{Line: 1, Column: 8}) ||
+	if read.Message != "tool: X2086:info:1:6: quote it" || read.Start != (sourcetext.Position{Line: 1, Column: 6}) || read.End != (sourcetext.Position{Line: 1, Column: 8}) ||
 		!read.Source.RawScript || string(read.Source.Content) != "echo $x\n" || !strings.HasSuffix(read.Path, "lib.sh") || !filepath.IsAbs(read.Path) {
 		t.Errorf("reported finding: %+v", read)
 	}
@@ -310,7 +310,7 @@ func TestReportedSourceFindings(t *testing.T) {
 			t.Errorf("reported finding provenance: %+v", f)
 		}
 	}
-	if read.Source.Unavailable.Reason() != "not-captured" || missing.Source.Unavailable.Reason() != "read-failed" || len(missing.Source.Content) != 0 || missing.End != (source.Position{}) {
+	if read.Source.Unavailable.Reason() != "not-captured" || missing.Source.Unavailable.Reason() != "read-failed" || len(missing.Source.Content) != 0 || missing.End != (sourcetext.Position{}) {
 		t.Errorf("unavailable reasons: %q %q %+v", read.Source.Unavailable.Reason(), missing.Source.Unavailable.Reason(), missing)
 	}
 	if !slices.ContainsFunc(recorded, func(path string) bool { return strings.HasSuffix(path, "lib.sh") }) {
@@ -390,10 +390,10 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		t.Fatalf("findings: %+v", findings)
 	}
 	scriptFinding := findings[0]
-	if scriptFinding.Message != "X4:info:1:6: in script" || scriptFinding.Start != (source.Position{Line: 2, Column: 8}) || scriptFinding.End != (source.Position{Line: 2, Column: 14}) || len(scriptFinding.Fixes) != 1 {
+	if scriptFinding.Message != "X4:info:1:6: in script" || scriptFinding.Start != (sourcetext.Position{Line: 2, Column: 8}) || scriptFinding.End != (sourcetext.Position{Line: 2, Column: 14}) || len(scriptFinding.Fixes) != 1 {
 		t.Errorf("script finding: %+v", scriptFinding)
 	}
-	if findings[1].Code != "X5" || findings[1].End != (source.Position{}) {
+	if findings[1].Code != "X5" || findings[1].End != (sourcetext.Position{}) {
 		t.Errorf("end on a generated line kept: %+v", findings[1])
 	}
 
@@ -425,7 +425,7 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 		}
 		close(release)
 	}()
-	scripts := []scriptanalysis.Unit{{Run: runBody("first", &source.Position{Line: 1, Column: 1}), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}, {Run: runBody("second", &source.Position{Line: 2, Column: 1}), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}
+	scripts := []scriptanalysis.Unit{{Run: runBody("first", &sourcetext.Position{Line: 1, Column: 1}), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}, {Run: runBody("second", &sourcetext.Position{Line: 2, Column: 1}), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}
 	begin := time.Now()
 	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: scripts})
 	if err != nil {

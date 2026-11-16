@@ -5,7 +5,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -25,7 +25,7 @@ type parsedSource struct {
 	text    string
 	mu      sync.Mutex
 	indexed bool
-	scalars map[source.Position]*codec.Node
+	scalars map[sourcetext.Position]*codec.Node
 	parser  *parser.Parser
 }
 
@@ -56,7 +56,7 @@ func (s *parsedSource) source(value *ExprString) *definition.ScriptSource {
 	if !s.indexed {
 		s.index()
 	}
-	key := source.Position{Line: value.Line, Column: value.Column}
+	key := sourcetext.Position{Line: value.Line, Column: value.Column}
 	scalar := s.scalars[key]
 	if scalar == nil || scalar.Value != value.Value {
 		return nil
@@ -68,7 +68,7 @@ func (s *parsedSource) source(value *ExprString) *definition.ScriptSource {
 // callers may edit after Parse.
 func (s *parsedSource) index() {
 	s.indexed = true
-	s.scalars = make(map[source.Position]*codec.Node)
+	s.scalars = make(map[sourcetext.Position]*codec.Node)
 	root, err := codec.ParseYAML([]byte(s.text))
 	if err != nil {
 		return
@@ -81,7 +81,7 @@ func (s *parsedSource) index() {
 			return
 		}
 		if node.Kind == codec.ScalarNode {
-			key := source.Position{Line: node.Line, Column: node.Column}
+			key := sourcetext.Position{Line: node.Line, Column: node.Column}
 			if _, exists := s.scalars[key]; !exists {
 				s.scalars[key] = node
 			}
@@ -96,8 +96,8 @@ func (s *parsedSource) index() {
 
 // ExpressionPosition maps a decoded expression offset to its YAML source position.
 // If the offset cannot be mapped, it returns the start of the value.
-func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *source.Position {
-	fallback := &source.Position{Line: value.Line, Column: value.Column}
+func ExpressionPosition(meta *Metadata, value *ExprString, offset int) *sourcetext.Position {
+	fallback := &sourcetext.Position{Line: value.Line, Column: value.Column}
 	if offset <= 0 || offset > len(value.Value)+1 {
 		return fallback
 	}

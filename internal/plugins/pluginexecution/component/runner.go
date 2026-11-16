@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"github.com/kjanat/wacogo"
 )
@@ -254,11 +254,11 @@ func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runnerapi.Answ
 	return answer, nil
 }
 
-func liftRunnerPosition(value wacogo.Val) (source.Position, error) {
+func liftRunnerPosition(value wacogo.Val) (sourcetext.Position, error) {
 	// Runner rejections may address the containing job. This sentinel is not
 	// valid for analyzer diagnostics; all other coordinates use their checks.
 	if record, ok := value.(*wacogo.ValRecord); ok && record.Field("line") == wacogo.ValU32(0) && record.Field("column") == wacogo.ValU32(0) {
-		return source.Position{}, nil
+		return sourcetext.Position{}, nil
 	}
 	return liftPosition(value)
 }

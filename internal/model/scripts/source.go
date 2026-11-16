@@ -3,7 +3,7 @@ package scripts
 import (
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -29,7 +29,7 @@ func FromInput(input *definition.ActionArgument) Declaration {
 func fromSource(text *definition.String, source *definition.ScriptSource) Declaration {
 	declaration := Declaration{Text: text.Text()}
 	if position, present := text.Position(); present {
-		declaration.Start = sourcepos.ZeroIfNil(&position)
+		declaration.Start = sourcetext.ZeroIfNil(&position)
 	}
 	if source != nil {
 		// Spans index the decoded value; a value replaced after a parse error

@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -94,7 +94,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		address = source.Path
 	}
 	address = declarations.Path(address)
-	captured, err := declarations.Capture(address, source.Content, sourcepos.YAML)
+	captured, err := declarations.Capture(address, source.Content, sourcetext.YAML)
 	if err != nil {
 		return nil, err
 	}

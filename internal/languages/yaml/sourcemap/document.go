@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Document indexes the physical lines and original line endings once. YAML
@@ -122,6 +122,6 @@ func (d *Document) column(row, offset int) int {
 	return offset + 1
 }
 
-func (d *Document) Decode(start source.Position, context Context) (Scalar, error) {
+func (d *Document) Decode(start sourcetext.Position, context Context) (Scalar, error) {
 	return decode(d, start, context)
 }

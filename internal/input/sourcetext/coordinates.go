@@ -1,4 +1,4 @@
-package source
+package sourcetext
 
 // Coordinates identifies the physical coordinate rules for a captured document.
 // The zero value is invalid. Availability also requires valid UTF-8 bytes.

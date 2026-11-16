@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -80,7 +80,7 @@ func TestInputScriptSelectionCoverage(t *testing.T) {
 func TestInputRejectsOrphanedOccurrenceFields(t *testing.T) {
 	t.Parallel()
 	for name, occurrence := range map[string]invocation.Script{
-		"id": {ID: "id"}, "owner": {Owner: "owner"}, "declaration": {Declaration: source.Reference{Document: "document"}},
+		"id": {ID: "id"}, "owner": {Owner: "owner"}, "declaration": {Declaration: sourcetext.Reference{Document: "document"}},
 		"kind": {Kind: invocation.ScriptRun}, "input": {Input: "script"},
 	} {
 		t.Run(name, func(t *testing.T) {

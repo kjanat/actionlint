@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestQuarantineRejectsMisuseAndPreservesSealedTable(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "source.yml")
 	reader := func(context.Context, string) ([]byte, error) { return nil, errors.New("unexpected read") }
-	store := newStore(t, []Overlay{{Path: path, Content: []byte("original"), Coordinates: source.YAML}}, reader)
-	other := newStore(t, []Overlay{{Path: path, Content: []byte("original"), Coordinates: source.YAML}}, reader)
-	captured := readSnapshot(t, store, path, source.YAML)
-	foreign := readSnapshot(t, other, path, source.YAML)
+	store := newStore(t, []Overlay{{Path: path, Content: []byte("original"), Coordinates: sourcetext.YAML}}, reader)
+	other := newStore(t, []Overlay{{Path: path, Content: []byte("original"), Coordinates: sourcetext.YAML}}, reader)
+	captured := readSnapshot(t, store, path, sourcetext.YAML)
+	foreign := readSnapshot(t, other, path, sourcetext.YAML)
 	for _, invalid := range []CapturedDocument{{}, foreign} {
 		if err := store.Quarantine(invalid, "contradictory evidence"); !errors.Is(err, ErrInvalidSnapshot) {
 			t.Fatalf("invalid handle quarantine error = %v", err)

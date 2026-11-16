@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -122,7 +122,7 @@ func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta
 	address := manifest.URL()
 	document, found := analysis.remoteDocuments[address]
 	if !found {
-		captured, err := analysis.captures.CaptureRemote(analysis.ctx, address, []byte(manifest.Content()), source.YAML)
+		captured, err := analysis.captures.CaptureRemote(analysis.ctx, address, []byte(manifest.Content()), sourcetext.YAML)
 		if err != nil {
 			return nil, address, invocation.Outcome{}, err
 		}

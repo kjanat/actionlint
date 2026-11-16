@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -25,7 +25,7 @@ func (*settingsAnalyzer) Descriptor() checkinputs.Descriptor {
 func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.calls++
 	a.options = input.Options
-	return []results.Diagnostic{{Message: "custom finding", Start: source.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Message: "custom finding", Start: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestRegisteredAnalyzerSettings(t *testing.T) {

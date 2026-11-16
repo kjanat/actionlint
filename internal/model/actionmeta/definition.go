@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
@@ -37,7 +37,7 @@ func InspectDefinition(content []byte) DefinitionInspection {
 			mark := item.Mark()
 			problems = append(problems, MetadataProblem{
 				Code: CodeMetadataParse, Path: "action.yml", Message: item.Message(),
-				Start: source.Position{Line: mark.Line, Column: mark.Column},
+				Start: sourcetext.Position{Line: mark.Line, Column: mark.Column},
 			})
 		}
 		if len(problems) == 0 {

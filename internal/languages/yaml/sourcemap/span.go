@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Span maps the decoded bytes [Start, End) of a scalar value to the YAML
@@ -14,23 +14,23 @@ import (
 // exclusive source end of that token.
 type Span struct {
 	Start, End  int
-	Document    source.Position
-	DocumentEnd source.Position
+	Document    sourcetext.Position
+	DocumentEnd sourcetext.Position
 }
 
 // end is the exclusive source position after the span's mapped text.
-func (s Span) end(value string) source.Position {
+func (s Span) end(value string) sourcetext.Position {
 	if s.DocumentEnd.Line != 0 {
 		return s.DocumentEnd
 	}
-	return source.Position{Line: s.Document.Line, Column: s.Document.Column + utf8.RuneCountInString(value[s.Start:s.End])}
+	return sourcetext.Position{Line: s.Document.Line, Column: s.Document.Column + utf8.RuneCountInString(value[s.Start:s.End])}
 }
 
 // at is the source position of offset in [Start, End]. A decoded escape maps
 // every interior offset to its start and only an exclusive End to its end.
-func (s Span) at(value string, offset int, exclusive bool) source.Position {
+func (s Span) at(value string, offset int, exclusive bool) sourcetext.Position {
 	if s.DocumentEnd.Line == 0 {
-		return source.Position{Line: s.Document.Line, Column: s.Document.Column + utf8.RuneCountInString(value[s.Start:offset])}
+		return sourcetext.Position{Line: s.Document.Line, Column: s.Document.Column + utf8.RuneCountInString(value[s.Start:offset])}
 	}
 	if exclusive && offset == s.End {
 		return s.DocumentEnd
@@ -45,7 +45,7 @@ func (s Span) at(value string, offset int, exclusive bool) source.Position {
 // folding can append unmapped line feeds or spaces, so an exclusive position at
 // the end of value after only such blanks maps to the end of the final mapped
 // text.
-func Locate(value string, spans []Span, offset int, exclusive bool) (source.Position, bool) {
+func Locate(value string, spans []Span, offset int, exclusive bool) (sourcetext.Position, bool) {
 	if exclusive && offset == len(value) && len(spans) != 0 {
 		index := len(spans) - 1
 		for index > 0 && spans[index].Start == spans[index].End {
@@ -58,11 +58,11 @@ func Locate(value string, spans []Span, offset int, exclusive bool) (source.Posi
 	}
 	i := spanIndex(spans, offset, exclusive)
 	if i == len(spans) {
-		return source.Position{}, false
+		return sourcetext.Position{}, false
 	}
 	span := spans[i]
 	if offset < span.Start || (exclusive && offset == span.Start) {
-		return source.Position{}, false
+		return sourcetext.Position{}, false
 	}
 	return span.at(value, offset, exclusive), true
 }

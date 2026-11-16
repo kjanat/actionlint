@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
 
@@ -66,7 +66,7 @@ const (
 type ShellScriptLine struct {
 	Kind     ShellScriptLineKind
 	Line     int
-	Position source.Position
+	Position sourcetext.Position
 }
 type ShellScriptInput struct {
 	Text       string

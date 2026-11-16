@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -207,7 +207,7 @@ func (md *Metadata) Dir() string {
 
 // Path returns a file path of the action's metadata file.
 func (md *Metadata) Path() string {
-	if source.RemoteAddress(md.Directory) {
+	if sourcetext.RemoteAddress(md.Directory) {
 		return md.Directory + "/" + md.Filename
 	}
 	return filepath.Join(md.Directory, md.Filename)
@@ -238,7 +238,7 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 	}
 	metadata.Provenance = newProvenance(string(owned))
 	metadata.Directory, metadata.Filename, metadata.Source = filepath.Dir(path), filepath.Base(path), owned
-	if source.RemoteAddress(path) {
+	if sourcetext.RemoteAddress(path) {
 		metadata.Directory, metadata.Filename = remotePathParts(path)
 	}
 	return metadata, err

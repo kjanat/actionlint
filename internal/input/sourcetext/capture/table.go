@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // State describes already-discovered evidence; lookup never acquires evidence.
@@ -22,15 +22,15 @@ const (
 // no revision or model: first-arrival bytes remain private and cannot authorize
 // admission. Code and Message are deterministic projections of Error for JSON.
 type TableRow struct {
-	Document             string             `json:"document"`
-	State                State              `json:"state"`
-	Revision             source.Revision    `json:"revision,omitzero"`
-	Coordinates          source.Coordinates `json:"coordinates,omitempty"`
-	CoordinatesAvailable bool               `json:"coordinates_available"`
-	Aliases              []string           `json:"aliases"`
-	Code                 string             `json:"code,omitempty"`
-	Message              string             `json:"message,omitempty"`
-	Error                error              `json:"-"`
+	Document             string                 `json:"document"`
+	State                State                  `json:"state"`
+	Revision             sourcetext.Revision    `json:"revision,omitzero"`
+	Coordinates          sourcetext.Coordinates `json:"coordinates,omitempty"`
+	CoordinatesAvailable bool                   `json:"coordinates_available"`
+	Aliases              []string               `json:"aliases"`
+	Code                 string                 `json:"code,omitempty"`
+	Message              string                 `json:"message,omitempty"`
+	Error                error                  `json:"-"`
 }
 
 func state(e *entry) State {
@@ -105,7 +105,7 @@ func (s *Store) Sources() ([]TableRow, error) {
 
 // Revision returns an exact captured revision only after sealing. It performs
 // no metadata or content IO and never admits failed or conflicted documents.
-func (s *Store) Revision(revision source.Revision) (CapturedDocument, bool) {
+func (s *Store) Revision(revision sourcetext.Revision) (CapturedDocument, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !s.sealed || !revision.Valid() {

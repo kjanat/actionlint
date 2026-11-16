@@ -3,7 +3,7 @@ package correctness
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 )
 
@@ -17,7 +17,7 @@ func TestContainerRuleConsumesPreparedUses(t *testing.T) {
 		{runners.ContainerRequiresLinux, "error"},
 		{runners.ContainerMissingDaemon, "warning"},
 	} {
-		uses := []runners.ContainerUse{{Target: runners.ContainerTarget{Limitation: tc.limitation, Runner: "selected"}, Kind: runners.DockerAction, Name: "docker://alpine", Position: source.Position{Line: 8, Column: 11}}}
+		uses := []runners.ContainerUse{{Target: runners.ContainerTarget{Limitation: tc.limitation, Runner: "selected"}, Kind: runners.DockerAction, Name: "docker://alpine", Position: sourcetext.Position{Line: 8, Column: 11}}}
 		for range 2 {
 			findings := ContainerRunnerFindings(uses)
 			if tc.severity == "" {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
@@ -61,7 +61,7 @@ jobs:
 			} else if len(findings) != 1 || !strings.Contains(findings[0].Message, tc.want) || findings[0].Start.Line != 6 || findings[0].Start.Column < 16 {
 				t.Fatalf("want one %q at matrix source, got %v", tc.want, findings)
 			}
-			var position *sourcepos.Position
+			var position *sourcetext.Position
 			switch tc.name {
 			case "axis insertion duplicate":
 				position = workflow.Jobs["test"].Strategy.Matrix.Rows["os"].Values[1].Pos()

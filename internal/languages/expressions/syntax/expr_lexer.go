@@ -7,7 +7,7 @@ import (
 	"text/scanner"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // TokenKind identifies the kind of a token.
@@ -121,7 +121,7 @@ type Token struct {
 	// Offset is the byte offset where the token starts.
 	Offset int
 	// Position is where the token starts in the expression.
-	Position source.Position
+	Position sourcetext.Position
 }
 
 func (t *Token) String() string {
@@ -193,7 +193,7 @@ func (lex *Lexer) error(msg string) {
 			Message:   msg,
 			Offset:    p.Offset,
 			EndOffset: end,
-			Position:  source.Position{Line: p.Line, Column: p.Column},
+			Position:  sourcetext.Position{Line: p.Line, Column: p.Column},
 		}
 	}
 }
@@ -205,7 +205,7 @@ func (lex *Lexer) token(kind TokenKind) *Token {
 		Kind:     kind,
 		Value:    lex.src[s.Offset:p.Offset],
 		Offset:   s.Offset,
-		Position: source.Position{Line: s.Line, Column: s.Column},
+		Position: sourcetext.Position{Line: s.Line, Column: s.Column},
 	}
 	lex.start = p
 	return t
@@ -216,7 +216,7 @@ func (lex *Lexer) eof() *Token {
 		Kind:     TokenKindEnd,
 		Value:    "",
 		Offset:   lex.start.Offset,
-		Position: source.Position{Line: lex.start.Line, Column: lex.start.Column},
+		Position: sourcetext.Position{Line: lex.start.Line, Column: lex.start.Column},
 	}
 }
 

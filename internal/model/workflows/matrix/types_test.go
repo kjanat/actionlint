@@ -3,7 +3,7 @@ package matrix
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -30,7 +30,7 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 				t.Fatal(errors)
 			}
 			resolution := Resolve(workflow.Jobs["test"].Strategy)
-			inferred := map[source.Position]exprtypes.Type{}
+			inferred := map[sourcetext.Position]exprtypes.Type{}
 			for _, axis := range resolution.Axes() {
 				for _, candidate := range axis.Values {
 					inferred[candidate.Origin().Span.Start] = exprtypes.NumberType()

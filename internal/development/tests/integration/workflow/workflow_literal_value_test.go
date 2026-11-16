@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -121,7 +121,7 @@ jobs:
 				}
 				if uses == tc.uses {
 					plain = diagnostics
-				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourcepos.Reference{}, "Revision"), cmpopts.IgnoreFields(results.Diagnostic{}, "End", "Snippet")); diff != "" {
+				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourcetext.Reference{}, "Revision"), cmpopts.IgnoreFields(results.Diagnostic{}, "End", "Snippet")); diff != "" {
 					t.Fatal(diff)
 				}
 			}

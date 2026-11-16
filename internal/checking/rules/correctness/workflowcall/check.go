@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func callFinding(pos source.Position, format string, args ...any) results.Diagnostic {
+func callFinding(pos sourcetext.Position, format string, args ...any) results.Diagnostic {
 	return results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: pos}
 }
 
@@ -24,7 +24,7 @@ func CheckArguments(call *definition.WorkflowCall, m *calls.Metadata) []results.
 		return findings
 	}
 	u := call.Uses
-	report := func(pos source.Position, format string, args ...any) {
+	report := func(pos sourcetext.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	// Validate inputs
@@ -72,7 +72,7 @@ func CheckPermissions(call *definition.WorkflowCall, granted calls.ResolvedPermi
 	if call == nil || call.Uses == nil || m == nil || granted.Kind != calls.PermissionsDeclared {
 		return findings
 	}
-	report := func(pos source.Position, format string, args ...any) {
+	report := func(pos sourcetext.Position, format string, args ...any) {
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	ids := make([]string, 0, len(m.JobPermissions))
@@ -114,7 +114,7 @@ func CheckPermissions(call *definition.WorkflowCall, granted calls.ResolvedPermi
 	return findings
 }
 
-func callPosition(node *definition.String) source.Position {
+func callPosition(node *definition.String) sourcetext.Position {
 	pos, _ := node.Position()
 	return pos
 }

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func TestEditorFailedCaptureJoinReturnsWithoutPublishingSources(t *testing.T) {
@@ -29,7 +29,7 @@ func TestEditorFailedCaptureJoinReturnsWithoutPublishingSources(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	readDone := make(chan error, 1)
 	readerFinished := make(chan struct{})
-	go func() { _, err := store.Read(lifetime, path, source.YAML); readDone <- err; close(readerFinished) }()
+	go func() { _, err := store.Read(lifetime, path, sourcetext.YAML); readDone <- err; close(readerFinished) }()
 	<-started
 	unblock := sync.OnceFunc(func() { close(release) })
 	t.Cleanup(func() {

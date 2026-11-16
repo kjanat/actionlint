@@ -3,7 +3,7 @@ package output_test
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -25,7 +25,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 			t.Parallel()
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
-				d := results.Diagnostic{Start: sourcepos.Position{Line: 1}}
+				d := results.Diagnostic{Start: sourcetext.Position{Line: 1}}
 				canonical := (&finding.Finding{Diagnostic: d, Source: results.DiagnosticSource{RawScript: raw}}).Publish(source)
 				got := output.TemplateFieldsOf(canonical).Snippet
 				want := "token"
@@ -46,7 +46,7 @@ func TestTemplateSnippetLineEndings(t *testing.T) {
 func TestRawCRLFMarkerUsesDisplayEOF(t *testing.T) {
 	t.Parallel()
 	source := []byte("abc\r\n")
-	d := results.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 4}, End: sourcepos.Position{Line: 1, Column: 5}}
+	d := results.Diagnostic{Start: sourcetext.Position{Line: 1, Column: 4}, End: sourcetext.Position{Line: 1, Column: 5}}
 	canonical := (&finding.Finding{Diagnostic: d, Source: results.DiagnosticSource{RawScript: true}}).Publish(source)
 	if got := output.TemplateFieldsOf(canonical).Snippet; got != "abc\n   ^" {
 		t.Fatalf("CR marker lost at display EOF: %q", got)

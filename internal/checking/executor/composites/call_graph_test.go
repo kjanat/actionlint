@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -56,13 +56,13 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 	document := parsing.Workflow(content)
 	for _, test := range []struct {
 		name      string
-		reference source.Reference
+		reference sourcetext.Reference
 		valid     bool
 	}{
 		{"matching", reference, true},
-		{"absent", source.Reference{}, true},
-		{"foreign document", source.Reference{Document: "other.yml", Revision: reference.Revision, Node: reference.Node, Address: reference.Address}, false},
-		{"stale revision", source.Reference{Document: reference.Document, Revision: "old", Node: reference.Node, Address: reference.Address}, false},
+		{"absent", sourcetext.Reference{}, true},
+		{"foreign document", sourcetext.Reference{Document: "other.yml", Revision: reference.Revision, Node: reference.Node, Address: reference.Address}, false},
+		{"stale revision", sourcetext.Reference{Document: reference.Document, Revision: "old", Node: reference.Node, Address: reference.Address}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()

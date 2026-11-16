@@ -3,7 +3,7 @@ package parser
 import (
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -11,8 +11,8 @@ import (
 
 // ExpressionSources maps expressions and conditions in a document to their
 // physical scalar positions, including composite action metadata.
-func (p *Parser) ExpressionSources(root *codec.Node) map[source.Position]*definition.ScriptSource {
-	sources := make(map[source.Position]*definition.ScriptSource)
+func (p *Parser) ExpressionSources(root *codec.Node) map[sourcetext.Position]*definition.ScriptSource {
+	sources := make(map[sourcetext.Position]*definition.ScriptSource)
 	seen := make(map[*codec.Node]bool)
 	var visit func(*codec.Node, bool)
 	visit = func(node *codec.Node, condition bool) {

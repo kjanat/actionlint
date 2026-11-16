@@ -17,8 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -48,7 +48,7 @@ func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
 		capturefixture.CloseCaptures(t, store)
 		returned := make(chan error, 1)
 		go func() {
-			_, err := store.Read(t.Context(), filepath.Join(t.TempDir(), "pending.yml"), source.YAML)
+			_, err := store.Read(t.Context(), filepath.Join(t.TempDir(), "pending.yml"), sourcetext.YAML)
 			returned <- err
 		}()
 		<-started
@@ -85,7 +85,7 @@ func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
 	capturefixture.CloseCaptures(t, store)
 	returned := make(chan error, 1)
 	path := filepath.Join(t.TempDir(), "pending.yml")
-	go func() { _, err := store.Read(t.Context(), path, source.YAML); returned <- err }()
+	go func() { _, err := store.Read(t.Context(), path, sourcetext.YAML); returned <- err }()
 	<-started
 	sealed, err := joinSourceCaptures(t.Context(), store, cancel, 5*time.Millisecond, false)
 	var attempts interface{ Unwrap() []error }
@@ -226,16 +226,16 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	badPath, goodPath := filepath.Join(directory, "bad.yml"), filepath.Join(directory, "good.yml")
 	content := []byte(commandGoodWorkflow)
 	store, fixture := capturefixture.NewCapturedSources(t, directory)
-	bad, err := fixture.Capture(badPath, content, source.YAML)
+	bad, err := fixture.Capture(badPath, content, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
-	good, err := fixture.Capture(goodPath, content, source.YAML)
+	good, err := fixture.Capture(goodPath, content, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 	item := func(snapshot capture.CapturedDocument, message string) *finding.Finding {
-		reference := source.Reference{Document: snapshot.Revision().Document(), Revision: snapshot.Revision().Digest(), Node: "document"}
+		reference := sourcetext.Reference{Document: snapshot.Revision().Document(), Revision: snapshot.Revision().Digest(), Node: "document"}
 		return &finding.Finding{Reference: &reference, Rule: "test", Message: message}
 	}
 	retained := item(good, "unrelated finding")
@@ -243,7 +243,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 		{captured: bad, errors: []*finding.Finding{item(bad, "old accepted entry")}, outline: outline.WorkflowOutline{Path: badPath}},
 		{captured: good, errors: []*finding.Finding{item(bad, "old accepted dependency"), retained}, outline: outline.WorkflowOutline{Path: goodPath}},
 	}}
-	_, err = store.Read(t.Context(), badPath, source.RawLF)
+	_, err = store.Read(t.Context(), badPath, sourcetext.RawLF)
 	conflict, conflicted := errors.AsType[capture.ConflictError](err)
 	if !conflicted {
 		t.Fatalf("model disagreement accepted: %v", err)
@@ -332,9 +332,9 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			address := filepath.Join(t.TempDir(), "action.yml")
-			model := source.YAML
+			model := sourcetext.YAML
 			if test.raw {
-				model = source.RawLF
+				model = sourcetext.RawLF
 			}
 			content := []byte("name: captured\ndescription: outline\nruns: {using: composite, steps: [{uses: $/must-not-read}]}\n")
 			overlays := []capture.Overlay{{Path: address, Content: content, Coordinates: model}}
@@ -387,7 +387,7 @@ func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	t.Parallel()
 	address := filepath.Join(t.TempDir(), "action.yml")
 	content := []byte("name: captured\ndescription: outline\nruns: {using: composite, steps: []}\n")
-	store, err := capture.New(t.Context(), []capture.Overlay{{Path: address, Content: content, Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
+	store, err := capture.New(t.Context(), []capture.Overlay{{Path: address, Content: content, Coordinates: sourcetext.YAML}}, func(context.Context, string) ([]byte, error) {
 		return nil, os.ErrNotExist
 	})
 	if err != nil {
@@ -396,7 +396,7 @@ func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 	capturefixture.CloseCaptures(t, store)
 	documents := &actionDocuments{byPath: make(map[string]outline.Action)}
 	documents.request(address)
-	captured, err := store.Read(t.Context(), address, source.YAML)
+	captured, err := store.Read(t.Context(), address, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}

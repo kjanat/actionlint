@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -24,8 +24,8 @@ type scriptSourceLine struct {
 // were synthesized while decoding YAML, such as whitespace between folded plain-scalar lines, are
 // intentionally left outside the mapped spans.
 type ScriptSource struct {
-	ContentStart source.Position
-	ScalarEnd    source.Position
+	ContentStart sourcetext.Position
+	ScalarEnd    sourcetext.Position
 	Value        string
 	Lines        []scriptSourceLine
 	Spans        []sourcemap.Span
@@ -37,7 +37,7 @@ type ScriptSource struct {
 // inside its decoded value. Pos points to '#', in Unicode character columns.
 type ScalarComment struct {
 	Text     string
-	Pos      source.Position
+	Pos      sourcetext.Position
 	Trailing bool
 }
 
@@ -57,20 +57,20 @@ func NewScriptSource(value string) *ScriptSource {
 	}
 }
 
-func (s *ScriptSource) Position(line, col int) (*source.Position, bool) {
+func (s *ScriptSource) Position(line, col int) (*sourcetext.Position, bool) {
 	return s.lookup(line, col, false)
 }
 
-func (s *ScriptSource) EndPos(line, col int) (*source.Position, bool) {
+func (s *ScriptSource) EndPos(line, col int) (*sourcetext.Position, bool) {
 	return s.lookup(line, col, true)
 }
 
-func (s *ScriptSource) lookup(line, col int, endPosition bool) (*source.Position, bool) {
+func (s *ScriptSource) lookup(line, col int, endPosition bool) (*sourcetext.Position, bool) {
 	if s == nil || line <= 0 || line > len(s.Lines) || col <= 0 {
 		return nil, false
 	}
 	l := s.Lines[line-1]
-	rel, ok := source.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
+	rel, ok := sourcetext.ByteOffsetAtColumn(s.Value[l.Start:l.End], col)
 	if !ok {
 		return nil, false
 	}
@@ -89,9 +89,9 @@ type SourceScalar struct {
 	Kind      codec.NodeKind
 	Tag       string
 	Value     string
-	Pos       source.Position
+	Pos       sourcetext.Position
 	// End is the exclusive physical end of a dependency scalar, when available.
-	End source.Position
+	End sourcetext.Position
 }
 
 // String represents a YAML string value and its source position.
@@ -101,7 +101,7 @@ type String struct {
 	// Quoted reports whether the YAML source uses single or double quotes.
 	Quoted bool
 	// Pos is the string's position in the source.
-	Pos *source.Position
+	Pos *sourcetext.Position
 	// SourceScalar records the original YAML node before normalization or folding.
 	SourceScalar SourceScalar
 }
@@ -120,9 +120,9 @@ func (s *String) Text() string {
 }
 
 // Position returns the scalar's position when it is present.
-func (s *String) Position() (source.Position, bool) {
+func (s *String) Position() (sourcetext.Position, bool) {
 	if s == nil || s.Pos == nil {
-		return source.Position{}, false
+		return sourcetext.Position{}, false
 	}
 	return *s.Pos, true
 }
@@ -162,7 +162,7 @@ type Bool struct {
 	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 func (b *Bool) String() string {
@@ -185,7 +185,7 @@ type Int struct {
 	// truncates toward zero to produce Value. It is empty for whole numbers.
 	TruncatedFrom string
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Float represents a YAML number or expression and its source position.
@@ -195,7 +195,7 @@ type Float struct {
 	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Event represents an event in the workflow on section.
@@ -244,7 +244,7 @@ type WebhookEvent struct {
 	// Workflows lists names selected by the workflow_run event.
 	Workflows []*String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EventName returns the event name that triggers the workflow.
@@ -267,7 +267,7 @@ type ScheduledEvent struct {
 	// Schedules lists the workflow schedule entries.
 	Schedules []*ScheduleEntry
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EventName returns the event name that triggers the workflow.
@@ -318,7 +318,7 @@ type WorkflowDispatchEvent struct {
 	// Inputs maps lowercase input names to their attributes. Names are case insensitive.
 	Inputs map[string]*DispatchInput
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EventName returns the event name that triggers the workflow.
@@ -332,7 +332,7 @@ type RepositoryDispatchEvent struct {
 	// Types lists the activity types that can trigger the workflow.
 	Types []*String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EventName returns the event name that triggers the workflow.
@@ -450,7 +450,7 @@ type WorkflowCallEvent struct {
 	// https://docs.github.com/en/actions/using-workflows/reusing-workflows#using-outputs-from-a-reusable-Workflow
 	Outputs map[string]*WorkflowCallEventOutput
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EventName returns the event name that triggers the workflow.
@@ -468,7 +468,7 @@ type ImageVersionEvent struct {
 	// Versions lists patterns matching created image versions. Glob patterns are allowed.
 	Versions []*String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EventName returns the event name that triggers the workflow.
@@ -493,7 +493,7 @@ type Permissions struct {
 	// Scopes maps scope names to their permission configurations.
 	Scopes map[string]*PermissionScope
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // DefaultsRun configures the shell and working directory for run steps.
@@ -506,7 +506,7 @@ type DefaultsRun struct {
 	// WorkingDirectory is a default working directory path.
 	WorkingDirectory *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Defaults contains default settings for run steps.
@@ -515,7 +515,7 @@ type Defaults struct {
 	// Run configures defaults for run steps.
 	Run *DefaultsRun
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Concurrency configures a workflow or job concurrency group.
@@ -530,7 +530,7 @@ type Concurrency struct {
 	// Queue sets the strategy for pending jobs or workflow runs: "single" (default) or "max".
 	Queue *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Environment configures a deployment environment.
@@ -546,7 +546,7 @@ type Environment struct {
 	// automatic deployment but retains environment protection rules and secrets.
 	Deployment *Bool
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // ExecKind identifies how a step is executed.
@@ -603,7 +603,7 @@ type ExecRun struct {
 	// WorkingDirectory is the optional working-directory field. Nil means it was not specified.
 	WorkingDirectory *String
 	// RunPos is the position of the run field.
-	RunPos *source.Position
+	RunPos *sourcetext.Position
 }
 
 // Kind returns the step execution kind.
@@ -670,7 +670,7 @@ type ExecWait struct {
 	// All is true when the step waits for all preceding background steps.
 	All bool
 	// AllPos is the position of 'wait-all'. It is nil when 'wait' is used instead.
-	AllPos *source.Position
+	AllPos *sourcetext.Position
 }
 
 // Kind returns the step execution kind.
@@ -745,7 +745,7 @@ type RawYAMLValue interface {
 	// Equals reports whether the other value is equal.
 	Equals(other RawYAMLValue) bool
 	// Pos returns the value's start position in the source file.
-	Pos() *source.Position
+	Pos() *sourcetext.Position
 	// String returns the string representation of the value.
 	String() string
 }
@@ -754,7 +754,7 @@ type RawYAMLValue interface {
 type RawYAMLObject struct {
 	// Props maps lowercase property names to values. Names are case insensitive.
 	Props    map[string]RawYAMLValue
-	Position *source.Position
+	Position *sourcetext.Position
 }
 
 // Kind returns the kind of the raw YAML value.
@@ -781,7 +781,7 @@ func (o *RawYAMLObject) Equals(other RawYAMLValue) bool {
 }
 
 // Pos returns a copy of the value's start position in the source file.
-func (o *RawYAMLObject) Pos() *source.Position {
+func (o *RawYAMLObject) Pos() *sourcetext.Position {
 	return copyPos(o.Position)
 }
 
@@ -798,7 +798,7 @@ func (o *RawYAMLObject) String() string {
 type RawYAMLArray struct {
 	// Elems lists the array elements.
 	Elems    []RawYAMLValue
-	Position *source.Position
+	Position *sourcetext.Position
 }
 
 // Kind returns the kind of the raw YAML value.
@@ -825,7 +825,7 @@ func (a *RawYAMLArray) Equals(other RawYAMLValue) bool {
 }
 
 // Pos returns a copy of the value's start position in the source file.
-func (a *RawYAMLArray) Pos() *source.Position {
+func (a *RawYAMLArray) Pos() *sourcetext.Position {
 	return copyPos(a.Position)
 }
 
@@ -854,7 +854,7 @@ type RawYAMLString struct {
 	// Tag is the YAML tag of the scalar node, such as "!!str" or "!!Int".
 	// A tag rejected by the parser is recorded as "!!str".
 	Tag      string
-	Position *source.Position
+	Position *sourcetext.Position
 }
 
 // Kind returns the kind of the raw YAML value.
@@ -916,12 +916,12 @@ func (s *RawYAMLString) ScalarValue() any {
 }
 
 // Pos returns a copy of the value's start position in the source file.
-func (s *RawYAMLString) Pos() *source.Position {
+func (s *RawYAMLString) Pos() *sourcetext.Position {
 	return copyPos(s.Position)
 }
 
 // copyPos detaches a node position so callers cannot move the node through it.
-func copyPos(p *source.Position) *source.Position {
+func copyPos(p *sourcetext.Position) *sourcetext.Position {
 	if p == nil {
 		return nil
 	}
@@ -1038,7 +1038,7 @@ type Matrix struct {
 	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Strategy configures how a job runs its matrix combinations.
@@ -1055,7 +1055,7 @@ type Strategy struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel
 	MaxParallel *Int
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // EnvVar declares an environment variable and its value.
@@ -1100,7 +1100,7 @@ type Step struct {
 	// https://github.blog/changelog/2026-06-25-actions-steps-can-now-be-run-in-parallel/
 	Background *Bool
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Credentials configures authentication for a container.
@@ -1113,7 +1113,7 @@ type Credentials struct {
 	// Expression contains the expression when this field uses ${{ }} syntax.
 	Expression *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Container configures a job or service container.
@@ -1149,7 +1149,7 @@ type Container struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#jobsjob_idservicesservice_identrypoint
 	Entrypoint *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Service configures a service such as a database.
@@ -1170,7 +1170,7 @@ type Services struct {
 	// this field is nil.
 	Expression *String
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Output describes a job output.
@@ -1303,13 +1303,13 @@ type Job struct {
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/Workflow-syntax#jobsjob_idsnapshot
 	Snapshot *Snapshot
 	// Pos is the source position.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // Workflow is the root of the syntax tree for one workflow file.
 // https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions
 type Workflow struct {
-	ExpressionSources map[source.Position]*ScriptSource
+	ExpressionSources map[sourcetext.Position]*ScriptSource
 	// Name is the workflow name. It is nil when no name was specified.
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#name
 	Name *String
@@ -1322,7 +1322,7 @@ type Workflow struct {
 	// https://docs.github.com/en/actions/learn-github-actions/Workflow-syntax-for-github-actions#onpushpull_requestbranchestags
 	On []Event
 	// OnPos is the position of the "on" key. It is nil when the key is absent.
-	OnPos *source.Position
+	OnPos *sourcetext.Position
 	// Permissions configures workflow token permissions.
 	Permissions *Permissions
 	// CacheMode sets default cache access. Nil leaves the trigger-dependent default in effect.
@@ -1339,7 +1339,7 @@ type Workflow struct {
 	Jobs map[string]*Job
 	// Pos is the position of the first workflow mapping key. It may be nil for
 	// workflows constructed directly by API callers.
-	Pos *source.Position
+	Pos *sourcetext.Position
 }
 
 // FindWorkflowCallEvent returns the workflow_call event when present.

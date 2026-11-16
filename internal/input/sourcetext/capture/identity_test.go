@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestCanonicalIdentityDoesNotDeclareSourcesOrPromoteAfterSeal(t *testing.T) {
@@ -51,7 +51,7 @@ func TestCanonicalIdentityAliasRequiresExplicitDocumentPromotion(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	path, alias := filepath.Join(root, "source.yml"), filepath.Join(root, "alias.yml")
-	store, err := newStoreWithResolver(t.Context(), []Overlay{{Path: path, Content: []byte("captured"), Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
+	store, err := newStoreWithResolver(t.Context(), []Overlay{{Path: path, Content: []byte("captured"), Coordinates: sourcetext.YAML}}, func(context.Context, string) ([]byte, error) {
 		t.Error("alias promotion reread captured bytes")
 		return nil, nil
 	}, func(string) string { return path })

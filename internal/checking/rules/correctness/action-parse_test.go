@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/actions"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -42,7 +42,7 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				spec = "./generated"
 			}
 			rule := NewRuleAction(t.Context(), ActionRule.Base(), lookup, nil)
-			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &source.Position{Line: 3, Column: 5}}}}
+			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &sourcetext.Position{Line: 3, Column: 5}}}}
 			if err := rule.VisitStep(declarations.Step(step)); err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) 
 		t.Run(failure.Error(), func(t *testing.T) {
 			t.Parallel()
 			rule := NewRuleAction(t.Context(), ActionRule.Base(), metadataParseFailureLookup{cause: failure}, nil)
-			err := rule.VisitStep(declarations.Step(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &source.Position{Line: 1, Column: 1}}}}))
+			err := rule.VisitStep(declarations.Step(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: "./broken", Pos: &sourcetext.Position{Line: 1, Column: 1}}}}))
 			if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 				t.Fatalf("unbound or interrupted parse became a finding: error=%v findings=%+v", err, rule.Errs())
 			}

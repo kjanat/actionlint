@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/ruleconfig"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -30,7 +30,7 @@ type Policy struct {
 	IgnoreSelectors   IgnoreSelectors
 	Log               func(...any)
 	Debug             func(string, ...any)
-	usedSuppression   func(string, sourcepos.Position, string)
+	usedSuppression   func(string, sourcetext.Position, string)
 }
 
 func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSources map[string][]byte, authority map[*finding.Finding]obligation) ([]*finding.Finding, error) {
@@ -132,7 +132,7 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 		findings = slices.DeleteFunc(findings, func(e *finding.Finding) bool {
 			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
 			executionFailure := descriptor.ExecutionFailure && (e.Severity == "" || e.Severity == "error")
-			e.NonBlocking = sourcepos.RemoteAddress(e.Path) && e.Path != p.Path &&
+			e.NonBlocking = sourcetext.RemoteAddress(e.Path) && e.Path != p.Path &&
 				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
 			prepared, _ := p.Bindings.Lookup(e.Binding)
 			level := prepared.Scope().DiagnosticLevel(e.Rule)
@@ -174,7 +174,7 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 }
 
 func (p Policy) inlineAudit(path string, level func(string) ruleconfig.Level) *inlineAudit {
-	return &inlineAudit{level: level, used: func(position sourcepos.Position, rule string) {
+	return &inlineAudit{level: level, used: func(position sourcetext.Position, rule string) {
 		if p.usedSuppression != nil {
 			p.usedSuppression(path, position, rule)
 		}

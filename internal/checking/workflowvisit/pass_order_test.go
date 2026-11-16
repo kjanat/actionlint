@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -22,8 +22,8 @@ func (p *jobOrderPass) VisitJobPre(job workflows.Job) error {
 
 func TestVisitorJobSourceOrder(t *testing.T) {
 	t.Parallel()
-	first := &definition.Job{Pos: &source.Position{Line: 1, Column: 1}}
-	second := &definition.Job{Pos: &source.Position{Line: 2, Column: 1}}
+	first := &definition.Job{Pos: &sourcetext.Position{Line: 1, Column: 1}}
+	second := &definition.Job{Pos: &sourcetext.Position{Line: 2, Column: 1}}
 	missingA, missingZ := &definition.Job{}, &definition.Job{}
 	for range 10 {
 		pass := &jobOrderPass{}

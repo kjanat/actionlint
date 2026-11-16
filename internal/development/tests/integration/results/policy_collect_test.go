@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -19,7 +19,7 @@ import (
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	t.Parallel()
-	base := finding.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 5}, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}}
+	base := finding.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 5}, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}}
 	var files []policy.Batch
 	for _, change := range []func(*finding.Finding){
 		func(*finding.Finding) {},
@@ -43,7 +43,7 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	t.Parallel()
-	item := &finding.Finding{Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 3}}
+	item := &finding.Finding{Rule: "shellcheck", Message: "finding", Start: sourcetext.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 3}}
 	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*finding.Finding{item}}}).Diagnostics
 	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
 		t.Fatalf("same-source target not resolved: %+v", reported)
@@ -79,7 +79,7 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 		t.Fatal(err)
 	}
 	store, fixture := capturefixture.NewCapturedSources(t, root)
-	captured, err := fixture.Capture(alias, content, source.YAML)
+	captured, err := fixture.Capture(alias, content, sourcetext.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,17 +111,17 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 		name        string
 		content     []byte
 		failed      bool
-		reportedEnd source.Position
+		reportedEnd sourcetext.Position
 	}{
 		{name: "unverified reread", content: []byte("echo $VALUE\n")},
 		{name: "failed reread", content: []byte{}, failed: true},
-		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: source.Position{Line: 1, Column: 12}},
+		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: sourcetext.Position{Line: 1, Column: 12}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			item := &finding.Finding{
-				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: source.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
-				Reference: &source.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []results.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
+				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: sourcetext.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
+				Reference: &sourcetext.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []results.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
 				Source: results.DiagnosticSource{Content: tc.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed)},
 			}
 			diagnostics := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow text")}, Findings: []*finding.Finding{item}}}).Diagnostics
@@ -129,7 +129,7 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 				t.Fatalf("unavailable source gained revision evidence: %+v", diagnostics)
 			}
 			wantEnd := tc.reportedEnd
-			if wantEnd == (source.Position{}) {
+			if wantEnd == (sourcetext.Position{}) {
 				wantEnd = item.Start
 			}
 			if diagnostics[0].End != wantEnd || tc.failed && diagnostics[0].Snippet != "" {
@@ -150,14 +150,14 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 	t.Parallel()
-	base := finding.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}}
+	base := finding.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcetext.Position{Line: 1, Column: 1}}
 	var files []policy.Batch
 	for _, change := range []func(*finding.Finding){
 		func(*finding.Finding) {},
 		func(e *finding.Finding) { e.Code = "SC2086" },
 		func(e *finding.Finding) { e.Severity = "warning" },
 		func(e *finding.Finding) {
-			e.Fixes = []results.Fix{{Description: "quote", Edits: []results.Edit{{Path: "action.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
+			e.Fixes = []results.Fix{{Description: "quote", Edits: []results.Edit{{Path: "action.yml", Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
 		},
 	} {
 		item := base
@@ -177,8 +177,8 @@ func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 	t.Parallel()
 	script := []byte("echo $A\necho $B\n")
 	findings := []*finding.Finding{
-		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: source.Position{Line: 1, Column: 6}, Source: results.DiagnosticSource{Content: script}},
-		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: source.Position{Line: 2, Column: 6}, Source: results.DiagnosticSource{Content: script}},
+		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: sourcetext.Position{Line: 1, Column: 6}, Source: results.DiagnosticSource{Content: script}},
+		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: sourcetext.Position{Line: 2, Column: 6}, Source: results.DiagnosticSource{Content: script}},
 	}
 	reported := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow")}, Findings: findings}}).Diagnostics
 	if len(reported) != 2 {

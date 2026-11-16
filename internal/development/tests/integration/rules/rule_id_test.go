@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -35,16 +35,16 @@ func TestCheckInvalidJobNames(t *testing.T) {
 			{
 				"jobs.<job_id>",
 				&definition.Job{
-					ID: &definition.String{Value: input, Pos: &source.Position{}},
+					ID: &definition.String{Value: input, Pos: &sourcetext.Position{}},
 				},
 				"invalid job ID",
 			},
 			{
 				"jobs.<job_id>.needs",
 				&definition.Job{
-					ID: &definition.String{Value: "test", Pos: &source.Position{}},
+					ID: &definition.String{Value: "test", Pos: &sourcetext.Position{}},
 					Needs: []*definition.String{
-						{Value: input, Pos: &source.Position{}},
+						{Value: input, Pos: &sourcetext.Position{}},
 					},
 				},
 				"invalid job ID",
@@ -53,7 +53,7 @@ func TestCheckInvalidJobNames(t *testing.T) {
 				"steps.*.id",
 				&definition.Job{
 					Steps: []*definition.Step{
-						{ID: &definition.String{Value: input, Pos: &source.Position{}}},
+						{ID: &definition.String{Value: input, Pos: &sourcetext.Position{}}},
 					},
 				},
 				"invalid step ID",
@@ -106,12 +106,12 @@ func TestCheckValidJobNames(t *testing.T) {
 				stepID = "step" + stepID
 			}
 			job := &definition.Job{
-				ID: &definition.String{Value: input, Pos: &source.Position{}},
+				ID: &definition.String{Value: input, Pos: &sourcetext.Position{}},
 				Needs: []*definition.String{
-					{Value: input, Pos: &source.Position{}},
+					{Value: input, Pos: &sourcetext.Position{}},
 				},
 				Steps: []*definition.Step{
-					{ID: &definition.String{Value: stepID, Pos: &source.Position{}}},
+					{ID: &definition.String{Value: stepID, Pos: &sourcetext.Position{}}},
 				},
 			}
 			r := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})

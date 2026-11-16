@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -87,7 +87,7 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 	}
 }
 
-func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
+func stepReferencesForTest(t *testing.T, steps ...string) []sourcetext.Reference {
 	t.Helper()
 	var text strings.Builder
 	text.WriteString("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n")
@@ -102,7 +102,7 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 		t.Fatal(findings)
 	}
 	refs := facts.Index("workflow.yml", []byte(content), workflow, false)
-	var result []source.Reference
+	var result []sourcetext.Reference
 	for _, step := range workflow.Jobs["build"].Steps {
 		result = append(result, refs.Steps[step])
 	}

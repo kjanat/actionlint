@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
@@ -162,7 +162,7 @@ func invocationScriptByID(ctx context.Context, id string) invocationcontext.Resu
 	return invocationcontext.ResultOptionScriptOccurrenceStringOk{Value: invocationcontext.SomeScriptOccurrence(invocationScript(graph, script))}
 }
 
-func invocationReference(ref source.Reference) invocationcontext.SourceReference {
+func invocationReference(ref sourcetext.Reference) invocationcontext.SourceReference {
 	return invocationcontext.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address}
 }
 

@@ -3,7 +3,7 @@ package lsp
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestBOMEditorCoordinatesRoundTrip(t *testing.T) {
@@ -11,16 +11,16 @@ func TestBOMEditorCoordinatesRoundTrip(t *testing.T) {
 	text := "\ufeffa😀b\r\néx"
 	for _, point := range []struct {
 		editor editorPosition
-		source source.Position
+		source sourcetext.Position
 		offset int
 	}{
-		{editorPosition{0, 0}, source.Position{Line: 1, Column: 1}, 3},
-		{editorPosition{0, 1}, source.Position{Line: 1, Column: 2}, 4},
-		{editorPosition{0, 3}, source.Position{Line: 1, Column: 3}, 8},
-		{editorPosition{0, 4}, source.Position{Line: 1, Column: 4}, 9},
-		{editorPosition{1, 0}, source.Position{Line: 2, Column: 1}, 11},
-		{editorPosition{1, 1}, source.Position{Line: 2, Column: 2}, 13},
-		{editorPosition{1, 2}, source.Position{Line: 2, Column: 3}, 14},
+		{editorPosition{0, 0}, sourcetext.Position{Line: 1, Column: 1}, 3},
+		{editorPosition{0, 1}, sourcetext.Position{Line: 1, Column: 2}, 4},
+		{editorPosition{0, 3}, sourcetext.Position{Line: 1, Column: 3}, 8},
+		{editorPosition{0, 4}, sourcetext.Position{Line: 1, Column: 4}, 9},
+		{editorPosition{1, 0}, sourcetext.Position{Line: 2, Column: 1}, 11},
+		{editorPosition{1, 1}, sourcetext.Position{Line: 2, Column: 2}, 13},
+		{editorPosition{1, 2}, sourcetext.Position{Line: 2, Column: 3}, 14},
 	} {
 		if offset, err := editorByteOffset(text, point.editor); err != nil || offset != point.offset {
 			t.Errorf("editor %v: offset=%d err=%v, want %d", point.editor, offset, err, point.offset)

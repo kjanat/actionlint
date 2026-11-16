@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/output"
@@ -26,10 +26,10 @@ func TestCheckResultSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial := report.Analysis{IncompleteChecks: []report.IncompleteCheck{{Source: source.Reference{Document: "/work/ci.yml", Revision: "abc"}, Rule: "workflow-run-names", Reason: "producer names unavailable"}}}
-	entry := source.Reference{Document: "/work/ci.yml", Revision: "abc", Node: "root"}
+	partial := report.Analysis{IncompleteChecks: []report.IncompleteCheck{{Source: sourcetext.Reference{Document: "/work/ci.yml", Revision: "abc"}, Rule: "workflow-run-names", Reason: "producer names unavailable"}}}
+	entry := sourcetext.Reference{Document: "/work/ci.yml", Revision: "abc", Node: "root"}
 	partial.IncompleteChecks = append(partial.IncompleteChecks, report.IncompleteCheck{
-		Source:     source.Reference{Document: "/work/action.yml", Revision: "def"},
+		Source:     sourcetext.Reference{Document: "/work/action.yml", Revision: "def"},
 		Invocation: report.CheckInvocation{Entry: entry, ID: invocation.ID(strings.Repeat("a", 64))},
 		Rule:       "shellcheck", Reason: "tool unavailable",
 	})
@@ -142,8 +142,8 @@ runs:
 	}
 	diagnostic := results.Diagnostic{
 		Rule: "shellcheck", Code: "SC2086", Severity: "warning", Message: "Quote variable", Path: "ci.yml",
-		Start: source.Position{Line: 2, Column: 3}, End: source.Position{Line: 3, Column: 4}, Snippet: "echo $value",
-		Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{{Path: "ci.yml", Start: source.Position{Line: 2, Column: 3}, End: source.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
+		Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 3, Column: 4}, Snippet: "echo $value",
+		Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{{Path: "ci.yml", Start: sourcetext.Position{Line: 2, Column: 3}, End: sourcetext.Position{Line: 3, Column: 4}, Replacement: "\"$value\""}}}},
 	}
 	for _, tc := range []struct {
 		name     string

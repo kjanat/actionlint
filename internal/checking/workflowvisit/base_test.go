@@ -3,7 +3,7 @@ package workflowvisit
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
@@ -16,21 +16,21 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	if len(errs) > 0 {
 		t.Error("no error is expected", errs)
 	}
-	r.Error(&source.Position{Line: 1, Column: 2}, "this is test 1")
-	r.Errorf(&source.Position{Line: 3, Column: 4}, "this is test %d", 2)
+	r.Error(&sourcetext.Position{Line: 1, Column: 2}, "this is test 1")
+	r.Errorf(&sourcetext.Position{Line: 3, Column: 4}, "this is test %d", 2)
 	errs = r.Errs()
 	if len(errs) != 2 {
 		t.Error("wanted 2 errors but have", errs)
 	}
 	want := []*finding.Finding{
 		{
-			Message: "this is test 1", Start: source.Position{
+			Message: "this is test 1", Start: sourcetext.Position{
 				Line:   1,
 				Column: 2,
 			}, Rule: "dummy name",
 		},
 		{
-			Message: "this is test 2", Start: source.Position{
+			Message: "this is test 2", Start: sourcetext.Position{
 				Line:   3,
 				Column: 4,
 			}, Rule: "dummy name",
@@ -44,7 +44,7 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 func TestRuleBaseErrsAreDetached(t *testing.T) {
 	t.Parallel()
 	r := NewBase("rule", "description")
-	r.Error(&source.Position{Line: 1, Column: 1}, "message")
+	r.Error(&sourcetext.Position{Line: 1, Column: 1}, "message")
 	r.Errs()[0].Path = "changed"
 	if path := r.Errs()[0].Path; path != "" {
 		t.Fatalf("reader changed a recorded finding: path %q", path)
@@ -54,9 +54,9 @@ func TestRuleBaseErrsAreDetached(t *testing.T) {
 func TestRuleBaseAnnotateSince(t *testing.T) {
 	t.Parallel()
 	r := NewBase("rule", "description")
-	r.Error(&source.Position{Line: 1, Column: 1}, "before")
+	r.Error(&sourcetext.Position{Line: 1, Column: 1}, "before")
 	mark := r.FindingCount()
-	r.Error(&source.Position{Line: 2, Column: 1}, "after")
+	r.Error(&sourcetext.Position{Line: 2, Column: 1}, "after")
 	r.AnnotateSince(mark, func(finding *finding.Finding) { finding.Path = "annotated" })
 	if count := r.FindingCount(); count != 2 {
 		t.Fatalf("wanted 2 findings, have %d", count)

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -17,7 +17,7 @@ func TestNativeCodePresentation(t *testing.T) {
 	} {
 		t.Run(tc.code, func(t *testing.T) {
 			t.Parallel()
-			finding := publishedFinding(results.Diagnostic{Rule: "shellcheck", Code: tc.code, Path: "workflow.yml", Start: source.Position{Line: 2, Column: 3}, Message: "Quote this value"}, nil)
+			finding := publishedFinding(results.Diagnostic{Rule: "shellcheck", Code: tc.code, Path: "workflow.yml", Start: sourcetext.Position{Line: 2, Column: 3}, Message: "Quote this value"}, nil)
 			var output bytes.Buffer
 			PrettyPrint(&output, finding)
 			if got, want := output.String(), "workflow.yml:2:3: "+tc.prefix+"Quote this value [shellcheck]\n"; got != want {

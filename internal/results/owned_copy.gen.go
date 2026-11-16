@@ -6,24 +6,24 @@ import (
 	maps "maps"
 	slices "slices"
 
-	source "actionlint.kjanat.dev/v2/internal/input/source"
+	sourcetext "actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func copyOwnedDiagnostic(in Diagnostic) Diagnostic {
 	out := in
-	out.Reference = copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in.Reference)
+	out.Reference = copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in.Reference)
 	out.Related = slices.Clone(in.Related)
 	out.Lifecycle = copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in.Lifecycle)
 	out.Fixes = copyOwnedValue_71c4949aa34e9bbe8f5a948cb6f78f98(in.Fixes)
 	return out
 }
 
-func copyOwnedValue_469cf7735eb17fcdb96410a8fb23940c(in *source.Reference) *source.Reference {
+func copyOwnedValue_03027c6e5bfe3b4e6c01d048cdbefbf2(in *sourcetext.Reference) *sourcetext.Reference {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	return (*source.Reference)(&out)
+	return (*sourcetext.Reference)(&out)
 }
 
 func copyOwnedValue_12ffe5ec71a31df5cff01194c96c3108(in *LifecycleReport) *LifecycleReport {

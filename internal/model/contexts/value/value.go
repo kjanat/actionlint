@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
@@ -43,8 +43,8 @@ const (
 )
 
 type Span struct {
-	Start source.Position
-	End   source.Position
+	Start sourcetext.Position
+	End   sourcetext.Position
 }
 
 type Origin struct {

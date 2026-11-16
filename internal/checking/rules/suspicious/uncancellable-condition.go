@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -61,7 +61,7 @@ func UncancellableCondition(w workflows.Workflow, value *definition.String) []re
 			finding.Fixes = []results.Fix{{
 				Description: "Skip this job when cancelled (changes behavior)", Applicability: results.FixUnsafe,
 				Edits: []results.Edit{{
-					Start: sourcepos.ZeroIfNil(start), End: sourcepos.ZeroIfNil(end), Replacement: replacement,
+					Start: sourcetext.ZeroIfNil(start), End: sourcetext.ZeroIfNil(end), Replacement: replacement,
 				}},
 			}}
 		}

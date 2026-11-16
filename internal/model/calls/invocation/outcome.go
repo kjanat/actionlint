@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // ErrInvalidOutcome reports an outcome that is zero, malformed or not allowed
@@ -141,7 +141,7 @@ func reasonAllowed(kind OutcomeKind, r Reason) bool {
 type CycleInfo struct {
 	// Active is the ancestor's target declaration (the entry for a standalone
 	// action).
-	Active source.Reference
+	Active sourcetext.Reference
 	// Owner is the entry or call whose target is Active.
 	Owner ID
 	// Closing is the call that re-enters Active.
@@ -153,7 +153,7 @@ type Outcome struct {
 	kind      OutcomeKind
 	reason    Reason
 	detail    string
-	target    source.Reference
+	target    sourcetext.Reference
 	hasTarget bool
 	cycle     CycleInfo
 	limit     int
@@ -173,7 +173,7 @@ func (o Outcome) Detail() string { return o.detail }
 
 // Target returns the resolved target declaration for expanded and cycle
 // outcomes, and for interruptions of an expanded call.
-func (o Outcome) Target() (source.Reference, bool) { return o.target, o.hasTarget }
+func (o Outcome) Target() (sourcetext.Reference, bool) { return o.target, o.hasTarget }
 
 // Cycle returns cycle details for cycle outcomes.
 func (o Outcome) Cycle() (CycleInfo, bool) { return o.cycle, o.kind == OutcomeCycle }
@@ -187,7 +187,7 @@ func (o Outcome) Limit() (LimitKind, int, bool) {
 }
 
 // Expanded reports a composite whose body is expanded into target.
-func Expanded(target source.Reference) (Outcome, error) {
+func Expanded(target sourcetext.Reference) (Outcome, error) {
 	if err := validateRef("target", target); err != nil {
 		return Outcome{}, err
 	}
@@ -225,7 +225,7 @@ func reasoned(kind OutcomeKind, reason Reason, detail string) (Outcome, error) {
 }
 
 // interrupted keeps an expanded call's target when it has one.
-func interrupted(reason Reason, detail string, target source.Reference, hasTarget bool) (Outcome, error) {
+func interrupted(reason Reason, detail string, target sourcetext.Reference, hasTarget bool) (Outcome, error) {
 	o, err := reasoned(OutcomeInterrupted, reason, detail)
 	if err != nil {
 		return Outcome{}, err
@@ -234,7 +234,7 @@ func interrupted(reason Reason, detail string, target source.Reference, hasTarge
 	return o, nil
 }
 
-func cycleOutcome(target, active source.Reference, owner, closing ID) Outcome {
+func cycleOutcome(target, active sourcetext.Reference, owner, closing ID) Outcome {
 	return Outcome{
 		kind:      OutcomeCycle,
 		reason:    ReasonCycle,

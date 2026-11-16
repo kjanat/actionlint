@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -328,7 +328,7 @@ func TestPreparedRootJobComesFromSnapshotNotCollectorState(t *testing.T) {
 	if !exists || unit.Origin.Job != "Build" || fact.JobID != "Build" {
 		t.Fatalf("prepared output trusted mutable collector job state: unit=%+v fact=%+v", unit, fact)
 	}
-	if unit.Reference == (source.Reference{}) {
+	if unit.Reference == (sourcetext.Reference{}) {
 		t.Fatal("prepared root script lost its source reference")
 	}
 }

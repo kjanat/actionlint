@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"github.com/kjanat/wacogo"
 )
@@ -36,7 +36,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 	input := checkinputs.AnalyzerInput{
 		Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Source, rule.Scripts, rule.Invocations},
 		CallGraph: graph, SelectedScripts: []invocation.ID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
-		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: source.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
+		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: sourcetext.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
 	}
 	if findings, err := guest.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {
 		t.Fatalf("guest graph traversal: findings=%v error=%v", findings, err)

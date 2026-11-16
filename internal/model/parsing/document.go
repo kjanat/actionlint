@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -133,7 +133,7 @@ func actionFacts(metadata *actionmeta.Metadata) *definition.Workflow {
 		if job.Outputs == nil {
 			job.Outputs = make(map[string]*definition.Output)
 		}
-		job.Outputs[field.FieldPath] = &definition.Output{Value: &definition.String{Value: field.Value.Value, Pos: &source.Position{Line: field.Value.Line, Column: field.Value.Column}}}
+		job.Outputs[field.FieldPath] = &definition.Output{Value: &definition.String{Value: field.Value.Value, Pos: &sourcetext.Position{Line: field.Value.Line, Column: field.Value.Column}}}
 	}
 	workflow := &definition.Workflow{Jobs: map[string]*definition.Job{"": job}, ExpressionSources: parser.ExpressionSources(metadata.Root)}
 	parser.IndexDependencySpans(workflow)

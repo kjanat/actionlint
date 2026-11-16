@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -169,7 +169,7 @@ serve:
 						missingSources[related.Path] = struct{}{}
 						continue
 					}
-					if _, _, err := sourceposition.Range([]byte(target.Text), row.Coordinates, related.Start, related.End); err != nil {
+					if _, _, err := byteoffset.Range([]byte(target.Text), row.Coordinates, related.Start, related.End); err != nil {
 						missingSources[related.Path] = struct{}{}
 						continue
 					}

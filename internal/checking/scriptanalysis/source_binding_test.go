@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -241,7 +241,7 @@ func TestDeploymentValidatesSymlinkIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.Capture(alias, content, source.YAML); err != nil {
+	if _, err := fixture.Capture(alias, content, sourcetext.YAML); err != nil {
 		t.Fatal(err)
 	}
 	deployment, err := NewDeployment(registry, snapshot, alias, alias, false)

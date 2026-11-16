@@ -3,7 +3,7 @@ package localactions
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -13,7 +13,7 @@ func TestActionEntryHasNoCallerBranchJoin(t *testing.T) {
 	resolver := NewResolver(nil, nil)
 	resolver.checkoutEnvUnknown, resolver.shellEnvUnknown, resolver.persistentEnvUnknown = true, true, true
 	resolver.checkoutShell = execution.Shell{Name: "bash"}
-	builder, err := invocation.NewBuilder(invocation.EntryAction, source.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
+	builder, err := invocation.NewBuilder(invocation.EntryAction, sourcetext.Reference{Document: "fixture", Node: "entry"}, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)
 	}

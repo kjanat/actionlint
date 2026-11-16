@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -46,11 +46,11 @@ func TestRenderAnalysisPreservesUnicodeAndLegacyRanges(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name              string
-		end               source.Position
+		end               sourcetext.Position
 		column, indicator string
 	}{
-		{"single line", source.Position{Line: 4, Column: 17}, "16", "^~~~"},
-		{"multiple lines", source.Position{Line: 5, Column: 2}, "17", "^~~~~"},
+		{"single line", sourcetext.Position{Line: 4, Column: 17}, "16", "^~~~"},
+		{"multiple lines", sourcetext.Position{Line: 5, Column: 2}, "17", "^~~~~"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

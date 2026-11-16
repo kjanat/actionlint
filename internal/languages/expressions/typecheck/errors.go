@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // Error is a syntax or semantic finding in an expression. Rule and Code identify
@@ -18,7 +18,7 @@ type Error struct {
 	// EndOffset is the exclusive byte end of the diagnostic's intended range.
 	EndOffset int
 	// Position is where the finding starts in the expression.
-	Position source.Position
+	Position sourcetext.Position
 	// Rule identifies the configurable check; Code identifies its diagnostic kind.
 	Rule string
 	Code string

@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func newStore(t *testing.T, overlays []Overlay, reader Reader) *Store {
@@ -39,7 +39,7 @@ func cleanupStore(t *testing.T, store *Store) {
 	})
 }
 
-func readSnapshot(t *testing.T, store *Store, path string, model source.Coordinates) CapturedDocument {
+func readSnapshot(t *testing.T, store *Store, path string, model sourcetext.Coordinates) CapturedDocument {
 	t.Helper()
 	snapshot, err := store.Read(t.Context(), path, model)
 	if err != nil {
@@ -70,7 +70,7 @@ func TestConcurrentAliasesShareOneReadAndCacheSuccess(t *testing.T) {
 	var reads atomic.Int32
 	started, release := make(chan struct{}), make(chan struct{})
 	store := newStore(t, nil, func(_ context.Context, document string) ([]byte, error) {
-		if document != source.DocumentID(files.PhysicalPath(path)) {
+		if document != sourcetext.DocumentID(files.PhysicalPath(path)) {
 			t.Errorf("reader address = %q", document)
 		}
 		reads.Add(1)
@@ -86,7 +86,7 @@ func TestConcurrentAliasesShareOneReadAndCacheSuccess(t *testing.T) {
 			if index%2 != 0 {
 				address = alias
 			}
-			snapshot, err := store.Read(t.Context(), address, source.YAML)
+			snapshot, err := store.Read(t.Context(), address, sourcetext.YAML)
 			if err != nil || !snapshot.Valid() {
 				t.Errorf("read = %v, %v", snapshot.Valid(), err)
 			}
@@ -95,7 +95,7 @@ func TestConcurrentAliasesShareOneReadAndCacheSuccess(t *testing.T) {
 	<-started
 	close(release)
 	wait.Wait()
-	final := readSnapshot(t, store, alias, source.YAML)
+	final := readSnapshot(t, store, alias, sourcetext.YAML)
 	expected := []string{path, alias}
 	slices.Sort(expected)
 	if reads.Load() != 1 || !slices.Equal(final.Aliases(), expected) {
@@ -113,11 +113,11 @@ func TestFailuresAreCached(t *testing.T) {
 		return nil, want
 	})
 	for range 2 {
-		if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, want) {
+		if _, err := store.Read(t.Context(), path, sourcetext.YAML); !errors.Is(err, want) {
 			t.Fatal(err)
 		} else {
 			var failure *CaptureError
-			if !errors.As(err, &failure) || failure.Code() != "capture-failed" || failure.Document() != source.DocumentID(files.PhysicalPath(path)) {
+			if !errors.As(err, &failure) || failure.Code() != "capture-failed" || failure.Document() != sourcetext.DocumentID(files.PhysicalPath(path)) {
 				t.Fatalf("failure = %v", err)
 			}
 			var original *os.PathError
@@ -148,14 +148,14 @@ func TestCancelledWaiterDoesNotPoisonSharedCapture(t *testing.T) {
 	})
 	waiter, cancel := context.WithCancel(t.Context())
 	failed := make(chan error, 1)
-	go func() { _, err := store.Read(waiter, path, source.RawLF); failed <- err }()
+	go func() { _, err := store.Read(waiter, path, sourcetext.RawLF); failed <- err }()
 	<-started
 	cancel()
 	if err := <-failed; !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	close(release)
-	if got := readSnapshot(t, store, path, source.RawLF); string(got.Bytes()) != "winner" || reads.Load() != 1 {
+	if got := readSnapshot(t, store, path, sourcetext.RawLF); string(got.Bytes()) != "winner" || reads.Load() != 1 {
 		t.Fatalf("content = %q, reads = %d", got.Bytes(), reads.Load())
 	}
 }
@@ -169,7 +169,7 @@ func TestAlreadyCancelledCallerStartsNoRead(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := store.Read(ctx, filepath.Join(t.TempDir(), "unused"), source.YAML); !errors.Is(err, context.Canceled) {
+	if _, err := store.Read(ctx, filepath.Join(t.TempDir(), "unused"), sourcetext.YAML); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	if reads.Load() != 0 {
@@ -195,13 +195,13 @@ func TestRootCancellationStopsAndCachesBackingRead(t *testing.T) {
 	}
 	cleanupStore(t, store)
 	finished := make(chan error, 1)
-	go func() { _, err := store.Read(t.Context(), path, source.RawLF); finished <- err }()
+	go func() { _, err := store.Read(t.Context(), path, sourcetext.RawLF); finished <- err }()
 	<-started
 	cancel()
 	if err := <-finished; !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
-	if _, err := store.Read(t.Context(), path, source.RawLF); !errors.Is(err, context.Canceled) {
+	if _, err := store.Read(t.Context(), path, sourcetext.RawLF); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	if reads.Load() != 1 {
@@ -216,15 +216,15 @@ func TestOverlayAndSnapshotMutationIsolation(t *testing.T) {
 	alias := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "file"
 	content := []byte("\xef\xbb\xbfabc\r\n")
 	expected := bytes.Clone(content)
-	store := newStore(t, []Overlay{{path, content, source.RawLF}}, func(context.Context, string) ([]byte, error) {
+	store := newStore(t, []Overlay{{path, content, sourcetext.RawLF}}, func(context.Context, string) ([]byte, error) {
 		t.Error("overlay performed a backing read")
 		return nil, errors.New("unexpected overlay backing read")
 	})
 	content[0] = 'X'
-	first := readSnapshot(t, store, path, source.RawLF)
+	first := readSnapshot(t, store, path, sourcetext.RawLF)
 	first.Bytes()[0] = 'Y'
 	first.Aliases()[0] = "mutated"
-	second := readSnapshot(t, store, alias, source.RawLF)
+	second := readSnapshot(t, store, alias, sourcetext.RawLF)
 	if !bytes.Equal(first.Bytes(), expected) || !bytes.Equal(second.Bytes(), expected) {
 		t.Fatal("captured bytes changed")
 	}
@@ -234,7 +234,7 @@ func TestOverlayAndSnapshotMutationIsolation(t *testing.T) {
 	if err := store.Verify(first, expected); err != nil {
 		t.Fatal(err)
 	}
-	if first.Revision().Digest() != source.ContentDigest(expected) {
+	if first.Revision().Digest() != sourcetext.ContentDigest(expected) {
 		t.Fatal("digest normalized physical bytes")
 	}
 }
@@ -244,8 +244,8 @@ func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad")
 	alias := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "bad"
-	for _, alternate := range []Overlay{{alias, []byte("other"), source.YAML}, {alias, []byte("same"), source.RawLF}} {
-		overlays := []Overlay{{path, []byte("same"), source.YAML}, alternate, {filepath.Join(dir, "good"), []byte("good"), source.YAML}}
+	for _, alternate := range []Overlay{{alias, []byte("other"), sourcetext.YAML}, {alias, []byte("same"), sourcetext.RawLF}} {
+		overlays := []Overlay{{path, []byte("same"), sourcetext.YAML}, alternate, {filepath.Join(dir, "good"), []byte("good"), sourcetext.YAML}}
 		var message string
 		for range 2 {
 			store, err := New(t.Context(), overlays, func(context.Context, string) ([]byte, error) { return []byte("disk"), nil })
@@ -255,7 +255,7 @@ func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
 			cleanupStore(t, store)
 			_, _, err = store.Lookup(path)
 			conflict := requireConflict(t, err)
-			if conflict.document != source.DocumentID(files.PhysicalPath(path)) {
+			if conflict.document != sourcetext.DocumentID(files.PhysicalPath(path)) {
 				t.Fatalf("conflict document = %q", conflict.document)
 			}
 			if message != "" && err.Error() != message {
@@ -263,13 +263,13 @@ func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
 			}
 			message = err.Error()
 			for _, address := range []string{path, alias} {
-				_, err := store.Read(t.Context(), address, source.YAML)
+				_, err := store.Read(t.Context(), address, sourcetext.YAML)
 				requireConflict(t, err)
 			}
-			if got := readSnapshot(t, store, filepath.Join(dir, "good"), source.YAML); string(got.Bytes()) != "good" {
+			if got := readSnapshot(t, store, filepath.Join(dir, "good"), sourcetext.YAML); string(got.Bytes()) != "good" {
 				t.Fatal("unrelated overlay unavailable")
 			}
-			if got := readSnapshot(t, store, filepath.Join(dir, "disk"), source.RawLF); string(got.Bytes()) != "disk" {
+			if got := readSnapshot(t, store, filepath.Join(dir, "disk"), sourcetext.RawLF); string(got.Bytes()) != "disk" {
 				t.Fatal("unrelated read unavailable")
 			}
 			slices.Reverse(overlays)
@@ -280,12 +280,12 @@ func TestOverlayConflictsDeterministicAndIsolated(t *testing.T) {
 func TestCoordinateMismatchPreservesAcceptedCapture(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "file")
-	store := newStore(t, []Overlay{{path, []byte("abc\r\n"), source.RawLF}}, func(context.Context, string) ([]byte, error) { return nil, nil })
-	snapshot := readSnapshot(t, store, path, source.RawLF)
-	_, err := store.Read(t.Context(), path, source.YAML)
+	store := newStore(t, []Overlay{{path, []byte("abc\r\n"), sourcetext.RawLF}}, func(context.Context, string) ([]byte, error) { return nil, nil })
+	snapshot := readSnapshot(t, store, path, sourcetext.RawLF)
+	_, err := store.Read(t.Context(), path, sourcetext.YAML)
 	requireConflict(t, err)
 	requireConflict(t, store.Verify(snapshot, []byte("abc\r\n")))
-	if string(snapshot.Bytes()) != "abc\r\n" || snapshot.Coordinates() != source.RawLF {
+	if string(snapshot.Bytes()) != "abc\r\n" || snapshot.Coordinates() != sourcetext.RawLF {
 		t.Fatal("quarantine rewrote private accepted bytes/model")
 	}
 }
@@ -295,7 +295,7 @@ func TestVerifyRejectsMismatchedBytesAndHandles(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "file")
 	reader := func(context.Context, string) ([]byte, error) { return []byte("captured"), nil }
 	store := newStore(t, nil, reader)
-	snapshot := readSnapshot(t, store, path, source.YAML)
+	snapshot := readSnapshot(t, store, path, sourcetext.YAML)
 	requireConflict(t, store.Verify(snapshot, []byte("changed")))
 	if err := store.Verify(CapturedDocument{}, nil); !errors.Is(err, ErrInvalidSnapshot) {
 		t.Fatalf("zero handle = %v", err)
@@ -316,12 +316,12 @@ func TestVerifyRejectsMismatchedBytesAndHandles(t *testing.T) {
 func TestStdinAndInvalidUTF8(t *testing.T) {
 	t.Parallel()
 	invalid := []byte{0xff, '\r', '\n'}
-	store := newStore(t, []Overlay{{"<stdin>", invalid, source.RawLF}}, func(context.Context, string) ([]byte, error) { return nil, nil })
-	snapshot := readSnapshot(t, store, "<stdin>", source.RawLF)
-	if snapshot.Revision().Document() != "<stdin>" || !snapshot.Revision().Valid() || snapshot.CoordinatesAvailable() || snapshot.Coordinates() != source.RawLF {
+	store := newStore(t, []Overlay{{"<stdin>", invalid, sourcetext.RawLF}}, func(context.Context, string) ([]byte, error) { return nil, nil })
+	snapshot := readSnapshot(t, store, "<stdin>", sourcetext.RawLF)
+	if snapshot.Revision().Document() != "<stdin>" || !snapshot.Revision().Valid() || snapshot.CoordinatesAvailable() || snapshot.Coordinates() != sourcetext.RawLF {
 		t.Fatalf("invalid UTF-8 capture = %#v", snapshot)
 	}
-	if snapshot.Revision().Digest() != source.ContentDigest(invalid) || !bytes.Equal(snapshot.Bytes(), invalid) {
+	if snapshot.Revision().Digest() != sourcetext.ContentDigest(invalid) || !bytes.Equal(snapshot.Bytes(), invalid) {
 		t.Fatal("invalid UTF-8 bytes lost")
 	}
 	if document, err := store.Canonical(t.Context(), "<stdin>"); err != nil || document != "<stdin>" {
@@ -348,7 +348,7 @@ func TestCanonicalSymlinkAndMissingParentMemoized(t *testing.T) {
 	}
 	alias := filepath.Join(link, "missing-parent", "file")
 	physical := filepath.Join(physicalRoot, "missing-parent", "file")
-	store := newStore(t, []Overlay{{alias, []byte("captured"), source.YAML}}, func(context.Context, string) ([]byte, error) {
+	store := newStore(t, []Overlay{{alias, []byte("captured"), sourcetext.YAML}}, func(context.Context, string) ([]byte, error) {
 		t.Error("canonical alias missed overlay")
 		return nil, errors.New("canonical alias missed overlay")
 	})
@@ -356,8 +356,8 @@ func TestCanonicalSymlinkAndMissingParentMemoized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := source.DocumentID(filepath.Join(resolvedReal, "missing-parent", "file"))
-	if got := readSnapshot(t, store, physical, source.YAML); got.Revision().Document() != want {
+	want := sourcetext.DocumentID(filepath.Join(resolvedReal, "missing-parent", "file"))
+	if got := readSnapshot(t, store, physical, sourcetext.YAML); got.Revision().Document() != want {
 		t.Fatalf("revision document = %q", got.Revision().Document())
 	}
 	if err := os.Remove(link); err != nil {
@@ -371,7 +371,7 @@ func TestCanonicalSymlinkAndMissingParentMemoized(t *testing.T) {
 func TestMalformedConfigurationReturnsNoStore(t *testing.T) {
 	t.Parallel()
 	reader := func(context.Context, string) ([]byte, error) { return nil, nil }
-	for _, overlays := range [][]Overlay{{{"", nil, source.YAML}}, {{filepath.Join(t.TempDir(), "file"), nil, ""}}, {{"a\x00b", nil, source.RawLF}}, {{"relative", nil, source.RawLF}}} {
+	for _, overlays := range [][]Overlay{{{"", nil, sourcetext.YAML}}, {{filepath.Join(t.TempDir(), "file"), nil, ""}}, {{"a\x00b", nil, sourcetext.RawLF}}, {{"relative", nil, sourcetext.RawLF}}} {
 		if store, err := New(t.Context(), overlays, reader); store != nil || err == nil {
 			t.Fatalf("accepted malformed config: %v, %v", store != nil, err)
 		}
@@ -386,7 +386,7 @@ func TestReadAliasesExcludeUnusedOverlaysAndIdentityLookups(t *testing.T) {
 	root := t.TempDir()
 	used, unused := filepath.Join(root, "used.yml"), filepath.Join(root, "unused.yml")
 	alias := root + string(filepath.Separator) + "." + string(filepath.Separator) + "used.yml"
-	store := newStore(t, []Overlay{{used, []byte("used"), source.YAML}, {unused, []byte("unused"), source.YAML}}, func(context.Context, string) ([]byte, error) {
+	store := newStore(t, []Overlay{{used, []byte("used"), sourcetext.YAML}, {unused, []byte("unused"), sourcetext.YAML}}, func(context.Context, string) ([]byte, error) {
 		return nil, os.ErrNotExist
 	})
 	if _, err := store.ReadAliases(); !errors.Is(err, ErrNotSealed) {
@@ -395,8 +395,8 @@ func TestReadAliasesExcludeUnusedOverlaysAndIdentityLookups(t *testing.T) {
 	if _, err := store.Canonical(t.Context(), unused); err != nil {
 		t.Fatal(err)
 	}
-	readSnapshot(t, store, alias, source.YAML)
-	if _, err := store.Read(t.Context(), filepath.Join(root, "missing.yml"), source.YAML); !errors.Is(err, os.ErrNotExist) {
+	readSnapshot(t, store, alias, sourcetext.YAML)
+	if _, err := store.Read(t.Context(), filepath.Join(root, "missing.yml"), sourcetext.YAML); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal(err)
 	}
 	if err := store.Close(t.Context()); err != nil {
@@ -417,7 +417,7 @@ func TestReadErrorShowsCaptureCause(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing.yml")
 	cause := &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return nil, cause })
-	_, err := store.Read(t.Context(), path, source.YAML)
+	_, err := store.Read(t.Context(), path, sourcetext.YAML)
 	if err == nil {
 		t.Fatal("missing file was read")
 	}

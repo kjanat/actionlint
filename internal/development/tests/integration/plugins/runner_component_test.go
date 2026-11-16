@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -50,7 +50,7 @@ func runnerFixtureRequest(t *testing.T) runnerapi.Request {
 	}
 	r := runnerapi.Request{Target: "buildkite", Scope: "fixture", Snapshot: runnerapi.Snapshot{Content: string(data), Scope: "fixture", ObtainedAt: "2026-10-19T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}}
 	for _, term := range []runnerapi.Term{runnerapi.Literal("buildkite-windows"), runnerapi.Literal("missing-queue"), runnerapi.Expression("${{ vars.RUNNER }}")} {
-		r.Selectors = append(r.Selectors, runnerapi.Selector{Labels: []runnerapi.Constraint{{Value: term, Position: source.Position{Line: 4, Column: 14}}}})
+		r.Selectors = append(r.Selectors, runnerapi.Selector{Labels: []runnerapi.Constraint{{Value: term, Position: sourcetext.Position{Line: 4, Column: 14}}}})
 	}
 	return r
 }

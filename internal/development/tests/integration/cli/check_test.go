@@ -19,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -207,11 +207,11 @@ func TestCommandNativeJSON(t *testing.T) {
 			}
 			expected := []results.Diagnostic{}
 			for _, field := range want {
-				expected = append(expected, results.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: source.Position{Line: field.Line, Column: field.Column}, End: source.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
+				expected = append(expected, results.Diagnostic{Rule: field.Kind, Message: field.Message, Path: field.Filepath, Start: sourcetext.Position{Line: field.Line, Column: field.Column}, End: sourcetext.Position{Line: field.Line, Column: field.EndColumn + 1}, Snippet: strings.Split(field.Snippet, "\n")[0]})
 			}
 			for i := range have.Diagnostics {
 				actual := have.Diagnostics[i]
-				if actual.Reference == nil || actual.Reference.Revision != source.ContentDigest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
+				if actual.Reference == nil || actual.Reference.Revision != sourcetext.ContentDigest([]byte(input)) || actual.Help == "" || actual.DocumentationURL == "" {
 					t.Fatalf("missing diagnostic context: %+v", actual)
 				}
 				expected[i].Reference = actual.Reference

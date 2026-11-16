@@ -3,7 +3,7 @@ package outline
 import (
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 )
 
@@ -23,7 +23,7 @@ type WorkflowOutline struct {
 type JobOutline struct {
 	ID    string
 	Name  string
-	Start *source.Position
+	Start *sourcetext.Position
 	Needs []string
 	Uses  string
 	Steps []StepOutline
@@ -38,7 +38,7 @@ func (j JobOutline) Reference() callreferences.UsesReference {
 type jobWire struct {
 	ID        string                       `json:"id"`
 	Name      string                       `json:"name,omitempty"`
-	Start     *source.Position             `json:"start,omitempty"`
+	Start     *sourcetext.Position         `json:"start,omitempty"`
 	Needs     []string                     `json:"needs"`
 	Uses      string                       `json:"uses,omitempty"`
 	Reference callreferences.UsesReference `json:"reference,omitempty"`
@@ -80,7 +80,7 @@ const unknownStepKind = "unknown"
 type StepOutline struct {
 	ID    string
 	Name  string
-	Start *source.Position
+	Start *sourcetext.Position
 	Kind  string
 	Uses  string
 	Steps []StepOutline
@@ -93,7 +93,7 @@ func (s StepOutline) Reference() callreferences.UsesReference { return callrefer
 type stepWire struct {
 	ID        string                       `json:"id,omitempty"`
 	Name      string                       `json:"name,omitempty"`
-	Start     *source.Position             `json:"start,omitempty"`
+	Start     *sourcetext.Position         `json:"start,omitempty"`
 	Kind      string                       `json:"kind"`
 	Uses      string                       `json:"uses,omitempty"`
 	Reference callreferences.UsesReference `json:"reference,omitempty"`

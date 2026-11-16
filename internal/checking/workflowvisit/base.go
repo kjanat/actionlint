@@ -1,7 +1,7 @@
 package workflowvisit
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -46,17 +46,17 @@ func (r *Base) VisitWorkflowPre(node workflows.Workflow) error { return nil }
 func (r *Base) VisitWorkflowPost(node workflows.Workflow) error { return nil }
 
 // Error records a finding at pos. Errs returns the recorded findings.
-func (r *Base) Error(pos *source.Position, msg string) {
+func (r *Base) Error(pos *sourcetext.Position, msg string) {
 	r.findings.Report(finding.At(pos, r.name, msg))
 }
 
 // Errorf formats and records a finding at pos. Errs returns the recorded findings.
-func (r *Base) Errorf(pos *source.Position, format string, args ...any) {
+func (r *Base) Errorf(pos *sourcetext.Position, format string, args ...any) {
 	r.findings.Report(finding.Errorf(pos, r.name, format, args...))
 }
 
 // ErrorfRange reports an error with an exclusive source-range end.
-func (r *Base) ErrorfRange(start, end *source.Position, format string, args ...any) {
+func (r *Base) ErrorfRange(start, end *sourcetext.Position, format string, args ...any) {
 	err := finding.Errorf(start, r.name, format, args...)
 	err.EndAt(end)
 	r.findings.Report(err)

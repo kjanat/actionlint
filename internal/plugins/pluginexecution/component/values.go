@@ -7,7 +7,7 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -62,7 +62,7 @@ func lowerU32(n int) wacogo.ValU32 {
 	return wacogo.ValU32(uint32(n))
 }
 
-func lowerPosition(p source.Position) *wacogo.ValRecord {
+func lowerPosition(p sourcetext.Position) *wacogo.ValRecord {
 	return wacogo.NewValRecord(field("line", lowerU32(p.Line)), field("column", lowerU32(p.Column)))
 }
 
@@ -210,27 +210,27 @@ func liftList(v wacogo.Val, what string) (*wacogo.ValList, error) {
 	return list, nil
 }
 
-func liftPosition(v wacogo.Val) (source.Position, error) {
+func liftPosition(v wacogo.Val) (sourcetext.Position, error) {
 	record, err := liftRecord(v, "position")
 	if err != nil {
-		return source.Position{}, err
+		return sourcetext.Position{}, err
 	}
 	line, ok := record.Field("line").(wacogo.ValU32)
 	if !ok {
-		return source.Position{}, liftError{"position line", record.Field("line")}
+		return sourcetext.Position{}, liftError{"position line", record.Field("line")}
 	}
 	column, ok := record.Field("column").(wacogo.ValU32)
 	if !ok {
-		return source.Position{}, liftError{"position column", record.Field("column")}
+		return sourcetext.Position{}, liftError{"position column", record.Field("column")}
 	}
 	maxInt := uint64(^uint(0) >> 1)
 	if line == 0 || column == 0 || uint64(line) > maxInt || uint64(column) > maxInt {
-		return source.Position{}, fmt.Errorf("position coordinates must be one-based and fit the host integer range: line %d, column %d", line, column)
+		return sourcetext.Position{}, fmt.Errorf("position coordinates must be one-based and fit the host integer range: line %d, column %d", line, column)
 	}
-	return source.Position{Line: int(line), Column: int(column)}, nil
+	return sourcetext.Position{Line: int(line), Column: int(column)}, nil
 }
 
-func validateRange(start, end source.Position) error {
+func validateRange(start, end sourcetext.Position) error {
 	if end.Line < start.Line || end.Line == start.Line && end.Column < start.Column {
 		return fmt.Errorf("range end precedes start: %d:%d to %d:%d", start.Line, start.Column, end.Line, end.Column)
 	}

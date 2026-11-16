@@ -24,7 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
@@ -68,14 +68,14 @@ type paritySource struct {
 // reported it, the file content it carries, the unavailable-source marker and
 // the location whose actionlint:ignore comments suppress it.
 type parityReport struct {
-	Rule        string             `json:"rule"`
-	Code        string             `json:"code,omitempty"`
-	Path        string             `json:"path"`
-	Start       source.Position    `json:"start"`
-	Content     string             `json:"content,omitempty"`
-	RawScript   bool               `json:"raw_script,omitempty"`
-	Unavailable *parityUnavailable `json:"unavailable,omitempty"`
-	Suppression *paritySuppression `json:"suppression,omitempty"`
+	Rule        string              `json:"rule"`
+	Code        string              `json:"code,omitempty"`
+	Path        string              `json:"path"`
+	Start       sourcetext.Position `json:"start"`
+	Content     string              `json:"content,omitempty"`
+	RawScript   bool                `json:"raw_script,omitempty"`
+	Unavailable *parityUnavailable  `json:"unavailable,omitempty"`
+	Suppression *paritySuppression  `json:"suppression,omitempty"`
 }
 
 // parityUnavailable is a present finding.Source.Unavailable.
@@ -93,9 +93,9 @@ type paritySuppression struct {
 // parityCapture is a report.CapturedSource without its content, which the
 // revision identifies.
 type parityCapture struct {
-	Revision             source.Revision    `json:"revision"`
-	Coordinates          source.Coordinates `json:"coordinates"`
-	CoordinatesAvailable bool               `json:"coordinates_available,omitempty"`
+	Revision             sourcetext.Revision    `json:"revision"`
+	Coordinates          sourcetext.Coordinates `json:"coordinates"`
+	CoordinatesAvailable bool                   `json:"coordinates_available,omitempty"`
 }
 
 // contentHash identifies content in a snapshot; empty content has none.

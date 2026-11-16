@@ -4,11 +4,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 // ExpressionEndPosition returns a verified exclusive end, or nil without a mapping.
-func ExpressionEndPosition(meta *Metadata, value *ExprString, violation ExpressionProblem) *source.Position {
+func ExpressionEndPosition(meta *Metadata, value *ExprString, violation ExpressionProblem) *sourcetext.Position {
 	if violation.Offset <= 0 || violation.EndOffset < violation.Offset || violation.EndOffset > len(value.Value)+1 {
 		return nil
 	}

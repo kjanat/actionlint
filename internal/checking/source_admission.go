@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -63,7 +63,7 @@ func (s *analysisSession) admitSourceDocuments(composed composites.Composition, 
 func (s *analysisSession) admitReportedSources(all []*finding.Finding, entryPath, sourcePath string, composed composites.Composition, rejected map[string]bool) ([]*finding.Finding, error) {
 	var failure error
 	count := 0
-	metadataSources := make(map[source.Revision]bool, len(composed.SourceDocuments))
+	metadataSources := make(map[sourcetext.Revision]bool, len(composed.SourceDocuments))
 	for path, document := range composed.SourceDocuments {
 		if _, consulted := composed.Sources[path]; consulted && s.captures.VerifyHandle(document.Capture()) == nil {
 			metadataSources[document.Capture().Revision()] = true

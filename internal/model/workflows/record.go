@@ -6,7 +6,7 @@ package workflows
 import (
 	"iter"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -21,21 +21,21 @@ type Bound struct {
 	using      string
 	workflow   *definition.Workflow
 	references facts.References
-	steps      map[source.Reference]*definition.Step
+	steps      map[sourcetext.Reference]*definition.Step
 }
 
 // Bind indexes workflow under identity. action selects action-manifest step
 // addresses; using is the action's runs.using value, empty for workflows.
 func Bind(identity, text string, workflow *definition.Workflow, action bool, using string) *Bound {
 	refs := facts.Index(identity, []byte(text), workflow, action)
-	bound := &Bound{text: text, using: using, workflow: workflow, references: refs, steps: map[source.Reference]*definition.Step{}}
+	bound := &Bound{text: text, using: using, workflow: workflow, references: refs, steps: map[sourcetext.Reference]*definition.Step{}}
 	for step, ref := range refs.Steps {
 		bound.steps[ref] = step
 	}
 	return bound
 }
 
-func (b *Bound) Reference() source.Reference { return b.references.Document }
+func (b *Bound) Reference() sourcetext.Reference { return b.references.Document }
 func (b *Bound) Workflow() Workflow {
 	if b == nil || b.workflow == nil {
 		return Workflow{}
@@ -43,7 +43,7 @@ func (b *Bound) Workflow() Workflow {
 	return Workflow{b.workflow, b}
 }
 
-func (b *Bound) Step(reference source.Reference) (Step, bool) {
+func (b *Bound) Step(reference sourcetext.Reference) (Step, bool) {
 	step, ok := b.steps[reference]
 	if !ok {
 		return Step{}, false
@@ -122,9 +122,9 @@ func (j Job) Present() bool { return j.Job != nil }
 // Key returns the lowercase job ID that indexes the job in the workflow.
 func (j Job) Key() string { return j.key }
 
-func (j Job) Reference() source.Reference {
+func (j Job) Reference() sourcetext.Reference {
 	if !j.Present() || j.owner == nil {
-		return source.Reference{}
+		return sourcetext.Reference{}
 	}
 	return j.owner.references.Jobs[j.Key()]
 }
@@ -171,16 +171,16 @@ type Step struct {
 
 func (s Step) Present() bool { return s.Step != nil }
 
-func (s Step) Reference() source.Reference {
+func (s Step) Reference() sourcetext.Reference {
 	if !s.Present() || s.owner == nil {
-		return source.Reference{}
+		return sourcetext.Reference{}
 	}
 	return s.owner.references.Steps[s.Step]
 }
 
-func (s Step) SourceReference() source.Reference {
+func (s Step) SourceReference() sourcetext.Reference {
 	if !s.Present() || s.owner == nil {
-		return source.Reference{}
+		return sourcetext.Reference{}
 	}
 	return s.owner.Reference()
 }

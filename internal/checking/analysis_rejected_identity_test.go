@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -18,7 +18,7 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	t.Parallel()
 	content := "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n"
 	parsed := parsing.Workflow([]byte(content))
-	entry := source.Reference{Document: "ci.yml", Revision: "revision-one", Node: "document"}
+	entry := sourcetext.Reference{Document: "ci.yml", Revision: "revision-one", Node: "document"}
 	builder, err := invocation.NewBuilder(invocation.EntryWorkflow, entry, invocation.DefaultBudget())
 	if err != nil {
 		t.Fatal(err)

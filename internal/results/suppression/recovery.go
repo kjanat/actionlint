@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
@@ -67,7 +67,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 				}
 				if isInlineSuppressionComment(text) {
 					comments = append(comments, inlineSuppressionComment{
-						pos: sourcepos.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
+						pos: sourcetext.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}, text: text, standalone: standalone,
 					})
 				}
 				break
@@ -100,7 +100,7 @@ func recoverInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 			case len(flow) > 0 && c == ',':
 				plain = false
 			case !plain && len(flow) == 0 && (c == '|' || c == '>'):
-				position := sourcepos.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
+				position := sourcetext.Position{Line: lineNumber, Column: utf8.RuneCountInString(line[:col]) + 1}
 				if scalar, err := document.Decode(position, sourcemap.Context{Indent: parentIndent}); err == nil {
 					blockEnds[lineNumber] = scalar.End.Line
 				}

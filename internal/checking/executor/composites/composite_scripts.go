@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
@@ -80,7 +80,7 @@ func (analysis *compositeAnalyzer) visitActionScripts(call workflows.Step, paren
 	}
 	if document, found := analysis.actions.SourceDocument(prepared); found {
 		revision := document.Capture().Revision()
-		if err := analysis.recordUncheckedFiles(prepared.Metadata(), document.ReferencedFiles(), source.Reference{Document: revision.Document(), Revision: revision.Digest()}, callContext); err != nil {
+		if err := analysis.recordUncheckedFiles(prepared.Metadata(), document.ReferencedFiles(), sourcetext.Reference{Document: revision.Document(), Revision: revision.Digest()}, callContext); err != nil {
 			return err
 		}
 	}
@@ -290,9 +290,9 @@ func compositeCheckoutPaths(rule workflowvisit.Pass, actions *localactions.Resol
 	participant.ApplyCheckout(actions)
 }
 
-func (analysis *compositeAnalyzer) describeCall(step workflows.Step) (source.Reference, invocation.Facts, error) {
+func (analysis *compositeAnalyzer) describeCall(step workflows.Step) (sourcetext.Reference, invocation.Facts, error) {
 	if !analysis.sourceSnapshot.Present() {
-		return source.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
+		return sourcetext.Reference{}, invocation.Facts{}, errors.New("call source snapshot is unavailable")
 	}
 	site := step.Reference()
 	declaration := step
@@ -300,7 +300,7 @@ func (analysis *compositeAnalyzer) describeCall(step workflows.Step) (source.Ref
 	return site, facts, err
 }
 
-func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference source.Reference, visit func() error) error {
+func invocationOutput(bindings *rulebinding.Scope, rule workflowvisit.Rule, snapshot parsing.SourceSnapshot, path string, reference sourcetext.Reference, visit func() error) error {
 	defer rule.AnnotateSince(rule.FindingCount(), func(finding *finding.Finding) {
 		// Metadata declarations belong to their captured target, which the run
 		// binds after source admission. Other findings belong to this invocation.

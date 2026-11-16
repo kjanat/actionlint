@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
@@ -41,7 +41,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 		jobs = append(jobs, j)
 	}
 	slices.SortFunc(jobs, func(a, b workflows.Job) int {
-		return sourcepos.ZeroIfNil(a.Pos).Line - sourcepos.ZeroIfNil(b.Pos).Line
+		return sourcetext.ZeroIfNil(a.Pos).Line - sourcetext.ZeroIfNil(b.Pos).Line
 	})
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
@@ -69,7 +69,7 @@ func TestCachePolicyTriggers(t *testing.T) {
 			t.Run(event, func(t *testing.T) {
 				t.Parallel()
 				// Exercise each event independently of event-specific required fields.
-				w := &definition.Workflow{On: []definition.Event{&definition.WebhookEvent{Hook: &definition.String{Value: event}}}, CacheMode: &definition.CacheMode{Kind: definition.CacheModeWrite, Pos: &sourcepos.Position{Line: 2, Column: 13}}}
+				w := &definition.Workflow{On: []definition.Event{&definition.WebhookEvent{Hook: &definition.String{Value: event}}}, CacheMode: &definition.CacheMode{Kind: definition.CacheModeWrite, Pos: &sourcetext.Position{Line: 2, Column: 13}}}
 				w.Jobs = map[string]*definition.Job{"test": {}}
 				view := policyWorkflowView(w)
 				job, _ := view.Job("test")
@@ -364,7 +364,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	} {
 		t.Run(tc.uses, func(t *testing.T) {
 			t.Parallel()
-			findings := checkStandaloneStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: tc.uses, Pos: &sourcepos.Position{Line: 7, Column: 15}}}}, &definition.CacheMode{Kind: definition.CacheModeNone})
+			findings := checkStandaloneStep(&definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: tc.uses, Pos: &sourcetext.Position{Line: 7, Column: 15}}}}, &definition.CacheMode{Kind: definition.CacheModeNone})
 			if tc.warn {
 				if errs := findings; len(errs) != 1 || errs[0].Rule != "cache-operation" || errs[0].Start.Line != 7 || errs[0].Start.Column != 15 {
 					t.Fatalf("expected one cache-operation finding on the action, got %v", errs)

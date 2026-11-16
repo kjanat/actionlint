@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -84,14 +84,14 @@ jobs:
 						t.Fatalf("opaque statement affected other steps: %+v", result.Diagnostics)
 					}
 					finding := ruff[0]
-					if finding.Start != (sourcepos.Position{Line: 12 + offset, Column: 20}) || finding.End != (sourcepos.Position{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
+					if finding.Start != (sourcetext.Position{Line: 12 + offset, Column: 20}) || finding.End != (sourcetext.Position{Line: 12 + offset, Column: 34}) || !strings.Contains(finding.Message, "second_missing") {
 						t.Fatalf("independent step finding moved: %+v", finding)
 					}
 					return
 				}
 				if !slices.Equal(codes, []string{"B018", "F821"}) ||
-					ruff[0].Start != (sourcepos.Position{Line: 9 + offset, Column: 11}) || ruff[0].End != (sourcepos.Position{Line: 9 + offset, Column: 13}) ||
-					ruff[1].Start != (sourcepos.Position{Line: 10 + offset, Column: 17}) || ruff[1].End != (sourcepos.Position{Line: 10 + offset, Column: 24}) {
+					ruff[0].Start != (sourcetext.Position{Line: 9 + offset, Column: 11}) || ruff[0].End != (sourcetext.Position{Line: 9 + offset, Column: 13}) ||
+					ruff[1].Start != (sourcetext.Position{Line: 10 + offset, Column: 17}) || ruff[1].End != (sourcetext.Position{Line: 10 + offset, Column: 24}) {
 					t.Fatalf("statement template changed independent findings: %+v", result.Diagnostics)
 				}
 			})

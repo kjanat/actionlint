@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
@@ -30,7 +30,7 @@ type operationCheck struct {
 	findings []results.Diagnostic
 }
 
-func (r *operationCheck) Errorf(pos source.Position, format string, args ...any) {
+func (r *operationCheck) Errorf(pos sourcetext.Position, format string, args ...any) {
 	r.findings = append(r.findings, report(pos, "cache-operation", format, args...))
 }
 
@@ -41,14 +41,14 @@ func CheckCallOperations(call *definition.WorkflowCall, granted *definition.Cach
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(source.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cache.FromDeclaration(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(sourcetext.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cache.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec string, granted cache.Grant, checked map[cacheModeVisit]bool) {
+func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec string, granted cache.Grant, checked map[cacheModeVisit]bool) {
 	spec, local := callreferences.LocalWorkflow(sourceSpec)
 	if !local {
 		return
@@ -105,7 +105,7 @@ func CheckStep(step workflows.Step, mode *definition.CacheMode) []results.Diagno
 	}
 	name := callreferences.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
-		return []results.Diagnostic{report(source.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
+		return []results.Diagnostic{report(sourcetext.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
 	}
 	return nil
 }

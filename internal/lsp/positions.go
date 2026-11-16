@@ -8,13 +8,13 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 )
 
 // editorPosition is a Language Server Protocol position: a zero-based line and
 // a zero-based column counted in UTF-16 code units, after any byte order mark.
-// It differs from source.Position, which counts one-based lines and Unicode
+// It differs from sourcetext.Position, which counts one-based lines and Unicode
 // scalars, so the two convert only through a byte offset into the buffer.
 type editorPosition struct {
 	Line      int `json:"line"`
@@ -28,8 +28,8 @@ type editorRange struct {
 }
 
 // editorPositionAt converts a source position in a YAML buffer to an editor position.
-func editorPositionAt(content []byte, p source.Position) (editorPosition, error) {
-	offset, err := sourceposition.Offset(content, source.YAML, p)
+func editorPositionAt(content []byte, p sourcetext.Position) (editorPosition, error) {
+	offset, err := byteoffset.Offset(content, sourcetext.YAML, p)
 	if err != nil {
 		return editorPosition{}, err
 	}
@@ -102,12 +102,12 @@ func compareEditorPositions(a, b editorPosition) int {
 	return a.Character - b.Character
 }
 
-func diagnosticRange(content []byte, start, end source.Position) (editorRange, error) {
+func diagnosticRange(content []byte, start, end sourcetext.Position) (editorRange, error) {
 	first, err := editorPositionAt(content, start)
 	if err != nil {
 		return editorRange{}, err
 	}
-	if end == (source.Position{}) {
+	if end == (sourcetext.Position{}) {
 		return editorRange{first, first}, nil
 	}
 	last, err := editorPositionAt(content, end)

@@ -13,7 +13,7 @@ import (
 	"testing/fstest"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -77,7 +77,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 func TestRunOneDetachesAnalyzerDiagnostics(t *testing.T) {
 	t.Parallel()
 	retained := []results.Diagnostic{{
-		Message: "original", Reference: &source.Reference{Document: "original"},
+		Message: "original", Reference: &sourcetext.Reference{Document: "original"},
 		Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
 		Fixes:     []results.Fix{{Revisions: map[string]string{"file": "original"}, Edits: []results.Edit{{Replacement: "original"}}}},
 	}}

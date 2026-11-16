@@ -13,8 +13,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -45,7 +45,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 			path := filepath.Join(root, ".github", "workflows", "callee.yml")
 			content := []byte("on:\n  workflow_call:\n    inputs:\n      message: {type: string, required: true}\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n")
 			var reads atomic.Int32
-			store, err := capture.New(t.Context(), []capture.Overlay{{Path: path, Content: content, Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
+			store, err := capture.New(t.Context(), []capture.Overlay{{Path: path, Content: content, Coordinates: sourcetext.YAML}}, func(context.Context, string) ([]byte, error) {
 				reads.Add(1)
 				return nil, errors.New("seed unexpectedly read backing source")
 			})
@@ -53,7 +53,7 @@ func TestSeedUsesCanonicalRepositoryRootAndRechecksCapture(t *testing.T) {
 				t.Fatal(err)
 			}
 			capturefixture.CloseCaptures(t, store)
-			captured, err := store.Read(t.Context(), path, source.YAML)
+			captured, err := store.Read(t.Context(), path, sourcetext.YAML)
 			if err != nil {
 				t.Fatal(err)
 			}

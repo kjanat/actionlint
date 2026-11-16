@@ -3,7 +3,7 @@ package workflows
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -13,8 +13,8 @@ import (
 
 func TestPublishedSemanticsDoNotFollowLegacyMutation(t *testing.T) {
 	t.Parallel()
-	name := &definition.String{Value: "before", Pos: &source.Position{Line: 2, Column: 4}}
-	condition := &definition.String{Value: "${{ true }}", Pos: &source.Position{Line: 3, Column: 7}}
+	name := &definition.String{Value: "before", Pos: &sourcetext.Position{Line: 2, Column: 4}}
+	condition := &definition.String{Value: "${{ true }}", Pos: &sourcetext.Position{Line: 3, Column: 7}}
 	job := &definition.Job{
 		Name:   name,
 		If:     condition,

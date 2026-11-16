@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
@@ -40,7 +40,7 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 	cleanupStore(t, store)
 	waiter, cancel := context.WithCancel(t.Context())
 	returned := make(chan error, 1)
-	go func() { _, err := store.Read(waiter, path, source.RawLF); returned <- err }()
+	go func() { _, err := store.Read(waiter, path, sourcetext.RawLF); returned <- err }()
 	<-started
 	cancel()
 	if err := <-returned; !errors.Is(err, context.Canceled) {
@@ -59,7 +59,7 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 		close(release)
 		t.Fatalf("publication allowed after join failure: %v", err)
 	}
-	if _, err := store.Read(t.Context(), filepath.Join(filepath.Dir(path), "new"), source.RawLF); !errors.Is(err, ErrClosed) {
+	if _, err := store.Read(t.Context(), filepath.Join(filepath.Dir(path), "new"), sourcetext.RawLF); !errors.Is(err, ErrClosed) {
 		close(release)
 		t.Fatalf("closed Read = %v", err)
 	}
@@ -71,7 +71,7 @@ func TestCloseJoinsCancelledWaiterReadAndGatesPublication(t *testing.T) {
 		t.Fatalf("work survived Close: running=%d reads=%d", running.Load(), reads.Load())
 	}
 	rows, err := store.Sources()
-	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != source.ContentDigest([]byte("joined")) {
+	if err != nil || len(rows) != 1 || rows[0].State != Captured || rows[0].Code != "" || rows[0].Error != nil || rows[0].Revision.Digest() != sourcetext.ContentDigest([]byte("joined")) {
 		t.Fatalf("sealed sources = %#v, %v", rows, err)
 	}
 }
@@ -90,7 +90,7 @@ func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	cleanupStore(t, store)
-	if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, context.Canceled) {
+	if _, err := store.Read(t.Context(), path, sourcetext.YAML); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled waiter returned success: %v", err)
 	}
 	store.mu.Lock()
@@ -98,7 +98,7 @@ func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
 	store.mu.Unlock()
 	<-done
 	for range 128 {
-		if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, context.Canceled) {
+		if _, err := store.Read(t.Context(), path, sourcetext.YAML); !errors.Is(err, context.Canceled) {
 			t.Fatalf("completed entry bypassed lifetime cancellation: %v", err)
 		}
 	}
@@ -106,7 +106,7 @@ func TestCompleteReadRemainsEvidenceAfterLifetimeCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshot, state, err := store.Lookup(path)
-	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != source.ContentDigest(content) {
+	if err != nil || state != Captured || !bytes.Equal(snapshot.Bytes(), content) || snapshot.Revision().Digest() != sourcetext.ContentDigest(content) {
 		t.Fatalf("completed bytes lost after cancellation: %q, %v", state, err)
 	}
 }
@@ -116,7 +116,7 @@ func TestPartialReadErrorCannotPublishBytes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "partial.yml")
 	failure := errors.New("truncated read")
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { return []byte("partial"), failure })
-	if _, err := store.Read(t.Context(), path, source.YAML); !errors.Is(err, failure) {
+	if _, err := store.Read(t.Context(), path, sourcetext.YAML); !errors.Is(err, failure) {
 		t.Fatal(err)
 	}
 	if snapshot, state, err := store.Lookup(path); snapshot.Valid() || state != Failed || !errors.Is(err, failure) {
@@ -143,7 +143,7 @@ func TestCancelledCaptureCauseIsCachedAndPublished(t *testing.T) {
 				return nil, errors.Join(errors.New("reader interrupted"), cause)
 			})
 			for range 2 {
-				_, err := store.Read(t.Context(), path, source.YAML)
+				_, err := store.Read(t.Context(), path, sourcetext.YAML)
 				failure, ok := errors.AsType[*CaptureError](err)
 				if !ok || failure.Code() != "cancelled" || !strings.HasPrefix(failure.Error(), "cancelled:") || !errors.Is(err, cause) {
 					t.Fatalf("cached cancellation = %v", err)
@@ -179,13 +179,13 @@ func TestConcurrentCaptureStartsAndCloseAreJoined(t *testing.T) {
 			active.Add(1)
 			defer active.Add(-1)
 			runtime.Gosched()
-			return source.DocumentID(path)
+			return sourcetext.DocumentID(path)
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
 		cleanupStore(t, store)
-		readSnapshot(t, store, filepath.Join(dir, "seed"), source.YAML)
+		readSnapshot(t, store, filepath.Join(dir, "seed"), sourcetext.YAML)
 		start := make(chan struct{})
 		var workers sync.WaitGroup
 		for index := range 32 {
@@ -196,7 +196,7 @@ func TestConcurrentCaptureStartsAndCloseAreJoined(t *testing.T) {
 				if index%2 == 0 {
 					_, err = store.Canonical(t.Context(), path)
 				} else {
-					_, err = store.Read(t.Context(), path, source.YAML)
+					_, err = store.Read(t.Context(), path, sourcetext.YAML)
 				}
 				if err != nil && !errors.Is(err, ErrClosed) {
 					t.Errorf("concurrent capture = %v", err)
@@ -220,7 +220,7 @@ func TestConcurrentCaptureStartsAndCloseAreJoined(t *testing.T) {
 		if _, err := store.Canonical(t.Context(), filepath.Join(dir, "after-close")); !errors.Is(err, ErrClosed) {
 			t.Fatalf("new alias after Close = %v", err)
 		}
-		if _, err := store.Read(t.Context(), filepath.Join(dir, "after-close-read"), source.YAML); !errors.Is(err, ErrClosed) {
+		if _, err := store.Read(t.Context(), filepath.Join(dir, "after-close-read"), sourcetext.YAML); !errors.Is(err, ErrClosed) {
 			t.Fatalf("new read after Close = %v", err)
 		}
 		rows, err := store.Sources()
@@ -266,7 +266,7 @@ func TestCanonicalSingleflightCancellationAndCloseJoining(t *testing.T) {
 		t.Fatalf("pending alias lookup = %q, %v", current, err)
 	}
 	fastCtx, stopFast := context.WithTimeout(t.Context(), time.Second)
-	snapshot, err := store.Read(fastCtx, fast, source.RawLF)
+	snapshot, err := store.Read(fastCtx, fast, sourcetext.RawLF)
 	stopFast()
 	if err != nil || string(snapshot.Bytes()) != "unrelated" {
 		close(release)
@@ -345,7 +345,7 @@ func TestLookupNeverStartsMetadataOrContentIO(t *testing.T) {
 		t.Fatal(err)
 	}
 	returned := make(chan error, 1)
-	go func() { _, err := store.Read(t.Context(), good, source.YAML); returned <- err }()
+	go func() { _, err := store.Read(t.Context(), good, sourcetext.YAML); returned <- err }()
 	<-started
 	if err := check(good, Pending); err != nil {
 		close(release)
@@ -358,7 +358,7 @@ func TestLookupNeverStartsMetadataOrContentIO(t *testing.T) {
 	if err := check(good, Captured); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Read(t.Context(), failed, source.RawLF); !errors.Is(err, wantFailure) {
+	if _, err := store.Read(t.Context(), failed, sourcetext.RawLF); !errors.Is(err, wantFailure) {
 		t.Fatal(err)
 	}
 	if err := check(failed, Failed); !errors.Is(err, wantFailure) {
@@ -374,7 +374,7 @@ func TestStdinRequiresOverlay(t *testing.T) {
 	var reads atomic.Int32
 	store := newStore(t, nil, func(context.Context, string) ([]byte, error) { reads.Add(1); return []byte("wrong"), nil })
 	for range 2 {
-		_, err := store.Read(t.Context(), "<stdin>", source.YAML)
+		_, err := store.Read(t.Context(), "<stdin>", sourcetext.YAML)
 		var failure *CaptureError
 		if !errors.As(err, &failure) || failure.Document() != "<stdin>" || reads.Load() != 0 {
 			t.Fatalf("stdin = %v, reads = %d", err, reads.Load())
@@ -396,7 +396,7 @@ func TestRelativeAliasesRejectedWithoutIO(t *testing.T) {
 		if _, err := store.Canonical(t.Context(), path); err == nil {
 			t.Fatalf("relative canonical accepted: %q", path)
 		}
-		if _, err := store.Read(t.Context(), path, source.YAML); err == nil {
+		if _, err := store.Read(t.Context(), path, sourcetext.YAML); err == nil {
 			t.Fatalf("relative read accepted: %q", path)
 		}
 		if _, _, err := store.Lookup(path); err == nil {
@@ -421,7 +421,7 @@ func TestVirtualReaderUsesHostMetadataIdentity(t *testing.T) {
 		}
 		return []byte("exists only in reader"), nil
 	})
-	snapshot := readSnapshot(t, store, path, source.RawLF)
+	snapshot := readSnapshot(t, store, path, sourcetext.RawLF)
 	if snapshot.Revision().Document() != want {
 		t.Fatalf("virtual identity = %q", snapshot.Revision().Document())
 	}
@@ -454,7 +454,7 @@ func TestModelConflictStickyAcrossPendingSuccessAndFailure(t *testing.T) {
 				return []byte("abc\r\n"), nil
 			})
 			first := make(chan error, 1)
-			go func() { _, err := store.Read(t.Context(), path, source.RawLF); first <- err }()
+			go func() { _, err := store.Read(t.Context(), path, sourcetext.RawLF); first <- err }()
 			<-started
 			if phase != "pending" {
 				close(release)
@@ -467,7 +467,7 @@ func TestModelConflictStickyAcrossPendingSuccessAndFailure(t *testing.T) {
 					t.Fatalf("initial successful capture = %v", initialErr)
 				}
 			}
-			_, err := store.Read(t.Context(), path, source.YAML)
+			_, err := store.Read(t.Context(), path, sourcetext.YAML)
 			expected := requireConflict(t, err).message
 			mutex.Lock()
 			messages[phase] = expected
@@ -476,7 +476,7 @@ func TestModelConflictStickyAcrossPendingSuccessAndFailure(t *testing.T) {
 				close(release)
 				requireConflict(t, <-first)
 			}
-			_, err = store.Read(t.Context(), path, source.RawLF)
+			_, err = store.Read(t.Context(), path, sourcetext.RawLF)
 			if requireConflict(t, err).message != expected {
 				t.Fatal("conflict did not remain sticky")
 			}
@@ -500,9 +500,9 @@ func TestSealedSourcesDeterministicAcrossOrdersAndConcurrency(t *testing.T) {
 	}
 	type request struct {
 		path  string
-		model source.Coordinates
+		model sourcetext.Coordinates
 	}
-	requests := []request{{good, source.YAML}, {alias("good"), source.YAML}, {bad, source.RawLF}, {alias("bad"), source.YAML}, {failed, source.RawLF}}
+	requests := []request{{good, sourcetext.YAML}, {alias("good"), sourcetext.YAML}, {bad, sourcetext.RawLF}, {alias("bad"), sourcetext.YAML}, {failed, sourcetext.RawLF}}
 	var expected []byte
 	for _, concurrent := range []bool{false, true} {
 		for range 2 {
@@ -544,7 +544,7 @@ func TestSealedSourcesDeterministicAcrossOrdersAndConcurrency(t *testing.T) {
 			if err != nil || fresh[0].Document == "mutated" || fresh[0].Aliases[0] == "mutated" {
 				t.Fatal("caller mutated sealed table")
 			}
-			if _, current, err := store.Lookup(bad); current != Conflicted || requireConflict(t, err).document != source.DocumentID(physicalDocument(bad)) {
+			if _, current, err := store.Lookup(bad); current != Conflicted || requireConflict(t, err).document != sourcetext.DocumentID(physicalDocument(bad)) {
 				t.Fatalf("conflict lookup = %q, %v", current, err)
 			}
 			slices.Reverse(requests)

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -15,7 +15,7 @@ import (
 
 func TestPreparerSelectsExactOccurrence(t *testing.T) {
 	t.Parallel()
-	reference := source.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
+	reference := sourcetext.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
 	bashID, shID := invocation.ID(strings.Repeat("a", 64)), invocation.ID(strings.Repeat("b", 64))
 	scripts := []checkinputs.Script{
 		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: bashID}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}},
@@ -58,7 +58,7 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 
 func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []facts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: source.Position{Line: 4, Column: 7}}}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []facts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: sourcetext.Position{Line: 4, Column: 7}}}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)

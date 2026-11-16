@@ -3,7 +3,7 @@ package output_test
 import (
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -14,13 +14,13 @@ func ExampleFormatter() {
 		{
 			Message: "error message 1",
 			Path:    "foo.yaml",
-			Start:   source.Position{Line: 1, Column: 4},
+			Start:   sourcetext.Position{Line: 1, Column: 4},
 			Rule:    "rule1",
 		},
 		{
 			Message: "error message 2",
 			Path:    "foo.yaml",
-			Start:   source.Position{Line: 3, Column: 1},
+			Start:   sourcetext.Position{Line: 3, Column: 1},
 			Rule:    "rule2",
 		},
 	}

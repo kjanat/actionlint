@@ -9,7 +9,7 @@ import (
 
 	"github.com/tidwall/jsonc"
 
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext/byteoffset"
 )
 
 func parseJSON(path string, data []byte) (*parsedSource, error) {
@@ -25,7 +25,7 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		if syntax, ok := errors.AsType[*json.SyntaxError](err); ok {
 			offset = syntax.Offset - 1
 		}
-		at := sourceposition.RawLFPosition(data, int(offset))
+		at := byteoffset.RawLFPosition(data, int(offset))
 		return fmt.Errorf("%s:%d:%d: %w", path, at.Line, at.Column, err)
 	}
 	if err := decoder.Decode(&result.value); err != nil {
@@ -57,7 +57,7 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		if err != nil {
 			return err
 		}
-		result.values[pointer] = sourceposition.RawLFPosition(data, at)
+		result.values[pointer] = byteoffset.RawLFPosition(data, at)
 		delimiter, container := token.(json.Delim)
 		if !container {
 			return nil
@@ -76,12 +76,12 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 					return errors.New("expected object key")
 				}
 				if seen[key] {
-					at := sourceposition.RawLFPosition(data, at)
+					at := byteoffset.RawLFPosition(data, at)
 					return fmt.Errorf("%s:%d:%d: duplicate key %q", path, at.Line, at.Column, key)
 				}
 				seen[key] = true
 				child := Path(pointer, key)
-				result.keys[child] = sourceposition.RawLFPosition(data, at)
+				result.keys[child] = byteoffset.RawLFPosition(data, at)
 				if err := index(child); err != nil {
 					return err
 				}
@@ -89,7 +89,7 @@ func parseJSON(path string, data []byte) (*parsedSource, error) {
 		case '[':
 			for i := 0; tokens.More(); i++ {
 				child := Index(pointer, i)
-				result.keys[child] = sourceposition.RawLFPosition(data, start())
+				result.keys[child] = byteoffset.RawLFPosition(data, start())
 				if err := index(child); err != nil {
 					return err
 				}

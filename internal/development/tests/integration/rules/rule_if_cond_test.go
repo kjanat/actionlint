@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
@@ -41,7 +41,7 @@ func TestRuleIfCond(t *testing.T) {
 			t.Parallel()
 			var s definition.Step
 			if len(tc.cond) > 0 {
-				s.If = &definition.String{Value: tc.cond, Pos: &source.Position{}}
+				s.If = &definition.String{Value: tc.cond, Pos: &sourcetext.Position{}}
 			}
 
 			r := correctness.IfCondRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
@@ -64,10 +64,10 @@ func TestRuleIfCond(t *testing.T) {
 			t.Parallel()
 			var j definition.Job
 			if len(tc.cond) > 0 {
-				j.If = &definition.String{Value: tc.cond, Pos: &source.Position{}}
+				j.If = &definition.String{Value: tc.cond, Pos: &sourcetext.Position{}}
 				j.Snapshot = &definition.Snapshot{
-					ImageName: &definition.String{Value: "test", Pos: &source.Position{}},
-					If:        &definition.String{Value: tc.cond, Pos: &source.Position{}},
+					ImageName: &definition.String{Value: "test", Pos: &sourcetext.Position{}},
+					If:        &definition.String{Value: tc.cond, Pos: &sourcetext.Position{}},
 				}
 			}
 

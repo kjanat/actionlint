@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -43,8 +43,8 @@ func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, f
 		if original != seen[replacement.Row-1] {
 			return results.Fix{}, false
 		}
-		startOffset, startOK := sourcepos.ByteOffsetAtColumn(original, replacement.Column)
-		endOffset, endOK := sourcepos.ByteOffsetAtColumn(original, replacement.EndColumn)
+		startOffset, startOK := sourcetext.ByteOffsetAtColumn(original, replacement.Column)
+		endOffset, endOK := sourcetext.ByteOffsetAtColumn(original, replacement.EndColumn)
 		if !startOK || !endOK || startOffset > endOffset {
 			return results.Fix{}, false
 		}
@@ -63,8 +63,8 @@ func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, f
 		start := mapped.Document.Column + utf8.RuneCountInString(source.Value[mapped.Start:bounds.Start+startOffset])
 		end := mapped.Document.Column + utf8.RuneCountInString(source.Value[mapped.Start:bounds.Start+endOffset])
 		edits = append(edits, results.Edit{
-			Start:       sourcepos.Position{Line: mapped.Document.Line, Column: start},
-			End:         sourcepos.Position{Line: mapped.Document.Line, Column: end},
+			Start:       sourcetext.Position{Line: mapped.Document.Line, Column: start},
+			End:         sourcetext.Position{Line: mapped.Document.Line, Column: end},
 			Replacement: replacement.Text,
 		})
 	}
@@ -98,8 +98,8 @@ func fixPreservesIndent(source *definition.ScriptSource, edits []results.Edit) b
 			if edit.Start.Line != span.Document.Line {
 				continue
 			}
-			start, startOK := sourcepos.ByteOffsetAtColumn(original, edit.Start.Column-span.Document.Column+1)
-			end, endOK := sourcepos.ByteOffsetAtColumn(original, edit.End.Column-span.Document.Column+1)
+			start, startOK := sourcetext.ByteOffsetAtColumn(original, edit.Start.Column-span.Document.Column+1)
+			end, endOK := sourcetext.ByteOffsetAtColumn(original, edit.End.Column-span.Document.Column+1)
 			if !startOK || !endOK {
 				return false
 			}

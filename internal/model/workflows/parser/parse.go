@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -42,8 +42,8 @@ func NodeKindName(k codec.NodeKind) string {
 	}
 }
 
-func PosAt(n *codec.Node) *source.Position {
-	return &source.Position{Line: n.Line, Column: n.Column}
+func PosAt(n *codec.Node) *sourcetext.Position {
+	return &sourcetext.Position{Line: n.Line, Column: n.Column}
 }
 
 func newString(n *codec.Node) *definition.String {
@@ -53,7 +53,7 @@ func newString(n *codec.Node) *definition.String {
 	default:
 		return &definition.String{Value: n.Value, Quoted: quoted, Pos: PosAt(n)}
 	}
-	pos := source.Position{Line: n.Line, Column: n.Column}
+	pos := sourcetext.Position{Line: n.Line, Column: n.Column}
 	return &definition.String{
 		Value:  n.Value,
 		Quoted: quoted,
@@ -101,10 +101,10 @@ type Parser struct {
 	errs               []*SyntaxError
 	sourceLines        []string
 	aliases            map[*codec.Node]*codec.Node
-	scalarContexts     map[source.Position]sourcemap.Context
-	scalarSources      map[source.Position]*definition.ScriptSource
-	scalarComments     map[source.Position]scalarCommentNodes
-	scalarDeclarations map[source.Position]scalarCommentNodes
+	scalarContexts     map[sourcetext.Position]sourcemap.Context
+	scalarSources      map[sourcetext.Position]*definition.ScriptSource
+	scalarComments     map[sourcetext.Position]scalarCommentNodes
+	scalarDeclarations map[sourcetext.Position]scalarCommentNodes
 	// workflowCallFindings holds the findings reported while reading the
 	// declarations of an on.workflow_call event.
 	workflowCallFindings []*SyntaxError
@@ -116,14 +116,14 @@ func NewSourceParser(source []byte) *Parser {
 }
 
 func (p *Parser) error(n *codec.Node, code Code, m string) {
-	p.errs = append(p.errs, &SyntaxError{Message: m, Position: source.Position{Line: n.Line, Column: n.Column}, Kind: "syntax-check", Code: code})
+	p.errs = append(p.errs, &SyntaxError{Message: m, Position: sourcetext.Position{Line: n.Line, Column: n.Column}, Kind: "syntax-check", Code: code})
 }
 
-func (p *Parser) errorAt(pos *source.Position, code Code, m string) {
+func (p *Parser) errorAt(pos *sourcetext.Position, code Code, m string) {
 	p.errs = append(p.errs, &SyntaxError{Message: m, Position: *pos, Kind: "syntax-check", Code: code})
 }
 
-func (p *Parser) errorfAt(pos *source.Position, code Code, format string, args ...any) {
+func (p *Parser) errorfAt(pos *sourcetext.Position, code Code, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	p.errorAt(pos, code, m)
 }
@@ -446,7 +446,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 			return
 		}
 
-		keys := make(map[string]*source.Position, len(n.Content)/2)
+		keys := make(map[string]*sourcetext.Position, len(n.Content)/2)
 		empty := true
 		for i := 0; i < len(n.Content); i += 2 {
 			keyNode := n.Content[i]
@@ -497,12 +497,12 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 						origin := declaration.Origin.Span.Start
 						insertedKeys[strings.ToLower(declaration.Name)] = &definition.String{
 							Value: declaration.Name,
-							Pos:   &source.Position{Line: origin.Line, Column: origin.Column},
+							Pos:   &sourcetext.Position{Line: origin.Line, Column: origin.Column},
 						}
 					case mappings.InvalidKey:
 						if n.Content[i+1].Kind == codec.ScalarNode && emptyResolvedMappingKey(declaration.Key) {
 							origin := declaration.Origin.Span.Start
-							pos := &source.Position{Line: origin.Line, Column: origin.Column}
+							pos := &sourcetext.Position{Line: origin.Line, Column: origin.Column}
 							if origin.Line == 0 || origin.Column == 0 {
 								pos = PosAt(n.Content[i+1])
 							}
@@ -553,7 +553,7 @@ func (p *Parser) parseMappingAt(where string, n *codec.Node, allowEmpty, caseSen
 	return p.parseMapping(sprintf(where, ""), n, allowEmpty, caseSensitive)
 }
 
-func (p *Parser) parseScheduleEvent(pos *source.Position, n *codec.Node) *definition.ScheduledEvent {
+func (p *Parser) parseScheduleEvent(pos *sourcetext.Position, n *codec.Node) *definition.ScheduledEvent {
 	if ok := p.checkSequence("schedule", n, false); !ok {
 		return nil
 	}
@@ -633,7 +633,7 @@ func (p *Parser) parseWorkflowDispatchEventInput(name *definition.String, n *cod
 
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_dispatch
-func (p *Parser) parseWorkflowDispatchEvent(pos *source.Position, n *codec.Node) *definition.WorkflowDispatchEvent {
+func (p *Parser) parseWorkflowDispatchEvent(pos *sourcetext.Position, n *codec.Node) *definition.WorkflowDispatchEvent {
 	ret := &definition.WorkflowDispatchEvent{Pos: pos}
 
 	for e := range p.parseSectionMapping("workflow_dispatch", n, true, true) {
@@ -652,7 +652,7 @@ func (p *Parser) parseWorkflowDispatchEvent(pos *source.Position, n *codec.Node)
 }
 
 // https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#repository_dispatch
-func (p *Parser) parseRepositoryDispatchEvent(pos *source.Position, n *codec.Node) *definition.RepositoryDispatchEvent {
+func (p *Parser) parseRepositoryDispatchEvent(pos *sourcetext.Position, n *codec.Node) *definition.RepositoryDispatchEvent {
 	ret := &definition.RepositoryDispatchEvent{Pos: pos}
 
 	// Note: Omitting 'types' is ok. In the case, all types trigger the workflow
@@ -799,7 +799,7 @@ func (p *Parser) parseWorkflowCallEventOutput(name *definition.String, n *codec.
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow-reuse-events
 // - https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_call
 // - https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-func (p *Parser) parseWorkflowCallEvent(pos *source.Position, n *codec.Node) *definition.WorkflowCallEvent {
+func (p *Parser) parseWorkflowCallEvent(pos *sourcetext.Position, n *codec.Node) *definition.WorkflowCallEvent {
 	ret := &definition.WorkflowCallEvent{Pos: pos}
 	reported := len(p.errs)
 	defer func() { p.workflowCallFindings = append(p.workflowCallFindings, p.errs[reported:]...) }()
@@ -829,7 +829,7 @@ func (p *Parser) parseWorkflowCallEvent(pos *source.Position, n *codec.Node) *de
 	return ret
 }
 
-func (p *Parser) parseImageVersionEvent(pos *source.Position, n *codec.Node) *definition.ImageVersionEvent {
+func (p *Parser) parseImageVersionEvent(pos *sourcetext.Position, n *codec.Node) *definition.ImageVersionEvent {
 	ret := &definition.ImageVersionEvent{Pos: pos}
 
 	for e := range p.parseSectionMapping("image_version", n, true, true) {
@@ -928,7 +928,7 @@ func declaredEvents(events []definition.Event, n *codec.Node) []definition.Event
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
-func (p *Parser) parsePermissions(pos *source.Position, n *codec.Node) *definition.Permissions {
+func (p *Parser) parsePermissions(pos *sourcetext.Position, n *codec.Node) *definition.Permissions {
 	ret := &definition.Permissions{Pos: pos}
 
 	if n.Kind == codec.ScalarNode {
@@ -976,7 +976,7 @@ func (p *Parser) parseEnvMapping(n *codec.Node, allowEmpty bool) *definition.Env
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#defaults
-func (p *Parser) parseDefaults(pos *source.Position, n *codec.Node) *definition.Defaults {
+func (p *Parser) parseDefaults(pos *sourcetext.Position, n *codec.Node) *definition.Defaults {
 	ret := &definition.Defaults{Pos: pos}
 
 	for e := range p.parseSectionMapping("defaults", n, false, true) {
@@ -1010,7 +1010,7 @@ func (p *Parser) parseDefaults(pos *source.Position, n *codec.Node) *definition.
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idconcurrency
-func (p *Parser) parseConcurrency(pos *source.Position, n *codec.Node) *definition.Concurrency {
+func (p *Parser) parseConcurrency(pos *sourcetext.Position, n *codec.Node) *definition.Concurrency {
 	ret := &definition.Concurrency{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
@@ -1056,7 +1056,7 @@ func (p *Parser) parseConcurrency(pos *source.Position, n *codec.Node) *definiti
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idenvironment
-func (p *Parser) parseEnvironment(pos *source.Position, n *codec.Node) *definition.Environment {
+func (p *Parser) parseEnvironment(pos *sourcetext.Position, n *codec.Node) *definition.Environment {
 	ret := &definition.Environment{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
@@ -1218,11 +1218,11 @@ func (p *Parser) ParseMatrixCombinations(sec string, n *codec.Node) *definition.
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategymatrix
-func (p *Parser) parseMatrix(pos *source.Position, n *codec.Node) *definition.Matrix {
+func (p *Parser) parseMatrix(pos *sourcetext.Position, n *codec.Node) *definition.Matrix {
 	return p.ParseMatrixMapping(pos, n, false, false)
 }
 
-func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEmpty, evaluated bool) *definition.Matrix {
+func (p *Parser) ParseMatrixMapping(pos *sourcetext.Position, n *codec.Node, allowEmpty, evaluated bool) *definition.Matrix {
 	if n.Kind == codec.ScalarNode {
 		return &definition.Matrix{
 			Expression: p.parseExpression(n, "matrix"),
@@ -1291,7 +1291,7 @@ func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEm
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idstrategy
-func (p *Parser) parseStrategy(pos *source.Position, n *codec.Node) *definition.Strategy {
+func (p *Parser) parseStrategy(pos *sourcetext.Position, n *codec.Node) *definition.Strategy {
 	ret := &definition.Strategy{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
@@ -1314,7 +1314,7 @@ func (p *Parser) parseStrategy(pos *source.Position, n *codec.Node) *definition.
 	return ret
 }
 
-func (p *Parser) parseCredentials(pos *source.Position, n *codec.Node) *definition.Credentials {
+func (p *Parser) parseCredentials(pos *sourcetext.Position, n *codec.Node) *definition.Credentials {
 	ret := &definition.Credentials{Pos: pos}
 
 	if e := p.mayParseExpression(n); e != nil {
@@ -1342,7 +1342,7 @@ func (p *Parser) parseCredentials(pos *source.Position, n *codec.Node) *definiti
 }
 
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#jobsjob_idcontainer
-func (p *Parser) parseContainer(sec string, pos *source.Position, n *codec.Node) *definition.Container {
+func (p *Parser) parseContainer(sec string, pos *sourcetext.Position, n *codec.Node) *definition.Container {
 	ret := &definition.Container{Pos: pos}
 	if expr := p.mayParseExpression(n); expr != nil {
 		ret.Expression = expr
@@ -1836,7 +1836,7 @@ func (p *Parser) parseRunsOn(n *codec.Node) *definition.Runner {
 	return r
 }
 
-func (p *Parser) parseSnapshot(pos *source.Position, n *codec.Node) *definition.Snapshot {
+func (p *Parser) parseSnapshot(pos *sourcetext.Position, n *codec.Node) *definition.Snapshot {
 	if expr := p.mayParseExpression(n); expr != nil {
 		return &definition.Snapshot{Expression: expr}
 	}
@@ -2120,7 +2120,7 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 	for _, diagnostic := range diagnostics {
 		findings = append(findings, &SyntaxError{
 			Message:  "could not parse as YAML: " + diagnostic.Message(),
-			Position: source.Position{Line: diagnostic.Mark().Line, Column: diagnostic.Mark().Column},
+			Position: sourcetext.Position{Line: diagnostic.Mark().Line, Column: diagnostic.Mark().Column},
 			Kind:     "syntax-check",
 			Code:     CodeYAML,
 		})
@@ -2158,10 +2158,10 @@ func ParseReusableWorkflow(b []byte) (workflow *definition.Workflow, findings, w
 func documentFindings(b []byte) []*SyntaxError {
 	var findings []*SyntaxError
 	if bytes.HasPrefix(b, []byte("\xef\xbb\xbf")) {
-		findings = append(findings, &SyntaxError{Message: "a byte order mark makes GitHub read the first key with a U+FEFF prefix; remove it", Position: source.Position{Line: 1, Column: 1}, Kind: "syntax-check", Code: CodeBOM})
+		findings = append(findings, &SyntaxError{Message: "a byte order mark makes GitHub read the first key with a U+FEFF prefix; remove it", Position: sourcetext.Position{Line: 1, Column: 1}, Kind: "syntax-check", Code: CodeBOM})
 	}
 	if mark, ok := codec.FollowingDocument(b); ok {
-		findings = append(findings, &SyntaxError{Message: "GitHub Actions reads one YAML document; remove the document starting here", Position: source.Position{Line: mark.Line, Column: mark.Column}, Kind: "syntax-check", Code: CodeMultipleDocuments})
+		findings = append(findings, &SyntaxError{Message: "GitHub Actions reads one YAML document; remove the document starting here", Position: sourcetext.Position{Line: mark.Line, Column: mark.Column}, Kind: "syntax-check", Code: CodeMultipleDocuments})
 	}
 	return findings
 }

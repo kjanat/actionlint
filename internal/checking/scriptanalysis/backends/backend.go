@@ -19,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
@@ -395,7 +395,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d checkinputs
 	if !ok {
 		start, hasEnd = script.Key(), false
 	}
-	var end source.Position
+	var end sourcetext.Position
 	if hasEnd {
 		position, endOK := script.Source().EndPos(endRow, d.EndLocation.Column)
 		if endOK && (position.Line > start.Line || position.Line == start.Line && position.Column >= start.Column) {
