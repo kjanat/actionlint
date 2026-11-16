@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	render "actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/google/go-cmp/cmp"
@@ -36,7 +37,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	renderer, err := render.New(render.FormatSARIF, "", false, func() string { return "test" }, nil)
+	renderer, err := render.New(outputformat.SARIF, "", false, func() string { return "test" }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +186,7 @@ func TestWorkflowDiagnosticSARIF(t *testing.T) {
 	if len(result.Diagnostics) == 0 {
 		t.Fatal("no diagnostics")
 	}
-	renderer, err := render.New(render.FormatSARIF, "", false, func() string { return "(devel)" }, nil)
+	renderer, err := render.New(outputformat.SARIF, "", false, func() string { return "(devel)" }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

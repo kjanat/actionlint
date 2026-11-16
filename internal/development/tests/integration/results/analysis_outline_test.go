@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -84,7 +85,7 @@ jobs:
 	if broken.DocumentPath() != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
 		t.Fatalf("failed parse missing: %+v", broken)
 	}
-	renderer, err := render.New(render.FormatJSON, "", false, buildinfo.Version, nil)
+	renderer, err := render.New(outputformat.JSON, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
