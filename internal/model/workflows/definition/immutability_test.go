@@ -56,12 +56,12 @@ func TestPublishedSyntaxWritesFixture(t *testing.T) {
 		got = append(got, write[strings.LastIndex(write, "writes"):])
 	}
 	want := []string{
-		"writes published syntax field workflow.Step.Name",
-		"writes published syntax field workflow.String.Value",
-		"writes published syntax field workflow.Job.Steps",
-		"writes published syntax field workflow.Workflow.Jobs",
-		"writes published syntax field workflow.Workflow.Jobs",
-		"writes published syntax field workflow.Step.Pos",
+		"writes published syntax field definition.Step.Name",
+		"writes published syntax field definition.String.Value",
+		"writes published syntax field definition.Job.Steps",
+		"writes published syntax field definition.Workflow.Jobs",
+		"writes published syntax field definition.Workflow.Jobs",
+		"writes published syntax field definition.Step.Pos",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("writes = %q, want %q", got, want)
