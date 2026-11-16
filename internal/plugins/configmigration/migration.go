@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -237,7 +237,7 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 
 // MigrateSelection upgrades the local configs selection would read before
 // runtime plugin selection.
-func MigrateSelection(ctx context.Context, selection pluginselection.Selection, directory string, input inputmodel.Request, options installation.DefaultPluginOptions) error {
+func MigrateSelection(ctx context.Context, selection pluginselection.Selection, directory string, input checkrequest.Request, options installation.DefaultPluginOptions) error {
 	if selection.Disabled || len(selection.Paths) != 0 {
 		return nil
 	}
@@ -247,7 +247,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 	}
 	starts := []string{directory}
 	switch {
-	case input.Kind == inputmodel.Files && len(input.Paths) != 0:
+	case input.Kind == checkrequest.Files && len(input.Paths) != 0:
 		starts = nil
 		for _, path := range input.Paths {
 			if !filepath.IsAbs(path) {
@@ -255,7 +255,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 			}
 			starts = append(starts, pluginselection.RepositorySearchStart(path))
 		}
-	case input.Kind == inputmodel.Stdin && input.Name != "" && input.Name != "<stdin>":
+	case input.Kind == checkrequest.Stdin && input.Name != "" && input.Name != "<stdin>":
 		path := input.Name
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(directory, path)
@@ -266,7 +266,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 			return err
 		}
 		starts = []string{filepath.Dir(path)}
-	case input.Kind == inputmodel.Stdin:
+	case input.Kind == checkrequest.Stdin:
 		return nil
 	}
 	seen := map[string]bool{}

@@ -15,7 +15,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // engineConfig is engine configuration after the manifest's transform. Value
@@ -234,14 +234,14 @@ func tomlValue(value any) (any, error) {
 }
 
 // configDocument encodes configuration for a configuration file.
-func configDocument(render manifests.Render, config any) ([]byte, error) {
+func configDocument(render toolmanifest.Render, config any) ([]byte, error) {
 	switch render {
-	case manifests.RenderJSONFile:
+	case toolmanifest.RenderJSONFile:
 		if config == nil {
 			return []byte("{}"), nil
 		}
 		return json.Marshal(config)
-	case manifests.RenderTOMLFile:
+	case toolmanifest.RenderTOMLFile:
 		if config == nil {
 			return nil, nil
 		}
@@ -253,7 +253,7 @@ func configDocument(render manifests.Render, config any) ([]byte, error) {
 			return nil, err
 		}
 		return toml.Marshal(converted)
-	case manifests.RenderNone, manifests.RenderTOMLPairs, manifests.RenderJSONStdin:
+	case toolmanifest.RenderNone, toolmanifest.RenderTOMLPairs, toolmanifest.RenderJSONStdin:
 		return nil, fmt.Errorf("configuration rendering %q writes no file", render)
 	default:
 		return nil, fmt.Errorf("unknown configuration rendering %q", render)
@@ -262,13 +262,13 @@ func configDocument(render manifests.Render, config any) ([]byte, error) {
 
 // writeConfigFile writes a configuration document to a private temporary
 // file and returns its path and a function removing it.
-func writeConfigFile(render manifests.Render, config any) (string, func(), error) {
+func writeConfigFile(render toolmanifest.Render, config any) (string, func(), error) {
 	document, err := configDocument(render, config)
 	if err != nil {
 		return "", nil, err
 	}
 	pattern := "actionlint-config-*.json"
-	if render == manifests.RenderTOMLFile {
+	if render == toolmanifest.RenderTOMLFile {
 		pattern = "actionlint-config-*.toml"
 	}
 	file, err := os.CreateTemp("", pattern)

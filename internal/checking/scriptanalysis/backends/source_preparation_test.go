@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/mask"
@@ -25,10 +25,10 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 	for _, profile := range []string{mask.ID, python.ID} {
 		t.Run(profile, func(t *testing.T) {
 			t.Parallel()
-			manifest := manifests.Manifest{
+			manifest := toolmanifest.Manifest{
 				Rule: rule.Descriptor{Name: "example"}, Preparation: profile,
 				ConfigSchema:         json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`),
-				PreparationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond",config:{threshold:.settings.options.limit},variables:{mode:.language},excluded:["X1"]}`},
+				PreparationTransform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond",config:{threshold:.settings.options.limit},variables:{mode:.language},excluded:["X1"]}`},
 			}
 			script := scriptanalysis.Unit{Run: runBody("print(1)\n", nil), Shell: new("python"), Scope: &scriptanalysis.Scope{Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}}
 			prepared, err := newPreparation(manifest, routeEngine, nil).input(t.Context(), script)
@@ -58,7 +58,7 @@ func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	transform, err := preparation.NewSourcePlanner(&manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond"}`}, nil)
+	transform, err := preparation.NewSourcePlanner(&toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond"}`}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

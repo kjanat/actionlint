@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -74,7 +74,7 @@ func TestPublicCompositeInvocationFacts(t *testing.T) {
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: a}}, SkipProjectConfig: true,
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}},
+	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func TestNestedCompositeCallerHasIdentityWithoutDeclaredScripts(t *testing.T) {
 		}
 	}
 	capture := &invocationAnalyzer{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: capture}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: capture}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, ".github", "workflows", "ci.yml")}})
 	if err != nil {
 		t.Fatal(err)
 	}

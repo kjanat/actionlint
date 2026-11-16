@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
@@ -131,7 +131,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	if err := os.Symlink(shared, filepath.Join(root, ".github")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, inputmodel.Request{Kind: inputmodel.Repository}, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, checkrequest.Request{Kind: checkrequest.Repository}, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
 	actual, err := os.ReadFile(path)
@@ -145,7 +145,7 @@ func TestAutomaticMigrationSkipsConfigUnderLinkedParent(t *testing.T) {
 	if err := os.WriteFile(path, invalid, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, inputmodel.Request{Kind: inputmodel.Repository}, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err == nil {
+	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, checkrequest.Request{Kind: checkrequest.Repository}, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err == nil {
 		t.Fatal("automatic migration skipped reading the linked config")
 	}
 	actual, err = os.ReadFile(path)
@@ -192,7 +192,7 @@ func TestStdinMigrationMatchesPluginSelection(t *testing.T) {
 			if tc.absolute {
 				inputName = filepath.Join(root, inputName)
 			}
-			input := inputmodel.Request{Kind: inputmodel.Stdin, Name: inputName}
+			input := checkrequest.Request{Kind: checkrequest.Stdin, Name: inputName}
 			err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{RuleSet: checking.ConfigurationRules()}, root, input, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
 			if tc.wantError {
 				if err == nil {

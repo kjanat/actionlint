@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/managed"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // Selections chooses how each bundled provider runs, keyed by its rule name.
@@ -34,13 +34,13 @@ func Registrations(selections Selections) []contract.Registration {
 }
 
 func bundledRegistrations(selections Selections) ([]contract.Registration, error) {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return nil, err
 	}
 	var unknown []string
 	for name := range selections {
-		if !slices.ContainsFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == name }) {
+		if !slices.ContainsFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == name }) {
 			unknown = append(unknown, name)
 		}
 	}
@@ -62,7 +62,7 @@ func bundledRegistrations(selections Selections) ([]contract.Registration, error
 // IDs returns the rule names of the bundled providers in directory order.
 // It panics if the bundled data is invalid.
 func IDs() []string {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func IDs() []string {
 // provider's own command from PATH and skips the provider, with a warning,
 // when that command cannot run. It panics if the bundled data is invalid.
 func Defaults() Selections {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		panic(err)
 	}

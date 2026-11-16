@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
@@ -24,7 +24,7 @@ import (
 )
 
 type typedExpr struct {
-	ty         types.Type
+	ty         exprtypes.Type
 	semantics  typecheck.ExpressionCheckResult
 	pos        source.Position
 	refinement expressionRefinement
@@ -40,18 +40,18 @@ type Checker struct {
 	dependencies Dependencies
 	errs         []report
 	// The *Ty context types are nil while the context keeps its built-in type.
-	matrixTy          *types.ObjectType
+	matrixTy          *exprtypes.ObjectType
 	matrixScriptSafe  map[string]scriptValueProof
 	scriptEnv         *definition.Env
 	jobEnv            *definition.Env
-	stepsTy           *types.ObjectType
-	needsTy           *types.ObjectType
-	secretsTy         *types.ObjectType
-	inputsTy          *types.ObjectType
-	dispatchInputsTy  *types.ObjectType
-	jobsTy            *types.ObjectType
+	stepsTy           *exprtypes.ObjectType
+	needsTy           *exprtypes.ObjectType
+	secretsTy         *exprtypes.ObjectType
+	inputsTy          *exprtypes.ObjectType
+	dispatchInputsTy  *exprtypes.ObjectType
+	jobsTy            *exprtypes.ObjectType
 	workflow          workflows.Workflow
-	eventTy           *types.ObjectType
+	eventTy           *exprtypes.ObjectType
 	expressionSource  *definition.ScriptSource
 	scriptSources     map[source.Position]*definition.ScriptSource
 	expressionOffset  int
@@ -67,7 +67,7 @@ type Checker struct {
 // ReferenceNames contains complete name sets; nil leaves membership unknown.
 type ReferenceNames struct {
 	Variables, Secrets []string
-	EnvironmentSecrets *types.ObjectType
+	EnvironmentSecrets *exprtypes.ObjectType
 }
 
 // Options selects expression diagnostics without repository configuration.

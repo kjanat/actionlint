@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
@@ -29,7 +29,7 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: \"print(0)\\rmissing\"\n        shell: python\npermissions: {}\n"
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module}, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module}, pluginacquisition.Settings{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n      - run: echo missing\n        shell: bash\npermissions: {}\n"
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module}, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module}, pluginacquisition.Settings{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if !found {
 		t.Fatal("component engine missing from rule catalogue")
 	}
-	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module, "../../../../plugins/execution/module/testdata/engines/echo.wasm"}, pluginacquisition.Settings{})
+	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module, "../../../../plugins/execution/module/testdata/engines/echo.wasm"}, pluginacquisition.Settings{})
 	if err == nil || !strings.Contains(err.Error(), "multiple plugins provide script engine") {
 		t.Fatalf("duplicate core/component engine accepted: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: print(missing)\n        shell: python\n      - run: echo missing\n        shell: bash\npermissions: {}\n"
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module}, acquisition)
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,14 +127,14 @@ func TestCoreEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(data) }))
 	defer server.Close()
 	uri := fmt.Sprintf("%s/engine.wasm#sha256=%x", server.URL, sha256.Sum256(data))
-	remote, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{uri}, acquisition)
+	remote, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{uri}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(remote.Diagnostics) != 1 || remote.Diagnostics[0].Rule != "echo" || remote.Diagnostics[0].Start != result.Diagnostics[0].Start {
 		t.Fatalf("remote engine: %+v", remote.Diagnostics)
 	}
-	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(input)}, []string{module, module}, acquisition)
+	_, err = checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(input)}, []string{module, module}, acquisition)
 	if err == nil {
 		t.Fatal("accepted duplicate engine")
 	}

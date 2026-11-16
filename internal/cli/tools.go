@@ -13,14 +13,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // deprecatedToolFlag is one use of a deprecated flag whose value is ignored,
 // as declared in a bundled provider manifest.
 type deprecatedToolFlag struct {
 	id    string
-	flag  pluginmanifests.DeprecatedFlag
+	flag  toolmanifest.DeprecatedFlag
 	value string
 }
 
@@ -37,7 +37,7 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 	for _, name := range []string{"tool", "no-tool", "no-tools", "allow-config-processes"} {
 		annotateFlag(f, name, "External linters")
 	}
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		// The bundled manifests are a build input that tests validate.
 		panic(err)
@@ -62,7 +62,7 @@ func (a *commandApp) externalToolFlags(f *pflag.FlagSet) {
 // deprecatedFlagHelp returns one --help-legacy line for each retired flag
 // listed in the deprecated_flags field of a bundled provider manifest.
 func deprecatedFlagHelp() string {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		// externalToolFlags already read the same manifests.
 		panic(err)
@@ -72,7 +72,7 @@ func deprecatedFlagHelp() string {
 		id := manifest.Rule.Name
 		for _, retired := range manifest.DeprecatedFlags {
 			name, usage := "-"+retired.Name+" COMMAND", "--tool "+id+"=COMMAND"
-			if retired.Value == pluginmanifests.DeprecatedFlagIgnored {
+			if retired.Value == toolmanifest.DeprecatedFlagIgnored {
 				name, usage = "-"+retired.Name+" VALUE", "runs "+id
 				if len(retired.Arguments) != 0 {
 					usage += " adding " + strings.Join(retired.Arguments, " ")
@@ -117,7 +117,7 @@ func (noToolValue) Type() string { return "stringArray" }
 // values; an ignored-value flag is recorded for defaultSelection.
 type deprecatedFlagValue struct {
 	id    string
-	flag  pluginmanifests.DeprecatedFlag
+	flag  toolmanifest.DeprecatedFlag
 	check *checkInvocation
 }
 
@@ -125,10 +125,10 @@ func (v deprecatedFlagValue) String() string { return "" }
 
 func (v deprecatedFlagValue) Set(value string) error {
 	switch v.flag.Value {
-	case pluginmanifests.DeprecatedFlagCommand:
+	case toolmanifest.DeprecatedFlagCommand:
 		v.check.ToolFlags = append(v.check.ToolFlags, v.id+"="+value)
 		v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s=COMMAND or --no-tool %s", v.flag.Name, v.id, v.id))
-	case pluginmanifests.DeprecatedFlagIgnored:
+	case toolmanifest.DeprecatedFlagIgnored:
 		v.check.DeprecatedToolFlags = append(v.check.DeprecatedToolFlags, deprecatedToolFlag{v.id, v.flag, value})
 		v.check.Deprecations = append(v.check.Deprecations, fmt.Sprintf("--%s is deprecated; use --tool %s or --no-tool %s", v.flag.Name, v.id, v.id))
 	default:
@@ -149,12 +149,12 @@ func disablesTool(value string) bool {
 // The last per-tool flag wins. Unselected tools remain eligible for registry
 // Wasm defaults. --no-tools disables every tool regardless of its selections.
 func (c checkInvocation) resolveTools() (resolvedTools, error) {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return resolvedTools{}, err
 	}
 	bundled := func(id string) bool {
-		return slices.ContainsFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == id })
+		return slices.ContainsFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == id })
 	}
 	var resolved resolvedTools
 	if c.NoTools {

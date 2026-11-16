@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -59,7 +59,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tc.command}})}
-			result, err := checking.CheckWithPlugins(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
+			result, err := checking.CheckWithPlugins(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -126,7 +126,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 					t.Fatalf("plugin replacement requested native tool: %v %v", needed, err)
 				}
 				workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo\n        shell: " + shell + "\n      - uses: example/execute@v1\n        with:\n          code: input_value\n" + "\npermissions: {}\n"
-				if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(workflow)}); err != nil {
+				if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(workflow)}); err != nil {
 					t.Fatal(err)
 				}
 				want := int32(0)
@@ -181,7 +181,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 					return engine, nil
 				}}
 				sources := pluginselection.Sources{Paths: []string{plugin}}
-				input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
+				input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
 				var result *report.Analysis
 				var err error
 				if entrypoint == "editor" {

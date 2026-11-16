@@ -1,7 +1,7 @@
 package functions
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
@@ -16,7 +16,7 @@ func DemandForArgument(policy FunctionEvaluationPolicy, index, count int, args [
 		demand := DemandRequired
 		for i := 0; i < index; i += 2 {
 			predicate := args[i]
-			if predicate.State == ArgumentInvalid || !MatchParameter(types.BoolType(), predicate, false).Accepted {
+			if predicate.State == ArgumentInvalid || !MatchParameter(exprtypes.BoolType(), predicate, false).Accepted {
 				return DemandSkipped
 			}
 			if predicate.State != ArgumentKnown {
@@ -43,13 +43,13 @@ func DemandForArgument(policy FunctionEvaluationPolicy, index, count int, args [
 	if first.State != ArgumentKnown {
 		if policy == EvaluateStringPredicate || policy == EvaluateContains {
 			switch first.Source.Kind() {
-			case types.KindAny:
+			case exprtypes.KindAny:
 				return DemandConditional
-			case types.KindBool, types.KindNull, types.KindNumber, types.KindString:
+			case exprtypes.KindBool, exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindString:
 				return DemandRequired
-			case types.KindObject:
+			case exprtypes.KindObject:
 				return DemandSkipped
-			case types.KindArray:
+			case exprtypes.KindArray:
 				if policy == EvaluateStringPredicate {
 					return DemandSkipped
 				}

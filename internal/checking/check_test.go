@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
@@ -66,7 +66,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 			result, err := checking.Check(ctx, checking.Options{
 				WorkingDir: root, ConfigFile: config, SkipProjectConfig: true,
 				LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads++; return backend, nil }, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}),
-			}, input.Request{Kind: input.Stdin, Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo one\n      - run: echo two\n")})
+			}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo one\n      - run: echo two\n")})
 			if loads != 1 || backend.closed != 1 || backend.closeContextError != nil {
 				t.Fatalf("loads=%d closes=%d cleanup context=%v", loads, backend.closed, backend.closeContextError)
 			}
@@ -87,7 +87,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 
 func TestEmptyFileSelectionDoesNotDiscoverRepository(t *testing.T) {
 	t.Parallel()
-	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, input.Request{Kind: input.Files})
+	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, checkrequest.Request{Kind: checkrequest.Files})
 	if err != nil || result == nil || result.FileCount != 0 {
 		t.Fatalf("result=%+v error=%v", result, err)
 	}

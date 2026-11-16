@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"golang.org/x/sys/execabs"
 	"golang.org/x/text/unicode/norm"
 )
@@ -93,7 +93,7 @@ func newGitFilter(ctx context.Context, root string, reader *files.Reader) (*gitF
 		return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
 	}
 	run := func(optional bool, args ...string) ([]byte, error) {
-		output, err := gitclient.Query(ctx, git, root, gitEnvironment(), args...)
+		output, err := gitcommand.Query(ctx, git, root, gitEnvironment(), args...)
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
 		}

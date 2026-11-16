@@ -19,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
@@ -101,7 +101,7 @@ func TestDocumentPluginCannotGrantRepositoryPathsOutsideWorkspace(t *testing.T) 
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []contract.Registration{registration}}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
 			if err == nil || len(guest.inputs) != 0 {
 				var messages []string
 				if result != nil {
@@ -152,7 +152,7 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 				t.Fatal(err)
 			}
 			options := checking.Options{WorkingDir: workspace, ConfigFile: configPath, Tools: []contract.Registration{registration}}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -249,7 +249,7 @@ jobs:
       - run: echo $VALUE # shellcheck disable=SC2034
 permissions: {}
 `
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 			if (err != nil) != tc.partial {
 				t.Fatal(err)
 			}
@@ -367,7 +367,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 				t.Fatalf("native fallback plan: %v, %v; want %t", needed, err, tc.native)
 			}
 			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
-			_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
+			_, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 			if tc.native {
 				if !errors.Is(err, exec.ErrNotFound) {
 					t.Fatalf("native fallback did not require the missing executable: %v", err)
@@ -412,7 +412,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 				t.Fatalf("disabled managed plugin requested fallback: %v, %v", needed, err)
 			}
 			const workflow = "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\npermissions: {}\n"
-			if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}); err != nil {
+			if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}); err != nil {
 				t.Fatal(err)
 			}
 			if len(guest.inputs) != 0 {
@@ -453,7 +453,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	if err != nil || !needed["shellcheck"] {
 		t.Errorf("composite native fallback was omitted: %v, %v", needed, err)
 	}
-	_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	_, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if !errors.Is(err, exec.ErrNotFound) {
 		t.Fatalf("composite fallback did not require the missing executable: %v", err)
 	}

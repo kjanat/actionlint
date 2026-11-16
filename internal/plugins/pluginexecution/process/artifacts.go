@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
@@ -16,8 +16,8 @@ import (
 // ProviderFiles describes a process plugin's manifest, transforms and executable path.
 // Source is the OCI source when files are distributed as image layers.
 type ProviderFiles struct {
-	Manifest   manifests.Manifest
-	Programs   manifests.Programs
+	Manifest   toolmanifest.Manifest
+	Programs   toolmanifest.Programs
 	Executable string
 	Source     string
 }
@@ -28,7 +28,7 @@ func (p ProviderFiles) Materialize(ctx context.Context, options artifacts.Option
 		return oci.Layer(ctx, p.Source, strings.TrimPrefix(digest, "sha256:"), options)
 	}
 	name := p.Manifest.Rule.Name
-	programs, err := manifests.LoadPrograms(p.Manifest, layer)
+	programs, err := toolmanifest.LoadPrograms(p.Manifest, layer)
 	if err != nil {
 		return ProviderFiles{}, fmt.Errorf("tool provider %s: %w", name, err)
 	}
@@ -37,7 +37,7 @@ func (p ProviderFiles) Materialize(ctx context.Context, options artifacts.Option
 		return p, nil
 	}
 	platform := artifacts.HostPlatform()
-	index := slices.IndexFunc(p.Manifest.Artifacts, func(a manifests.Artifact) bool { return a.Platform == platform })
+	index := slices.IndexFunc(p.Manifest.Artifacts, func(a toolmanifest.Artifact) bool { return a.Platform == platform })
 	if index < 0 {
 		return ProviderFiles{}, fmt.Errorf("tool provider %s has no executable for %s", name, platform)
 	}

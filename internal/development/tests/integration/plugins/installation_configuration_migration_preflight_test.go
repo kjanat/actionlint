@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -29,7 +29,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 	second := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	firstConfig := filepath.Join(first, ".github", "actionlint.yaml")
 	secondConfig := filepath.Join(second, ".github", "actionlint.yaml")
-	input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{
+	input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
@@ -56,7 +56,7 @@ func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T
 	acquisition := registryAcquisition(registry)
 	first := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	second := migrationRepositoryWithLegacyConfig(t, "config-secrets: []\n")
-	input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{
+	input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
@@ -108,7 +108,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 	}
 	legacy := migrationRepositoryWithLegacyConfig(t, "config-variables: []\n")
 	legacyPath := filepath.Join(legacy, ".github", "actionlint.yaml")
-	input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{
+	input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{
 		filepath.Join(current, ".github", "workflows", "current.yml"),
 		filepath.Join(legacy, ".github", "workflows", "legacy.yml"),
 	}}
@@ -133,7 +133,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 	if err := os.WriteFile(workflow, []byte("on: push\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{
+	input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{
 		filepath.Join(root, ".github", "workflows", "repo.yml"),
 		workflow,
 	}}
@@ -158,7 +158,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 	if err := os.Symlink(root, alias); err != nil {
 		t.Skipf("directory symlinks unavailable: %v", err)
 	}
-	input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{
+	input := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{
 		filepath.Join(root, ".github", "workflows", "root.yml"),
 		filepath.Join(alias, ".github", "workflows", "alias.yml"),
 	}}

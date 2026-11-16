@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -20,8 +20,8 @@ import (
 // implements. Bundled providers and providers registered by plugins share it.
 type ToolsConfig map[string]ToolConfig
 
-func (tools ToolsConfig) setInputOrigins(inputs map[string]document.Location, prefix string) {
-	for name, tool := range tools {
+func (toolsConfig ToolsConfig) setInputOrigins(inputs map[string]document.Location, prefix string) {
+	for name, tool := range toolsConfig {
 		if tool.Config != nil {
 			tool.Config.fromInput = inputs[prefix+"/"+configPointerPart(name)+"/config"].Name != ""
 		}
@@ -35,7 +35,7 @@ type ToolConfig struct {
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// Backend selects the execution transport and its settings.
 	// Explicit CLI or application invocation settings take precedence.
-	Backend *toolconfig.Backend `yaml:"backend,omitempty"`
+	Backend *tools.Backend `yaml:"backend,omitempty"`
 	// Config is the tool's own configuration: inline settings the provider
 	// validates, or a path to the tool's configuration file or directory.
 	Config *ToolSettings `yaml:"config"`
@@ -182,9 +182,9 @@ func (s *ToolSettings) EncodeConfig() (any, error) {
 }
 
 // DecodeConfig reads tool settings after RuleSet has expanded shorthands and validated provider settings.
-func (tools *ToolsConfig) DecodeConfig(value any) error {
+func (toolsConfig *ToolsConfig) DecodeConfig(value any) error {
 	if value == nil {
-		*tools = nil
+		*toolsConfig = nil
 		return nil
 	}
 	entries, ok := value.(map[string]any)
@@ -199,7 +199,7 @@ func (tools *ToolsConfig) DecodeConfig(value any) error {
 		}
 		next[name] = tool
 	}
-	*tools = next
+	*toolsConfig = next
 	return nil
 }
 
@@ -339,9 +339,9 @@ func (ruleSet RuleSet) normalizeToolSwitch(value any) any {
 		return value
 	}
 	next := cloneMapping(value)
-	if tools := field(value, "tools"); isMapping(tools) {
-		entries := cloneMapping(tools)
-		for name, entry := range members(tools) {
+	if toolsConfig := field(value, "tools"); isMapping(toolsConfig) {
+		entries := cloneMapping(toolsConfig)
+		for name, entry := range members(toolsConfig) {
 			setField(entries, name, ruleSet.normalizeToolEntry(name, entry))
 		}
 		setField(next, "tools", entries)
@@ -396,9 +396,9 @@ func toolFieldsBeforePlugins(value any) any {
 		return value
 	}
 	next := cloneMapping(value)
-	if tools := field(value, "tools"); isMapping(tools) {
-		entries := cloneMapping(tools)
-		for name, entry := range members(tools) {
+	if toolsConfig := field(value, "tools"); isMapping(toolsConfig) {
+		entries := cloneMapping(toolsConfig)
+		for name, entry := range members(toolsConfig) {
 			if !isMapping(entry) {
 				continue
 			}

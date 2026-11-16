@@ -6,7 +6,7 @@ import (
 	"iter"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -14,35 +14,35 @@ import (
 
 // ActionType distinguishes an exhaustive output declaration from unknown names.
 // Output values are strings even when their names could not be determined.
-func ActionType(definition actionmeta.Definition) types.ObjectType {
-	var object types.ObjectBuilder
+func ActionType(definition actionmeta.Definition) exprtypes.ObjectType {
+	var object exprtypes.ObjectBuilder
 	if !definition.OutputsComplete() {
-		object.SetMapped(types.StringType())
+		object.SetMapped(exprtypes.StringType())
 	}
 	for _, name := range definition.OutputIDs() {
-		object.SetProperty(name, types.StringType())
+		object.SetProperty(name, exprtypes.StringType())
 	}
 	return object.Build()
 }
 
 // WorkflowType describes a reusable workflow's declared outputs. Nil metadata
 // leaves names unknown; non-nil metadata with no outputs proves an empty set.
-func WorkflowType(metadata *calls.Metadata) types.ObjectType {
+func WorkflowType(metadata *calls.Metadata) exprtypes.ObjectType {
 	if metadata == nil {
-		return types.NewMapObjectType(types.StringType())
+		return exprtypes.NewMapObjectType(exprtypes.StringType())
 	}
-	var object types.ObjectBuilder
+	var object exprtypes.ObjectBuilder
 	for name := range metadata.Outputs {
-		object.SetProperty(name, types.StringType())
+		object.SetProperty(name, exprtypes.StringType())
 	}
 	return object.Build()
 }
 
 // StepType adds the string-valued conclusion and outcome to supplied output
 // types. Use ActionType for action metadata or unknown run-step output names.
-func StepType(outputs types.ObjectType) types.ObjectType {
-	return types.NewStrictObjectType(map[string]types.Type{
-		"outputs": outputs.Type(), "conclusion": types.StringType(), "outcome": types.StringType(),
+func StepType(outputs exprtypes.ObjectType) exprtypes.ObjectType {
+	return exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+		"outputs": outputs.Type(), "conclusion": exprtypes.StringType(), "outcome": exprtypes.StringType(),
 	})
 }
 
@@ -72,26 +72,26 @@ func DirectDependencies(workflow workflows.Workflow, job workflows.Job) iter.Seq
 // JobType supplies outputs and result for either the jobs or needs context.
 // reusableWorkflows contains already loaded metadata keyed by the declaring job.
 // An absent or nil entry for a reusable call leaves output names unknown.
-func JobType(job workflows.Job, reusableWorkflows map[workflows.Job]*calls.Metadata) types.ObjectType {
-	var outputs types.ObjectType
+func JobType(job workflows.Job, reusableWorkflows map[workflows.Job]*calls.Metadata) exprtypes.ObjectType {
+	var outputs exprtypes.ObjectType
 	if job.WorkflowCall != nil {
 		outputs = WorkflowType(reusableWorkflows[job])
 	} else {
-		var declared types.ObjectBuilder
+		var declared exprtypes.ObjectBuilder
 		for name := range job.Outputs {
-			declared.SetProperty(name, types.StringType())
+			declared.SetProperty(name, exprtypes.StringType())
 		}
 		outputs = declared.Build()
 	}
-	return types.NewStrictObjectType(map[string]types.Type{
-		"outputs": outputs.Type(), "result": types.StringType(),
+	return exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+		"outputs": outputs.Type(), "result": exprtypes.StringType(),
 	})
 }
 
 // NeedsType includes direct prerequisites only. The caller supplies reusable
 // workflow metadata; this function never resolves or reads their source files.
-func NeedsType(workflow workflows.Workflow, job workflows.Job, reusableWorkflows map[workflows.Job]*calls.Metadata) types.ObjectType {
-	var object types.ObjectBuilder
+func NeedsType(workflow workflows.Workflow, job workflows.Job, reusableWorkflows map[workflows.Job]*calls.Metadata) exprtypes.ObjectType {
+	var object exprtypes.ObjectBuilder
 	for name, dependency := range DirectDependencies(workflow, job) {
 		object.Set(name, JobType(dependency, reusableWorkflows).Type())
 	}
@@ -100,8 +100,8 @@ func NeedsType(workflow workflows.Workflow, job workflows.Job, reusableWorkflows
 
 // JobsType exposes the same job output shapes when a reusable workflow maps its
 // job outputs to on.workflow_call.outputs. Context availability is checked elsewhere.
-func JobsType(workflow workflows.Workflow, reusableWorkflows map[workflows.Job]*calls.Metadata) types.ObjectType {
-	var object types.ObjectBuilder
+func JobsType(workflow workflows.Workflow, reusableWorkflows map[workflows.Job]*calls.Metadata) exprtypes.ObjectType {
+	var object exprtypes.ObjectBuilder
 	for name, job := range workflow.Jobs() {
 		object.Set(name, JobType(job, reusableWorkflows).Type())
 	}

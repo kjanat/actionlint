@@ -10,25 +10,25 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func authoringManifest(t *testing.T, output string) manifests.Manifest {
+func authoringManifest(t *testing.T, output string) toolmanifest.Manifest {
 	t.Helper()
 	manifest := bundledManifest(t, "ruff")
 	manifest.Process.Entry = "actionlint-authoring-must-not-run"
 	manifest.ConfigSchema = nil
 	manifest.Process.ConfigSchema = nil
-	manifest.Process.Config.Transform = &manifests.Transform{
-		Language: manifests.LanguageJQ,
+	manifest.Process.Config.Transform = &toolmanifest.Transform{
+		Language: toolmanifest.LanguageJQ,
 		Inline:   `{config: {selected: .selected}, vars: {mode: .mode, drop: null}}`,
 	}
 	manifest.Process.Config.Forbidden = nil
-	manifest.Process.Output = manifests.Output{
-		Format:    manifests.FormatJSON,
-		Transform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: output},
+	manifest.Process.Output = toolmanifest.Output{
+		Format:    toolmanifest.FormatJSON,
+		Transform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: output},
 	}
 	manifest.Capabilities.Fixes = true
 	return manifest

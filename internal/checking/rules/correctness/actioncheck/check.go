@@ -24,26 +24,26 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type validator struct {
 	standalone *actionmeta.Metadata
-	errs       []*findingmodel.Finding
+	errs       []*finding.Finding
 	advisories bool
 	files      actionmeta.ReferencedFiles
 	lifecycle  actionmeta.LifecycleContext
 }
 
 // CheckWithAdvisories includes optional expression findings for host policy.
-func CheckWithAdvisories(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+func CheckWithAdvisories(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*finding.Finding {
 	rule := validator{advisories: true, files: files, lifecycle: context}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
 }
 
 // StandaloneWithAdvisories includes optional expression findings for host policy.
-func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+func StandaloneWithAdvisories(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles, context actionmeta.LifecycleContext) []*finding.Finding {
 	rule := validator{files: files, standalone: meta, advisories: true, lifecycle: context}
 	rule.checkLocalActionMetadata(meta, &source.Position{Line: 1, Column: 1})
 	return rule.errs
@@ -56,9 +56,9 @@ func (rule *validator) expressionFindings(s string, bare bool, field string, inp
 
 func (rule *validator) Error(pos *source.Position, code actionmeta.ProblemCode, message string) {
 	ruleName, diagnosticCode := problemRule(code)
-	finding := findingmodel.At(pos, ruleName, message)
-	finding.Code = diagnosticCode
-	rule.errs = append(rule.errs, finding)
+	item := finding.At(pos, ruleName, message)
+	item.Code = diagnosticCode
+	rule.errs = append(rule.errs, item)
 }
 
 func (rule *validator) Errorf(pos *source.Position, code actionmeta.ProblemCode, format string, args ...any) {
@@ -67,21 +67,21 @@ func (rule *validator) Errorf(pos *source.Position, code actionmeta.ProblemCode,
 
 // Check validates a manifest reached from a workflow call site. Findings which
 // cannot point inside the manifest point to the caller's uses position.
-func Check(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
+func Check(meta *actionmeta.Metadata, caller *source.Position, files actionmeta.ReferencedFiles) []*finding.Finding {
 	rule := validator{files: files}
 	rule.checkLocalActionMetadata(meta, caller)
 	return rule.errs
 }
 
 // Standalone validates a manifest's declarations at their own source positions.
-func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*findingmodel.Finding {
+func Standalone(meta *actionmeta.Metadata, files actionmeta.ReferencedFiles) []*finding.Finding {
 	rule := validator{files: files, standalone: meta}
 	rule.checkLocalActionMetadata(meta, &source.Position{Line: 1, Column: 1})
 	return rule.errs
 }
 
 // Inputs validates supplied and required inputs against resolved action metadata.
-func Inputs(meta *actionmeta.Metadata, exec *definition.ExecAction, describe func(*actionmeta.Metadata) string) []*findingmodel.Finding {
+func Inputs(meta *actionmeta.Metadata, exec *definition.ExecAction, describe func(*actionmeta.Metadata) string) []*finding.Finding {
 	rule := validator{}
 	rule.checkAction(actionmeta.NewDefinition(meta), exec, describe(meta))
 	return rule.errs
@@ -174,14 +174,14 @@ func (rule *validator) compositeStepErrorf(meta *actionmeta.Metadata, s *actionm
 func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, line, col int, end *source.Position, code actionmeta.ProblemCode, format string, args ...any) {
 	m := fmt.Sprintf(format, args...)
 	ruleName, diagnosticCode := problemRule(code)
-	err := findingmodel.At(&source.Position{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
+	err := finding.At(&source.Position{Line: line, Column: col}, ruleName, fmt.Sprintf(`"runs.steps[%d]" in metadata of %q action %s`, idx, meta.Name, m))
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
 	err.Source.Content = meta.Source
 	err.EndAt(end)
 	if idx >= 0 && idx < len(meta.Runs.Steps) {
 		step := meta.Runs.Steps[idx]
-		origin := &findingmodel.IgnoreOrigin{}
+		origin := &finding.IgnoreOrigin{}
 		if step.ID != nil {
 			origin.StepID = step.ID.Value
 		}
@@ -204,12 +204,12 @@ func (rule *validator) compositeStepErrorfAt(meta *actionmeta.Metadata, idx, lin
 // metadataErrorfAt reports inside the action metadata, with an optional exclusive end.
 func (rule *validator) metadataErrorfAt(meta *actionmeta.Metadata, line, col int, end *source.Position, code actionmeta.ProblemCode, format string, args ...any) {
 	ruleName, diagnosticCode := problemRule(code)
-	err := findingmodel.Errorf(&source.Position{Line: line, Column: col}, ruleName, format, args...)
+	err := finding.Errorf(&source.Position{Line: line, Column: col}, ruleName, format, args...)
 	err.Path = meta.Path()
 	err.Code = diagnosticCode
 	err.Source.Content = meta.Source
 	err.EndAt(end)
-	err.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
+	err.IgnoreOrigin = &finding.IgnoreOrigin{Metadata: true}
 	rule.errs = append(rule.errs, err)
 }
 
@@ -513,10 +513,10 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 	validation := actionmeta.Validate(meta)
 	problems := validation.Problems
 	for _, field := range validation.ExpressionFields {
-		for _, finding := range expressionSemanticFindings(field.Expressions, field.SchemaPath, rule.advisories) {
-			position := actionmeta.ExpressionPosition(meta, &field.Value, finding.Offset)
-			end := actionmeta.ExpressionEndPosition(meta, &field.Value, finding)
-			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: finding.Code, Message: fmt.Sprintf("%s at %q in action metadata", finding.Message, field.FieldPath), Start: *position}
+		for _, item := range expressionSemanticFindings(field.Expressions, field.SchemaPath, rule.advisories) {
+			position := actionmeta.ExpressionPosition(meta, &field.Value, item.Offset)
+			end := actionmeta.ExpressionEndPosition(meta, &field.Value, item)
+			problem := actionmeta.MetadataProblem{Path: meta.Path(), Code: item.Code, Message: fmt.Sprintf("%s at %q in action metadata", item.Message, field.FieldPath), Start: *position}
 			if end != nil {
 				problem.End = *end
 			}
@@ -525,13 +525,13 @@ func (rule *validator) checkActionMetadataSchema(meta *actionmeta.Metadata) {
 	}
 	for _, problem := range problems {
 		ruleName, diagnosticCode := problemRule(problem.Code)
-		finding := findingmodel.FromDiagnostic(results.Diagnostic{
+		item := finding.FromDiagnostic(results.Diagnostic{
 			Rule: ruleName, Code: diagnosticCode, Path: problem.Path,
 			Message: problem.Message, Start: problem.Start, End: problem.End,
 		})
-		finding.Source.Content = meta.Source
-		finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Metadata: true}
-		rule.errs = append(rule.errs, finding)
+		item.Source.Content = meta.Source
+		item.IgnoreOrigin = &finding.IgnoreOrigin{Metadata: true}
+		rule.errs = append(rule.errs, item)
 	}
 }
 

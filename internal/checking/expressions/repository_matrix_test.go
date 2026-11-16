@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
@@ -31,7 +31,7 @@ func TestExpressionRefinementStates(t *testing.T) {
 			if got.state != tc.want || got.hasTemplateInvalid {
 				t.Fatalf("refinement=%+v, want state %v without invalid template row", got, tc.want)
 			}
-			if tc.name == "known null" && got.ty.Kind() != types.KindNull {
+			if tc.name == "known null" && got.ty.Kind() != exprtypes.KindNull {
 				t.Fatalf("known null type lost: %v", got.ty)
 			}
 		})
@@ -53,7 +53,7 @@ func TestKP2BWMatrixExpressionTypes(t *testing.T) {
 	}
 	for _, name := range []string{"pm", "cli", "tools"} {
 		inferred, exists := checker.matrixTy.Property(name)
-		if !exists || inferred.Kind() != types.KindString {
+		if !exists || inferred.Kind() != exprtypes.KindString {
 			t.Fatalf("matrix.%s: got %v, want string", name, inferred)
 		}
 	}
@@ -75,7 +75,7 @@ func TestKP2BWMatrixExpressionTypes(t *testing.T) {
 		t.Fatalf("dynamic inputs lost their closed object type: %v", inferred)
 	}
 	installArgs, exists := object.Property("install_args")
-	if !exists || installArgs.Kind() != types.KindString {
+	if !exists || installArgs.Kind() != exprtypes.KindString {
 		t.Fatalf("install_args type: %v", installArgs)
 	}
 	findings := checker.Findings()

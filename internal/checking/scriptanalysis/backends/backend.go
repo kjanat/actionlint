@@ -21,8 +21,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
@@ -71,7 +71,7 @@ type findingCapabilities struct {
 	messageTemplate string
 	// severities maps engine severities to host severities; an unmapped
 	// severity becomes a warning. Empty passes severities through.
-	severities map[string]manifests.Severity
+	severities map[string]toolmanifest.Severity
 }
 
 func registerEngine(descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend, options engineOptions) (contract.Registration, error) {
@@ -378,7 +378,7 @@ func (r runner) scriptFinding(c check, script scriptanalysis.Unit, d checkinputs
 		case preparation.LineScript:
 			row = start.Line
 		case preparation.LineStartup:
-			if r.severity(d.Severity) != manifests.SeverityError {
+			if r.severity(d.Severity) != toolmanifest.SeverityError {
 				r.debug("%s: dropped %s on the generated startup line: %s", r.descriptor.Name, d.Code, d.Message)
 				return nil, nil
 			}
@@ -433,8 +433,8 @@ func (r runner) message(d checkinputs.ScriptDiagnostic, row, column int) string 
 
 // severity maps an engine severity to a host severity through the
 // manifest's table, logging a severity the table does not list.
-func (r runner) severity(severity string) manifests.Severity {
-	mapped, listed := manifests.Capabilities{Severities: r.options.findings.severities}.HostSeverity(severity)
+func (r runner) severity(severity string) toolmanifest.Severity {
+	mapped, listed := toolmanifest.Capabilities{Severities: r.options.findings.severities}.HostSeverity(severity)
 	if !listed {
 		r.debug("%s: mapped unlisted severity %q to %s", r.descriptor.Name, severity, mapped)
 	}

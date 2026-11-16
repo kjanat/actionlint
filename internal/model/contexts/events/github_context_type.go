@@ -2,7 +2,7 @@
 package events
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"

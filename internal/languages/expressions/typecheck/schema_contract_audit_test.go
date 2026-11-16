@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 // The context profiles follow runner 759385a3510197a58b5c08dc1f373b74b9f4643b
@@ -44,29 +44,29 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 			covered[key] = true
 			t.Run(key, func(t *testing.T) {
 				t.Parallel()
-				contexts, functions := contextspec.WorkflowKeyAvailability(key)
-				if !slices.Equal(contexts, strings.Fields(profile.contexts)) || !slices.Equal(functions, strings.Fields(profile.funcs)) {
-					t.Fatalf("contexts %v; functions %v", contexts, functions)
+				knownContexts, functions := contexts.WorkflowKeyAvailability(key)
+				if !slices.Equal(knownContexts, strings.Fields(profile.contexts)) || !slices.Equal(functions, strings.Fields(profile.funcs)) {
+					t.Fatalf("contexts %v; functions %v", knownContexts, functions)
 				}
-				if !slices.Contains(contextspec.AllWorkflowKeys, key) {
+				if !slices.Contains(contexts.AllWorkflowKeys, key) {
 					t.Fatal("missing from generated workflow key inventory")
 				}
-				for context := range contextspec.BuiltinGlobalVariableTypes {
-					checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-					checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
+				for context := range contexts.BuiltinGlobalVariableTypes {
+					checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+					checker.SetAvailability(contexts.WorkflowExpressionScope(key))
 					expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer("toJSON(" + context + ")}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
 					_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
-					if (len(errs) == 0) != slices.Contains(contexts, context) {
+					if (len(errs) == 0) != slices.Contains(knownContexts, context) {
 						t.Fatalf("context %s: %v", context, errs)
 					}
 				}
 			})
 		}
 	}
-	for _, key := range contextspec.AllWorkflowKeys {
+	for _, key := range contexts.AllWorkflowKeys {
 		if !covered[key] {
 			t.Errorf("workflow key %q has no authoritative audit profile", key)
 		}
@@ -101,8 +101,8 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
+			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope(tc.key))
 			_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 			if (len(errs) == 0) != tc.valid {
 				t.Fatalf("valid=%v, diagnostics=%v", tc.valid, errs)

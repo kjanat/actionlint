@@ -4,16 +4,16 @@ import (
 	"maps"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // ExpressionScope supplies GitHub context types and the availability for one
 // workflow field. Invocation-specific types can replace its initial types later.
 type ExpressionScope struct{ key string }
 
-func (scope ExpressionScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (types.Type, bool)) (map[string]types.Type, bool) {
+func (scope ExpressionScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	return NarrowEventTypes(guard, truth, lookup)
 }
 
@@ -25,7 +25,7 @@ func DefaultExpressionScope() ExpressionScope { return ExpressionScope{} }
 // WorkflowExpressionScope selects the names and overloads for a workflow field.
 func WorkflowExpressionScope(key string) ExpressionScope { return ExpressionScope{key: key} }
 
-func (scope ExpressionScope) ContextTypes() map[string]types.Type {
+func (scope ExpressionScope) ContextTypes() map[string]exprtypes.Type {
 	return maps.Clone(BuiltinGlobalVariableTypes)
 }
 
@@ -56,7 +56,7 @@ func (scope ExpressionScope) FunctionOverloads() map[string][]*functions.FuncSig
 	overloads := make(map[string][]*functions.FuncSignature, 2)
 	for _, name := range []string{"success", "failure"} {
 		overloads[name] = append(slices.Clone(functions.Builtins[name].Signatures), &functions.FuncSignature{
-			Name: name, Ret: types.BoolType(), Params: []types.Type{types.StringType()}, VariableLengthParams: true,
+			Name: name, Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.StringType()}, VariableLengthParams: true,
 		})
 	}
 	return overloads

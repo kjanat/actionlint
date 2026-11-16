@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // Predicate and join behavior follows actions/runner at 1ba885c2065fd9be317808ab3fd406f392635cf7.
@@ -23,30 +23,30 @@ func TestFunctionCallFacts(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		input string
-		kind  types.TypeKind
+		kind  exprtypes.TypeKind
 		valid bool
 		state values.EvaluationState
 		value any
 	}{
-		{"startsWith(true, 'TR')", types.KindBool, true, values.EvaluationKnown, true},
-		{"contains(null, '')", types.KindBool, true, values.EvaluationKnown, true},
-		{"startsWith(fromJSON('{}'), 'x')", types.KindBool, true, values.EvaluationKnown, false},
-		{"contains('foo', fromJSON('{}'))", types.KindBool, true, values.EvaluationKnown, false},
-		{"startsWith(fromJSON('{}'), fromJSON(null))", types.KindBool, true, values.EvaluationKnown, false},
-		{"contains(fromJSON('[]'), fromJSON(null))", types.KindBool, true, values.EvaluationKnown, false},
-		{"startsWith(fromJSON('{}'), startsWith(true))", types.KindBool, false, values.EvaluationNotAttempted, nil},
-		{"startsWith('x', fromJSON(null))", types.KindBool, false, values.EvaluationInvalid, nil},
-		{"join(fromJSON('{}'))", types.KindString, true, values.EvaluationKnown, ""},
-		{"format(true)", types.KindString, true, values.EvaluationKnown, "true"},
-		{"format(fromJSON('{}'))", types.KindString, true, values.EvaluationKnown, "Object"},
-		{"format(fromJSON('[]'))", types.KindString, true, values.EvaluationKnown, "Array"},
-		{"fromJSON(fromJSON('{}'))", types.KindAny, false, values.EvaluationInvalid, nil},
-		{"format('plain text', 1)", types.KindString, true, values.EvaluationKnown, "plain text"},
-		{"fromJSON(true)", types.KindBool, true, values.EvaluationKnown, true},
-		{"fromJSON(null)", types.KindAny, false, values.EvaluationInvalid, nil},
-		{"startsWith(true)", types.KindBool, false, values.EvaluationNotAttempted, nil},
-		{"hashFiles(fromJSON('{}'))", types.KindString, true, values.EvaluationUnknown, nil},
-		{"startsWith(github.event.unknown, 'x')", types.KindBool, true, values.EvaluationUnknown, nil},
+		{"startsWith(true, 'TR')", exprtypes.KindBool, true, values.EvaluationKnown, true},
+		{"contains(null, '')", exprtypes.KindBool, true, values.EvaluationKnown, true},
+		{"startsWith(fromJSON('{}'), 'x')", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"contains('foo', fromJSON('{}'))", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"startsWith(fromJSON('{}'), fromJSON(null))", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"contains(fromJSON('[]'), fromJSON(null))", exprtypes.KindBool, true, values.EvaluationKnown, false},
+		{"startsWith(fromJSON('{}'), startsWith(true))", exprtypes.KindBool, false, values.EvaluationNotAttempted, nil},
+		{"startsWith('x', fromJSON(null))", exprtypes.KindBool, false, values.EvaluationInvalid, nil},
+		{"join(fromJSON('{}'))", exprtypes.KindString, true, values.EvaluationKnown, ""},
+		{"format(true)", exprtypes.KindString, true, values.EvaluationKnown, "true"},
+		{"format(fromJSON('{}'))", exprtypes.KindString, true, values.EvaluationKnown, "Object"},
+		{"format(fromJSON('[]'))", exprtypes.KindString, true, values.EvaluationKnown, "Array"},
+		{"fromJSON(fromJSON('{}'))", exprtypes.KindAny, false, values.EvaluationInvalid, nil},
+		{"format('plain text', 1)", exprtypes.KindString, true, values.EvaluationKnown, "plain text"},
+		{"fromJSON(true)", exprtypes.KindBool, true, values.EvaluationKnown, true},
+		{"fromJSON(null)", exprtypes.KindAny, false, values.EvaluationInvalid, nil},
+		{"startsWith(true)", exprtypes.KindBool, false, values.EvaluationNotAttempted, nil},
+		{"hashFiles(fromJSON('{}'))", exprtypes.KindString, true, values.EvaluationUnknown, nil},
+		{"startsWith(github.event.unknown, 'x')", exprtypes.KindBool, true, values.EvaluationUnknown, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -80,18 +80,18 @@ func TestFunctionContractFacts(t *testing.T) {
 		return checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 	}
 	got := check("fromJSON(true)")
-	if got.Call == nil || len(got.Call.DeclaredReturns) != 1 || got.Call.DeclaredReturns[0].Kind() != types.KindAny || len(got.Call.RefinedAlternatives) != 1 || got.Call.RefinedAlternatives[0].Kind() != types.KindBool {
+	if got.Call == nil || len(got.Call.DeclaredReturns) != 1 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(got.Call.RefinedAlternatives) != 1 || got.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool {
 		t.Fatalf("fromJSON facts: %+v", got.Call)
 	}
 	if got.Call.ReturnDomain != functions.ReturnDomainContainsValue {
 		t.Fatalf("fromJSON return domain: %+v", got.Call)
 	}
 	arg := got.Call.Arguments[0]
-	if arg.Source.Kind() != types.KindBool || arg.Parameter.Kind() != types.KindString || arg.Converted.Kind() != types.KindString || arg.Conversion != functions.ConversionString || arg.SourceValue.Value != true || arg.Value.Value != "true" || !arg.Accepted {
+	if arg.Source.Kind() != exprtypes.KindBool || arg.Parameter.Kind() != exprtypes.KindString || arg.Converted.Kind() != exprtypes.KindString || arg.Conversion != functions.ConversionString || arg.SourceValue.Value != true || arg.Value.Value != "true" || !arg.Accepted {
 		t.Fatalf("conversion facts: %+v", arg)
 	}
 	got = check("hashFiles(fromJSON('{}'))")
-	if got.Call == nil || len(got.Call.DeclaredReturns) != 1 || got.Call.DeclaredReturns[0].Kind() != types.KindString || len(got.Call.Arguments) != 1 || !got.Call.Arguments[0].Accepted || got.Call.Arguments[0].Value.Value != "Object" {
+	if got.Call == nil || len(got.Call.DeclaredReturns) != 1 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindString || len(got.Call.Arguments) != 1 || !got.Call.Arguments[0].Accepted || got.Call.Arguments[0].Value.Value != "Object" {
 		t.Fatalf("hashFiles call facts: %+v", got.Call)
 	}
 	got = check("noSuchFunction()")
@@ -99,7 +99,7 @@ func TestFunctionContractFacts(t *testing.T) {
 		t.Fatalf("unexpected contract: %+v", got.Call)
 	}
 	got = check("case(github.event_name == 'push', 1, 'fallback')")
-	if got.Type.Kind() != types.KindAny || got.Call == nil || len(got.Call.RefinedAlternatives) != 2 || got.Call.RefinedAlternatives[0].Kind() != types.KindNumber || got.Call.RefinedAlternatives[1].Kind() != types.KindString {
+	if got.Type.Kind() != exprtypes.KindAny || got.Call == nil || len(got.Call.RefinedAlternatives) != 2 || got.Call.RefinedAlternatives[0].Kind() != exprtypes.KindNumber || got.Call.RefinedAlternatives[1].Kind() != exprtypes.KindString {
 		t.Fatalf("case alternatives: %+v", got.Call)
 	}
 }
@@ -121,15 +121,15 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	checker.funcs = map[string][]*functions.FuncSignature{"test": {
-		{Name: "test", Ret: types.AnyType(), Params: []types.Type{types.StringType()}},
-		{Name: "test", Ret: types.BoolType(), Params: []types.Type{types.BoolType()}},
+		{Name: "test", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType()}},
+		{Name: "test", Ret: exprtypes.BoolType(), Params: []exprtypes.Type{exprtypes.BoolType()}},
 	}}
 	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("test(github.event.unknown)}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
-	if got.Call == nil || len(got.Call.DeclaredReturns) != 2 || got.Call.DeclaredReturns[0].Kind() != types.KindAny || got.Call.DeclaredReturns[1].Kind() != types.KindBool || got.Type.Kind() != types.KindAny {
+	if got.Call == nil || len(got.Call.DeclaredReturns) != 2 || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || got.Call.DeclaredReturns[1].Kind() != exprtypes.KindBool || got.Type.Kind() != exprtypes.KindAny {
 		t.Fatalf("result: %+v", got)
 	}
 }
@@ -137,13 +137,13 @@ func TestOverloadDeclaredAlternatives(t *testing.T) {
 func TestReturnValueOutsideDeclaredDomain(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-	checker.funcs = map[string][]*functions.FuncSignature{"startswith": {{Name: "startsWith", Ret: types.NumberType(), Params: []types.Type{types.StringType(), types.StringType()}}}}
+	checker.funcs = map[string][]*functions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
-	if got.Call == nil || got.Call.ReturnDomain != functions.ReturnDomainExcludesValue || got.Call.DeclaredReturns[0].Kind() != types.KindNumber || got.Evaluation.Value != true {
+	if got.Call == nil || got.Call.ReturnDomain != functions.ReturnDomainExcludesValue || got.Call.DeclaredReturns[0].Kind() != exprtypes.KindNumber || got.Evaluation.Value != true {
 		t.Fatalf("result: %+v", got)
 	}
 }
@@ -182,9 +182,9 @@ func TestValidationStateIndependentOfFindings(t *testing.T) {
 
 func TestReturnDomainUsesNamedPropertyBeforeFallback(t *testing.T) {
 	t.Parallel()
-	var shape types.ObjectBuilder
-	shape.SetProperty("label", types.StringType())
-	shape.SetMapped(types.NumberType())
+	var shape exprtypes.ObjectBuilder
+	shape.SetProperty("label", exprtypes.StringType())
+	shape.SetMapped(exprtypes.NumberType())
 	declared := shape.Build().Type()
 	if !returnContainsValue(declared, map[string]any{"label": "x", "count": float64(1)}) {
 		t.Fatal("valid object rejected")
@@ -192,15 +192,15 @@ func TestReturnDomainUsesNamedPropertyBeforeFallback(t *testing.T) {
 	if returnContainsValue(declared, map[string]any{"label": float64(1)}) {
 		t.Fatal("wrong named property accepted")
 	}
-	if returnContainsValue(types.BoolType(), float64(1)) {
+	if returnContainsValue(exprtypes.BoolType(), float64(1)) {
 		t.Fatal("number accepted as boolean")
 	}
 }
 
 func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
 	t.Parallel()
-	match := functions.MatchParameter(types.StringType(), functions.CallArgument{Source: types.AnyType(), State: functions.ArgumentKnown, Value: true}, false)
-	if match.Argument.Source.Kind() != types.KindAny || match.Converted.Kind() != types.KindString || match.Conversion != functions.ConversionString || match.Value != "true" {
+	match := functions.MatchParameter(exprtypes.StringType(), functions.CallArgument{Source: exprtypes.AnyType(), State: functions.ArgumentKnown, Value: true}, false)
+	if match.Argument.Source.Kind() != exprtypes.KindAny || match.Converted.Kind() != exprtypes.KindString || match.Conversion != functions.ConversionString || match.Value != "true" {
 		t.Fatalf("match: %+v", match)
 	}
 }
@@ -208,13 +208,13 @@ func TestKnownArgumentRefinesUnknownSourceType(t *testing.T) {
 func TestKnownResultRefinesDeclaredAny(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-	checker.funcs = map[string][]*functions.FuncSignature{"startswith": {{Name: "startsWith", Ret: types.AnyType(), Params: []types.Type{types.StringType(), types.StringType()}}}}
+	checker.funcs = map[string][]*functions.FuncSignature{"startswith": {{Name: "startsWith", Ret: exprtypes.AnyType(), Params: []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()}}}}
 	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("startsWith('x', 'x')}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
-	if result.Call == nil || result.Call.DeclaredReturns[0].Kind() != types.KindAny || len(result.Call.RefinedAlternatives) != 1 || result.Call.RefinedAlternatives[0].Kind() != types.KindBool || result.Call.ReturnDomain != functions.ReturnDomainContainsValue {
+	if result.Call == nil || result.Call.DeclaredReturns[0].Kind() != exprtypes.KindAny || len(result.Call.RefinedAlternatives) != 1 || result.Call.RefinedAlternatives[0].Kind() != exprtypes.KindBool || result.Call.ReturnDomain != functions.ReturnDomainContainsValue {
 		t.Fatalf("result: %+v", result)
 	}
 }

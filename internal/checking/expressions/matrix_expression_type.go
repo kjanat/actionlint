@@ -3,15 +3,15 @@ package expressions
 import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 type expressionRefinement struct {
-	ty                 types.Type
+	ty                 exprtypes.Type
 	state              value.State
-	templateInvalid    types.Type
+	templateInvalid    exprtypes.Type
 	hasTemplateInvalid bool
 }
 
@@ -21,7 +21,7 @@ type expressionRefinement struct {
 func (rule *Checker) expressionType(text string, evaluation values.EvaluationResult) expressionRefinement {
 	switch evaluation.State {
 	case values.EvaluationKnown:
-		return expressionRefinement{ty: types.TypeOfJSONValue(evaluation.Value), state: value.Evaluated}
+		return expressionRefinement{ty: exprtypes.TypeOfJSONValue(evaluation.Value), state: value.Evaluated}
 	case values.EvaluationInvalid, values.EvaluationNotAttempted:
 		return expressionRefinement{state: value.Invalid}
 	case values.EvaluationUnknown:
@@ -45,11 +45,11 @@ func (rule *Checker) expressionType(text string, evaluation values.EvaluationRes
 			}
 			continue
 		}
-		inferred := resolved.TypeWithFallback(types.AnyType())
+		inferred := resolved.TypeWithFallback(exprtypes.AnyType())
 		switch inferred.Kind() {
-		case types.KindObject, types.KindArray:
+		case exprtypes.KindObject, exprtypes.KindArray:
 			result.templateInvalid, result.hasTemplateInvalid = inferred, true
-		case types.KindAny, types.KindString, types.KindNumber, types.KindBool, types.KindNull:
+		case exprtypes.KindAny, exprtypes.KindString, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindNull:
 		}
 		if first {
 			result.ty = inferred

@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -108,7 +108,7 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {proce
 	if err != nil || !needed["shellcheck"] {
 		t.Fatalf("mixed workflow/composite requires the host process: %+v, %v", needed, err)
 	}
-	result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}

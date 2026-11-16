@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
@@ -57,7 +57,7 @@ func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.
 		t.Fatalf("repeated calls: requests=%d input findings=%d diagnostics=%+v", provider.requests, findings, result.Diagnostics)
 	}
 	provider.requests = 0
-	result, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, RemoteActions: provider}, input.Request{Kind: input.Files, Paths: []string{path}})
+	result, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, RemoteActions: provider}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil {
 		t.Fatal(err)
 	}

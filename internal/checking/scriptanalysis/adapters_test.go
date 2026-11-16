@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
-	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 type partialFactAnalyzer struct {
@@ -77,7 +77,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	processor := resultpolicy.Processor{RuleSet: rules}
+	processor := policy.Processor{RuleSet: rules}
 	for _, nested := range []bool{false, true} {
 		for _, mapped := range []bool{false, true} {
 			t.Run(map[bool]string{false: "standalone", true: "nested"}[nested]+"/"+map[bool]string{false: "plain", true: "mapped"}[mapped], func(t *testing.T) {
@@ -134,8 +134,8 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 							for _, finding := range findings {
 								finding.Binding = scope.Rule(finding.Rule).ID()
 							}
-							policy := resultpolicy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
-							published, err := resultpolicy.Publish([]resultpolicy.Batch{{Processor: processor, Policy: policy, InputPath: "workflow.yml", Findings: findings, Sources: map[string][]byte{path: content}}}, nil)
+							resultPolicy := policy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
+							published, err := policy.Publish([]policy.Batch{{Processor: processor, Policy: resultPolicy, InputPath: "workflow.yml", Findings: findings, Sources: map[string][]byte{path: content}}}, nil)
 							var filtered []*finding.Finding
 							if len(published.Findings) > 0 {
 								filtered = published.Findings[0]

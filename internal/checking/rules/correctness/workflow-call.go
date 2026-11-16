@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -46,7 +46,7 @@ type workflowCallCheck struct {
 // WorkflowCallChecks validates each reusable call against supplied workflow
 // defaults, repository facts and loaded dependency metadata. Source preparation
 // seeds the metadata cache before callbacks run. A nil log disables debug output.
-func WorkflowCallChecks(workflow workflows.Workflow, cache *reusableworkflows.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
+func WorkflowCallChecks(workflow workflows.Workflow, resolvedWorkflows *reusableworkflows.ResolvedWorkflows, facts repository.Snapshot, log func(string, ...any)) define.Checks {
 	var defaults calls.ResolvedPermissions
 	if permissions, known := facts.DefaultWorkflowPermissions.Value(); known {
 		defaults = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(permissions.String() == "write")}
@@ -55,7 +55,7 @@ func WorkflowCallChecks(workflow workflows.Workflow, cache *reusableworkflows.Re
 		Job: func(job workflows.Job) []reporting.StepFinding {
 			check := workflowCallCheck{
 				workflowPermissions: workflow.Permissions, workflowCacheMode: workflow.CacheMode,
-				cache: cache, defaultPermissions: defaults, log: log,
+				cache: resolvedWorkflows, defaultPermissions: defaults, log: log,
 			}
 			check.checkJob(job)
 			return check.Findings
@@ -115,7 +115,7 @@ func (rule *workflowCallCheck) checkWorkflowCall(call *definition.WorkflowCall, 
 	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(workflowcall.CheckArguments(call, m))...)
 
 	rule.checkWorkflowCallPermissions(call, jobPerms, m)
-	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(cachepolicy.CheckCeiling(call, cachemodel.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.debug))...)
+	rule.Findings = append(rule.Findings, reporting.FromDiagnostics(cachepolicy.CheckCeiling(call, cache.EffectiveMode(rule.workflowCacheMode, jobCacheMode), m, rule.cache, rule.debug))...)
 
 	rule.debug("Validated reusable workflow %q", u.Value)
 }

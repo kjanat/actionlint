@@ -12,12 +12,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/python"
-	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
@@ -51,7 +51,7 @@ type inputPreparer interface {
 // profile. An empty name selects the expression mask.
 func knownPreparation(id string) bool {
 	switch id {
-	case "", mask.ID, shellprofile.ID, python.ID:
+	case "", mask.ID, shell.ID, python.ID:
 		return true
 	default:
 		return false
@@ -61,11 +61,11 @@ func knownPreparation(id string) bool {
 // newPreparation binds the profile a manifest names; RegisterProvider
 // rejects profiles the host does not implement. The expression mask passes
 // inline settings through.
-func newPreparation(m manifests.Manifest, via route, programs manifests.Programs) inputPreparer {
+func newPreparation(m toolmanifest.Manifest, via route, programs toolmanifest.Programs) inputPreparer {
 	name := m.Rule.Name
 	switch m.Preparation {
-	case shellprofile.ID:
-		files := manifests.ConfigFiles{}
+	case shell.ID:
+		files := toolmanifest.ConfigFiles{}
 		if m.Process != nil && m.Process.ConfigFiles != nil {
 			files = *m.Process.ConfigFiles
 		}
@@ -171,7 +171,7 @@ func (p genericPreparation) input(ctx context.Context, script scriptanalysis.Uni
 		return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, settings, p.route)
 	}
 	if settings.Prefix != "" {
-		mapped := shellprofile.Prepare(prepared.Source, settings.Prefix, "")
+		mapped := shell.Prepare(prepared.Source, settings.Prefix, "")
 		prepared.Source, prepared.LineMap = mapped.Text(), mapped.Line
 	}
 	return applySourcePreparation(ctx, p.sourcePlanner, script, prepared, integrationconfig.Settings{Options: prepared.Config}, p.route)
@@ -254,7 +254,7 @@ type shellPreparation struct {
 	settingsResolver *integrationconfig.SettingsResolver
 	failure          error
 	name             string
-	files            manifests.ConfigFiles
+	files            toolmanifest.ConfigFiles
 	route            route
 }
 
@@ -312,15 +312,15 @@ func (p shellPreparation) batch(ctx context.Context, batch scriptanalysis.Batch)
 			}
 			return preparation.Prepared{Skip: "its tool settings are invalid"}, nil
 		}
-		shell, implicit := script.RuntimeShell()
+		shellName, implicit := script.RuntimeShell()
 		_, directoryKnown := script.WorkingDirectory()
-		run := shellprofile.Run{
-			Shell:    shellprofile.Shell{Name: shell, Implicit: implicit, Registry: script.Interpreters, Platform: shellprofile.TargetArguments(script.Environment)},
+		run := shell.Run{
+			Shell:    shell.Shell{Name: shellName, Implicit: implicit, Registry: script.Interpreters, Platform: shell.TargetArguments(script.Environment)},
 			Settings: resolved.settings, SourcePlanner: p.sourcePlanner, ConfigFile: resolved.configFile,
 			Sources: p.route == routeProcess && directoryKnown, Engine: p.route == routeEngine,
 			Environment: script.Environment,
 		}
-		return shellprofile.PrepareRun(ctx, run, script.Text())
+		return shell.PrepareRun(ctx, run, script.Text())
 	}, failure
 }
 
@@ -359,7 +359,7 @@ func (p shellPreparation) scope(ctx context.Context, scope *scriptanalysis.Scope
 			return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, errEngineConfigFile)
 		}
 		if d := resolved.settings; d != nil && (len(d.ReadAccess.Directories) != 0 || d.ReadAccess.Enabled != nil && *d.ReadAccess.Enabled) {
-			return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, shellprofile.ErrNoSourceAccess)
+			return scopeSettings{}, fmt.Errorf("tools.%s.config: %w", p.name, shell.ErrNoSourceAccess)
 		}
 	case p.route == routeEmbedded || path == "":
 	default:
@@ -386,7 +386,7 @@ func (p shellPreparation) scope(ctx context.Context, scope *scriptanalysis.Scope
 func (p shellPreparation) input(ctx context.Context, script scriptanalysis.Unit) (preparation.Prepared, error) {
 	dialect := ""
 	if script.Input != nil {
-		dialect = shellprofile.LanguageDialect(script.Input.Site.Language)
+		dialect = shell.LanguageDialect(script.Input.Site.Language)
 		if dialect == "" {
 			return configuredInput(p.name, script)
 		}
@@ -405,7 +405,7 @@ func (p shellPreparation) input(ctx context.Context, script scriptanalysis.Unit)
 	if err != nil {
 		return preparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}
-	prepared, err := shellprofile.PrepareRun(ctx, shellprofile.Run{Input: true, Engine: true, Language: dialect, Settings: &settings, Environment: script.Environment, SourcePlanner: p.sourcePlanner}, script.Text())
+	prepared, err := shell.PrepareRun(ctx, shell.Run{Input: true, Engine: true, Language: dialect, Settings: &settings, Environment: script.Environment, SourcePlanner: p.sourcePlanner}, script.Text())
 	if err != nil {
 		return preparation.Prepared{}, fmt.Errorf("tools.%s.config: %w", p.name, err)
 	}
@@ -448,5 +448,5 @@ func (paths runPaths) context() configuration.PathContext {
 	if paths.configPath != "" && !configsource.IsRemoteAddress(paths.configPath) {
 		configDir = filepath.Dir(paths.configPath)
 	}
-	return configuration.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shellprofile.RunnerWorkspace(paths.workspace), ActionPath: shellprofile.RunnerActionPath(paths.actionPath)}
+	return configuration.PathContext{ConfigDir: configDir, GitDir: paths.workspace, Workspace: shell.RunnerWorkspace(paths.workspace), ActionPath: shell.RunnerActionPath(paths.actionPath)}
 }

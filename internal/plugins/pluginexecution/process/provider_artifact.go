@@ -7,28 +7,28 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
 // ReadProviderArtifact parses a distributed process-provider manifest. A standalone
 // JSON file uses a PATH command and inline transforms; OCI supplies blob layers.
-func ReadProviderArtifact(artifact *artifacts.Artifact) (manifests.Manifest, error) {
-	manifest, err := manifests.ParsePluginManifest(artifact.Bytes)
+func ReadProviderArtifact(artifact *artifacts.Artifact) (toolmanifest.Manifest, error) {
+	manifest, err := toolmanifest.ParsePluginManifest(artifact.Bytes)
 	if err != nil {
-		return manifests.Manifest{}, fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
+		return toolmanifest.Manifest{}, fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
 	}
-	if manifest.Transport != manifests.TransportProcess {
-		return manifests.Manifest{}, fmt.Errorf("plugin %s: tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", artifact.Info.Source, manifest.Rule.Name, manifest.Transport, artifacts.MediaTypeWasm)
+	if manifest.Transport != toolmanifest.TransportProcess {
+		return toolmanifest.Manifest{}, fmt.Errorf("plugin %s: tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", artifact.Info.Source, manifest.Rule.Name, manifest.Transport, artifacts.MediaTypeWasm)
 	}
 	if !artifacts.IsOCI(artifact.Info.Source) {
 		if len(manifest.Artifacts) != 0 {
-			return manifests.Manifest{}, errors.New("a standalone process provider cannot include executable artifacts; package its blob graph as OCI")
+			return toolmanifest.Manifest{}, errors.New("a standalone process provider cannot include executable artifacts; package its blob graph as OCI")
 		}
 		for _, transform := range manifest.Transforms() {
 			if transform != nil && transform.Digest != "" {
-				return manifests.Manifest{}, errors.New("a standalone process provider requires inline transforms; package digest-addressed programs as OCI")
+				return toolmanifest.Manifest{}, errors.New("a standalone process provider requires inline transforms; package digest-addressed programs as OCI")
 			}
 		}
 	}
@@ -43,9 +43,9 @@ func ValidateProviderArtifact(ctx context.Context, artifact *artifacts.Artifact,
 	if err != nil {
 		return err
 	}
-	var programs manifests.Programs
+	var programs toolmanifest.Programs
 	if artifacts.IsOCI(artifact.Info.Source) {
-		programs, err = manifests.LoadPrograms(manifest, func(digest string) ([]byte, error) {
+		programs, err = toolmanifest.LoadPrograms(manifest, func(digest string) ([]byte, error) {
 			return oci.Layer(ctx, artifact.Info.Source, strings.TrimPrefix(digest, "sha256:"), options)
 		})
 		if err != nil {
@@ -61,7 +61,7 @@ func ValidateProviderArtifact(ctx context.Context, artifact *artifacts.Artifact,
 // ValidateLocalProvider compiles a local provider manifest's schemas and jq
 // programs without resolving, probing or invoking its process entry.
 func ValidateLocalProvider(ctx context.Context, path string) error {
-	manifest, programs, err := manifests.ReadLocal(files.New(ctx, nil, nil), path)
+	manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func ValidateLocalProvider(ctx context.Context, path string) error {
 // provider manifest, local or distributed, is validated first; its process
 // entry is never resolved, probed or invoked.
 func InspectArtifact(ctx context.Context, source string, options artifacts.Options) (artifacts.ArtifactProvenance, error) {
-	if manifests.IsLocalManifest(source) {
+	if toolmanifest.IsLocalManifest(source) {
 		if err := ValidateLocalProvider(ctx, source); err != nil {
 			return artifacts.ArtifactProvenance{}, err
 		}
@@ -84,7 +84,7 @@ func InspectArtifact(ctx context.Context, source string, options artifacts.Optio
 	if err != nil {
 		return artifacts.ArtifactProvenance{}, err
 	}
-	if artifact.Info.Kind == artifacts.ProviderManifest && !manifests.IsLocalManifest(source) {
+	if artifact.Info.Kind == artifacts.ProviderManifest && !toolmanifest.IsLocalManifest(source) {
 		if err := ValidateProviderArtifact(ctx, artifact, options); err != nil {
 			return artifacts.ArtifactProvenance{}, err
 		}

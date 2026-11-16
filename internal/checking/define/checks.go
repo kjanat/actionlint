@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Checks are stateless checks of published workflow views. A nil callback
@@ -81,21 +81,21 @@ func NewChecksVisitor(rules configuration.RuleSet, name string, checks Checks) w
 
 func (r *checksVisitor) collect(input []reporting.StepFinding, job string) {
 	for _, d := range input {
-		finding := new(d.Finding)
-		if finding.Rule == "" {
-			finding.Rule = r.name
-		} else if descriptor, known := r.rules.FindRule(finding.Rule); known {
-			finding.Rule = descriptor.Name
+		item := new(d.Finding)
+		if item.Rule == "" {
+			item.Rule = r.name
+		} else if descriptor, known := r.rules.FindRule(item.Rule); known {
+			item.Rule = descriptor.Name
 		}
 		if d.Step.Present() {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: source.NilUnlessPresent(d.Step.Position())}
+			item.Owner = &finding.Owner{Job: job, Step: source.NilUnlessPresent(d.Step.Position())}
 			origin := d.Step.Origin(job)
-			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
+			item.IgnoreOrigin = &finding.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
 			if origin.HasPosition {
-				finding.IgnoreOrigin.StepPosition = &origin.Position
+				item.IgnoreOrigin.StepPosition = &origin.Position
 			}
 		}
-		r.Report(finding)
+		r.Report(item)
 	}
 }
 

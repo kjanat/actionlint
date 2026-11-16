@@ -20,7 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // ActionMetadataLookup supplies metadata to checks without exposing cache or resolver state.
@@ -92,8 +92,8 @@ func (d SourceDocument) Provenance() parsing.Provenance { return d.provenance }
 
 // NewResolver starts a document scope over shared repository metadata and takes
 // its own immutable copy of the source mappings.
-func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
-	return &Resolver{base: cache, sourceMappings: maps.Clone(mappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
+func NewResolver(cache *Cache, checkoutMappings map[string]string) *Resolver {
+	return &Resolver{base: cache, sourceMappings: maps.Clone(checkoutMappings), documents: &resolverDocuments{used: make(map[string]SourceDocument)}}
 }
 
 // SetRunners installs the workflow's runner knowledge before the resolver is
@@ -458,7 +458,7 @@ func (c *Resolver) ObserveCheckout(step workflows.Step) {
 	c.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: checkout, CaseInsensitive: c.caseInsensitive, Foreign: foreign}, previous))
 }
 
-func checkoutInput(inputs mapping.Mapping, name string) (string, bool) {
+func checkoutInput(inputs mappings.Mapping, name string) (string, bool) {
 	item := inputs.Lookup(name)
 	if item.State() == value.Missing {
 		return "", true

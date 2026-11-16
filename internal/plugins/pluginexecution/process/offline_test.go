@@ -5,13 +5,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestOfflineRunsNativeTool(t *testing.T) {
 	t.Parallel()
 	command := helperCommand(t, "echo")
-	backend, err := NewBackend(helperManifest(manifests.ProcessSpec{Entry: "helper", Stdin: manifests.StdinSource, Output: echoOutput}), command, Options{})
+	backend, err := NewBackend(helperManifest(toolmanifest.ProcessSpec{Entry: "helper", Stdin: toolmanifest.StdinSource, Output: echoOutput}), command, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

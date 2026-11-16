@@ -17,14 +17,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	networkpolicy "actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
@@ -87,13 +87,13 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			loaded.ScriptEngines = append(loaded.ScriptEngines, ScriptEngineRegistration{engine, engine.ScriptDescriptor()})
 			continue
 		}
-		network := sources.NetworkGrants[path]
-		if manifests.IsLocalManifest(path) {
+		networkPolicy := sources.NetworkGrants[path]
+		if toolmanifest.IsLocalManifest(path) {
 			if sources.DisableTools {
 				continue
 			}
 			// A local manifest names a command found on PATH; nothing is fetched.
-			manifest, programs, err := manifests.ReadLocal(files.New(ctx, nil, nil), path)
+			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
@@ -112,13 +112,13 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			var err error
 			resolveCtx := ctx
 			if sources.DisableTools {
-				options := networkpolicy.Settings(ctx)
+				options := network.Settings(ctx)
 				options.Offline, options.WarmCache = true, false
-				resolveCtx, _ = networkpolicy.WithSession(ctx, options)
+				resolveCtx, _ = network.WithSession(ctx, options)
 			}
 			artifact, err = artifacts.Resolve(resolveCtx, path, sources.ArtifactOptions(path))
 			if err != nil {
-				if sources.DisableTools && networkpolicy.OnlyOffline(err) {
+				if sources.DisableTools && network.OnlyOffline(err) {
 					continue
 				}
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
@@ -139,7 +139,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			}
 			// configure fetches the executable and transform programs after
 			// the --allow-config-processes check.
-			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: process.ProviderFiles{Manifest: manifest, Source: path}, Network: network, Repository: sources.Configured})
+			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: process.ProviderFiles{Manifest: manifest, Source: path}, Network: networkPolicy, Repository: sources.Configured})
 			continue
 		}
 		// Metadata is read only when --tool or --no-tool named an id, so

@@ -6,16 +6,16 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // shellcheckManifest is the bundled ShellCheck provider.
-var shellcheckManifest = func() pluginmanifests.Manifest {
-	manifests, err := pluginmanifests.Bundled()
+var shellcheckManifest = func() toolmanifest.Manifest {
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		panic(err)
 	}
-	index := slices.IndexFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == "shellcheck" })
+	index := slices.IndexFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == "shellcheck" })
 	if index < 0 {
 		panic("no bundled shellcheck provider")
 	}

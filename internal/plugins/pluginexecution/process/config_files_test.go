@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestConfigFile(t *testing.T) {
@@ -31,13 +31,13 @@ func TestConfigFile(t *testing.T) {
 	t.Setenv("USERPROFILE", home)
 	var recorded []string
 	reader := files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })
-	files := manifests.ConfigFiles{Names: []string{".shellcheckrc", "shellcheckrc"}, Search: []manifests.ConfigSearch{manifests.ConfigSearchUpward, manifests.ConfigSearchHome}}
+	files := toolmanifest.ConfigFiles{Names: []string{".shellcheckrc", "shellcheckrc"}, Search: []toolmanifest.ConfigSearch{toolmanifest.ConfigSearchUpward, toolmanifest.ConfigSearchHome}}
 
 	found, err := ConfigFile(reader, files, "", nested)
 	if err != nil || found != upward || !slices.Contains(recorded, upward) {
 		t.Fatalf("upward: %q %v recorded=%q", found, err, recorded)
 	}
-	files.Search = []manifests.ConfigSearch{manifests.ConfigSearchHome}
+	files.Search = []toolmanifest.ConfigSearch{toolmanifest.ConfigSearchHome}
 	// Windows tools keep per-user files in the configuration directory.
 	wantHome := homeFile
 	if runtime.GOOS == "windows" {

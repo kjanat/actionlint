@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
@@ -58,17 +58,17 @@ func Complete(content string, offset int) []Item {
 	if w.Present() {
 		for _, event := range w.On {
 			if dispatch, ok := event.(*definition.WorkflowDispatchEvent); ok && dispatch != nil {
-				var inputs types.ObjectBuilder
+				var inputs exprtypes.ObjectBuilder
 				for name, input := range dispatch.Inputs {
 					if input == nil {
 						continue
 					}
-					ty := types.StringType()
+					ty := exprtypes.StringType()
 					switch input.Type {
 					case definition.WorkflowDispatchEventInputTypeBoolean:
-						ty = types.BoolType()
+						ty = exprtypes.BoolType()
 					case definition.WorkflowDispatchEventInputTypeNumber:
-						ty = types.NumberType()
+						ty = exprtypes.NumberType()
 					case definition.WorkflowDispatchEventInputTypeNone,
 						definition.WorkflowDispatchEventInputTypeString,
 						definition.WorkflowDispatchEventInputTypeChoice,

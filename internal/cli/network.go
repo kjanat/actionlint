@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	"actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 )
 
 func (a *commandApp) prepareNetwork() error {
@@ -23,7 +23,7 @@ func (a *commandApp) prepareNetwork() error {
 
 func (a *commandApp) reportWarning(message string) {
 	if a.errorJSON || a.jsonOutput() {
-		_ = streams.WriteJSON(a.streams.Stderr, struct {
+		_ = commandio.WriteJSON(a.streams.Stderr, struct {
 			Warning string `json:"warning"`
 		}{message})
 		return

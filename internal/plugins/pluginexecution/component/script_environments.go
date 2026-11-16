@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 )
 
-const ScriptEnvironmentsInterface = environmentbind.InterfaceName
+const ScriptEnvironmentsInterface = environments.InterfaceName
 
 type environmentContextKey struct{}
 
@@ -19,34 +19,34 @@ type (
 
 type scriptEnvironments struct{}
 
-func (scriptEnvironments) ForScript(ctx context.Context, occurrence string) (environmentbind.ResultListEnvironmentString, error) {
+func (scriptEnvironments) ForScript(ctx context.Context, occurrence string) (environments.ResultListEnvironmentString, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	scope, _ := ctx.Value(environmentContextKey{}).(documentEnvironmentNames)
-	environments, ok := scope[occurrence]
+	scriptEnvs, ok := scope[occurrence]
 	if !ok {
-		return environmentbind.ResultListEnvironmentStringErr{Value: "script occurrence is outside this analysis call"}, nil
+		return environments.ResultListEnvironmentStringErr{Value: "script occurrence is outside this analysis call"}, nil
 	}
-	return environmentResult(environments)
+	return environmentResult(scriptEnvs)
 }
 
-func (scriptEnvironments) Current(ctx context.Context) (environmentbind.ResultListEnvironmentString, error) {
+func (scriptEnvironments) Current(ctx context.Context) (environments.ResultListEnvironmentString, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	environments, available := ctx.Value(environmentContextKey{}).(snippetEnvironmentNames)
+	scriptEnvs, available := ctx.Value(environmentContextKey{}).(snippetEnvironmentNames)
 	if !available {
-		return environmentbind.ResultListEnvironmentStringErr{Value: "no snippet environment is available in this call"}, nil
+		return environments.ResultListEnvironmentStringErr{Value: "no snippet environment is available in this call"}, nil
 	}
-	return environmentResult(environments)
+	return environmentResult(scriptEnvs)
 }
 
 // scriptEnvironmentBytes includes string bytes and record storage, bounding
 // responses even when declaration keys are empty strings.
-func scriptEnvironmentBytes(environments []checkinputs.ScriptEnvironment) uint64 {
+func scriptEnvironmentBytes(scriptEnvs []checkinputs.ScriptEnvironment) uint64 {
 	var size uint64
-	for _, environment := range environments {
+	for _, environment := range scriptEnvs {
 		size += 64
 		for _, name := range environment.Names {
 			size += 32 + uint64(len(name.Name))
@@ -65,19 +65,19 @@ func environmentEnum[T fmt.Stringer](name string, cases []T) (T, error) {
 	return zero, fmt.Errorf("unsupported environment value %q", name)
 }
 
-func environmentResult(environments []checkinputs.ScriptEnvironment) (environmentbind.ResultListEnvironmentString, error) {
-	if scriptEnvironmentBytes(environments) > maxScriptResultBytes {
-		return environmentbind.ResultListEnvironmentStringErr{Value: "script environment response exceeds 8 MiB"}, nil
+func environmentResult(scriptEnvs []checkinputs.ScriptEnvironment) (environments.ResultListEnvironmentString, error) {
+	if scriptEnvironmentBytes(scriptEnvs) > maxScriptResultBytes {
+		return environments.ResultListEnvironmentStringErr{Value: "script environment response exceeds 8 MiB"}, nil
 	}
-	result := make([]environmentbind.Environment, len(environments))
-	for i, environment := range environments {
-		os, err := environmentEnum(string(environment.OperatingSystem), []environmentbind.OperatingSystem{
-			environmentbind.OperatingSystemLinux, environmentbind.OperatingSystemMacos, environmentbind.OperatingSystemWindows,
+	result := make([]environments.Environment, len(scriptEnvs))
+	for i, environment := range scriptEnvs {
+		os, err := environmentEnum(string(environment.OperatingSystem), []environments.OperatingSystem{
+			environments.OperatingSystemLinux, environments.OperatingSystemMacos, environments.OperatingSystemWindows,
 		})
 		if err != nil {
 			return nil, err
 		}
-		comparisons := []environmentbind.NameComparison{environmentbind.NameComparisonSensitive, environmentbind.NameComparisonInsensitive, environmentbind.NameComparisonUnknown}
+		comparisons := []environments.NameComparison{environments.NameComparisonSensitive, environments.NameComparisonInsensitive, environments.NameComparisonUnknown}
 		merge, err := environmentEnum(string(environment.MergeComparison), comparisons)
 		if err != nil {
 			return nil, err
@@ -86,19 +86,19 @@ func environmentResult(environments []checkinputs.ScriptEnvironment) (environmen
 		if err != nil {
 			return nil, err
 		}
-		result[i] = environmentbind.Environment{OperatingSystem: os, MergeComparison: merge, LookupComparison: lookup, UnknownNames: environment.UnknownNames, Names: make([]environmentbind.VariableName, len(environment.Names))}
+		result[i] = environments.Environment{OperatingSystem: os, MergeComparison: merge, LookupComparison: lookup, UnknownNames: environment.UnknownNames, Names: make([]environments.VariableName, len(environment.Names))}
 		for j, variable := range environment.Names {
-			scope, err := environmentEnum(string(variable.Scope), []environmentbind.EnvironmentScope{
-				environmentbind.EnvironmentScopeWorkflow, environmentbind.EnvironmentScopeJob, environmentbind.EnvironmentScopeCaller,
-				environmentbind.EnvironmentScopeStep, environmentbind.EnvironmentScopeRuntime,
+			scope, err := environmentEnum(string(variable.Scope), []environments.EnvironmentScope{
+				environments.EnvironmentScopeWorkflow, environments.EnvironmentScopeJob, environments.EnvironmentScopeCaller,
+				environments.EnvironmentScopeStep, environments.EnvironmentScopeRuntime,
 			})
 			if err != nil {
 				return nil, err
 			}
-			result[i].Names[j] = environmentbind.VariableName{Name: variable.Name, Scope: scope, CaseKnown: variable.CaseKnown}
+			result[i].Names[j] = environments.VariableName{Name: variable.Name, Scope: scope, CaseKnown: variable.CaseKnown}
 		}
 	}
-	return environmentbind.ResultListEnvironmentStringOk{Value: result}, nil
+	return environments.ResultListEnvironmentStringOk{Value: result}, nil
 }
 
 func documentEnvironments(input checkinputs.AnalyzerInput) documentEnvironmentNames {

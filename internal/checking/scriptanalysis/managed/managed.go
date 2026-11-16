@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
 )
@@ -130,7 +130,7 @@ func withAnalyzer(base contract.Registration, p backends.Provider, guest checkin
 type documentRoute struct {
 	settingsResolver *integrationconfig.SettingsResolver
 	name             string
-	capabilities     manifests.Capabilities
+	capabilities     toolmanifest.Capabilities
 }
 
 // enabled reports whether configuration leaves the provider on.

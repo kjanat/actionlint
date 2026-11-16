@@ -19,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
@@ -95,7 +95,7 @@ type SourceOverlay struct {
 }
 
 // Check manages the analysis runtime and returns findings collected before any error.
-func Check(ctx context.Context, options Options, input inputmodel.Request) (result *report.Analysis, err error) {
+func Check(ctx context.Context, options Options, input checkrequest.Request) (result *report.Analysis, err error) {
 	options, err = prepareEnforcedLifecycle(ctx, options)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		request.RemoteWorkflows, _ = options.RemoteActions.(reusableworkflows.Provider)
 	}
 	request.Repository = options.Repository
-	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
+	request.DiskSources = input.Kind == checkrequest.Files || input.Kind == checkrequest.Repository
 
 	if options.LoadScriptEngine != nil {
 		request.LoadScriptEngine = engines.LoadModuleBackend
@@ -230,7 +230,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if err != nil {
 		return nil, err
 	}
-	if input.Kind == inputmodel.Prepared {
+	if input.Kind == checkrequest.Prepared {
 		request.Sources, request.WorkingDir = slices.Clone(input.Sources), options.WorkingDir
 		policy, err := configuration.LoadNetworkPolicy(ctx, options.ConfigConnections)
 		if err != nil {
@@ -284,18 +284,18 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	}
 	var selection *workspace.Selection
 	switch input.Kind {
-	case inputmodel.Files:
+	case checkrequest.Files:
 		if input.Selection != nil {
 			selection, err = session.SelectedFiles(*input.Selection, nil)
 		} else {
 			selection, err = session.Files(input.Paths, nil)
 		}
-	case inputmodel.Stdin:
+	case checkrequest.Stdin:
 		if input.Reader == nil {
 			return nil, errors.New("stdin source requires a reader")
 		}
 		selection, err = session.ReadStdin(input.Reader, input.NormalizePath)
-	case inputmodel.Repository:
+	case checkrequest.Repository:
 		if input.Selection != nil && len(input.Selection.Files) != 0 {
 			selection, err = session.SelectedFiles(*input.Selection, nil)
 			break
@@ -319,7 +319,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		if selection != nil {
 			selection.Inputs = slices.Compact(slices.Sorted(slices.Values(append(selection.Inputs, listed...))))
 		}
-	case inputmodel.Prepared:
+	case checkrequest.Prepared:
 		// Prepared sources were analyzed above and never reach selection.
 		fallthrough
 	default:
@@ -359,7 +359,7 @@ func emptyRepository(ctx context.Context, directory string) (bool, []string, err
 // It does not discover configuration or read the supplied source paths.
 func Analyze(ctx context.Context, options Options, sources []workspace.InputFile) (*report.Analysis, error) {
 	ctx, _ = accounting.TrackRequests(ctx)
-	return Check(ctx, options, inputmodel.Request{Kind: inputmodel.Prepared, Sources: sources})
+	return Check(ctx, options, checkrequest.Request{Kind: checkrequest.Prepared, Sources: sources})
 }
 
 func analyzePrepared(ctx context.Context, request analysisRequest) (*report.Analysis, error) {

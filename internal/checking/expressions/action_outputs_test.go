@@ -3,7 +3,7 @@ package expressions
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -19,7 +19,7 @@ func TestActionOutputInferenceUsesOneDefinition(t *testing.T) {
 			return metadata, nil
 		}}, Options{})
 		outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: reference}))
-		if result, exists := outputs.Property("result"); !exists || result.Kind() != types.KindString {
+		if result, exists := outputs.Property("result"); !exists || result.Kind() != exprtypes.KindString {
 			t.Fatalf("%s: missing result output: %v", reference, outputs)
 		}
 		if _, exists := outputs.Property("undeclared"); exists || !outputs.IsStrict() {
@@ -32,7 +32,7 @@ func TestUnavailableActionOutputsAreUnknown(t *testing.T) {
 	t.Parallel()
 	checker := New(Dependencies{}, Options{})
 	outputs := checker.getActionOutputsType(ownedStringFixture(&definition.String{Value: "./missing"}))
-	if mapped, known := outputs.Mapped(); !known || mapped.Kind() != types.KindString {
+	if mapped, known := outputs.Mapped(); !known || mapped.Kind() != exprtypes.KindString {
 		t.Fatalf("unavailable metadata was treated as no outputs: %v", outputs)
 	}
 }

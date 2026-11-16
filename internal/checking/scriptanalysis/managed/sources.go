@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
@@ -26,7 +26,7 @@ import (
 
 type pluginSourceMount struct {
 	host, alias, guest string
-	files              *inputfiles.BoundedFS
+	files              *files.BoundedFS
 }
 
 type pluginSourceFiles struct {
@@ -153,10 +153,10 @@ func sourceAuthorities(script scriptanalysis.Unit, settings integrationconfig.Se
 }
 
 func (r documentRunner) sourceFiles(ctx context.Context, script scriptanalysis.Unit, resources []checkinputs.ToolResourceRequest) (result *pluginSourceFiles, failure error) {
-	files := &pluginSourceFiles{}
-	budget := &inputfiles.SnapshotBudget{}
+	pluginFiles := &pluginSourceFiles{}
+	budget := &files.SnapshotBudget{}
 	if len(resources) == 0 {
-		return files, nil
+		return pluginFiles, nil
 	}
 	workingDirectory, directoryKnown := script.WorkingDirectory()
 	if script.Scope == nil || !directoryKnown {
@@ -237,12 +237,12 @@ func (r documentRunner) sourceFiles(ctx context.Context, script scriptanalysis.U
 		if !info.IsDir() {
 			return nil
 		}
-		snapshot, err := inputfiles.NewSnapshotAt(ctx, selected.root, relative, script.Scope.Reader, budget)
+		snapshot, err := files.NewSnapshotAt(ctx, selected.root, relative, script.Scope.Reader, budget)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR) {
 			return fmt.Errorf("tool source directory %q: %w", host, err)
 		}
 		if snapshot != nil {
-			files.mounts = append(files.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
+			pluginFiles.mounts = append(pluginFiles.mounts, pluginSourceMount{host: resolved, alias: host, guest: guest, files: snapshot})
 		}
 		return nil
 	}
@@ -250,37 +250,37 @@ func (r documentRunner) sourceFiles(ctx context.Context, script scriptanalysis.U
 	for _, resource := range resources {
 		if resource.Kind == checkinputs.ToolWorkspace {
 			if err := add(workspace, "/workspace"); err != nil {
-				return nil, errors.Join(err, files.close())
+				return nil, errors.Join(err, pluginFiles.close())
 			}
 			continue
 		}
 		if resource.Kind != checkinputs.ToolDirectory {
-			return nil, errors.Join(errors.New("unknown source resource kind"), files.close())
+			return nil, errors.Join(errors.New("unknown source resource kind"), pluginFiles.close())
 		}
 		source := resource.Path
 		source, err := paths.Expand(source)
 		if err != nil {
-			return nil, errors.Join(err, files.close())
+			return nil, errors.Join(err, pluginFiles.close())
 		}
 		source = sourceName(source, directory)
 		guest := fmt.Sprintf("/sources/%d", directoryIndex)
 		directoryIndex++
 		if err := add(source, guest); err != nil {
-			return nil, errors.Join(err, files.close())
+			return nil, errors.Join(err, pluginFiles.close())
 		}
 	}
 	matchedRootLength := -1
-	for _, mount := range files.mounts {
+	for _, mount := range pluginFiles.mounts {
 		relative, err := filepath.Rel(mount.host, directory)
 		if err == nil && filepath.IsLocal(relative) && len(mount.host) > matchedRootLength {
-			files.directory = path.Join(mount.guest, filepath.ToSlash(relative))
+			pluginFiles.directory = path.Join(mount.guest, filepath.ToSlash(relative))
 			matchedRootLength = len(mount.host)
 		}
 	}
-	if files.directory == "" {
-		return nil, errors.Join(errors.New("tool working directory is outside the configured read-access directories"), files.close())
+	if pluginFiles.directory == "" {
+		return nil, errors.Join(errors.New("tool working directory is outside the configured read-access directories"), pluginFiles.close())
 	}
-	return files, nil
+	return pluginFiles, nil
 }
 
 func (f *pluginSourceFiles) configure(input *checkinputs.AnalyzerInput) {

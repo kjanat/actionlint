@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
@@ -169,7 +169,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, line, col int, c
 		// Metadata validation reports unavailable contexts. Their property types are unknown.
 		for name := range contexts.BuiltinGlobalVariableTypes {
 			if !slices.Contains(available, name) {
-				c.SetContextType(name, types.AnyType())
+				c.SetContextType(name, exprtypes.AnyType())
 			}
 		}
 	}
@@ -274,7 +274,7 @@ func (rule *Checker) safeScriptStatusSelector(node syntax.Node) bool {
 	default:
 		return false
 	}
-	var properties *types.ObjectType
+	var properties *exprtypes.ObjectType
 	switch strings.ToLower(context) {
 	case "steps":
 		properties = rule.stepsTy
@@ -298,7 +298,7 @@ func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bo
 	expr, err := p.ParseExpression(l)
 	if err != nil {
 		rule.syntaxError(err, line, col)
-		return typecheck.ExpressionCheckResult{Type: types.AnyType()}, l.Offset(), false
+		return typecheck.ExpressionCheckResult{Type: exprtypes.AnyType()}, l.Offset(), false
 	}
 	return rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey), l.Offset(), true
 }

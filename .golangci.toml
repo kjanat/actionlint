@@ -90,7 +90,7 @@ deny  = [
 ]
 
 [linters.settings.depguard.rules.tool-providers]
-files = ["**/internal/model/manifests/**", "!$test"]
+files = ["**/internal/model/toolmanifest/**", "!$test"]
 deny  = [
   { pkg = "github.com/kjanat/wazero", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },
   { pkg = "github.com/kjanat/wacogo", desc = "providers are runtime-free; WebAssembly loads behind tools.Context.LoadEngine" },

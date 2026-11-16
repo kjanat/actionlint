@@ -1,7 +1,7 @@
 package functions
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
@@ -14,7 +14,7 @@ func inspectCase(arguments []ParameterMatch, inspection *CallInspection) {
 		}
 		actual := argument.Source
 		if argument.State == ArgumentKnown {
-			actual = types.TypeOfJSONValue(argument.Value)
+			actual = exprtypes.TypeOfJSONValue(argument.Value)
 		}
 		inspection.addProblem(InvalidCasePredicate{Index: index, Actual: actual}, argument.Demand)
 	}

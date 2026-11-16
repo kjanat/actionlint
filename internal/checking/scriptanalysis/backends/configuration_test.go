@@ -6,8 +6,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/mask"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/python"
 )
@@ -22,10 +22,10 @@ func TestConfigurationTransformsReachEachOptionsOnlyProfile(t *testing.T) {
 	for _, profile := range []string{mask.ID, python.ID} {
 		t.Run(profile, func(t *testing.T) {
 			t.Parallel()
-			manifest := manifests.Manifest{
+			manifest := toolmanifest.Manifest{
 				Rule: rule.Descriptor{Name: "example"}, Preparation: profile,
 				ConfigSchema:           json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"limit":{"type":"integer"}}}`),
-				ConfigurationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `{options:{threshold:.config.limit}}`},
+				ConfigurationTransform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `{options:{threshold:.config.limit}}`},
 			}
 			prepared, err := newPreparation(manifest, routeEngine, nil).input(t.Context(), script)
 			if err != nil {

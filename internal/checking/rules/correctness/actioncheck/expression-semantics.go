@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
@@ -23,11 +23,11 @@ func expressionSemanticFindings(expressions []actionmeta.ParsedExpression, field
 	for _, expression := range expressions {
 		checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 		checker.SetContextAvailability(actionmeta.AllowedContexts(field))
-		contexts.MergeInputTypes(checker, types.NewMapObjectType(types.StringType()))
+		contexts.MergeInputTypes(checker, exprtypes.NewMapObjectType(exprtypes.StringType()))
 		// Output names and values are unknown here. Each output is a string;
 		// the outputs property is an object.
-		step := outputs.StepType(types.NewMapObjectType(types.StringType()))
-		checker.SetContextType("steps", types.NewMapObjectType(step.Type()).Type())
+		step := outputs.StepType(exprtypes.NewMapObjectType(exprtypes.StringType()))
+		checker.SetContextType("steps", exprtypes.NewMapObjectType(step.Type()).Type())
 		evaluation := evaluate.EvaluateSubexpressions(expression.Node)
 		result := checker.CheckResult(evaluation)
 		semantic := result.Findings

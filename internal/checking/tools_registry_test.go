@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestIndependentProcessTool(t *testing.T) {
@@ -25,16 +25,16 @@ func TestIndependentProcessTool(t *testing.T) {
 	register := func(environment ...string) contract.Registration {
 		t.Helper()
 		registration, err := backends.RegisterProvider(backends.Provider{
-			Manifest: manifests.Manifest{
-				SchemaVersion: manifests.SchemaVersion, ID: "example.com/example-script", Version: "1", Role: manifests.RoleScript,
-				Rule: rule.Descriptor{Name: "example-script", Description: "An independent provider", Category: "correctness", Maturity: "stable"}, Scope: manifests.ScopeSource,
-				Transport: manifests.TransportProcess, Selectors: manifests.Selectors{Shells: []string{"python"}},
-				Process: &manifests.ProcessSpec{
-					Entry: "example-script", Stdin: manifests.StdinRequest,
+			Manifest: toolmanifest.Manifest{
+				SchemaVersion: toolmanifest.SchemaVersion, ID: "example.com/example-script", Version: "1", Role: toolmanifest.RoleScript,
+				Rule: rule.Descriptor{Name: "example-script", Description: "An independent provider", Category: "correctness", Maturity: "stable"}, Scope: toolmanifest.ScopeSource,
+				Transport: toolmanifest.TransportProcess, Selectors: toolmanifest.Selectors{Shells: []string{"python"}},
+				Process: &toolmanifest.ProcessSpec{
+					Entry: "example-script", Stdin: toolmanifest.StdinRequest,
 					// The child runs scrubbed; the test binary needs a temporary directory.
 					EnvPassthrough: []string{"TMPDIR", "TEMP", "TMP"},
-					Config:         manifests.ConfigRendering{Render: manifests.RenderJSONStdin},
-					Output:         manifests.Output{Format: manifests.FormatEnvelope},
+					Config:         toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin},
+					Output:         toolmanifest.Output{Format: toolmanifest.FormatEnvelope},
 				},
 			},
 			Selection: backends.Selection{Process: &hostprocess.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},

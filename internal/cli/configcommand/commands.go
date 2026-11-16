@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
@@ -51,7 +51,7 @@ func WritePath(out io.Writer, req PathOptions) error {
 		return err
 	}
 	if req.JSON {
-		return commandstreams.WriteJSON(out, map[string]string{"path": path})
+		return commandio.WriteJSON(out, map[string]string{"path": path})
 	}
 	if path != "" {
 		_, err = fmt.Fprintln(out, path)
@@ -65,7 +65,7 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 		return err
 	}
 	if req.JSON {
-		return commandstreams.WriteJSON(out, struct {
+		return commandio.WriteJSON(out, struct {
 			Path     string                 `json:"path"`
 			Valid    bool                   `json:"valid"`
 			Warnings []configreport.Warning `json:"warnings,omitempty"`
@@ -114,7 +114,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 		return err
 	}
 	if req.JSON {
-		return commandstreams.WriteJSON(out, inspection)
+		return commandio.WriteJSON(out, inspection)
 	}
 	encoder := yaml.NewEncoder(out)
 	encoder.SetIndent(2)
@@ -127,7 +127,7 @@ func WriteShow(ctx context.Context, out io.Writer, req ShowOptions, acquisition 
 }
 
 // Run migrates the selected configuration.
-func (req MigrateOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition pluginacquisition.Settings) (int, error) {
+func (req MigrateOptions) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Settings) (int, error) {
 	path, err := configuration.SelectedPath(req.Config)
 	if err != nil {
 		return 0, err
@@ -150,7 +150,7 @@ func (req MigrateOptions) Run(ctx context.Context, streams commandstreams.Stream
 		}
 	}
 	if req.JSON {
-		err = commandstreams.WriteJSON(streams.Stdout, struct {
+		err = commandio.WriteJSON(streams.Stdout, struct {
 			Path    string   `json:"path"`
 			Changed bool     `json:"changed"`
 			Content string   `json:"content"`

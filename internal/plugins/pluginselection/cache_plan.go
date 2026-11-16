@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
@@ -36,14 +36,14 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 	}
 	plan := CachePlan{Directory: directory, Artifacts: []string{}}
 	paths := slices.Clone(s.Paths)
-	add := func(backend *toolconfig.Backend) {
+	add := func(backend *tools.Backend) {
 		if module, ok := backend.Wasm(); ok {
 			paths = append(paths, module.Path())
 		}
 	}
-	addTools := func(tools configuration.ToolsConfig) {
-		for _, name := range slices.Sorted(maps.Keys(tools)) {
-			add(tools[name].Backend)
+	addTools := func(toolsConfig configuration.ToolsConfig) {
+		for _, name := range slices.Sorted(maps.Keys(toolsConfig)) {
+			add(toolsConfig[name].Backend)
 		}
 	}
 	for _, cfg := range s.Configurations {

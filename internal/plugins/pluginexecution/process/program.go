@@ -5,13 +5,13 @@ import (
 	"errors"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // materializeProgram writes exact verified source into a new private directory.
 // Nothing is shared between invocations; cleanup also handles Windows read-only
 // attributes after the interpreter has terminated.
-func materializeProgram(ctx context.Context, program manifests.InlineProgram) (path string, cleanup func() error, err error) {
+func materializeProgram(ctx context.Context, program toolmanifest.InlineProgram) (path string, cleanup func() error, err error) {
 	if err := ctx.Err(); err != nil {
 		return "", nil, err
 	}

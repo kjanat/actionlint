@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestFileRequestsUseProcessDirectoryWithoutMutatingPaths(t *testing.T) {
@@ -39,7 +39,7 @@ func TestFileRequestsUseProcessDirectoryWithoutMutatingPaths(t *testing.T) {
 					}
 					return []byte(workflow), nil
 				}, SkipProjectConfig: true,
-			}, input.Request{Kind: input.Files, Paths: paths})
+			}, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 				t.Fatalf("result=%+v err=%v", result, err)
 			}
@@ -58,7 +58,7 @@ func TestStdinRequestUsesReaderWithoutReadingAFile(t *testing.T) {
 			t.Fatalf("stdin requested a filesystem read: %s", path)
 			return nil, nil
 		},
-	}, input.Request{Kind: input.Stdin, Name: "<stdin>", Reader: strings.NewReader(workflow)})
+	}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "<stdin>", Reader: strings.NewReader(workflow)})
 	if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
@@ -100,7 +100,7 @@ func TestRepositoryRequestsUseProcessDirectoryOrDefaultToWorkingDirectory(t *tes
 			}
 			result, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: workingDir, SkipProjectConfig: true,
-			}, input.Request{Kind: input.Repository, Directory: directory})
+			}, checkrequest.Request{Kind: checkrequest.Repository, Directory: directory})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) != 0 {
 				t.Fatalf("result=%+v err=%v", result, err)
 			}

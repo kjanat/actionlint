@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestExecutableBitNumericFormatCheckout(t *testing.T) {
@@ -36,7 +36,7 @@ jobs:
 			session := checking.Options{WorkingDir: root}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{file}})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{file}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	"actionlint.kjanat.dev/v2/internal/cli/streams"
 )
 
 type commandResultWriter struct {
@@ -65,7 +65,7 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 			break
 		}
 		w.pending = rest
-		if err := streams.WriteJSON(w.out, struct {
+		if err := commandio.WriteJSON(w.out, struct {
 			Log string `json:"log"`
 		}{line}); err != nil {
 			return 0, err
@@ -97,10 +97,10 @@ func (a *commandApp) reportError(err error) int {
 					result.AddConfiguration(config)
 				}
 			}
-			_ = streams.WriteJSON(a.streams.Stderr, result)
+			_ = commandio.WriteJSON(a.streams.Stderr, result)
 			return status
 		}
-		_ = streams.WriteJSON(a.streams.Stderr, struct {
+		_ = commandio.WriteJSON(a.streams.Stderr, struct {
 			Error    string `json:"error"`
 			ExitCode int    `json:"exit_code"`
 		}{err.Error(), status})

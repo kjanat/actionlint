@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-func bundledManifest(t *testing.T, name string) pluginmanifests.Manifest {
+func bundledManifest(t *testing.T, name string) toolmanifest.Manifest {
 	t.Helper()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func bundledManifest(t *testing.T, name string) pluginmanifests.Manifest {
 		}
 	}
 	t.Fatalf("no bundled provider %s", name)
-	return pluginmanifests.Manifest{}
+	return toolmanifest.Manifest{}
 }
 
 func TestRenderArgs(t *testing.T) {

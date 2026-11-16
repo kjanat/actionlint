@@ -5,7 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -20,9 +20,9 @@ var RunnerLabelRule = &define.Rule{
 	Recommended:  true,
 	Help:         "Correct the runner label or declare repository-specific labels in repository.runners.",
 	Checks: func(c define.RuleInputs) define.Checks {
-		labels := runnerlang.LabelSet{}
+		labels := runners.LabelSet{}
 		if known, available := configuration.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
-			labels = runnerlang.KnownLabels(known.Values())
+			labels = runners.KnownLabels(known.Values())
 		}
 		return RunnerLabelChecks(c.Runners, labels)
 	},
@@ -30,14 +30,14 @@ var RunnerLabelRule = &define.Rule{
 
 // RunnerLabelChecks reports prepared runner rejections. Without prepared knowledge,
 // it checks labels against the supplied repository label set.
-func RunnerLabelChecks(runners *runnerlang.Knowledge, labels runnerlang.LabelSet) define.Checks {
+func RunnerLabelChecks(knownRunners *runners.Knowledge, labels runners.LabelSet) define.Checks {
 	return define.Checks{
 		Job: func(job workflows.Job) []reporting.StepFinding {
 			var rejections []runnerapi.Rejection
-			if runners != nil {
-				rejections = runners.Job(job).Rejections
+			if knownRunners != nil {
+				rejections = knownRunners.Job(job).Rejections
 			} else {
-				rejections = runnerlang.LabelRejections(job, labels)
+				rejections = runners.LabelRejections(job, labels)
 			}
 			findings := make([]reporting.StepFinding, 0, len(rejections))
 			for _, rejection := range rejections {

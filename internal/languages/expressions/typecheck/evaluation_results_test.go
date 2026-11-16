@@ -3,9 +3,9 @@ package typecheck
 import (
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
@@ -31,7 +31,7 @@ func TestTypeCheckingConsumesSuppliedEvaluation(t *testing.T) {
 	}
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	result := checker.CheckResult(suppliedEvaluation{expression: root, result: values.EvaluationResult{State: values.EvaluationKnown, Value: false}})
-	if !result.Valid || result.Type.Kind() != types.KindBool || result.Evaluation.Value != false || result.Call == nil || result.Call.ReturnDomain != functions.ReturnDomainContainsValue {
+	if !result.Valid || result.Type.Kind() != exprtypes.KindBool || result.Evaluation.Value != false || result.Call == nil || result.Call.ReturnDomain != functions.ReturnDomainContainsValue {
 		t.Fatalf("type checking replaced the supplied result: %+v", result)
 	}
 }

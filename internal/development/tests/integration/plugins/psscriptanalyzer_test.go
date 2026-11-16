@@ -13,15 +13,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 const psscriptanalyzerExample = "../../../../../plugins/examples/psscriptanalyzer"
 
-func loadPSScriptAnalyzer(t *testing.T) (manifests.Manifest, manifests.Programs) {
+func loadPSScriptAnalyzer(t *testing.T) (toolmanifest.Manifest, toolmanifest.Programs) {
 	t.Helper()
-	manifest, programs, err := manifests.ReadLocal(files.New(t.Context(), nil, nil), filepath.Join(psscriptanalyzerExample, "provider.json"))
+	manifest, programs, err := toolmanifest.ReadLocal(files.New(t.Context(), nil, nil), filepath.Join(psscriptanalyzerExample, "provider.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

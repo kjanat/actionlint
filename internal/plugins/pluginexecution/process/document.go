@@ -20,8 +20,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -34,8 +34,8 @@ type DocumentChecker struct {
 	directory  bool
 }
 
-func NewDocumentAnalyzer(manifest manifests.Manifest, command *hostprocess.Command, options Options) (*DocumentChecker, error) {
-	if manifest.Role != manifests.RoleDocument || manifest.Transport != manifests.TransportProcess || manifest.Preparation != "generic" {
+func NewDocumentAnalyzer(manifest toolmanifest.Manifest, command *hostprocess.Command, options Options) (*DocumentChecker, error) {
+	if manifest.Role != toolmanifest.RoleDocument || manifest.Transport != toolmanifest.TransportProcess || manifest.Preparation != "generic" {
 		return nil, errors.New("document providers require process transport and generic preparation")
 	}
 	backend, err := NewBackend(manifest, command, options)
@@ -62,7 +62,7 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *hostprocess.Comma
 	}
 	descriptor := manifest.Rule.Clone()
 	descriptor.RequiredInputs = requires
-	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
+	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, toolmanifest.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, toolmanifest.ResourceWorkspace)}, nil
 }
 
 func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {

@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // TestProcessHelper is the tool process of these tests: the test binary run
@@ -75,24 +75,24 @@ func helperCommand(t *testing.T, mode string, env ...string) *hostprocess.Comman
 	return command
 }
 
-func helperManifest(spec manifests.ProcessSpec) manifests.Manifest {
+func helperManifest(spec toolmanifest.ProcessSpec) toolmanifest.Manifest {
 	if spec.ExitCodes == nil {
 		spec.ExitCodes = []int{0, 1}
 	}
 	if spec.Config.Render == "" {
-		spec.Config.Render = manifests.RenderNone
+		spec.Config.Render = toolmanifest.RenderNone
 	}
-	return manifests.Manifest{
-		SchemaVersion: manifests.SchemaVersion, ID: "example.com/helper", Version: "1", Role: manifests.RoleScript,
-		Rule: rule.Descriptor{Name: "helper"}, Scope: manifests.ScopeSource, Transport: manifests.TransportProcess,
+	return toolmanifest.Manifest{
+		SchemaVersion: toolmanifest.SchemaVersion, ID: "example.com/helper", Version: "1", Role: toolmanifest.RoleScript,
+		Rule: rule.Descriptor{Name: "helper"}, Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess,
 		Process: &spec,
 	}
 }
 
 // echoOutput transforms the echo helper's report into one diagnostic whose
 // message is the report and the exit status.
-var echoOutput = manifests.Output{Format: manifests.FormatJSON, Transform: &manifests.Transform{
-	Language: manifests.LanguageJQ,
+var echoOutput = toolmanifest.Output{Format: toolmanifest.FormatJSON, Transform: &toolmanifest.Transform{
+	Language: toolmanifest.LanguageJQ,
 	Inline:   `[{filename: $vars.filename, code: "ECHO", message: ({report: ., exit_code: $vars.exit_code} | tojson), location: {row: 1, column: 1}}]`,
 }}
 
@@ -129,13 +129,13 @@ func TestBackendInvocation(t *testing.T) {
 	// Configured environment cannot restore a variable the manifest unsets.
 	command := helperCommand(t, "echo", "ACTIONLINT_COMMAND=command", "ACTIONLINT_REDIRECT=command")
 	command.Args = []string{"--user", "value"}
-	manifest := helperManifest(manifests.ProcessSpec{
-		Entry: "helper", Stdin: manifests.StdinSource,
+	manifest := helperManifest(toolmanifest.ProcessSpec{
+		Entry: "helper", Stdin: toolmanifest.StdinSource,
 		Args:           []string{"--", "{user-args}", "{config:toml-pairs:--set}", "--file", "{var:filename}", "{flag:dialect:--shell}", "{list:exclude:,}"},
 		Env:            map[string]string{"ACTIONLINT_MANIFEST": "manifest"},
 		EnvPassthrough: []string{"ACTIONLINT_PASSED", "ACTIONLINT_REDIRECT_AMBIENT"},
 		EnvUnset:       []string{"ACTIONLINT_REDIRECT", "ACTIONLINT_REDIRECT_AMBIENT"},
-		Config:         manifests.ConfigRendering{Render: manifests.RenderTOMLPairs},
+		Config:         toolmanifest.ConfigRendering{Render: toolmanifest.RenderTOMLPairs},
 		Output:         echoOutput,
 	})
 	backend, err := NewBackend(manifest, command, Options{})
@@ -182,14 +182,14 @@ func TestBackendDecoders(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		mode   string
-		spec   manifests.ProcessSpec
+		spec   toolmanifest.ProcessSpec
 		config json.RawMessage
 		want   checkinputs.ScriptDiagnostic
 		err    string
 	}{
 		{
 			mode: "envelope",
-			spec: manifests.ProcessSpec{Stdin: manifests.StdinRequest, Args: []string{"--"}, Config: manifests.ConfigRendering{Render: manifests.RenderJSONStdin}, Output: manifests.Output{Format: manifests.FormatEnvelope}},
+			spec: toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinRequest, Args: []string{"--"}, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}},
 			// The request carries the configuration the transform rendered.
 			config: json.RawMessage(`{"a": 1}`),
 			want:   checkinputs.ScriptDiagnostic{Filename: "snippet.py", Code: "EX1", Message: `envelope {"a":1}`, Location: position(1, 1), EndLocation: position(1, 8)},
@@ -197,7 +197,7 @@ func TestBackendDecoders(t *testing.T) {
 		},
 		{
 			mode: "sarif",
-			spec: manifests.ProcessSpec{Stdin: manifests.StdinSource, Args: []string{"--", "{var:filename}"}, Output: manifests.Output{Format: manifests.FormatSARIF}},
+			spec: toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Args: []string{"--", "{var:filename}"}, Output: toolmanifest.Output{Format: toolmanifest.FormatSARIF}},
 			want: checkinputs.ScriptDiagnostic{Filename: "snippet.py", Code: "S1", Message: "sarif finding", Severity: "error", URL: "https://example.com/S1", Location: position(1, 3), EndLocation: position(1, 5)},
 		},
 	} {
@@ -220,7 +220,7 @@ func TestBackendDecoders(t *testing.T) {
 
 func TestBackendRejectsUnlistedExitStatus(t *testing.T) {
 	t.Parallel()
-	manifest := helperManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Args: []string{"--"}, ExitCodes: []int{0}, Output: echoOutput})
+	manifest := helperManifest(toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Args: []string{"--"}, ExitCodes: []int{0}, Output: echoOutput})
 	backend, err := NewBackend(manifest, helperCommand(t, "echo"), Options{})
 	if err != nil {
 		t.Fatal(err)

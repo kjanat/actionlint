@@ -9,8 +9,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 
@@ -104,11 +104,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
-	input := inputmodel.Request{Kind: inputmodel.Files, Paths: c.Paths}
+	input := checkrequest.Request{Kind: checkrequest.Files, Paths: c.Paths}
 	if len(c.Paths) == 0 {
-		input.Kind, input.AllowEmptyRepository = inputmodel.Repository, c.PreCommit
+		input.Kind, input.AllowEmptyRepository = checkrequest.Repository, c.PreCommit
 	} else if len(c.Paths) == 1 && c.Paths[0] == "-" {
-		input.Kind, input.Reader, input.Name, input.NormalizePath = inputmodel.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
+		input.Kind, input.Reader, input.Name, input.NormalizePath = checkrequest.Stdin, streams.Stdin, c.StdinFilename, !inv.Legacy
 	}
 	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 	if err != nil {
@@ -161,7 +161,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, &checkAnalysisError{result: result, err: err}
 		}
 		if inv.JSON {
-			return 0, commandstreams.WriteJSON(out, struct {
+			return 0, commandio.WriteJSON(out, struct {
 				CacheDirectory string `json:"cache_directory"`
 			}{network.Settings(ctx).CacheDirectory})
 		}
@@ -169,7 +169,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		return 0, err
 	}
 	if c.Fix {
-		if input.Kind == inputmodel.Stdin {
+		if input.Kind == checkrequest.Stdin {
 			return 0, arguments.UsageError{Cause: errors.New("fix requires files; stdin is read-only")}
 		}
 		reader := fixTargetReader(ctx, result.Inputs)
@@ -178,7 +178,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, planErr
 		}
 		if !c.ApplyFixes {
-			return 0, commandstreams.WriteJSON(out, plan)
+			return 0, commandio.WriteJSON(out, plan)
 		}
 		written, applyErr := output.ApplyEdits(ctx, plan, reader)
 		if applyErr != nil {
@@ -201,7 +201,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if r.Summary && !r.Quiet {
 		summary := report.NewCheckSummary(*result)
 		if inv.JSON {
-			err = commandstreams.WriteJSON(streams.Stderr, map[string]report.CheckSummary{"summary": summary})
+			err = commandio.WriteJSON(streams.Stderr, map[string]report.CheckSummary{"summary": summary})
 		} else {
 			err = writeCheckSummary(streams.Stderr, inv.Render.Color, summary)
 		}

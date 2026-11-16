@@ -8,20 +8,20 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // Shape describes evaluated expression values. Unlike
 // ExprType.Assignable, it distinguishes strict schema booleans from truthiness
 // and optional object properties from required ones.
 type Shape interface {
-	ValidateType(types.Type, string) []string
+	ValidateType(exprtypes.Type, string) []string
 }
 
 type workflowExpressionScalar string
 
-func (shape workflowExpressionScalar) ValidateType(ty types.Type, path string) []string {
-	if ty.Kind() == types.KindAny {
+func (shape workflowExpressionScalar) ValidateType(ty exprtypes.Type, path string) []string {
+	if ty.Kind() == exprtypes.KindAny {
 		return nil
 	}
 	valid := false
@@ -31,14 +31,14 @@ func (shape workflowExpressionScalar) ValidateType(ty types.Type, path string) [
 	case "string", "non-empty string", "concurrency queue":
 		// TemplateReader converts scalar literals to strings in string definitions.
 		switch ty.Kind() {
-		case types.KindString, types.KindNumber, types.KindBool, types.KindNull:
+		case exprtypes.KindString, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindNull:
 			valid = true
-		case types.KindAny, types.KindObject, types.KindArray:
+		case exprtypes.KindAny, exprtypes.KindObject, exprtypes.KindArray:
 		}
 	case "bool":
-		valid = ty.Kind() == types.KindBool
+		valid = ty.Kind() == exprtypes.KindBool
 	case "positive integer":
-		valid = ty.Kind() == types.KindNumber
+		valid = ty.Kind() == exprtypes.KindNumber
 	}
 	if valid {
 		return nil
@@ -48,7 +48,7 @@ func (shape workflowExpressionScalar) ValidateType(ty types.Type, path string) [
 
 // validate dispatches nested shapes over this package's closed set of
 // implementations, so validation stays within statically known methods.
-func validate(shape Shape, ty types.Type, path string) []string {
+func validate(shape Shape, ty exprtypes.Type, path string) []string {
 	switch shape := shape.(type) {
 	case workflowExpressionScalar:
 		return shape.ValidateType(ty, path)
@@ -68,8 +68,8 @@ type workflowExpressionArray struct {
 	nonempty bool
 }
 
-func (shape workflowExpressionArray) ValidateType(ty types.Type, path string) []string {
-	if ty.Kind() == types.KindAny {
+func (shape workflowExpressionArray) ValidateType(ty exprtypes.Type, path string) []string {
+	if ty.Kind() == exprtypes.KindAny {
 		return nil
 	}
 	if array, ok := ty.Array(); ok {
@@ -84,8 +84,8 @@ type workflowExpressionObject struct {
 	mapped   Shape
 }
 
-func (shape workflowExpressionObject) ValidateType(ty types.Type, path string) []string {
-	if ty.Kind() == types.KindAny {
+func (shape workflowExpressionObject) ValidateType(ty exprtypes.Type, path string) []string {
+	if ty.Kind() == exprtypes.KindAny {
 		return nil
 	}
 	object, ok := ty.Object()
@@ -129,7 +129,7 @@ func (shape workflowExpressionObject) ValidateType(ty types.Type, path string) [
 
 type workflowExpressionUnion []Shape
 
-func (shape workflowExpressionUnion) ValidateType(ty types.Type, path string) []string {
+func (shape workflowExpressionUnion) ValidateType(ty exprtypes.Type, path string) []string {
 	// Report the selected structural branch's details when its outer kind matches.
 	for _, candidate := range shape {
 		if errors := validate(candidate, ty, path); len(errors) == 0 {
@@ -139,11 +139,11 @@ func (shape workflowExpressionUnion) ValidateType(ty types.Type, path string) []
 	for _, candidate := range shape {
 		switch candidate.(type) {
 		case workflowExpressionObject:
-			if ty.Kind() == types.KindObject {
+			if ty.Kind() == exprtypes.KindObject {
 				return validate(candidate, ty, path)
 			}
 		case workflowExpressionArray:
-			if ty.Kind() == types.KindArray {
+			if ty.Kind() == exprtypes.KindArray {
 				return validate(candidate, ty, path)
 			}
 		}
@@ -198,7 +198,7 @@ func Container(service bool) Shape {
 }
 
 func LiteralErrors(shape Shape, value any, path string) []string {
-	ty := types.TypeOfJSONValue(value)
+	ty := exprtypes.TypeOfJSONValue(value)
 	if errors := shape.ValidateType(ty, path); len(errors) != 0 {
 		return errors
 	}
@@ -278,12 +278,12 @@ func LookupProperty[T any](properties map[string]T, name string) (value T, ok bo
 // MatrixType returns the type of the matrix context for an evaluated matrix
 // declaration of type ty. Each row's array element type becomes the property
 // type, and include combinations add or merge properties.
-func MatrixType(ty types.Type) types.ObjectType {
+func MatrixType(ty exprtypes.Type) exprtypes.ObjectType {
 	object, ok := ty.Object()
 	if !ok {
-		return types.NewEmptyObjectType()
+		return exprtypes.NewEmptyObjectType()
 	}
-	props := map[string]types.Type{}
+	props := map[string]exprtypes.Type{}
 	for name, value := range object.Properties() {
 		name = strings.ToLower(name)
 		if name == "include" || name == "exclude" {
@@ -308,11 +308,11 @@ func MatrixType(ty types.Type) types.ObjectType {
 		} else {
 			loose = true
 		}
-	} else if hasInclude && includeType.Kind() == types.KindAny {
+	} else if hasInclude && includeType.Kind() == exprtypes.KindAny {
 		loose = true
 	}
 
-	var result types.ObjectBuilder
+	var result exprtypes.ObjectBuilder
 	for name, value := range props {
 		result.Set(name, value)
 	}
@@ -321,7 +321,7 @@ func MatrixType(ty types.Type) types.ObjectType {
 	}
 	// Rows added by an include of unknown shape may introduce any property.
 	if loose {
-		result.SetMapped(types.AnyType())
+		result.SetMapped(exprtypes.AnyType())
 	}
 	return result.Build()
 }

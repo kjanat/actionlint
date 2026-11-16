@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -17,18 +17,18 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, source string
-		findings     []*findingmodel.Finding
+		findings     []*finding.Finding
 		unused       []string
 	}{
 		{name: "none", source: "run: echo ok # ignore[expression-reference]\n", unused: []string{"expression-reference"}},
-		{name: "used", source: "run: echo ok # actionlint-ignore expression-reference\n", findings: []*findingmodel.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 1}}}},
-		{name: "partial", source: "run: | # ignore[expression-reference shellcheck]\n  echo hi\n", findings: []*findingmodel.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 2}}}, unused: []string{"shellcheck"}},
+		{name: "used", source: "run: echo ok # actionlint-ignore expression-reference\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 1}}}},
+		{name: "partial", source: "run: | # ignore[expression-reference shellcheck]\n  echo hi\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 2}}}, unused: []string{"shellcheck"}},
 		{name: "next line", source: "# ignore-next-line expression-reference\nrun: echo ok\n", unused: []string{"expression-reference"}},
-		{name: "wrong declaration", source: "run: echo ok # ignore expression-reference\nnext: value\n", findings: []*findingmodel.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 2}}}, unused: []string{"expression-reference"}},
-		{name: "plugin", source: "run: echo ok # ignore plugin-rule\n", findings: []*findingmodel.Finding{{Rule: "plugin-rule", Start: sourcepos.Position{Line: 1}}}},
+		{name: "wrong declaration", source: "run: echo ok # ignore expression-reference\nnext: value\n", findings: []*finding.Finding{{Rule: "expression-reference", Start: sourcepos.Position{Line: 2}}}, unused: []string{"expression-reference"}},
+		{name: "plugin", source: "run: echo ok # ignore plugin-rule\n", findings: []*finding.Finding{{Rule: "plugin-rule", Start: sourcepos.Position{Line: 1}}}},
 		{name: "explicit audit exception", source: "run: echo ok # ignore unused-suppression expression-reference\n"},
 		{name: "script text", source: "run: |\n  # ignore expression-reference\n  echo hi\n"},
-		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*findingmodel.Finding{{Rule: "shellcheck", Start: sourcepos.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 2}}}},
+		{name: "sourced script", source: "run: | # ignore shellcheck\n  . ./script.sh\n", findings: []*finding.Finding{{Rule: "shellcheck", Start: sourcepos.Position{Line: 100}, Source: results.DiagnosticSource{Content: []byte("external")}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 2}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -37,11 +37,11 @@ func TestUnusedInlineSuppressions(t *testing.T) {
 				t.Fatal(err)
 			}
 			var unused []string
-			for _, finding := range findings {
-				if finding.Rule == "unused-suppression" {
-					unused = append(unused, finding.UnusedSuppressionRule)
-					if finding.Severity != "info" || finding.Start.Line != 1 || !strings.Contains(finding.Message, finding.UnusedSuppressionRule) {
-						t.Fatalf("unused diagnostic: %+v", finding)
+			for _, item := range findings {
+				if item.Rule == "unused-suppression" {
+					unused = append(unused, item.UnusedSuppressionRule)
+					if item.Severity != "info" || item.Start.Line != 1 || !strings.Contains(item.Message, item.UnusedSuppressionRule) {
+						t.Fatalf("unused diagnostic: %+v", item)
 					}
 				}
 			}
@@ -75,7 +75,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*findingmodel.Finding{{Rule: tc.canonical, Start: sourcepos.Position{Line: 1}}}, nil, nil)
+				findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, cfg, []*finding.Finding{{Rule: tc.canonical, Start: sourcepos.Position{Line: 1}}}, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -94,14 +94,14 @@ func TestRetiredPermissionSuppressionSelectorsAreRejected(t *testing.T) {
 			t.Parallel()
 			source := []byte("run: echo ok # ignore[" + selector + "]\n")
 			findings, err := publishFindings(t, policy.Policy{Path: "ci.yml", ConfigPath: "ci.yml", Content: source}, nil,
-				[]*findingmodel.Finding{{Rule: "missing-permissions", Start: sourcepos.Position{Line: 1}}}, nil, nil)
+				[]*finding.Finding{{Rule: "missing-permissions", Start: sourcepos.Position{Line: 1}}}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			invalid, reported := false, false
-			for _, finding := range findings {
-				invalid = invalid || finding.Rule == "inline-suppression"
-				reported = reported || finding.Rule == "missing-permissions"
+			for _, item := range findings {
+				invalid = invalid || item.Rule == "inline-suppression"
+				reported = reported || item.Rule == "missing-permissions"
 			}
 			if !invalid || !reported {
 				t.Fatalf("retired selector %q suppressed the finding or was accepted: %+v", selector, findings)
@@ -121,8 +121,8 @@ func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &findingmodel.Finding{Rule: "job-timeout", Path: path, Start: sourcepos.Position{Line: 1}}
-			got, err := publishFindings(t, policy.Policy{Path: path, ConfigPath: path, Root: root}, cfg, []*findingmodel.Finding{finding}, nil, nil)
+			item := &finding.Finding{Rule: "job-timeout", Path: path, Start: sourcepos.Position{Line: 1}}
+			got, err := publishFindings(t, policy.Policy{Path: path, ConfigPath: path, Root: root}, cfg, []*finding.Finding{item}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -159,9 +159,9 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := ""
-		for _, finding := range findings {
-			if finding.Rule == "unused-suppression" {
-				got = finding.Publish(nil).Severity
+		for _, item := range findings {
+			if item.Rule == "unused-suppression" {
+				got = item.Publish(nil).Severity
 			}
 		}
 		if got != tc.want {

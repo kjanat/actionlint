@@ -7,8 +7,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
@@ -23,7 +23,7 @@ func TestStaticReferencesInUnreachableEventBranches(t *testing.T) {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
 			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
-			event := types.NewEventType([]types.EventVariant{{Event: "push", Payload: types.NewEmptyStrictObjectType()}})
+			event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}})
 			contexts.SetEventPayloadType(checker, event)
 			node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
@@ -42,7 +42,7 @@ func TestUnavailableContextInUnreachableEventBranch(t *testing.T) {
 	t.Parallel()
 	const input = "case(github.event_name == 'issues', secrets.TOKEN, 'safe')"
 	checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
-	contexts.SetEventPayloadType(checker, types.NewEventType([]types.EventVariant{{Event: "push", Payload: types.NewEmptyStrictObjectType()}}))
+	contexts.SetEventPayloadType(checker, exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}}))
 	node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 	if node == nil {
 		t.Fatal("expression did not parse")

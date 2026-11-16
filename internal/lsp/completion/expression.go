@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // Item describes a property replacement in expression source byte offsets.
@@ -34,7 +34,7 @@ func completeExpression(sema *typecheck.Checker, source string, offset int) []It
 	start := offset
 	prefix := ""
 	bracket := false
-	var properties map[string]types.Type
+	var properties map[string]exprtypes.Type
 	if match := completionAccess.FindStringSubmatchIndex(before); match != nil {
 		// Do not complete text inside an expression string literal.
 		if inExpressionString(before[:match[0]]) {
@@ -113,8 +113,8 @@ func identifierByte(b byte) bool {
 	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9' || b == '_' || b == '-'
 }
 
-func typeLabel(t types.Type) string {
-	if t.Kind() == types.KindObject {
+func typeLabel(t exprtypes.Type) string {
+	if t.Kind() == exprtypes.KindObject {
 		return "object"
 	}
 	if array, ok := t.Array(); ok {

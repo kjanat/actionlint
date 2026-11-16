@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // argInputs are the values argument placeholders take for one check.
@@ -100,11 +100,11 @@ func truthy(value string) bool {
 
 // launcher is a compiled provider.Launcher.
 type launcher struct {
-	spec                    manifests.Launcher
+	spec                    toolmanifest.Launcher
 	command, selector, tool *regexp.Regexp
 }
 
-func compileLaunchers(specs []manifests.Launcher) ([]launcher, error) {
+func compileLaunchers(specs []toolmanifest.Launcher) ([]launcher, error) {
 	compiled := make([]launcher, len(specs))
 	for i, spec := range specs {
 		compiled[i].spec = spec
@@ -250,7 +250,7 @@ func (l launcher) isTool(arg string) bool {
 
 // checkUserArgs applies a manifest's user-argument rules. Directory resolves
 // relative values of inline options.
-func checkUserArgs(name string, spec *manifests.UserArgs, args []string, directory string) error {
+func checkUserArgs(name string, spec *toolmanifest.UserArgs, args []string, directory string) error {
 	if spec == nil {
 		return nil
 	}
@@ -339,12 +339,12 @@ func inlineSetting(value, directory string) bool {
 
 // overriddenVars lists the preparation variables user options replace. Args
 // are scanned as the tool reads them, skipping option values, until "--".
-func overriddenVars(spec *manifests.UserArgs, args []string) []string {
+func overriddenVars(spec *toolmanifest.UserArgs, args []string) []string {
 	if spec == nil || len(spec.Overrides) == 0 {
 		return nil
 	}
 	var dropped []string
-	drop := func(match func(manifests.ArgOverride) bool) {
+	drop := func(match func(toolmanifest.ArgOverride) bool) {
 		for _, override := range spec.Overrides {
 			if match(override) && !slices.Contains(dropped, override.Drops) {
 				dropped = append(dropped, override.Drops)
@@ -362,7 +362,7 @@ func overriddenVars(spec *manifests.UserArgs, args []string) []string {
 			if slices.Contains(spec.ValueOptions, option) && !attached && i+1 < len(args) {
 				i++
 			}
-			drop(func(o manifests.ArgOverride) bool { return o.Flag == option })
+			drop(func(o toolmanifest.ArgOverride) bool { return o.Flag == option })
 			continue
 		}
 		if !strings.HasPrefix(arg, "-") {
@@ -371,7 +371,7 @@ func overriddenVars(spec *manifests.UserArgs, args []string) []string {
 		letters := arg[1:]
 		for j := range len(letters) {
 			letter := letters[j]
-			drop(func(o manifests.ArgOverride) bool { return o.Short == string(letter) })
+			drop(func(o toolmanifest.ArgOverride) bool { return o.Short == string(letter) })
 			if strings.IndexByte(spec.AttachedShorts, letter) >= 0 {
 				break
 			}
@@ -390,7 +390,7 @@ func overriddenVars(spec *manifests.UserArgs, args []string) []string {
 // options on spaces, without quoting, as the tool does. The command's own
 // environment overrides the host's; host values count only when the manifest
 // passes the variable through.
-func environmentOptions(spec *manifests.UserArgs, passthrough, env []string) ([]string, map[string]string) {
+func environmentOptions(spec *toolmanifest.UserArgs, passthrough, env []string) ([]string, map[string]string) {
 	if spec == nil || len(spec.EnvOptions) == 0 {
 		return nil, nil
 	}

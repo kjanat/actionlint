@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -23,14 +23,14 @@ import (
 // missing cached manifest requires an explicit installation before migration.
 func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, path string) ([]rule.Descriptor, error) {
 	directory := filepath.Dir(path)
-	sources, err := (pluginselection.Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, input.Request{Kind: input.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		return nil, err
 	}
 	descriptors := []rule.Descriptor{}
 	for _, source := range sources.Paths {
-		if manifests.IsLocalManifest(source) {
-			manifest, _, err := manifests.ReadLocal(files.New(ctx, nil, nil), source)
+		if toolmanifest.IsLocalManifest(source) {
+			manifest, _, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), source)
 			if err != nil {
 				return nil, err
 			}
@@ -62,7 +62,7 @@ func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acqu
 		if cached.Info.Kind != artifacts.ProviderManifest {
 			return nil, fmt.Errorf("plugin %q has no declarative rule descriptor: %w", source, configuration.ErrRuleMetadataRequired)
 		}
-		manifest, err := manifests.ParsePluginManifest(cached.Bytes)
+		manifest, err := toolmanifest.ParsePluginManifest(cached.Bytes)
 		if err != nil {
 			return nil, err
 		}

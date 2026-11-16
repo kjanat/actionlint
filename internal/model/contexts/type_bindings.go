@@ -1,18 +1,18 @@
 package contexts
 
-import "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 // TypeBindings reads and replaces expression context types. Implementations
 // store immutable type values; these operations do not evaluate expressions.
 type TypeBindings interface {
-	ContextType(string) (types.Type, bool)
-	SetContextType(string, types.Type)
+	ContextType(string) (exprtypes.Type, bool)
+	SetContextType(string, exprtypes.Type)
 }
 
 // SetSecretTypes replaces secret declarations and adds GitHub's supplied names.
 // The supplied type determines whether undeclared names are allowed.
-func SetSecretTypes(bindings TypeBindings, secrets types.ObjectType) {
-	var builder types.ObjectBuilder
+func SetSecretTypes(bindings TypeBindings, secrets exprtypes.ObjectType) {
+	var builder exprtypes.ObjectBuilder
 	for name, value := range builtinSecretProps {
 		builder.Set(name, value)
 	}
@@ -27,7 +27,7 @@ func SetSecretTypes(bindings TypeBindings, secrets types.ObjectType) {
 
 // MergeInputTypes merges supplied definitions into the inputs context. Workflows
 // with multiple input-bearing triggers use this to combine their definitions.
-func MergeInputTypes(bindings TypeBindings, inputs types.ObjectType) {
+func MergeInputTypes(bindings TypeBindings, inputs exprtypes.ObjectType) {
 	current, _ := bindings.ContextType("inputs")
 	object, ok := current.Object()
 	if !ok || object.Len() == 0 && object.IsStrict() {
@@ -38,7 +38,7 @@ func MergeInputTypes(bindings TypeBindings, inputs types.ObjectType) {
 }
 
 // SetEventPayloadType installs the event payload projection beneath github.event.
-func SetEventPayloadType(bindings TypeBindings, event types.ObjectType) {
+func SetEventPayloadType(bindings TypeBindings, event exprtypes.ObjectType) {
 	current, _ := bindings.ContextType("github")
 	if github, ok := current.Object(); ok {
 		bindings.SetContextType("github", github.With("event", event.Type()).Type())
@@ -48,11 +48,11 @@ func SetEventPayloadType(bindings TypeBindings, event types.ObjectType) {
 // SetDispatchInputTypes merges declared input types into inputs and adds their
 // string-valued types at github.event.inputs, including its workflow_dispatch
 // variant.
-func SetDispatchInputTypes(bindings TypeBindings, inputs types.ObjectType) {
+func SetDispatchInputTypes(bindings TypeBindings, inputs exprtypes.ObjectType) {
 	MergeInputTypes(bindings, inputs)
-	var builder types.ObjectBuilder
+	var builder exprtypes.ObjectBuilder
 	for name := range inputs.Properties() {
-		builder.SetProperty(inputs.PropertyName(name), types.StringType())
+		builder.SetProperty(inputs.PropertyName(name), exprtypes.StringType())
 	}
 	projected := builder.Build().Type()
 	current, _ := bindings.ContextType("github")

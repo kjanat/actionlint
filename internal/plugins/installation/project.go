@@ -13,13 +13,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -132,7 +132,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
-			if manifests.IsLocalManifest(source) {
+			if toolmanifest.IsLocalManifest(source) {
 				if err := process.ValidateLocalProvider(ctx, source); err != nil {
 					return err
 				}

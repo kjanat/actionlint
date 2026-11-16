@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
@@ -135,7 +135,7 @@ func TestUnavailableToolRetainsNestedActionSuppression(t *testing.T) {
 		Tools: registry.Registrations(registry.Selections{"shellcheck": {
 			Command: "shellcheck", Process: &hostprocess.CommandOptions{Executable: &missing, Optional: true},
 		}}),
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil || result == nil {
 		t.Fatalf("optional tool became a fatal error: %v", err)
 	}

@@ -18,8 +18,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -38,9 +38,9 @@ func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {
 	return checkinputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
 }
 
-func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
+func documentManifest(spec toolmanifest.ProcessSpec) toolmanifest.Manifest {
 	manifest := helperManifest(spec)
-	manifest.Role, manifest.Preparation = manifests.RoleDocument, "generic"
+	manifest.Role, manifest.Preparation = toolmanifest.RoleDocument, "generic"
 	manifest.Selectors.Documents = []string{"workflow"}
 	return manifest
 }
@@ -48,11 +48,11 @@ func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
 func TestDocumentDescriptorConfigurationScope(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		scope manifests.Scope
+		scope toolmanifest.Scope
 		want  rule.ConfigurationScope
-	}{{manifests.ScopeSource, rule.SourceConfiguration}, {manifests.ScopeComposite, rule.CompositeConfiguration}} {
+	}{{toolmanifest.ScopeSource, rule.SourceConfiguration}, {toolmanifest.ScopeComposite, rule.CompositeConfiguration}} {
 		for _, documents := range [][]string{nil, {"workflow"}, {"action"}, {"workflow", "action"}} {
-			manifest := documentManifest(manifests.ProcessSpec{Output: echoOutput})
+			manifest := documentManifest(toolmanifest.ProcessSpec{Output: echoOutput})
 			manifest.Scope, manifest.Selectors.Documents = tc.scope, documents
 			checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
 			if err != nil {
@@ -69,15 +69,15 @@ func TestDocumentDescriptorConfigurationScope(t *testing.T) {
 
 func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 	t.Parallel()
-	for _, stdin := range []manifests.Stdin{manifests.StdinSource, manifests.StdinRequest} {
+	for _, stdin := range []toolmanifest.Stdin{toolmanifest.StdinSource, toolmanifest.StdinRequest} {
 		t.Run(string(stdin), func(t *testing.T) {
 			t.Parallel()
 			input := documentInput(t, "on: push\njobs:\n  one:\n    if: ${{ github.actor == 'raw' }}\n")
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
 			input.Dependencies = []facts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: source.Position{Line: 2, Column: 1}, End: source.Position{Line: 2, Column: 5}}, {Reference: source.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
-			manifest := documentManifest(manifests.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: manifests.ConfigRendering{Render: manifests.RenderNone}})
+			manifest := documentManifest(toolmanifest.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderNone}})
 			manifest.Rule.RequiredInputs = []rule.InputKind{rule.Dependencies}
-			manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
+			manifest.Capabilities.Resources = []toolmanifest.Resource{toolmanifest.ResourceDirectory}
 			checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
 			if err != nil {
 				t.Fatal(err)
@@ -90,7 +90,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			if err := json.Unmarshal([]byte(findings[0].Message), &echo); err != nil {
 				t.Fatal(err)
 			}
-			if stdin == manifests.StdinSource {
+			if stdin == toolmanifest.StdinSource {
 				if echo.Report.Stdin != input.Content {
 					t.Fatal("document source was masked", echo.Report.Stdin)
 				}
@@ -117,7 +117,7 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 	command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) {
 		return []byte(`{"ok":true,"diagnostics":[{"code":"D1","message":"original document","location":{"row":3,"column":1},"end_location":{"row":3,"column":4},"fixes":[{"description":"replace","replacements":[{"row":3,"column":1,"end_row":3,"end_column":4,"text":"new"}]}]},{"filename":"other.yml","source":"other.yml","code":"OTHER","message":"foreign","location":{"row":1,"column":1}}]}`), nil
 	})
-	manifest := documentManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Output: manifests.Output{Format: manifests.FormatEnvelope, Coordinates: &manifests.Coordinates{Rows: manifests.RowsSource, Columns: manifests.ColumnsBytes, End: manifests.EndExclusive}}})
+	manifest := documentManifest(toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope, Coordinates: &toolmanifest.Coordinates{Rows: toolmanifest.RowsSource, Columns: toolmanifest.ColumnsBytes, End: toolmanifest.EndExclusive}}})
 	manifest.Capabilities.Fixes = true
 	checker, err := NewDocumentAnalyzer(manifest, command, Options{})
 	if err != nil {
@@ -144,17 +144,17 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 	t.Parallel()
 	input := documentInput(t, "one\ntwo\n")
-	for _, format := range []manifests.OutputFormat{manifests.FormatSARIF, manifests.FormatJSON} {
+	for _, format := range []toolmanifest.OutputFormat{toolmanifest.FormatSARIF, toolmanifest.FormatJSON} {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
 			pool := hostprocess.NewProcessPool(t.Context(), 1)
-			output := manifests.Output{Format: format}
+			output := toolmanifest.Output{Format: format}
 			stdout := fmt.Sprintf(`{"version":"2.1.0","runs":[{"results":[{"ruleId":"D1","message":{"text":"document"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":%q},"region":{"startLine":2,"startColumn":2,"endColumn":3}}}]}]}]}`, input.Path)
-			if format == manifests.FormatJSON {
+			if format == toolmanifest.FormatJSON {
 				stdout = `{"text":"document"}`
-				output.Transform = &manifests.Transform{Language: manifests.LanguageJQ, Inline: `[{filename:$vars.filename,code:"D1",message:.text,location:{row:2,column:2},end_location:{row:2,column:3}}]`}
+				output.Transform = &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `[{filename:$vars.filename,code:"D1",message:.text,location:{row:2,column:2},end_location:{row:2,column:3}}]`}
 			}
-			manifest := documentManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Output: output})
+			manifest := documentManifest(toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Output: output})
 			command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) { return []byte(stdout), nil })
 			checker, err := NewDocumentAnalyzer(manifest, command, Options{})
 			if err != nil {
@@ -173,11 +173,11 @@ func TestDocumentProcessFixApplicability(t *testing.T) {
 	input := documentInput(t, "one\n")
 	for _, label := range []string{"safe", "unsafe", "suggested"} {
 		pool := hostprocess.NewProcessPool(t.Context(), 1)
-		output := manifests.Output{Format: manifests.FormatJSON, Transform: &manifests.Transform{
-			Language: manifests.LanguageJQ,
+		output := toolmanifest.Output{Format: toolmanifest.FormatJSON, Transform: &toolmanifest.Transform{
+			Language: toolmanifest.LanguageJQ,
 			Inline:   `[{filename:$vars.filename,code:"D1",message:"fix",location:{row:1,column:1},fixes:[{applicability:"` + label + `",replacements:[{row:1,column:1,end_row:1,end_column:4,text:"two"}]}]}]`,
 		}}
-		manifest := documentManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Output: output})
+		manifest := documentManifest(toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Output: output})
 		manifest.Capabilities.Fixes = true
 		command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) { return []byte(`{}`), nil })
 		checker, err := NewDocumentAnalyzer(manifest, command, Options{})
@@ -200,8 +200,8 @@ func TestDocumentProcessSelectionAndCapturedDisk(t *testing.T) {
 	pool := hostprocess.NewProcessPool(t.Context(), 1)
 	calls := 0
 	command := pool.EmbeddedCommand("fixture", func([]string, string) ([]byte, error) { calls++; return []byte(`{"ok":true,"diagnostics":[]}`), nil })
-	manifest := documentManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Output: manifests.Output{Format: manifests.FormatEnvelope}})
-	manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
+	manifest := documentManifest(toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}})
+	manifest.Capabilities.Resources = []toolmanifest.Resource{toolmanifest.ResourceDirectory}
 	checker, err := NewDocumentAnalyzer(manifest, command, Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -239,8 +239,8 @@ func TestDocumentProcessRejectsChangedDiskAfterExecution(t *testing.T) {
 		}
 		return []byte(`{"ok":true,"diagnostics":[{"code":"D1","message":"stale finding","location":{"row":1,"column":1}}]}`), nil
 	})
-	manifest := documentManifest(manifests.ProcessSpec{Stdin: manifests.StdinSource, Output: manifests.Output{Format: manifests.FormatEnvelope}})
-	manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
+	manifest := documentManifest(toolmanifest.ProcessSpec{Stdin: toolmanifest.StdinSource, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}})
+	manifest.Capabilities.Resources = []toolmanifest.Resource{toolmanifest.ResourceDirectory}
 	checker, err := NewDocumentAnalyzer(manifest, command, Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -278,7 +278,7 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 
 func TestDocumentInvocationDefinitionsOwnTheirOptions(t *testing.T) {
 	t.Parallel()
-	manifest := documentManifest(manifests.ProcessSpec{Output: echoOutput})
+	manifest := documentManifest(toolmanifest.ProcessSpec{Output: echoOutput})
 	manifest.InvocationDefinitions = []commands.Definition{{ID: "example/runtime", Executables: []string{"custom"}, Options: []commands.Option{{Short: "o", Argument: true, Choices: []string{"allowed"}}}}}
 	checker, err := NewDocumentAnalyzer(manifest, helperCommand(t, "echo"), Options{})
 	if err != nil {

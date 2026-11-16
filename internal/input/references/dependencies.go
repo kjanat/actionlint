@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
@@ -16,7 +16,7 @@ import (
 type ResolutionSession struct {
 	provider      Resolver
 	mu            sync.Mutex
-	repositoryIDs map[string]repofacts.ID
+	repositoryIDs map[string]repository.ID
 }
 
 func NewResolutionSession(provider Resolver) *ResolutionSession {
@@ -49,9 +49,9 @@ func (session *ResolutionSession) ResolveDependencies(ctx context.Context, depen
 }
 
 func (session *ResolutionSession) resolve(ctx context.Context, request Request) (ResolutionRecord, error) {
-	repository := strings.ToLower(request.Repository)
+	repo := strings.ToLower(request.Repository)
 	session.mu.Lock()
-	request.ExpectedRepositoryID = session.repositoryIDs[repository]
+	request.ExpectedRepositoryID = session.repositoryIDs[repo]
 	session.mu.Unlock()
 	result, err := session.provider.Resolve(ctx, request)
 	if err != nil {
@@ -60,7 +60,7 @@ func (session *ResolutionSession) resolve(ctx context.Context, request Request) 
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	// A concurrent lookup may have established the identity after this request.
-	request.ExpectedRepositoryID = session.repositoryIDs[repository]
+	request.ExpectedRepositoryID = session.repositoryIDs[repo]
 	if err := ValidateResult(request, result); err != nil {
 		return result, err
 	}
@@ -68,8 +68,8 @@ func (session *ResolutionSession) resolve(ctx context.Context, request Request) 
 		return result, nil
 	}
 	if session.repositoryIDs == nil {
-		session.repositoryIDs = make(map[string]repofacts.ID)
+		session.repositoryIDs = make(map[string]repository.ID)
 	}
-	session.repositoryIDs[repository] = result.RepositoryID
+	session.repositoryIDs[repo] = result.RepositoryID
 	return result, nil
 }

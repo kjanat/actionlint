@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -57,7 +57,7 @@ func occurrenceRepository(t *testing.T) string {
 	if err != nil {
 		t.Skip("Git required")
 	}
-	if output, err := gitclient.Command(t.Context(), git, root, "init", "--quiet").CombinedOutput(); err != nil {
+	if output, err := gitcommand.Command(t.Context(), git, root, "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("initialize fixture: %v: %s", err, output)
 	}
 	return root
@@ -89,7 +89,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 	if err := os.WriteFile(filename, []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 		Build:        func(contract.Context) (contract.Runner, error) { return observer, nil },
 	}
 	const workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo shell}, {shell: python, run: 'print(1)'}, {uses: actions/github-script@v7, with: {script: 'return 1'}}]}}\npermissions: {}\n"
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{registration, route}}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{registration, route}}, checkrequest.Request{Kind: checkrequest.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 	if err != nil {
 		t.Fatal(err)
 	}

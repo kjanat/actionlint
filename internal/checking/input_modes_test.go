@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -25,13 +25,13 @@ func TestCheckInputModesPreserveConfigurationAndOrder(t *testing.T) {
 	relSecond, _ := filepath.Rel(root, second)
 	for _, tc := range []struct {
 		name            string
-		input           input.Request
+		input           checkrequest.Request
 		paths, selected []string
 	}{
-		{"repository", input.Request{Kind: input.Repository}, []string{relFirst, relSecond}, []string{first, second}},
-		{"files", input.Request{Kind: input.Files, Paths: []string{second, first}}, []string{relSecond, relFirst}, []string{second, first}},
-		{"file", input.Request{Kind: input.Files, Paths: []string{first}}, []string{relFirst}, []string{first}},
-		{"stdin", input.Request{Kind: input.Stdin, Name: first, Reader: strings.NewReader(content)}, []string{first}, nil},
+		{"repository", checkrequest.Request{Kind: checkrequest.Repository}, []string{relFirst, relSecond}, []string{first, second}},
+		{"files", checkrequest.Request{Kind: checkrequest.Files, Paths: []string{second, first}}, []string{relSecond, relFirst}, []string{second, first}},
+		{"file", checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first}}, []string{relFirst}, []string{first}},
+		{"stdin", checkrequest.Request{Kind: checkrequest.Stdin, Name: first, Reader: strings.NewReader(content)}, []string{first}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -87,7 +87,7 @@ func TestCheckCancelledEmptySelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	calls := 0
-	result, err := checking.Check(ctx, checking.Options{OnFilesSelected: func([]string) { calls++ }}, input.Request{Kind: input.Files})
+	result, err := checking.Check(ctx, checking.Options{OnFilesSelected: func([]string) { calls++ }}, checkrequest.Request{Kind: checkrequest.Files})
 	if !errors.Is(err, context.Canceled) || result != nil || calls != 0 {
 		t.Fatalf("cancelled invocation performed work: result=%+v err=%v callbacks=%d", result, err, calls)
 	}
@@ -96,7 +96,7 @@ func TestCheckCancelledEmptySelection(t *testing.T) {
 func TestCheckVerboseStdinLogOrder(t *testing.T) {
 	t.Parallel()
 	var log strings.Builder
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), Verbose: true, LogSelection: true, LogWriter: &log}, input.Request{Kind: input.Stdin, Reader: strings.NewReader(goodWorkflow)})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), Verbose: true, LogSelection: true, LogWriter: &log}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(goodWorkflow)})
 	if err != nil {
 		t.Fatal(err)
 	}

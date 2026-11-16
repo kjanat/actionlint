@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -36,7 +36,7 @@ func RulesWithPlugins(ctx context.Context, sources pluginselection.Sources) (res
 	}
 	var extensions []rule.Descriptor
 	for _, local := range plugins.Providers {
-		if local.Files.Manifest.Role == manifests.RoleDocument {
+		if local.Files.Manifest.Role == toolmanifest.RoleDocument {
 			extensions = append(extensions, local.Files.Manifest.Rule.Clone())
 		}
 	}

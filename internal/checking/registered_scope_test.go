@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -36,7 +36,7 @@ func TestRegisteredSourceScopeUsesActionConfiguration(t *testing.T) {
 	for _, path := range []string{action, workflow} {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
-			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: sourceScopedChecker{}}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: sourceScopedChecker{}}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}

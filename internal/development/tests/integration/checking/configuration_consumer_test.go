@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -85,9 +85,9 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 			t.Parallel()
 			var err error
 			if mode == "files" {
-				_, err = checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{path}})
+				_, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			} else {
-				_, err = checking.Check(t.Context(), options, input.Request{Kind: input.Repository, Directory: root})
+				_, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Repository, Directory: root})
 			}
 			var overlayError *configreport.OverlayError
 			if !errors.As(err, &overlayError) || errors.Unwrap(overlayError) == nil {

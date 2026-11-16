@@ -5,7 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -28,16 +28,16 @@ var ShellNameRule = &define.Rule{
 
 // ShellNameChecks validates shell declarations against their declaring job's
 // prepared platform. Without a known job platform, it accepts any supported shell.
-func ShellNameChecks(runners *runnerlang.Knowledge, registries ...*commands.Registry) define.Checks {
-	platform := func(job workflows.Job) runnerlang.Platform {
-		if runners == nil || !job.Present() {
-			return runnerlang.Any
+func ShellNameChecks(knownRunners *runners.Knowledge, registries ...*commands.Registry) define.Checks {
+	platform := func(job workflows.Job) runners.Platform {
+		if knownRunners == nil || !job.Present() {
+			return runners.Any
 		}
-		return runners.Job(job).Platform
+		return knownRunners.Job(job).Platform
 	}
 	return define.Checks{
 		Workflow: func(workflow workflows.Workflow) []reporting.StepFinding {
-			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflows.DefaultsRun(workflow.Defaults)), runnerlang.Any, registries...))
+			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflows.DefaultsRun(workflow.Defaults)), runners.Any, registries...))
 		},
 		Job: func(job workflows.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(checkShell(execution.DefaultShell(workflows.DefaultsRun(job.Defaults)), platform(job), registries...))

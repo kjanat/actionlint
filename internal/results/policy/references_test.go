@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
@@ -35,25 +35,25 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	explicit := source.Reference{Document: "provider", Node: "explicit"}
 	for _, tc := range []struct {
 		name      string
-		owner     *findingmodel.Owner
+		owner     *finding.Owner
 		reference *source.Reference
 		raw       bool
 		want      source.Reference
 	}{
-		{name: "explicit owner", owner: &findingmodel.Owner{Job: "test", Step: second.Pos}, want: secondRef},
+		{name: "explicit owner", owner: &finding.Owner{Job: "test", Step: second.Pos}, want: secondRef},
 		{name: "ignore alone", want: firstRef},
-		{name: "raw source", owner: &findingmodel.Owner{Job: "test", Step: second.Pos}, raw: true, want: firstRef},
-		{name: "provider reference", owner: &findingmodel.Owner{Job: "test", Step: second.Pos}, reference: &explicit, want: explicit},
+		{name: "raw source", owner: &finding.Owner{Job: "test", Step: second.Pos}, raw: true, want: firstRef},
+		{name: "provider reference", owner: &finding.Owner{Job: "test", Step: second.Pos}, reference: &explicit, want: explicit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			finding := &findingmodel.Finding{
+			item := &finding.Finding{
 				Start: *first.Pos, Owner: tc.owner,
-				IgnoreOrigin: &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
+				IgnoreOrigin: &finding.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
 			}
-			InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
-			if finding.Reference == nil || *finding.Reference != tc.want {
-				t.Fatalf("reference=%+v want=%+v", finding.Reference, tc.want)
+			InferReferences([]*finding.Finding{item}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
+			if item.Reference == nil || *item.Reference != tc.want {
+				t.Fatalf("reference=%+v want=%+v", item.Reference, tc.want)
 			}
 		})
 	}
@@ -71,23 +71,23 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 		t.Fatalf("parsed job identity missing: %+v", workflow.Jobs)
 	}
 	refs := facts.Index("ci.yml", content, workflow, false)
-	finding := &findingmodel.Finding{
+	item := &finding.Finding{
 		Start: source.Position{Line: 1, Column: 1},
-		Owner: &findingmodel.Owner{Job: job.ID.Value},
+		Owner: &finding.Owner{Job: job.ID.Value},
 	}
-	InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
+	InferReferences([]*finding.Finding{item}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
 	want := refs.Jobs["build"]
-	if want.Node == "" || finding.Reference == nil || *finding.Reference != want {
-		t.Fatalf("mixed-case job reference = %+v, want %+v", finding.Reference, want)
+	if want.Node == "" || item.Reference == nil || *item.Reference != want {
+		t.Fatalf("mixed-case job reference = %+v, want %+v", item.Reference, want)
 	}
 }
 
 func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
 	t.Parallel()
 	references := facts.References{Document: source.Reference{Document: "entry", Revision: "revision", Node: "document"}}
-	foreign := &findingmodel.Finding{Path: "unrelated.sh"}
-	alias := &findingmodel.Finding{Path: "entry-alias.yml"}
-	InferReferences([]*findingmodel.Finding{foreign, alias}, "entry.yml", map[string]facts.SourceIndex{"entry.yml": references.SourceIndex()}, "entry-alias.yml")
+	foreign := &finding.Finding{Path: "unrelated.sh"}
+	alias := &finding.Finding{Path: "entry-alias.yml"}
+	InferReferences([]*finding.Finding{foreign, alias}, "entry.yml", map[string]facts.SourceIndex{"entry.yml": references.SourceIndex()}, "entry-alias.yml")
 	if foreign.Reference != nil || alias.Reference == nil || *alias.Reference != references.Document {
 		t.Fatalf("path ownership inference changed: foreign=%+v alias=%+v", foreign.Reference, alias.Reference)
 	}

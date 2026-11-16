@@ -5,10 +5,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	shellsyntax "mvdan.cc/sh/v3/syntax"

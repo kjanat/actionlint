@@ -4,14 +4,14 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // NarrowEventTypes selects event payload variants that can reach the branch.
 // Missing context data or unknown guards cannot eliminate a possible variant.
-func NarrowEventTypes(guard syntax.Node, truth bool, lookup func(string) (types.Type, bool)) (map[string]types.Type, bool) {
+func NarrowEventTypes(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	current, _ := lookup("github")
 	github, ok := current.Object()
 	if !ok {
@@ -29,7 +29,7 @@ func NarrowEventTypes(guard syntax.Node, truth bool, lookup func(string) (types.
 	if len(variants) == 0 {
 		return nil, true
 	}
-	selected := make([]types.EventVariant, 0, len(variants))
+	selected := make([]exprtypes.EventVariant, 0, len(variants))
 	for _, variant := range variants {
 		value, known := eventGuardValue(guard, variant)
 		if !known || value == truth {
@@ -42,10 +42,10 @@ func NarrowEventTypes(guard syntax.Node, truth bool, lookup func(string) (types.
 	if len(selected) == len(variants) {
 		return nil, true
 	}
-	return map[string]types.Type{"github": github.With("event", types.NewEventType(selected).Type()).Type()}, true
+	return map[string]exprtypes.Type{"github": github.With("event", exprtypes.NewEventType(selected).Type()).Type()}, true
 }
 
-func eventGuardValue(node syntax.Node, variant types.EventVariant) (bool, bool) {
+func eventGuardValue(node syntax.Node, variant exprtypes.EventVariant) (bool, bool) {
 	switch n := node.(type) {
 	case *syntax.NotOpNode:
 		value, known := eventGuardValue(n.Operand, variant)

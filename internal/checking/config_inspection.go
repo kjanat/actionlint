@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
@@ -38,7 +38,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err != nil {
 		return inspection, err
 	}
-	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, input.Request{Kind: input.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		return inspection, err
 	}
@@ -62,7 +62,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 			return inspection, fmt.Errorf("provider %s: %w", manifest.ID, scopeErr)
 		}
 		registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: manifest.Rule, Scope: scope, SupportsActions: true}, ToolSettings: new(manifest.Settings())}
-		if manifest.Role == pluginmanifests.RoleScript {
+		if manifest.Role == toolmanifest.RoleScript {
 			registration.ReplacesTool = manifest.Rule.Name
 		}
 		rules = append(rules, registration)
@@ -82,19 +82,19 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition pluginacquisition.Settings) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition pluginacquisition.Settings) ([]toolmanifest.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, input.Request{Kind: input.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		return nil, err
 	}
-	var manifests []pluginmanifests.Manifest
+	var manifests []toolmanifest.Manifest
 	for _, path := range sources.Paths {
-		if pluginmanifests.IsLocalManifest(path) {
-			manifest, programs, err := pluginmanifests.ReadLocal(files.New(ctx, nil, nil), path)
+		if toolmanifest.IsLocalManifest(path) {
+			manifest, programs, err := toolmanifest.ReadLocal(files.New(ctx, nil, nil), path)
 			if err != nil {
 				return nil, err
 			}

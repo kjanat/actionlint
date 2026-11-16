@@ -4,9 +4,9 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // Availability supplies the name restrictions and overloads for an expression.
@@ -21,11 +21,11 @@ type Availability interface {
 // Scope supplies the initial variable types as well as name availability.
 type Scope interface {
 	Availability
-	ContextTypes() map[string]types.Type
+	ContextTypes() map[string]exprtypes.Type
 	// NarrowContext returns branch-specific type overrides and whether the branch
 	// is possible. Insufficient knowledge means possible. Implementations must not
 	// mutate syntax or types obtained through lookup.
-	NarrowContext(guard syntax.Node, truth bool, lookup func(string) (types.Type, bool)) (map[string]types.Type, bool)
+	NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool)
 }
 
 // SetAvailability replaces name restrictions and overloads without changing
@@ -62,8 +62,8 @@ func (sema *Checker) functionRestriction(callName string) (functions.Availabilit
 
 // AvailableContexts returns permitted names and their current types. The caller
 // owns the map; later scope updates do not change the returned entries.
-func (sema *Checker) AvailableContexts() map[string]types.Type {
-	contexts := make(map[string]types.Type, len(sema.availableContexts))
+func (sema *Checker) AvailableContexts() map[string]exprtypes.Type {
+	contexts := make(map[string]exprtypes.Type, len(sema.availableContexts))
 	for _, name := range sema.availableContexts {
 		if ty, found := sema.vars[name]; found {
 			contexts[name] = ty

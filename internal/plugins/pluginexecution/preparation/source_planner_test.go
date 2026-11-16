@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestSourcePlannerRejectsMalformedPlans(t *testing.T) {
@@ -13,7 +13,7 @@ func TestSourcePlannerRejectsMalformedPlans(t *testing.T) {
 	for _, source := range []string{`null`, `[]`, `{source_prefix:"unterminated"}`, `{unknown:true}`, `{startup:[]}`, `{variables:{mode:42}}`, `{}, {}`} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			transform, err := NewSourcePlanner(&manifests.Transform{Language: manifests.LanguageJQ, Inline: source}, nil)
+			transform, err := NewSourcePlanner(&toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: source}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -26,7 +26,7 @@ func TestSourcePlannerRejectsMalformedPlans(t *testing.T) {
 
 func TestSourcePlannerHonorsCancellation(t *testing.T) {
 	t.Parallel()
-	transform, err := NewSourcePlanner(&manifests.Transform{Language: manifests.LanguageJQ, Inline: `def loop: loop; loop`}, nil)
+	transform, err := NewSourcePlanner(&toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `def loop: loop; loop`}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

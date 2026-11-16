@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
 )
@@ -38,9 +38,9 @@ func validInputKindDiscriminant(discriminant uint32) bool {
 	return uint64(discriminant) < uint64(len(inputKinds))
 }
 
-var keyStateDiscriminants = func() map[mapping.KeyState]uint32 {
-	values := make(map[mapping.KeyState]uint32, len(canonical_key_state))
-	for _, state := range []mapping.KeyState{mapping.UnknownKey, mapping.KnownKey, mapping.InvalidKey} {
+var keyStateDiscriminants = func() map[mappings.KeyState]uint32 {
+	values := make(map[mappings.KeyState]uint32, len(canonical_key_state))
+	for _, state := range []mappings.KeyState{mappings.UnknownKey, mappings.KnownKey, mappings.InvalidKey} {
 		if i := slices.Index(canonical_key_state, state.String()); i >= 0 {
 			values[state] = uint32(i)
 		}
@@ -134,9 +134,9 @@ func lowerScripts(scripts []checkinputs.Script) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-func lowerMappings(mappings []facts.Mapping) *wacogo.ValList {
-	values := make([]wacogo.Val, 0, len(mappings))
-	for _, mapping := range mappings {
+func lowerMappings(sourceMappings []facts.Mapping) *wacogo.ValList {
+	values := make([]wacogo.Val, 0, len(sourceMappings))
+	for _, mapping := range sourceMappings {
 		entries := make([]wacogo.Val, 0, len(mapping.Entries))
 		for _, entry := range mapping.Entries {
 			entries = append(entries, wacogo.NewValRecord(

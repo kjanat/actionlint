@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 

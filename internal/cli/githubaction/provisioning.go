@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -40,11 +40,11 @@ func (req *lintRequest) pluginSelection() pluginselection.Selection {
 	return pluginselection.WithTools(pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
 }
 
-func (req *lintRequest) pluginInput() inputmodel.Request {
+func (req *lintRequest) pluginInput() checkrequest.Request {
 	if len(req.files) != 0 {
-		return inputmodel.Request{Kind: inputmodel.Files, Paths: req.files}
+		return checkrequest.Request{Kind: checkrequest.Files, Paths: req.files}
 	}
-	return inputmodel.Request{Kind: inputmodel.Repository, Directory: req.workingDir}
+	return checkrequest.Request{Kind: checkrequest.Repository, Directory: req.workingDir}
 }
 
 // PluginPlan lets the launcher restore portable bytes before any plugin download.
@@ -77,7 +77,7 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 }
 
 func (req *lintRequest) pluginPlan(ctx context.Context) (pluginselection.CachePlan, error) {
-	inputs := []inputmodel.Request{req.pluginInput()}
+	inputs := []checkrequest.Request{req.pluginInput()}
 	if len(req.files) != 0 {
 		paths := slices.Clone(req.files)
 		for i, path := range paths {
@@ -91,12 +91,12 @@ func (req *lintRequest) pluginPlan(ctx context.Context) (pluginselection.CachePl
 		}
 		inputs = nil
 		for _, batch := range workspace.PartitionFiles(found) {
-			inputs = append(inputs, inputmodel.FromFiles(batch))
+			inputs = append(inputs, checkrequest.FromFiles(batch))
 		}
 	}
 	var combined pluginselection.CachePlan
 	if len(inputs) == 0 {
-		inputs = []inputmodel.Request{{Kind: inputmodel.Stdin}}
+		inputs = []checkrequest.Request{{Kind: checkrequest.Stdin}}
 	}
 	for _, input := range inputs {
 		selection := req.pluginSelection()

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestActionDiscoverySymlinkRoot(t *testing.T) {
@@ -31,7 +31,7 @@ func TestActionDiscoverySymlinkRoot(t *testing.T) {
 			session := checking.Options{WorkingDir: alias}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Repository, Directory: ""})
+			result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 			if err != nil || len(result.Documents) != want || len(result.Diagnostics) != 0 {
 				t.Fatalf("want %d clean documents: result=%+v error=%v", want, result, err)
 			}
@@ -48,7 +48,7 @@ func TestActionDiscoveryDoesNotHideWorkflowTypo(t *testing.T) {
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	_, err = checking.Check(t.Context(), session, input.Request{Kind: input.Repository, Directory: ""})
+	_, err = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Repository, Directory: ""})
 	if err == nil || !strings.Contains(err.Error(), "looks misspelled") {
 		t.Fatalf("expected workflow typo despite action discovery, got %v", err)
 	}

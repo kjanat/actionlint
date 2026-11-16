@@ -16,33 +16,33 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Each workflow analysis owns its validation store.
 // Its templates contain no caller state and are also shared with nested composites.
 type actionMetadataValidation struct {
-	templates map[string][]*findingmodel.Finding
-	copies    *findingmodel.Copier
+	templates map[string][]*finding.Finding
+	copies    *finding.Copier
 	visits    uint64
 }
 
-func metadataFindingKey(meta *actionmeta.Metadata, document string, finding *findingmodel.Finding) findingmodel.MetadataKey {
+func metadataFindingKey(meta *actionmeta.Metadata, document string, item *finding.Finding) finding.MetadataKey {
 	// Validation messages may embed the metadata filename or directory. Normalize
 	// those spellings for identity without changing the user-facing source path.
 	message := strings.NewReplacer(
 		strconv.Quote(meta.Path()), strconv.Quote(document),
 		strconv.Quote(meta.Dir()), strconv.Quote(path.Dir(document)),
-	).Replace(finding.Message)
-	key := findingmodel.MetadataKey{Path: document, Message: message}
-	if finding.Source.Content != nil {
-		key.Line, key.Column = finding.Start.Line, finding.Start.Column
+	).Replace(item.Message)
+	key := finding.MetadataKey{Path: document, Message: message}
+	if item.Source.Content != nil {
+		key.Line, key.Column = item.Start.Line, item.Start.Column
 	}
 	return key
 }
 
 func newActionMetadataValidation() *actionMetadataValidation {
-	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding), copies: findingmodel.NewCopier()}
+	return &actionMetadataValidation{templates: make(map[string][]*finding.Finding), copies: finding.NewCopier()}
 }
 
 func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source localactions.SourceDocument, action *definition.ExecAction, displaySpec string) error {
@@ -63,13 +63,13 @@ func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source
 	document := source.Capture().Revision().Document()
 	store.visits++
 	for _, template := range templates {
-		finding := store.copies.Clone(template)
-		key := metadataFindingKey(meta, document, finding)
-		if finding.Source.Content == nil {
-			finding.Start.Line, finding.Start.Column = reporting.SourcePosition(action.Uses).Line, reporting.SourcePosition(action.Uses).Column
+		item := store.copies.Clone(template)
+		key := metadataFindingKey(meta, document, item)
+		if item.Source.Content == nil {
+			item.Start.Line, item.Start.Column = reporting.SourcePosition(action.Uses).Line, reporting.SourcePosition(action.Uses).Column
 		}
-		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: key, Visit: store.visits}
-		rule.Report(finding)
+		item.MetadataIdentity = &finding.MetadataIdentity{Key: key, Visit: store.visits}
+		rule.Report(item)
 	}
 	return nil
 }

@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -38,7 +38,7 @@ type reportedFile struct {
 func (r runner) checkGranted(ctx context.Context, c check) outcome {
 	request := c.request
 	result := outcome{copies: map[string]reportedFile{}}
-	var grant *inputfiles.BoundedFS
+	var grant *files.BoundedFS
 	if r.directory && request.Directory != "" {
 		var err error
 		if grant, err = directoryGrant(ctx, c.scope, request.Directory); err != nil {
@@ -78,7 +78,7 @@ func (r runner) checkGranted(ctx context.Context, c check) outcome {
 // scope, so neither the path nor a symlink below it leaves the workspace.
 // Reads through the grant are recorded with the scope's reader. A missing
 // directory gets no grant; one outside the workspace fails the check.
-func directoryGrant(ctx context.Context, scope *scriptanalysis.Scope, directory string) (*inputfiles.BoundedFS, error) {
+func directoryGrant(ctx context.Context, scope *scriptanalysis.Scope, directory string) (*files.BoundedFS, error) {
 	if scope == nil || scope.Paths.Workspace == "" && scope.Paths.Analysis == "" {
 		return nil, errors.New("directory access requires a workspace root")
 	}
@@ -102,11 +102,11 @@ func directoryGrant(ctx context.Context, scope *scriptanalysis.Scope, directory 
 	if err != nil {
 		return nil, fmt.Errorf("workspace root: %w", err)
 	}
-	files := scope.Reader
-	if files == nil {
-		files = inputfiles.New(ctx, nil, nil)
+	sourceReader := scope.Reader
+	if sourceReader == nil {
+		sourceReader = files.New(ctx, nil, nil)
 	}
-	grant, err := inputfiles.NewSnapshotAt(ctx, root, relative, files, nil)
+	grant, err := files.NewSnapshotAt(ctx, root, relative, sourceReader, nil)
 	closeErr := root.Close()
 	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
 		return nil, closeErr
@@ -121,7 +121,7 @@ func directoryGrant(ctx context.Context, scope *scriptanalysis.Scope, directory 
 }
 
 // reader is the script scope's recording reader, or nil.
-func reader(script scriptanalysis.Unit) *inputfiles.Reader {
+func reader(script scriptanalysis.Unit) *files.Reader {
 	if script.Scope == nil {
 		return nil
 	}
@@ -139,12 +139,12 @@ func (r runner) recordSources(script scriptanalysis.Unit, paths []string, direct
 
 // RecordSources records files a tool read, relative to directory, with
 // files, including symlinks along their paths. A nil reader records nothing.
-func RecordSources(files *inputfiles.Reader, paths []string, directory string) error {
+func RecordSources(sourceReader *files.Reader, paths []string, directory string) error {
 	for _, path := range paths {
 		if path == "" || path == "-" || strings.ContainsRune(path, 0) {
 			return fmt.Errorf("reported invalid source path %q", path)
 		}
-		if files == nil {
+		if sourceReader == nil {
 			continue
 		}
 		name := sourceName(path, directory)
@@ -159,11 +159,11 @@ func RecordSources(files *inputfiles.Reader, paths []string, directory string) e
 			}
 			parent, base := filepath.Split(prefix)
 			if resolved, err := filepath.EvalSymlinks(parent); err == nil {
-				files.Record(filepath.Join(resolved, base))
+				sourceReader.Record(filepath.Join(resolved, base))
 			}
 		}
 		// The engine already read it. Keep the dependency even if it disappeared.
-		files.Record(sourceInventoryPath(name, directory))
+		sourceReader.Record(sourceInventoryPath(name, directory))
 	}
 	return nil
 }
@@ -174,11 +174,11 @@ func RecordSources(files *inputfiles.Reader, paths []string, directory string) e
 // comments of the script still apply. A check with copies takes the display
 // copy from them; otherwise the copy is reread by path, as a native process
 // read the file by path itself.
-func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) contract.ToolFinding {
+func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d checkinputs.ScriptDiagnostic, result outcome, reportedFiles map[string]reportedFile) contract.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)
-	file, found := files[path]
+	file, found := reportedFiles[path]
 	if result.copies != nil {
 		file, found = result.copies[d.Source]
 		if !found {
@@ -194,7 +194,7 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d checkin
 				r.debug("Cannot read %s diagnostic source %q: %v", r.descriptor.Name, path, err)
 			}
 		}
-		files[path] = file
+		reportedFiles[path] = file
 	}
 	if scope := reader(script); scope != nil && (result.copies == nil || directory != "") {
 		// A cached or failed display reread does not erase the reported alias.

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 
 	"github.com/google/go-cmp/cmp"
@@ -58,7 +58,7 @@ run:
     echo second
 next: value
 `, "\n", ending)
-				findings := []*findingmodel.Finding{
+				findings := []*finding.Finding{
 					{Start: sourcepos.Position{Line: start + 1}, Rule: "expression-reference"},
 					{Start: sourcepos.Position{Line: start + 2}, Rule: "shellcheck"},
 					{Start: sourcepos.Position{Line: start + 2}, Rule: "action"},
@@ -87,7 +87,7 @@ func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 		t.Run(declaration, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("run: | # " + declaration + "\n  echo ok\nnext: value\n")
-			findings := []*findingmodel.Finding{
+			findings := []*finding.Finding{
 				{Start: sourcepos.Position{Line: 2}, Rule: "expression-reference"},
 				{Start: sourcepos.Position{Line: 2}, Rule: "shellcheck"},
 				{Start: sourcepos.Position{Line: 3}, Rule: "expression-reference"},
@@ -110,8 +110,8 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 				t.Fatal(err)
 			}
 			source := []byte("first: value\nsecond: value\nthird: value\n# actionlint:ignore-next-line " + name + " -- reviewed\nfifth: value\n")
-			finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 5}, Rule: name}
-			got := fixtureInline(t, source, []*findingmodel.Finding{finding}, nil)
+			item := &finding.Finding{Start: sourcepos.Position{Line: 5}, Rule: name}
+			got := fixtureInline(t, source, []*finding.Finding{item}, nil)
 			if name == "unused-suppression" {
 				if len(got) != 1 || got[0].UnusedSuppressionRule != name || got[0].Start.Line != 4 {
 					t.Fatalf("self-suppression audit changed: %v", got)
@@ -119,12 +119,12 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 			} else if len(got) != 0 {
 				t.Fatalf("registered rule was not suppressed: %v", got)
 			}
-			got = fixtureInline(t, source, []*findingmodel.Finding{finding}, cfg.Policy.DisallowSuppressions)
+			got = fixtureInline(t, source, []*finding.Finding{item}, cfg.Policy.DisallowSuppressions)
 			if name == "unused-suppression" {
-				if len(got) != 3 || got[0].Rule != name || got[0].Start != finding.Start || got[1].UnusedSuppressionRule != name || got[2].Rule != "forbidden-suppression" || got[2].Start.Line != 4 {
+				if len(got) != 3 || got[0].Rule != name || got[0].Start != item.Start || got[1].UnusedSuppressionRule != name || got[2].Rule != "forbidden-suppression" || got[2].Start.Line != 4 {
 					t.Fatalf("restriction did not retain finding and audit comment: %v", got)
 				}
-			} else if len(got) != 2 || got[0].Rule != finding.Rule || got[0].Start != finding.Start || got[1].Rule != "forbidden-suppression" || got[1].Start.Line != 4 {
+			} else if len(got) != 2 || got[0].Rule != item.Rule || got[0].Start != item.Start || got[1].Rule != "forbidden-suppression" || got[1].Start.Line != 4 {
 				t.Fatalf("restriction did not retain finding and report comment: %v", got)
 			}
 		})
@@ -139,9 +139,9 @@ func TestInlineSuppressionScriptTextIsNotDirective(t *testing.T) {
   ${{ github.event.issue.title }}
   '''
 `)
-	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 4}, Rule: "expression-reference"}
-	got := fixtureInline(t, source, []*findingmodel.Finding{finding}, nil)
-	if len(got) != 1 || got[0].Rule != finding.Rule || got[0].Start != finding.Start {
+	item := &finding.Finding{Start: sourcepos.Position{Line: 4}, Rule: "expression-reference"}
+	got := fixtureInline(t, source, []*finding.Finding{item}, nil)
+	if len(got) != 1 || got[0].Rule != item.Rule || got[0].Start != item.Start {
 		t.Fatalf("script text changed findings: %+v", got)
 	}
 }
@@ -152,7 +152,7 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := []*findingmodel.Finding{
+	findings := []*finding.Finding{
 		{Rule: "expression-reference", Start: sourcepos.Position{Line: 4}},
 		{Rule: "shellcheck", Start: sourcepos.Position{Line: 7}},
 		{Rule: "plugin-rule", Start: sourcepos.Position{Line: 9}},
@@ -173,9 +173,9 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		}
 	}
 
-	foreign := &findingmodel.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}}
-	origin := &findingmodel.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
-	got = fixtureForeign(t, "action.yml", []byte("run: echo hi"), []*findingmodel.Finding{foreign, origin}, nil)
+	foreign := &finding.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}}
+	origin := &finding.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
+	got = fixtureForeign(t, "action.yml", []byte("run: echo hi"), []*finding.Finding{foreign, origin}, nil)
 	if len(got) != 2 || got[0].Source.Suppression == nil || *got[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", First: 2, Last: 2}) || got[1].Source.Suppression == nil || *got[1].Source.Suppression != *origin.SuppressionOrigin {
 		t.Fatalf("foreign targets lost declaration scope: %+v", got)
 	}
@@ -196,7 +196,7 @@ run:
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll(header+"\n    echo body\n", "\n", ending)
 			line := strings.Count(header, "\n") + 2
-			findings := []*findingmodel.Finding{{Start: sourcepos.Position{Line: line}, Rule: "expression-reference"}, {Start: sourcepos.Position{Line: line}, Rule: "shellcheck"}}
+			findings := []*finding.Finding{{Start: sourcepos.Position{Line: line}, Rule: "expression-reference"}, {Start: sourcepos.Position{Line: line}, Rule: "shellcheck"}}
 			if got := fixtureInline(t, []byte(source), findings, nil); len(got) != 2 {
 				t.Fatalf("unrelated prefix suppressed body: %q: %+v", source, got)
 			}

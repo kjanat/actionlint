@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -92,7 +92,7 @@ func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	pkg := publishOCIProvider(t)
 	check := func() *report.Analysis {
 		t.Helper()
-		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
+		result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, []string{pkg.reference}, acquisition)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -137,10 +137,10 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 			if explicit {
 				selection.ConfigFile = path
 			}
-			input := func() inputmodel.Request {
-				return inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}
+			input := func() checkrequest.Request {
+				return checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}
 			}
-			sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+			sources, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -172,7 +172,7 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	sources.DisabledTools, sources.NamedTools = []string{"oci-tool"}, []string{"oci-tool"}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
+	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(ociProviderInput)}, sources)
 	if err != nil {
 		t.Fatal(err)
 	}

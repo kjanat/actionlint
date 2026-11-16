@@ -23,7 +23,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -85,24 +85,24 @@ jobs:
 	if broken.DocumentPath() != "broken.yml" || broken.ParseStatus != "failed" || broken.Jobs == nil || len(broken.Jobs) != 0 {
 		t.Fatalf("failed parse missing: %+v", broken)
 	}
-	renderer, err := render.New(outputformat.JSON, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(outputformat.JSON, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var output bytes.Buffer
-	presentation := render.FromAnalysis(*analysis)
+	var rendered bytes.Buffer
+	presentation := output.FromAnalysis(*analysis)
 	presentation.CheckResult = exitcode.AnalysisResult(*analysis)
-	if err := renderer.Render(&output, presentation); err != nil {
+	if err := renderer.Render(&rendered, presentation); err != nil {
 		t.Fatal(err)
 	}
 	var report report.CheckResult
-	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+	if err := json.Unmarshal(rendered.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(report.Documents, analysis.Documents) {
-		t.Fatalf("JSON lost outlines: %s", &output)
+		t.Fatalf("JSON lost outlines: %s", &rendered)
 	}
-	if strings.Contains(output.String(), "echo hi") {
+	if strings.Contains(rendered.String(), "echo hi") {
 		t.Fatal("outline unexpectedly includes script bodies")
 	}
 }

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -66,7 +66,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		if !found {
 			t.Fatal("inherited plugin rule missing")
 		}
-		if _, err := selection.Select(t.Context(), root, input.Request{Kind: input.Repository}); err == nil {
+		if _, err := selection.Select(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err == nil {
 			t.Fatal("ordinary checking ignored invalid config")
 		}
 	}

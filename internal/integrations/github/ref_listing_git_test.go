@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/gitwire"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
 func TestGitAdvertisementDoesNotIdentifyTagTargetTypes(t *testing.T) {
@@ -16,7 +16,7 @@ func TestGitAdvertisementDoesNotIdentifyTagTargetTypes(t *testing.T) {
 	directory := t.TempDir()
 	git := func(input string, args ...string) string {
 		t.Helper()
-		command := git.Command(t.Context(), "git", directory, append([]string{"-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "tag.gpgsign=false"}, args...)...)
+		command := gitcommand.Command(t.Context(), "git", directory, append([]string{"-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "tag.gpgsign=false"}, args...)...)
 		command.Stdin = strings.NewReader(input)
 		output, err := command.CombinedOutput()
 		if err != nil {

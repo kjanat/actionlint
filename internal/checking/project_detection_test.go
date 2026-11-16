@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestContentPathDetectsProject(t *testing.T) {
@@ -35,7 +35,7 @@ func TestContentPathDetectsProject(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, input.Request{Kind: input.Stdin, Name: tc.path, Reader: bytes.NewReader(content)})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, checkrequest.Request{Kind: checkrequest.Stdin, Name: tc.path, Reader: bytes.NewReader(content)})
 			if err != nil {
 				t.Fatal(err)
 			}

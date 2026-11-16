@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -55,7 +55,7 @@ func TestCheckingSessionPreparesResolverFacts(t *testing.T) {
 				steps += "      - uses: owner/repo@v2\n"
 			}
 			content := "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n" + steps
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, Resolver: provider, SuggestCommitPins: true}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(content)})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir(), SkipProjectConfig: true, Resolver: provider, SuggestCommitPins: true}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(content)})
 			if (err != nil) != partial || result == nil {
 				t.Fatalf("wrong session outcome: %v", err)
 			}
@@ -85,7 +85,7 @@ func TestDisabledResolutionDoesNotCallProvider(t *testing.T) {
 	}
 	provider := &fakeResolver{err: errors.New("disabled resolution called provider")}
 	content := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: owner/repo@v1}]}}\n"
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, ConfigFile: config, Resolver: provider, SuggestCommitPins: true}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(content)})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, ConfigFile: config, Resolver: provider, SuggestCommitPins: true}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(content)})
 	if err != nil || len(provider.requests) != 0 {
 		t.Fatalf("disabled resolution acquired input: requests=%v error=%v", provider.requests, err)
 	}

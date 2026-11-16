@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/output"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
@@ -64,16 +64,16 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, finding := range result.Diagnostics {
-				if !strings.Contains(finding.Message, "undefined variable") {
+			for _, item := range result.Diagnostics {
+				if !strings.Contains(item.Message, "undefined variable") {
 					continue
 				}
-				t.Logf("diagnostic: %+v", finding)
-				if !strings.Contains(finding.Snippet, "${{ unknown }}") {
-					t.Errorf("physical YAML source line missing from snippet: %q", finding.Snippet)
+				t.Logf("diagnostic: %+v", item)
+				if !strings.Contains(item.Snippet, "${{ unknown }}") {
+					t.Errorf("physical YAML source line missing from snippet: %q", item.Snippet)
 				}
 				var rendered bytes.Buffer
-				failure := &findingmodel.Finding{Start: finding.Start, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
+				failure := &finding.Finding{Start: item.Start, Message: item.Message, Rule: item.Rule, Path: "ci.yml"}
 				output.PrettyPrint(&rendered, failure.Publish([]byte(src)))
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())

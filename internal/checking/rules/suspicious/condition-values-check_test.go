@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestConditionValuesUseCheckedTypes(t *testing.T) {
@@ -62,7 +62,7 @@ func TestConditionValuesUseCheckedTypes(t *testing.T) {
 			if findings := append(StringConditions(node, typecheck.InferredTypes{}), MixedTypeComparisons(node, typecheck.InferredTypes{})...); len(findings) != 0 {
 				t.Fatalf("unchecked syntax acquired policy findings: %v", findings)
 			}
-			if checked.Type.Kind() != types.KindString && tc.rule == "string-conditions" && tc.source == "env.FLAG" {
+			if checked.Type.Kind() != exprtypes.KindString && tc.rule == "string-conditions" && tc.source == "env.FLAG" {
 				t.Fatal("string type lost")
 			}
 		})

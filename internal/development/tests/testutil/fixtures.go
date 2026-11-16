@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -41,7 +41,7 @@ func ExecutableFixture(t *testing.T, disabled ...string) (string, func(...string
 	root := t.TempDir()
 	command := func(args ...string) {
 		t.Helper()
-		if out, err := gitclient.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
+		if out, err := gitcommand.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}
@@ -72,11 +72,11 @@ func ExecutableFixture(t *testing.T, disabled ...string) (string, func(...string
 // variables such as SHELLCHECK_OPTS that add options to the provider's command.
 func RequireTool(t *testing.T, name string) string {
 	t.Helper()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	index := slices.IndexFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == name })
+	index := slices.IndexFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == name })
 	if index < 0 || manifests[index].Process == nil {
 		t.Fatalf("no bundled process provider %s", name)
 	}
@@ -96,7 +96,7 @@ func RequireTool(t *testing.T, name string) string {
 }
 
 func bundledEnvironmentOptions() ([]string, error) {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ jobs:
     steps:
       `+strings.ReplaceAll(steps, "\n", "\n      ")+"\npermissions: {}\n")
 	options.WorkingDir = root
-	result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}

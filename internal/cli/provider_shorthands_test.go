@@ -11,17 +11,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestInstalledProviderShorthands(t *testing.T) {
-	providers, err := manifests.Bundled()
+	providers, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var provider manifests.Manifest
+	var provider toolmanifest.Manifest
 	for _, p := range providers {
 		if p.Rule.Name == "shellcheck" {
 			provider = p

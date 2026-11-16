@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -37,11 +37,11 @@ func (c Combination) Get(name string) (value.Value, bool) {
 
 // Values yields combination fields in stable key order.
 func (c Combination) Values() iter.Seq2[string, value.Value] {
-	values := maps.Clone(c.values)
-	keys := slices.Sorted(maps.Keys(values))
+	combinationValues := maps.Clone(c.values)
+	keys := slices.Sorted(maps.Keys(combinationValues))
 	return func(yield func(string, value.Value) bool) {
 		for _, name := range keys {
-			if !yield(name, values[name]) {
+			if !yield(name, combinationValues[name]) {
 				return
 			}
 		}
@@ -50,9 +50,9 @@ func (c Combination) Values() iter.Seq2[string, value.Value] {
 
 func (c Combination) With(name string, item value.Value) Combination {
 	name = strings.ToLower(name)
-	values := maps.Clone(c.values)
-	if values == nil {
-		values = map[string]value.Value{}
+	combinationValues := maps.Clone(c.values)
+	if combinationValues == nil {
+		combinationValues = map[string]value.Value{}
 	}
 	keyOrigins := maps.Clone(c.keyOrigins)
 	if keyOrigins == nil {
@@ -61,17 +61,17 @@ func (c Combination) With(name string, item value.Value) Combination {
 	if _, declared := keyOrigins[name]; !declared {
 		keyOrigins[name] = item.Origin()
 	}
-	values[name] = item
-	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
+	combinationValues[name] = item
+	return Combination{values: combinationValues, keyOrigins: keyOrigins, origin: c.origin}
 }
 
 // merge returns a copy of c with every key of inclusion that is not a base
 // axis. Base axis keys are left alone: inclusion only merges into c when its
 // base axis values already match.
 func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination {
-	values := maps.Clone(c.values)
-	if values == nil {
-		values = map[string]value.Value{}
+	combinationValues := maps.Clone(c.values)
+	if combinationValues == nil {
+		combinationValues = map[string]value.Value{}
 	}
 	keyOrigins := maps.Clone(c.keyOrigins)
 	if keyOrigins == nil {
@@ -79,11 +79,11 @@ func (c Combination) merge(inclusion Combination, axes []matrixAxis) Combination
 	}
 	for name, item := range inclusion.values {
 		if axisIndex(axes, name) < 0 {
-			values[name] = item
+			combinationValues[name] = item
 			keyOrigins[name] = inclusion.KeyOrigin(name)
 		}
 	}
-	return Combination{values: values, keyOrigins: keyOrigins, origin: c.origin}
+	return Combination{values: combinationValues, keyOrigins: keyOrigins, origin: c.origin}
 }
 
 // KeyOrigin returns the declaration location of a field, falling back to its value origin.
@@ -767,7 +767,7 @@ func looseEqual(left, right value.Value) bool {
 			return item.Number()
 		case value.String:
 			text, _ := item.Text()
-			return exprvalues.ToNumber(text), true
+			return values.ToNumber(text), true
 		case value.KindUnknown, value.Array, value.Object:
 		}
 		return 0, false
@@ -920,13 +920,13 @@ func axisIndex(axes []matrixAxis, name string) int {
 	return -1
 }
 
-func appendUnique(values *[]value.Value, candidate value.Value) {
-	for _, existing := range *values {
+func appendUnique(combinationValues *[]value.Value, candidate value.Value) {
+	for _, existing := range *combinationValues {
 		if existing.Equal(candidate) {
 			return
 		}
 	}
-	*values = append(*values, candidate)
+	*combinationValues = append(*combinationValues, candidate)
 }
 
 // exclusionCandidates lists the values key name can take when an exclusion is

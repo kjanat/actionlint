@@ -7,7 +7,7 @@ import (
 	"errors"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/jq"
 )
@@ -44,11 +44,11 @@ type SourcePlanner struct{ program *jq.Program }
 
 // NewSourcePlanner compiles spec. A nil spec yields a nil planner, whose Plan
 // passes the supplied settings on.
-func NewSourcePlanner(spec *manifests.Transform, programs manifests.Programs) (*SourcePlanner, error) {
+func NewSourcePlanner(spec *toolmanifest.Transform, programs toolmanifest.Programs) (*SourcePlanner, error) {
 	if spec == nil {
 		return nil, nil
 	}
-	source, err := manifests.ResolveTransform(spec, programs)
+	source, err := toolmanifest.ResolveTransform(spec, programs)
 	if err != nil {
 		return nil, err
 	}

@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
-func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *hostprocess.Command) {
+func inlineBunManifest(t *testing.T, source string) (toolmanifest.Manifest, *hostprocess.Command) {
 	t.Helper()
 	bun, err := exec.LookPath("bun")
 	if err != nil {
@@ -26,7 +26,7 @@ func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *hostpr
 		t.Fatal(err)
 	}
 	bun = strings.TrimSpace(string(output))
-	manifest := documentManifest(manifests.ProcessSpec{Entry: "bun", Args: []string{"{program-file}"}, Program: &manifests.InlineProgram{Filename: "actionlint.mjs", Inline: source}, Stdin: manifests.StdinRequest, Config: manifests.ConfigRendering{Render: manifests.RenderNone}, Output: manifests.Output{Format: manifests.FormatEnvelope}})
+	manifest := documentManifest(toolmanifest.ProcessSpec{Entry: "bun", Args: []string{"{program-file}"}, Program: &toolmanifest.InlineProgram{Filename: "actionlint.mjs", Inline: source}, Stdin: toolmanifest.StdinRequest, Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderNone}, Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope}})
 	manifest.Rule.Category, manifest.Rule.Subcategory, manifest.Rule.Maturity, manifest.Rule.Provider = "correctness", "workflow", "stable", "helper"
 	manifest.Rule.Description = "Inline runtime fixture"
 	manifest.Rule.DocumentationURL = "https://example.com/helper"
@@ -34,7 +34,7 @@ func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *hostpr
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err = manifests.ParsePluginManifest(data)
+	manifest, err = toolmanifest.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatal("standalone manifest rejected", err)
 	}
@@ -176,7 +176,7 @@ func TestInlineProgramCreationFailureCleanup(t *testing.T) {
 	t.Setenv("TMPDIR", temporary)
 	t.Setenv("TMP", temporary)
 	t.Setenv("TEMP", temporary)
-	path, cleanup, err := materializeProgram(t.Context(), manifests.InlineProgram{Filename: "../escape.mjs", Inline: "exact source\n"})
+	path, cleanup, err := materializeProgram(t.Context(), toolmanifest.InlineProgram{Filename: "../escape.mjs", Inline: "exact source\n"})
 	if err == nil || path != "" || cleanup != nil {
 		t.Fatalf("invalid filename materialized: %q, %v", path, err)
 	}
@@ -189,7 +189,7 @@ func TestInlineProgramReadOnlyAndEntryProbe(t *testing.T) {
 	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
 		t.Setenv(name, temporary)
 	}
-	path, cleanup, err := materializeProgram(t.Context(), manifests.InlineProgram{Filename: "source.mjs", Inline: "exact source\n"})
+	path, cleanup, err := materializeProgram(t.Context(), toolmanifest.InlineProgram{Filename: "source.mjs", Inline: "exact source\n"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestInlineProgramReadOnlyAndEntryProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifest, command := inlineBunManifest(t, "this source is deliberately not valid JavaScript")
-	manifest.Process.Version = &manifests.VersionProbe{Args: []string{"--version"}, Pattern: `([0-9.]+)`}
+	manifest.Process.Version = &toolmanifest.VersionProbe{Args: []string{"--version"}, Pattern: `([0-9.]+)`}
 	backend, err := NewBackend(manifest, command, Options{})
 	if err != nil {
 		t.Fatal(err)

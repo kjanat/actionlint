@@ -11,17 +11,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
-	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"github.com/kjanat/go-yaml/v4"
 )
 
-func uncommentConfigExamples(document string) string {
+func uncommentConfigExamples(configDocument string) string {
 	setting := regexp.MustCompile(`^\s*(?:[a-z][a-z-]*:|[".].*:|- )`)
 	var example strings.Builder
-	for line := range strings.SplitSeq(document, "\n") {
+	for line := range strings.SplitSeq(configDocument, "\n") {
 		if strings.HasPrefix(line, "# yaml-language-server:") {
 			continue
 		}
@@ -39,11 +39,11 @@ func uncommentConfigExamples(document string) string {
 
 func TestDefaultConfigFormats(t *testing.T) {
 	t.Parallel()
-	document, err := configschema.Document(configschema.Schema, nil)
+	configDocument, err := configschema.Document(configschema.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := toolsettings.Compile(document)
+	schema, err := toolsettings.Compile(configDocument)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 			}
 			checkSchema := func(content []byte) {
 				t.Helper()
-				node, err := configdocument.ParseConfigDocument(path, content)
+				node, err := document.ParseConfigDocument(path, content)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -169,11 +169,11 @@ func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
 
 func TestDefaultConfigReferenceExamples(t *testing.T) {
 	t.Parallel()
-	document, err := configschema.Document(configschema.Schema, nil)
+	configDocument, err := configschema.Document(configschema.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := toolsettings.Compile(document)
+	schema, err := toolsettings.Compile(configDocument)
 	if err != nil {
 		t.Fatal(err)
 	}

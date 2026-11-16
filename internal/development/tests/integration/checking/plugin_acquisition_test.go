@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
@@ -45,7 +45,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 	}
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
 	for _, selection := range []pluginselection.Selection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
-		sources, err := selection.Resolve(t.Context(), root, input.Request{Kind: input.Repository})
+		sources, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 func TestExplicitPluginSelectionCarriesOnlyItsOwnSourceGrant(t *testing.T) {
 	t.Parallel()
 	source := "https://127.0.0.1:8443/plugin.wasm#sha256=" + strings.Repeat("a", 64)
-	sources, err := (pluginselection.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), input.Request{})
+	sources, err := (pluginselection.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), checkrequest.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

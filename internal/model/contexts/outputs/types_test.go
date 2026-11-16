@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
-func property(t *testing.T, object types.ObjectType, path ...string) types.Type {
+func property(t *testing.T, object exprtypes.ObjectType, path ...string) exprtypes.Type {
 	t.Helper()
 	value := object.Type()
 	for _, name := range path {
@@ -46,16 +46,16 @@ func TestActionOutputCompletenessDoesNotChangeValueType(t *testing.T) {
 			t.Parallel()
 			object := outputs.ActionType(tc.definition)
 			mapped, open := object.Mapped()
-			if object.IsStrict() != tc.strict || open == tc.strict || open && mapped.Kind() != types.KindString {
+			if object.IsStrict() != tc.strict || open == tc.strict || open && mapped.Kind() != exprtypes.KindString {
 				t.Fatalf("incorrect output type: %v", object)
 			}
 			value, named := object.Property("value")
-			if named != tc.named || named && value.Kind() != types.KindString {
+			if named != tc.named || named && value.Kind() != exprtypes.KindString {
 				t.Fatalf("declared names lost: %v", object)
 			}
 			step := outputs.StepType(object)
 			for _, path := range [][]string{{"conclusion"}, {"outcome"}} {
-				if property(t, step, path...).Kind() != types.KindString {
+				if property(t, step, path...).Kind() != exprtypes.KindString {
 					t.Fatal(step)
 				}
 			}
@@ -125,17 +125,17 @@ func TestJobsAndNeedsShareLoadedOutputDeclarations(t *testing.T) {
 	if !reflect.DeepEqual(property(t, needs, "call"), property(t, jobs, "call")) {
 		t.Fatal("job output models diverged")
 	}
-	for _, context := range []types.ObjectType{needs, jobs} {
-		if property(t, context, "call", "outputs", "artifact").Kind() != types.KindString || property(t, context, "direct", "outputs", "value").Kind() != types.KindString {
+	for _, context := range []exprtypes.ObjectType{needs, jobs} {
+		if property(t, context, "call", "outputs", "artifact").Kind() != exprtypes.KindString || property(t, context, "direct", "outputs", "value").Kind() != exprtypes.KindString {
 			t.Fatal(context)
 		}
-		if property(t, context, "call", "result").Kind() != types.KindString {
+		if property(t, context, "call", "result").Kind() != exprtypes.KindString {
 			t.Fatal(context)
 		}
 	}
 	metadata.Outputs["later"] = calls.Output{Name: "later"}
 	delete(loaded, called)
-	for _, context := range []types.ObjectType{needs, jobs} {
+	for _, context := range []exprtypes.ObjectType{needs, jobs} {
 		object, _ := property(t, context, "call", "outputs").Object()
 		if _, found := object.Property("later"); found || !object.IsStrict() {
 			t.Fatal("caller mutation changed a published output type")
@@ -154,7 +154,7 @@ func TestUnknownAndEmptyReusableOutputsAreDifferent(t *testing.T) {
 		}
 		object, _ := property(t, outputs.JobType(called, loaded), "outputs").Object()
 		mapped, open := object.Mapped()
-		if object.IsStrict() != known || open == known || open && mapped.Kind() != types.KindString {
+		if object.IsStrict() != known || open == known || open && mapped.Kind() != exprtypes.KindString {
 			t.Fatalf("known=%t outputs=%v", known, object)
 		}
 	}

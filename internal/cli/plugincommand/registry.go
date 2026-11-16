@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -52,7 +52,7 @@ type RegistryRequest struct {
 }
 
 // Run executes the plugin registry operation.
-func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams, acquisition pluginacquisition.Settings) (int, error) {
+func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acquisition pluginacquisition.Settings) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
 		name = r.Paths[0]
@@ -136,7 +136,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 		return 0, fmt.Errorf("unsupported plugin operation %q", r.Operation)
 	}
 	if r.JSON {
-		return 0, commandstreams.WriteJSON(streams.Stdout, struct {
+		return 0, commandio.WriteJSON(streams.Stdout, struct {
 			pluginregistry.ResolvedPlugins
 			Direct []string `json:"direct,omitempty"`
 		}{selected, project.DirectSources()})
@@ -378,7 +378,7 @@ func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []p
 	return index, nil
 }
 
-func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.Streams, registry, name string, acquisition pluginacquisition.Settings) error {
+func (r RegistryRequest) discover(ctx context.Context, streams commandio.Streams, registry, name string, acquisition pluginacquisition.Settings) error {
 	client, err := pluginregistry.New(registry, acquisition)
 	if err != nil {
 		return arguments.UsageError{Cause: err}
@@ -389,7 +389,7 @@ func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.St
 			return err
 		}
 		if r.JSON {
-			return commandstreams.WriteJSON(streams.Stdout, plugins)
+			return commandio.WriteJSON(streams.Stdout, plugins)
 		}
 		for _, p := range plugins {
 			if _, err := fmt.Fprintf(streams.Stdout, "%s\t%s\t%s\n", p.Name, p.PluginID, strings.Join(p.Aliases, ", ")); err != nil {
@@ -410,7 +410,7 @@ func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.St
 		return err
 	}
 	if r.JSON {
-		return commandstreams.WriteJSON(streams.Stdout, versions)
+		return commandio.WriteJSON(streams.Stdout, versions)
 	}
 	for _, v := range versions {
 		if _, err := fmt.Fprintln(streams.Stdout, v.Version); err != nil {

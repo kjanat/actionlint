@@ -7,7 +7,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"github.com/spf13/cobra"
@@ -63,7 +63,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 	directory := network.Settings(ctx).CacheDirectory
 	if r.Operation == operationCacheDir {
 		if r.JSON {
-			return 0, commandstreams.WriteJSON(streams.Stdout, struct {
+			return 0, commandio.WriteJSON(streams.Stdout, struct {
 				Directory string `json:"directory"`
 			}{directory})
 		}
@@ -76,7 +76,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 			return 0, err
 		}
 		if r.JSON {
-			return 0, commandstreams.WriteJSON(streams.Stdout, inventory)
+			return 0, commandio.WriteJSON(streams.Stdout, inventory)
 		}
 		return 0, writeCacheInventory(streams.Stdout, inventory)
 	}
@@ -92,7 +92,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, fmt.Errorf("cache cleanup stopped after removing %d files (%d bytes): %w", result.Files, result.Bytes, err)
 	}
 	if r.JSON {
-		return 0, commandstreams.WriteJSON(streams.Stdout, result)
+		return 0, commandio.WriteJSON(streams.Stdout, result)
 	}
 	if r.DryRun {
 		if err := writeCacheInventory(streams.Stdout, result.Inventory); err != nil {

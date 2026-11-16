@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -97,7 +97,7 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
+			result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
 			if err != nil {
 				t.Fatal(err)
 			}

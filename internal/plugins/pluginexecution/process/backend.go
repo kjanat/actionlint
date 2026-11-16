@@ -19,7 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -52,8 +52,8 @@ type Options struct {
 // analyzer.ScriptConfigValidator and analyzer.ScriptTemplateValidator.
 type Backend struct {
 	name          string
-	spec          manifests.ProcessSpec
-	capabilities  manifests.Capabilities
+	spec          toolmanifest.ProcessSpec
+	capabilities  toolmanifest.Capabilities
 	command       *hostprocess.Command
 	options       Options
 	decoder       Decoder
@@ -74,7 +74,7 @@ type Backend struct {
 // NewBackend binds a process manifest to a resolved command. The command's
 // arguments are user arguments: launcher options first, when the
 // executable is a launcher the manifest names.
-func NewBackend(manifest manifests.Manifest, command *hostprocess.Command, options Options) (*Backend, error) {
+func NewBackend(manifest toolmanifest.Manifest, command *hostprocess.Command, options Options) (*Backend, error) {
 	if manifest.Process == nil {
 		return nil, fmt.Errorf("tool provider %s has no process transport", manifest.Rule.Name)
 	}
@@ -98,7 +98,7 @@ func NewBackend(manifest manifests.Manifest, command *hostprocess.Command, optio
 		return nil, err
 	}
 	if spec.Config.Transform != nil {
-		source, err := manifests.ResolveTransform(spec.Config.Transform, options.Programs)
+		source, err := toolmanifest.ResolveTransform(spec.Config.Transform, options.Programs)
 		if err != nil {
 			return nil, err
 		}
@@ -160,22 +160,22 @@ func NewBackend(manifest manifests.Manifest, command *hostprocess.Command, optio
 }
 
 // newDecoder selects the decoder of an output format.
-func newDecoder(output manifests.Output, programs func(string) ([]byte, bool)) (Decoder, error) {
+func newDecoder(output toolmanifest.Output, programs func(string) ([]byte, bool)) (Decoder, error) {
 	switch output.Format {
-	case manifests.FormatEnvelope:
+	case toolmanifest.FormatEnvelope:
 		return Envelope{}, nil
-	case manifests.FormatSARIF:
+	case toolmanifest.FormatSARIF:
 		return SARIF{}, nil
-	case manifests.FormatJSON, manifests.FormatText:
+	case toolmanifest.FormatJSON, toolmanifest.FormatText:
 		if output.Transform == nil {
 			return nil, fmt.Errorf("output format %q needs a transform", output.Format)
 		}
-		source, err := manifests.ResolveTransform(output.Transform, programs)
+		source, err := toolmanifest.ResolveTransform(output.Transform, programs)
 		if err != nil {
 			return nil, err
 		}
 		input := JQJSON
-		if output.Format == manifests.FormatText {
+		if output.Format == toolmanifest.FormatText {
 			input = JQText
 		}
 		return NewJQ(source, input)
@@ -187,7 +187,7 @@ func newDecoder(output manifests.Output, programs func(string) ([]byte, bool)) (
 // Concurrent reports whether checks may run at once, each holding one slot
 // of the shared process pool.
 func (b *Backend) Concurrent() bool {
-	return b.spec.Concurrency != manifests.ConcurrencySerial
+	return b.spec.Concurrency != toolmanifest.ConcurrencySerial
 }
 
 // Check implements analyzer.ScriptBackend.
@@ -405,27 +405,27 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 		in.programFile = path
 	}
 	switch b.spec.Config.Render {
-	case manifests.RenderTOMLPairs:
+	case toolmanifest.RenderTOMLPairs:
 		if in.tomlPairs, err = tomlPairs(pairsOption(b.spec.Args), engine.value); err != nil {
 			return DecodedCheck{}, fmt.Errorf("tools.%s.%w", b.name, err)
 		}
-	case manifests.RenderTOMLFile, manifests.RenderJSONFile:
+	case toolmanifest.RenderTOMLFile, toolmanifest.RenderJSONFile:
 		path, remove, err := writeConfigFile(b.spec.Config.Render, engine.value)
 		if err != nil {
 			return DecodedCheck{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
 		}
 		defer remove()
 		in.configFile = path
-	case manifests.RenderNone, manifests.RenderJSONStdin:
+	case toolmanifest.RenderNone, toolmanifest.RenderJSONStdin:
 	}
 	args, err := renderArgs(b.spec.Args, in)
 	if err != nil {
 		return DecodedCheck{}, err
 	}
 	var stdin string
-	if document != nil && b.spec.Stdin == manifests.StdinRequest {
+	if document != nil && b.spec.Stdin == toolmanifest.StdinRequest {
 		payload := *document
-		if b.spec.Config.Render == manifests.RenderJSONStdin && engine.value != nil {
+		if b.spec.Config.Render == toolmanifest.RenderJSONStdin && engine.value != nil {
 			payload.Config, err = json.Marshal(engine.value)
 		}
 		if err == nil {
@@ -525,12 +525,12 @@ func (b *Backend) directory(requested string) (string, error) {
 // stdin is the snippet, or the JSON request carrying rendered configuration
 // when the configuration travels on stdin.
 func (b *Backend) stdin(request checkinputs.ScriptRequest, config any) (string, error) {
-	if b.spec.Stdin != manifests.StdinRequest {
+	if b.spec.Stdin != toolmanifest.StdinRequest {
 		return request.Source, nil
 	}
 	payload := checkinputs.ScriptRequest{Source: request.Source, Filename: request.Filename}
 	payload.Environment = request.Environment
-	if b.spec.Config.Render == manifests.RenderJSONStdin && config != nil {
+	if b.spec.Config.Render == toolmanifest.RenderJSONStdin && config != nil {
 		encoded, err := json.Marshal(config)
 		if err != nil {
 			return "", err

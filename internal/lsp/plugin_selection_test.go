@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -30,7 +30,7 @@ func TestDirectoryPluginSelectionUsesDirectoryRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{".", root, filepath.Join(root, ".github")} {
-		if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Select(t.Context(), root, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}}); err == nil {
+		if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Select(t.Context(), root, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}}); err == nil {
 			t.Fatalf("directory %q skipped its repository plugin configuration", path)
 		}
 	}
@@ -47,7 +47,7 @@ func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"", "<stdin>", "missing.yml", filepath.Join(root, "missing.yml")} {
-		selected, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Stdin, Name: name})
+		selected, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Stdin, Name: name})
 		if err != nil || len(selected.Paths) != 0 {
 			t.Fatalf("stdin %q without a project selected plugins: %+v, %v", name, selected, err)
 		}
@@ -57,11 +57,11 @@ func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"workflow.yml", path} {
-		if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Stdin, Name: name}); err == nil {
+		if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Stdin, Name: name}); err == nil {
 			t.Fatalf("existing stdin %q did not load its project configuration", name)
 		}
 	}
-	if _, err := (pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Stdin}); err == nil {
+	if _, err := (pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Stdin}); err == nil {
 		t.Fatal("explicit configuration ignored for unnamed stdin")
 	}
 }
@@ -69,7 +69,7 @@ func TestStdinPluginSelectionMatchesProjectDiscovery(t *testing.T) {
 func TestPluginSelectionScopes(t *testing.T) {
 	t.Parallel()
 	root, other := repositoryfixture.Directory(t), repositoryfixture.Directory(t)
-	input := inputmodel.Request{Kind: inputmodel.Repository}
+	input := checkrequest.Request{Kind: checkrequest.Repository}
 	empty, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if err := selected.ValidateScope(t.Context(), checking.ConfigurationRules(), []string{filepath.Join(root, "workflow.yml")}); err != nil {
 		t.Fatalf("empty selection restricted scope: %v", err)
 	}
-	mixed := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
+	mixed := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
 	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, mixed); err != nil {
 		t.Fatalf("plugin-free repositories rejected: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	selected, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	selected, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,14 +167,14 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 	if err := selected.ValidateScope(t.Context(), checking.ConfigurationRules(), []string{foreign}); err == nil {
 		t.Fatal("active plugins escaped their repository")
 	}
-	empty, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), other, inputmodel.Request{Kind: inputmodel.Repository})
+	empty, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), other, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := empty.ValidateScope(t.Context(), checking.ConfigurationRules(), []string{filepath.Join(root, "workflow.yml")}); err == nil {
 		t.Fatal("foreign active plugins were ignored")
 	}
-	mixed := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
+	mixed := checkrequest.Request{Kind: checkrequest.Files, Paths: []string{foreign, filepath.Join(root, "workflow.yml")}}
 	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, mixed); err == nil {
 		t.Fatal("mixed active plugin scope accepted")
 	}

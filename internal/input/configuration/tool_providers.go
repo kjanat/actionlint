@@ -6,8 +6,8 @@ import (
 	"slices"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -26,7 +26,7 @@ type toolProvider struct {
 // manifests are embedded build inputs, so a defect panics, as missing rule
 // metadata does.
 var toolProviders = sync.OnceValue(func() map[string]toolProvider {
-	bundled, err := manifests.Bundled()
+	bundled, err := toolmanifest.Bundled()
 	if err != nil {
 		panic(fmt.Sprintf("bundled tool providers: %v", err))
 	}
@@ -41,7 +41,7 @@ var toolProviders = sync.OnceValue(func() map[string]toolProvider {
 	return index
 })
 
-func loadToolProvider(manifest manifests.Manifest) (toolProvider, error) {
+func loadToolProvider(manifest toolmanifest.Manifest) (toolProvider, error) {
 	tool, err := compileToolProvider(manifest.Settings())
 	if err != nil {
 		return toolProvider{}, err

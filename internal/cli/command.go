@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	"actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
@@ -31,8 +31,8 @@ type Command struct {
 	Acquisition pluginacquisition.Settings
 }
 
-func (cmd *Command) commandStreams() streams.Streams {
-	return streams.Streams{Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr}
+func (cmd *Command) commandStreams() commandio.Streams {
+	return commandio.Streams{Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr}
 }
 
 // Main runs the CLI and returns its exit status. Args includes the executable
@@ -44,14 +44,14 @@ func (cmd *Command) Main(args []string) int {
 // MainContext runs the CLI with a context that also controls external linters.
 // Cancellation returns exit status 3. Args includes the executable name.
 func (cmd *Command) MainContext(ctx context.Context, args []string) (status int) {
-	ctx, accounting := networkaccounting.TrackRequests(ctx)
+	ctx, networkAccounting := accounting.TrackRequests(ctx)
 	app := newCommandApp(ctx, cmd)
 	app.root.SetContext(ctx)
 	defer func() {
 		if app.opts.networkStats {
 			entry := struct {
-				Network networkaccounting.Statistics `json:"network"`
-			}{accounting.Statistics()}
+				Network accounting.Statistics `json:"network"`
+			}{networkAccounting.Statistics()}
 			if err := json.NewEncoder(app.streams.Stderr).Encode(entry); err != nil {
 				status = 3
 			}

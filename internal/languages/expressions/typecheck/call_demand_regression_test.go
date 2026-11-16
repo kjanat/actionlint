@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -365,7 +365,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		t.Parallel()
 		const input = "case(github.event_name, fromJSON(null), fromJSON(null))"
 		got := checkCallDemandResult(t, input)
-		if got.Valid || got.Evaluation.State != values.EvaluationInvalid || got.FailurePhase != FailureEvaluation || got.Type.Kind() != types.KindAny {
+		if got.Valid || got.Evaluation.State != values.EvaluationInvalid || got.FailurePhase != FailureEvaluation || got.Type.Kind() != exprtypes.KindAny {
 			t.Fatalf("required nonboolean predicate did not fail: %+v", got)
 		}
 		checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandSkipped, functions.DemandSkipped})
@@ -373,7 +373,7 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 			t.Fatalf("unreachable branches contributed findings or return alternatives: %+v", got)
 		}
 		predicate := got.Call.Arguments[0]
-		if predicate.Source.Kind() != types.KindString || predicate.SourceValue.State != values.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != types.KindBool || predicate.Value.State != values.EvaluationInvalid {
+		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != values.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != values.EvaluationInvalid {
 			t.Fatalf("source evaluation and rejected predicate contract were mixed: %+v", predicate)
 		}
 		expressions.CheckOutcome(t, input, map[string]any{"github": map[string]any{"event_name": "push"}}, expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "System.InvalidOperationException"})
@@ -383,15 +383,15 @@ func TestCaseTypedPredicateFailures(t *testing.T) {
 		t.Parallel()
 		const input = "case(github.event.unknown, fromJSON('[]'), github.event_name, 'b', 'c')"
 		got := checkCallDemandResult(t, input)
-		if !got.Valid || got.Evaluation.State != values.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 || got.Type.Kind() != types.KindArray {
+		if !got.Valid || got.Evaluation.State != values.EvaluationUnknown || got.FailurePhase != FailureNone || len(got.Findings) != 0 || got.Type.Kind() != exprtypes.KindArray {
 			t.Fatalf("conditional failure obscured the only reachable return: %+v", got)
 		}
 		checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandConditional, functions.DemandConditional, functions.DemandSkipped, functions.DemandSkipped})
-		if len(got.Call.RefinedAlternatives) != 1 || got.Call.RefinedAlternatives[0].Kind() != types.KindArray {
+		if len(got.Call.RefinedAlternatives) != 1 || got.Call.RefinedAlternatives[0].Kind() != exprtypes.KindArray {
 			t.Fatalf("unreachable branches contributed return alternatives: %+v", got.Call)
 		}
 		predicate := got.Call.Arguments[2]
-		if predicate.Source.Kind() != types.KindString || predicate.SourceValue.State != values.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != types.KindBool || predicate.Value.State != values.EvaluationInvalid {
+		if predicate.Source.Kind() != exprtypes.KindString || predicate.SourceValue.State != values.EvaluationUnknown || predicate.Accepted || predicate.Parameter.Kind() != exprtypes.KindBool || predicate.Value.State != values.EvaluationInvalid {
 			t.Fatalf("source evaluation and rejected predicate contract were mixed: %+v", predicate)
 		}
 		for _, first := range []bool{false, true} {
@@ -489,7 +489,7 @@ func TestJoinPreservesArrayArgumentFacts(t *testing.T) {
 	parameter, parameterArray := arg.Parameter.Array()
 	source, sourceArray := arg.Source.Array()
 	converted, convertedArray := arg.Converted.Array()
-	if !arg.Accepted || !parameterArray || parameter.Elem().Kind() != types.KindAny || !sourceArray || source.Elem().Kind() != types.KindBool || !convertedArray || converted.Elem().Kind() != types.KindBool || arg.Conversion != functions.ConversionNone {
+	if !arg.Accepted || !parameterArray || parameter.Elem().Kind() != exprtypes.KindAny || !sourceArray || source.Elem().Kind() != exprtypes.KindBool || !convertedArray || converted.Elem().Kind() != exprtypes.KindBool || arg.Conversion != functions.ConversionNone {
 		t.Fatalf("array argument falsely claims an aggregate string conversion: %+v", arg)
 	}
 	want := values.EvaluationResult{State: values.EvaluationKnown, Value: []any{true, false}}
@@ -507,9 +507,9 @@ func TestCaseArgumentContracts(t *testing.T) {
 	got := checkCallDemandResult(t, "case(true, 'a', 'b')")
 	checkCallArgumentDemands(t, got, []functions.ArgumentDemand{functions.DemandRequired, functions.DemandRequired, functions.DemandSkipped})
 	for i, arg := range got.Call.Arguments {
-		wantParameter := types.KindAny
+		wantParameter := exprtypes.KindAny
 		if i == 0 {
-			wantParameter = types.KindBool
+			wantParameter = exprtypes.KindBool
 		}
 		if !arg.Accepted || arg.Parameter.Kind() != wantParameter || arg.Conversion != functions.ConversionNone || !arg.Source.Equal(arg.Converted) {
 			t.Fatalf("argument %d contract: %+v", i, arg)

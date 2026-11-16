@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -94,7 +94,7 @@ permissions: {}
 					session := checking.Options{WorkingDir: root, ConfigFile: configPath, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}
 
 					paths := []string{filepath.Join(root, sources[0].Path), filepath.Join(root, sources[1].Path)}
-					result, analysisErr = checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: paths})
+					result, analysisErr = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 				}
 				if analysisErr == nil || !strings.Contains(analysisErr.Error(), "exited with status 2") {
 					t.Fatalf("missing analyzer process failure: %v", analysisErr)

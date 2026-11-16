@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -37,7 +37,7 @@ func TestLocalActionSourceCustomReader(t *testing.T) {
 			workflow := writeFixture(t, root, ".github/workflows/test.yml", string(content))
 			session := checking.Options{WorkingDir: root, ReadFile: reader}
 
-			result, err = checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
+			result, err = checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil || len(result.Diagnostics) != 0 || !slices.Contains(result.Inputs, manifest) {
 				t.Fatalf("session analysis: %+v, %v", result, err)
 			}

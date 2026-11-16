@@ -5,7 +5,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
@@ -20,11 +20,11 @@ func (rule *Checker) checkMatrixSourceKey(source *definition.String, evaluated b
 // elementTypes merges the types of array elements in the order they are
 // added.
 type elementTypes struct {
-	ty   types.Type
+	ty   exprtypes.Type
 	seen bool
 }
 
-func (e *elementTypes) add(t types.Type) {
+func (e *elementTypes) add(t exprtypes.Type) {
 	if !e.seen {
 		e.ty, e.seen = t, true
 		return
@@ -33,28 +33,28 @@ func (e *elementTypes) add(t types.Type) {
 }
 
 // merged returns the merged element type, or any when no element was added.
-func (e *elementTypes) merged() types.Type {
+func (e *elementTypes) merged() exprtypes.Type {
 	if !e.seen {
-		return types.AnyType()
+		return exprtypes.AnyType()
 	}
 	return e.ty
 }
 
-func (rule *Checker) checkMatrixExpression(expr *definition.String) types.ObjectType {
+func (rule *Checker) checkMatrixExpression(expr *definition.String) exprtypes.ObjectType {
 	ty, ok := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
 	if !ok {
-		return types.NewEmptyObjectType()
+		return exprtypes.NewEmptyObjectType()
 	}
 	return schema.MatrixType(ty)
 }
 
-func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolution) types.ObjectType {
+func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolution) exprtypes.ObjectType {
 	if m == nil {
-		return types.NewEmptyStrictObjectType()
+		return exprtypes.NewEmptyStrictObjectType()
 	}
 	// inferred holds the element type of each row declaration. A missing
 	// position reads as any, which means nothing was inferred.
-	inferred := map[source.Position]types.Type{}
+	inferred := map[source.Position]exprtypes.Type{}
 	if m.Expression != nil {
 		rule.checkMatrixExpression(m.Expression)
 	} else {
@@ -128,7 +128,7 @@ func (rule *Checker) checkMatrixCombination(combination *definition.MatrixCombin
 
 // checkMatrixRow returns the element type of a matrix row, or any when no
 // element has a known type.
-func (rule *Checker) checkMatrixRow(r *definition.MatrixRow) types.Type {
+func (rule *Checker) checkMatrixRow(r *definition.MatrixRow) exprtypes.Type {
 	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
 		if ty, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy"); ok {
@@ -136,7 +136,7 @@ func (rule *Checker) checkMatrixRow(r *definition.MatrixRow) types.Type {
 				return array.Elem()
 			}
 		}
-		return types.AnyType()
+		return exprtypes.AnyType()
 	}
 
 	var elements elementTypes
@@ -161,7 +161,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, sect
 				invalid := false
 				for i, value := range values {
 					if _, ok := value.(map[string]any); !ok {
-						rule.Errorf(scalarPosition(s), "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, types.TypeOfJSONValue(value))
+						rule.Errorf(scalarPosition(s), "matrix combination in %s at inserted array index %d must be an object but got %s", section, i, exprtypes.TypeOfJSONValue(value))
 						invalid = true
 					}
 				}
@@ -172,7 +172,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, sect
 		}
 		ty = array.Elem()
 	}
-	if k := ty.Kind(); k != types.KindAny && k != types.KindObject {
+	if k := ty.Kind(); k != exprtypes.KindAny && k != exprtypes.KindObject {
 		rule.Errorf(scalarPosition(s), "matrix combination in %s must be an object or an array of objects but got %s", section, ty)
 	}
 }
@@ -180,13 +180,13 @@ func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, sect
 // checkMatrixSequenceItem returns the type of the values a sequence item adds.
 // ok is false when the item is an expression that inserts no values, such as
 // an empty array literal.
-func (rule *Checker) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty types.Type, ok bool) {
+func (rule *Checker) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty exprtypes.Type, ok bool) {
 	ty = rule.checkRawYAMLValue(value)
 	if scalar, ok := value.(*definition.RawYAMLString); ok && syntax.ParseAssignedExpression(scalar.Value) != nil {
 		if array, ok := ty.Array(); ok {
 			if literal, known := expressionLiteral(scalar.Value); known {
 				if values, ok := literal.([]any); ok && len(values) == 0 {
-					return types.AnyType(), false
+					return exprtypes.AnyType(), false
 				}
 			}
 			return array.Elem(), true // Template expansion inserts one level only.

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -36,13 +36,13 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, input.Request{Kind: input.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 	if err != nil || len(sources.Paths) != 1 {
 		t.Fatalf("exact config required a lockfile: %+v, %v", sources, err)
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, input.Request{Kind: input.Repository}); err != nil {
+	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests()) != 0 {

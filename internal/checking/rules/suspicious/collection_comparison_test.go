@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
@@ -49,11 +49,11 @@ func TestCollectionComparison(t *testing.T) {
 			evaluation := evaluate.EvaluateSubexpressions(node)
 			checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-			checker.SetContextType("inputs", types.NewMapObjectType(types.StringType()).Type())
-			object := types.NewEmptyObjectType().Type()
-			checker.SetContextType("matrix", types.NewObjectType(map[string]types.Type{
+			checker.SetContextType("inputs", exprtypes.NewMapObjectType(exprtypes.StringType()).Type())
+			object := exprtypes.NewEmptyObjectType().Type()
+			checker.SetContextType("matrix", exprtypes.NewObjectType(map[string]exprtypes.Type{
 				"a.b": object,
-				"a":   types.NewObjectType(map[string]types.Type{"b": object}).Type(),
+				"a":   exprtypes.NewObjectType(map[string]exprtypes.Type{"b": object}).Type(),
 			}).Type())
 			result := checker.CheckResult(evaluation)
 			if !result.Valid || len(result.Findings) != 0 {

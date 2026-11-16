@@ -15,7 +15,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"github.com/google/go-cmp/cmp"
 	"github.com/itchyny/gojq"
@@ -25,7 +25,7 @@ var update = flag.Bool("update", false, "rewrite testdata/*/diagnostics.json fro
 
 func TestBundledManifestsValidate(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestBundledManifestsValidate(t *testing.T) {
 // without an updated digest fails here with the digest to record.
 func TestBundledProgramsAreReferenced(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestBundledProgramsAreReferenced(t *testing.T) {
 // diagnostic tests).
 func TestBundledGoldenDecode(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,11 +140,11 @@ func TestBundledGoldenDecode(t *testing.T) {
 
 func TestRuffConfigTransform(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	index := slices.IndexFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == "ruff" })
+	index := slices.IndexFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == "ruff" })
 	if index < 0 {
 		t.Fatal("ruff is not bundled")
 	}
@@ -200,10 +200,10 @@ func TestRuffConfigTransform(t *testing.T) {
 
 // outputDecoder builds the decoder a manifest's output declares. Stage 2 owns
 // this mapping in the process transport; the test needs only the jq route.
-func outputDecoder(t *testing.T, manifest pluginmanifests.Manifest) process.Decoder {
+func outputDecoder(t *testing.T, manifest toolmanifest.Manifest) process.Decoder {
 	t.Helper()
 	output := manifest.Process.Output
-	if output.Format != pluginmanifests.FormatJSON || output.Transform == nil {
+	if output.Format != toolmanifest.FormatJSON || output.Transform == nil {
 		t.Fatalf("%s: bundled providers decode JSON with a transform, got %q", manifest.Rule.Name, output.Format)
 	}
 	program, ok := bundledproviders.Program(output.Transform.Digest)

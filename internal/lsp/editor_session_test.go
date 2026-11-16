@@ -17,7 +17,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -394,7 +394,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	for _, value := range []string{"first", "second"} {
 		workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/python@v1\n        with:\n          source: print('" + value + "')\n" + "\npermissions: {}\n"
-		_, err := checking.Check(t.Context(), session.options, input.Request{Kind: input.Stdin, Name: filepath.Join(root, ".github/workflows/ci.yml"), Reader: bytes.NewBufferString(workflow)})
+		_, err := checking.Check(t.Context(), session.options, checkrequest.Request{Kind: checkrequest.Stdin, Name: filepath.Join(root, ".github/workflows/ci.yml"), Reader: bytes.NewBufferString(workflow)})
 		if err != nil {
 			t.Fatal(err)
 		}

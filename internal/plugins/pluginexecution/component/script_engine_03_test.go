@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -157,11 +157,11 @@ func json1Request(t *testing.T, name string) (checkinputs.ScriptRequest, []byte)
 // same diagnostics, fixes and reported sources.
 func TestScriptEngine03ProcessParity(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	index := slices.IndexFunc(manifests, func(m pluginmanifests.Manifest) bool { return m.Rule.Name == "shellcheck" })
+	index := slices.IndexFunc(manifests, func(m toolmanifest.Manifest) bool { return m.Rule.Name == "shellcheck" })
 	if index < 0 {
 		t.Fatal("shellcheck is not bundled")
 	}

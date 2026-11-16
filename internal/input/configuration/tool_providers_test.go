@@ -5,15 +5,15 @@ import (
 	"slices"
 	"testing"
 
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // Configuration indexes the validated bundled manifests; each entry keeps
 // its manifest's scope, config files, schema and shorthands.
 func TestToolProvidersMatchManifests(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestToolProvidersMatchManifests(t *testing.T) {
 		if !ok {
 			t.Fatalf("configuration does not know bundled provider %s", name)
 		}
-		scopes := map[pluginmanifests.Scope]rule.ConfigurationScope{pluginmanifests.ScopeComposite: rule.CompositeConfiguration, pluginmanifests.ScopeSource: rule.SourceConfiguration}
+		scopes := map[toolmanifest.Scope]rule.ConfigurationScope{toolmanifest.ScopeComposite: rule.CompositeConfiguration, toolmanifest.ScopeSource: rule.SourceConfiguration}
 		if tool.scope != scopes[manifest.Scope] {
 			t.Errorf("%s: scope %v, manifest %q", name, tool.scope, manifest.Scope)
 		}

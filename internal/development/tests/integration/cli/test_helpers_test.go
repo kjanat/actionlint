@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
@@ -30,7 +30,7 @@ func gitRepository(t *testing.T, dir string) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := git.Command(t.Context(), "git", dir, "init", "--quiet").CombinedOutput(); err != nil {
+	if out, err := gitcommand.Command(t.Context(), "git", dir, "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 }

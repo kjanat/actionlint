@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
@@ -43,9 +43,9 @@ type Selection struct {
 
 // Provider is a manifest bound to how it runs.
 type Provider struct {
-	Manifest manifests.Manifest
+	Manifest toolmanifest.Manifest
 	// Programs resolves the manifest's transform digests.
-	Programs  manifests.Programs
+	Programs  toolmanifest.Programs
 	Selection Selection
 	// Bind completes a registration, such as with a managed document
 	// analyzer route; nil leaves it as is. RegisterProvider applies it to every
@@ -104,7 +104,7 @@ func RegisterProvider(p Provider) (contract.Registration, error) {
 func register(p Provider, sel selection) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
-	if m.Role != manifests.RoleScript || m.Transport != manifests.TransportProcess || m.Process == nil {
+	if m.Role != toolmanifest.RoleScript || m.Transport != toolmanifest.TransportProcess || m.Process == nil {
 		return contract.Registration{}, fmt.Errorf("tool provider %s is not a process script provider", name)
 	}
 	if !knownPreparation(m.Preparation) {

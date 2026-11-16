@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/jq"
 )
@@ -43,7 +43,7 @@ type SettingsResolver struct {
 	program *jq.Program
 }
 
-func New(m manifests.Manifest, programs manifests.Programs) (*SettingsResolver, error) {
+func New(m toolmanifest.Manifest, programs toolmanifest.Programs) (*SettingsResolver, error) {
 	t := &SettingsResolver{paths: append([]string(nil), m.ConfigurationPaths...)}
 	for _, path := range t.paths {
 		if path == "" || !jsontext.Pointer(path).IsValid() {
@@ -59,7 +59,7 @@ func New(m manifests.Manifest, programs manifests.Programs) (*SettingsResolver, 
 	}
 	if m.ConfigurationTransform != nil {
 		var err error
-		source, loadErr := manifests.ResolveTransform(m.ConfigurationTransform, programs)
+		source, loadErr := toolmanifest.ResolveTransform(m.ConfigurationTransform, programs)
 		if loadErr != nil {
 			return nil, loadErr
 		}

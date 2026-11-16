@@ -10,13 +10,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestEventProjectionIsNotMutated(t *testing.T) {
 	t.Parallel()
-	array := types.NewArrayType(types.NewStrictObjectType(map[string]types.Type{"message": types.StringType()}).Type())
-	event := types.NewStrictObjectType(map[string]types.Type{"commits": array.Type()})
+	array := exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"message": exprtypes.StringType()}).Type())
+	event := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": array.Type()})
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"github"})
 	contexts.SetEventPayloadType(checker, event)
@@ -30,7 +30,7 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 	if array.Deref() {
 		t.Fatal("filter mutated shared array type")
 	}
-	contexts.SetDispatchInputTypes(checker, types.NewStrictObjectType(map[string]types.Type{"flag": types.BoolType()}))
+	contexts.SetDispatchInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
 	if _, ok := event.Property("inputs"); ok {
 		t.Fatal("dispatch update mutated shared event")
 	}
@@ -38,7 +38,7 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 
 func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 	t.Parallel()
-	declared := types.NewStrictObjectType(map[string]types.Type{"flag": types.BoolType(), "count": types.NumberType()})
+	declared := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType(), "count": exprtypes.NumberType()})
 	// The supplied context follows the dispatch representation. Runny checks
 	// expression evaluation against it, not GitHub's construction of the payload.
 	variables := map[string]any{
@@ -47,13 +47,13 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		input string
-		kind  types.TypeKind
+		kind  exprtypes.TypeKind
 		want  any
 	}{
-		{"inputs.flag", types.KindBool, true},
-		{"inputs.count", types.KindNumber, float64(42)},
-		{"github.event.inputs.flag", types.KindString, "true"},
-		{"github.event.inputs.count", types.KindString, "42"},
+		{"inputs.flag", exprtypes.KindBool, true},
+		{"inputs.count", exprtypes.KindNumber, float64(42)},
+		{"github.event.inputs.flag", exprtypes.KindString, "true"},
+		{"github.event.inputs.count", exprtypes.KindString, "42"},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()

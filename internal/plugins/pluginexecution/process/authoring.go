@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation/shell"
@@ -31,7 +31,7 @@ type AuthoringResult struct {
 
 // AuthoringTester compiles a process pipeline once and evaluates each fixture independently.
 type AuthoringTester struct {
-	manifest      manifests.Manifest
+	manifest      toolmanifest.Manifest
 	backend       *Backend
 	configuration *integrationconfig.SettingsResolver
 	preparation   *preparation.SourcePlanner
@@ -39,13 +39,13 @@ type AuthoringTester struct {
 
 // ValidateManifest compiles every jq program and schema in a process manifest
 // without probing or invoking its entry.
-func ValidateManifest(manifest manifests.Manifest, programs manifests.Programs) error {
+func ValidateManifest(manifest toolmanifest.Manifest, programs toolmanifest.Programs) error {
 	_, err := NewAuthoringTester(manifest, programs)
 	return err
 }
 
 // NewAuthoringTester compiles a manifest once for fixture evaluation.
-func NewAuthoringTester(manifest manifests.Manifest, programs manifests.Programs) (*AuthoringTester, error) {
+func NewAuthoringTester(manifest toolmanifest.Manifest, programs toolmanifest.Programs) (*AuthoringTester, error) {
 	backend, err := authoringBackend(manifest, programs)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func NewAuthoringTester(manifest manifests.Manifest, programs manifests.Programs
 
 // EvaluateFixture applies the exact config and stdout pipeline used by a
 // process backend. The timeout bounds jq evaluation; no child process runs.
-func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs manifests.Programs, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int) (AuthoringResult, error) {
+func EvaluateFixture(ctx context.Context, manifest toolmanifest.Manifest, programs toolmanifest.Programs, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int) (AuthoringResult, error) {
 	tester, err := NewAuthoringTester(manifest, programs)
 	if err != nil {
 		return AuthoringResult{}, err
@@ -172,7 +172,7 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 		return out, fmt.Errorf("tools.%s: %w", backend.name, err)
 	}
 	result.Directory = directory
-	if manifest.Role == manifests.RoleDocument {
+	if manifest.Role == toolmanifest.RoleDocument {
 		result.Diagnostics = documentFindings(result.Diagnostics, request, directory)
 	}
 	if err := backend.review(&result, request); err != nil {
@@ -186,8 +186,8 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 	return out, failures
 }
 
-func authoringBackend(manifest manifests.Manifest, programs manifests.Programs) (*Backend, error) {
-	if manifest.Transport != manifests.TransportProcess || manifest.Process == nil {
+func authoringBackend(manifest toolmanifest.Manifest, programs toolmanifest.Programs) (*Backend, error) {
+	if manifest.Transport != toolmanifest.TransportProcess || manifest.Process == nil {
 		return nil, fmt.Errorf("tool provider %s must use the process transport", manifest.ID)
 	}
 	// NewBackend compiles the manifest and checks argument structure, but its

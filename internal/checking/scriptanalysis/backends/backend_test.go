@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 type selectorBackend struct{ calls atomic.Int64 }
@@ -63,12 +63,12 @@ func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		shells    []string
-		resources []manifests.Resource
+		resources []toolmanifest.Resource
 		want      bool
 	}{
 		{"inputs only", nil, nil, false},
 		{"shells", []string{"python"}, nil, true},
-		{"resources", nil, []manifests.Resource{manifests.ResourceWorkspace, manifests.ResourceDirectory}, true},
+		{"resources", nil, []toolmanifest.Resource{toolmanifest.ResourceWorkspace, toolmanifest.ResourceDirectory}, true},
 	} {
 		manifest := envelopeManifest("execution", tc.shells)
 		manifest.Selectors.Inputs = inputs
@@ -85,15 +85,15 @@ func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 
 // envelopeManifest describes a process provider exchanging the JSON check
 // request and result envelope with its engine.
-func envelopeManifest(name string, shells []string) manifests.Manifest {
-	return manifests.Manifest{
-		SchemaVersion: manifests.SchemaVersion, ID: "example.com/" + name, Version: "1", Role: manifests.RoleScript,
-		Rule: rule.Descriptor{Name: name}, Scope: manifests.ScopeSource, Transport: manifests.TransportProcess,
-		Selectors: manifests.Selectors{Shells: shells},
-		Process: &manifests.ProcessSpec{
-			Entry: name, Stdin: manifests.StdinRequest,
-			Config: manifests.ConfigRendering{Render: manifests.RenderJSONStdin},
-			Output: manifests.Output{Format: manifests.FormatEnvelope},
+func envelopeManifest(name string, shells []string) toolmanifest.Manifest {
+	return toolmanifest.Manifest{
+		SchemaVersion: toolmanifest.SchemaVersion, ID: "example.com/" + name, Version: "1", Role: toolmanifest.RoleScript,
+		Rule: rule.Descriptor{Name: name}, Scope: toolmanifest.ScopeSource, Transport: toolmanifest.TransportProcess,
+		Selectors: toolmanifest.Selectors{Shells: shells},
+		Process: &toolmanifest.ProcessSpec{
+			Entry: name, Stdin: toolmanifest.StdinRequest,
+			Config: toolmanifest.ConfigRendering{Render: toolmanifest.RenderJSONStdin},
+			Output: toolmanifest.Output{Format: toolmanifest.FormatEnvelope},
 		},
 	}
 }

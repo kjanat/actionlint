@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
@@ -30,7 +30,7 @@ func TestAnalysisSharesNetworkSession(t *testing.T) {
 				})}
 				var err error
 				if entry == "Check" {
-					_, err = Check(ctx, options, input.Request{Kind: input.Stdin, Reader: strings.NewReader(workflow), Name: "workflow.yml"})
+					_, err = Check(ctx, options, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(workflow), Name: "workflow.yml"})
 				} else {
 					_, err = Analyze(ctx, options, []sourceUnit{{Path: "workflow.yml", Content: []byte(workflow)}})
 				}

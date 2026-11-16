@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -58,7 +58,7 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}); err != nil {
+			if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}); err != nil {
 				t.Fatal(err)
 			}
 			engine.mu.Lock()
@@ -103,7 +103,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 				t.Fatalf("replacement duplicated the tool registration: %+v", options.Tools)
 			}
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: input_value\n      - run: " + tc.source + "\n        shell: " + tc.shell + "\n      - uses: example/other@v1\n        with:\n          code: unrelated_input\n      - run: unrelated_run\n        shell: custom {0}\n"
-			_, err = checking.Check(t.Context(), options, input.Request{Kind: input.Stdin, Reader: strings.NewReader(workflow)})
+			_, err = checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(workflow)})
 			if err != nil {
 				t.Fatal(err)
 			}

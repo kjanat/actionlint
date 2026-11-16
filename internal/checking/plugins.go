@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
@@ -23,11 +23,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition pluginacquisition.Settings) (result *report.Analysis, err error) {
+func CheckWithPluginPaths(ctx context.Context, options Options, input checkrequest.Request, paths []string, acquisition pluginacquisition.Settings) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel
 }
 
 // CheckWithPlugins loads the selected plugins and checks the input.
-func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
+func CheckWithPlugins(ctx context.Context, options Options, input checkrequest.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options Op
 			}
 			local.Files = fetched
 		}
-		if local.Files.Manifest.Role == manifests.RoleDocument {
+		if local.Files.Manifest.Role == toolmanifest.RoleDocument {
 			if options.Processes == nil {
 				options.Processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 			}

@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // ActionRule is the single definition of the action rule.
@@ -116,12 +116,12 @@ func (rule *ruleAction) VisitStep(n workflows.Step) error {
 	inspection := rule.remote.Inspect(spec)
 	if inspection.Availability().State() == actions.MetadataInvalid {
 		for _, problem := range inspection.Availability().Problems() {
-			finding := findingmodel.Errorf(reporting.SourcePosition(e.Uses), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message)
-			finding.Code = string(problem.Code)
-			if finding.Code == "" {
-				finding.Code = string(actionmeta.CodeMetadataParse)
+			item := finding.Errorf(reporting.SourcePosition(e.Uses), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message)
+			item.Code = string(problem.Code)
+			if item.Code == "" {
+				item.Code = string(actionmeta.CodeMetadataParse)
 			}
-			rule.Report(finding)
+			rule.Report(item)
 		}
 	}
 	rule.Report(actioncheck.Repository(e, inspection.Definition(), rule.lifecycle)...)
@@ -140,18 +140,18 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 	}
 	if err != nil {
 		if _, unresolved := errors.AsType[localactions.UnresolvedError](err); unresolved {
-			rule.Report(findingmodel.At(reporting.SourcePosition(action.Uses), "missing-local-action", err.Error()))
+			rule.Report(finding.At(reporting.SourcePosition(action.Uses), "missing-local-action", err.Error()))
 		} else {
-			finding := findingmodel.At(reporting.SourcePosition(action.Uses), rule.Name(), err.Error())
-			finding.Code = string(actionmeta.CodeMetadataRead)
+			item := finding.At(reporting.SourcePosition(action.Uses), rule.Name(), err.Error())
+			item.Code = string(actionmeta.CodeMetadataRead)
 			if parseError, ok := errors.AsType[*localactions.ParseError](err); ok {
-				finding.Code = string(actionmeta.CodeMetadataParse)
-				finding.MetadataParseSource = source.Capture().Revision()
-				if !finding.MetadataParseSource.Valid() {
+				item.Code = string(actionmeta.CodeMetadataParse)
+				item.MetadataParseSource = source.Capture().Revision()
+				if !item.MetadataParseSource.Valid() {
 					return fmt.Errorf("metadata parse source %q has no captured revision: %w", parseError.Path(), err)
 				}
 			}
-			rule.Report(finding)
+			rule.Report(item)
 		}
 		return nil
 	}
@@ -183,8 +183,8 @@ func (rule *ruleAction) CheckStandaloneMetadata(meta *actionmeta.Metadata, snaps
 		return errors.New("standalone metadata does not belong to its source snapshot")
 	}
 	rule.Report(actioncheck.StandaloneWithAdvisories(meta, files, rule.lifecycle)...)
-	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
-		finding.MetadataIdentity = &findingmodel.MetadataIdentity{Key: metadataFindingKey(meta, snapshot.Reference().Document, finding), Declaration: true}
+	rule.AnnotateSince(0, func(item *finding.Finding) {
+		item.MetadataIdentity = &finding.MetadataIdentity{Key: metadataFindingKey(meta, snapshot.Reference().Document, item), Declaration: true}
 	})
 	return nil
 }

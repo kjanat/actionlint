@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -37,7 +37,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.ResetRequests()
-	sources, err := (pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), input.Request{})
+	sources, err := (pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), checkrequest.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,8 +49,8 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 	if _, err := checking.RulesWithPlugins(t.Context(), sources); err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input.Request{
-		Kind: input.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\npermissions: {}\n"),
+	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, checkrequest.Request{
+		Kind: checkrequest.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\npermissions: {}\n"),
 	}, sources)
 	if err != nil {
 		t.Fatal(err)

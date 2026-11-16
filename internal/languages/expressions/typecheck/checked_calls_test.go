@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
@@ -30,7 +30,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 			t.Parallel()
 			root := syntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-			contexts.MergeInputTypes(checker, types.NewStrictObjectType(map[string]types.Type{"flag": types.BoolType()}))
+			contexts.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
 			result := checker.CheckResult(evaluate.EvaluateSubexpressions(root))
 			found := false
 			syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
@@ -42,7 +42,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 				if !known || facts.SignatureMatched != tc.matched || facts.Demand != tc.demand {
 					t.Fatalf("call facts=%+v known=%t", facts, known)
 				}
-				if len(facts.DeclaredReturns) != 1 || facts.DeclaredReturns[0].Kind() != types.KindBool {
+				if len(facts.DeclaredReturns) != 1 || facts.DeclaredReturns[0].Kind() != exprtypes.KindBool {
 					t.Fatalf("declared return lost: %+v", facts)
 				}
 				found = true
@@ -89,11 +89,11 @@ func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
 	change(facts.Arguments[0].SourceValue.Value)
 	change(facts.Arguments[0].Value.Value)
 	change(first.Call.Arguments[0].SourceValue.Value)
-	first.Call.DeclaredReturns[0] = types.StringType()
-	facts.DeclaredReturns[0] = types.NumberType()
+	first.Call.DeclaredReturns[0] = exprtypes.StringType()
+	facts.DeclaredReturns[0] = exprtypes.NumberType()
 	checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ always() }}")))
 	again, known := first.Calls.CallOf(call)
-	if !known || again.DeclaredReturns[0].Kind() != types.KindBool {
+	if !known || again.DeclaredReturns[0].Kind() != exprtypes.KindBool {
 		t.Fatalf("call snapshot changed: %+v", again)
 	}
 	for _, value := range []any{again.Arguments[0].SourceValue.Value, again.Arguments[0].Value.Value} {

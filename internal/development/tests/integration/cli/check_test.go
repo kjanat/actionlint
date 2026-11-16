@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -301,7 +301,7 @@ func TestApplicationBuiltInOutput(t *testing.T) {
 	t.Parallel()
 	for _, format := range []outputformat.Format{outputformat.Text, outputformat.Oneline, outputformat.JSON, outputformat.JSONL, outputformat.SARIF} {
 		var out bytes.Buffer
-		result, err := checking.Check(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(commandBadWorkflow)})
+		result, err := checking.Check(t.Context(), checking.Options{}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(commandBadWorkflow)})
 		if err != nil || len(result.Diagnostics) != 1 {
 			t.Fatalf("%s: %v, %v", format, result, err)
 		}

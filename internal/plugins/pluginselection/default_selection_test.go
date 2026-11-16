@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -30,7 +30,7 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 				t.Fatal(err)
 			}
 			selection := pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: path, DefaultTools: []string{tool}, Acquisition: pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
-			selected, err := selection.Resolve(t.Context(), root, input.Request{Kind: input.Repository})
+			selected, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -38,7 +38,7 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 				t.Fatalf("selected registry artifacts=%+v", selected)
 			}
 			requests := len(registry.Requests())
-			reused, err := selection.Resolve(t.Context(), root, input.Request{Kind: input.Repository})
+			reused, err := selection.Resolve(t.Context(), root, checkrequest.Request{Kind: checkrequest.Repository})
 			if err != nil || len(reused.Artifacts) != 1 || len(registry.Requests()) != requests {
 				t.Fatalf("repeated online selection: artifacts=%v error=%v requests=%v", reused.Artifacts, err, registry.Requests())
 			}
@@ -48,11 +48,11 @@ func TestDefaultPluginsUseRegistryAndOfflineCache(t *testing.T) {
 				name     string
 				config   string
 				disabled bool
-				input    input.Request
+				input    checkrequest.Request
 			}{
-				{"explicit config", path, false, input.Request{Kind: input.Stdin}},
-				{"no config", "", true, input.Request{Kind: input.Stdin}},
-				{"standalone file", "", false, input.Request{Kind: input.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}},
+				{"explicit config", path, false, checkrequest.Request{Kind: checkrequest.Stdin}},
+				{"no config", "", true, checkrequest.Request{Kind: checkrequest.Stdin}},
+				{"standalone file", "", false, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}},
 			} {
 				selection.ConfigFile, selection.Disabled = tc.config, tc.disabled
 				cached, err := selection.Resolve(ctx, root, tc.input)

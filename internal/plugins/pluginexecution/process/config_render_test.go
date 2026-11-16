@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 func TestTOMLPairs(t *testing.T) {
@@ -46,7 +46,7 @@ func TestTOMLPairs(t *testing.T) {
 func TestRuffConfigTransform(t *testing.T) {
 	t.Parallel()
 	manifest := bundledManifest(t, "ruff")
-	source, err := manifests.ResolveTransform(manifest.Process.Config.Transform, bundledproviders.Program)
+	source, err := toolmanifest.ResolveTransform(manifest.Process.Config.Transform, bundledproviders.Program)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,9 +132,9 @@ func TestConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for render, want := range map[manifests.Render]string{
-		manifests.RenderTOMLFile: "line-length = 100\nratio = 0.5\n\n[lint]\nselect = ['F']\n",
-		manifests.RenderJSONFile: `{"line-length":100,"lint":{"select":["F"],"unset":null},"ratio":0.5}`,
+	for render, want := range map[toolmanifest.Render]string{
+		toolmanifest.RenderTOMLFile: "line-length = 100\nratio = 0.5\n\n[lint]\nselect = ['F']\n",
+		toolmanifest.RenderJSONFile: `{"line-length":100,"lint":{"select":["F"],"unset":null},"ratio":0.5}`,
 	} {
 		path, remove, err := writeConfigFile(render, config)
 		if err != nil {

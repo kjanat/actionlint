@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -40,7 +40,7 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 	writeFixture(t, root, "middle/action.yml", "name: middle\ndescription: middle\nruns: {using: composite, steps: [{uses: $/inner}]}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n")
 	collector := &callGraphCollector{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: collector}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: collector}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}

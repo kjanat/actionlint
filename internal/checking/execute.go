@@ -18,7 +18,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
@@ -37,7 +37,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	actionprovider "actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
@@ -75,7 +75,7 @@ type sourceUnit = workspace.InputFile
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
 	ExecutionEnvironment
-	RemoteActions   actionprovider.Provider
+	RemoteActions   actions.Provider
 	RemoteWorkflows reusableworkflows.Provider
 	Repository      func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
@@ -193,24 +193,24 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		return nil, errors.New("analysis requires an application-owned process pool")
 	}
 	var extensions []rule.Descriptor
-	for _, registration := range request.Analyzers {
-		if validation.IsNil(registration.Checker) {
+	for _, analyzer := range request.Analyzers {
+		if validation.IsNil(analyzer.Checker) {
 			return nil, errors.New("nil analyzer registration")
 		}
-		extensions = append(extensions, registration.Checker.Descriptor().Descriptor)
+		extensions = append(extensions, analyzer.Checker.Descriptor().Descriptor)
 	}
 	seenTools := map[string]bool{}
-	for _, registration := range request.Tools {
-		name := registration.Name
+	for _, tool := range request.Tools {
+		name := tool.Name
 		if seenTools[name] {
 			return nil, fmt.Errorf("duplicate script tool %q", name)
 		}
 		seenTools[name] = true
-		if ruleexec.HasRule(name) {
+		if registration.HasRule(name) {
 			return nil, fmt.Errorf("script tool %q conflicts with a built-in analyzer", name)
 		}
 		if _, builtIn := FindRule(name); !builtIn {
-			extensions = append(extensions, registration.Descriptor)
+			extensions = append(extensions, tool.Descriptor)
 		}
 	}
 	if _, err := CombineRuleDeclarations(extensions...); err != nil {
@@ -221,12 +221,12 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	if err != nil {
 		return nil, err
 	}
-	for _, registration := range request.Tools {
-		if registration.Build == nil {
-			return nil, fmt.Errorf("tool %q has no adapter", registration.Name)
+	for _, tool := range request.Tools {
+		if tool.Build == nil {
+			return nil, fmt.Errorf("tool %q has no adapter", tool.Name)
 		}
-		if registration.Validate != nil {
-			if err := registration.Validate(); err != nil {
+		if tool.Validate != nil {
+			if err := tool.Validate(); err != nil {
 				return nil, err
 			}
 		}
@@ -378,7 +378,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	documents := &actionDocuments{byPath: map[string]outline.Action{}}
 	session.actionDocuments = documents
 	proc := request.Processes
-	actions := localactions.NewFactory(session.debugWriter())
+	localActionFactory := localactions.NewFactory(session.debugWriter())
 	cwd := request.WorkingDir
 	if cwd == "" {
 		var err error
@@ -430,7 +430,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if _, exists := session.remoteActions[mirrors]; !exists {
 			actionProvider := request.RemoteActions
 			if configurable, ok := actionProvider.(interface {
-				WithMetadataMirrors(references.MirrorAccess, []string) actionprovider.Provider
+				WithMetadataMirrors(references.MirrorAccess, []string) actions.Provider
 			}); ok {
 				actionProvider = configurable.WithMetadataMirrors(mirrors, source.Config.MetadataMirrorExclusions())
 			}
@@ -450,7 +450,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			wc.SetRemote(remoteWorkflows[mirrors])
 			workflows[key] = wc
 		}
-		ac := actions.GetCache(lifetime, root)
+		ac := localActionFactory.GetCache(lifetime, root)
 		ac.Configure(localactions.Options{
 			Reader: reader, CustomReader: request.ReadFile != nil, Captures: captures, Context: lifetime, WorkingDir: session.workingDir, ExplicitDocuments: explicitDocuments,
 			OnManifestRequest: documents.request,
@@ -478,7 +478,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 		inputs.add(path)
 		root := dependencyRoot(source.Project, request.LocalDependencyRoot)
-		ac, wc := actions.GetCache(lifetime, root), workflows[workflowCacheKey{root, source.Config.MetadataMirrorAccess()}]
+		ac, wc := localActionFactory.GetCache(lifetime, root), workflows[workflowCacheKey{root, source.Config.MetadataMirrorAccess()}]
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source

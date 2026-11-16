@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
 )
 
 func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Settings, error) {
 	t.Helper()
-	manifests, err := manifests.Bundled()
+	manifests, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestDirectivePathRejectsPathsShellCheckCannotRead(t *testing.T) {
 
 func prepareShellcheck(t *testing.T, run Run, source string) (preparation.Prepared, error) {
 	t.Helper()
-	providers, err := manifests.Bundled()
+	providers, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}

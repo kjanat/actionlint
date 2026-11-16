@@ -10,7 +10,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Policy supplies source text and the rule bindings prepared for this analysis.
@@ -32,7 +32,7 @@ type Policy struct {
 	usedSuppression   func(string, sourcepos.Position, string)
 }
 
-func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metadataSources map[string][]byte, authority map[*findingmodel.Finding]obligation) ([]*findingmodel.Finding, error) {
+func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSources map[string][]byte, authority map[*finding.Finding]obligation) ([]*finding.Finding, error) {
 	path, configPath, root, content, cfg, metadata := p.Path, p.ConfigPath, p.Root, p.Content, p.Scope.Caller(), p.Metadata
 	additionalRules := p.AdditionalRules
 	var suppressionPolicy *configuration.SuppressionsPolicy
@@ -41,9 +41,9 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 	}
 	if metadata != nil {
 		metadataSources[metadata.Path()] = content
-		for _, finding := range all {
-			if finding.Path == "" {
-				finding.Path, finding.Source.Content = metadata.Path(), content
+		for _, item := range all {
+			if item.Path == "" {
+				item.Path, item.Source.Content = metadata.Path(), content
 			}
 		}
 	}
@@ -59,7 +59,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 		path    string
 		binding *rulebinding.Scope
 	}
-	byPath := make(map[occurrenceScope][]*findingmodel.Finding)
+	byPath := make(map[occurrenceScope][]*finding.Finding)
 	seenSources := make(map[string]bool)
 	findingKey := func(findingPath string) string {
 		if findingPath == "" {
@@ -69,22 +69,22 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 		}
 		return findingPath
 	}
-	for _, finding := range all {
-		if !finding.Binding.Valid() {
-			finding.Binding = p.Scope.Rule(finding.Rule).ID()
+	for _, item := range all {
+		if !item.Binding.Valid() {
+			item.Binding = p.Scope.Rule(item.Rule).ID()
 		}
-		key := findingKey(finding.Path)
-		if origin := finding.SuppressionOrigin; origin != nil && origin.Path != "" {
+		key := findingKey(item.Path)
+		if origin := item.SuppressionOrigin; origin != nil && origin.Path != "" {
 			key = origin.Path
-		} else if _, isMetadata := metadataSources[finding.Path]; isMetadata {
-			key = finding.Path
+		} else if _, isMetadata := metadataSources[item.Path]; isMetadata {
+			key = item.Path
 		}
-		prepared, exists := p.Bindings.Lookup(finding.Binding)
+		prepared, exists := p.Bindings.Lookup(item.Binding)
 		if !exists {
-			return nil, fmt.Errorf("finding %q has no prepared configuration binding", finding.Rule)
+			return nil, fmt.Errorf("finding %q has no prepared configuration binding", item.Rule)
 		}
 		group := occurrenceScope{key, prepared.Scope()}
-		byPath[group] = append(byPath[group], finding)
+		byPath[group] = append(byPath[group], item)
 		seenSources[key] = true
 	}
 	foreignSources := map[string]string{}
@@ -120,15 +120,15 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 			findings = processor.filterForeignInline(sourcePath, source, findings, policy, p.inlineAudit(sourcePath, diagnosticLevel), additionalRules...)
 			findings = processor.filterConfigured(sourcePath, root, source, findings, findingConfig, true, diagnosticLevel, additionalRules...)
 		}
-		for _, finding := range findings {
-			if !finding.Binding.Valid() {
-				finding.Binding = scope.Rule(finding.Rule).ID()
+		for _, item := range findings {
+			if !item.Binding.Valid() {
+				item.Binding = scope.Rule(item.Rule).ID()
 			}
-			if _, exists := p.Bindings.Lookup(finding.Binding); !exists {
-				return nil, fmt.Errorf("finding %q has a foreign configuration binding", finding.Rule)
+			if _, exists := p.Bindings.Lookup(item.Binding); !exists {
+				return nil, fmt.Errorf("finding %q has a foreign configuration binding", item.Rule)
 			}
 		}
-		findings = slices.DeleteFunc(findings, func(e *findingmodel.Finding) bool {
+		findings = slices.DeleteFunc(findings, func(e *finding.Finding) bool {
 			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
 			executionFailure := descriptor.ExecutionFailure && (e.Severity == "" || e.Severity == "error")
 			e.NonBlocking = sourcepos.RemoteAddress(e.Path) && e.Path != p.Path &&
@@ -150,11 +150,11 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 			}
 			return false
 		})
-		for _, finding := range findings {
-			if p.IgnoreSelectors.matches(processor.RuleSet, finding.Diagnostic) {
+		for _, item := range findings {
+			if p.IgnoreSelectors.matches(processor.RuleSet, item.Diagnostic) {
 				continue
 			}
-			all = append(all, filterErrors(p, []*findingmodel.Finding{finding}, cfg.PathConfigs(findingKey(finding.Path)))...)
+			all = append(all, filterErrors(p, []*finding.Finding{item}, cfg.PathConfigs(findingKey(item.Path)))...)
 		}
 	}
 
@@ -167,7 +167,7 @@ func (processor Processor) evaluate(p Policy, all []*findingmodel.Finding, metad
 		}
 	}
 
-	slices.SortFunc(all, findingmodel.Compare)
+	slices.SortFunc(all, finding.Compare)
 
 	return all, nil
 }
@@ -180,12 +180,12 @@ func (p Policy) inlineAudit(path string, level func(string) configuration.Level)
 	}}
 }
 
-func filterErrors(p Policy, errs []*findingmodel.Finding, cfgs []configuration.PathConfig) []*findingmodel.Finding {
+func filterErrors(p Policy, errs []*finding.Finding, cfgs []configuration.PathConfig) []*finding.Finding {
 	if len(p.IgnorePatterns) == 0 && len(cfgs) == 0 {
 		return errs
 	}
 
-	filtered := make([]*findingmodel.Finding, 0, len(errs))
+	filtered := make([]*finding.Finding, 0, len(errs))
 Loop:
 	for _, err := range errs {
 		if matchesIgnorePatterns(p.IgnorePatterns, err) {
@@ -208,9 +208,9 @@ Loop:
 
 // Code-based filters keep working when messages no longer repeat the code.
 // Match the plain message too, preserving existing message-anchored patterns.
-func matchesIgnorePatterns(patterns configuration.IgnorePatterns, finding *findingmodel.Finding) bool {
-	return len(patterns) != 0 && (patterns.Match(finding.Message) ||
-		finding.Code != "" && patterns.Match(finding.Code+": "+finding.Message))
+func matchesIgnorePatterns(patterns configuration.IgnorePatterns, item *finding.Finding) bool {
+	return len(patterns) != 0 && (patterns.Match(item.Message) ||
+		item.Code != "" && patterns.Match(item.Code+": "+item.Message))
 }
 
 func debug(p Policy, format string, args ...any) {

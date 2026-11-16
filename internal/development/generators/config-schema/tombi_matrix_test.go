@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -47,11 +47,11 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		t.Fatal(err)
 	}
 	generated := generatedSchema(t)
-	bundled, err := manifests.Bundled()
+	bundled, err := toolmanifest.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var fileManifest manifests.Manifest
+	var fileManifest toolmanifest.Manifest
 	for _, m := range bundled {
 		if m.Rule.Name == "shellcheck" {
 			fileManifest = m
@@ -61,17 +61,17 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 	fileManifest.ID = "example.test/providers/file-tool"
 	fileManifest.Rule.Name = "file-tool"
 	fileManifest.ConfigSchema = json.RawMessage(`{"$id":"settings.json","$defs":{"limit":{"type":"integer","minimum":1}},"type":"object","properties":{"limit":{"$ref":"#/$defs/limit"}},"additionalProperties":false}`)
-	fileManifest.ConfigShorthands = map[string]manifests.ConfigShorthand{"limit": {Path: []string{"limit"}, Precedence: "shorthand"}}
+	fileManifest.ConfigShorthands = map[string]toolmanifest.ConfigShorthand{"limit": {Path: []string{"limit"}, Precedence: "shorthand"}}
 	fileManifest.Process.ConfigSchema = json.RawMessage(`{"$id":"settings.json","$defs":{"limit":{"type":"integer","maximum":10}},"type":"object","properties":{"limit":{"$ref":"#/$defs/limit"}},"additionalProperties":false}`)
 	encoded, err := json.Marshal(fileManifest)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fileManifest, err = manifests.ParsePluginManifest(encoded)
+	fileManifest, err = toolmanifest.ParsePluginManifest(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	local := manifests.Manifest{Rule: rule.Descriptor{Name: "local-tool", Category: "conventions", Description: "Local tool", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`)}, ConfigSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
+	local := toolmanifest.Manifest{Rule: rule.Descriptor{Name: "local-tool", Category: "conventions", Description: "Local tool", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`)}, ConfigSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 	readSchema := func(name string) ([]byte, error) {
 		if name == configschema.RootFile {
 			return generated, nil
@@ -82,7 +82,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		validate func([]byte) error
 		url      string
 	}
-	makeConsumer := func(ms []manifests.Manifest) consumer {
+	makeConsumer := func(ms []toolmanifest.Manifest) consumer {
 		providers := make([]configschema.ToolProvider, 0, len(ms))
 		for _, m := range ms {
 			providers = append(providers, m.ConfigurationSchemaProvider())
@@ -103,7 +103,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		return consumer{validate: v.Validate, url: u}
 	}
 	standard := makeConsumer(nil)
-	specialized := makeConsumer([]manifests.Manifest{local, fileManifest})
+	specialized := makeConsumer([]toolmanifest.Manifest{local, fileManifest})
 	tombi, tombiErr := exec.LookPath("tombi")
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {

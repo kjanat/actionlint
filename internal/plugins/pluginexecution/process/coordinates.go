@@ -5,14 +5,14 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // coordinates converts one tool's positions in one snippet to the
 // analyzer.ScriptPosition contract: LF rows, Unicode scalar columns and
 // exclusive ends. The zero value converts nothing.
 type coordinates struct {
-	convention manifests.Coordinates
+	convention toolmanifest.Coordinates
 	lines      []engineLine
 }
 
@@ -24,9 +24,9 @@ type engineLine struct {
 }
 
 // defaultCoordinates is the contract's own convention.
-var defaultCoordinates = manifests.Coordinates{Rows: manifests.RowsLF, Columns: manifests.ColumnsChars, End: manifests.EndExclusive}
+var defaultCoordinates = toolmanifest.Coordinates{Rows: toolmanifest.RowsLF, Columns: toolmanifest.ColumnsChars, End: toolmanifest.EndExclusive}
 
-func newCoordinates(source string, convention *manifests.Coordinates) coordinates {
+func newCoordinates(source string, convention *toolmanifest.Coordinates) coordinates {
 	if convention == nil || *convention == defaultCoordinates {
 		return coordinates{}
 	}
@@ -35,11 +35,11 @@ func newCoordinates(source string, convention *manifests.Coordinates) coordinate
 	line := engineLine{start: position}
 	begin := 0
 	for i, character := range source {
-		universal := convention.Rows == manifests.RowsSource && character == '\r' && (i+1 == len(source) || source[i+1] != '\n')
+		universal := convention.Rows == toolmanifest.RowsSource && character == '\r' && (i+1 == len(source) || source[i+1] != '\n')
 		switch {
 		case character == '\n':
 			end := i
-			if convention.Rows == manifests.RowsSource && end > begin && source[end-1] == '\r' {
+			if convention.Rows == toolmanifest.RowsSource && end > begin && source[end-1] == '\r' {
 				end--
 			}
 			line.text = source[begin:end]
@@ -70,7 +70,7 @@ func (c coordinates) end(position checkinputs.ScriptPosition) checkinputs.Script
 	if position == (checkinputs.ScriptPosition{}) {
 		return position
 	}
-	return c.convert(position, c.convention.End == manifests.EndInclusive)
+	return c.convert(position, c.convention.End == toolmanifest.EndInclusive)
 }
 
 func (c coordinates) convert(position checkinputs.ScriptPosition, inclusive bool) checkinputs.ScriptPosition {
@@ -84,11 +84,11 @@ func (c coordinates) convert(position checkinputs.ScriptPosition, inclusive bool
 		character, size := utf8.DecodeRuneInString(text)
 		text = text[size:]
 		switch c.convention.Columns {
-		case manifests.ColumnsBytes:
+		case toolmanifest.ColumnsBytes:
 			units -= size
-		case manifests.ColumnsUTF16:
+		case toolmanifest.ColumnsUTF16:
 			units -= utf16.RuneLen(character)
-		case manifests.ColumnsChars:
+		case toolmanifest.ColumnsChars:
 			units--
 		}
 		characters++

@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
@@ -15,8 +15,8 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	graph := invocationfixture.Graph(t,
 		invocationfixture.Script{Node: "root-run", Entry: true}, invocationfixture.Script{Node: "script"},
 		invocationfixture.Script{Node: "input", Input: "script"})
-	scripts := graph.Scripts()
-	rootRun, invokedRun, actionInput := scripts[0], scripts[1], scripts[2]
+	batchScripts := graph.Scripts()
+	rootRun, invokedRun, actionInput := batchScripts[0], batchScripts[1], batchScripts[2]
 	rootText := Script{Reference: rootRun.Declaration, Text: "root", Occurrence: rootRun}
 	invokedText := Script{Reference: invokedRun.Declaration, Text: "invoked", Occurrence: invokedRun}
 	inputText := Script{Reference: actionInput.Declaration, Text: "input", Occurrence: actionInput}
@@ -32,7 +32,7 @@ func TestInputValidatesActionInputAndScriptCollections(t *testing.T) {
 	}
 	for name, change := range map[string]func(*AnalyzerInput){
 		"action input shell":    func(input *AnalyzerInput) { input.ActionInputs[0].Shell = "bash" },
-		"action input runtime":  func(input *AnalyzerInput) { input.ActionInputs[0].Runtime = &scriptmodel.Execution{} },
+		"action input runtime":  func(input *AnalyzerInput) { input.ActionInputs[0].Runtime = &scripts.Execution{} },
 		"action input action":   func(input *AnalyzerInput) { input.ActionInputs[0].Site.Action = "invalid" },
 		"action input language": func(input *AnalyzerInput) { input.ActionInputs[0].Site.Language = "" },
 		"entry run in invoked collection": func(input *AnalyzerInput) {

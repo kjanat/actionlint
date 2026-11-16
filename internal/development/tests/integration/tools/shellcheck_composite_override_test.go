@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 // TestShellcheckCompositeOverrideEnablesCallerDisabledTool checks decision b5
@@ -30,7 +30,7 @@ func TestShellcheckCompositeOverrideEnablesCallerDisabledTool(t *testing.T) {
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", tc.base+"overrides:\n  - includes: ['local/**']\n    "+tc.override+"\n")
 			fixturefiles.Write(t, root, "local/action.yml", "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo $2\n")
 			workflow := fixturefiles.Write(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./local\n      - shell: bash\n        run: echo $1\npermissions: {}\n")
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, input.Request{Kind: input.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}

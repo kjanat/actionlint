@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -12,16 +12,16 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, matrix string
-		kind         types.TypeKind
+		kind         exprtypes.TypeKind
 		open         bool
 	}{
-		{"known axis", `item: [1, 2]`, types.KindNumber, false},
-		{"excluded string", `item: [1, text], exclude: [{item: text}]`, types.KindNumber, false},
-		{"known include", `item: [1], include: [{item: text}]`, types.KindAny, false},
-		{"inferred axis", `item: ["${{ inputs.value }}"]`, types.KindNumber, false},
-		{"unknown exclude", `item: ["${{ inputs.value }}"], exclude: "${{ fromJSON(inputs.exclude) }}"`, types.KindNumber, false},
-		{"unknown include", `item: ["${{ inputs.value }}"], include: "${{ fromJSON(inputs.include) }}"`, types.KindAny, true},
-		{"unknown include with known axis", `item: [1], include: "${{ fromJSON(inputs.include) }}"`, types.KindAny, true},
+		{"known axis", `item: [1, 2]`, exprtypes.KindNumber, false},
+		{"excluded string", `item: [1, text], exclude: [{item: text}]`, exprtypes.KindNumber, false},
+		{"known include", `item: [1], include: [{item: text}]`, exprtypes.KindAny, false},
+		{"inferred axis", `item: ["${{ inputs.value }}"]`, exprtypes.KindNumber, false},
+		{"unknown exclude", `item: ["${{ inputs.value }}"], exclude: "${{ fromJSON(inputs.exclude) }}"`, exprtypes.KindNumber, false},
+		{"unknown include", `item: ["${{ inputs.value }}"], include: "${{ fromJSON(inputs.include) }}"`, exprtypes.KindAny, true},
+		{"unknown include with known axis", `item: [1], include: "${{ fromJSON(inputs.include) }}"`, exprtypes.KindAny, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -30,10 +30,10 @@ func TestContextTypeUsesReachabilityAndIncludeCompleteness(t *testing.T) {
 				t.Fatal(errors)
 			}
 			resolution := Resolve(workflow.Jobs["test"].Strategy)
-			inferred := map[source.Position]types.Type{}
+			inferred := map[source.Position]exprtypes.Type{}
 			for _, axis := range resolution.Axes() {
 				for _, candidate := range axis.Values {
-					inferred[candidate.Origin().Span.Start] = types.NumberType()
+					inferred[candidate.Origin().Span.Start] = exprtypes.NumberType()
 				}
 			}
 			context := resolution.ContextType(inferred)

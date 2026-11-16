@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
@@ -99,10 +99,10 @@ func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg 
 	switch mode {
 	case "files":
 		options.ConfigFile = "actionlint.yaml"
-		return checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: paths})
+		return checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 	case "repository":
 		options.ConfigFile = "actionlint.yaml"
-		return checking.Check(t.Context(), options, input.Request{Kind: input.Repository, Directory: root})
+		return checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Repository, Directory: root})
 	default:
 		var sources []workspace.InputFile
 		for _, path := range paths {
@@ -198,7 +198,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 	}
 	backend := &configuredBackend{}
 	options := checking.Options{WorkingDir: root, ConfigFile: "actionlint.yaml", Tools: registry.Registrations(configuredEngineSelections()), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return backend, nil }}
-	result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: paths})
+	result, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: paths})
 	if err != nil || result == nil || len(result.Diagnostics) != 3 || backend.checks.Load() != 3 || backend.closes.Load() != 1 {
 		t.Fatalf("configured ShellCheck: result=%+v err=%v checks=%d closes=%d", result, err, backend.checks.Load(), backend.closes.Load())
 	}
@@ -208,7 +208,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatal("explicit backend must override configured engine")
 		return nil, nil
 	}
-	if _, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: paths}); err != nil {
+	if _, err := checking.Check(t.Context(), options, checkrequest.Request{Kind: checkrequest.Files, Paths: paths}); err != nil {
 		t.Fatal(err)
 	}
 	if explicit.checks.Load() != 3 || explicit.closes.Load() != 0 {

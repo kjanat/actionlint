@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/runners"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -119,12 +119,12 @@ func TestPreparedActionEntryRejectsForgedSourcePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
+	scopes, batchScripts := result.Batch.Scopes, result.Batch.Scripts
 	if len(scopes) != 1 || !scopes[0].Context.IsEntry() || scopes[0].Deployment.ActionPath() == "" || !scopes[0].Composite {
 		t.Fatal("fixture did not create standalone composite entry")
 	}
 	scopes[0].Paths.ActionPath = "foreign"
-	_, err = scriptanalysis.NewBatch(result.Batch.CallGraph, scriptanalysis.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(scripts), Collected: true})
+	_, err = scriptanalysis.NewBatch(result.Batch.CallGraph, scriptanalysis.Collection{Declarations: registry, Scopes: scopes, Scripts: requestsFromUnits(batchScripts), Collected: true})
 	if !errors.Is(err, scriptanalysis.ErrInvalidBatch) || !strings.Contains(err.Error(), "action paths disagree") {
 		t.Fatalf("forged action entry accepted: %v", err)
 	}
@@ -169,13 +169,13 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scopes, scripts := result.Batch.Scopes, result.Batch.Scripts
-	if len(scopes) != 3 || len(scripts) != 2 {
+	scopes, batchScripts := result.Batch.Scopes, result.Batch.Scripts
+	if len(scopes) != 3 || len(batchScripts) != 2 {
 		t.Fatal("fixture did not expand both calls")
 	}
 	graph := result.Batch.CallGraph
 	configByOwner := map[invocation.ID]*configuration.Config{}
-	for i, script := range scripts {
+	for i, script := range batchScripts {
 		record, exists := graph.Script(script.Occurrence)
 		if !exists {
 			t.Fatal("fixture script is absent from the graph")
@@ -191,14 +191,14 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 			t.Fatal("fixture calls did not have distinct owners")
 		}
 	}
-	requests := requestsFromUnits(scripts)
+	requests := requestsFromUnits(batchScripts)
 	executionByOccurrence := make(map[invocation.ID]string, len(requests))
 	for i := range requests {
 		name := "bash"
 		if i == 1 {
 			name = "pwsh"
 		}
-		requests[i].Execution = &scriptmodel.Execution{Shell: name, ShellKnown: true}
+		requests[i].Execution = &scripts.Execution{Shell: name, ShellKnown: true}
 		executionByOccurrence[requests[i].Occurrence] = name
 	}
 	requests[0], requests[1] = requests[1], requests[0]

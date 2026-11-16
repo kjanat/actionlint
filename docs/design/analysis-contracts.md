@@ -95,7 +95,7 @@ defines the component checker contract. The host converts between that contract
 and its private checker inputs. `describe` returns metadata and input requirements;
 `analyze` returns diagnostics and an optional explanation of incomplete analysis.
 
-`internal/model/manifests` validates manifests. `internal/plugins/artifacts`
+`internal/model/toolmanifest` validates manifests. `internal/plugins/artifacts`
 resolves and verifies artifacts. `internal/plugins/pluginexecution` loads and invokes
 components, core Wasm modules and native processes through their declared
 contracts. `internal/plugins/pluginregistry` resolves and verifies registry

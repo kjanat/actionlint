@@ -3,7 +3,7 @@ package functions
 import (
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
@@ -28,12 +28,12 @@ const (
 // FunctionArgumentFacts separates the accepted parameter contract from the
 // argument's source type, conversion and demand when its call is evaluated.
 type FunctionArgumentFacts struct {
-	Source      types.Type
+	Source      exprtypes.Type
 	SourceValue values.EvaluationResult
 	Accepted    bool
 	Demand      ArgumentDemand
-	Parameter   types.Type
-	Converted   types.Type
+	Parameter   exprtypes.Type
+	Converted   exprtypes.Type
 	Conversion  ArgumentConversion
 	Value       values.EvaluationResult
 }
@@ -55,8 +55,8 @@ type FunctionCallFacts struct {
 	// Demand describes whether this call is required, conditional or skipped in its enclosing expression.
 	Demand              ArgumentDemand
 	ReturnDomain        ReturnDomainState
-	DeclaredReturns     []types.Type
-	RefinedAlternatives []types.Type
+	DeclaredReturns     []exprtypes.Type
+	RefinedAlternatives []exprtypes.Type
 	Arguments           []FunctionArgumentFacts
 }
 

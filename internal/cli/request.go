@@ -7,8 +7,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
@@ -23,7 +23,7 @@ type commandRequest interface {
 
 // streamCommand is a command whose package runs it over command streams.
 type streamCommand interface {
-	Run(context.Context, commandstreams.Streams, pluginacquisition.Settings) (int, error)
+	Run(context.Context, commandio.Streams, pluginacquisition.Settings) (int, error)
 }
 
 // streamRequest runs a streamCommand with the streams and plugin acquisition of a Command.

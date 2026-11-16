@@ -9,16 +9,16 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/integrationconfig"
 )
 
 func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
 	t.Parallel()
-	transform, err := integrationconfig.New(manifests.Manifest{
+	transform, err := integrationconfig.New(toolmanifest.Manifest{
 		ConfigSchema:           json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"search":{"type":"array","items":{"type":"string"}},"pattern":{"type":"string"},"limit":{"type":"integer","minimum":7}},"required":["limit"]}`),
 		ConfigurationPaths:     []string{"/search"},
-		ConfigurationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `{options:{threshold:.config.limit, pattern:.config.pattern},source_prefix:"# limit="+(.config.limit|tostring)+"\n",read_access:{enabled:true,directories:.config.search}}`},
+		ConfigurationTransform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `{options:{threshold:.config.limit, pattern:.config.pattern},source_prefix:"# limit="+(.config.limit|tostring)+"\n",read_access:{enabled:true,directories:.config.search}}`},
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
 
 func TestPathPointersHandleEscapedNamesAndOptionalValues(t *testing.T) {
 	t.Parallel()
-	transform, err := integrationconfig.New(manifests.Manifest{ConfigurationPaths: []string{"/a~1b/~0root", "/omitted", "/nullable", "/records/0/directory"}}, nil)
+	transform, err := integrationconfig.New(toolmanifest.Manifest{ConfigurationPaths: []string{"/a~1b/~0root", "/omitted", "/nullable", "/records/0/directory"}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,9 +66,9 @@ func TestPathPointersHandleEscapedNamesAndOptionalValues(t *testing.T) {
 func TestConfigurationPreservesLargeIntegers(t *testing.T) {
 	t.Parallel()
 	for _, program := range []string{"", `{options:.config}`} {
-		manifest := manifests.Manifest{}
+		manifest := toolmanifest.Manifest{}
 		if program != "" {
-			manifest.ConfigurationTransform = &manifests.Transform{Language: manifests.LanguageJQ, Inline: program}
+			manifest.ConfigurationTransform = &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: program}
 		}
 		transform, err := integrationconfig.New(manifest, nil)
 		if err != nil {
@@ -87,7 +87,7 @@ func TestConfigurationTransformRejectsInvalidResults(t *testing.T) {
 	for _, program := range []string{`empty`, `{}, {}`, `{options:[]}`, `{options:null}`, `{options:{},typo:true}`, `{options:{},source_prefix:"# missing newline"}`} {
 		t.Run(program, func(t *testing.T) {
 			t.Parallel()
-			transform, err := integrationconfig.New(manifests.Manifest{ConfigurationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: program}}, nil)
+			transform, err := integrationconfig.New(toolmanifest.Manifest{ConfigurationTransform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: program}}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +100,7 @@ func TestConfigurationTransformRejectsInvalidResults(t *testing.T) {
 
 func TestConfigurationTransformCancelsInfinitePrograms(t *testing.T) {
 	t.Parallel()
-	transform, err := integrationconfig.New(manifests.Manifest{ConfigurationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `def forever: forever; forever`}}, nil)
+	transform, err := integrationconfig.New(toolmanifest.Manifest{ConfigurationTransform: &toolmanifest.Transform{Language: toolmanifest.LanguageJQ, Inline: `def forever: forever; forever`}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

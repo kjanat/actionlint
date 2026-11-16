@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
@@ -149,7 +149,7 @@ func runLinter(req *lintRequest) *lintResult {
 	var analysis *report.Analysis
 	var err error
 	inputNames := make(map[string]string, len(req.files))
-	input := inputmodel.Request{Kind: inputmodel.Repository, Directory: req.workingDir}
+	input := checkrequest.Request{Kind: checkrequest.Repository, Directory: req.workingDir}
 	if len(req.files) != 0 {
 		paths := make([]string, len(req.files))
 		for i, path := range req.files {
@@ -159,7 +159,7 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 			paths[i] = path
 		}
-		input = inputmodel.Request{Kind: inputmodel.Files, Paths: paths}
+		input = checkrequest.Request{Kind: checkrequest.Files, Paths: paths}
 	}
 	selection := req.pluginSelection()
 	analysis, err = checking.CheckProjects(ctx, opts, input, selection)

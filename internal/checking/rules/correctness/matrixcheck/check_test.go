@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -67,7 +67,7 @@ jobs:
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			errs := Check(matrixmodel.Resolve(w.Jobs["test"].Strategy), false)
+			errs := Check(matrix.Resolve(w.Jobs["test"].Strategy), false)
 			if tc.want == "" {
 				if len(errs) != 0 {
 					t.Fatal(errs)
@@ -115,7 +115,7 @@ func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	resolution := matrixmodel.Resolve(workflow.Jobs["test"].Strategy)
+	resolution := matrix.Resolve(workflow.Jobs["test"].Strategy)
 	findings := Check(resolution, false)
 	wantPosition := sourcepos.Position{Line: 10, Column: 13}
 	wantMessage := `"missing" in "exclude" section does not exist in matrix. available matrix configurations are "arch", "os"`
@@ -147,15 +147,15 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 		if len(errors) != 0 {
 			t.Fatal(errors)
 		}
-		matrix := workflow.Jobs["test"].Strategy.Matrix
-		source := matrix.Exclude.Expression
+		matrixValue := workflow.Jobs["test"].Strategy.Matrix
+		source := matrixValue.Exclude.Expression
 		if source == nil {
-			source = matrix.Exclude.Combinations[0].Expression
+			source = matrixValue.Exclude.Combinations[0].Expression
 		}
 		if source == nil || source.Pos == nil {
 			t.Fatal("missing filter expression source")
 		}
-		findings := Check(matrixmodel.Resolve(workflow.Jobs["test"].Strategy), false)
+		findings := Check(matrix.Resolve(workflow.Jobs["test"].Strategy), false)
 		if len(findings) != 1 || findings[0].Start.Line != source.Pos.Line || findings[0].Start.Column != source.Pos.Column {
 			t.Fatalf("expression object fabricated key position: %v", findings)
 		}
@@ -168,7 +168,7 @@ func TestNestedMatrixMismatchDiagnosticKeepsValues(t *testing.T) {
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	findings := Check(matrixmodel.Resolve(workflow.Jobs["test"].Strategy), false)
+	findings := Check(matrix.Resolve(workflow.Jobs["test"].Strategy), false)
 	want := `value {"z": [null, {"a": true, "b": "new"}]} in "exclude" does not match in matrix "item" combinations. possible values are {"a": 1, "z": [null, {"a": true, "b": "old"}]}`
 	if len(findings) != 1 || findings[0].Message != want {
 		t.Fatalf("nested mismatch diagnostic=%v, want %s", findings, want)

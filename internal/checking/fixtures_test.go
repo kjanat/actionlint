@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
+	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
@@ -102,7 +102,7 @@ func executableFixture(t *testing.T) (string, func(...string)) {
 	root := tempdir.Physical(t)
 	command := func(args ...string) {
 		t.Helper()
-		if out, err := gitclient.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
+		if out, err := gitcommand.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}
@@ -159,7 +159,7 @@ jobs:
 	session := options
 	var err error
 
-	result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}

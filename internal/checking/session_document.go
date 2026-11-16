@@ -45,7 +45,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/outline"
-	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"golang.org/x/sync/errgroup"
 )
@@ -78,7 +78,7 @@ type analysisSession struct {
 	actionDocuments *actionDocuments
 	gitModes        *gitModes
 	ignorePats      configuration.IgnorePatterns
-	ignoreSelectors resultpolicy.IgnoreSelectors
+	ignoreSelectors policy.IgnoreSelectors
 	onRulesCreated  func([]workflowvisit.Rule) []workflowvisit.Rule
 	rulePresets     configuration.Presets
 }
@@ -86,7 +86,7 @@ type analysisSession struct {
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
 	processes *hostprocess.ProcessPool, actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
-) ([]*finding.Finding, outline.Outline, *resultpolicy.Batch, error) {
+) ([]*finding.Finding, outline.Outline, *policy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
 	}
@@ -105,7 +105,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
 	actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
-) (findings []*finding.Finding, outline outline.Outline, publication *resultpolicy.Batch, resultErr error) {
+) (findings []*finding.Finding, outline outline.Outline, publication *policy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
 	if project != nil {
@@ -225,7 +225,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			entryAliases = append(entryAliases, relative)
 		}
 	}
-	resultpolicy.InferReferences(all, sourcePath, references, entryAliases...)
+	policy.InferReferences(all, sourcePath, references, entryAliases...)
 	all, err = s.admitReportedSources(all, path, sourcePath, composed, rejected)
 	analysisErr = errors.Join(analysisErr, err)
 	canonicalPaths := map[string]string{root: canonicalRoot, s.workingDir: canonicalWorkingDir}
@@ -251,9 +251,9 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		finding.Binding = scope.Rule(finding.Rule).ID()
 	}
-	policy := resultpolicy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
-	policy.EnforcedLifecycle = s.environment.EnforcedLifecycle
-	policy.IgnoreSelectors = s.ignoreSelectors
+	resultPolicy := policy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	resultPolicy.EnforcedLifecycle = s.environment.EnforcedLifecycle
+	resultPolicy.IgnoreSelectors = s.ignoreSelectors
 	// Suppression findings use paths relative to the working directory. Add those
 	// paths to the source-reference lookup to identify the declaring document.
 	reported := maps.Clone(references)
@@ -264,7 +264,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			}
 		}
 	}
-	publication = &resultpolicy.Batch{Processor: resultpolicy.Processor{RuleSet: settings.rules, CanonicalPaths: canonicalPaths}, Policy: policy, Sources: composed.Sources, References: reported, EntryAliases: entryAliases}
+	publication = &policy.Batch{Processor: policy.Processor{RuleSet: settings.rules, CanonicalPaths: canonicalPaths}, Policy: resultPolicy, Sources: composed.Sources, References: reported, EntryAliases: entryAliases}
 	s.log("Collected", len(all), "findings in", time.Since(start).Milliseconds(), "ms for", path)
 	return all, outline, publication, analysisErr
 }

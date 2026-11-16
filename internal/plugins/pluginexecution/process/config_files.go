@@ -8,7 +8,7 @@ import (
 	"runtime"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
 // ConfigFile resolves a tool's native configuration file and records it with
@@ -20,7 +20,7 @@ import (
 // This is where native tools such as ShellCheck look: Windows keeps per-user
 // files in the configuration directory, not the home directory. It returns
 // an absolute path, or "" when the search finds nothing.
-func ConfigFile(reader *files.Reader, files manifests.ConfigFiles, path, start string) (string, error) {
+func ConfigFile(reader *files.Reader, files toolmanifest.ConfigFiles, path, start string) (string, error) {
 	if path != "" {
 		return configFile(reader, files.Names, path)
 	}
@@ -28,13 +28,13 @@ func ConfigFile(reader *files.Reader, files manifests.ConfigFiles, path, start s
 		var found string
 		var err error
 		switch place {
-		case manifests.ConfigSearchUpward:
+		case toolmanifest.ConfigSearchUpward:
 			found, err = searchUpward(files.Names, start)
-		case manifests.ConfigSearchHome:
+		case toolmanifest.ConfigSearchHome:
 			if home := homeDirectory(); home != "" {
 				found, err = configInDirectory(files.Names, home)
 			}
-		case manifests.ConfigSearchXDG:
+		case toolmanifest.ConfigSearchXDG:
 			if directory := xdgConfigHome(); directory != "" {
 				found, err = configInDirectory(files.Names, directory)
 			}

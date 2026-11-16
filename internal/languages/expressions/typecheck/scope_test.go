@@ -9,44 +9,44 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 type suppliedScope struct {
-	variables    map[string]types.Type
+	variables    map[string]exprtypes.Type
 	names        []string
 	availability map[string]functions.Availability
 	overloads    map[string][]*functions.FuncSignature
 }
 
-func (scope suppliedScope) NarrowContext(syntax.Node, bool, func(string) (types.Type, bool)) (map[string]types.Type, bool) {
+func (scope suppliedScope) NarrowContext(syntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	return nil, true
 }
 
 type branchScope struct{ suppliedScope }
 
-func (scope branchScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (types.Type, bool)) (map[string]types.Type, bool) {
+func (scope branchScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	if syntax.DisplayReference(guard) != "flag" {
 		return nil, true
 	}
 	if _, found := lookup("subject"); !found {
 		return nil, true
 	}
-	fields := map[string]types.Type{"number": types.NumberType()}
+	fields := map[string]exprtypes.Type{"number": exprtypes.NumberType()}
 	if !truth {
-		fields = map[string]types.Type{"text": types.StringType()}
+		fields = map[string]exprtypes.Type{"text": exprtypes.StringType()}
 	}
-	return map[string]types.Type{"SUBJECT": types.NewStrictObjectType(fields).Type()}, true
+	return map[string]exprtypes.Type{"SUBJECT": exprtypes.NewStrictObjectType(fields).Type()}, true
 }
 
 func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 	t.Parallel()
-	original := types.NewEmptyStrictObjectType()
+	original := exprtypes.NewEmptyStrictObjectType()
 	scope := branchScope{suppliedScope{
-		variables: map[string]types.Type{"flag": types.BoolType(), "subject": original.Type()},
+		variables: map[string]exprtypes.Type{"flag": exprtypes.BoolType(), "subject": original.Type()},
 		names:     []string{"flag", "subject"},
 	}}
 	checker := NewChecker(scope, nil)
@@ -55,7 +55,7 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 		if node == nil {
 			t.Fatal("expression did not parse")
 		}
-		if result := checker.CheckResult(evaluate.EvaluateSubexpressions(node)); !result.Valid || result.Type.Kind() != types.KindBool {
+		if result := checker.CheckResult(evaluate.EvaluateSubexpressions(node)); !result.Valid || result.Type.Kind() != exprtypes.KindBool {
 			t.Fatalf("%s: model refinement was not applied: %+v", input, result)
 		}
 		current, found := checker.ContextType("subject")
@@ -68,8 +68,8 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 	}
 }
 
-func (scope suppliedScope) ContextTypes() map[string]types.Type { return scope.variables }
-func (scope suppliedScope) ContextNames() []string              { return scope.names }
+func (scope suppliedScope) ContextTypes() map[string]exprtypes.Type { return scope.variables }
+func (scope suppliedScope) ContextNames() []string                  { return scope.names }
 func (scope suppliedScope) FunctionAvailability() map[string]functions.Availability {
 	return scope.availability
 }
@@ -81,29 +81,29 @@ func (scope suppliedScope) FunctionOverloads() map[string][]*functions.FuncSigna
 func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 	t.Parallel()
 	scope := suppliedScope{
-		variables:    map[string]types.Type{"counter": types.NumberType()},
+		variables:    map[string]exprtypes.Type{"counter": exprtypes.NumberType()},
 		names:        []string{"counter"},
 		availability: map[string]functions.Availability{"always": {AvailableAt: []string{"caller-selected location"}}},
 		overloads: map[string][]*functions.FuncSignature{
-			"shape": {{Name: "shape", Ret: types.NumberType()}},
-			"echo":  {{Name: "echo", Ret: types.NumberType(), Params: []types.Type{types.StringType()}}},
+			"shape": {{Name: "shape", Ret: exprtypes.NumberType()}},
+			"echo":  {{Name: "echo", Ret: exprtypes.NumberType(), Params: []exprtypes.Type{exprtypes.StringType()}}},
 		},
 	}
 	checker := NewChecker(scope, nil)
 	allowedNames := []string{"counter"}
 	checker.SetContextAvailability(allowedNames)
 	allowedNames[0] = "changed"
-	scope.variables["counter"] = types.BoolType()
+	scope.variables["counter"] = exprtypes.BoolType()
 	scope.names[0] = "other"
 	scope.availability["always"].AvailableAt[0] = "changed location"
 	scope.availability["always"] = functions.Availability{Allowed: true}
-	scope.overloads["shape"][0].Ret = types.BoolType()
-	scope.overloads["shape"][0].Params = []types.Type{types.StringType()}
-	scope.overloads["echo"][0].Params[0] = types.BoolType()
+	scope.overloads["shape"][0].Ret = exprtypes.BoolType()
+	scope.overloads["shape"][0].Params = []exprtypes.Type{exprtypes.StringType()}
+	scope.overloads["echo"][0].Params[0] = exprtypes.BoolType()
 	for _, input := range []string{"counter", "shape()", "echo('value')"} {
 		node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 		result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
-		if !result.Valid || result.Type.Kind() != types.KindNumber {
+		if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 			t.Fatalf("%s: %+v, want caller-supplied numeric type", input, result)
 		}
 	}
@@ -124,7 +124,7 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-	checker.SetContextType("matrix", types.NewStrictObjectType(map[string]types.Type{"target": types.NumberType()}).Type())
+	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"target": exprtypes.NumberType()}).Type())
 	checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.if"))
 	call := syntax.ParseAssignedExpression("${{ success('build') }}")
 	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(call)); !result.Valid {
@@ -135,7 +135,7 @@ func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 		t.Fatal("job-only overload leaked into step availability")
 	}
 	result := checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ matrix.target }}")))
-	if !result.Valid || result.Type.Kind() != types.KindNumber {
+	if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("availability replacement changed inferred matrix type: %+v", result)
 	}
 }
@@ -143,8 +143,8 @@ func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
 	t.Parallel()
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-	checker.SetContextType("CuStOm", types.NumberType())
-	if value, found := checker.ContextType("CUSTOM"); !found || value.Kind() != types.KindNumber {
+	checker.SetContextType("CuStOm", exprtypes.NumberType())
+	if value, found := checker.ContextType("CUSTOM"); !found || value.Kind() != exprtypes.KindNumber {
 		t.Fatalf("context binding=(%s,%t), want numeric type", value, found)
 	}
 	if _, found := checker.ContextType("missing"); found {
@@ -152,11 +152,11 @@ func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
 	}
 	expression := syntax.ParseAssignedExpression("${{ custom }}")
 	result := checker.CheckResult(evaluate.EvaluateSubexpressions(expression))
-	if result.Valid || len(result.Findings) != 1 || result.Type.Kind() != types.KindNumber {
+	if result.Valid || len(result.Findings) != 1 || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("binding granted availability or lost its declared type: %+v", result)
 	}
 	checker.SetContextAvailability([]string{"custom"})
-	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(expression)); !result.Valid || result.Type.Kind() != types.KindNumber {
+	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(expression)); !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("explicitly enabled context was rejected: %+v", result)
 	}
 }
@@ -191,15 +191,15 @@ func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
 
 func TestAvailableContextsDetachSnapshot(t *testing.T) {
 	t.Parallel()
-	checker := NewChecker(suppliedScope{variables: map[string]types.Type{"subject": types.NewEmptyObjectType().Type()}, names: []string{"subject"}}, nil)
+	checker := NewChecker(suppliedScope{variables: map[string]exprtypes.Type{"subject": exprtypes.NewEmptyObjectType().Type()}, names: []string{"subject"}}, nil)
 	contexts := checker.AvailableContexts()
-	contexts["subject"] = types.StringType()
-	if current, _ := checker.ContextType("subject"); current.Kind() != types.KindObject {
+	contexts["subject"] = exprtypes.StringType()
+	if current, _ := checker.ContextType("subject"); current.Kind() != exprtypes.KindObject {
 		t.Fatal("caller changed the checker's context")
 	}
 	snapshot := checker.AvailableContexts()
-	checker.SetContextType("subject", types.NumberType())
-	if snapshot["subject"].Kind() != types.KindObject {
+	checker.SetContextType("subject", exprtypes.NumberType())
+	if snapshot["subject"].Kind() != exprtypes.KindObject {
 		t.Fatal("scope update changed a published context snapshot")
 	}
 }

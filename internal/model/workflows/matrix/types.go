@@ -2,7 +2,7 @@ package matrix
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 )
 
 // ContextType derives the matrix context from reachable values. rowElementTypes
@@ -10,14 +10,14 @@ import (
 // It may be nil. Unknown includes can add values and names, so they prevent this
 // fallback from narrowing the context. Unknown excludes only remove rows.
 // No expressions are parsed or evaluated and no findings are produced here.
-func (r Resolution) ContextType(rowElementTypes map[source.Position]types.Type) types.ObjectType {
+func (r Resolution) ContextType(rowElementTypes map[source.Position]exprtypes.Type) exprtypes.ObjectType {
 	if !r.IncludesComplete() || r.Open() {
 		rowElementTypes = nil
 	}
-	var object types.ObjectBuilder
+	var object exprtypes.ObjectBuilder
 	for name := range r.ReachableNames() {
 		reach := r.ReachableAfterExcludes(name)
-		ty := types.AnyType()
+		ty := exprtypes.AnyType()
 		first := true
 		for _, candidate := range reach.Values {
 			// Only row declarations supply fallback types. An unknown include
@@ -30,12 +30,12 @@ func (r Resolution) ContextType(rowElementTypes map[source.Position]types.Type) 
 			}
 		}
 		if !r.IncludesComplete() {
-			ty = types.AnyType()
+			ty = exprtypes.AnyType()
 		}
 		object.Set(name, ty)
 	}
 	if r.Open() || !r.IncludesComplete() {
-		object.SetMapped(types.AnyType())
+		object.SetMapped(exprtypes.AnyType())
 	}
 	return object.Build()
 }

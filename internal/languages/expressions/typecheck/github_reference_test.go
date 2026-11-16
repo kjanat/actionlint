@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -24,65 +24,65 @@ func TestGitHubReferenceValues(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, input string
-		kind        types.TypeKind
+		kind        exprtypes.TypeKind
 		want        any
 	}{
-		{"literal null", "null", types.KindNull, nil},
-		{"literal boolean", "false", types.KindBool, false},
-		{"literal integer", "711", types.KindNumber, float64(711)},
-		{"literal decimal", "-9.2", types.KindNumber, -9.2},
-		{"literal hexadecimal", "0xff", types.KindNumber, float64(255)},
-		{"literal exponent", "-2.99e-2", types.KindNumber, -0.0299},
-		{"literal escaped quote", "'It''s open source!'", types.KindString, "It's open source!"},
-		{"grouping and boolean operators", "!(false || true && false)", types.KindBool, true},
-		{"array index", `fromJSON('["first", "second"]')[1]`, types.KindString, "second"},
-		{"property dereference", `fromJSON('{"status":"success"}').status`, types.KindString, "success"},
-		{"property index", `fromJSON('{"status":"success"}')['status']`, types.KindString, "success"},
-		{"less", "1 < 2", types.KindBool, true},
-		{"less equal", "2 <= 2", types.KindBool, true},
-		{"greater", "2 > 1", types.KindBool, true},
-		{"greater equal", "2 >= 2", types.KindBool, true},
-		{"not equal", "1 != 2", types.KindBool, true},
-		{"case insensitive equality", "'Hello' == 'HELLO'", types.KindBool, true},
-		{"null numeric coercion", "null == 0", types.KindBool, true},
-		{"true numeric coercion", "true == 1", types.KindBool, true},
-		{"false numeric coercion", "false == 0", types.KindBool, true},
-		{"empty string numeric coercion", "'' == 0", types.KindBool, true},
-		{"numeric string coercion", "'711' == 711", types.KindBool, true},
-		{"nonnumeric string equality", "'no number' == 0", types.KindBool, false},
-		{"NaN less", "'no number' < 0", types.KindBool, false},
-		{"NaN less equal", "'no number' <= 0", types.KindBool, false},
-		{"NaN greater", "'no number' > 0", types.KindBool, false},
-		{"NaN greater equal", "'no number' >= 0", types.KindBool, false},
-		{"contains string", "contains('Hello world', 'llo')", types.KindBool, true},
-		{"contains ignores case", "contains('Hello world', 'LLO')", types.KindBool, true},
-		{"contains absent substring", "contains('Hello world', 'goodbye')", types.KindBool, false},
-		{"contains fromJSON push", `contains(fromJSON('["push", "pull_request"]'), 'push')`, types.KindBool, true},
-		{"contains fromJSON pull request", `contains(fromJSON('["push", "pull_request"]'), 'pull_request')`, types.KindBool, true},
-		{"contains fromJSON other event", `contains(fromJSON('["push", "pull_request"]'), 'issues')`, types.KindBool, false},
-		{"array membership is not substring matching", `contains(fromJSON('["push", "pull_request"]'), 'pull')`, types.KindBool, false},
-		{"contains array ignores case", `contains(fromJSON('["push"]'), 'PUSH')`, types.KindBool, true},
-		{"mixed case function names", `CoNtAiNs(fRoMjSoN('["push"]'), 'push')`, types.KindBool, true},
-		{"number string coercion", "endsWith(711, '11')", types.KindBool, true},
-		{"startsWith", "startsWith('Hello world', 'He')", types.KindBool, true},
-		{"startsWith ignores case", "startsWith('Hello world', 'he')", types.KindBool, true},
-		{"endsWith", "endsWith('Hello world', 'ld')", types.KindBool, true},
-		{"endsWith ignores case", "endsWith('Hello world', 'LD')", types.KindBool, true},
-		{"format", "format('Hello {0} {1} {2}', 'Mona', 'the', 'Octocat')", types.KindString, "Hello Mona the Octocat"},
-		{"format escaped braces", "format('{{Hello {0} {1} {2}!}}', 'Mona', 'the', 'Octocat')", types.KindString, "{Hello Mona the Octocat!}"},
-		{"join separator", `join(fromJSON('["bug", "help wanted"]'), ', ')`, types.KindString, "bug, help wanted"},
-		{"join default separator", `join(fromJSON('["bug", "help wanted"]'))`, types.KindString, "bug,help wanted"},
-		{"join string", "join('bug', ', ')", types.KindString, "bug"},
-		{"toJSON scalar", "toJSON(false)", types.KindString, "false"},
-		{"fromJSON boolean", "fromJSON('true')", types.KindBool, true},
-		{"fromJSON integer", "fromJSON('3')", types.KindNumber, float64(3)},
-		{"fromJSON numerical comparison", "fromJSON('10') > 3", types.KindBool, true},
-		{"fromJSON string", `fromJSON('"hello"')`, types.KindString, "hello"},
-		{"fromJSON null", "fromJSON('null')", types.KindNull, nil},
-		{"fromJSON array", `fromJSON('["push", "pull_request"]')`, types.KindArray, []any{"push", "pull_request"}},
-		{"fromJSON object", `fromJSON('{"status":"success"}')`, types.KindObject, map[string]any{"status": "success"}},
-		{"case first match", "case(true, 'first', true, 'second', 'default')", types.KindString, "first"},
-		{"case default", "case(false, 'first', false, 'second', 'default')", types.KindString, "default"},
+		{"literal null", "null", exprtypes.KindNull, nil},
+		{"literal boolean", "false", exprtypes.KindBool, false},
+		{"literal integer", "711", exprtypes.KindNumber, float64(711)},
+		{"literal decimal", "-9.2", exprtypes.KindNumber, -9.2},
+		{"literal hexadecimal", "0xff", exprtypes.KindNumber, float64(255)},
+		{"literal exponent", "-2.99e-2", exprtypes.KindNumber, -0.0299},
+		{"literal escaped quote", "'It''s open source!'", exprtypes.KindString, "It's open source!"},
+		{"grouping and boolean operators", "!(false || true && false)", exprtypes.KindBool, true},
+		{"array index", `fromJSON('["first", "second"]')[1]`, exprtypes.KindString, "second"},
+		{"property dereference", `fromJSON('{"status":"success"}').status`, exprtypes.KindString, "success"},
+		{"property index", `fromJSON('{"status":"success"}')['status']`, exprtypes.KindString, "success"},
+		{"less", "1 < 2", exprtypes.KindBool, true},
+		{"less equal", "2 <= 2", exprtypes.KindBool, true},
+		{"greater", "2 > 1", exprtypes.KindBool, true},
+		{"greater equal", "2 >= 2", exprtypes.KindBool, true},
+		{"not equal", "1 != 2", exprtypes.KindBool, true},
+		{"case insensitive equality", "'Hello' == 'HELLO'", exprtypes.KindBool, true},
+		{"null numeric coercion", "null == 0", exprtypes.KindBool, true},
+		{"true numeric coercion", "true == 1", exprtypes.KindBool, true},
+		{"false numeric coercion", "false == 0", exprtypes.KindBool, true},
+		{"empty string numeric coercion", "'' == 0", exprtypes.KindBool, true},
+		{"numeric string coercion", "'711' == 711", exprtypes.KindBool, true},
+		{"nonnumeric string equality", "'no number' == 0", exprtypes.KindBool, false},
+		{"NaN less", "'no number' < 0", exprtypes.KindBool, false},
+		{"NaN less equal", "'no number' <= 0", exprtypes.KindBool, false},
+		{"NaN greater", "'no number' > 0", exprtypes.KindBool, false},
+		{"NaN greater equal", "'no number' >= 0", exprtypes.KindBool, false},
+		{"contains string", "contains('Hello world', 'llo')", exprtypes.KindBool, true},
+		{"contains ignores case", "contains('Hello world', 'LLO')", exprtypes.KindBool, true},
+		{"contains absent substring", "contains('Hello world', 'goodbye')", exprtypes.KindBool, false},
+		{"contains fromJSON push", `contains(fromJSON('["push", "pull_request"]'), 'push')`, exprtypes.KindBool, true},
+		{"contains fromJSON pull request", `contains(fromJSON('["push", "pull_request"]'), 'pull_request')`, exprtypes.KindBool, true},
+		{"contains fromJSON other event", `contains(fromJSON('["push", "pull_request"]'), 'issues')`, exprtypes.KindBool, false},
+		{"array membership is not substring matching", `contains(fromJSON('["push", "pull_request"]'), 'pull')`, exprtypes.KindBool, false},
+		{"contains array ignores case", `contains(fromJSON('["push"]'), 'PUSH')`, exprtypes.KindBool, true},
+		{"mixed case function names", `CoNtAiNs(fRoMjSoN('["push"]'), 'push')`, exprtypes.KindBool, true},
+		{"number string coercion", "endsWith(711, '11')", exprtypes.KindBool, true},
+		{"startsWith", "startsWith('Hello world', 'He')", exprtypes.KindBool, true},
+		{"startsWith ignores case", "startsWith('Hello world', 'he')", exprtypes.KindBool, true},
+		{"endsWith", "endsWith('Hello world', 'ld')", exprtypes.KindBool, true},
+		{"endsWith ignores case", "endsWith('Hello world', 'LD')", exprtypes.KindBool, true},
+		{"format", "format('Hello {0} {1} {2}', 'Mona', 'the', 'Octocat')", exprtypes.KindString, "Hello Mona the Octocat"},
+		{"format escaped braces", "format('{{Hello {0} {1} {2}!}}', 'Mona', 'the', 'Octocat')", exprtypes.KindString, "{Hello Mona the Octocat!}"},
+		{"join separator", `join(fromJSON('["bug", "help wanted"]'), ', ')`, exprtypes.KindString, "bug, help wanted"},
+		{"join default separator", `join(fromJSON('["bug", "help wanted"]'))`, exprtypes.KindString, "bug,help wanted"},
+		{"join string", "join('bug', ', ')", exprtypes.KindString, "bug"},
+		{"toJSON scalar", "toJSON(false)", exprtypes.KindString, "false"},
+		{"fromJSON boolean", "fromJSON('true')", exprtypes.KindBool, true},
+		{"fromJSON integer", "fromJSON('3')", exprtypes.KindNumber, float64(3)},
+		{"fromJSON numerical comparison", "fromJSON('10') > 3", exprtypes.KindBool, true},
+		{"fromJSON string", `fromJSON('"hello"')`, exprtypes.KindString, "hello"},
+		{"fromJSON null", "fromJSON('null')", exprtypes.KindNull, nil},
+		{"fromJSON array", `fromJSON('["push", "pull_request"]')`, exprtypes.KindArray, []any{"push", "pull_request"}},
+		{"fromJSON object", `fromJSON('{"status":"success"}')`, exprtypes.KindObject, map[string]any{"status": "success"}},
+		{"case first match", "case(true, 'first', true, 'second', 'default')", exprtypes.KindString, "first"},
+		{"case default", "case(false, 'first', false, 'second', 'default')", exprtypes.KindString, "default"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -108,15 +108,15 @@ func TestGitHubReferenceCoercions(t *testing.T) {
 	for _, tc := range []struct {
 		input string
 		want  bool
-		kind  types.TypeKind
+		kind  exprtypes.TypeKind
 		kinds []findingKind
 	}{
-		{"fromJSON('[]') == 0", false, types.KindBool, nil},
-		{"fromJSON('{}') >= 0", false, types.KindBool, nil},
-		{"contains(null, '')", true, types.KindBool, nil},
-		{"startsWith(true, 'TR')", true, types.KindBool, nil},
-		{"true > false", true, types.KindBool, nil},
-		{"null <= 0", true, types.KindBool, nil},
+		{"fromJSON('[]') == 0", false, exprtypes.KindBool, nil},
+		{"fromJSON('{}') >= 0", false, exprtypes.KindBool, nil},
+		{"contains(null, '')", true, exprtypes.KindBool, nil},
+		{"startsWith(true, 'TR')", true, exprtypes.KindBool, nil},
+		{"true > false", true, exprtypes.KindBool, nil},
+		{"null <= 0", true, exprtypes.KindBool, nil},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -205,26 +205,26 @@ func TestGitHubReferenceRuntimeExpressions(t *testing.T) {
 	// filesystem contents, execution status, object identity, or JSON formatting.
 	for _, tc := range []struct {
 		input string
-		kind  types.TypeKind
+		kind  exprtypes.TypeKind
 	}{
-		{"contains(github.event.issue.labels.*.name, 'bug')", types.KindBool},
-		{"join(github.event.issue.labels.*.name, ', ')", types.KindString},
-		{"toJSON(job)", types.KindString},
-		{"hashFiles('**/package-lock.json')", types.KindString},
-		{"hashFiles('/src/*.js')", types.KindString},
-		{"hashFiles('/lib/**/*.rb')", types.KindString},
-		{"hashFiles('**/package-lock.json', '**/Gemfile.lock')", types.KindString},
-		{"hashFiles('/lib/**/*.rb', '!/lib/foo/*.rb')", types.KindString},
-		{"success()", types.KindBool},
-		{"always()", types.KindBool},
-		{"cancelled()", types.KindBool},
-		{"failure()", types.KindBool},
-		{"failure() && steps.demo.conclusion == 'failure'", types.KindBool},
-		{"job.status", types.KindString},
-		{"steps.demo.outputs.number", types.KindString},
-		{"fromJSON(steps.demo.outputs.number) > 3", types.KindBool},
-		{"fromJSON('{}') == fromJSON('{}')", types.KindBool},
-		{"fromJSON('[]') == fromJSON('[]')", types.KindBool},
+		{"contains(github.event.issue.labels.*.name, 'bug')", exprtypes.KindBool},
+		{"join(github.event.issue.labels.*.name, ', ')", exprtypes.KindString},
+		{"toJSON(job)", exprtypes.KindString},
+		{"hashFiles('**/package-lock.json')", exprtypes.KindString},
+		{"hashFiles('/src/*.js')", exprtypes.KindString},
+		{"hashFiles('/lib/**/*.rb')", exprtypes.KindString},
+		{"hashFiles('**/package-lock.json', '**/Gemfile.lock')", exprtypes.KindString},
+		{"hashFiles('/lib/**/*.rb', '!/lib/foo/*.rb')", exprtypes.KindString},
+		{"success()", exprtypes.KindBool},
+		{"always()", exprtypes.KindBool},
+		{"cancelled()", exprtypes.KindBool},
+		{"failure()", exprtypes.KindBool},
+		{"failure() && steps.demo.conclusion == 'failure'", exprtypes.KindBool},
+		{"job.status", exprtypes.KindString},
+		{"steps.demo.outputs.number", exprtypes.KindString},
+		{"fromJSON(steps.demo.outputs.number) > 3", exprtypes.KindBool},
+		{"fromJSON('{}') == fromJSON('{}')", exprtypes.KindBool},
+		{"fromJSON('[]') == fromJSON('[]')", exprtypes.KindBool},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -243,10 +243,10 @@ func TestGitHubReferenceObjectFilters(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		input string
-		elem  types.Type
+		elem  exprtypes.Type
 	}{
-		{`fromJSON('[{"name":"apple","quantity":1},{"name":"orange","quantity":2},{"name":"pear","quantity":1}]').*.name`, types.StringType()},
-		{`fromJSON('{"scallions":{"ediblePortions":["roots","stalks"]},"beets":{"ediblePortions":["roots","stems","leaves"]},"artichokes":{"ediblePortions":["hearts","stems","leaves"]}}').*.ediblePortions`, types.AnyType()},
+		{`fromJSON('[{"name":"apple","quantity":1},{"name":"orange","quantity":2},{"name":"pear","quantity":1}]').*.name`, exprtypes.StringType()},
+		{`fromJSON('{"scallions":{"ediblePortions":["roots","stalks"]},"beets":{"ediblePortions":["roots","stems","leaves"]},"artichokes":{"ediblePortions":["hearts","stems","leaves"]}}').*.ediblePortions`, exprtypes.AnyType()},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
@@ -259,7 +259,7 @@ func TestGitHubReferenceObjectFilters(t *testing.T) {
 	}
 }
 
-func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...findingKind) (syntax.Node, types.Type) {
+func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...findingKind) (syntax.Node, exprtypes.Type) {
 	t.Helper()
 	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 	if err != nil {
@@ -267,9 +267,9 @@ func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...finding
 	}
 	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	checker.SetContextType("steps", types.NewStrictObjectType(map[string]types.Type{
-		"demo": types.NewStrictObjectType(map[string]types.Type{
-			"conclusion": types.StringType(), "outputs": types.NewMapObjectType(types.StringType()).Type(),
+	checker.SetContextType("steps", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+		"demo": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+			"conclusion": exprtypes.StringType(), "outputs": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),
 		}).Type(),
 	}).Type())
 	ty, diagnostics := checker.Check(evaluate.EvaluateSubexpressions(node))

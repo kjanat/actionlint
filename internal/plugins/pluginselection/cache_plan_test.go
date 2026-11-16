@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -18,21 +18,21 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	t.Parallel()
 	cache := t.TempDir()
 	a, b, c := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
-	backend := func(path string) *toolconfig.Backend {
-		module, err := toolconfig.NewModule(path)
+	backend := func(path string) *tools.Backend {
+		module, err := tools.NewModule(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return toolconfig.WasmBackend(module)
+		return tools.WasmBackend(module)
 	}
-	tools := configuration.ToolsConfig{
+	toolsConfig := configuration.ToolsConfig{
 		"ruff":       {Backend: backend("sha256://" + b)},
 		"shellcheck": {Backend: backend("https://127.0.0.1:1/shell.wasm#sha256=" + c)},
 	}
 	sources := Sources{
 		Paths: []string{"sha256://" + a, "sha256://" + a, "https://127.0.0.1:1/plugin.wasm#sha256=" + strings.ToUpper(a), "local.wasm"},
 		Configurations: []*configuration.Config{{
-			Tools: tools,
+			Tools: toolsConfig,
 			Overrides: []configuration.Override{{Tools: &configuration.ToolsConfig{
 				"ruff": {Backend: backend("sha256://" + c)},
 			}}},

@@ -1,7 +1,7 @@
 package expressions
 
 import (
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -10,9 +10,9 @@ import (
 // Caller values are unknown; step output declarations are added as steps execute.
 func (rule *Checker) BeginComposite(body workflows.ActionBody) {
 	rule.compositeScript = true
-	rule.inputsTy = new(types.NewMapObjectType(types.StringType()))
-	rule.stepsTy = new(types.NewMapObjectType(types.AnyType()))
-	rule.matrixTy = new(types.NewMapObjectType(types.AnyType()))
+	rule.inputsTy = new(exprtypes.NewMapObjectType(exprtypes.StringType()))
+	rule.stepsTy = new(exprtypes.NewMapObjectType(exprtypes.AnyType()))
+	rule.matrixTy = new(exprtypes.NewMapObjectType(exprtypes.AnyType()))
 	rule.scriptSources = body.ExpressionSources()
 }
 

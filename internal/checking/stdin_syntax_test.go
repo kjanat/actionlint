@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 )
 
 func TestStdinFlowMappingCompatibility(t *testing.T) {
@@ -16,8 +16,8 @@ func TestStdinFlowMappingCompatibility(t *testing.T) {
 			t.Parallel()
 			source := "name: autofix.ci\nrun-name: test\non: { pull_request" + separator + " push: { branches: [master] } }\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
 			source += "permissions: {}\n"
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, input.Request{
-				Kind: input.Stdin, Name: "autofix.yml", Reader: strings.NewReader(source),
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, checkrequest.Request{
+				Kind: checkrequest.Stdin, Name: "autofix.yml", Reader: strings.NewReader(source),
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -48,7 +48,7 @@ jobs:
     runs-on: foo
 	steps:
 	  - run: echo`)
-		result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, input.Request{Kind: input.Stdin, Name: f, Reader: bytes.NewReader(in)})
+		result, err := checking.Check(t.Context(), checking.Options{WorkingDir: t.TempDir()}, checkrequest.Request{Kind: checkrequest.Stdin, Name: f, Reader: bytes.NewReader(in)})
 		if err != nil {
 			t.Fatalf("linting input with stdin file name %q caused error: %v", f, err)
 		}

@@ -4,9 +4,9 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
@@ -56,10 +56,10 @@ func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]values.Ev
 	}
 	args := make([]functions.CallArgument, len(call.Args))
 	for index, child := range call.Args {
-		arg := functions.CallArgument{Source: types.AnyType()}
+		arg := functions.CallArgument{Source: exprtypes.AnyType()}
 		switch result := results[child]; result.State {
 		case values.EvaluationKnown:
-			arg.Source, arg.Value, arg.State = types.TypeOfJSONValue(result.Value), result.Value, functions.ArgumentKnown
+			arg.Source, arg.Value, arg.State = exprtypes.TypeOfJSONValue(result.Value), result.Value, functions.ArgumentKnown
 		case values.EvaluationInvalid, values.EvaluationNotAttempted:
 			arg.State = functions.ArgumentInvalid
 		case values.EvaluationUnknown:
