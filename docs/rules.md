@@ -251,6 +251,19 @@ Write values to the corresponding quoted GITHUB_OUTPUT, GITHUB_STATE, GITHUB_ENV
 
 Configure this rule with `lint.rules.correctness.deprecated-commands`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
 
+## duplicate-workflow-name
+
+Report a workflow whose top-level name another workflow under .github/workflows also uses, ignoring case. GitHub accepts the files, but the Actions tab lists the workflows under names that cannot be told apart, and a workflow_run filter naming one of them also matches the others spelled the same way. Workflows without a name are listed by their path and are not reported. Names written as expressions are not compared.
+
+Give each workflow its own name.
+
+- Category: `suspicious/workflows`
+- Provider: `actionlint`
+- Maturity: `stable`
+- Enabled by default: `true`
+
+Configure this rule with `lint.rules.suspicious.duplicate-workflow-name`. Use `off` to disable it or `on` to use its default severity. Set `info`, `warn` or `error` to choose a severity. Findings at every enabled level affect the CLI exit status.
+
 ## empty-job
 
 GitHub rejects jobs without steps unless they call a reusable workflow.

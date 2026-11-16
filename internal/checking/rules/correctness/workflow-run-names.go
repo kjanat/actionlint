@@ -2,11 +2,9 @@ package correctness
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -25,7 +23,7 @@ var WorkflowRunNamesRule = &define.Rule{
 	Help:        "Use the exact name of an existing workflow in workflows; names are matched independently of filenames.",
 	Prepare:     prepareWorkflowRunNames,
 	Checks:      func(c define.Inputs) define.Checks { return WorkflowRunNamesChecks(c.WorkflowNameInventory) },
-	Enabled:     workflowRunNamesAvailable,
+	Enabled:     define.Inputs.InProjectWorkflows,
 }
 
 // WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
@@ -91,24 +89,6 @@ func workflowRunNameDiagnostics(n namemodel.Inventory, references []*workflowlan
 	return findings
 }
 
-func absolutePath(path string) string {
-	if absolute, err := filepath.Abs(path); err == nil {
-		return absolute
-	}
-	return path
-}
-
-func workflowRunNamesAvailable(c define.Inputs) bool {
-	if c.ProjectRoot == "" || c.WorkflowNames == nil {
-		return false
-	}
-	path := c.Path
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(c.WorkingDir, path)
-	}
-	return workflownames.SamePath(filepath.Dir(path), filepath.Join(absolutePath(c.ProjectRoot), ".github", "workflows"))
-}
-
 func prepareWorkflowRunNames(c define.Inputs) (define.InputPreparation, error) {
 	if c.Rules.DiagnosticLevel(c.Config, "workflow-run-names") == "off" {
 		return define.PreparedInputs{Inputs: c}, nil
@@ -117,7 +97,7 @@ func prepareWorkflowRunNames(c define.Inputs) (define.InputPreparation, error) {
 	if !available || len(WorkflowRunFilters(workflow)) == 0 {
 		return define.PreparedInputs{Inputs: c}, nil
 	}
-	inventory, err := c.WorkflowNames.ForRoot(absolutePath(c.ProjectRoot))
+	inventory, err := c.ProjectWorkflowNames()
 	if err != nil {
 		return nil, err
 	}

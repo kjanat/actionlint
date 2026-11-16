@@ -16,7 +16,7 @@ import (
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
@@ -411,22 +411,16 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	session.gitModes = &gitModes{}
 	result = &analysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
-	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (string, bool, error) {
+	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
 		captured, err := captures.Read(lifetime, path, sourcemodel.YAML)
 		if err != nil {
-			return "", false, err
+			return namemodel.Unknown(), err
 		}
 		workflow, errs := workflowparser.Parse(captured.Bytes())
 		if workflow == nil || len(errs) > 0 {
-			return "", false, nil
+			return namemodel.Unknown(), nil
 		}
-		if workflow.Name == nil {
-			return "", true, nil
-		}
-		if literal := exprsyntax.LiteralExpressionValue(workflow.Name.Value); literal != nil {
-			return *literal, true, nil
-		}
-		return workflow.Name.Value, !workflow.Name.ContainsExpression(), nil
+		return namemodel.Declare(workflow.Name), nil
 	})
 	// Initialize shared caches before any analysis goroutines access them.
 	for _, source := range request.Sources {

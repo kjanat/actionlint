@@ -1219,6 +1219,27 @@
 	},
 	{
 		"descriptor": {
+			"default_level": "warn",
+			"name": "duplicate-workflow-name",
+			"description": "Report workflows whose name another workflow in the repository also uses",
+			"category": "suspicious",
+			"subcategory": "workflows",
+			"maturity": "stable",
+			"provider": "actionlint",
+			"recommended": true,
+			"explanation": "Report a workflow whose top-level name another workflow under .github/workflows also uses, ignoring case. GitHub accepts the files, but the Actions tab lists the workflows under names that cannot be told apart, and a workflow_run filter naming one of them also matches the others spelled the same way. Workflows without a name are listed by their path and are not reported. Names written as expressions are not compared.",
+			"help": "Give each workflow its own name.",
+			"documentation_url": "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#duplicate-workflow-name"
+		},
+		"supports_actions": false,
+		"scope": 0,
+		"options": "",
+		"execution": "build",
+		"prepare": true,
+		"enabled": true
+	},
+	{
+		"descriptor": {
 			"name": "empty-job",
 			"description": "Report jobs without steps",
 			"category": "correctness",
