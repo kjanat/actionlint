@@ -18,7 +18,7 @@ func TestRuleLocationsMergeAcrossConfigSources(t *testing.T) {
 			root := t.TempDir()
 			fixturefiles.Write(t, root, "base.yml", fmt.Sprintf("lint: {rules: {%s: {job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}}}}\n", categories[0]))
 			path := fixturefiles.Write(t, root, "config.yml", fmt.Sprintf("extends: [base.yml]\nlint: {rules: {%s: {require-job-timeout: {level: warn, options: {max-minutes: 20}}}}}\n", categories[1]))
-			loaded, err := rules.ReadContext(t.Context(), path, nil)
+			loaded, err := rules.ReadContext(t.Context(), path, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -22,6 +22,7 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -63,7 +64,10 @@ type Options struct {
 	// EnforcePolicies lists explicitly trusted lifecycle policy files or HTTPS URLs.
 	EnforcePolicies      []string
 	enforcedPolicyInputs []string
-	SkipProjectConfig    bool
+	// configSources holds the configuration files plugin selection parsed for
+	// this run, so the session merges them without reading them again.
+	configSources     *document.Files
+	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
 	Analyzers []checkinputs.Registration
@@ -275,7 +279,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	session, err := workspace.New(ctx, workspace.Options{
 		Rules:      rules,
 		WorkingDir: options.WorkingDir, StdinFileName: input.Name,
-		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
+		ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, ConfigSources: options.configSources, OnConfigLoaded: options.OnConfigLoaded, OnFilesSelected: options.OnFilesSelected, SkipProjectConfig: options.SkipProjectConfig,
 		ReadFile: selectionReader, ConfigConnections: options.ConfigConnections, RuleNames: names, Log: selectionLog, LogWriter: log,
 		NoIgnore: options.NoIgnore,
 	})

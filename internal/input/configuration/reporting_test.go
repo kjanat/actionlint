@@ -35,7 +35,7 @@ func TestReportingDefaultsInheritedBeforePlugins(t *testing.T) {
 	if len(loaded.Provenance.files) != 2 {
 		t.Fatalf("missing inheritance provenance: %+v", loaded.Provenance)
 	}
-	if _, err := rules.ReadContext(context.Background(), child, nil); err == nil || !strings.Contains(err.Error(), "uninstalled-rule") {
+	if _, err := rules.ReadContext(context.Background(), child, nil, nil); err == nil || !strings.Contains(err.Error(), "uninstalled-rule") {
 		t.Fatalf("full binding accepted missing plugin rule: %v", err)
 	}
 }

@@ -1,22 +1,26 @@
 package document
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
 // Loaded is a configuration file merged over the files it extends.
 // Files lists every source file in merge order, ending with the selected file.
+// Contents maps the spelling each source was requested by to its bytes.
 // Selected holds the selected file as parsed, before normalization, so it can
 // be edited without parsing it again.
 type Loaded struct {
 	Root     *Node
 	Files    []string
+	Contents map[string][]byte
 	Selected *Editor
 }
 
@@ -25,12 +29,69 @@ type Loaded struct {
 // that was read. A nil Normalizer keeps each source unchanged.
 type Normalizer func(origin string, source *Node) (*Node, error)
 
-// Load reads path and the files it extends, depth first, and merges each
-// source over its bases according to plan. Each file is read and parsed once.
-func Load(path string, read func(string) ([]byte, error), normalize Normalizer, plan Plan) (Loaded, error) {
+// Files holds parsed configuration sources by normalized address. Load reads
+// and parses a source only when Files does not already hold it, so several
+// loads of one configuration, each with its own Normalizer, share one read and
+// parse of every file. Failed reads are not kept. Files is safe for
+// concurrent use; a nil *Files keeps nothing.
+type Files struct {
+	mu      sync.Mutex
+	sources map[string]heldSource
+}
+
+type heldSource struct {
+	data []byte
+	root *Node
+}
+
+// NewFiles returns an empty set of parsed sources.
+func NewFiles() *Files { return &Files{sources: map[string]heldSource{}} }
+
+// Add records root as the already loaded source at address, which must be normalized.
+func (f *Files) Add(address string, root *Node) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sources[address] = heldSource{root: cloneNode(root)}
+}
+
+// parse returns the source at address, located in readPath. A source that
+// Files does not hold is read with read and kept.
+func (f *Files) parse(address, readPath string, read func(string) ([]byte, error)) ([]byte, *Node, error) {
+	if f != nil {
+		f.mu.Lock()
+		held, found := f.sources[address]
+		f.mu.Unlock()
+		if found {
+			root := cloneNode(held.root)
+			root.setFile(readPath)
+			return bytes.Clone(held.data), root, nil
+		}
+	}
+	data, err := read(readPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read config %q: %w", address, err)
+	}
+	parsed, err := Parse(readPath, data)
+	if err != nil {
+		return nil, nil, fmt.Errorf("config %q: %w", address, err)
+	}
+	if f != nil {
+		f.mu.Lock()
+		f.sources[address] = heldSource{data: bytes.Clone(data), root: cloneNode(parsed)}
+		f.mu.Unlock()
+	}
+	return data, parsed, nil
+}
+
+// Load merges path over the files it extends, depth first, according to
+// plan. Sources held by files are used as already loaded; read supplies the
+// others, and files keeps them for later loads. Within one load each file is
+// read and parsed once.
+func Load(path string, files *Files, read func(string) ([]byte, error), normalize Normalizer, plan Plan) (Loaded, error) {
 	active := map[string]bool{}
 	cache := map[string]Loaded{}
-	var files []string
+	var order []string
+	contents := map[string][]byte{}
 	var selected *Editor
 	var load func(string, int) (Loaded, error)
 	load = func(path string, depth int) (Loaded, error) {
@@ -56,14 +117,11 @@ func Load(path string, read func(string) ([]byte, error), normalize Normalizer, 
 		}
 		active[identity] = true
 		defer delete(active, identity)
-		data, err := read(readPath)
+		data, parsed, err := files.parse(path, readPath, read)
 		if err != nil {
-			return Loaded{}, fmt.Errorf("read config %q: %w", path, err)
+			return Loaded{}, err
 		}
-		parsed, err := Parse(readPath, data)
-		if err != nil {
-			return Loaded{}, fmt.Errorf("config %q: %w", path, err)
-		}
+		contents[readPath] = data
 		if depth == 0 {
 			selected = &Editor{path: readPath, syntax: syntaxOf(readPath), original: slices.Clone(data), root: cloneNode(parsed)}
 		}
@@ -110,11 +168,11 @@ func Load(path string, read func(string) ([]byte, error), normalize Normalizer, 
 		}
 		result.Root = Merge(result.Root, parsed, plan)
 		cache[path] = result
-		files = append(files, path)
+		order = append(order, path)
 		return result, nil
 	}
 	result, err := load(path, 0)
-	result.Files, result.Selected = files, selected
+	result.Files, result.Contents, result.Selected = order, contents, selected
 	return result, err
 }
 

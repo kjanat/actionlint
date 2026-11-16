@@ -28,7 +28,7 @@ func TestPluginManifestRemoteDependencySnapshot(t *testing.T) {
 		}
 		return nil, fmt.Errorf("unexpected source %q", name)
 	}
-	manifest, err := Read(t.Context(), configuration.RuleSet{}, path, reader, CompleteConfiguration)
+	manifest, err := Read(t.Context(), configuration.RuleSet{}, path, reader, CompleteConfiguration, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestPluginManifestRemoteSourceRejectsLocalRegistry(t *testing.T) {
 			return []byte("plugins: [{name: shellcheck, registry: file:///tmp/registry/}]"), nil
 		}
 		return []byte("extends: [" + remote + "]"), nil
-	}, CompleteConfiguration)
+	}, CompleteConfiguration, nil)
 	if err == nil || !strings.Contains(err.Error(), "remote config cannot select a local file registry") || !strings.Contains(err.Error(), remote) {
 		t.Fatalf("local registry error = %v", err)
 	}
@@ -68,7 +68,7 @@ func TestPluginManifestRemoteLeafReadOnly(t *testing.T) {
 			return nil, fmt.Errorf("rewritten source %q", name)
 		}
 		return []byte("plugins: []"), nil
-	}, CompleteConfiguration)
+	}, CompleteConfiguration, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

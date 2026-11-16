@@ -27,7 +27,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 
 	if req.ConfigPath != "" {
 		reader := configsource.New(ctx, nil, streams.Acquisition.Connections)
-		if _, err := checking.ConfigurationRules().ReadContext(ctx, req.ConfigPath, reader.ReadFile); err != nil {
+		if _, err := checking.ConfigurationRules().ReadContext(ctx, req.ConfigPath, reader.ReadFile, nil); err != nil {
 			return err
 		}
 	}

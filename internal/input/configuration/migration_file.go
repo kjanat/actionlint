@@ -91,7 +91,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 		}
 		return content, err
 	}
-	before, err := LoadSources(absolute, read, ruleSet.resolveMigrationSource)
+	before, err := LoadSources(absolute, nil, read, ruleSet.resolveMigrationSource)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	}
 	// Validate in the same graph, including plugin rule settings without loading
 	// any guest. Dependency identity is unchanged by config syntax migration.
-	after, err := LoadSources(absolute, func(path string) ([]byte, error) {
+	after, err := LoadSources(absolute, nil, func(path string) ([]byte, error) {
 		if path == absolute {
 			return migration.Content, nil
 		}
@@ -161,7 +161,7 @@ func (ruleSet RuleSet) resolveMigrationSource(origin string, source *document.No
 func (m *FileMigration) SetContent(content []byte) error {
 	ruleSet := m.ruleSet
 
-	if _, err := LoadSources(m.Path, func(path string) ([]byte, error) {
+	if _, err := LoadSources(m.Path, nil, func(path string) ([]byte, error) {
 		if path == m.Path {
 			return content, nil
 		}

@@ -40,7 +40,7 @@ func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, a
 	if err != nil {
 		return "", err
 	}
-	defaults, _, err := configplugins.References(node.Value)
+	defaults, _, err := configplugins.References(node.Value())
 	if err != nil {
 		return "", err
 	}
