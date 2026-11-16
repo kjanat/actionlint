@@ -21,15 +21,9 @@ func runContextRepository(t *testing.T) (string, func(...string)) {
 		t.Skip("Git required")
 	}
 	root := t.TempDir()
-	config := filepath.Join(t.TempDir(), "gitconfig")
-	if err := os.WriteFile(config, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("GIT_CONFIG_GLOBAL", config)
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	git := func(args ...string) {
 		t.Helper()
-		args = append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false"}, args...)
+		args = append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"}, args...)
 		if out, err := gitcommand.Command(t.Context(), gitPath, root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
@@ -49,13 +43,14 @@ func writeRunContextFile(t *testing.T, path, content string) {
 }
 
 func TestRepositoryStatesSeparateCleanAndDirtyLintedFiles(t *testing.T) {
+	t.Parallel()
 	root, git := runContextRepository(t)
 	ci := filepath.Join(root, ".github", "workflows", "ci.yml")
 	release := filepath.Join(root, ".github", "workflows", "release.yml")
 	writeRunContextFile(t, ci, "on: push\n")
 	writeRunContextFile(t, release, "on: push\n")
 	git("add", ".")
-	git("commit", "--quiet", "-m", "initial")
+	git("commit", "--quiet", "--no-verify", "-m", "initial")
 	linted := []report.LintedFile{{Path: ci}, {Path: release}}
 
 	clean := repositoryStates(t.Context(), root, linted)

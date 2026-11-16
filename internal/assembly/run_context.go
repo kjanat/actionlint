@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -16,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
@@ -166,8 +166,9 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	run := RunContext{WorkingDir: options.WorkingDir}
 	run.Files = lintedFiles(options.WorkingDir, result.LintedFiles)
 	run.Repositories = repositoryStates(ctx, options.WorkingDir, result.LintedFiles)
+	reader := files.New(ctx, nil, nil)
 	for _, configuration := range result.Configurations {
-		run.Configurations = append(run.Configurations, configurationState(options.WorkingDir, configuration))
+		run.Configurations = append(run.Configurations, configurationState(reader, options.WorkingDir, configuration))
 	}
 	run.Ignores = ignoreEntries(options.WorkingDir, inputs.IgnoreSelectors, options.IgnorePatterns, result)
 	// Each repository batch reports its own providers; list each status once.
@@ -255,11 +256,11 @@ func repositoryStates(ctx context.Context, workingDir string, files []report.Lin
 	return states
 }
 
-func configurationState(workingDir string, configuration configreport.Report) ConfigurationState {
+func configurationState(reader *files.Reader, workingDir string, configuration configreport.Report) ConfigurationState {
 	state := ConfigurationState{Project: configuration.Project, File: relativePath(workingDir, configuration.File), Overrides: slices.Clone(configuration.Overrides)}
-	files := map[string]bool{}
+	configFiles := map[string]bool{}
 	if configuration.File != "" {
-		files[configuration.File] = true
+		configFiles[configuration.File] = true
 	}
 	origins := configuration.Inspection.Origins
 	for _, pointer := range slices.Sorted(maps.Keys(origins)) {
@@ -268,15 +269,15 @@ func configurationState(workingDir string, configuration configreport.Report) Co
 			continue
 		}
 		if origin.File != "" {
-			files[origin.File] = true
+			configFiles[origin.File] = true
 		}
 		value, _ := settingValue(configuration.Inspection.Config, pointer)
 		state.Settings = append(state.Settings, ChangedSetting{Pointer: pointer, Value: jsonText(value), Origin: originText(workingDir, origin)})
 	}
-	for _, file := range slices.Sorted(maps.Keys(files)) {
+	for _, file := range slices.Sorted(maps.Keys(configFiles)) {
 		digest := ""
 		if !configsource.IsRemoteAddress(file) {
-			if content, err := os.ReadFile(file); err == nil {
+			if content, err := reader.ReadFile(file); err == nil {
 				digest = sha256hex.Digest(content)
 			}
 		}
