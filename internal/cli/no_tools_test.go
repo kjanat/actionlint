@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestNoToolsKeepsBuiltinChecks(t *testing.T) {
@@ -22,7 +22,7 @@ func TestNoToolsKeepsBuiltinChecks(t *testing.T) {
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			t.Parallel()
-			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 			status, output, log := runOfflineCommand(t, acquisition, workflow, append(args, "--json", "-")...)
 			var report struct{ Diagnostics []struct{ Rule string } }
 			if err := json.Unmarshal([]byte(output), &report); err != nil || status != 1 || len(report.Diagnostics) == 0 {
@@ -50,7 +50,7 @@ func TestNoToolsOverridesConfiguredBackends(t *testing.T) {
 				t.Fatal(err)
 			}
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: python\n        run: print(missing)\npermissions: {}\n"
-			status, output, log := runOfflineCommand(t, plugininstall.Acquisition{UserCacheDir: t.TempDir()}, workflow, "check", "--config", config, "--no-tools", "--json", "-")
+			status, output, log := runOfflineCommand(t, pluginacquisition.Settings{UserCacheDir: t.TempDir()}, workflow, "check", "--config", config, "--no-tools", "--json", "-")
 			if status != 0 {
 				t.Fatalf("disabled backend ran: status=%d output=%s log=%s", status, output, log)
 			}

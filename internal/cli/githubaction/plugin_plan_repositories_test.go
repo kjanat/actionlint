@@ -13,7 +13,9 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestPluginPlanNestedRepositories(t *testing.T) {
@@ -40,9 +42,9 @@ func TestPluginPlanNestedRepositories(t *testing.T) {
 			disable := "shellcheck,ruff"
 			if tc.defaults {
 				registry = fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-				index := registry.File(plugininstall.DefaultURL + "index.json")
-				ruff := registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "ruff", BaseURL: plugininstall.DefaultURL, Name: "github.com/kjanat/actionlint-plugin-ruff", Aliases: []string{"ruff"}, RepositoryID: 11}, "v1.0.0", wasmB)
-				registry.SetFile(plugininstall.DefaultURL+"index.json", index)
+				index := registry.File(pluginregistry.DefaultURL + "index.json")
+				ruff := registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "ruff", BaseURL: pluginregistry.DefaultURL, Name: "github.com/kjanat/actionlint-plugin-ruff", Aliases: []string{"ruff"}, RepositoryID: 11}, "v1.0.0", wasmB)
+				registry.SetFile(pluginregistry.DefaultURL+"index.json", index)
 				rootConfig = "tools: {ruff: false}\n"
 				childConfig = "tools: {shellcheck: false}\n"
 				disable = ""
@@ -78,12 +80,12 @@ func TestPluginPlanNestedRepositories(t *testing.T) {
 				inputFiles = strings.Join(paths, "\n")
 			}
 			env := map[string]string{"GITHUB_WORKSPACE": root, "INPUT_FILES": inputFiles, "INPUT_DISABLE-TOOLS": disable}
-			acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			var stdout, stderr bytes.Buffer
 			if code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, acquisition); code != 0 {
 				t.Fatalf("PluginPlan returned %d: %s", code, &stderr)
 			}
-			var plan plugininstall.CachePlan
+			var plan pluginselection.CachePlan
 			if err := json.Unmarshal(stdout.Bytes(), &plan); err != nil {
 				t.Fatal(err)
 			}

@@ -1,3 +1,5 @@
+// Package installation resolves, verifies and saves a project's plugin
+// declarations, and inspects artifacts before they are installed.
 package installation
 
 import (
@@ -15,16 +17,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 // Project edits exact plugin declarations in configuration.
 // Resolved registry metadata is stored only in the user cache.
 type Project struct {
-	Manifest       *configplugins.File
-	Releases       ResolvedPlugins
-	StatusOptions  StatusOptions
-	defaultPlugins bool
+	Manifest      *configplugins.File
+	Releases      pluginregistry.ResolvedPlugins
+	StatusOptions pluginregistry.StatusOptions
+	// DefaultPlugins marks Manifest.References as the registry defaults chosen
+	// for configuration that omits plugins. Their releases resolve through the
+	// cached selection for each name and version selector.
+	DefaultPlugins bool
 }
 
 // DirectSources lists artifacts whose URL and digest are pinned in configuration.
@@ -68,7 +76,7 @@ func projectConfigPath(directory, selected string) (string, error) {
 	return configplugins.FindOrDefaultPath(directory)
 }
 
-func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, directory, configPath string) (*Project, error) {
+func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, directory, configPath string) (*Project, error) {
 	path, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err
@@ -77,44 +85,41 @@ func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition A
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Manifest: manifest, Releases: ResolvedPlugins{Plugins: []Pin{}}, StatusOptions: StatusOptions{Acquisition: acquisition}}, nil
+	return &Project{Manifest: manifest, Releases: pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{}}, StatusOptions: pluginregistry.StatusOptions{Acquisition: acquisition}}, nil
 }
 
-// SelectedPlugins resolves declared releases without changing configuration.
-func (p *Project) SelectedPlugins(ctx context.Context) (ResolvedPlugins, error) {
-	return p.selectedPins(ctx, p.Manifest.References)
-}
-
-func (p *Project) selectedPins(ctx context.Context, refs []pluginreference.Reference) (ResolvedPlugins, error) {
-	selected := ResolvedPlugins{Plugins: []Pin{}}
+// SelectedPlugins resolves the releases refs declare without changing
+// configuration. Direct sources are skipped.
+func (p *Project) SelectedPlugins(ctx context.Context, refs []pluginreference.Reference) (pluginregistry.ResolvedPlugins, error) {
+	selected := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{}}
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
 			continue
 		}
 		if digest := ref.CandidateDigest(); digest != "" {
-			client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
+			client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions)
 			if err != nil {
-				return ResolvedPlugins{}, err
+				return pluginregistry.ResolvedPlugins{}, err
 			}
 			pin, err := client.LookupCandidate(ctx, ref.Name(), ref.Version(), digest)
 			if err != nil {
-				return ResolvedPlugins{}, err
+				return pluginregistry.ResolvedPlugins{}, err
 			}
 			selected.Plugins = append(selected.Plugins, pin)
 			continue
 		}
-		client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions)
 		if err != nil {
-			return ResolvedPlugins{}, err
+			return pluginregistry.ResolvedPlugins{}, err
 		}
-		var pin Pin
-		if p.defaultPlugins {
+		var pin pluginregistry.Pin
+		if p.DefaultPlugins {
 			pin, err = client.ResolveCached(ctx, ref.Name(), ref.Version())
 		} else {
 			pin, err = client.Lookup(ctx, ref.Name(), ref.Version())
 		}
 		if err != nil {
-			return ResolvedPlugins{}, err
+			return pluginregistry.ResolvedPlugins{}, err
 		}
 		selected.Plugins = append(selected.Plugins, pin)
 	}
@@ -124,11 +129,11 @@ func (p *Project) selectedPins(ctx context.Context, refs []pluginreference.Refer
 // Resolve acquires missing dependencies and refreshes the specified declarations.
 // Existing immutable identity checks still apply to every replacement.
 func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Reference) error {
-	selected := make([]Pin, 0, len(refs))
+	selected := make([]pluginregistry.Pin, 0, len(refs))
 	for _, ref := range refs {
 		if source := ref.DirectSource(); source != "" {
 			if manifests.IsLocalManifest(source) {
-				if err := ValidateLocalProvider(ctx, source); err != nil {
+				if err := process.ValidateLocalProvider(ctx, source); err != nil {
 					return err
 				}
 				continue
@@ -140,7 +145,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 			}
 			if pulled.Info.Kind == artifacts.ProviderManifest {
 				// Refuse an unusable provider before saving its declaration.
-				if err := ValidateProviderArtifact(ctx, pulled, options); err != nil {
+				if err := process.ValidateProviderArtifact(ctx, pulled, options); err != nil {
 					return err
 				}
 			}
@@ -151,11 +156,11 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 			}
 			continue
 		}
-		client, err := NewWithGrant(ref.Registry(), p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(ref.Registry(), p.StatusOptions)
 		if err != nil {
 			return err
 		}
-		var pin Pin
+		var pin pluginregistry.Pin
 		candidate := strings.HasPrefix(ref.Registry(), "file:")
 		updating := slices.Contains(update, ref)
 		switch {
@@ -185,14 +190,14 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 		}
 		selected = append(selected, pin)
 	}
-	next := ResolvedPlugins{Plugins: selected}
+	next := pluginregistry.ResolvedPlugins{Plugins: selected}
 	if err := next.Validate(); err != nil {
 		return err
 	}
 	if err := next.CheckStatuses(ctx, p.StatusOptions); err != nil {
 		return err
 	}
-	if err := Sync(ctx, next, p.StatusOptions.Acquisition); err != nil {
+	if err := pluginregistry.Sync(ctx, next, p.StatusOptions.Acquisition); err != nil {
 		return err
 	}
 	for _, pin := range next.Plugins {
@@ -207,7 +212,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 		if pulled.Info.Kind != artifacts.ProviderManifest {
 			return fmt.Errorf("plugin %s@%s: expected a process provider manifest, found %s", pin.Name, pin.Version, pulled.Info.Kind)
 		}
-		if err := ValidateProviderArtifact(ctx, pulled, options); err != nil {
+		if err := process.ValidateProviderArtifact(ctx, pulled, options); err != nil {
 			return fmt.Errorf("plugin %s@%s: %w", pin.Name, pin.Version, err)
 		}
 	}
@@ -215,7 +220,7 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 		if pin.Origin != "candidate" {
 			continue
 		}
-		client, err := NewWithGrant(pin.Registry, p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(pin.Registry, p.StatusOptions)
 		if err != nil {
 			return err
 		}
@@ -231,16 +236,16 @@ func (p *Project) Resolve(ctx context.Context, refs, update []pluginreference.Re
 
 // Configured releases retain publisher, immutable-version and downgrade checks.
 // Authority evidence comes from cached or acquired registry records.
-func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref pluginreference.Reference) error {
+func (p *Project) checkConfiguredRelease(ctx context.Context, pin pluginregistry.Pin, ref pluginreference.Reference) error {
 	for _, configured := range p.Manifest.References {
 		if configured.Name() != pin.Name || configured.IsAlias() || configured.Version() == "latest" {
 			continue
 		}
-		client, err := NewWithGrant(configured.Registry(), p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(configured.Registry(), p.StatusOptions)
 		if err != nil {
 			return err
 		}
-		var previous Pin
+		var previous pluginregistry.Pin
 		switch {
 		case configured.CandidateDigest() != "":
 			previous, err = client.LookupCandidate(ctx, configured.Name(), configured.Version(), configured.CandidateDigest())
@@ -254,7 +259,7 @@ func (p *Project) checkConfiguredRelease(ctx context.Context, pin Pin, ref plugi
 		if err != nil {
 			return err
 		}
-		baseline := ResolvedPlugins{Plugins: []Pin{previous}}
+		baseline := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{previous}}
 		if err := baseline.CheckResolved(pin, ref); err != nil {
 			return err
 		}
@@ -271,7 +276,7 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginreferen
 			resolved = append(resolved, ref)
 			continue
 		}
-		var selected *Pin
+		var selected *pluginregistry.Pin
 		for _, pin := range p.Releases.Plugins {
 			if pin.Matches(ref) && (ref.Version() == "latest" || ref.Version() == pin.Version || ref.Version() == pin.Selector) {
 				selected = new(pin)
@@ -285,11 +290,11 @@ func (p *Project) ResolvedDeclarations(ctx context.Context, refs []pluginreferen
 			resolved = append(resolved, ref)
 			continue
 		}
-		client, err := NewWithGrant(selected.Registry, p.StatusOptions)
+		client, err := pluginregistry.NewWithGrant(selected.Registry, p.StatusOptions)
 		if err != nil {
 			return nil, err
 		}
-		var verified Pin
+		var verified pluginregistry.Pin
 		if selected.Origin == "candidate" {
 			verified, err = client.LookupCandidate(ctx, selected.Name, selected.Version, selected.SHA256)
 		} else {

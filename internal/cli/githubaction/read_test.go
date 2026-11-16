@@ -10,7 +10,7 @@ import (
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestActionReadsPathsOutsideWorkspace(t *testing.T) {
@@ -44,10 +44,10 @@ tools: {shellcheck: false}
 			}
 			getenv := func(name string) string { return env[name] }
 			var plan, errors, output strings.Builder
-			if code := PluginPlan(getenv, &plan, &errors, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessNoProblem {
+			if code := PluginPlan(getenv, &plan, &errors, pluginacquisition.Settings{}); code != commandstatus.ExitSuccessNoProblem {
 				t.Fatalf("plugin plan failed: %d %s", code, errors.String())
 			}
-			if code := Main(getenv, &output, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessNoProblem {
+			if code := Main(getenv, &output, pluginacquisition.Settings{}); code != commandstatus.ExitSuccessNoProblem {
 				t.Fatalf("analysis failed: %d %s", code, output.String())
 			}
 			var result resultreport.CheckResult
@@ -95,7 +95,7 @@ func TestActionReportsExternalWorkflowFindings(t *testing.T) {
 				"GITHUB_OUTPUT":            filepath.Join(t.TempDir(), "outputs"),
 			}
 			var output strings.Builder
-			if code := Main(func(name string) string { return env[name] }, &output, plugininstall.Acquisition{}); code != commandstatus.ExitSuccessProblemFound {
+			if code := Main(func(name string) string { return env[name] }, &output, pluginacquisition.Settings{}); code != commandstatus.ExitSuccessProblemFound {
 				t.Fatalf("external workflow findings lost: %d %s", code, output.String())
 			}
 			var result resultreport.CheckResult
@@ -200,7 +200,7 @@ tools: {shellcheck: false}
 				}
 				got := runLinter(req)
 				var stdout, stderr strings.Builder
-				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, plugininstall.Acquisition{})
+				code := PluginPlan(func(key string) string { return env[key] }, &stdout, &stderr, pluginacquisition.Settings{})
 				if got.code != commandstatus.ExitSuccessNoProblem || code != commandstatus.ExitSuccessNoProblem {
 					t.Fatalf("linked config failed: lint=%d %s%s, preflight=%d %s", got.code, got.stderr, got.stdout, code, stderr.String())
 				}

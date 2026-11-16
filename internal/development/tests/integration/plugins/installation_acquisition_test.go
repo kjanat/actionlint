@@ -11,7 +11,8 @@ import (
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 type registryTestTransport func(*http.Request) (*http.Response, error)
@@ -28,8 +29,8 @@ func TestRegistryAutomaticPrivateInitialNeverDials(t *testing.T) {
 		return nil, errors.New("unexpected private connection")
 	}}
 	t.Cleanup(transport.CloseIdleConnections)
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
-	client, err := plugininstall.NewWithGrant("https://127.0.0.1:8443/catalogue/", plugininstall.StatusOptions{Acquisition: acquisition})
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	client, err := pluginregistry.NewWithGrant("https://127.0.0.1:8443/catalogue/", pluginregistry.StatusOptions{Acquisition: acquisition})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,8 +49,8 @@ func TestRegistryExplicitNewPreservesSelectedPrivateAuthority(t *testing.T) {
 		}
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"schema_version":1,"plugins":[]}`)), Request: request}, nil
 	})
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
-	client, err := plugininstall.New("https://127.0.0.1:8443/catalogue/", acquisition)
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: acquisitionhttp.Connections{Transport: transport}}
+	client, err := pluginregistry.New("https://127.0.0.1:8443/catalogue/", acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
 	t.Parallel()
 	registry := fixtureregistry.NewPluginRegistry(t)
 	registry.SetFile(fixtureregistry.FixtureRegistryURL+"index.json", []byte(`{"schema_version":1,"plugins":[]}`))
-	client, err := plugininstall.NewWithGrant(fixtureregistry.FixtureRegistryURL, plugininstall.StatusOptions{Acquisition: registryAcquisition(registry)})
+	client, err := pluginregistry.NewWithGrant(fixtureregistry.FixtureRegistryURL, pluginregistry.StatusOptions{Acquisition: registryAcquisition(registry)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,6 +76,6 @@ func TestRegistryAutomaticPublicFixtureRetainsOriginalAuthority(t *testing.T) {
 	}
 }
 
-func registryAcquisition(registry *fixtureregistry.PluginRegistry) plugininstall.Acquisition {
-	return plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+func registryAcquisition(registry *fixtureregistry.PluginRegistry) pluginacquisition.Settings {
+	return pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 }

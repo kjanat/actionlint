@@ -84,8 +84,13 @@ and its private checker inputs. `describe` returns metadata and input requiremen
 `internal/plugins/manifests` validates manifests. `internal/plugins/artifacts`
 resolves and verifies artifacts. `internal/plugins/execution` loads and invokes
 components, core Wasm modules and native processes through their declared
-contracts. `internal/plugins/installation` handles project declarations and
-registry selection. Installation does not make those host Go packages public.
+contracts. `internal/plugins/pluginregistry` resolves and verifies registry
+releases. `internal/plugins/installation` resolves and saves a project's plugin
+declarations. `internal/plugins/pluginselection` chooses the plugins an
+invocation runs. `internal/plugins/configmigration` upgrades legacy
+configuration and declares its default plugins. `internal/plugins/pluginacquisition`
+locates the plugin caches. None of these packages makes the host Go packages
+public.
 
 The SDKs and examples live under `plugins/sdk` and `plugins/examples`. Plugin
 code must compile without importing private host packages. The registry tests

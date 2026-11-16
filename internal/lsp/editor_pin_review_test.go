@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
@@ -22,7 +22,7 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	}
 	const source = fixtureregistry.FixtureRegistryURL + "engine.wasm"
 	registry.SetFile(source, data)
-	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{}, nil, pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()})
 	if err != nil {
 		t.Fatal(err)
 	}

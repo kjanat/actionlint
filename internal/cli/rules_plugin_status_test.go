@@ -8,12 +8,13 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestRulesPluginFailureExitStatus(t *testing.T) {
 	registry := fixtureregistry.NewPluginRegistry(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 	registry.Add(t, "v1.0.0", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	root := t.TempDir()
 	t.Chdir(root)
@@ -23,7 +24,7 @@ func TestRulesPluginFailureExitStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed := pluginCommandTest(t, acquisition, 0, "plugin", "install", fixtureregistry.FixturePluginName, "--registry", fixtureregistry.FixtureRegistryURL, "--json")
-	var lock plugininstall.ResolvedPlugins
+	var lock pluginregistry.ResolvedPlugins
 	if err := json.Unmarshal([]byte(installed), &lock); err != nil || len(lock.Plugins) != 1 {
 		t.Fatalf("invalid installed lock: %s: %v", installed, err)
 	}

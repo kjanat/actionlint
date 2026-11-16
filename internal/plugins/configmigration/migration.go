@@ -1,0 +1,335 @@
+// Package configmigration upgrades legacy configuration files to current
+// syntax and declares the default registry plugins they enable.
+package configmigration
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+
+	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/discovery"
+
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+)
+
+// Migration previews the syntax conversion and default plugin declarations.
+// Applying it verifies dependencies before writing exact plugin declarations.
+type Migration struct {
+	*configuration.FileMigration
+	project       *installation.Project
+	refs          []pluginreference.Reference
+	updatePlugins bool
+}
+
+// Prepare previews migrating the configuration at path. When the legacy file
+// needs rule metadata, it is read from cached plugin manifests.
+func Prepare(ctx context.Context, path string, options installation.DefaultPluginOptions) (*Migration, error) {
+	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
+	if errors.Is(err, configuration.ErrRuleMetadataRequired) {
+		descriptors, metadataErr := cachedMigrationRules(ctx, options.RuleSet, options.Acquisition, path)
+		if metadataErr != nil {
+			return nil, fmt.Errorf("%w; inspect or install plugin metadata before migrating: %w", err, metadataErr)
+		}
+		migration, err = options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, descriptors...)
+	}
+	if err != nil {
+		return nil, err
+	}
+	project, err := installation.OpenProject(ctx, options.RuleSet, options.Acquisition, filepath.Dir(migration.Path), migration.Path)
+	if err != nil {
+		return nil, err
+	}
+	if err := migration.CheckSources(project.Manifest.SourceContents()); err != nil {
+		return nil, err
+	}
+	if err := migration.CheckUnchanged(ctx); err != nil {
+		return nil, err
+	}
+	resolved, err := options.RuleSet.ResolveBeforePlugins(project.Manifest.MergedDocument(), options.Overlays)
+	if err != nil {
+		return nil, err
+	}
+	leaf, err := document.Parse(migration.Path, migration.Content)
+	if err != nil {
+		return nil, err
+	}
+	_, declaredLocally, err := configplugins.References(leaf.Value())
+	if err != nil {
+		return nil, err
+	}
+	updatePlugins := true
+	var refs []pluginreference.Reference
+	switch {
+	case !declaredLocally && project.Manifest.Declared:
+		// Keep inherited declarations inherited. Writing the effective list into
+		// the leaf would freeze future changes made by the shared base.
+		refs = slices.Clone(project.Manifest.References)
+		updatePlugins = false
+	default:
+		refs, err = installation.DefaultReferences(resolved.Config, options)
+	}
+	if err != nil {
+		return nil, err
+	}
+	content := migration.Content
+	if updatePlugins {
+		content, err = configplugins.EditManifest(migration.Path, migration.Content, refs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := migration.SetContent(content); err != nil {
+		return nil, err
+	}
+	if !project.Manifest.Declared {
+		notes, err := installation.SourceFollowingNotes(refs)
+		if err != nil {
+			return nil, err
+		}
+		migration.Notes = append(migration.Notes, notes...)
+	}
+	project.StatusOptions.Warning = options.Warning
+	return &Migration{FileMigration: migration, project: project, refs: refs, updatePlugins: updatePlugins}, nil
+}
+
+func (m *Migration) Apply(ctx context.Context) error {
+	if err := m.SetContent(m.Content); err != nil {
+		return err
+	}
+	if !m.Changed {
+		return nil
+	}
+	if err := m.CheckUnchanged(ctx); err != nil {
+		return err
+	}
+	if !m.updatePlugins {
+		return m.FileMigration.Apply(ctx)
+	}
+	if err := m.project.Resolve(ctx, m.refs, nil); err != nil {
+		return fmt.Errorf("config migration left %s unchanged: %w", m.Path, err)
+	}
+	if err := m.CheckUnchanged(ctx); err != nil {
+		return err
+	}
+	if !m.updatePlugins {
+		if err := m.FileMigration.Apply(ctx); err != nil {
+			return err
+		}
+		return nil
+	}
+	resolved, err := m.project.ResolvedDeclarations(ctx, m.refs)
+	if err != nil {
+		return err
+	}
+	content, err := configplugins.EditManifest(m.Path, m.Content, resolved)
+	if err != nil {
+		return err
+	}
+	if err := m.SetContent(content); err != nil {
+		return err
+	}
+	original := m.project.Manifest.OriginalBytes()
+	m.project.Manifest.SetContent(m.Content)
+	if err := m.project.Save(ctx, resolved); err != nil {
+		m.project.Manifest.SetContent(original)
+		return err
+	}
+	m.refs = resolved
+	return nil
+}
+
+// MigrateFile automatically upgrades a selected legacy local file.
+// Files already using current syntax are never implicitly enrolled in plugins.
+func MigrateFile(ctx context.Context, path string, options installation.DefaultPluginOptions) error {
+	return migrateConfig(ctx, path, "", options)
+}
+
+func migrateConfig(ctx context.Context, path, repositoryRoot string, options installation.DefaultPluginOptions) error {
+	prepared, err := prepareConfigMigration(ctx, path, repositoryRoot, options)
+	if err != nil || prepared == nil {
+		return err
+	}
+	if err := prepared.Apply(ctx); err != nil {
+		return err
+	}
+	if options.Warning != nil {
+		options.Warning("migrated configuration: " + prepared.Path)
+		for _, note := range prepared.Notes {
+			options.Warning(note)
+		}
+	}
+	return nil
+}
+
+func prepareConfigMigration(ctx context.Context, path, repositoryRoot string, options installation.DefaultPluginOptions) (*Migration, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read config file %q: %w", path, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		// Skip symlinked configs to avoid writing outside the selected project.
+		return nil, nil
+	}
+	migration, err := options.RuleSet.PrepareMigration(ctx, path, options.Acquisition.Connections, options.Rules...)
+	if errors.Is(err, configuration.ErrRuleMetadataRequired) {
+		// Checking can bind legacy selections after plugin registration. Do
+		// not force an implicit rewrite to inspect or execute plugin code.
+		return nil, nil
+	}
+	if err != nil || !migration.Changed {
+		return nil, err
+	}
+	if repositoryRoot != "" {
+		inside, err := migrationPathInsideRepository(repositoryRoot, migration.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !inside {
+			return nil, nil
+		}
+	}
+	prepared, err := Prepare(ctx, path, options)
+	if err != nil {
+		return nil, err
+	}
+	if repositoryRoot != "" {
+		inside, err := migrationPathInsideRepository(repositoryRoot, prepared.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !inside {
+			return nil, nil
+		}
+	}
+	return prepared, nil
+}
+
+func migrationPathInsideRepository(root, path string) (bool, error) {
+	physicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false, err
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return false, err
+	}
+	physicalParent, err := filepath.EvalSymlinks(filepath.Dir(absolute))
+	if err != nil {
+		return false, err
+	}
+	physicalPath := filepath.Join(physicalParent, filepath.Base(absolute))
+	relative, err := filepath.Rel(physicalRoot, physicalPath)
+	if err != nil {
+		return false, fmt.Errorf("cannot compare migration path with repository root: %w", err)
+	}
+	return filepath.IsLocal(relative), nil
+}
+
+// MigrateSelection upgrades the local configs selection would read before
+// runtime plugin selection.
+func MigrateSelection(ctx context.Context, selection pluginselection.Selection, directory string, input inputmodel.Request, options installation.DefaultPluginOptions) error {
+	if selection.Disabled || len(selection.Paths) != 0 {
+		return nil
+	}
+	options.Overlays, options.Acquisition = selection.Overlays, selection.Acquisition
+	if selection.ConfigFile != "" {
+		return MigrateFile(ctx, selection.ConfigFile, options)
+	}
+	starts := []string{directory}
+	switch {
+	case input.Kind == inputmodel.Files && len(input.Paths) != 0:
+		starts = nil
+		for _, path := range input.Paths {
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(directory, path)
+			}
+			starts = append(starts, pluginselection.RepositorySearchStart(path))
+		}
+	case input.Kind == inputmodel.Stdin && input.Name != "" && input.Name != "<stdin>":
+		path := input.Name
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(directory, path)
+		}
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		starts = []string{filepath.Dir(path)}
+	case input.Kind == inputmodel.Stdin:
+		return nil
+	}
+	seen := map[string]bool{}
+	var candidates []struct {
+		root string
+		path string
+	}
+	for _, start := range starts {
+		identity := discovery.PhysicalRepositoryRoot(start)
+		if seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		root := discovery.RepositoryRoot(start)
+		if root == "" {
+			continue
+		}
+		path, err := configplugins.FindOrDefaultPath(filepath.Join(root, ".github"))
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		candidates = append(candidates, struct {
+			root string
+			path string
+		}{root, path})
+	}
+	if len(seen) > 1 {
+		// Check existing plugin scopes before planning migrations. pluginselection.Selection is
+		// read-only and catches active configs in repositories with no legacy file.
+		if _, err := selection.SelectForCache(ctx, directory, input); err != nil {
+			return err
+		}
+	}
+	plans := make([]*Migration, 0, len(candidates))
+	for _, candidate := range candidates {
+		plan, err := prepareConfigMigration(ctx, candidate.path, candidate.root, options)
+		if err != nil {
+			return err
+		}
+		if plan != nil {
+			plans = append(plans, plan)
+		}
+	}
+	if len(seen) > 1 && slices.ContainsFunc(plans, func(plan *Migration) bool {
+		return len(plan.refs) != 0
+	}) {
+		return errors.New("inputs span repositories with plugin configuration; check them separately or select --config explicitly")
+	}
+	for _, plan := range plans {
+		if err := plan.Apply(ctx); err != nil {
+			return err
+		}
+		if options.Warning != nil {
+			options.Warning("migrated configuration: " + plan.Path)
+			for _, note := range plan.Notes {
+				options.Warning(note)
+			}
+		}
+	}
+	return nil
+}

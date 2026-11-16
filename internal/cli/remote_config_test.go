@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestRemoteConfigUsesCommandConnections(t *testing.T) {
@@ -28,7 +28,7 @@ func TestRemoteConfigUsesCommandConnections(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 				registry := fixtureregistry.NewPluginRegistry(t)
-				acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+				acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 				const remote = "https://config.example/base.yaml"
 				registry.SetFile(remote, []byte("output: {formats: [json], summary: false}\nlint: {rules: {plugins: {no-sudo: off}}}\n"))
 				config, workflow := configuredOutputFixture(t, "extends: ['"+remote+"']\n")

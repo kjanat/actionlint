@@ -11,7 +11,8 @@ import (
 	"time"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -42,7 +43,7 @@ type Loaded struct {
 	SkippedTools []string
 	// ToolIDs lists selected release names and aliases, plus engine and rule names from plugin metadata.
 	ToolIDs      []string
-	Acquisition  plugininstall.Acquisition
+	Acquisition  pluginacquisition.Settings
 	DisableTools bool
 }
 
@@ -57,7 +58,7 @@ type ScriptEngineRegistration struct {
 	Descriptor checkinputs.ScriptEngineDescriptor
 }
 
-func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
+func Load(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
 	loaded := &Loaded{NamedTools: sources.NamedTools, SkippedTools: slices.Clone(sources.SkippedTools), Acquisition: sources.Acquisition, DisableTools: sources.DisableTools}
 	if sources.Releases != nil {
 		for _, pin := range sources.Releases.Plugins {
@@ -128,7 +129,7 @@ func Load(ctx context.Context, sources plugininstall.Sources, reserved rule.Name
 			continue
 		}
 		if artifact.Info.Kind == pluginartifact.ProviderManifest {
-			manifest, err := plugininstall.ReadProviderArtifact(artifact)
+			manifest, err := process.ReadProviderArtifact(artifact)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}

@@ -14,7 +14,7 @@ import (
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func actionVersion() string {
@@ -31,7 +31,7 @@ type action struct {
 	newID       func() string
 	timeout     time.Duration
 	result      *lintResult
-	acquisition plugininstall.Acquisition
+	acquisition pluginacquisition.Settings
 }
 
 var results = map[int]string{

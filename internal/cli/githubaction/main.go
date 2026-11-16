@@ -5,11 +5,11 @@ package githubaction
 import (
 	"io"
 
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 // Main runs the GitHub Action adapter using the action's input environment.
-func Main(env func(string) string, stdout io.Writer, acquisition plugininstall.Acquisition) int {
+func Main(env func(string) string, stdout io.Writer, acquisition pluginacquisition.Settings) int {
 	a := &action{
 		args:        environmentArgs(env),
 		stdout:      stdout,

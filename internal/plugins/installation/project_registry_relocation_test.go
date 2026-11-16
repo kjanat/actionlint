@@ -9,6 +9,7 @@ import (
 
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
@@ -21,7 +22,7 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ref, err := pluginreference.New("ruff", "v1.0.0", plugininstall.DefaultURL)
+			ref, err := pluginreference.New("ruff", "v1.0.0", pluginregistry.DefaultURL)
 			if err != nil {
 				t.Fatal(err)
 			}

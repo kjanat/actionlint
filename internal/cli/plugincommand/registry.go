@@ -15,6 +15,8 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 type RegistryOptions struct {
@@ -50,14 +52,14 @@ type RegistryRequest struct {
 }
 
 // Run executes the plugin registry operation.
-func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams, acquisition plugininstall.Acquisition) (int, error) {
+func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams, acquisition pluginacquisition.Settings) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
 		name = r.Paths[0]
 	}
 	registry := r.Options.Registry
 	if registry == "" {
-		registry = plugininstall.DefaultURL
+		registry = pluginregistry.DefaultURL
 	}
 	if r.Operation == Search || r.Operation == Versions {
 		return 0, r.discover(ctx, streams, registry, name, acquisition)
@@ -92,7 +94,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 		}
 		project.StatusOptions.Network = grant
 	}
-	var selected plugininstall.ResolvedPlugins
+	var selected pluginregistry.ResolvedPlugins
 	switch r.Operation {
 	case Install:
 		if err := r.install(ctx, project, name); err != nil {
@@ -110,21 +112,21 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 		}
 		selected = project.Releases
 	case Sync:
-		selected, err = project.SelectedPlugins(ctx)
+		selected, err = project.SelectedPlugins(ctx, project.Manifest.References)
 		if err != nil {
 			return 0, err
 		}
 		if err := selected.RefreshStatuses(ctx, project.StatusOptions); err != nil {
 			return 0, err
 		}
-		if err := plugininstall.Sync(ctx, selected, acquisition); err != nil {
+		if err := pluginregistry.Sync(ctx, selected, acquisition); err != nil {
 			return 0, err
 		}
 		if err := project.SyncDirect(ctx); err != nil {
 			return 0, err
 		}
 	case List:
-		selected, err = project.SelectedPlugins(ctx)
+		selected, err = project.SelectedPlugins(ctx, project.Manifest.References)
 		if err != nil {
 			return 0, err
 		}
@@ -135,7 +137,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 	}
 	if r.JSON {
 		return 0, commandstreams.WriteJSON(streams.Stdout, struct {
-			plugininstall.ResolvedPlugins
+			pluginregistry.ResolvedPlugins
 			Direct []string `json:"direct,omitempty"`
 		}{selected, project.DirectSources()})
 	}
@@ -205,7 +207,7 @@ func RequestedPluginIndex(ref pluginreference.Reference, registry string, existi
 			continue
 		}
 		named, count = i, count+1
-		if registry != "" && !plugininstall.SameRegistry(old.Registry(), registry) {
+		if registry != "" && !pluginregistry.SameRegistry(old.Registry(), registry) {
 			continue
 		}
 		if index >= 0 {
@@ -312,7 +314,7 @@ func removePlugin(ctx context.Context, project *plugininstall.Project, name, reg
 	}
 	refs = slices.Delete(refs, index, index+1)
 	project.Manifest.References = slices.Clone(refs)
-	selected, err := project.SelectedPlugins(ctx)
+	selected, err := project.SelectedPlugins(ctx, project.Manifest.References)
 	if err != nil {
 		return err
 	}
@@ -329,7 +331,7 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 	}
 	index := -1
 	for i, ref := range refs {
-		if registry != "" && !plugininstall.SameRegistry(ref.Registry(), registry) {
+		if registry != "" && !pluginregistry.SameRegistry(ref.Registry(), registry) {
 			continue
 		}
 		matches := requested.Name() == ref.Name()
@@ -350,10 +352,10 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 		// Alias convenience uses the selected release's cached registry evidence,
 		// scoped to the declaration's authority; config itself stays canonical.
 		for i, ref := range refs {
-			if ref.DirectSource() != "" || registry != "" && !plugininstall.SameRegistry(ref.Registry(), registry) {
+			if ref.DirectSource() != "" || registry != "" && !pluginregistry.SameRegistry(ref.Registry(), registry) {
 				continue
 			}
-			client, err := plugininstall.NewWithGrant(ref.Registry(), plugininstall.StatusOptions{Network: project.StatusOptions.Network, Acquisition: project.StatusOptions.Acquisition})
+			client, err := pluginregistry.NewWithGrant(ref.Registry(), pluginregistry.StatusOptions{Network: project.StatusOptions.Network, Acquisition: project.StatusOptions.Acquisition})
 			if err != nil {
 				return -1, err
 			}
@@ -376,8 +378,8 @@ func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []
 	return index, nil
 }
 
-func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.Streams, registry, name string, acquisition plugininstall.Acquisition) error {
-	client, err := plugininstall.New(registry, acquisition)
+func (r RegistryRequest) discover(ctx context.Context, streams commandstreams.Streams, registry, name string, acquisition pluginacquisition.Settings) error {
+	client, err := pluginregistry.New(registry, acquisition)
 	if err != nil {
 		return commandargs.UsageError{Cause: err}
 	}

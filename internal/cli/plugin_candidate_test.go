@@ -16,7 +16,8 @@ import (
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func candidateCatalogue(t *testing.T) (string, string, string, *fixtureregistry.PluginRegistry) {
@@ -92,7 +93,7 @@ func candidateDigest(t *testing.T, path string) string {
 // a plugin error. The network recorder catches accidental requests throughout.
 func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, acquisition, 0, "plugin", "search", "sudo", "--registry", registry)
 	pluginCommandTest(t, acquisition, 0, "plugin", "versions", "publisher/plugin", "--registry", registry)
@@ -115,7 +116,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 		t.Fatal(output)
 	}
 	cache := acquisition.UserCacheDir
-	selected, err := (plugininstall.Selection{Acquisition: acquisition}).SelectForCache(t.Context(), ".", inputmodel.Request{Kind: inputmodel.Files, Paths: []string{"workflow.yml"}})
+	selected, err := (pluginselection.Selection{Acquisition: acquisition}).SelectForCache(t.Context(), ".", inputmodel.Request{Kind: inputmodel.Files, Paths: []string{"workflow.yml"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +153,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 // remembered selection and every check must work without acquisition authority.
 func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 	root, registry, previousDigest, network := candidateCatalogue(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir()}
 	t.Chdir(candidateProject(t))
 	wasm, err := os.ReadFile(filepath.Join(root, "artifacts", "plugin.wasm"))
 	if err != nil {
@@ -236,7 +237,7 @@ func TestCandidateCLIOCIInstallsAndExecutesOffline(t *testing.T) {
 // earlier imported bytes until the author asks for that update.
 func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 	file := filepath.Join(root, "artifacts", "plugin.wasm")
@@ -281,7 +282,7 @@ func TestCandidateCLIUpdatesSameVersion(t *testing.T) {
 
 func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 	root, registry, firstDigest, network := candidateCatalogue(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	firstProject, secondProject := t.TempDir(), t.TempDir()
 	candidateProjectAt(t, firstProject)
 	candidateProjectAt(t, secondProject)
@@ -343,7 +344,7 @@ func TestCandidateProjectsKeepSeparateSameVersionDigests(t *testing.T) {
 // declaration should then allow an explicit update without resetting the project.
 func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 	root, registry, digest, network := candidateCatalogue(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	t.Chdir(candidateProject(t))
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "publisher/plugin@v1.0.0", "--registry", registry)
 	configPath := filepath.Join(".github", "actionlint.yaml")
@@ -408,7 +409,7 @@ func TestCandidateCLIFailedUpdateKeepsInstalledBytes(t *testing.T) {
 // escape should cause rejection, before either project file is written.
 func TestCandidateCLIRejectsArtifactSymlinkEscape(t *testing.T) {
 	root, registry, _, network := candidateCatalogue(t)
-	acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 	file := filepath.Join(root, "artifacts", "plugin.wasm")
 	outside := filepath.Join(t.TempDir(), "plugin.wasm")
 	if err := os.Rename(file, outside); err != nil {
@@ -441,7 +442,7 @@ func TestCandidateCLIRejectsInvalidInputs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, registry, _, network := candidateCatalogue(t)
-			acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 			file := filepath.Join(root, filepath.FromSlash(tc.file))
 			data, err := os.ReadFile(file)
 			if err != nil {

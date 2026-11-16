@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
@@ -19,7 +19,7 @@ func TestPluginInstallHTTPSPinsAndCachesManifest(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			network := fixtureregistry.NewPluginRegistry(t)
-			acquisition := plugininstall.Acquisition{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: network.UserCacheDir(), Connections: network.Connections()}
 			manifest := ociProcessManifest(t, "not-installed-and-must-not-run", "[]")
 			network.SetFile(source, manifest)
 			root := t.TempDir()
