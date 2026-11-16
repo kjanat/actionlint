@@ -1,4 +1,4 @@
-package inputs_test
+package checkinputs_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -18,11 +18,11 @@ import (
 // stepNameAnalyzer checks a document without depending on the traversal host.
 type stepNameAnalyzer struct{}
 
-func (stepNameAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Source}}
+func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (stepNameAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" {
 		return nil, nil
 	}
@@ -62,7 +62,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []inputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		panic(err)

@@ -8,10 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependencypins"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -44,7 +44,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			input := inputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Dependencies}, Dependencies: []facts.Dependency{{
+			input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Dependencies}, Dependencies: []facts.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
 				Start: source.Position{Line: 6, Column: 15}, End: source.Position{Line: 7, Column: 24},
 			}}}
@@ -84,11 +84,11 @@ jobs:
     uses: owner/repo/.github/workflows/ci.yml@main
 permissions: {}
 `
-	check := func(a inputs.Checker) []results.Diagnostic {
+	check := func(a checkinputs.Checker) []results.Diagnostic {
 		t.Helper()
 		result, err := checking.Analyze(t.Context(),
 
-			checking.Options{Analyzers: []inputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
+			checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 		)
 		if err != nil {
 			t.Fatal(err)

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 )
@@ -25,7 +25,7 @@ func Example_componentLoading() {
 	fmt.Println("loaded", component.Descriptor().Name, "with", component.Limits())
 	result, err := checking.Analyze(ctx,
 
-		checking.Options{Analyzers: []inputs.Registration{{Checker: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)
@@ -48,7 +48,7 @@ func Example_moduleLoading() {
 	defer engine.Close(ctx)
 	limits := engine.Limits()
 	fmt.Println("loaded", engine.Metadata().ID, "with", limits)
-	diagnostics, err := engine.Check(ctx, inputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	diagnostics, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)
 		return
@@ -74,7 +74,7 @@ func Example_componentScriptEngine() {
 		fmt.Println("config:", err)
 		return
 	}
-	findings, err := engine.Check(ctx, inputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	findings, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)
 		return

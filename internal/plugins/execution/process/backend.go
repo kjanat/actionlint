@@ -17,8 +17,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -191,7 +191,7 @@ func (b *Backend) Concurrent() bool {
 }
 
 // Check implements analyzer.ScriptBackend.
-func (b *Backend) Check(ctx context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (b *Backend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	result, err := b.Run(ctx, request, nil)
 	return result.Diagnostics, err
 }
@@ -325,7 +325,7 @@ func (b *Backend) execution(args []string, stdin, directory string) process.Exec
 // placeholders and transforms; "filename", "filename_abs" and "exit_code"
 // are the host's own. An optional provider whose version cannot be
 // established returns no result and no error.
-func (b *Backend) Run(ctx context.Context, request inputs.ScriptRequest, vars map[string]string) (DecodedCheck, error) {
+func (b *Backend) Run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string) (DecodedCheck, error) {
 	result, err := b.run(ctx, request, vars, nil)
 	return result, owned(ctx, err)
 }
@@ -342,7 +342,7 @@ func owned(ctx context.Context, err error) error {
 	return errors.New(err.Error())
 }
 
-func (b *Backend) run(ctx context.Context, request inputs.ScriptRequest, vars map[string]string, document *inputs.DocumentRequest) (result DecodedCheck, err error) {
+func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string, document *checkinputs.DocumentRequest) (result DecodedCheck, err error) {
 	if err := ctx.Err(); err != nil {
 		return DecodedCheck{}, err
 	}
@@ -474,13 +474,13 @@ func (b *Backend) run(ctx context.Context, request inputs.ScriptRequest, vars ma
 
 // detached copies a decoded result into storage no decoder retains.
 func detached(result DecodedCheck) DecodedCheck {
-	diagnostics := make([]inputs.ScriptDiagnostic, len(result.Diagnostics))
+	diagnostics := make([]checkinputs.ScriptDiagnostic, len(result.Diagnostics))
 	for i, d := range result.Diagnostics {
-		fixes := make([]inputs.ScriptFix, len(d.Fixes))
+		fixes := make([]checkinputs.ScriptFix, len(d.Fixes))
 		for j, fix := range d.Fixes {
-			fixes[j] = inputs.ScriptFix{Applicability: fix.Applicability, Description: fix.Description, Replacements: slices.Clone(fix.Replacements)}
+			fixes[j] = checkinputs.ScriptFix{Applicability: fix.Applicability, Description: fix.Description, Replacements: slices.Clone(fix.Replacements)}
 		}
-		diagnostics[i] = inputs.ScriptDiagnostic{
+		diagnostics[i] = checkinputs.ScriptDiagnostic{
 			Filename: d.Filename, Code: d.Code, Name: d.Name, Message: d.Message, Severity: d.Severity,
 			Location: d.Location, EndLocation: d.EndLocation, URL: d.URL, TemplateEffect: d.TemplateEffect,
 			Source: d.Source, Fixes: fixes,
@@ -524,11 +524,11 @@ func (b *Backend) directory(requested string) (string, error) {
 
 // stdin is the snippet, or the JSON request carrying rendered configuration
 // when the configuration travels on stdin.
-func (b *Backend) stdin(request inputs.ScriptRequest, config any) (string, error) {
+func (b *Backend) stdin(request checkinputs.ScriptRequest, config any) (string, error) {
 	if b.spec.Stdin != manifests.StdinRequest {
 		return request.Source, nil
 	}
-	payload := inputs.ScriptRequest{Source: request.Source, Filename: request.Filename}
+	payload := checkinputs.ScriptRequest{Source: request.Source, Filename: request.Filename}
 	payload.Environment = request.Environment
 	if b.spec.Config.Render == manifests.RenderJSONStdin && config != nil {
 		encoded, err := json.Marshal(config)
@@ -555,7 +555,7 @@ func pairsOption(args []string) string {
 // request's snippet, a reported one must come from a provider that declares
 // reported sources; snippet positions are converted to contract
 // coordinates and template effects come from the reviewed table.
-func (b *Backend) review(result *DecodedCheck, request inputs.ScriptRequest) error {
+func (b *Backend) review(result *DecodedCheck, request checkinputs.ScriptRequest) error {
 	coordinates := newCoordinates(request.Source, b.spec.Output.Coordinates)
 	for i := range result.Diagnostics {
 		d := &result.Diagnostics[i]
@@ -575,8 +575,8 @@ func (b *Backend) review(result *DecodedCheck, request inputs.ScriptRequest) err
 			return fmt.Errorf("tools.%s: tool output refers to unexpected file %q", b.name, d.Filename)
 		}
 		coordinates.diagnostic(d)
-		if b.capabilities.TemplateContract == inputs.TemplateEffectsContract && d.TemplateEffect == "" {
-			d.TemplateEffect = inputs.TemplateEffectNone
+		if b.capabilities.TemplateContract == checkinputs.TemplateEffectsContract && d.TemplateEffect == "" {
+			d.TemplateEffect = checkinputs.TemplateEffectNone
 			if effect, ok := b.spec.TemplateEffects[d.Code]; ok {
 				d.TemplateEffect = effect
 			}

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"github.com/google/go-cmp/cmp"
 )
@@ -19,24 +19,24 @@ func TestCheck3Negotiation(t *testing.T) {
 		t.Fatalf("negotiated check %d, want 3", engine.CheckVersion())
 	}
 	d := engine.ScriptDescriptor()
-	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []inputs.ToolResourceKind{inputs.ToolDirectory}) {
+	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {
 		t.Fatalf("descriptor capabilities = %+v", d)
 	}
-	diagnostics, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "a\rbbbb\nccccc\n", Filename: "s.sh", Excluded: []string{"T9"}, Directory: t.TempDir()})
+	diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "a\rbbbb\nccccc\n", Filename: "s.sh", Excluded: []string{"T9"}, Directory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The snippet's lone CR is a guest row; host rows are LF rows, and fix
 	// replacements convert with their diagnostic.
-	want := []inputs.ScriptDiagnostic{
+	want := []checkinputs.ScriptDiagnostic{
 		{
 			Filename: "s.sh", Code: "T1", Message: "fix me", Severity: "style",
-			Location: inputs.ScriptPosition{Row: 1, Column: 3}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 6},
-			Fixes: []inputs.ScriptFix{{Description: "replace", Replacements: []inputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 3, EndColumn: 6, Text: "y"}}}},
+			Location: checkinputs.ScriptPosition{Row: 1, Column: 3}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 6},
+			Fixes: []checkinputs.ScriptFix{{Description: "replace", Replacements: []checkinputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 3, EndColumn: 6, Text: "y"}}}},
 		},
 		{
 			Filename: "lib.sh", Code: "T2", Message: "sourced", Severity: "info", Source: "lib.sh",
-			Location: inputs.ScriptPosition{Row: 3, Column: 2}, EndLocation: inputs.ScriptPosition{Row: 3, Column: 5},
+			Location: checkinputs.ScriptPosition{Row: 3, Column: 2}, EndLocation: checkinputs.ScriptPosition{Row: 3, Column: 5},
 		},
 	}
 	if diff := cmp.Diff(want, diagnostics); diff != "" {

@@ -9,10 +9,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -23,7 +23,7 @@ type Context struct {
 	Config, ProjectConfig   *configuration.Config
 	WorkingDir, ProjectRoot string
 	Processes               *process.ProcessPool
-	LoadEngine              func(context.Context, string) (inputs.ScriptBackend, error)
+	LoadEngine              func(context.Context, string) (checkinputs.ScriptBackend, error)
 	Debug                   func(string, ...any)
 	Warn                    func(error)
 	// Skipped receives the rule name of an enabled check that could not run.
@@ -31,7 +31,7 @@ type Context struct {
 	Skipped func(string)
 	// AllowConfigProcesses authorizes repository-selected executable invocations.
 	AllowConfigProcesses bool
-	Document             inputs.AnalyzerInput
+	Document             checkinputs.AnalyzerInput
 }
 
 // Registration owns a tool's selection and construction policy. The host only
@@ -40,22 +40,22 @@ type Registration struct {
 	ToolSettings          *toolsettings.Settings
 	InvocationDefinitions []commands.Definition
 	// ToolIntegration identifies a negotiated document provider for this tool.
-	ToolIntegration *inputs.ToolIntegration
+	ToolIntegration *checkinputs.ToolIntegration
 	rule.Declaration
-	ScriptInputs      []inputs.ScriptInput
-	InputSelectors    func(Context) ([]inputs.ScriptInput, error)
-	ConfiguredBackend func(Context) (inputs.ScriptBackend, error)
+	ScriptInputs      []checkinputs.ScriptInput
+	InputSelectors    func(Context) ([]checkinputs.ScriptInput, error)
+	ConfiguredBackend func(Context) (checkinputs.ScriptBackend, error)
 	RequiresExecution bool
 	NeedsProcess      func(context.Context, *configuration.Config, *configuration.Config) (bool, error)
 	Validate          func() error
 	Enabled           func(Context) bool
 	Required          func(Context) bool
 	Build             func(Context) (Runner, error)
-	WithBackend       func(inputs.ScriptBackend) (Registration, error)
+	WithBackend       func(checkinputs.ScriptBackend) (Registration, error)
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(context.Context, scripts.Unit) (preparation.Prepared, error)
 	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
-	WithAnalyzer func(inputs.Checker) (Registration, error)
+	WithAnalyzer func(checkinputs.Checker) (Registration, error)
 }
 
 // Runner analyzes the batch prepared for one tool. ToolFinding.Script indexes

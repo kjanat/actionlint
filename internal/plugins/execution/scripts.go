@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
@@ -17,8 +17,8 @@ import (
 
 // ScriptEngineLoader loads configured core modules and script-engine components
 // with the same artifact verification and lifecycle for every native entrypoint.
-func ScriptEngineLoader(acquisition pluginacquisition.Settings, reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (inputs.ScriptBackend, error) {
-	return func(ctx context.Context, path string) (inputs.ScriptBackend, error) {
+func ScriptEngineLoader(acquisition pluginacquisition.Settings, reserved rule.Names, log io.Writer, debug bool) func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	return func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
 		if err := artifacts.RequireRemotePin(path); err != nil {
 			return nil, err
 		}
@@ -31,7 +31,7 @@ func ScriptEngineLoader(acquisition pluginacquisition.Settings, reserved rule.Na
 }
 
 // LoadScriptArtifact opens a verified core module or component that implements script checking.
-func LoadScriptArtifact(ctx context.Context, artifact *artifacts.Artifact, acquisition pluginacquisition.Settings, reserved rule.Names, log io.Writer, debug bool) (inputs.ScriptBackend, error) {
+func LoadScriptArtifact(ctx context.Context, artifact *artifacts.Artifact, acquisition pluginacquisition.Settings, reserved rule.Names, log io.Writer, debug bool) (checkinputs.ScriptBackend, error) {
 	if artifact.Info.Kind != artifacts.Core && artifact.Info.Kind != artifacts.Component {
 		return nil, fmt.Errorf("%s is a %s artifact, not a WebAssembly module", artifact.Info.Source, artifact.Info.Kind)
 	}

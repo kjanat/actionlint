@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func runDocumentAnalyzers(ctx context.Context, registrations []inputs.Registration, input inputs.AnalyzerInput, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {
+func runDocumentAnalyzers(ctx context.Context, registrations []checkinputs.Registration, input checkinputs.AnalyzerInput, metadataSources map[string][]byte, usedRules *[]rule.Descriptor) ([]*findingmodel.Finding, error) {
 	var all []*findingmodel.Finding
 	var analysisErr error
 	if len(registrations) != 0 {

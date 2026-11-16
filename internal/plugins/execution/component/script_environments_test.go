@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
@@ -16,11 +16,11 @@ import (
 
 func TestScriptEnvironmentResponseLimit(t *testing.T) {
 	t.Parallel()
-	environments := []inputs.ScriptEnvironment{{
+	environments := []checkinputs.ScriptEnvironment{{
 		OperatingSystem:  runnerapi.Linux,
 		MergeComparison:  scripts.NameSensitive,
 		LookupComparison: scripts.NameSensitive,
-		Names:            []inputs.EnvironmentVariableName{{Name: strings.Repeat("x", int(maxScriptResultBytes)), Scope: scripts.EnvironmentStep, CaseKnown: true}},
+		Names:            []checkinputs.EnvironmentVariableName{{Name: strings.Repeat("x", int(maxScriptResultBytes)), Scope: scripts.EnvironmentStep, CaseKnown: true}},
 	}}
 	result, err := environmentResult(environments)
 	if _, refused := result.(environmentbind.ResultListEnvironmentStringErr); err != nil || !refused {
@@ -30,7 +30,7 @@ func TestScriptEnvironmentResponseLimit(t *testing.T) {
 
 func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 	t.Parallel()
-	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(inputs.ScriptEnvironments(
+	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(
 		scripts.EnvironmentAlternatives("bash", nil, scripts.EnvironmentLayer{Scope: scripts.EnvironmentRuntime, UnknownNames: true}, scripts.EnvironmentLayer{Scope: scripts.EnvironmentStep, Names: []string{"lowercase", "UPPERCASE", "miXedCase"}}),
 	)))
 	engine := wacogo.NewEngine(ctx)
@@ -72,7 +72,7 @@ func TestScriptEnvironmentHostInterfaceRoundTrip(t *testing.T) {
 func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
 	t.Parallel()
 	environments := scripts.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Windows}, scripts.EnvironmentLayer{Scope: scripts.EnvironmentStep, Names: []string{"miXedCase"}})
-	input := inputs.AnalyzerInput{Scripts: []inputs.Script{{Occurrence: invocation.Script{ID: "selected"}, Environment: environments}}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}, Environment: environments}}}
 	ctx := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	for _, id := range []string{"", "entry", "call", "unselected", "another-invocation"} {
 		result, err := (scriptEnvironments{}).ForScript(ctx, id)
@@ -101,7 +101,7 @@ func TestScriptEnvironmentsAreScopedToSuppliedOccurrences(t *testing.T) {
 func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 	t.Parallel()
 	environments := scripts.EnvironmentAlternatives("pwsh", []runnerapi.OS{runnerapi.Windows}, scripts.EnvironmentLayer{Scope: scripts.EnvironmentWorkflow, Names: []string{"lowercase"}})
-	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(inputs.ScriptEnvironments(environments)))
+	ctx := context.WithValue(t.Context(), environmentContextKey{}, snippetEnvironmentNames(checkinputs.ScriptEnvironments(environments)))
 	result, err := (scriptEnvironments{}).Current(ctx)
 	value, ok := result.(environmentbind.ResultListEnvironmentStringOk)
 	if err != nil || !ok || len(value.Value) != 1 || value.Value[0].LookupComparison != environmentbind.NameComparisonInsensitive || value.Value[0].UnknownNames {
@@ -126,7 +126,7 @@ func TestCurrentScriptEnvironmentDoesNotExposeDocumentScripts(t *testing.T) {
 
 func TestSuppliedScriptWithoutEnvironmentFactsReturnsAnEmptyList(t *testing.T) {
 	t.Parallel()
-	input := inputs.AnalyzerInput{Scripts: []inputs.Script{{Occurrence: invocation.Script{ID: "selected"}}}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Occurrence: invocation.Script{ID: "selected"}}}}
 	document := context.WithValue(t.Context(), environmentContextKey{}, documentEnvironments(input))
 	result, err := (scriptEnvironments{}).ForScript(document, "selected")
 	value, ok := result.(environmentbind.ResultListEnvironmentStringOk)

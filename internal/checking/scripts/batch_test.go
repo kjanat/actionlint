@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -203,7 +203,7 @@ func batchSourceFixtureWithWorkflow(t *testing.T, content []byte) (invocation.Gr
 				t.Fatal("unexpected fixture step")
 			}
 			kind, input = invocation.ScriptActionInput, "script"
-			request.Input = &inputs.ScriptInput{Action: "actions/github-script", Input: input, Language: "javascript"}
+			request.Input = &checkinputs.ScriptInput{Action: "actions/github-script", Input: input, Language: "javascript"}
 		}
 		request.Occurrence, err = builder.AddScript(builder.RootContext(), ref, kind, input)
 		if err != nil {
@@ -311,7 +311,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			}
 			request := ScriptRequest{Occurrence: graph.Scripts()[0].ID}
 			if tc.scriptKind == invocation.ScriptActionInput {
-				request.Input = &inputs.ScriptInput{Action: "actions/github-script", Input: tc.input, Language: "javascript"}
+				request.Input = &checkinputs.ScriptInput{Action: "actions/github-script", Input: tc.input, Language: "javascript"}
 			}
 			collection := Collection{Declarations: registry, Scopes: []*Scope{scope}, Scripts: []ScriptRequest{request}, Collected: true}
 			if _, err := NewBatch(graph, collection); !errors.Is(err, ErrInvalidBatch) {

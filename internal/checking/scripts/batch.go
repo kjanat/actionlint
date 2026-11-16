@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -45,7 +45,7 @@ type Unit struct {
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
-	Site  inputs.ScriptInput
+	Site  checkinputs.ScriptInput
 	Value *definition.ActionArgument
 }
 
@@ -124,7 +124,7 @@ func (u Unit) WorkingDirectory() (string, bool) {
 type ScriptRequest struct {
 	Occurrence   invocation.ID
 	DefaultShell *string
-	Input        *inputs.ScriptInput
+	Input        *checkinputs.ScriptInput
 	Execution    *scripts.Execution
 	Environment  []scripts.EnvironmentNames
 	Interpreters *commands.Registry

@@ -2,12 +2,12 @@
 // rows and checks the file names sandboxed engines report findings in.
 package scriptcoords
 
-import "actionlint.kjanat.dev/v2/internal/checking/inputs"
+import "actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 // Starts maps each LF, CRLF or CR-delimited engine line to LF-delimited source.
-func Starts(source string) []inputs.ScriptPosition {
-	position := inputs.ScriptPosition{Row: 1, Column: 1}
-	starts := []inputs.ScriptPosition{position}
+func Starts(source string) []checkinputs.ScriptPosition {
+	position := checkinputs.ScriptPosition{Row: 1, Column: 1}
+	starts := []checkinputs.ScriptPosition{position}
 	for i, character := range source {
 		if character == '\n' {
 			position.Row++
@@ -24,7 +24,7 @@ func Starts(source string) []inputs.ScriptPosition {
 }
 
 // SourcePosition accepts a position already validated against the engine input.
-func SourcePosition(starts []inputs.ScriptPosition, position inputs.ScriptPosition) inputs.ScriptPosition {
+func SourcePosition(starts []checkinputs.ScriptPosition, position checkinputs.ScriptPosition) checkinputs.ScriptPosition {
 	start := starts[position.Row-1]
-	return inputs.ScriptPosition{Row: start.Row, Column: start.Column + position.Column - 1}
+	return checkinputs.ScriptPosition{Row: start.Row, Column: start.Column + position.Column - 1}
 }

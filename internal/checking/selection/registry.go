@@ -8,10 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -19,7 +19,7 @@ import (
 type Selection struct {
 	Unavailable []UnavailableCheck
 	Rules       []workflowvisit.Rule
-	Scripts     []inputs.Checker
+	Scripts     []checkinputs.Checker
 	ScriptInfo  []rule.Descriptor
 }
 

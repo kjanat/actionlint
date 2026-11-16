@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 type ownedBackend struct {
@@ -21,7 +21,7 @@ type ownedBackend struct {
 	closeContextError  error
 }
 
-func (b *ownedBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (b *ownedBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	if b.cancel != nil {
 		b.cancel()
 	}
@@ -65,7 +65,7 @@ func TestCheckOwnsLoadedBackendLifetime(t *testing.T) {
 			loads := 0
 			result, err := checking.Check(ctx, checking.Options{
 				WorkingDir: root, ConfigFile: config, SkipProjectConfig: true,
-				LoadScriptEngine: func(context.Context, string) (inputs.ScriptBackend, error) { loads++; return backend, nil }, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}),
+				LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads++; return backend, nil }, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}),
 			}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo one\n      - run: echo two\n")})
 			if loads != 1 || backend.closed != 1 || backend.closeContextError != nil {
 				t.Fatalf("loads=%d closes=%d cleanup context=%v", loads, backend.closed, backend.closeContextError)

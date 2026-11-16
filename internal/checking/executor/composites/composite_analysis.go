@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
@@ -42,9 +42,9 @@ import (
 // compositionSession owns the graph and accumulated results shared by invocations.
 type compositionSession struct {
 	bindSource             func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
-	scriptInputs           []inputs.ScriptInput
-	scriptInputsForScope   func(*rulebinding.Scope) ([]inputs.ScriptInput, error)
-	scriptCatalogues       map[*rulebinding.Scope][]inputs.ScriptInput
+	scriptInputs           []checkinputs.ScriptInput
+	scriptInputsForScope   func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
+	scriptCatalogues       map[*rulebinding.Scope][]checkinputs.ScriptInput
 	runners                *runners.Knowledge
 	resolveScriptExecution bool
 	scripts                []scripts.ScriptRequest

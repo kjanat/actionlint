@@ -8,8 +8,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
 // ConfigureToolIntegrations replaces registered tools using declared contracts.
@@ -20,7 +20,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		return options, err
 	}
 	options.Tools = slices.Clone(options.Tools)
-	remaining := make([]inputs.Registration, 0, len(options.Analyzers))
+	remaining := make([]checkinputs.Registration, 0, len(options.Analyzers))
 	seen := make(map[string]bool, len(occupiedTools))
 	for _, name := range occupiedTools {
 		seen[name] = true
@@ -34,7 +34,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		}
 	}
 	for _, registration := range options.Analyzers {
-		integrator, ok := registration.Checker.(inputs.ToolIntegrator)
+		integrator, ok := registration.Checker.(checkinputs.ToolIntegrator)
 		if !ok || integrator.ToolIntegration() == nil {
 			remaining = append(remaining, registration)
 			continue
@@ -79,16 +79,16 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 
 // boundToolAnalyzer keeps caller options opaque until guest negotiation.
 type boundToolAnalyzer struct {
-	inputs.Checker
-	integrator inputs.ToolIntegrator
+	checkinputs.Checker
+	integrator checkinputs.ToolIntegrator
 	options    json.RawMessage
 }
 
-func (b boundToolAnalyzer) ToolIntegration() *inputs.ToolIntegration {
+func (b boundToolAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {
 	return b.integrator.ToolIntegration()
 }
 
-func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	effective := configured
 	if len(b.options) != 0 {
 		effective = b.options
@@ -101,7 +101,7 @@ func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured
 	return b.integrator.NegotiateTool(ctx, config, slices.Clone(effective))
 }
 
-func validateAnalyzerRegistrations(registrations []inputs.Registration) error {
+func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {
 	for _, registration := range registrations {
 		if validation.IsNil(registration.Checker) {
 			return errors.New("nil analyzer registration")

@@ -9,22 +9,22 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type suppressionCompletionProbe struct{ failure error }
 
-func (suppressionCompletionProbe) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (suppressionCompletionProbe) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "completion-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (probe suppressionCompletionProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Path == "failing.yml" {
 		return nil, probe.failure
 	}
@@ -37,7 +37,7 @@ func TestUnusedSuppressionsRequireCompletedAnalysis(t *testing.T) {
 	cause := errors.New("scanner unavailable")
 	result, err := Analyze(t.Context(), Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []inputs.Registration{{Checker: suppressionCompletionProbe{cause}}},
+		Analyzers:  []checkinputs.Registration{{Checker: suppressionCompletionProbe{cause}}},
 	}, []workspace.InputFile{
 		{Path: "failing.yml", Content: []byte(prefix + "      - run: echo ok # ignore completion-probe\npermissions: {}\n")},
 		{Path: "complete.yml", Content: []byte(prefix + "      - run: echo ok # ignore expression-reference\npermissions: {}\n")},

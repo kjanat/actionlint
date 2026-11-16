@@ -1,9 +1,9 @@
 package scripts
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -14,6 +14,6 @@ func runBody(text string, key *source.Position) *definition.ExecRun {
 
 // actionInput returns the action input site whose value is text and whose
 // input name is at key.
-func actionInput(site inputs.ScriptInput, text string, key *source.Position) *scripts.ActionInput {
+func actionInput(site checkinputs.ScriptInput, text string, key *source.Position) *scripts.ActionInput {
 	return &scripts.ActionInput{Site: site, Value: &definition.ActionArgument{Name: &definition.String{Value: site.Input, Pos: key}, Value: &definition.String{Value: text}}}
 }

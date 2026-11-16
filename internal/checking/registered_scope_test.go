@@ -4,21 +4,21 @@ import (
 	"context"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type sourceScopedChecker struct{}
 
-func (sourceScopedChecker) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "source-check", Category: "correctness", Maturity: "stable", Recommended: true, Scope: rule.SourceConfiguration, SupportsActions: true, RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations}}
+func (sourceScopedChecker) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "source-check", Category: "correctness", Maturity: "stable", Recommended: true, Scope: rule.SourceConfiguration, SupportsActions: true, RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations}}
 }
 
-func (sourceScopedChecker) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (sourceScopedChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
-	for _, scripts := range [][]inputs.Script{input.Scripts, input.Invoked} {
+	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {
 			findings = append(findings, results.Diagnostic{Reference: &script.Reference, Path: script.Path, Rule: "source-check", Message: "source-scoped finding", Start: script.Start})
 		}
@@ -36,7 +36,7 @@ func TestRegisteredSourceScopeUsesActionConfiguration(t *testing.T) {
 	for _, path := range []string{action, workflow} {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
-			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []inputs.Registration{{Checker: sourceScopedChecker{}}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: sourceScopedChecker{}}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}

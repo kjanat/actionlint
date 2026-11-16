@@ -7,21 +7,21 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type namedFindingAnalyzer string
 
-func (a namedFindingAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: string(a), Category: "correctness"}
+func (a namedFindingAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: string(a), Category: "correctness"}
 }
 
-func (namedFindingAnalyzer) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (namedFindingAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Message: "same observation", Start: source.Position{Line: 6, Column: 14}}}, nil
 }
 
@@ -29,7 +29,7 @@ func TestIndependentAnalyzerFindingsAndInferredEnds(t *testing.T) {
 	t.Parallel()
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []inputs.Registration{
+		checking.Options{Analyzers: []checkinputs.Registration{
 			{Checker: namedFindingAnalyzer("first")}, {Checker: namedFindingAnalyzer("second")},
 		}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 	)
@@ -59,7 +59,7 @@ func TestPublicOverlayChangesFileAnalysis(t *testing.T) {
 	}
 	options := checking.Options{
 		WorkingDir:        root,
-		Analyzers:         []inputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
+		Analyzers:         []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
 	baseline, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})

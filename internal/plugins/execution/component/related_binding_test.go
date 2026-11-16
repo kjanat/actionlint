@@ -8,19 +8,19 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
 )
 
 type relatedProbe struct{ locations []results.Related }
 
-func (relatedProbe) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "example"}
+func (relatedProbe) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "example"}
 }
 
-func (p relatedProbe) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (p relatedProbe) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Rule: "example", Message: "primary", Path: "workflow.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Related: p.locations}}, nil
 }
 
@@ -47,9 +47,9 @@ func TestNativeAndWITRelatedRequestBindingAgree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := inputs.AnalyzerInput{Path: "workflow.yml", Revision: revision, Coordinates: source.YAML}
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Revision: revision, Coordinates: source.YAML}
 	locations := []results.Related{{Message: "same request", Path: input.Path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 1}}, {Message: "foreign", Path: "other.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 1}}}
-	native, nativeErr := executor.Run(t.Context(), input, []inputs.Registration{{Checker: relatedProbe{locations}}})
+	native, nativeErr := executor.Run(t.Context(), input, []checkinputs.Registration{{Checker: relatedProbe{locations}}})
 	wire, witErr := liftAnalysisForInput(wacogo.NewValRecord(field("diagnostics", wacogo.NewValListOf(wireRelatedDiagnostic(locations))), field("error", wacogo.ValOptionNone())), &input)
 	a, na := errors.AsType[*results.RejectedRelatedError](nativeErr)
 	b, nb := errors.AsType[*results.RejectedRelatedError](witErr)

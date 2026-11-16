@@ -15,9 +15,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -25,18 +25,18 @@ import (
 
 type occurrenceGuest struct{ documentGuest }
 
-func (g *occurrenceGuest) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (g *occurrenceGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	return nil, nil
 }
 
-type occurrenceObserver struct{ input inputs.AnalyzerInput }
+type occurrenceObserver struct{ input checkinputs.AnalyzerInput }
 
-func (*occurrenceObserver) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
+func (*occurrenceObserver) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "occurrence-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (observer *occurrenceObserver) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (observer *occurrenceObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	observer.input = input
 	return nil, nil
 }
@@ -89,15 +89,15 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 	if err := os.WriteFile(filename, []byte(workflow), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []inputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Stdin, Name: filename, Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(guest.inputs) != 3 || len(observer.input.Scripts) != 1 || len(observer.input.Invoked) != 2 {
 		t.Fatalf("missing executions: guest=%d root=%d invoked=%d", len(guest.inputs), len(observer.input.Scripts), len(observer.input.Invoked))
 	}
-	want := map[invocation.ID]inputs.Script{}
-	for _, scripts := range [][]inputs.Script{observer.input.Scripts, observer.input.Invoked} {
+	want := map[invocation.ID]checkinputs.Script{}
+	for _, scripts := range [][]checkinputs.Script{observer.input.Scripts, observer.input.Invoked} {
 		for _, script := range scripts {
 			want[script.Occurrence.ID] = script
 		}
@@ -128,7 +128,7 @@ func TestDocumentPluginUsesCanonicalOccurrences(t *testing.T) {
 	}
 }
 
-type actionInputObserver struct{ inputs []inputs.Script }
+type actionInputObserver struct{ inputs []checkinputs.Script }
 
 func (observer *actionInputObserver) Analyze(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	for index, script := range batch.Scripts {
@@ -153,7 +153,7 @@ func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 	}
 	route := contract.Registration{
 		Name: "input-observer", Category: "correctness", Recommended: true,
-		ScriptInputs: []inputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "javascript"}},
+		ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "javascript"}},
 		Build:        func(contract.Context) (contract.Runner, error) { return observer, nil },
 	}
 	const workflow = "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo shell}, {shell: python, run: 'print(1)'}, {uses: actions/github-script@v7, with: {script: 'return 1'}}]}}\npermissions: {}\n"
@@ -203,7 +203,7 @@ func TestDocumentPluginRetainsStandaloneActionEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []inputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	_, err = checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{registration}, Analyzers: []checkinputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
 	if err != nil {
 		t.Fatal(err)
 	}

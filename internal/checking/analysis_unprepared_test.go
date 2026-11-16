@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -15,11 +15,11 @@ import (
 
 type sourceOnlyProbe struct{ content string }
 
-func (sourceOnlyProbe) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (sourceOnlyProbe) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "source-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (p sourceOnlyProbe) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (p sourceOnlyProbe) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Content != p.content || len(input.AvailableInputs) != 1 {
 		return nil, errors.New("source-only input changed")
 	}
@@ -50,7 +50,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 				t.Fatalf("missing preparation error: %v", err)
 			}
 			var used []rule.Descriptor
-			findings, err := runDocumentAnalyzers(t.Context(), []inputs.Registration{{Checker: sourceOnlyProbe{content}}}, input, nil, &used)
+			findings, err := runDocumentAnalyzers(t.Context(), []checkinputs.Registration{{Checker: sourceOnlyProbe{content}}}, input, nil, &used)
 			if err != nil || len(findings) != 1 || findings[0].Message != "reported source finding" {
 				t.Fatalf("source analyzer skipped: %v %v", findings, err)
 			}

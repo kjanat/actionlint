@@ -10,10 +10,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 type negotiationObserver struct {
@@ -21,7 +21,7 @@ type negotiationObserver struct {
 	calls int
 }
 
-func (guest *negotiationObserver) NegotiateTool(ctx context.Context, data, version json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (guest *negotiationObserver) NegotiateTool(ctx context.Context, data, version json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	guest.calls++
 	return guest.fallbackGuest.NegotiateTool(ctx, data, version)
 }
@@ -39,10 +39,10 @@ func TestDocumentBatchRejectsAlteredOccurrenceBeforeNegotiation(t *testing.T) {
 			guest := &negotiationObserver{}
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-				context: contract.Context{Document: inputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+				context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 			}
 			_, err := runner.Analyze(t.Context(), batch)
-			if !errors.Is(err, inputs.ErrInvalidCallGraph) {
+			if !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
 				t.Fatalf("altered occurrence accepted: %v", err)
 			}
 			if guest.calls != 0 {
@@ -59,9 +59,9 @@ func TestDocumentBatchRejectsMismatchedHeaderBeforeNegotiation(t *testing.T) {
 	wrong.Revision = "wrong"
 	for _, reference := range []source.Reference{{}, wrong} {
 		guest := &negotiationObserver{}
-		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: inputs.AnalyzerInput{Reference: reference}}}
+		runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: reference}}}
 		_, err := runner.Analyze(t.Context(), batch)
-		if !errors.Is(err, inputs.ErrInvalidCallGraph) || guest.calls != 0 {
+		if !errors.Is(err, checkinputs.ErrInvalidCallGraph) || guest.calls != 0 {
 			t.Fatalf("mismatched or absent header reached negotiation: calls=%d err=%v", guest.calls, err)
 		}
 	}
@@ -76,12 +76,12 @@ func TestDocumentBatchHeaderRequiredForSkippedInputs(t *testing.T) {
 	batch.Scripts[0].Reference = graph.Scripts()[0].Declaration
 	batch.Scripts[0].Run, batch.Scripts[0].Execution = nil, nil
 	batch.Scripts[0].Input = &scripts.ActionInput{
-		Site:  inputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"},
+		Site:  checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"},
 		Value: &definition.ActionArgument{Name: &definition.String{Value: "script"}, Value: &definition.String{Value: "echo test"}},
 	}
 	guest := &negotiationObserver{}
 	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest}
-	if _, err := runner.Analyze(t.Context(), batch); !errors.Is(err, inputs.ErrInvalidCallGraph) {
+	if _, err := runner.Analyze(t.Context(), batch); !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
 		t.Fatalf("skipped inputs accepted absent header: %v", err)
 	}
 	runner.context.Document.Reference = graph.Entry().Reference

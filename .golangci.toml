@@ -148,7 +148,7 @@ linters = ["dupword", "forcetypeassert", "prealloc", "unparam"]
 
 # testing.AllocsPerRun panics while a parallel test runs.
 [[linters.exclusions.rules]]
-path    = '^internal/(checking/inputs/input_selection_cost|input/source/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
+path    = '^internal/(model/checkinputs/input_selection_cost|input/source/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
 text    = "(Function|test) Test(SelectedInvocationValidationAllocationBound|VerifyHandleRejectsForeignAndQuarantinedEvidence|SemanticAccessorsDoNotCopySourceBytes|WorkflowAdmissionDoesNotGrowWithAliasExpansion) missing"
 linters = ["paralleltest"]
 

@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 // Limits shared with the component script-engine host.
@@ -31,10 +31,10 @@ type Decoder interface {
 // the engine ran, from which relative sources resolve; decoders leave it
 // empty and Backend sets it.
 type DecodedCheck struct {
-	Diagnostics []inputs.ScriptDiagnostic `json:"diagnostics"`
-	Sources     []string                  `json:"sources,omitempty"`
-	Errors      []string                  `json:"errors,omitempty"`
-	Directory   string                    `json:"-"`
+	Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
+	Sources     []string                       `json:"sources,omitempty"`
+	Errors      []string                       `json:"errors,omitempty"`
+	Directory   string                         `json:"-"`
 }
 
 // checkInput rejects stdout larger than any decoder accepts.

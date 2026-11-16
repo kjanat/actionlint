@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scriptcoords"
@@ -26,17 +26,17 @@ const (
 )
 
 var (
-	_ inputs.ScriptBackend         = (*Plugin)(nil)
-	_ inputs.ScriptConfigValidator = (*Plugin)(nil)
+	_ checkinputs.ScriptBackend         = (*Plugin)(nil)
+	_ checkinputs.ScriptConfigValidator = (*Plugin)(nil)
 )
 
 // HasScriptEngine reports whether the component implements the snippet role.
 func (p *Plugin) HasScriptEngine() bool { return p.scriptDescriptor != nil }
 
 // ScriptDescriptor returns transport-independent snippet engine metadata.
-func (p *Plugin) ScriptDescriptor() inputs.ScriptEngineDescriptor {
+func (p *Plugin) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 	if p.scriptDescriptor == nil {
-		return inputs.ScriptEngineDescriptor{}
+		return checkinputs.ScriptEngineDescriptor{}
 	}
 	return p.scriptDescriptor.Clone()
 }
@@ -68,7 +68,7 @@ func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte)
 		return err
 	}
 	contract, ok := value.(wacogo.ValString)
-	if !ok || string(contract) != inputs.TemplateEffectsContract {
+	if !ok || string(contract) != checkinputs.TemplateEffectsContract {
 		return errors.New("unsupported template effects contract")
 	}
 	if err := verifyTemplateMetadata(staticMetadata, string(contract)); err != nil {
@@ -139,7 +139,7 @@ func scriptOptions(config json.RawMessage) (string, error) {
 // A script-engine 0.3.0 engine also receives the excluded codes and, when it
 // requested the directory resource and the request carries a directory
 // grant, that grant mounted read-only for this call.
-func (p *Plugin) Check(ctx context.Context, request inputs.ScriptRequest) (diagnostics []inputs.ScriptDiagnostic, err error) {
+func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (diagnostics []checkinputs.ScriptDiagnostic, err error) {
 	if !p.HasScriptEngine() {
 		return nil, errors.New("component does not implement the script-engine role")
 	}
@@ -192,10 +192,10 @@ func (p *Plugin) Check(ctx context.Context, request inputs.ScriptRequest) (diagn
 	}
 	lines := scriptLineWidths(request.Source)
 	starts := scriptLineStarts(request.Source)
-	diagnostics = make([]inputs.ScriptDiagnostic, 0, list.Len())
+	diagnostics = make([]checkinputs.ScriptDiagnostic, 0, list.Len())
 	for i := range list.Len() {
 		value := list.Get(i)
-		var effect inputs.ScriptTemplateEffect
+		var effect checkinputs.ScriptTemplateEffect
 		if p.scriptDescriptor.TemplateContract != "" {
 			wrapped, err := liftRecord(value, "template finding")
 			if err != nil {
@@ -206,7 +206,7 @@ func (p *Plugin) Check(ctx context.Context, request inputs.ScriptRequest) (diagn
 			if err != nil {
 				return nil, err
 			}
-			effect = inputs.ScriptTemplateEffect(tag)
+			effect = checkinputs.ScriptTemplateEffect(tag)
 			if !effect.Valid() {
 				return nil, errors.New("unknown template effect")
 			}
@@ -262,30 +262,30 @@ func scriptLineWidths(source string) []int {
 	return widths
 }
 
-func scriptLineStarts(source string) []inputs.ScriptPosition {
+func scriptLineStarts(source string) []checkinputs.ScriptPosition {
 	return scriptcoords.Starts(source)
 }
 
-func scriptSourcePosition(starts []inputs.ScriptPosition, position inputs.ScriptPosition) inputs.ScriptPosition {
+func scriptSourcePosition(starts []checkinputs.ScriptPosition, position checkinputs.ScriptPosition) checkinputs.ScriptPosition {
 	return scriptcoords.SourcePosition(starts, position)
 }
 
-func validScriptPosition(lines []int, position inputs.ScriptPosition) bool {
+func validScriptPosition(lines []int, position checkinputs.ScriptPosition) bool {
 	return position.Row > 0 && position.Row <= len(lines) && position.Column > 0 &&
 		position.Column <= lines[position.Row-1]+1
 }
 
-func liftScriptPosition(value wacogo.Val) (inputs.ScriptPosition, error) {
+func liftScriptPosition(value wacogo.Val) (checkinputs.ScriptPosition, error) {
 	r, err := liftRecord(value, "script position")
 	if err != nil {
-		return inputs.ScriptPosition{}, err
+		return checkinputs.ScriptPosition{}, err
 	}
 	row, rowOK := r.Field("row").(wacogo.ValU32)
 	column, columnOK := r.Field("column").(wacogo.ValU32)
 	if !rowOK || !columnOK || uint64(row) > math.MaxInt || uint64(column) > math.MaxInt {
-		return inputs.ScriptPosition{}, errors.New("invalid script position")
+		return checkinputs.ScriptPosition{}, errors.New("invalid script position")
 	}
-	return inputs.ScriptPosition{Row: int(row), Column: int(column)}, nil
+	return checkinputs.ScriptPosition{Row: int(row), Column: int(column)}, nil
 }
 
 func liftScriptOptionalString(value wacogo.Val, name string) (*string, error) {
@@ -306,10 +306,10 @@ func liftScriptOptionalString(value wacogo.Val, name string) (*string, error) {
 
 // liftScriptDiagnostic lifts a script-engine 0.2.0 diagnostic, whose
 // severity is an enum.
-func liftScriptDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
+func liftScriptDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
-		return inputs.ScriptDiagnostic{}, err
+		return checkinputs.ScriptDiagnostic{}, err
 	}
 	d, err := liftScriptDiagnosticFields(r)
 	if err != nil {
@@ -321,8 +321,8 @@ func liftScriptDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
 
 // liftScriptDiagnosticFields lifts the diagnostic fields every
 // script-engine version shares.
-func liftScriptDiagnosticFields(r *wacogo.ValRecord) (inputs.ScriptDiagnostic, error) {
-	var d inputs.ScriptDiagnostic
+func liftScriptDiagnosticFields(r *wacogo.ValRecord) (checkinputs.ScriptDiagnostic, error) {
+	var d checkinputs.ScriptDiagnostic
 	var err error
 	for name, dest := range map[string]*string{"filename": &d.Filename, "code": &d.Code, "name": &d.Name, "message": &d.Message} {
 		if *dest, err = liftString(r, name); err != nil {
@@ -342,12 +342,12 @@ func liftScriptDiagnosticFields(r *wacogo.ValRecord) (inputs.ScriptDiagnostic, e
 	return d, err
 }
 
-func liftScriptDescriptor(value wacogo.Val, reserved rule.Names) (inputs.ScriptEngineDescriptor, error) {
+func liftScriptDescriptor(value wacogo.Val, reserved rule.Names) (checkinputs.ScriptEngineDescriptor, error) {
 	r, err := liftRecord(value, "script descriptor")
 	if err != nil {
-		return inputs.ScriptEngineDescriptor{}, err
+		return checkinputs.ScriptEngineDescriptor{}, err
 	}
-	var d inputs.ScriptEngineDescriptor
+	var d checkinputs.ScriptEngineDescriptor
 	for name, dest := range map[string]*string{"id": &d.ID, "version": &d.Version, "name": &d.Name, "engine": &d.Engine, "engine-version": &d.EngineVersion} {
 		if *dest, err = liftString(r, name); err != nil {
 			return d, err
@@ -433,7 +433,7 @@ func liftScriptRule(value wacogo.Val) (rule.Descriptor, error) {
 // verifyScriptMetadata checks the artifact's static metadata against the
 // descriptor the engine exported through iface, and takes the action-input
 // selectors only the static metadata declares.
-func verifyScriptMetadata(data []byte, iface string, d *inputs.ScriptEngineDescriptor) error {
+func verifyScriptMetadata(data []byte, iface string, d *checkinputs.ScriptEngineDescriptor) error {
 	if data == nil {
 		if len(d.Shells) == 0 {
 			return errors.New("script descriptor needs shell or static action-input selectors")
@@ -454,12 +454,12 @@ func verifyScriptMetadata(data []byte, iface string, d *inputs.ScriptEngineDescr
 			Version string `json:"version"`
 		} `json:"engine"`
 		Capabilities struct {
-			ScriptShells    []string                  `json:"script_shells"`
-			ScriptInputs    []inputs.ScriptInput      `json:"script_inputs"`
-			Fixes           bool                      `json:"fixes"`
-			ReportedSources bool                      `json:"reported_sources"`
-			Resources       []inputs.ToolResourceKind `json:"resources"`
-			Format          bool                      `json:"format"`
+			ScriptShells    []string                       `json:"script_shells"`
+			ScriptInputs    []checkinputs.ScriptInput      `json:"script_inputs"`
+			Fixes           bool                           `json:"fixes"`
+			ReportedSources bool                           `json:"reported_sources"`
+			Resources       []checkinputs.ToolResourceKind `json:"resources"`
+			Format          bool                           `json:"format"`
 		} `json:"capabilities"`
 	}
 	if err := jsonv2.Unmarshal(data, &declared); err != nil {
@@ -488,7 +488,7 @@ func verifyScriptMetadata(data []byte, iface string, d *inputs.ScriptEngineDescr
 	if !reflect.DeepEqual(declaredRule, runtimeRule) {
 		return errors.New("script engine static rule metadata disagrees with its typed descriptor")
 	}
-	if err := inputs.ValidateScriptInputs(declared.Capabilities.ScriptInputs); err != nil {
+	if err := checkinputs.ValidateScriptInputs(declared.Capabilities.ScriptInputs); err != nil {
 		return fmt.Errorf("script engine static input selectors: %w", err)
 	}
 	if len(d.Shells)+len(declared.Capabilities.ScriptInputs) == 0 {

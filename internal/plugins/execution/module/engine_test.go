@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"github.com/kjanat/wazero/api"
 	"github.com/kjanat/wazero/experimental"
@@ -49,23 +49,23 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 	if engine.Limits() != (module.Limits{Timeout: module.DefaultTimeout, MemoryPages: module.DefaultMemoryPages}) {
 		t.Fatalf("limits=%+v", engine.Limits())
 	}
-	diagnostics, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "label = 'é🦀'; print(missing)\n", Filename: "workflow.step.py", Config: json.RawMessage(`{"lint":{"select":["F821"]}}`)})
+	diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "label = 'é🦀'; print(missing)\n", Filename: "workflow.step.py", Config: json.RawMessage(`{"lint":{"select":["F821"]}}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := inputs.ScriptDiagnostic{
+	want := checkinputs.ScriptDiagnostic{
 		Filename: "workflow.step.py", Code: "F821", Name: "undefined-name", Severity: "error", Message: "Undefined name `missing`",
-		Location: inputs.ScriptPosition{Row: 1, Column: 21}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 28},
+		Location: checkinputs.ScriptPosition{Row: 1, Column: 21}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 28},
 		URL: "https://docs.astral.sh/ruff/rules/undefined-name/",
 	}
 	if len(diagnostics) != 1 || !reflect.DeepEqual(diagnostics[0], want) {
 		t.Fatalf("diagnostics=%+v", diagnostics)
 	}
-	clean, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print('ok')\n", Filename: "step.py"})
+	clean, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print('ok')\n", Filename: "step.py"})
 	if err != nil || len(clean) != 0 {
 		t.Fatalf("clean=%+v err=%v", clean, err)
 	}
-	if _, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "x\n", Filename: "step.py", Config: json.RawMessage(`{"select":["FAKE999"]}`)}); err == nil || err.Error() != "engine actionlint-engine-echo: invalid Ruff config: unknown rule selector FAKE" {
+	if _, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "x\n", Filename: "step.py", Config: json.RawMessage(`{"select":["FAKE999"]}`)}); err == nil || err.Error() != "engine actionlint-engine-echo: invalid Ruff config: unknown rule selector FAKE" {
 		t.Fatalf("config error=%v", err)
 	}
 	if err := engine.ValidateConfig(t.Context(), json.RawMessage(`{"lint":{"select":["F821"]}}`)); err != nil {
@@ -77,7 +77,7 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 	if err := engine.ValidateConfig(t.Context(), json.RawMessage(`{"select":["FAKE999"]}`)); err == nil || !strings.HasSuffix(err.Error(), "unknown rule selector FAKE") {
 		t.Fatalf("validate error=%v", err)
 	}
-	if _, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: strings.Repeat("x", 9*1024*1024), Filename: "step.py"}); err == nil || !strings.Contains(err.Error(), "exceeds the engine limit of 8388608 bytes") {
+	if _, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: strings.Repeat("x", 9*1024*1024), Filename: "step.py"}); err == nil || !strings.Contains(err.Error(), "exceeds the engine limit of 8388608 bytes") {
 		t.Fatalf("limit error=%v", err)
 	}
 }
@@ -109,7 +109,7 @@ func TestGzipModuleLoads(t *testing.T) {
 func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 	t.Parallel()
 	engine := loadEngine(t, enginePath("echo"), module.Options{})
-	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "missing # partial", Filename: "step.py"})
+	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing # partial", Filename: "step.py"})
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete") {
 		t.Fatalf("missing completion failure: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestFailuresDiscardTheInstance(t *testing.T) {
 		"grow":  "engine actionlint-engine-echo failed (memory 4 MiB, time 10s)",
 		"error": "",
 	} {
-		_, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: source, Filename: "step.py"})
+		_, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: source, Filename: "step.py"})
 		if want == "" {
 			if err != nil {
 				t.Fatalf("%s: err=%v", source, err)
@@ -139,14 +139,14 @@ func TestFailuresDiscardTheInstance(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Fatalf("%s: err=%v", source, err)
 		}
-		recovered, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+		recovered, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 		if err != nil || len(recovered) != 1 {
 			t.Fatalf("after %s: diagnostics=%+v err=%v", source, recovered, err)
 		}
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := engine.Check(ctx, inputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
+	if _, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled: err=%v", err)
 	}
 }
@@ -179,10 +179,10 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	if _, err := engine.Check(callCtx, inputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
+	if _, err := engine.Check(callCtx, checkinputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled guest: %v", err)
 	}
-	recovered, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	recovered, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(recovered) != 1 {
 		t.Fatalf("after cancellation: diagnostics=%+v err=%v", recovered, err)
 	}
@@ -199,7 +199,7 @@ func TestConcurrentChecks(t *testing.T) {
 	for range 8 {
 		wg.Go(func() {
 			for range 4 {
-				diagnostics, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+				diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 				if err == nil && (len(diagnostics) != 1 || diagnostics[0].Location.Column != 7) {
 					err = errors.New("unexpected diagnostics")
 				}
@@ -248,7 +248,7 @@ func TestClosedEngineRejectsCalls(t *testing.T) {
 	if err := engine.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "x", Filename: "step.py"}); err == nil {
+	if _, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "x", Filename: "step.py"}); err == nil {
 		t.Fatal("check succeeded after close")
 	}
 }
@@ -298,7 +298,7 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 	if initializedDeadline.Before(compiledAt.Add(timeout)) {
 		t.Fatalf("guest deadline %s includes compilation time observed at %s", initializedDeadline, compiledAt)
 	}
-	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
 		t.Fatalf("compiled engine failed: findings=%+v err=%v", findings, err)
 	}
@@ -350,7 +350,7 @@ func TestCleanupFailureDiscardsInstance(t *testing.T) {
 			// Trap fixtures fail only their first deallocation. Both calls must
 			// fail, proving the second call receives a fresh instance.
 			for range 2 {
-				_, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "hello", Filename: "step.py"})
+				_, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "hello", Filename: "step.py"})
 				if err == nil || !strings.Contains(err.Error(), "engine lifecycle") {
 					t.Fatalf("cleanup failure was lost: %v", err)
 				}

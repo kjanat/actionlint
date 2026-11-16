@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -15,15 +15,15 @@ import (
 // hashes. Local dependencies and Docker image references follow other policies.
 type Checker struct{}
 
-func (Checker) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{
+func (Checker) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{
 		Name:        "pinned-actions",
 		Description: "Pin remote dependencies to full commit hashes",
 		Category:    "security", RequiredInputs: []rule.InputKind{rule.Dependencies},
 	}
 }
 
-func (Checker) CheckDocument(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (Checker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, dependency := range input.Dependencies {
 		if err := ctx.Err(); err != nil {

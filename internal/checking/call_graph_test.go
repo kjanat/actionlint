@@ -8,22 +8,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type callGraphCollector struct {
 	mu     sync.Mutex
-	inputs []inputs.AnalyzerInput
+	inputs []checkinputs.AnalyzerInput
 }
 
-func (*callGraphCollector) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
+func (*callGraphCollector) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "call-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
 }
 
-func (collector *callGraphCollector) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (collector *callGraphCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	collector.mu.Lock()
 	defer collector.mu.Unlock()
 	collector.inputs = append(collector.inputs, input)
@@ -40,7 +40,7 @@ func TestAnalyzerReceivesDistinctNestedOccurrences(t *testing.T) {
 	writeFixture(t, root, "middle/action.yml", "name: middle\ndescription: middle\nruns: {using: composite, steps: [{uses: $/inner}]}\n")
 	writeFixture(t, root, "inner/action.yml", "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n")
 	collector := &callGraphCollector{}
-	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Analyzers: []inputs.Registration{{Checker: collector}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+	_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: collector}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}

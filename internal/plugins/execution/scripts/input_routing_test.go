@@ -8,11 +8,11 @@ import (
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
@@ -27,7 +27,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	t.Parallel()
 	disabled, enabled := &configuration.Config{}, &configuration.Config{}
 	disabled.Overrides = []configuration.Override{{Includes: []string{"other/**"}}}
-	site := inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
 	registration := contract.Registration{
 		Name: "tool",
 		Enabled: func(c contract.Context) bool {
@@ -47,14 +47,14 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	}
 	disabled.Tools = configuration.ToolsConfig{"ruff": {Enabled: new(false)}}
 	calls := 0
-	backend := routingBackend(func(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	backend := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		calls++
 		if request.Source != "enabled" {
 			t.Fatalf("disabled source reached backend: %q", request.Source)
 		}
-		return []inputs.ScriptDiagnostic{{Message: "input", Location: inputs.ScriptPosition{Row: 1, Column: 1}}}, nil
+		return []checkinputs.ScriptDiagnostic{{Message: "input", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}, nil
 	})
-	registration, err := WithScriptInputs(registration, inputs.ScriptEngineDescriptor{Rule: registration.Descriptor, ScriptInputs: []inputs.ScriptInput{site}}, backend)
+	registration, err := WithScriptInputs(registration, checkinputs.ScriptEngineDescriptor{Rule: registration.Descriptor, ScriptInputs: []checkinputs.ScriptInput{site}}, backend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,15 +75,15 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	}
 }
 
-type routingBackend func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error)
+type routingBackend func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error)
 
-func (b routingBackend) Check(ctx context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (b routingBackend) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	return b(ctx, request)
 }
 
 func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	t.Parallel()
-	site := inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
 	registration := contract.Registration{
 		Name: "tool",
 		PrepareInput: func(_ context.Context, script scripts.Unit) (preparation.Prepared, error) {
@@ -100,17 +100,17 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 			}), nil
 		},
 	}
-	engine := routingBackend(func(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	engine := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		if request.Source != "# options\ninput" || string(request.Config) != `{"shell":"sh"}` {
 			t.Fatalf("prepared request changed: %+v", request)
 		}
-		return []inputs.ScriptDiagnostic{
-			{Message: "bad configuration", Location: inputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 2}},
-			{Message: "input", Location: inputs.ScriptPosition{Row: 2, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 2, Column: 2}},
-			{Message: "input without end", Location: inputs.ScriptPosition{Row: 2, Column: 1}},
+		return []checkinputs.ScriptDiagnostic{
+			{Message: "bad configuration", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 2}},
+			{Message: "input", Location: checkinputs.ScriptPosition{Row: 2, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 2, Column: 2}},
+			{Message: "input without end", Location: checkinputs.ScriptPosition{Row: 2, Column: 1}},
 		}, nil
 	})
-	registration, err := WithScriptInputs(registration, inputs.ScriptEngineDescriptor{Rule: registration.Descriptor, Shells: []string{"bash"}, ScriptInputs: []inputs.ScriptInput{site}}, engine)
+	registration, err := WithScriptInputs(registration, checkinputs.ScriptEngineDescriptor{Rule: registration.Descriptor, Shells: []string{"bash"}, ScriptInputs: []checkinputs.ScriptInput{site}}, engine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,8 +127,8 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 	t.Parallel()
 	nativeFailure, inputFailure := errors.New("native incomplete"), errors.New("input incomplete")
-	site := inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
-	descriptor := inputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ScriptInputs: []inputs.ScriptInput{site}}
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
+	descriptor := checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"bash"}, ScriptInputs: []checkinputs.ScriptInput{site}}
 	nativeCalls, inputCalls := 0, 0
 	registration := contract.Registration{Descriptor: descriptor.Rule, RequiresExecution: true, Build: func(contract.Context) (contract.Runner, error) {
 		return routingRunner(func(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
@@ -139,12 +139,12 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 			return []contract.ToolFinding{{Rule: "tool", Message: "native", Script: 0}}, nativeFailure
 		}), nil
 	}}
-	engine := routingBackend(func(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	engine := routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		inputCalls++
 		if request.Source != "input" || request.Filename != inputFilename(site, "") {
 			t.Fatalf("input route analyzed a native run: %+v", request)
 		}
-		return []inputs.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: inputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 2}}}, inputFailure
+		return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 2}}}, inputFailure
 	})
 	registration, err := WithScriptInputs(registration, descriptor, engine)
 	if err != nil {
@@ -173,14 +173,14 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 
 func TestInputFilterCannotHideForeignSource(t *testing.T) {
 	t.Parallel()
-	site := inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	registration := contract.Registration{Name: "tool", PrepareInput: func(_ context.Context, script scripts.Unit) (preparation.Prepared, error) {
-		return preparation.Prepared{Source: script.Text(), AcceptDiagnostic: func(inputs.ScriptDiagnostic) bool { return false }}, nil
+		return preparation.Prepared{Source: script.Text(), AcceptDiagnostic: func(checkinputs.ScriptDiagnostic) bool { return false }}, nil
 	}, Build: func(contract.Context) (contract.Runner, error) { return routingEmpty{}, nil }}
-	engine := routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
-		return []inputs.ScriptDiagnostic{{Filename: "foreign.py", Code: "F821", Message: "synthetic"}}, nil
+	engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+		return []checkinputs.ScriptDiagnostic{{Filename: "foreign.py", Code: "F821", Message: "synthetic"}}, nil
 	})
-	registration, err := WithScriptInputs(registration, inputs.ScriptEngineDescriptor{ScriptInputs: []inputs.ScriptInput{site}}, engine)
+	registration, err := WithScriptInputs(registration, checkinputs.ScriptEngineDescriptor{ScriptInputs: []checkinputs.ScriptInput{site}}, engine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,17 +196,17 @@ func TestInputFilterCannotHideForeignSource(t *testing.T) {
 
 func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 	t.Parallel()
-	site := inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
-	for _, templateContract := range []string{"", "unknown", inputs.TemplateEffectsContract} {
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
+	for _, templateContract := range []string{"", "unknown", checkinputs.TemplateEffectsContract} {
 		calls := 0
 		registration := contract.Registration{Name: "tool", PrepareInput: func(_ context.Context, script scripts.Unit) (preparation.Prepared, error) {
-			return preparation.Prepared{Source: script.Text(), TemplateContract: inputs.TemplateEffectsContract}, nil
+			return preparation.Prepared{Source: script.Text(), TemplateContract: checkinputs.TemplateEffectsContract}, nil
 		}, Build: func(contract.Context) (contract.Runner, error) { return routingEmpty{}, nil }}
-		engine := routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+		engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 			calls++
 			return nil, nil
 		})
-		registration, err := WithScriptInputs(registration, inputs.ScriptEngineDescriptor{TemplateContract: templateContract, ScriptInputs: []inputs.ScriptInput{site}}, engine)
+		registration, err := WithScriptInputs(registration, checkinputs.ScriptEngineDescriptor{TemplateContract: templateContract, ScriptInputs: []checkinputs.ScriptInput{site}}, engine)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +215,7 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err = runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Input: actionInput(site, "masked", nil)}}})
-		if templateContract == inputs.TemplateEffectsContract {
+		if templateContract == checkinputs.TemplateEffectsContract {
 			if err != nil || calls != 1 {
 				t.Fatalf("declared contract rejected: calls=%d err=%v", calls, err)
 			}
@@ -227,12 +227,12 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 
 func TestInputDeclaredContractRequiresExplicitEffect(t *testing.T) {
 	t.Parallel()
-	site := inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
-	for _, effect := range []inputs.ScriptTemplateEffect{"", "unknown", inputs.TemplateEffectNone} {
-		engine := routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
-			return []inputs.ScriptDiagnostic{{Code: "custom", Message: "finding", Location: inputs.ScriptPosition{Row: 1, Column: 1}, TemplateEffect: effect}}, nil
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
+	for _, effect := range []checkinputs.ScriptTemplateEffect{"", "unknown", checkinputs.TemplateEffectNone} {
+		engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+			return []checkinputs.ScriptDiagnostic{{Code: "custom", Message: "finding", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, TemplateEffect: effect}}, nil
 		})
-		registration, err := RegisterEngine(inputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, TemplateContract: inputs.TemplateEffectsContract, ScriptInputs: []inputs.ScriptInput{site}}, engine)
+		registration, err := RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}, TemplateContract: checkinputs.TemplateEffectsContract, ScriptInputs: []checkinputs.ScriptInput{site}}, engine)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,24 +241,24 @@ func TestInputDeclaredContractRequiresExplicitEffect(t *testing.T) {
 			t.Fatal(err)
 		}
 		findings, err := runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Input: actionInput(site, "source", &source.Position{Line: 1, Column: 1})}}})
-		if (err == nil) != (effect == inputs.TemplateEffectNone) || (len(findings) == 1) != (effect == inputs.TemplateEffectNone) {
+		if (err == nil) != (effect == checkinputs.TemplateEffectNone) || (len(findings) == 1) != (effect == checkinputs.TemplateEffectNone) {
 			t.Fatalf("effect %q: findings=%+v err=%v", effect, findings, err)
 		}
 	}
 }
 
 type describedRoutingBackend struct {
-	inputs.ScriptBackend
-	descriptor inputs.ScriptEngineDescriptor
+	checkinputs.ScriptBackend
+	descriptor checkinputs.ScriptEngineDescriptor
 }
 
-func (b describedRoutingBackend) ScriptDescriptor() inputs.ScriptEngineDescriptor {
+func (b describedRoutingBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 	return b.descriptor
 }
 
 func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 	t.Parallel()
-	engine := describedRoutingBackend{descriptor: inputs.ScriptEngineDescriptor{Engine: "tool"}}
+	engine := describedRoutingBackend{descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool"}}
 	registration := contract.Registration{Name: "tool", Build: func(contract.Context) (contract.Runner, error) {
 		return routingRunner(func(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 			if len(batch.Scripts) != 1 || batch.Scripts[0].Text() != "native" {
@@ -267,7 +267,7 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 			return []contract.ToolFinding{{Rule: "tool", Message: "native"}}, nil
 		}), nil
 	}}
-	registration = WithConfiguredEngine(registration, func(contract.Context) (inputs.ScriptBackend, error) { return engine, nil })
+	registration = WithConfiguredEngine(registration, func(contract.Context) (checkinputs.ScriptBackend, error) { return engine, nil })
 	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
@@ -276,7 +276,7 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 	if err != nil || len(findings) != 1 {
 		t.Fatalf("legacy native routing: %+v, %v", findings, err)
 	}
-	if _, err := RegisterEngine(inputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}}, engine); err == nil {
+	if _, err := RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "tool"}}, engine); err == nil {
 		t.Fatal("standalone engine without routes accepted")
 	}
 }
@@ -284,12 +284,12 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 	t.Parallel()
 	first, second := &configuration.Config{}, &configuration.Config{}
-	site := inputs.ScriptInput{Action: "owner/action", Input: "code", Language: "python"}
+	site := checkinputs.ScriptInput{Action: "owner/action", Input: "code", Language: "python"}
 	checks, nativeCalls := 0, 0
-	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		checks++
 		return nil, nil
-	}), descriptor: inputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "custom-rule"}, ScriptInputs: []inputs.ScriptInput{site}}}
+	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "custom-rule"}, ScriptInputs: []checkinputs.ScriptInput{site}}}
 	registration := WithConfiguredEngine(contract.Registration{Name: "tool", Build: func(contract.Context) (contract.Runner, error) {
 		return routingRunner(func(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 			nativeCalls++
@@ -298,7 +298,7 @@ func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 			}
 			return nil, nil
 		}), nil
-	}}, func(contract.Context) (inputs.ScriptBackend, error) { return engine, nil })
+	}}, func(contract.Context) (checkinputs.ScriptBackend, error) { return engine, nil })
 	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
@@ -317,10 +317,10 @@ func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) {
 	t.Parallel()
 	calls := 0
-	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	engine := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		t.Fatal("native route bypassed adapter")
 		return nil, nil
-	}), descriptor: inputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"python"}}}
+	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"python"}}}
 	registration := WithConfiguredEngine(contract.Registration{Name: "tool", Build: func(contract.Context) (contract.Runner, error) {
 		return routingRunner(func(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 			calls++
@@ -329,7 +329,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 			}
 			return nil, nil
 		}), nil
-	}}, func(contract.Context) (inputs.ScriptBackend, error) { return engine, nil })
+	}}, func(contract.Context) (checkinputs.ScriptBackend, error) { return engine, nil })
 	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
@@ -350,9 +350,9 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 func TestConfigureBindsLoaderOnce(t *testing.T) {
 	t.Parallel()
 	loads, nativeCalls := 0, 0
-	registration := contract.Registration{Name: "tool", ConfiguredBackend: func(contract.Context) (inputs.ScriptBackend, error) {
+	registration := contract.Registration{Name: "tool", ConfiguredBackend: func(contract.Context) (checkinputs.ScriptBackend, error) {
 		loads++
-		return routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+		return routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 			t.Fatal("native adapter bypassed")
 			return nil, nil
 		}), nil
@@ -376,13 +376,13 @@ func TestConfigureBindsLoaderOnce(t *testing.T) {
 func TestConfiguredRouteRejectsForeignEngineIdentity(t *testing.T) {
 	t.Parallel()
 	calls := 0
-	foreign := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	foreign := describedRoutingBackend{ScriptBackend: routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		calls++
 		return nil, nil
-	}), descriptor: inputs.ScriptEngineDescriptor{Engine: "other", Rule: rule.Descriptor{Name: "tool"}, ScriptInputs: []inputs.ScriptInput{{Action: "owner/action", Input: "source", Language: "python"}}}}
+	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "other", Rule: rule.Descriptor{Name: "tool"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/action", Input: "source", Language: "python"}}}}
 	registration := WithConfiguredEngine(contract.Registration{Name: "tool", Build: func(contract.Context) (contract.Runner, error) {
 		return routingEmpty{}, nil
-	}}, func(contract.Context) (inputs.ScriptBackend, error) { return foreign, nil })
+	}}, func(contract.Context) (checkinputs.ScriptBackend, error) { return foreign, nil })
 	if _, err := registration.InputSelectors(contract.Context{}); err == nil || !strings.Contains(err.Error(), `does not match tool "tool"`) {
 		t.Fatalf("foreign selectors accepted: %v", err)
 	}
@@ -390,7 +390,7 @@ func TestConfiguredRouteRejectsForeignEngineIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Input: actionInput(inputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}, "input", nil)}}})
+	_, err = runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Input: actionInput(checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}, "input", nil)}}})
 	if err == nil || calls != 0 {
 		t.Fatalf("foreign engine executed: calls=%d err=%v", calls, err)
 	}

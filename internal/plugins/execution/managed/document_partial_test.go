@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 type partialGuest struct {
@@ -20,12 +20,12 @@ type partialGuest struct {
 	failure       error
 }
 
-func (guest *partialGuest) NegotiateTool(ctx context.Context, data, options json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (guest *partialGuest) NegotiateTool(ctx context.Context, data, options json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	index := guest.calls
 	guest.calls++
 	if index == guest.failAt {
 		if guest.grant {
-			return &inputs.ToolNegotiation{Resources: []inputs.ToolResourceRequest{{Kind: inputs.ToolWorkspace}}}, nil
+			return &checkinputs.ToolNegotiation{Resources: []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}}}, nil
 		}
 		return nil, guest.failure
 	}
@@ -48,7 +48,7 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 			nativeCalls := 0
 			runner := documentRunner{
 				documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-				context: contract.Context{Document: inputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+				context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 				native: func(*configuration.Config) (contract.Runner, error) {
 					return fallbackRunner(func(_ context.Context, selected scripts.Batch) ([]contract.ToolFinding, error) {
 						nativeCalls++

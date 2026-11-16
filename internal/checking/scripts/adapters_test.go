@@ -10,11 +10,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
@@ -31,11 +31,11 @@ type sourceFactAnalyzer struct {
 	path string
 }
 
-func (a sourceFactAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "shellcheck"}
+func (a sourceFactAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "shellcheck"}
 }
 
-func (a sourceFactAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a sourceFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -155,11 +155,11 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 	}
 }
 
-func (a partialFactAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "test"}
+func (a partialFactAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "test"}
 }
 
-func (a partialFactAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a partialFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)

@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 type configurationEngine struct {
@@ -30,7 +30,7 @@ func (e *configurationEngine) ValidateConfig(_ context.Context, options json.Raw
 	return e.failure
 }
 
-func (e *configurationEngine) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (e *configurationEngine) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	e.checked++
 	return nil, nil
 }
@@ -67,7 +67,7 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 					if injected {
 						options = registry.Selections{"ruff": {Backend: engine}}
 					} else {
-						applicationOptions.LoadScriptEngine = func(context.Context, string) (inputs.ScriptBackend, error) { return engine, nil }
+						applicationOptions.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }
 					}
 					applicationOptions.Tools = registry.Registrations(options)
 					result, err := checking.Check(t.Context(), applicationOptions, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]})
@@ -88,7 +88,7 @@ func TestEngineConfigurationFailurePreventsCheck(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	failure := errors.New("engine rejected settings")
 	engine := &configurationEngine{failure: failure}
-	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (inputs.ScriptBackend, error) { return engine, nil }}
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }}
 	_, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]})
 	if !errors.Is(err, failure) || len(engine.validated) != 1 || engine.checked != 0 {
 		t.Fatalf("error=%v validations=%d checks=%d", err, len(engine.validated), engine.checked)

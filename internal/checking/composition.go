@@ -8,10 +8,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -65,9 +65,9 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 	return selected, nil
 }
 
-func (d documentChecks) inputSelectors(c contract.Context, scope *rulebinding.Scope) ([]inputs.ScriptInput, error) {
+func (d documentChecks) inputSelectors(c contract.Context, scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
 	c.ProjectConfig, c.ProjectRoot = nil, ""
-	var inputs []inputs.ScriptInput
+	var inputs []checkinputs.ScriptInput
 	for _, registration := range d.registeredTools {
 		cfg := scope.Rule(registration.Descriptor.Name).Config()
 		c.Config = cfg

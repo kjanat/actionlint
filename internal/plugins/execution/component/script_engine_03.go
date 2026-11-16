@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scriptcoords"
 	"github.com/kjanat/wacogo"
 )
@@ -17,7 +17,7 @@ const scriptDirectoryMount = "/directory"
 
 // liftScriptCapabilities reads the capabilities of a script-engine 0.3.0
 // descriptor into d.
-func liftScriptCapabilities(value wacogo.Val, d *inputs.ScriptEngineDescriptor) error {
+func liftScriptCapabilities(value wacogo.Val, d *checkinputs.ScriptEngineDescriptor) error {
 	r, err := liftRecord(value, "script capabilities")
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func liftScriptCapabilities(value wacogo.Val, d *inputs.ScriptEngineDescriptor) 
 		if err != nil {
 			return err
 		}
-		resource := inputs.ToolResourceKind(kind)
+		resource := checkinputs.ToolResourceKind(kind)
 		if slices.Contains(d.Resources, resource) {
 			return fmt.Errorf("script descriptor requests resource %q twice", kind)
 		}
@@ -48,7 +48,7 @@ func liftScriptCapabilities(value wacogo.Val, d *inputs.ScriptEngineDescriptor) 
 
 // scriptGrant is the filesystem access the host grants for one check.
 type scriptGrant struct {
-	files     []inputs.FileSystem
+	files     []checkinputs.FileSystem
 	directory string
 }
 
@@ -56,28 +56,28 @@ type scriptGrant struct {
 // engine requested the directory resource. The component never opens a
 // path itself: the caller confines the grant to the workspace and records
 // the reads. Without a grant the engine sees no files.
-func grantScriptResources(request inputs.ScriptRequest, d *inputs.ScriptEngineDescriptor) scriptGrant {
-	if request.DirectoryFS == nil || !slices.Contains(d.Resources, inputs.ToolDirectory) {
+func grantScriptResources(request checkinputs.ScriptRequest, d *checkinputs.ScriptEngineDescriptor) scriptGrant {
+	if request.DirectoryFS == nil || !slices.Contains(d.Resources, checkinputs.ToolDirectory) {
 		return scriptGrant{}
 	}
-	return scriptGrant{files: []inputs.FileSystem{{Path: scriptDirectoryMount, FS: request.DirectoryFS}}, directory: scriptDirectoryMount}
+	return scriptGrant{files: []checkinputs.FileSystem{{Path: scriptDirectoryMount, FS: request.DirectoryFS}}, directory: scriptDirectoryMount}
 }
 
 // staticScriptCapabilities are the capabilities static script metadata
 // declares.
 type staticScriptCapabilities struct {
-	Shells          []string                  `json:"script_shells"`
-	Fixes           bool                      `json:"fixes"`
-	ReportedSources bool                      `json:"reported_sources"`
-	Resources       []inputs.ToolResourceKind `json:"resources"`
+	Shells          []string                       `json:"script_shells"`
+	Fixes           bool                           `json:"fixes"`
+	ReportedSources bool                           `json:"reported_sources"`
+	Resources       []checkinputs.ToolResourceKind `json:"resources"`
 }
 
 // readStaticScriptCapabilities03 takes the script-engine 0.3.0
 // capabilities of static metadata into d.
-func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *inputs.ScriptEngineDescriptor) error {
+func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error {
 	d.Fixes, d.ReportedSources = declared.Fixes, declared.ReportedSources
 	for _, resource := range declared.Resources {
-		if resource != inputs.ToolDirectory || slices.Contains(d.Resources, resource) {
+		if resource != checkinputs.ToolDirectory || slices.Contains(d.Resources, resource) {
 			return fmt.Errorf("script descriptor requests invalid or duplicate resource %q", resource)
 		}
 		d.Resources = append(d.Resources, resource)
@@ -86,7 +86,7 @@ func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *inputs
 }
 
 // lowerScriptRequest03 builds a script-engine 0.3.0 request.
-func lowerScriptRequest03(request inputs.ScriptRequest, options string, grant scriptGrant) *wacogo.ValRecord {
+func lowerScriptRequest03(request checkinputs.ScriptRequest, options string, grant scriptGrant) *wacogo.ValRecord {
 	excluded := make([]wacogo.Val, len(request.Excluded))
 	for i, code := range request.Excluded {
 		excluded[i] = wacogo.ValString(code)
@@ -112,10 +112,10 @@ func validExcluded(codes []string) bool {
 
 // liftScriptDiagnostic03 lifts a script-engine 0.3.0 diagnostic, including
 // its reported source and fixes.
-func liftScriptDiagnostic03(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
+func liftScriptDiagnostic03(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
 	r, err := liftRecord(value, "script diagnostic")
 	if err != nil {
-		return inputs.ScriptDiagnostic{}, err
+		return checkinputs.ScriptDiagnostic{}, err
 	}
 	d, err := liftScriptDiagnosticFields(r)
 	if err != nil {
@@ -148,12 +148,12 @@ func liftScriptDiagnostic03(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
 	return d, nil
 }
 
-func liftScriptFix(value wacogo.Val) (inputs.ScriptFix, error) {
+func liftScriptFix(value wacogo.Val) (checkinputs.ScriptFix, error) {
 	r, err := liftRecord(value, "script fix")
 	if err != nil {
-		return inputs.ScriptFix{}, err
+		return checkinputs.ScriptFix{}, err
 	}
-	var fix inputs.ScriptFix
+	var fix checkinputs.ScriptFix
 	if fix.Description, err = liftString(r, "description"); err != nil {
 		return fix, err
 	}
@@ -181,7 +181,7 @@ func liftScriptFix(value wacogo.Val) (inputs.ScriptFix, error) {
 		if err != nil {
 			return fix, err
 		}
-		fix.Replacements = append(fix.Replacements, inputs.ScriptReplacement{Row: start.Row, Column: start.Column, EndRow: end.Row, EndColumn: end.Column, Text: text})
+		fix.Replacements = append(fix.Replacements, checkinputs.ScriptReplacement{Row: start.Row, Column: start.Column, EndRow: end.Row, EndColumn: end.Column, Text: text})
 	}
 	return fix, nil
 }
@@ -189,7 +189,7 @@ func liftScriptFix(value wacogo.Val) (inputs.ScriptFix, error) {
 // checkScriptDiagnostic03 validates the 0.3.0 parts of a diagnostic against
 // the engine's capabilities and this check's grant, and converts fix
 // positions to decoded-source rows as the diagnostic's own.
-func checkScriptDiagnostic03(d *inputs.ScriptDiagnostic, descriptor *inputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []inputs.ScriptPosition) error {
+func checkScriptDiagnostic03(d *checkinputs.ScriptDiagnostic, descriptor *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error {
 	if d.Severity == "" {
 		return errors.New("script engine returned a diagnostic without a severity")
 	}
@@ -212,7 +212,7 @@ func checkScriptDiagnostic03(d *inputs.ScriptDiagnostic, descriptor *inputs.Scri
 	for i := range d.Fixes {
 		for j := range d.Fixes[i].Replacements {
 			r := &d.Fixes[i].Replacements[j]
-			start, end := inputs.ScriptPosition{Row: r.Row, Column: r.Column}, inputs.ScriptPosition{Row: r.EndRow, Column: r.EndColumn}
+			start, end := checkinputs.ScriptPosition{Row: r.Row, Column: r.Column}, checkinputs.ScriptPosition{Row: r.EndRow, Column: r.EndColumn}
 			if !validScriptPosition(lines, start) || !validScriptPosition(lines, end) || !orderedScriptRange(start, end) {
 				return errors.New("script engine returned a fix with an invalid source range")
 			}
@@ -225,14 +225,14 @@ func checkScriptDiagnostic03(d *inputs.ScriptDiagnostic, descriptor *inputs.Scri
 
 // orderedScriptRange reports whether a range has positive coordinates and
 // does not end before it starts.
-func orderedScriptRange(start, end inputs.ScriptPosition) bool {
+func orderedScriptRange(start, end checkinputs.ScriptPosition) bool {
 	return start.Row > 0 && start.Column > 0 && end.Row > 0 && end.Column > 0 &&
 		(end.Row > start.Row || end.Row == start.Row && end.Column >= start.Column)
 }
 
 // scriptDiagnosticBytes counts the text a diagnostic carries towards the
 // result limit.
-func scriptDiagnosticBytes(d inputs.ScriptDiagnostic) uint64 {
+func scriptDiagnosticBytes(d checkinputs.ScriptDiagnostic) uint64 {
 	total := uint64(0)
 	for _, text := range []string{d.Filename, d.Code, d.Name, d.Message, d.Severity, d.URL, d.Source} {
 		total += uint64(len(text))

@@ -15,15 +15,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-func documentInput(t *testing.T, content string) inputs.AnalyzerInput {
+func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {
 	t.Helper()
 	directory := t.TempDir()
 	path := filepath.Join(directory, "workflow.yml")
@@ -35,7 +35,7 @@ func documentInput(t *testing.T, content string) inputs.AnalyzerInput {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return inputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
+	return checkinputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
 }
 
 func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
@@ -96,7 +96,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 				}
 				return
 			}
-			var request inputs.DocumentRequest
+			var request checkinputs.DocumentRequest
 			if err := json.Unmarshal([]byte(echo.Report.Stdin), &request); err != nil {
 				t.Fatal(err)
 			}
@@ -265,12 +265,12 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	filename := filepath.Join(directory, "current.yml")
-	request := inputs.ScriptRequest{Filename: filename}
+	request := checkinputs.ScriptRequest{Filename: filename}
 	foreign := "file://remote.example" + filepath.ToSlash(filename)
 	if filepath.VolumeName(filename) != "" {
 		foreign = "file://remote.example/" + filepath.ToSlash(filename)
 	}
-	findings := documentFindings([]inputs.ScriptDiagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
+	findings := documentFindings([]checkinputs.ScriptDiagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
 	if len(findings) != 1 || findings[0].Filename != filename {
 		t.Fatal("foreign file URI admitted as local capture", findings)
 	}

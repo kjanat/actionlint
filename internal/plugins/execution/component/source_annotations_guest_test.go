@@ -10,8 +10,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 )
@@ -33,11 +33,11 @@ func checkGuestScriptAnnotations(t *testing.T, fixture string) {
 	guest := loadPlugin(t, fixture, component.Options{})
 	root := source.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
 	action := source.Reference{Document: "action.yml", Revision: "action", Node: "step", Address: "runs.steps[0]"}
-	input := inputs.AnalyzerInput{
+	input := checkinputs.AnalyzerInput{
 		AvailableInputs: []rule.InputKind{rule.Scripts},
 		Path:            "ci.yml",
-		Scripts:         []inputs.Script{{Reference: root, Text: "echo root", Comments: []facts.SourceComment{{Text: "# root", Start: source.Position{Line: 2, Column: 7}}}}},
-		Invoked:         []inputs.Script{{Reference: action, Text: "echo action", Path: "action.yml", Comments: []facts.SourceComment{{Text: "# action", Start: source.Position{Line: 6, Column: 19}, Placement: facts.TrailingComment}}}},
+		Scripts:         []checkinputs.Script{{Reference: root, Text: "echo root", Comments: []facts.SourceComment{{Text: "# root", Start: source.Position{Line: 2, Column: 7}}}}},
+		Invoked:         []checkinputs.Script{{Reference: action, Text: "echo action", Path: "action.yml", Comments: []facts.SourceComment{{Text: "# action", Start: source.Position{Line: 6, Column: 19}, Placement: facts.TrailingComment}}}},
 	}
 	findings, err := guest.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 2 {
@@ -67,7 +67,7 @@ func TestGuestAnnotationFailureDoesNotPoisonLaterCalls(t *testing.T) {
 	t.Parallel()
 	guest := loadPlugin(t, "source-annotations", component.Options{})
 	ref := source.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
-	input := inputs.AnalyzerInput{AvailableInputs: []rule.InputKind{rule.Scripts}, Scripts: []inputs.Script{{Reference: ref, Text: "echo root", Comments: []facts.SourceComment{{Text: "# first\n# second", Start: source.Position{Line: 2, Column: 7}}}}}}
+	input := checkinputs.AnalyzerInput{AvailableInputs: []rule.InputKind{rule.Scripts}, Scripts: []checkinputs.Script{{Reference: ref, Text: "echo root", Comments: []facts.SourceComment{{Text: "# first\n# second", Start: source.Position{Line: 2, Column: 7}}}}}}
 	if findings, err := guest.CheckDocument(t.Context(), input); findings != nil || err == nil || !strings.Contains(err.Error(), "invalid physical source comment at 2:7") {
 		t.Fatalf("invalid comment did not fail through the guest import: findings=%+v, err=%v", findings, err)
 	}
@@ -113,7 +113,7 @@ func TestGuestAnnotationInterfaceVersions(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = guest.Close(context.WithoutCancel(t.Context())) })
 			ref := source.Reference{Document: "ci.yml", Revision: "workflow", Node: "step", Address: "jobs.test.steps[0]"}
-			findings, err := guest.CheckDocument(t.Context(), inputs.AnalyzerInput{AvailableInputs: []rule.InputKind{rule.Scripts}, Scripts: []inputs.Script{{Reference: ref, Comments: []facts.SourceComment{{Text: "# compatible", Start: source.Position{Line: 1, Column: 1}}}}}})
+			findings, err := guest.CheckDocument(t.Context(), checkinputs.AnalyzerInput{AvailableInputs: []rule.InputKind{rule.Scripts}, Scripts: []checkinputs.Script{{Reference: ref, Comments: []facts.SourceComment{{Text: "# compatible", Start: source.Position{Line: 1, Column: 1}}}}}})
 			if err != nil || len(findings) != 1 || findings[0].Message != "# compatible" {
 				t.Fatalf("compatible import was not linked to the host: findings=%+v, err=%v", findings, err)
 			}

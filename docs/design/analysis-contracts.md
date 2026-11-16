@@ -64,7 +64,7 @@ settings. The execution environment captures the assessment date once per check.
 
 ## Shared checker inputs
 
-`internal/checking/inputs.Checker` has two operations: `Descriptor` declares the
+`internal/model/checkinputs.Checker` has two operations: `Descriptor` declares the
 check and its required inputs; `CheckDocument` receives one captured source and
 returns findings together with an optional error. Implementations finish child
 work before returning and honor cancellation. The host can call a checker

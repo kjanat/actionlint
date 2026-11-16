@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
@@ -39,7 +39,7 @@ func Sanitize(src string, end ExpressionEnd) (string, bool, error) {
 // Mask sanitizes src like Sanitize and returns masks that filter findings caused
 // by the replacement values.
 func Mask(src string, end ExpressionEnd) (string, *Masks, bool, error) {
-	masks := &Masks{identifiers: make(map[inputs.ScriptPosition]int), parentheses: make(map[inputs.ScriptPosition]inputs.ScriptPosition), quoted: make(map[inputs.ScriptPosition]string)}
+	masks := &Masks{identifiers: make(map[checkinputs.ScriptPosition]int), parentheses: make(map[checkinputs.ScriptPosition]checkinputs.ScriptPosition), quoted: make(map[checkinputs.ScriptPosition]string)}
 	source, valid, err := sanitize(src, end, masks)
 	return source, masks, valid, err
 }
@@ -57,7 +57,7 @@ func Script(text string) (preparation.Prepared, error) {
 	}
 	prepared := preparation.Prepared{Source: source, AcceptDiagnostic: masks.Accept}
 	if strings.Contains(text, "${{") {
-		prepared.TemplateContract = inputs.TemplateEffectsContract
+		prepared.TemplateContract = checkinputs.TemplateEffectsContract
 	}
 	return prepared, nil
 }

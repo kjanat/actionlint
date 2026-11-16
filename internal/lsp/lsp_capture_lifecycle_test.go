@@ -14,10 +14,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -173,11 +173,11 @@ func TestEditorInvalidUTF8DependencyCannotSupplyRanges(t *testing.T) {
 
 type cancellingEditorAnalyzer struct{ started chan struct{} }
 
-func (*cancellingEditorAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (*cancellingEditorAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "editor-cancellation", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a *cancellingEditorAnalyzer) CheckDocument(ctx context.Context, _ checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	close(a.started)
 	<-ctx.Done()
 	return nil, ctx.Err()
@@ -195,7 +195,7 @@ func TestCancelledEditorAnalysisPublishesNoCapturedText(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []inputs.Registration{{Checker: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+		analysis, err := analyzeDocuments(ctx, checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: &cancellingEditorAnalyzer{started: started}}}}, map[string]Document{filepath.Join(root, "workflow.yml"): {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		done <- result{analysis, err}
 	}()
 	select {

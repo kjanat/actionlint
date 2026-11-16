@@ -3,20 +3,20 @@ package plugins_test
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 )
 
 var (
-	_ inputs.Checker                = (*componenthost.Plugin)(nil)
-	_ runnerapi.Provider            = (*componenthost.Plugin)(nil)
-	_ inputs.DescribedScriptBackend = (*componenthost.Plugin)(nil)
-	_ inputs.ScriptConfigValidator  = (*componenthost.Plugin)(nil)
-	_ inputs.ToolIntegrator         = (*componenthost.Plugin)(nil)
-	_ inputs.DescribedScriptBackend = (*module.Engine)(nil)
-	_ inputs.ScriptConfigValidator  = (*module.Engine)(nil)
+	_ checkinputs.Checker                = (*componenthost.Plugin)(nil)
+	_ runnerapi.Provider                 = (*componenthost.Plugin)(nil)
+	_ checkinputs.DescribedScriptBackend = (*componenthost.Plugin)(nil)
+	_ checkinputs.ScriptConfigValidator  = (*componenthost.Plugin)(nil)
+	_ checkinputs.ToolIntegrator         = (*componenthost.Plugin)(nil)
+	_ checkinputs.DescribedScriptBackend = (*module.Engine)(nil)
+	_ checkinputs.ScriptConfigValidator  = (*module.Engine)(nil)
 )
 
 func TestHostZeroValueGetters(t *testing.T) {

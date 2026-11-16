@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -16,8 +16,8 @@ import (
 // NewShellScriptInputBuilder exposes the profile's shell interpretation, template masking and
 // source preparation to plugins through the public WIT import. It prepares
 // only scripts whose occurrence is unique among scripts.
-func NewShellScriptInputBuilder(scripts []inputs.Script) inputs.ShellScriptInputBuilder {
-	byOccurrence := make(map[invocation.ID]inputs.Script, len(scripts))
+func NewShellScriptInputBuilder(scripts []checkinputs.Script) checkinputs.ShellScriptInputBuilder {
+	byOccurrence := make(map[invocation.ID]checkinputs.Script, len(scripts))
 	duplicates := make(map[invocation.ID]struct{})
 	for _, script := range scripts {
 		id := script.Occurrence.ID
@@ -27,7 +27,7 @@ func NewShellScriptInputBuilder(scripts []inputs.Script) inputs.ShellScriptInput
 		}
 		byOccurrence[id] = script
 	}
-	return func(ctx context.Context, id invocation.ID, override *string) (*inputs.ShellScriptInput, error) {
+	return func(ctx context.Context, id invocation.ID, override *string) (*checkinputs.ShellScriptInput, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -48,7 +48,7 @@ func NewShellScriptInputBuilder(scripts []inputs.Script) inputs.ShellScriptInput
 // BuildShellScriptInput supplies masked source, attached comments and interpreter
 // facts. The plugin selects the languages it supports and interprets its own
 // directives. Invalid interpreter invocations return no input.
-func BuildShellScriptInput(script inputs.Script, override *string) (*inputs.ShellScriptInput, error) {
+func BuildShellScriptInput(script checkinputs.Script, override *string) (*checkinputs.ShellScriptInput, error) {
 	shell := Shell{Name: script.Shell, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
 	if script.Runtime != nil && script.Runtime.ShellKnown {
 		shell = Shell{Name: script.Runtime.Shell, Implicit: script.Runtime.ShellImplicit, Registry: script.Interpreters, Platform: TargetArguments(script.Environment)}
@@ -73,7 +73,7 @@ func BuildShellScriptInput(script inputs.Script, override *string) (*inputs.Shel
 	setup, _ = EnvironmentStartup(setup, script.Environment)
 	masked := mask.Expressions(script.Text)
 	prepared := Prepare(masked, prefix.String(), setup)
-	result := &inputs.ShellScriptInput{Text: prepared.Text(), MaskedText: masked, Shell: shell.Name, ShellSetup: setup}
+	result := &checkinputs.ShellScriptInput{Text: prepared.Text(), MaskedText: masked, Shell: shell.Name, ShellSetup: setup}
 	if dialect != "" {
 		result.Dialect = &dialect
 	}
@@ -81,14 +81,14 @@ func BuildShellScriptInput(script inputs.Script, override *string) (*inputs.Shel
 	for index, line := range prepared.sourceLines {
 		switch {
 		case line > 0:
-			result.Lines = append(result.Lines, inputs.ShellScriptLine{Kind: inputs.ShellScriptSourceLine, Line: line})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptSourceLine, Line: line})
 		case prepared.Line(index+1).Origin == preparation.LineStartup:
-			result.Lines = append(result.Lines, inputs.ShellScriptLine{Kind: inputs.ShellScriptGeneratedLine})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptGeneratedLine})
 		case commentIndex < len(comments):
-			result.Lines = append(result.Lines, inputs.ShellScriptLine{Kind: inputs.ShellScriptCommentLine, Position: comments[commentIndex].Start})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptCommentLine, Position: comments[commentIndex].Start})
 			commentIndex++
 		default:
-			result.Lines = append(result.Lines, inputs.ShellScriptLine{Kind: inputs.ShellScriptGeneratedLine})
+			result.Lines = append(result.Lines, checkinputs.ShellScriptLine{Kind: checkinputs.ShellScriptGeneratedLine})
 		}
 	}
 	return result, nil

@@ -1,4 +1,4 @@
-package inputs_test
+package checkinputs_test
 
 import (
 	"context"
@@ -8,18 +8,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type sudoAnalyzer struct{}
 
-func (sudoAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Scripts}}
+func (sudoAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
-func (sudoAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (sudoAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		if strings.Contains(script.Text, "sudo ") {
@@ -41,7 +41,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []inputs.Registration{{Checker: sudoAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: sudoAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)

@@ -10,9 +10,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,15 +22,15 @@ type invocationCollector struct {
 }
 
 type invocationObservation struct {
-	inputs.Script
+	checkinputs.Script
 	graph invocation.Graph
 }
 
-func (*invocationCollector) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
+func (*invocationCollector) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "invocation-identity", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (c *invocationCollector) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (c *invocationCollector) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	collector := &invocationCollector{}
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root,
-		Analyzers:  []inputs.Registration{{Checker: collector}},
+		Analyzers:  []checkinputs.Registration{{Checker: collector}},
 	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{outer}})
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestStandaloneActionInvocationDepth(t *testing.T) {
 	if !found || call.Depth() != 1 || call.Parent() != script.graph.RootID() || call.Uses() != "$/nested" {
 		t.Fatalf("standalone nested call lost its root: %+v", call)
 	}
-	if err := inputs.ValidateOccurrence(script.graph, script.Occurrence); err != nil {
+	if err := checkinputs.ValidateOccurrence(script.graph, script.Occurrence); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -113,7 +113,7 @@ jobs:
 			collector := &invocationCollector{}
 			_, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
-				Analyzers:  []inputs.Registration{{Checker: collector}},
+				Analyzers:  []checkinputs.Registration{{Checker: collector}},
 			}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths})
 			if err != nil {
 				t.Fatal(err)
@@ -145,7 +145,7 @@ jobs:
 			ancestry := map[invocation.ID][]invocation.ID{}
 			for _, script := range scripts {
 				occurrence := script.Occurrence
-				if err := inputs.ValidateOccurrence(script.graph, occurrence); err != nil {
+				if err := checkinputs.ValidateOccurrence(script.graph, occurrence); err != nil {
 					t.Fatal(err)
 				}
 				chain, _ := script.graph.Chain(occurrence.Owner)

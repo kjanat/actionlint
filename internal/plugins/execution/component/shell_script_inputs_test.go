@@ -5,15 +5,15 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 )
 
 func TestPreparedScriptsRejectForeignReference(t *testing.T) {
 	t.Parallel()
 	called := false
-	scope := shellScriptInputScope{prepare: func(context.Context, invocation.ID, *string) (*inputs.ShellScriptInput, error) {
+	scope := shellScriptInputScope{prepare: func(context.Context, invocation.ID, *string) (*checkinputs.ShellScriptInput, error) {
 		called = true
 		return nil, nil
 	}, occurrences: map[invocation.ID]struct{}{"known": {}}}
@@ -34,15 +34,15 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 	for _, invoked := range []bool{false, true} {
 		t.Run(map[bool]string{false: "declared", true: "invoked"}[invoked], func(t *testing.T) {
 			t.Parallel()
-			script := inputs.Script{
+			script := checkinputs.Script{
 				Text: "echo ${{ inputs.name }}", Shell: "bash",
 				Occurrence: invocation.Script{ID: "run", Kind: invocation.ScriptRun},
 			}
-			input := inputs.AnalyzerInput{}
+			input := checkinputs.AnalyzerInput{}
 			if invoked {
-				input.Invoked = []inputs.Script{script}
+				input.Invoked = []checkinputs.Script{script}
 			} else {
-				input.Scripts = []inputs.Script{script}
+				input.Scripts = []checkinputs.Script{script}
 			}
 			ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, newShellScriptInputScope(input))
 			result, err := (shellScriptInputs{}).ForScript(ctx, "run", shellinputbind.NoneString())
@@ -64,9 +64,9 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 
 func TestStandaloneAnalyzerUsesExplicitShellScriptInputBuilder(t *testing.T) {
 	t.Parallel()
-	script := inputs.Script{Occurrence: invocation.Script{ID: "run", Kind: invocation.ScriptRun}}
-	input := inputs.AnalyzerInput{Scripts: []inputs.Script{script}, BuildShellScriptInput: func(context.Context, invocation.ID, *string) (*inputs.ShellScriptInput, error) {
-		return &inputs.ShellScriptInput{Text: "custom input"}, nil
+	script := checkinputs.Script{Occurrence: invocation.Script{ID: "run", Kind: invocation.ScriptRun}}
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{script}, BuildShellScriptInput: func(context.Context, invocation.ID, *string) (*checkinputs.ShellScriptInput, error) {
+		return &checkinputs.ShellScriptInput{Text: "custom input"}, nil
 	}}
 	ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, newShellScriptInputScope(input))
 	result, err := (shellScriptInputs{}).ForScript(ctx, "run", shellinputbind.NoneString())
@@ -78,16 +78,16 @@ func TestStandaloneAnalyzerUsesExplicitShellScriptInputBuilder(t *testing.T) {
 
 func TestPreparationScopeExcludesUnselectedAndNonRunOccurrences(t *testing.T) {
 	t.Parallel()
-	selected := inputs.Script{Occurrence: invocation.Script{ID: "selected", Kind: invocation.ScriptRun}}
-	action := inputs.ActionInput{Occurrence: invocation.Script{ID: "action-input", Kind: invocation.ScriptActionInput}}
+	selected := checkinputs.Script{Occurrence: invocation.Script{ID: "selected", Kind: invocation.ScriptRun}}
+	action := checkinputs.ActionInput{Occurrence: invocation.Script{ID: "action-input", Kind: invocation.ScriptActionInput}}
 	calls := 0
-	input := inputs.AnalyzerInput{Scripts: []inputs.Script{selected}, ActionInputs: []inputs.ActionInput{action}}
-	scope := shellScriptInputScope{occurrences: suppliedOccurrences(input), prepare: func(_ context.Context, id invocation.ID, _ *string) (*inputs.ShellScriptInput, error) {
+	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{selected}, ActionInputs: []checkinputs.ActionInput{action}}
+	scope := shellScriptInputScope{occurrences: suppliedOccurrences(input), prepare: func(_ context.Context, id invocation.ID, _ *string) (*checkinputs.ShellScriptInput, error) {
 		calls++
 		if id != selected.Occurrence.ID {
 			t.Fatalf("wrong occurrence reached preparation: %s", id)
 		}
-		return &inputs.ShellScriptInput{Text: "selected"}, nil
+		return &checkinputs.ShellScriptInput{Text: "selected"}, nil
 	}}
 	ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, scope)
 	for _, id := range []string{"", "unselected", "action-input", "entry", "call", "unknown"} {

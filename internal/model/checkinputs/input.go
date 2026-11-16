@@ -1,6 +1,6 @@
-// Package inputs defines shared check inputs and the checks that consume them, independently of AST traversal,
+// Package checkinputs defines shared check inputs and the checks that consume them, independently of AST traversal,
 // executable tools, configuration discovery, and diagnostic rendering.
-package inputs
+package checkinputs
 
 import (
 	"context"

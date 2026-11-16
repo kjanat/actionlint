@@ -10,11 +10,11 @@ import (
 	"strings"
 	"syscall"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -174,7 +174,7 @@ func RecordSources(files *inputfiles.Reader, paths []string, directory string) e
 // comments of the script still apply. A check with copies takes the display
 // copy from them; otherwise the copy is reread by path, as a native process
 // read the file by path itself.
-func (r runner) reportedFinding(index int, script scripts.Unit, d inputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) contract.ToolFinding {
+func (r runner) reportedFinding(index int, script scripts.Unit, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) contract.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)

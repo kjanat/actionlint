@@ -10,26 +10,26 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-type fallbackGuest struct{ inputs []inputs.AnalyzerInput }
+type fallbackGuest struct{ inputs []checkinputs.AnalyzerInput }
 
-func (*fallbackGuest) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "shellcheck", Category: "correctness"}
+func (*fallbackGuest) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "shellcheck", Category: "correctness"}
 }
 
-func (*fallbackGuest) ToolIntegration() *inputs.ToolIntegration {
-	return &inputs.ToolIntegration{Tool: "shellcheck"}
+func (*fallbackGuest) ToolIntegration() *checkinputs.ToolIntegration {
+	return &checkinputs.ToolIntegration{Tool: "shellcheck"}
 }
 
-func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	var options struct {
 		RCFile string `json:"rc-file"`
 	}
@@ -37,12 +37,12 @@ func (*fallbackGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 		return nil, err
 	}
 	if options.RCFile != "" {
-		return nil, &inputs.UnsupportedToolConfigurationError{Reason: "rc file"}
+		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "rc file"}
 	}
-	return &inputs.ToolNegotiation{Options: data}, nil
+	return &checkinputs.ToolNegotiation{Options: data}, nil
 }
 
-func (guest *fallbackGuest) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (guest *fallbackGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	guest.inputs = append(guest.inputs, input)
 	return []results.Diagnostic{{Path: input.Path, Message: "plugin"}}, nil
 }
@@ -82,7 +82,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 	batch.Scripts[1].Scope = &scripts.Scope{Config: cfg}
 	guest := &fallbackGuest{}
 	nativeCalls := 0
-	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: inputs.AnalyzerInput{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *configuration.Config) (contract.Runner, error) {
+	runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: entry, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}, native: func(selected *configuration.Config) (contract.Runner, error) {
 		if selected != cfg {
 			t.Fatal("fallback initialized with the workflow configuration instead of the declined script configuration")
 		}
@@ -119,7 +119,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 
 type scalingGuest struct{ fallbackGuest }
 
-func (*scalingGuest) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (*scalingGuest) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 
@@ -128,7 +128,7 @@ func BenchmarkDocumentPluginGraph(b *testing.B) {
 		b.Run(strconv.Itoa(count), func(b *testing.B) {
 			batch := documentBatchFixture(b, count)
 			guest := &scalingGuest{}
-			runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: inputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
+			runner := documentRunner{documentRoute: shellcheckRoute, guest: guest, integrator: guest, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}}}
 			b.ReportAllocs()
 			for b.Loop() {
 				if _, err := runner.Analyze(b.Context(), batch); err != nil {

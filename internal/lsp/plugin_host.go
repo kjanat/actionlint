@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
@@ -63,7 +63,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
 	}
 	engines := &editorEngines{
-		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]inputs.ScriptBackend),
+		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]checkinputs.ScriptBackend),
 		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
 	}
 	options.LoadScriptEngine = engines.load
@@ -97,14 +97,14 @@ type editorEngineIdentity struct {
 
 type editorEngines struct {
 	gate        chan struct{}
-	loaded      map[editorEngineIdentity]inputs.ScriptBackend
-	customLoad  func(context.Context, string) (inputs.ScriptBackend, error)
+	loaded      map[editorEngineIdentity]checkinputs.ScriptBackend
+	customLoad  func(context.Context, string) (checkinputs.ScriptBackend, error)
 	log         io.Writer
 	debug       bool
 	acquisition pluginacquisition.Settings
 }
 
-func (s *editorEngines) load(ctx context.Context, source string) (inputs.ScriptBackend, error) {
+func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.ScriptBackend, error) {
 	select {
 	case s.gate <- struct{}{}:
 		defer func() { <-s.gate }()
@@ -119,7 +119,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (inputs.ScriptB
 	if backend, ok := s.loaded[identity]; ok {
 		return borrowEditorEngine(backend), nil
 	}
-	var backend inputs.ScriptBackend
+	var backend checkinputs.ScriptBackend
 	var err error
 	if s.customLoad != nil {
 		backend, err = s.customLoad(ctx, source)
@@ -165,28 +165,28 @@ func (s *editorEngines) close(ctx context.Context) error {
 
 // Hide Close so per-analysis cleanup cannot close a session-owned engine.
 type (
-	borrowedEditorEngine  struct{ inputs.ScriptBackend }
+	borrowedEditorEngine  struct{ checkinputs.ScriptBackend }
 	describedEditorEngine struct {
-		inputs.DescribedScriptBackend
+		checkinputs.DescribedScriptBackend
 	}
 	validatingDescribedEditorEngine struct {
-		inputs.DescribedScriptBackend
-		inputs.ScriptConfigValidator
+		checkinputs.DescribedScriptBackend
+		checkinputs.ScriptConfigValidator
 	}
 	validatingEditorEngine struct {
-		inputs.ScriptBackend
-		inputs.ScriptConfigValidator
+		checkinputs.ScriptBackend
+		checkinputs.ScriptConfigValidator
 	}
 )
 
-func borrowEditorEngine(backend inputs.ScriptBackend) inputs.ScriptBackend {
-	if described, ok := backend.(inputs.DescribedScriptBackend); ok {
-		if validator, ok := backend.(inputs.ScriptConfigValidator); ok {
+func borrowEditorEngine(backend checkinputs.ScriptBackend) checkinputs.ScriptBackend {
+	if described, ok := backend.(checkinputs.DescribedScriptBackend); ok {
+		if validator, ok := backend.(checkinputs.ScriptConfigValidator); ok {
 			return validatingDescribedEditorEngine{DescribedScriptBackend: described, ScriptConfigValidator: validator}
 		}
 		return describedEditorEngine{DescribedScriptBackend: described}
 	}
-	if validator, ok := backend.(inputs.ScriptConfigValidator); ok {
+	if validator, ok := backend.(checkinputs.ScriptConfigValidator); ok {
 		return validatingEditorEngine{ScriptBackend: backend, ScriptConfigValidator: validator}
 	}
 	return borrowedEditorEngine{ScriptBackend: backend}

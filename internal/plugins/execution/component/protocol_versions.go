@@ -1,7 +1,7 @@
 package component
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"github.com/kjanat/wacogo"
 	wp "github.com/kjanat/wacogo/wasmparser"
@@ -117,17 +117,17 @@ type scriptEngineProtocol interface {
 	templateEffects() *templateEffectsProtocol
 	// liftCapabilities reads the capabilities of an exported descriptor
 	// into d, for versions that declare them.
-	liftCapabilities(descriptor wacogo.Val, d *inputs.ScriptEngineDescriptor) error
+	liftCapabilities(descriptor wacogo.Val, d *checkinputs.ScriptEngineDescriptor) error
 	// readStaticCapabilities takes the capabilities of static metadata
 	// into d, for versions that declare them.
-	readStaticCapabilities(declared staticScriptCapabilities, d *inputs.ScriptEngineDescriptor) error
+	readStaticCapabilities(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error
 	// lowerRequest builds the check request and the filesystem grant the
 	// call mounts.
-	lowerRequest(request inputs.ScriptRequest, options string, d *inputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant)
-	liftDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error)
+	lowerRequest(request checkinputs.ScriptRequest, options string, d *checkinputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant)
+	liftDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error)
 	// checkDiagnostic validates the version-specific parts of a lifted
 	// diagnostic against d and grant.
-	checkDiagnostic(finding *inputs.ScriptDiagnostic, d *inputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []inputs.ScriptPosition) error
+	checkDiagnostic(finding *checkinputs.ScriptDiagnostic, d *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error
 }
 
 // scriptEngineProtocols are the script-engine versions this host accepts.
@@ -155,24 +155,24 @@ func (scriptEngineProtocol02) expectedType() *wp.ComponentType {
 
 func (scriptEngineProtocol02) templateEffects() *templateEffectsProtocol { return templateEffects02 }
 
-func (scriptEngineProtocol02) liftCapabilities(wacogo.Val, *inputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol02) liftCapabilities(wacogo.Val, *checkinputs.ScriptEngineDescriptor) error {
 	return nil
 }
 
-func (scriptEngineProtocol02) readStaticCapabilities(staticScriptCapabilities, *inputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol02) readStaticCapabilities(staticScriptCapabilities, *checkinputs.ScriptEngineDescriptor) error {
 	return nil
 }
 
-func (scriptEngineProtocol02) lowerRequest(request inputs.ScriptRequest, options string, _ *inputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
+func (scriptEngineProtocol02) lowerRequest(request checkinputs.ScriptRequest, options string, _ *checkinputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
 	return wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
 		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options))), scriptGrant{}
 }
 
-func (scriptEngineProtocol02) liftDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
+func (scriptEngineProtocol02) liftDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
 	return liftScriptDiagnostic(value)
 }
 
-func (scriptEngineProtocol02) checkDiagnostic(*inputs.ScriptDiagnostic, *inputs.ScriptEngineDescriptor, scriptGrant, []int, []inputs.ScriptPosition) error {
+func (scriptEngineProtocol02) checkDiagnostic(*checkinputs.ScriptDiagnostic, *checkinputs.ScriptEngineDescriptor, scriptGrant, []int, []checkinputs.ScriptPosition) error {
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (scriptEngineProtocol03) expectedType() *wp.ComponentType {
 
 func (scriptEngineProtocol03) templateEffects() *templateEffectsProtocol { return templateEffects03 }
 
-func (scriptEngineProtocol03) liftCapabilities(descriptor wacogo.Val, d *inputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol03) liftCapabilities(descriptor wacogo.Val, d *checkinputs.ScriptEngineDescriptor) error {
 	r, err := liftRecord(descriptor, "script descriptor")
 	if err != nil {
 		return err
@@ -195,19 +195,19 @@ func (scriptEngineProtocol03) liftCapabilities(descriptor wacogo.Val, d *inputs.
 	return liftScriptCapabilities(r.Field("capabilities"), d)
 }
 
-func (scriptEngineProtocol03) readStaticCapabilities(declared staticScriptCapabilities, d *inputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol03) readStaticCapabilities(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error {
 	return readStaticScriptCapabilities03(declared, d)
 }
 
-func (scriptEngineProtocol03) lowerRequest(request inputs.ScriptRequest, options string, d *inputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
+func (scriptEngineProtocol03) lowerRequest(request checkinputs.ScriptRequest, options string, d *checkinputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
 	grant := grantScriptResources(request, d)
 	return lowerScriptRequest03(request, options, grant), grant
 }
 
-func (scriptEngineProtocol03) liftDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
+func (scriptEngineProtocol03) liftDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
 	return liftScriptDiagnostic03(value)
 }
 
-func (scriptEngineProtocol03) checkDiagnostic(finding *inputs.ScriptDiagnostic, d *inputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []inputs.ScriptPosition) error {
+func (scriptEngineProtocol03) checkDiagnostic(finding *checkinputs.ScriptDiagnostic, d *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error {
 	return checkScriptDiagnostic03(finding, d, grant, lines, starts)
 }

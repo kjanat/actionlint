@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -110,7 +110,7 @@ func TestConsumerAndPinProvenance(t *testing.T) {
 	provider := &fakeResolver{}
 	rule := newReferenceCheck(provider)
 	ref := source.Reference{Document: "workflow.yml", Revision: "revision", Node: "step", Address: "jobs.build.steps[0]"}
-	input := inputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []facts.Dependency{
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []facts.Dependency{
 		{Reference: ref, Uses: "owner/repo/path@v1", Kind: "action", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 24}},
 		{Reference: ref, Uses: "owner/repo/.github/workflows/build.yml@v1", Kind: "workflow"},
 		{Uses: "./local", Kind: "action"},
@@ -136,8 +136,8 @@ func TestRepositoryIdentityAcrossDocuments(t *testing.T) {
 	t.Parallel()
 	provider := &fakeResolver{ids: []repository.ID{knownRepositoryID(42), knownRepositoryID(43), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
-	first := inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
-	second := inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
+	first := checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}}}
+	second := checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "owner/repo/.github/workflows/build.yml@v2", Kind: "workflow"}}}
 	if findings, err := rule.CheckDocument(t.Context(), first); err != nil || len(findings) != 1 {
 		t.Fatalf("initial resolution failed: %v, %v", findings, err)
 	}
@@ -158,7 +158,7 @@ func TestUnknownRepositoryIDsAreComparedByName(t *testing.T) {
 	provider := &fakeResolver{ids: []repository.ID{{}, knownRepositoryID(42), {}, knownRepositoryID(42)}}
 	rule := newReferenceCheck(provider)
 	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2", "owner/repo@v3", "OWNER/REPO@v4"} {
-		findings, err := rule.CheckDocument(t.Context(), inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: "action"}}})
+		findings, err := rule.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: "action"}}})
 		if err != nil || len(findings) != 1 {
 			t.Fatalf("%s: %v, %v", uses, findings, err)
 		}
@@ -178,7 +178,7 @@ func TestRepositoryIdentityRetainsPartialFindings(t *testing.T) {
 	t.Parallel()
 	provider := &fakeResolver{ids: []repository.ID{knownRepositoryID(42), knownRepositoryID(43)}}
 	rule := newReferenceCheck(provider)
-	input := inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
+	input := checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: "Owner/Repo@v1", Kind: "action"}, {Uses: "owner/repo@v2", Kind: "action"}}}
 	findings, err := rule.CheckDocument(t.Context(), input)
 	if err == nil || len(findings) != 1 {
 		t.Fatalf("inconsistent pins accepted or partial findings lost: %v, %v", findings, err)
@@ -215,7 +215,7 @@ func TestRepositoryIdentityConcurrentFirstResults(t *testing.T) {
 	results := make(chan outcome, 2)
 	for _, uses := range []string{"Owner/Repo@v1", "owner/repo@v2"} {
 		go func() {
-			findings, err := rule.CheckDocument(ctx, inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: "action"}}})
+			findings, err := rule.CheckDocument(ctx, checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: "action"}}})
 			results <- outcome{findings: findings, err: err}
 		}()
 	}
@@ -253,7 +253,7 @@ func TestConsumerSkipsUnsupportedReferences(t *testing.T) {
 			t.Parallel()
 			provider := &fakeResolver{err: errors.New("unsupported reference reached provider")}
 			rule := newReferenceCheck(provider)
-			findings, err := rule.CheckDocument(t.Context(), inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: "action"}}})
+			findings, err := rule.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: "action"}}})
 			if err != nil || len(findings) != 0 || len(provider.requests) != 0 {
 				t.Fatalf("unsupported reference resolved: requests=%v findings=%v error=%v", provider.requests, findings, err)
 			}
@@ -269,7 +269,7 @@ func TestConsumerPreservesSubpathAndRef(t *testing.T) {
 			provider := &fakeResolver{}
 			rule := newReferenceCheck(provider)
 			uses := "Owner/Repo/.github/workflows/build.yml@feature/release"
-			findings, err := rule.CheckDocument(t.Context(), inputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: kind}}})
+			findings, err := rule.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Dependencies: []facts.Dependency{{Uses: uses, Kind: kind}}})
 			if err != nil || len(findings) != 1 || len(provider.requests) != 1 {
 				t.Fatalf("valid reference not resolved: %v %v %+v", findings, err, provider.requests)
 			}
@@ -284,14 +284,14 @@ func TestConsumerPreservesSubpathAndRef(t *testing.T) {
 // referenceCheck composes input acquisition and the pure rule for integration tests.
 type referenceCheck struct {
 	session *references.ResolutionSession
-	rule    inputs.Checker
+	rule    checkinputs.Checker
 }
 
 func newReferenceCheck(provider references.Resolver) referenceCheck {
 	return referenceCheck{session: references.NewResolutionSession(provider), rule: security.NewResolvedReferenceCheck()}
 }
 
-func (check referenceCheck) CheckDocument(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (check referenceCheck) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	resolved, preparationErr := check.session.ResolveDependencies(ctx, input.Dependencies)
 	input.ResolvedDependencies = resolved
 	findings, checkErr := check.rule.CheckDocument(ctx, input)

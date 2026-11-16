@@ -10,16 +10,16 @@ import (
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 type selectorBackend struct{ calls atomic.Int64 }
 
-func (b *selectorBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (b *selectorBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	b.calls.Add(1)
 	return nil, nil
 }
@@ -59,7 +59,7 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 // it selects action inputs only.
 func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 	t.Parallel()
-	inputs := []inputs.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
+	inputs := []checkinputs.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
 	for _, tc := range []struct {
 		name      string
 		shells    []string

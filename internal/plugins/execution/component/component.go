@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
@@ -34,10 +34,10 @@ const SourceAnnotationsInterface = annotationsbind.InterfaceName
 type Plugin struct {
 	reservedRules rule.Names
 	// A non-nil descriptor identifies a validated, available role.
-	analyzerDescriptor *inputs.Descriptor
+	analyzerDescriptor *checkinputs.Descriptor
 	runnerDescriptor   *runnerapi.Descriptor
-	scriptDescriptor   *inputs.ScriptEngineDescriptor
-	toolIntegration    *inputs.ToolIntegration
+	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
+	toolIntegration    *checkinputs.ToolIntegration
 	referenceResolver  bool
 	// runner is the negotiated runner-provider version, nil without the
 	// role. Runner calls go through it.

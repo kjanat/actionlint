@@ -16,8 +16,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -34,6 +32,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -70,14 +70,14 @@ type Options struct {
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
-	Analyzers []inputs.Registration
+	Analyzers []checkinputs.Registration
 	ReadFile  func(string) ([]byte, error)
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
 	SourceOverlays               []SourceOverlay
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
-	LoadScriptEngine             func(context.Context, string) (inputs.ScriptBackend, error)
+	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
 	Presets                      configuration.Presets
 	IgnorePatterns               []string
 	IgnoreSelectors              policy.IgnoreSelectors
@@ -140,9 +140,9 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	}
 	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
-		options.Analyzers = append(slices.Clone(options.Analyzers), inputs.Registration{
+		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
 			Checker: security.NewResolvedReferenceCheck(),
-			Prepare: func(ctx context.Context, input inputs.AnalyzerInput) (inputs.AnalyzerInput, error) {
+			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
 				return input, err

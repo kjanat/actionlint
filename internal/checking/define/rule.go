@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -18,7 +18,7 @@ const (
 
 // ScriptCheck analyzes the scripts of one document. It reports findings with
 // an empty Rule; the rule's name is attached to them.
-type ScriptCheck func(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error)
+type ScriptCheck func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error)
 
 // Rule is the single definition of a native rule.
 //
@@ -142,7 +142,7 @@ type Registration struct {
 	// failures before construction. Nil means no preparation is needed.
 	Prepare func(RuleInputs) (InputPreparation, error)
 	Build   func(RuleInputs) workflowvisit.Rule
-	Script  inputs.Checker
+	Script  checkinputs.Checker
 	Enabled func(RuleInputs) bool
 }
 
@@ -171,11 +171,11 @@ type scriptChecker struct {
 	check       ScriptCheck
 }
 
-func (c scriptChecker) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Declaration: c.declaration.Clone()}
+func (c scriptChecker) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Declaration: c.declaration.Clone()}
 }
 
-func (c scriptChecker) CheckDocument(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	diagnostics, err := c.check(ctx, input)
 	for i := range diagnostics {
 		if diagnostics[i].Rule == "" {

@@ -2,10 +2,10 @@ package composites
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
@@ -13,7 +13,7 @@ import (
 
 // CheckInput projects a composition result onto the check input of its
 // entry document. A batch that disagrees with the entry snapshot is rejected.
-func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]facts.SourceIndex) (inputs.AnalyzerInput, error) {
+func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]facts.SourceIndex) (checkinputs.AnalyzerInput, error) {
 	units := result.Batch.Scripts
 	refs := references[pathAbs]
 	input := executor.SourceInput(document, path, content, refs.Document)
@@ -43,7 +43,7 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 
 			switch {
 			case script.Occurrence.Kind == invocation.ScriptActionInput:
-				input.ActionInputs = append(input.ActionInputs, inputs.ActionInput{Script: script, Site: unit.Input.Site})
+				input.ActionInputs = append(input.ActionInputs, checkinputs.ActionInput{Script: script, Site: unit.Input.Site})
 			case script.Occurrence.Owner == input.CallGraph.RootID():
 				input.Scripts = append(input.Scripts, script)
 			default:

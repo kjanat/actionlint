@@ -3,15 +3,15 @@ package selection
 import (
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
 // ConfigureAnalyzers applies presets and per-rule settings to explicit registrations.
 // Library registration options take precedence over repository options.
-func ConfigureAnalyzers(scope *rulebinding.Scope, registrations []inputs.Registration) ([]inputs.Registration, error) {
-	selected := make([]inputs.Registration, 0, len(registrations))
+func ConfigureAnalyzers(scope *rulebinding.Scope, registrations []checkinputs.Registration) ([]checkinputs.Registration, error) {
+	selected := make([]checkinputs.Registration, 0, len(registrations))
 	for _, registration := range registrations {
 		if validation.IsNil(registration.Checker) {
 			return nil, errors.New("nil analyzer registration")

@@ -17,12 +17,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -37,11 +37,11 @@ import (
 
 type metadataAdmissionAnalyzer struct{ inspect func() error }
 
-func (metadataAdmissionAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (metadataAdmissionAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "metadata-admission-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a metadataAdmissionAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if a.inspect != nil {
 		if err := a.inspect(); err != nil {
 			return nil, err
@@ -68,7 +68,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			var result *report.Analysis
 			var err, conflict error
 			if !quarantined {
-				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []inputs.Registration{{Checker: probe}}}, []sourceUnit{unit})
+				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: probe}}}, []sourceUnit{unit})
 			} else {
 				// The existing constructor seam gives the test the real result owner;
 				// the analyzer runs after composition and source verification.
@@ -89,7 +89,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 				}
 				processes := process.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
-				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []inputs.Registration{{Checker: probe}}, Processes: processes}
+				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []checkinputs.Registration{{Checker: probe}}, Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
 					func(ctx context.Context, overlays []capture.Overlay, reader capture.Reader) (*capture.Store, error) {
 						var initErr error

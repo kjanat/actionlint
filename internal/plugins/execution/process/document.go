@@ -14,12 +14,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -29,7 +29,7 @@ import (
 // It never admits a finding or edit in a different, uncaptured file.
 type DocumentChecker struct {
 	backend    *Backend
-	descriptor inputs.Descriptor
+	descriptor checkinputs.Descriptor
 	documents  []string
 	directory  bool
 }
@@ -62,14 +62,14 @@ func NewDocumentAnalyzer(manifest manifests.Manifest, command *process.Command, 
 	}
 	descriptor := manifest.Rule.Clone()
 	descriptor.RequiredInputs = requires
-	return &DocumentChecker{backend: backend, descriptor: inputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
+	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, manifests.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, manifests.ResourceWorkspace)}, nil
 }
 
-func (d *DocumentChecker) Descriptor() inputs.Descriptor {
+func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {
 	return d.descriptor.Detached()
 }
 
-func (d *DocumentChecker) CheckDocument(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" && input.Kind != "action" {
 		return nil, fmt.Errorf("unsupported document kind %q", input.Kind)
 	}
@@ -82,7 +82,7 @@ func (d *DocumentChecker) CheckDocument(ctx context.Context, input inputs.Analyz
 	if err := d.backend.ValidateConfig(ctx, input.Options); err != nil {
 		return nil, err
 	}
-	request := inputs.DocumentRequest{Source: input.Content, Filename: input.Path, Kind: input.Kind, Config: slices.Clone(input.Options)}
+	request := checkinputs.DocumentRequest{Source: input.Content, Filename: input.Path, Kind: input.Kind, Config: slices.Clone(input.Options)}
 	if d.directory {
 		request.Directory = input.Directory
 		if request.Directory == "" {
@@ -93,15 +93,15 @@ func (d *DocumentChecker) CheckDocument(ctx context.Context, input inputs.Analyz
 		}
 	}
 	if slices.Contains(d.descriptor.RequiredInputs, rule.Dependencies) {
-		request.Dependencies = make([]inputs.DocumentDependency, 0, len(input.Dependencies))
+		request.Dependencies = make([]checkinputs.DocumentDependency, 0, len(input.Dependencies))
 		for _, dependency := range input.Dependencies {
 			if dependency.Reference.Document != input.Revision.Document() || dependency.Reference.Revision != input.Revision.Digest() {
 				continue
 			}
-			request.Dependencies = append(request.Dependencies, inputs.DocumentDependency(dependency))
+			request.Dependencies = append(request.Dependencies, checkinputs.DocumentDependency(dependency))
 		}
 	}
-	transport := inputs.ScriptRequest{Source: input.Content, Filename: input.Path, Directory: input.Directory, Config: slices.Clone(input.Options)}
+	transport := checkinputs.ScriptRequest{Source: input.Content, Filename: input.Path, Directory: input.Directory, Config: slices.Clone(input.Options)}
 	result, err := d.backend.run(ctx, transport, nil, &request)
 	if d.directory {
 		if freshness := currentDocument(ctx, input); freshness != nil {
@@ -122,7 +122,7 @@ func (d *DocumentChecker) CheckDocument(ctx context.Context, input inputs.Analyz
 
 // A directory-capable process can read the file instead of stdin. Refuse stale
 // disk content before running it and before binding its output to this capture.
-func currentDocument(ctx context.Context, input inputs.AnalyzerInput) (err error) {
+func currentDocument(ctx context.Context, input checkinputs.AnalyzerInput) (err error) {
 	path := input.Revision.Document()
 	file, err := files.New(ctx, nil, nil).Open(path)
 	if err != nil {
@@ -141,8 +141,8 @@ func currentDocument(ctx context.Context, input inputs.AnalyzerInput) (err error
 
 // documentFindings filters repository-wide results before snippet review, which
 // then validates and normalizes only the current document's diagnostics.
-func documentFindings(findings []inputs.ScriptDiagnostic, request inputs.ScriptRequest, directory string) []inputs.ScriptDiagnostic {
-	selected := make([]inputs.ScriptDiagnostic, 0, len(findings))
+func documentFindings(findings []checkinputs.ScriptDiagnostic, request checkinputs.ScriptRequest, directory string) []checkinputs.ScriptDiagnostic {
+	selected := make([]checkinputs.ScriptDiagnostic, 0, len(findings))
 	for _, finding := range findings {
 		name := finding.Filename
 		if finding.Source != "" {
@@ -181,11 +181,11 @@ func sameDocument(name, filename, directory string) bool {
 	return candidate == expected
 }
 
-func (d *DocumentChecker) finding(input inputs.AnalyzerInput, entry inputs.ScriptDiagnostic) (results.Diagnostic, error) {
+func (d *DocumentChecker) finding(input checkinputs.AnalyzerInput, entry checkinputs.ScriptDiagnostic) (results.Diagnostic, error) {
 	if len(entry.Fixes) != 0 && !d.backend.capabilities.Fixes {
 		return results.Diagnostic{}, errors.New("document provider returned undeclared fixes")
 	}
-	if entry.TemplateEffect != "" && entry.TemplateEffect != inputs.TemplateEffectNone {
+	if entry.TemplateEffect != "" && entry.TemplateEffect != checkinputs.TemplateEffectNone {
 		return results.Diagnostic{}, errors.New("document provider returned a snippet template effect")
 	}
 	start, err := documentPosition(input, entry.Location)
@@ -193,7 +193,7 @@ func (d *DocumentChecker) finding(input inputs.AnalyzerInput, entry inputs.Scrip
 		return results.Diagnostic{}, err
 	}
 	var end source.Position
-	if entry.EndLocation != (inputs.ScriptPosition{}) {
+	if entry.EndLocation != (checkinputs.ScriptPosition{}) {
 		end, err = documentPosition(input, entry.EndLocation)
 		if err != nil {
 			return results.Diagnostic{}, err
@@ -211,11 +211,11 @@ func (d *DocumentChecker) finding(input inputs.AnalyzerInput, entry inputs.Scrip
 	for _, fix := range entry.Fixes {
 		mapped := results.Fix{Applicability: fix.Applicability, Description: fix.Description, Revisions: map[string]string{input.Path: input.Revision.Digest()}}
 		for _, replacement := range fix.Replacements {
-			start, err := documentPosition(input, inputs.ScriptPosition{Row: replacement.Row, Column: replacement.Column})
+			start, err := documentPosition(input, checkinputs.ScriptPosition{Row: replacement.Row, Column: replacement.Column})
 			if err != nil {
 				return results.Diagnostic{}, err
 			}
-			end, err := documentPosition(input, inputs.ScriptPosition{Row: replacement.EndRow, Column: replacement.EndColumn})
+			end, err := documentPosition(input, checkinputs.ScriptPosition{Row: replacement.EndRow, Column: replacement.EndColumn})
 			if err != nil {
 				return results.Diagnostic{}, err
 			}
@@ -234,7 +234,7 @@ func (d *DocumentChecker) finding(input inputs.AnalyzerInput, entry inputs.Scrip
 
 // Process decoders normalize positions to LF/scalar coordinates. Resolve their
 // exact byte offset, then map it to the captured document's coordinate model.
-func documentPosition(input inputs.AnalyzerInput, p inputs.ScriptPosition) (source.Position, error) {
+func documentPosition(input checkinputs.AnalyzerInput, p checkinputs.ScriptPosition) (source.Position, error) {
 	point := source.Position{Line: p.Row, Column: p.Column}
 	offset, err := sourceposition.Offset([]byte(input.Content), source.RawLF, point)
 	if err != nil {

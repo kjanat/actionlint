@@ -1,4 +1,4 @@
-package inputs
+package checkinputs
 
 import (
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"

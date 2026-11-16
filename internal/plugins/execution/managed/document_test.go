@@ -16,13 +16,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -40,7 +40,7 @@ func shellcheckRegistration(selection scripts.Selection) contract.Registration {
 }
 
 type documentGuest struct {
-	inputs []inputs.AnalyzerInput
+	inputs []checkinputs.AnalyzerInput
 	fail   bool
 }
 
@@ -49,11 +49,11 @@ type sourceProbeGuest struct {
 	directory, file string
 }
 
-func (g *sourceProbeGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*inputs.ToolNegotiation, error) {
-	return &inputs.ToolNegotiation{Options: data, Resources: []inputs.ToolResourceRequest{{Kind: inputs.ToolWorkspace}, {Kind: inputs.ToolDirectory, Path: g.directory}}}, nil
+func (g *sourceProbeGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*checkinputs.ToolNegotiation, error) {
+	return &checkinputs.ToolNegotiation{Options: data, Resources: []checkinputs.ToolResourceRequest{{Kind: checkinputs.ToolWorkspace}, {Kind: checkinputs.ToolDirectory, Path: g.directory}}}, nil
 }
 
-func (g *sourceProbeGuest) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (g *sourceProbeGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	content, err := fs.ReadFile(input.Files[len(input.Files)-1].FS, g.file)
 	if err != nil {
@@ -163,15 +163,15 @@ func TestDocumentPluginReadsWorkspaceSources(t *testing.T) {
 	}
 }
 
-func (*documentGuest) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "shellcheck", Category: "correctness", Recommended: true, RequiredInputs: []rule.InputKind{rule.Scripts, rule.Execution}}
+func (*documentGuest) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "shellcheck", Category: "correctness", Recommended: true, RequiredInputs: []rule.InputKind{rule.Scripts, rule.Execution}}
 }
 
-func (*documentGuest) ToolIntegration() *inputs.ToolIntegration {
-	return &inputs.ToolIntegration{Tool: "shellcheck", Contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
+func (*documentGuest) ToolIntegration() *checkinputs.ToolIntegration {
+	return &checkinputs.ToolIntegration{Tool: "shellcheck", Contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 }
 
-func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	var config struct {
 		RCFile  string   `json:"rc-file"`
 		Disable []string `json:"disable"`
@@ -180,17 +180,17 @@ func (*documentGuest) NegotiateTool(_ context.Context, data, _ json.RawMessage) 
 		return nil, err
 	}
 	if config.RCFile != "" {
-		return nil, &inputs.UnsupportedToolConfigurationError{Reason: "fixture declines rc files"}
+		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "fixture declines rc files"}
 	}
 	for _, code := range config.Disable {
 		if strings.Contains(code, "-") {
-			return nil, &inputs.UnsupportedToolConfigurationError{Reason: "fixture declines ranges"}
+			return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "fixture declines ranges"}
 		}
 	}
-	return &inputs.ToolNegotiation{Options: data}, nil
+	return &checkinputs.ToolNegotiation{Options: data}, nil
 }
 
-func (g *documentGuest) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (g *documentGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	g.inputs = append(g.inputs, input)
 	start, _ := input.Scripts[0].Position(1, 6, false)
 	end, _ := input.Scripts[0].Position(1, 12, true)
@@ -360,7 +360,7 @@ func TestIntegratedRuleLevelNativeFallbackPlan(t *testing.T) {
 			options := checking.Options{
 				WorkingDir: root, SkipProjectConfig: true, ConfigOverlays: overlays,
 				Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
-				Analyzers: []inputs.Registration{{Checker: guest}},
+				Analyzers: []checkinputs.Registration{{Checker: guest}},
 			}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["shellcheck"] != tc.native {
@@ -405,7 +405,7 @@ func TestManagedOnlyDisabledPluginDoesNotRequireFallback(t *testing.T) {
 			options := checking.Options{
 				WorkingDir: t.TempDir(), SkipProjectConfig: true, ConfigOverlays: []configuration.Overlay{base, disabled},
 				Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck", ManagedOnly: true})},
-				Analyzers: []inputs.Registration{{Checker: guest}},
+				Analyzers: []checkinputs.Registration{{Checker: guest}},
 			}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"ci.yml"})
 			if err != nil || needed["shellcheck"] {
@@ -447,7 +447,7 @@ func TestDocumentPluginPlansCompositeNativeFallback(t *testing.T) {
 	options := checking.Options{
 		WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
 		Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
-		Analyzers: []inputs.Registration{{Checker: guest}},
+		Analyzers: []checkinputs.Registration{{Checker: guest}},
 	}
 	needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 	if err != nil || !needed["shellcheck"] {
@@ -468,13 +468,13 @@ type planningContextGuest struct {
 	release  <-chan struct{}
 }
 
-func (g *planningContextGuest) NegotiateTool(ctx context.Context, data, _ json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (g *planningContextGuest) NegotiateTool(ctx context.Context, data, _ json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	g.contexts <- ctx
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-g.release:
-		return &inputs.ToolNegotiation{Options: data}, nil
+		return &checkinputs.ToolNegotiation{Options: data}, nil
 	}
 }
 
@@ -487,7 +487,7 @@ func TestDocumentPluginPlanningPropagatesCancellation(t *testing.T) {
 	options := checking.Options{
 		WorkingDir: t.TempDir(), SkipProjectConfig: true,
 		Tools:     []contract.Registration{shellcheckRegistration(scripts.Selection{Command: "shellcheck"})},
-		Analyzers: []inputs.Registration{{Checker: guest}},
+		Analyzers: []checkinputs.Registration{{Checker: guest}},
 	}
 	result := make(chan error, 1)
 	go func() {

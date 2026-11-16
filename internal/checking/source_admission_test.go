@@ -11,28 +11,28 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type unrelatedPathAnalyzer struct{ path string }
 
-func (unrelatedPathAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (unrelatedPathAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (a unrelatedPathAnalyzer) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Path: a.path, Message: "foreign observation", Start: source.Position{Line: 1, Column: 1}}, {Message: "entry observation", Start: source.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []inputs.Registration{{Checker: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []sourceUnit{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !ok || rejection.Count() != 1 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "entry observation" || result.Diagnostics[0].Reference == nil {
 		t.Fatalf("foreign path borrowed entry identity or entry finding was lost: result=%+v error=%v", result, err)

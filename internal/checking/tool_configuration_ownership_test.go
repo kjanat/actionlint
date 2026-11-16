@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -92,7 +92,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 					return true
 				},
 				Required: func(c contract.Context) bool { mutate(c); return false },
-				InputSelectors: func(c contract.Context) ([]inputs.ScriptInput, error) {
+				InputSelectors: func(c contract.Context) ([]checkinputs.ScriptInput, error) {
 					if callback == "input selectors" {
 						mutate(c)
 					}

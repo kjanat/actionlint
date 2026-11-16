@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -68,7 +68,7 @@ func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	}
 	lines := strings.Split(prepared.Source, "\n")
 	column := 1
-	finding := inputs.ScriptDiagnostic{Location: inputs.ScriptPosition{Row: 4, Column: column}, EndLocation: inputs.ScriptPosition{Row: 4, Column: len(lines[3]) + 1}, TemplateEffect: inputs.TemplateEffectExportedName}
+	finding := checkinputs.ScriptDiagnostic{Location: checkinputs.ScriptPosition{Row: 4, Column: column}, EndLocation: checkinputs.ScriptPosition{Row: 4, Column: len(lines[3]) + 1}, TemplateEffect: checkinputs.TemplateEffectExportedName}
 	if prepared.AcceptDiagnostic(finding) {
 		t.Fatal("generated Python identifier was reported after row insertion")
 	}

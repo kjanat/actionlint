@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
@@ -41,8 +41,8 @@ var WorkflowCommandSyntaxRule = &define.Rule{
 }
 
 // checkWorkflowCommandSyntax reports malformed workflow commands in literal script output.
-func checkWorkflowCommandSyntax(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
-	return scanRuntimeScripts(ctx, input, func(script inputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)) {
+func checkWorkflowCommandSyntax(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	return scanRuntimeScripts(ctx, input, func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)) {
 		if invocation.Status == commands.Unknown && invocation.Reason == "no interpreter definition matches the command" {
 			// The runner recognizes these exact built-in shell names even when
 			// the corresponding optional language plugin is not installed.

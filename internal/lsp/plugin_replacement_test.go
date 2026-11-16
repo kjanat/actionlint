@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -22,7 +22,7 @@ import (
 
 type countedPluginBackend struct{ calls atomic.Int32 }
 
-func (b *countedPluginBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (b *countedPluginBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	b.calls.Add(1)
 	return nil, nil
 }
@@ -108,10 +108,10 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if engine == "ruff" {
 					shell = "python"
 				}
-				plugins := &pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: backend, Descriptor: inputs.ScriptEngineDescriptor{
+				plugins := &pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
 					Engine: engine, Rule: rule.Descriptor{Name: engine},
 					Shells:       []string{shell},
-					ScriptInputs: []inputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
+					ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 				}}}}
 				selections := registry.Selections{}
 				if enabled {
@@ -170,14 +170,14 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				engine := &selectedInputBackend{descriptor: inputs.ScriptEngineDescriptor{
+				engine := &selectedInputBackend{descriptor: checkinputs.ScriptEngineDescriptor{
 					Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"},
-					ScriptInputs: []inputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "bash"}},
+					ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "bash"}},
 				}}
 				if runs {
 					engine.descriptor.Shells = []string{"bash"}
 				}
-				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (inputs.ScriptBackend, error) {
+				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 					return engine, nil
 				}}
 				sources := pluginselection.Sources{Paths: []string{plugin}}

@@ -6,9 +6,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
@@ -28,9 +28,9 @@ func TestDocumentBatchRejectsMissingFactsBeforeNegotiation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			// Nil callbacks prove invalid batches cannot reach negotiation or analysis.
-			runner := documentRunner{documentRoute: shellcheckRoute, context: contract.Context{Document: inputs.AnalyzerInput{Reference: valid.CallGraph.Entry().Reference}}}
+			runner := documentRunner{documentRoute: shellcheckRoute, context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: valid.CallGraph.Entry().Reference}}}
 			_, err := runner.Analyze(t.Context(), batch)
-			if !errors.Is(err, inputs.ErrInvalidCallGraph) {
+			if !errors.Is(err, checkinputs.ErrInvalidCallGraph) {
 				t.Fatalf("invalid batch accepted: %v", err)
 			}
 		})

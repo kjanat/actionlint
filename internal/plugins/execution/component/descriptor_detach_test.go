@@ -3,14 +3,14 @@ package component
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestAnalyzerDescriptorDetachesNestedMetadata(t *testing.T) {
 	t.Parallel()
-	p := &Plugin{analyzerDescriptor: &inputs.Descriptor{
+	p := &Plugin{analyzerDescriptor: &checkinputs.Descriptor{
 		Name: "example", Aliases: []rule.Alias{{Name: "original"}},
 		InvocationDefinitions: []commands.Definition{{ID: "runtime", Options: []commands.Option{{Choices: []string{"original"}}}}},
 	}}

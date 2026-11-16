@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -20,11 +20,11 @@ type invocationSourceAnalyzer struct {
 	paths map[source.Reference]string
 }
 
-func (a invocationSourceAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "shellcheck"}
+func (a invocationSourceAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "shellcheck"}
 }
 
-func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)

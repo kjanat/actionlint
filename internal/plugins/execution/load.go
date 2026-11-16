@@ -14,11 +14,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	networkpolicy "actionlint.kjanat.dev/v2/internal/integrations/network"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -54,8 +54,8 @@ type SelectedProvider struct {
 	Repository bool
 }
 type ScriptEngineRegistration struct {
-	Backend    inputs.ScriptBackend
-	Descriptor inputs.ScriptEngineDescriptor
+	Backend    checkinputs.ScriptBackend
+	Descriptor checkinputs.ScriptEngineDescriptor
 }
 
 func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
@@ -187,8 +187,8 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 	return loaded, nil
 }
 
-func (l *Loaded) Registrations() []inputs.Registration {
-	registrations := make([]inputs.Registration, 0, len(l.Components))
+func (l *Loaded) Registrations() []checkinputs.Registration {
+	registrations := make([]checkinputs.Registration, 0, len(l.Components))
 	if l.DisableTools {
 		return registrations
 	}
@@ -196,7 +196,7 @@ func (l *Loaded) Registrations() []inputs.Registration {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		registrations = append(registrations, inputs.Registration{Checker: plugin})
+		registrations = append(registrations, checkinputs.Registration{Checker: plugin})
 	}
 	return registrations
 }

@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
@@ -68,7 +68,7 @@ func TestScriptEngineReceivesUnknownRunnerEnvironment(t *testing.T) {
 		t.Fatalf("expected Linux with unknown inherited names: %+v", env)
 	}
 	for _, want := range []string{"WORKFLOW_NAME", "JOB_NAME", "STEP_NAME"} {
-		if !slices.ContainsFunc(env.Names, func(name inputs.EnvironmentVariableName) bool { return name.Name == want && name.CaseKnown }) {
+		if !slices.ContainsFunc(env.Names, func(name checkinputs.EnvironmentVariableName) bool { return name.Name == want && name.CaseKnown }) {
 			t.Errorf("missing known declaration %q: %+v", want, env.Names)
 		}
 	}

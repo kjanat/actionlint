@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"github.com/kjanat/wacogo"
 )
 
@@ -19,7 +19,7 @@ func TestToolNegotiationPreservesExplicitGrants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got.Options) != `{"engine-option":true}` || len(got.Resources) != 2 || got.Resources[0].Kind != inputs.ToolWorkspace || got.Resources[1].Path != "/other/source" {
+	if string(got.Options) != `{"engine-option":true}` || len(got.Resources) != 2 || got.Resources[0].Kind != checkinputs.ToolWorkspace || got.Resources[1].Path != "/other/source" {
 		t.Fatalf("unexpected negotiation: %#v", got)
 	}
 }
@@ -27,7 +27,7 @@ func TestToolNegotiationPreservesExplicitGrants(t *testing.T) {
 func TestUnsupportedToolConfigurationErrorIsDistinctFromFailure(t *testing.T) {
 	t.Parallel()
 	got, err := liftToolNegotiation(wacogo.ValResultErr(wacogo.ValString("unsupported option")))
-	var unsupported *inputs.UnsupportedToolConfigurationError
+	var unsupported *checkinputs.UnsupportedToolConfigurationError
 	if got != nil || !errors.As(err, &unsupported) || unsupported.Reason != "unsupported option" {
 		t.Fatalf("got %v, %v", got, err)
 	}
@@ -51,7 +51,7 @@ func TestToolNegotiationRejectsMalformedOptionsAndResources(t *testing.T) {
 
 func TestSourceFilesStayCallScoped(t *testing.T) {
 	t.Parallel()
-	roots := []inputs.SourceRoot{{Host: "/project", Guest: "/workspace"}}
+	roots := []checkinputs.SourceRoot{{Host: "/project", Guest: "/workspace"}}
 	ctx := context.WithValue(context.Background(), sourceRootsKey{}, roots)
 	got, err := (sourceFiles{}).Roots(ctx)
 	if err != nil || len(got) != 1 || got[0].Host != "/project" {

@@ -18,7 +18,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -36,6 +35,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -63,8 +63,8 @@ type analysisSession struct {
 	ruleRegistrations    []configuration.RuleRegistration
 	rules                configuration.RuleSet
 	tools                []contract.Registration
-	analyzers            []inputs.Registration
-	loadScriptEngine     func(context.Context, string) (inputs.ScriptBackend, error)
+	analyzers            []checkinputs.Registration
+	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
 	workflowNames        *names.Index
 	remoteActions        map[references.MirrorAccess]*remote.Service
@@ -271,7 +271,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflows.Cache, registrations []inputs.Registration, usedRules *[]rule.Descriptor,
+	actions *workspaceactions.Cache, workflows *workflows.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -384,7 +384,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
-		ScriptInputsForScope: func(scope *rulebinding.Scope) ([]inputs.ScriptInput, error) {
+		ScriptInputsForScope: func(scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, scope)
 		},
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader,

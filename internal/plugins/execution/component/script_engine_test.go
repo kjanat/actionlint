@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"github.com/kjanat/wacogo"
 )
@@ -180,7 +180,7 @@ func TestScriptEngineComponent(t *testing.T) {
 			t.Fatalf("accepted invalid options %s", config)
 		}
 	}
-	request := inputs.ScriptRequest{Source: "é = missing\r\nmissing\n", Filename: "script.py"}
+	request := checkinputs.ScriptRequest{Source: "é = missing\r\nmissing\n", Filename: "script.py"}
 	for range 2 {
 		found, err := p.Check(t.Context(), request)
 		if err != nil {
@@ -205,7 +205,7 @@ func TestScriptEngineComponent(t *testing.T) {
 func TestScriptEngineResultLimits(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
-	for _, request := range []inputs.ScriptRequest{
+	for _, request := range []checkinputs.ScriptRequest{
 		{Source: strings.Repeat("missing\n", maxScriptDiagnostics+1), Filename: "script.py"},
 		{Source: "missing", Filename: "script.py", Config: json.RawMessage(`{"mode":"large-message"}`)},
 	} {
@@ -220,16 +220,16 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 	p := loadScriptFixture(t)
 	for _, tc := range []struct {
 		source string
-		starts []inputs.ScriptPosition
+		starts []checkinputs.ScriptPosition
 	}{
-		{"é = missing\rmissing", []inputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 1, Column: 13}}},
-		{"é = missing\r\nmissing", []inputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
-		{"é = missing\nmissing", []inputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
-		{"é = missing\r\nmissing\rmissing\nmissing\r", []inputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}, {Row: 2, Column: 9}, {Row: 3, Column: 1}}},
+		{"é = missing\rmissing", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 1, Column: 13}}},
+		{"é = missing\r\nmissing", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
+		{"é = missing\nmissing", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}}},
+		{"é = missing\r\nmissing\rmissing\nmissing\r", []checkinputs.ScriptPosition{{Row: 1, Column: 5}, {Row: 2, Column: 1}, {Row: 2, Column: 9}, {Row: 3, Column: 1}}},
 	} {
 		t.Run(fmt.Sprintf("%q", tc.source), func(t *testing.T) {
 			t.Parallel()
-			found, err := p.Check(t.Context(), inputs.ScriptRequest{Source: tc.source, Filename: "script.py"})
+			found, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: tc.source, Filename: "script.py"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +239,7 @@ func TestScriptEngineUniversalNewlines(t *testing.T) {
 			for i, finding := range found {
 				start := tc.starts[i]
 				if finding.Location != start ||
-					finding.EndLocation != (inputs.ScriptPosition{Row: start.Row, Column: start.Column + 7}) {
+					finding.EndLocation != (checkinputs.ScriptPosition{Row: start.Row, Column: start.Column + 7}) {
 					t.Fatalf("finding %d: %#v", i, finding)
 				}
 			}
@@ -267,7 +267,7 @@ func TestScriptLineWidths(t *testing.T) {
 func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 	t.Parallel()
 	p := loadScriptFixture(t)
-	request := inputs.ScriptRequest{Source: "missing", Filename: "script.py"}
+	request := checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := p.Check(ctx, request); !errors.Is(err, context.Canceled) {
@@ -286,7 +286,7 @@ func TestScriptEngineCancellationAndRecovery(t *testing.T) {
 	}
 	for _, source := range []string{"trap", "loop"} {
 		ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
-		_, err := p.Check(ctx, inputs.ScriptRequest{Source: source, Filename: "script.py"})
+		_, err := p.Check(ctx, checkinputs.ScriptRequest{Source: source, Filename: "script.py"})
 		cancel()
 		if err == nil {
 			t.Fatalf("%s succeeded", source)
@@ -320,7 +320,7 @@ func TestScriptEngineContractCurrent(t *testing.T) {
 func TestScriptEngineRejectsOtherRoles(t *testing.T) {
 	t.Parallel()
 	p := loadRunnerFixture(t)
-	if _, err := p.Check(t.Context(), inputs.ScriptRequest{Source: "missing", Filename: "script.py"}); err == nil {
+	if _, err := p.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"}); err == nil {
 		t.Fatal("provider accepted script request")
 	}
 	if err := p.ValidateConfig(t.Context(), nil); err == nil {

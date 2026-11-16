@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/invocationfixture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -15,26 +15,26 @@ func TestRunIsolatesCallGraphAndOccurrenceValues(t *testing.T) {
 	t.Parallel()
 	graph := invocationfixture.Graph(t, invocationfixture.Script{Node: "run"})
 	occurrence := graph.Scripts()[0]
-	input := inputs.AnalyzerInput{
+	input := checkinputs.AnalyzerInput{
 		Reference: graph.Entry().Reference, CallGraph: graph, AvailableInputs: []rule.InputKind{rule.Invocations, rule.Scripts},
-		Invoked: []inputs.Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}, SelectedScripts: []invocation.ID{occurrence.ID},
+		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Occurrence: occurrence}}, SelectedScripts: []invocation.ID{occurrence.ID},
 	}
 	changed := make(chan struct{})
-	first := testAnalyzer{inputs.Descriptor{Name: "mutator"}, func(_ context.Context, in inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	first := testAnalyzer{checkinputs.Descriptor{Name: "mutator"}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		in.SelectedScripts[0] = "changed"
 		in.Invoked[0].Occurrence.Owner = "changed"
 		in.CallGraph = invocation.Graph{}
 		close(changed)
 		return nil, nil
 	}}
-	second := testAnalyzer{inputs.Descriptor{Name: "observer"}, func(_ context.Context, in inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	second := testAnalyzer{checkinputs.Descriptor{Name: "observer"}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		<-changed
 		if len(in.SelectedScripts) != 1 || in.SelectedScripts[0] != occurrence.ID || in.Invoked[0].Occurrence != occurrence || !in.CallGraph.Valid() {
 			t.Error("analyzer mutation reached sibling input")
 		}
 		return nil, nil
 	}}
-	if _, err := Run(t.Context(), input, []inputs.Registration{{Checker: first}, {Checker: second}}); err != nil {
+	if _, err := Run(t.Context(), input, []checkinputs.Registration{{Checker: first}, {Checker: second}}); err != nil {
 		t.Fatal(err)
 	}
 	if input.SelectedScripts[0] != occurrence.ID || input.Invoked[0].Occurrence != occurrence {

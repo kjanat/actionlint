@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -17,9 +17,9 @@ import (
 
 type snapshotScriptBackend struct{ calls int }
 
-func (b *snapshotScriptBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (b *snapshotScriptBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	b.calls++
-	return []inputs.ScriptDiagnostic{{Code: "PS001", Message: "PowerShell diagnostic", Location: inputs.ScriptPosition{Row: 1, Column: 1}}}, nil
+	return []checkinputs.ScriptDiagnostic{{Code: "PS001", Message: "PowerShell diagnostic", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}, nil
 }
 
 func TestRunnerSnapshotScriptRouting(t *testing.T) {

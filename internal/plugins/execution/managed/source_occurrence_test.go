@@ -5,15 +5,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type capturedScriptGuest struct{ fallbackGuest }
 
-func (g *capturedScriptGuest) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (g *capturedScriptGuest) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Scripts[0].Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Message: "captured script"}}, nil
 }
@@ -26,7 +26,7 @@ func TestDocumentPluginMapsRelativeFindingToAbsoluteScriptPath(t *testing.T) {
 	guest := &capturedScriptGuest{}
 	runner := documentRunner{
 		documentRoute: shellcheckRoute, guest: guest, integrator: guest,
-		context: contract.Context{Document: inputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
+		context: contract.Context{Document: checkinputs.AnalyzerInput{Reference: batch.CallGraph.Entry().Reference, Path: "workflow.yml", Kind: "workflow", ParseStatus: "complete"}},
 	}
 	findings, err := runner.Analyze(t.Context(), batch)
 	if err != nil || len(findings) != 1 {
@@ -42,13 +42,13 @@ func TestSourceGrantsTranslateScriptsAndInvokedRuntimeWithoutMutatingFacts(t *te
 	t.Parallel()
 	scriptRuntime := &scripts.Execution{Directory: "script-host", DirectoryKnown: true}
 	invokedRuntime := &scripts.Execution{Directory: "invoked-host", DirectoryKnown: true}
-	input := inputs.AnalyzerInput{
-		Scripts: []inputs.Script{{Runtime: scriptRuntime}, {}},
-		Invoked: []inputs.Script{{Runtime: invokedRuntime}, {}},
+	input := checkinputs.AnalyzerInput{
+		Scripts: []checkinputs.Script{{Runtime: scriptRuntime}, {}},
+		Invoked: []checkinputs.Script{{Runtime: invokedRuntime}, {}},
 	}
 	files := pluginSourceFiles{mounts: []pluginSourceMount{{host: "host", guest: "/workspace"}}, directory: "/workspace"}
 	files.configure(&input)
-	for name, scripts := range map[string][]inputs.Script{"scripts": input.Scripts, "invoked": input.Invoked} {
+	for name, scripts := range map[string][]checkinputs.Script{"scripts": input.Scripts, "invoked": input.Invoked} {
 		if scripts[0].Runtime == nil || scripts[0].Runtime.Directory != "/workspace" || !scripts[0].Runtime.DirectoryKnown || scripts[1].Runtime != nil {
 			t.Errorf("%s runtime was not translated: %+v", name, scripts)
 		}

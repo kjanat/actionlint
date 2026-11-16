@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -83,7 +83,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	findings, err := loaded.Check(t.Context(), inputs.ScriptRequest{Source: "missing", Filename: "script.py"})
+	findings, err := loaded.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
 		t.Fatalf("configured component backend: %#v, %v", findings, err)
 	}

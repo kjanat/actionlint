@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -30,7 +30,7 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 	if err != nil {
 		os.Exit(2)
 	}
-	var request inputs.DocumentRequest
+	var request checkinputs.DocumentRequest
 	if err := json.Unmarshal(data, &request); err != nil {
 		os.Exit(2)
 	}
@@ -38,9 +38,9 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 		os.Exit(3)
 	}
 	response := struct {
-		OK          bool                      `json:"ok"`
-		Diagnostics []inputs.ScriptDiagnostic `json:"diagnostics"`
-	}{true, []inputs.ScriptDiagnostic{{Filename: request.Filename, Code: "DOC1", Message: "captured document", Location: inputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 3}, Fixes: []inputs.ScriptFix{{Description: "replace token", Replacements: []inputs.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 3, Text: "ON"}}}}}}}
+		OK          bool                           `json:"ok"`
+		Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
+	}{true, []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "DOC1", Message: "captured document", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 3}, Fixes: []checkinputs.ScriptFix{{Description: "replace token", Replacements: []checkinputs.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 3, Text: "ON"}}}}}}}
 	if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
 		os.Exit(2)
 	}

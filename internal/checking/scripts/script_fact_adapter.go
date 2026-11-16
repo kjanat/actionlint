@@ -9,25 +9,25 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type FactAnalyzer struct {
-	Analyzer         inputs.Checker
+	Analyzer         checkinputs.Checker
 	Options          json.RawMessage
 	IncludeExecution bool
 }
 
 type describedFactChecker struct {
-	inputs.Checker
-	descriptor inputs.Descriptor
+	checkinputs.Checker
+	descriptor checkinputs.Descriptor
 }
 
-func (c describedFactChecker) Descriptor() inputs.Descriptor { return c.descriptor }
+func (c describedFactChecker) Descriptor() checkinputs.Descriptor { return c.descriptor }
 
 func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*finding.Finding, error) {
 	if !batch.Valid() {
@@ -58,7 +58,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if _, exists := prepared[identity]; exists {
 			continue
 		}
-		registration, err := executor.Prepare(inputs.Registration{Checker: checker, Options: options}, available)
+		registration, err := executor.Prepare(checkinputs.Registration{Checker: checker, Options: options}, available)
 		if err != nil {
 			return nil, err
 		}
@@ -83,16 +83,16 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			failures = append(failures, fmt.Errorf("%w: script fact %d is unavailable", ErrInvalidBatch, index))
 			break
 		}
-		input := inputs.AnalyzerInput{
+		input := checkinputs.AnalyzerInput{
 			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
 			AvailableInputs: available,
 			SelectedScripts: []invocation.ID{script.Occurrence.ID},
 		}
 		if script.Occurrence.Owner == graph.RootID() {
-			input.Scripts = []inputs.Script{script}
+			input.Scripts = []checkinputs.Script{script}
 		} else {
-			input.Invoked = []inputs.Script{script}
+			input.Invoked = []checkinputs.Script{script}
 		}
 		var identity bindingmodel.ID
 		if scope := unit.Scope.Bindings; scope != nil {

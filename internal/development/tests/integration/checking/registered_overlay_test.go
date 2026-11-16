@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
@@ -20,7 +20,7 @@ func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
 	}
 	options := checking.Options{
 		WorkingDir:        root,
-		Analyzers:         []inputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
+		Analyzers:         []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
 	baseline, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})

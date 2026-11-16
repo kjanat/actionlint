@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -117,7 +117,7 @@ func TestBatchRejectsUnindexedDeclarations(t *testing.T) {
 			case "input":
 				record = graph.Scripts()[1]
 				record.Input = "absent"
-				request.Input = &inputs.ScriptInput{Action: "actions/github-script", Input: "absent", Language: "javascript"}
+				request.Input = &checkinputs.ScriptInput{Action: "actions/github-script", Input: "absent", Language: "javascript"}
 			}
 			request.Occurrence, err = builder.AddScript(builder.RootContext(), record.Declaration, record.Kind, record.Input)
 			if err != nil {

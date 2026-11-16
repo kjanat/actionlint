@@ -11,18 +11,18 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 type recordingEngine struct {
 	mu       sync.Mutex
-	requests []inputs.ScriptRequest
+	requests []checkinputs.ScriptRequest
 	closed   bool
 	code     string
 }
@@ -67,7 +67,7 @@ jobs:
 	}
 }
 
-func (e *recordingEngine) Check(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (e *recordingEngine) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	e.mu.Lock()
 	e.requests = append(e.requests, request)
 	e.mu.Unlock()
@@ -81,9 +81,9 @@ func (e *recordingEngine) Check(_ context.Context, request inputs.ScriptRequest)
 		row = strings.Count(before, "\n") + 1
 		column = len(before) - strings.LastIndex(before, "\n")
 	}
-	return []inputs.ScriptDiagnostic{{
+	return []checkinputs.ScriptDiagnostic{{
 		Filename: request.Filename, Code: code, Message: "Undefined name `missing`", Severity: "error",
-		Location: inputs.ScriptPosition{Row: row, Column: column}, EndLocation: inputs.ScriptPosition{Row: row, Column: column + 7},
+		Location: checkinputs.ScriptPosition{Row: row, Column: column}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: column + 7},
 	}}, nil
 }
 
@@ -119,7 +119,7 @@ func TestConfiguredScriptEngineLoadsOncePerInvocation(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	engine := &recordingEngine{}
 	var paths []string
-	session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (inputs.ScriptBackend, error) {
+	session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 		paths = append(paths, path)
 		return engine, nil
 	}, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
@@ -156,7 +156,7 @@ func TestOverlayScriptEnginePathsUseEachSessionWorkingDirectory(t *testing.T) {
 		options := checking.Options{
 			WorkingDir: root, ConfigOverlays: []configuration.Overlay{overlay},
 			Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
-			LoadScriptEngine: func(_ context.Context, path string) (inputs.ScriptBackend, error) {
+			LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 				loadedMu.Lock()
 				loaded[path] = true
 				loadedMu.Unlock()
@@ -182,7 +182,7 @@ func TestConfiguredScriptEngineFailsWithoutLoader(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 	failing := errors.New("module is broken")
-	session = checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (inputs.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
+	session = checking.Options{WorkingDir: root, LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, failing }, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}})}
 
 	if _, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); !errors.Is(err, failing) || !strings.Contains(err.Error(), "could not initialize ruff: module is broken") {
 		t.Fatalf("err=%v", err)
@@ -195,7 +195,7 @@ func TestConfiguredScriptEngineRejectsNilLoaderBackend(t *testing.T) {
 	options := checking.Options{
 		WorkingDir:       root,
 		Tools:            registry.Registrations(registry.Selections{"ruff": {Command: "ruff", Process: &process.CommandOptions{Optional: true}}}),
-		LoadScriptEngine: func(context.Context, string) (inputs.ScriptBackend, error) { return nil, nil },
+		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return nil, nil },
 	}
 	if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]}); err == nil || !strings.Contains(err.Error(), "could not initialize ruff") || !strings.Contains(err.Error(), "nil backend") {
 		t.Fatalf("configured Wasm analysis silently fell back: %v", err)
@@ -206,7 +206,7 @@ func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 	t.Parallel()
 	root, workflows := writeScriptEngineRepository(t)
 	loads := 0
-	loader := func(context.Context, string) (inputs.ScriptBackend, error) {
+	loader := func(context.Context, string) (checkinputs.ScriptBackend, error) {
 		loads++
 		return &recordingEngine{}, nil
 	}
@@ -225,9 +225,9 @@ func TestExplicitToolSettingsWinOverConfiguredEngine(t *testing.T) {
 
 type namedShellEngine string
 
-func (e namedShellEngine) Check(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (e namedShellEngine) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	row := strings.Count(strings.TrimSuffix(request.Source, "\n"), "\n") + 1
-	return []inputs.ScriptDiagnostic{{Filename: request.Filename, Code: "SC2086", Message: string(e), Severity: "warning", Location: inputs.ScriptPosition{Row: row, Column: 1}, EndLocation: inputs.ScriptPosition{Row: row, Column: 5}}}, nil
+	return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "SC2086", Message: string(e), Severity: "warning", Location: checkinputs.ScriptPosition{Row: row, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: 5}}}, nil
 }
 
 func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
@@ -249,7 +249,7 @@ func TestShellcheckBackendFollowsCompositeConfiguration(t *testing.T) {
 		}
 	}
 	for _, input := range []string{".github/workflows/ci.yml", ".github/actions/setup/action.yml"} {
-		session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (inputs.ScriptBackend, error) {
+		session := checking.Options{WorkingDir: root, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 			return namedShellEngine(filepath.Base(path)), nil
 		}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}})}
 		var err error
@@ -291,7 +291,7 @@ func TestShellcheckSelectsEngineForEachEffectiveConfiguration(t *testing.T) {
 	loaded := map[string]*recordingEngine{}
 	options := checking.Options{
 		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{Optional: true}}}),
-		LoadScriptEngine: func(_ context.Context, path string) (inputs.ScriptBackend, error) {
+		LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 			mu.Lock()
 			defer mu.Unlock()
 			backend := &recordingEngine{code: "SC2086"}

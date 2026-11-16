@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -15,7 +15,7 @@ func TestResolvedReferenceUsesCapturedTargets(t *testing.T) {
 	commit := strings.Repeat("a", 40)
 	ref := source.Reference{Document: "workflow.yml", Revision: "captured", Node: "step"}
 	dependency := facts.Dependency{Reference: ref, Uses: "owner/repo/subpath@v1", Start: source.Position{Line: 3, Column: 15}, End: source.Position{Line: 3, Column: 40}}
-	input := inputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []facts.Dependency{dependency}}
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", Reference: ref, Dependencies: []facts.Dependency{dependency}}
 	rule := NewResolvedReferenceCheck()
 	if findings, err := rule.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {
 		t.Fatalf("unresolved reference became a pin: %v %v", findings, err)

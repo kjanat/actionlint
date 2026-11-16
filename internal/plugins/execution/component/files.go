@@ -6,7 +6,7 @@ import (
 	"path"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
 )
 
@@ -15,7 +15,7 @@ type fileSystemsKey struct{}
 type scopedPreopens struct{ deps preopens.Deps }
 
 func (p scopedPreopens) GetDirectories(ctx context.Context) ([]preopens.TupleDescriptorString, error) {
-	files, _ := ctx.Value(fileSystemsKey{}).([]inputs.FileSystem)
+	files, _ := ctx.Value(fileSystemsKey{}).([]checkinputs.FileSystem)
 	entries := make([]*preopens.PreopenEntry, 0, len(files))
 	seen := make(map[string]bool, len(files))
 	for _, mount := range files {

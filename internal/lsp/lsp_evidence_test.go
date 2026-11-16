@@ -14,20 +14,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type editorPathAnalyzer struct{}
 
-func (editorPathAnalyzer) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (editorPathAnalyzer) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (editorPathAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Reference
 	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }
@@ -52,7 +52,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if directory != "" {
 			key = "workflow.yml"
 		}
-		analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []inputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+		analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		if err != nil || len(analysis.Diagnostics) != 1 {
 			t.Fatalf("working directory %q lost findings: %+v %v", directory, analysis, err)
 		}
@@ -192,7 +192,7 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != analysis.Sources[path].Revision.Digest() {
 		t.Fatal("published alias was not bound to its captured revision")
 	}
-	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []inputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
 		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
 	}

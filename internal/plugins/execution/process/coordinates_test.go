@@ -3,12 +3,12 @@ package process
 import (
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-func position(row, column int) inputs.ScriptPosition {
-	return inputs.ScriptPosition{Row: row, Column: column}
+func position(row, column int) checkinputs.ScriptPosition {
+	return checkinputs.ScriptPosition{Row: row, Column: column}
 }
 
 func TestCoordinates(t *testing.T) {
@@ -18,9 +18,9 @@ func TestCoordinates(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
 		convention manifests.Coordinates
-		start, end inputs.ScriptPosition
-		wantStart  inputs.ScriptPosition
-		wantEnd    inputs.ScriptPosition
+		start, end checkinputs.ScriptPosition
+		wantStart  checkinputs.ScriptPosition
+		wantEnd    checkinputs.ScriptPosition
 	}{
 		{"chars", manifests.Coordinates{Rows: manifests.RowsLF, Columns: manifests.ColumnsChars, End: manifests.EndExclusive}, position(1, 4), position(1, 5), position(1, 4), position(1, 5)},
 		{"bytes", manifests.Coordinates{Rows: manifests.RowsLF, Columns: manifests.ColumnsBytes, End: manifests.EndExclusive}, position(1, 4), position(1, 8), position(1, 3), position(1, 4)},
@@ -33,7 +33,7 @@ func TestCoordinates(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			c := newCoordinates(source, &tc.convention)
-			d := inputs.ScriptDiagnostic{Location: tc.start, EndLocation: tc.end, Fixes: []inputs.ScriptFix{{Replacements: []inputs.ScriptReplacement{{Row: tc.start.Row, Column: tc.start.Column, EndRow: tc.end.Row, EndColumn: tc.end.Column}}}}}
+			d := checkinputs.ScriptDiagnostic{Location: tc.start, EndLocation: tc.end, Fixes: []checkinputs.ScriptFix{{Replacements: []checkinputs.ScriptReplacement{{Row: tc.start.Row, Column: tc.start.Column, EndRow: tc.end.Row, EndColumn: tc.end.Column}}}}}
 			c.diagnostic(&d)
 			replacement := d.Fixes[0].Replacements[0]
 			if d.Location != tc.wantStart || d.EndLocation != tc.wantEnd || position(replacement.Row, replacement.Column) != tc.wantStart || position(replacement.EndRow, replacement.EndColumn) != tc.wantEnd {
@@ -42,7 +42,7 @@ func TestCoordinates(t *testing.T) {
 		})
 	}
 	c := newCoordinates(source, &manifests.Coordinates{Rows: manifests.RowsLF, Columns: manifests.ColumnsChars, End: manifests.EndInclusive})
-	if end := c.end(inputs.ScriptPosition{}); end != (inputs.ScriptPosition{}) {
+	if end := c.end(checkinputs.ScriptPosition{}); end != (checkinputs.ScriptPosition{}) {
 		t.Fatalf("missing end became %+v", end)
 	}
 }

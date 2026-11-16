@@ -7,9 +7,9 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -104,7 +104,7 @@ func lowerSpans(text string, spans []sourcemap.Span) []wacogo.Val {
 	return values
 }
 
-func lowerScript(script inputs.Script) *wacogo.ValRecord {
+func lowerScript(script checkinputs.Script) *wacogo.ValRecord {
 	spans := lowerSpans(script.Text, script.Spans)
 	occurrence := wacogo.ValOptionNone()
 	if script.Occurrence.ID != "" {
@@ -126,7 +126,7 @@ func lowerScript(script inputs.Script) *wacogo.ValRecord {
 	)
 }
 
-func lowerScripts(scripts []inputs.Script) *wacogo.ValList {
+func lowerScripts(scripts []checkinputs.Script) *wacogo.ValList {
 	values := make([]wacogo.Val, 0, len(scripts))
 	for _, script := range scripts {
 		values = append(values, lowerScript(script))
@@ -153,7 +153,7 @@ func lowerMappings(mappings []facts.Mapping) *wacogo.ValList {
 	return wacogo.NewValListOf(values...)
 }
 
-func lowerInput(input inputs.AnalyzerInput) *wacogo.ValRecord {
+func lowerInput(input checkinputs.AnalyzerInput) *wacogo.ValRecord {
 	selected := wacogo.ValOptionNone()
 	if input.SelectedScripts != nil {
 		ids := make([]wacogo.Val, 0, len(input.SelectedScripts))
@@ -237,20 +237,20 @@ func validateRange(start, end source.Position) error {
 	return nil
 }
 
-func liftDescriptor(v wacogo.Val) (inputs.Descriptor, error) {
+func liftDescriptor(v wacogo.Val) (checkinputs.Descriptor, error) {
 	record, err := liftRecord(v, "descriptor")
 	if err != nil {
-		return inputs.Descriptor{}, err
+		return checkinputs.Descriptor{}, err
 	}
 	name, err := liftString(record, "name")
 	if err != nil {
-		return inputs.Descriptor{}, err
+		return checkinputs.Descriptor{}, err
 	}
 	requiredInputs, err := liftList(record.Field("required-inputs"), "descriptor required inputs")
 	if err != nil {
-		return inputs.Descriptor{}, err
+		return checkinputs.Descriptor{}, err
 	}
-	descriptor := inputs.Descriptor{Descriptor: rule.
+	descriptor := checkinputs.Descriptor{Descriptor: rule.
 		// The versioned analyzer ABI includes fix-availability. Ignore that legacy
 		// claim: only the fixes on a diagnostic describe edits this host can offer.
 		Descriptor{Name: name}, SupportsActions: true}
@@ -258,38 +258,38 @@ func liftDescriptor(v wacogo.Val) (inputs.Descriptor, error) {
 	for key, dest := range map[string]*string{"description": &descriptor.Description, "category": &descriptor.Category, "subcategory": &descriptor.Subcategory, "maturity": &descriptor.Maturity, "provider": &descriptor.Provider, "explanation": &descriptor.Explanation, "help": &descriptor.Help, "documentation-url": &descriptor.DocumentationURL} {
 		value, err := liftString(record, key)
 		if err != nil {
-			return inputs.Descriptor{}, err
+			return checkinputs.Descriptor{}, err
 		}
 		*dest = value
 	}
 	recommended, ok := record.Field("recommended").(wacogo.ValBool)
 	if !ok {
-		return inputs.Descriptor{}, liftError{"recommended", record.Field("recommended")}
+		return checkinputs.Descriptor{}, liftError{"recommended", record.Field("recommended")}
 	}
 	descriptor.Recommended = bool(recommended)
 	schema, err := liftString(record, "options-schema")
 	if err != nil {
-		return inputs.Descriptor{}, err
+		return checkinputs.Descriptor{}, err
 	}
 	descriptor.OptionsSchema, err = validOptionsSchema(schema)
 	if err != nil {
-		return inputs.Descriptor{}, err
+		return checkinputs.Descriptor{}, err
 	}
 
 	examples, err := liftList(record.Field("examples"), "rule examples")
 	if err != nil {
-		return inputs.Descriptor{}, err
+		return checkinputs.Descriptor{}, err
 	}
 	for i := range examples.Len() {
 		record, err := liftRecord(examples.Get(i), "rule example")
 		if err != nil {
-			return inputs.Descriptor{}, err
+			return checkinputs.Descriptor{}, err
 		}
 		example := rule.Example{}
 		for name, dest := range map[string]*string{"description": &example.Description, "before": &example.Before, "after": &example.After} {
 			value, err := liftString(record, name)
 			if err != nil {
-				return inputs.Descriptor{}, err
+				return checkinputs.Descriptor{}, err
 			}
 			*dest = value
 		}
@@ -299,10 +299,10 @@ func liftDescriptor(v wacogo.Val) (inputs.Descriptor, error) {
 	for i := range requiredInputs.Len() {
 		inputKind, ok := requiredInputs.Get(i).(*wacogo.ValEnum)
 		if !ok {
-			return inputs.Descriptor{}, liftError{"input kind", requiredInputs.Get(i)}
+			return checkinputs.Descriptor{}, liftError{"input kind", requiredInputs.Get(i)}
 		}
 		if !validInputKindDiscriminant(inputKind.Discriminant()) {
-			return inputs.Descriptor{}, fmt.Errorf("plugin requires unknown input kind %d", inputKind.Discriminant())
+			return checkinputs.Descriptor{}, fmt.Errorf("plugin requires unknown input kind %d", inputKind.Discriminant())
 		}
 		descriptor.RequiredInputs = append(descriptor.RequiredInputs, inputKinds[inputKind.Discriminant()])
 	}
@@ -436,7 +436,7 @@ func liftAnalysis(v wacogo.Val) ([]results.Diagnostic, error) {
 	return liftAnalysisForInput(v, nil)
 }
 
-func liftAnalysisForInput(v wacogo.Val, input *inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func liftAnalysisForInput(v wacogo.Val, input *checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	result, err := liftRecord(v, "analysis outcome")
 	if err != nil {
 		return nil, err

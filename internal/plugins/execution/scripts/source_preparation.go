@@ -4,8 +4,8 @@ import (
 	"context"
 	"maps"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
@@ -63,7 +63,7 @@ func applySourcePreparation(ctx context.Context, transform *preparation.SourcePl
 		return line
 	}
 	if previousFilter := prepared.AcceptDiagnostic; previousFilter != nil {
-		prepared.AcceptDiagnostic = func(diagnostic inputs.ScriptDiagnostic) bool {
+		prepared.AcceptDiagnostic = func(diagnostic checkinputs.ScriptDiagnostic) bool {
 			line := mapped.Line(diagnostic.Location.Row)
 			if line.Origin != preparation.LineScript {
 				return true

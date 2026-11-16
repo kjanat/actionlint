@@ -17,9 +17,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 
@@ -213,7 +213,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			if err != nil {
 				return options, &pluginexec.LoadError{Err: err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), inputs.Registration{Checker: checker})
+			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: checker})
 			continue
 		}
 		selection := scripts.Selection{Command: name}

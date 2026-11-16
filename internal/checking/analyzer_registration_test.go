@@ -7,28 +7,28 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type registrationBoundaryTrap struct{}
 
-type registrationBoundaryPlain struct{ inputs.Checker }
+type registrationBoundaryPlain struct{ checkinputs.Checker }
 
-func (*registrationBoundaryTrap) Descriptor() inputs.Descriptor {
+func (*registrationBoundaryTrap) Descriptor() checkinputs.Descriptor {
 	panic("metadata called before registration validation")
 }
 
-func (*registrationBoundaryTrap) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (*registrationBoundaryTrap) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	panic("analysis called before registration validation")
 }
 
-func (*registrationBoundaryTrap) ToolIntegration() *inputs.ToolIntegration {
+func (*registrationBoundaryTrap) ToolIntegration() *checkinputs.ToolIntegration {
 	panic("integration called before registration validation")
 }
 
-func (*registrationBoundaryTrap) NegotiateTool(context.Context, json.RawMessage, json.RawMessage) (*inputs.ToolNegotiation, error) {
+func (*registrationBoundaryTrap) NegotiateTool(context.Context, json.RawMessage, json.RawMessage) (*checkinputs.ToolNegotiation, error) {
 	panic("negotiation called before registration validation")
 }
 
@@ -36,7 +36,7 @@ func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name     string
-		analyzer inputs.Checker
+		analyzer checkinputs.Checker
 	}{
 		{name: "nil interface"},
 		{name: "typed nil analyzer", analyzer: (*registrationBoundaryPlain)(nil)},
@@ -67,7 +67,7 @@ func TestApplicationRejectsNilAnalyzersBeforeMetadata(t *testing.T) {
 			} {
 				t.Run(endpoint.name, func(t *testing.T) {
 					t.Parallel()
-					options := checking.Options{Analyzers: []inputs.Registration{{Checker: &registrationBoundaryTrap{}}, {Checker: tc.analyzer}}}
+					options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: &registrationBoundaryTrap{}}, {Checker: tc.analyzer}}}
 					if err := endpoint.run(options); err == nil || !strings.Contains(err.Error(), "nil analyzer registration") {
 						t.Fatalf("invalid registration was not rejected: %v", err)
 					}

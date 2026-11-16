@@ -4,7 +4,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -20,7 +20,7 @@ type coordinates struct {
 // of its first character.
 type engineLine struct {
 	text  string
-	start inputs.ScriptPosition
+	start checkinputs.ScriptPosition
 }
 
 // defaultCoordinates is the contract's own convention.
@@ -31,7 +31,7 @@ func newCoordinates(source string, convention *manifests.Coordinates) coordinate
 		return coordinates{}
 	}
 	c := coordinates{convention: *convention}
-	position := inputs.ScriptPosition{Row: 1, Column: 1}
+	position := checkinputs.ScriptPosition{Row: 1, Column: 1}
 	line := engineLine{start: position}
 	begin := 0
 	for i, character := range source {
@@ -44,7 +44,7 @@ func newCoordinates(source string, convention *manifests.Coordinates) coordinate
 			}
 			line.text = source[begin:end]
 			c.lines = append(c.lines, line)
-			position = inputs.ScriptPosition{Row: position.Row + 1, Column: 1}
+			position = checkinputs.ScriptPosition{Row: position.Row + 1, Column: 1}
 			line, begin = engineLine{start: position}, i+1
 		case universal:
 			line.text = source[begin:i]
@@ -61,19 +61,19 @@ func newCoordinates(source string, convention *manifests.Coordinates) coordinate
 }
 
 // start converts a start position.
-func (c coordinates) start(position inputs.ScriptPosition) inputs.ScriptPosition {
+func (c coordinates) start(position checkinputs.ScriptPosition) checkinputs.ScriptPosition {
 	return c.convert(position, false)
 }
 
 // end converts an end position; the zero position means no end.
-func (c coordinates) end(position inputs.ScriptPosition) inputs.ScriptPosition {
-	if position == (inputs.ScriptPosition{}) {
+func (c coordinates) end(position checkinputs.ScriptPosition) checkinputs.ScriptPosition {
+	if position == (checkinputs.ScriptPosition{}) {
 		return position
 	}
 	return c.convert(position, c.convention.End == manifests.EndInclusive)
 }
 
-func (c coordinates) convert(position inputs.ScriptPosition, inclusive bool) inputs.ScriptPosition {
+func (c coordinates) convert(position checkinputs.ScriptPosition, inclusive bool) checkinputs.ScriptPosition {
 	if c.lines == nil || position.Row < 1 || position.Row > len(c.lines) || position.Column < 1 {
 		return position
 	}
@@ -95,7 +95,7 @@ func (c coordinates) convert(position inputs.ScriptPosition, inclusive bool) inp
 	}
 	// Positions past the line's end keep their remaining distance.
 	characters += max(units, 0)
-	converted := inputs.ScriptPosition{Row: line.start.Row, Column: line.start.Column + characters}
+	converted := checkinputs.ScriptPosition{Row: line.start.Row, Column: line.start.Column + characters}
 	if inclusive {
 		converted.Column++
 	}
@@ -103,7 +103,7 @@ func (c coordinates) convert(position inputs.ScriptPosition, inclusive bool) inp
 }
 
 // diagnostic converts a snippet diagnostic and its fix replacements in place.
-func (c coordinates) diagnostic(d *inputs.ScriptDiagnostic) {
+func (c coordinates) diagnostic(d *checkinputs.ScriptDiagnostic) {
 	if c.lines == nil {
 		return
 	}
@@ -112,8 +112,8 @@ func (c coordinates) diagnostic(d *inputs.ScriptDiagnostic) {
 	for i := range d.Fixes {
 		for j := range d.Fixes[i].Replacements {
 			r := &d.Fixes[i].Replacements[j]
-			start := c.start(inputs.ScriptPosition{Row: r.Row, Column: r.Column})
-			end := c.end(inputs.ScriptPosition{Row: r.EndRow, Column: r.EndColumn})
+			start := c.start(checkinputs.ScriptPosition{Row: r.Row, Column: r.Column})
+			end := c.end(checkinputs.ScriptPosition{Row: r.EndRow, Column: r.EndColumn})
 			r.Row, r.Column, r.EndRow, r.EndColumn = start.Row, start.Column, end.Row, end.Column
 		}
 	}

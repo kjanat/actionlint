@@ -1,4 +1,4 @@
-package inputs
+package checkinputs
 
 // TemplateEffectsContract identifies the semantics of template provenance filtering.
 const TemplateEffectsContract = "kjanat:actionlint/template-effects@0.1.0"

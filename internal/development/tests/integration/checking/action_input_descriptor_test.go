@@ -12,11 +12,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
@@ -49,7 +49,7 @@ func TestBuiltinInputOnlyDescriptorRejectsNativeRuns(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			engine := &inputReplacementBackend{}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: inputs.ScriptEngineDescriptor{Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []inputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}}}}}}
+			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}}}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
@@ -159,7 +159,7 @@ func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
 		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
 			t.Parallel()
 			engine := &inputReplacementBackend{}
-			registration, err := scripts.RegisterEngine(inputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent", Category: "correctness"}, ScriptInputs: []inputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
+			registration, err := scripts.RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent", Category: "correctness"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}, engine)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -186,23 +186,23 @@ func TestDisabledInputSelectorsDoNotConflict(t *testing.T) {
 
 type pythonInputBackend struct{}
 
-func (pythonInputBackend) TemplateContract() string { return inputs.TemplateEffectsContract }
+func (pythonInputBackend) TemplateContract() string { return checkinputs.TemplateEffectsContract }
 
-func (pythonInputBackend) Check(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+func (pythonInputBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 	// Model Ruff's undefined-name ranges for the opaque identifier and real name.
-	var findings []inputs.ScriptDiagnostic
+	var findings []checkinputs.ScriptDiagnostic
 	for _, match := range regexp.MustCompile(`_[a-z0-9_]*|missing`).FindAllStringIndex(request.Source, -1) {
 		before := request.Source[:match[0]]
 		row := strings.Count(before, "\n") + 1
 		column := match[0] - strings.LastIndex(before, "\n")
-		findings = append(findings, inputs.ScriptDiagnostic{Filename: request.Filename, Code: "F821", Message: "undefined name", Location: inputs.ScriptPosition{Row: row, Column: column}, EndLocation: inputs.ScriptPosition{Row: row, Column: column + match[1] - match[0]}, TemplateEffect: inputs.TemplateEffectOpaqueName})
+		findings = append(findings, checkinputs.ScriptDiagnostic{Filename: request.Filename, Code: "F821", Message: "undefined name", Location: checkinputs.ScriptPosition{Row: row, Column: column}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: column + match[1] - match[0]}, TemplateEffect: checkinputs.TemplateEffectOpaqueName})
 	}
 	return findings, nil
 }
 
 func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 	t.Parallel()
-	plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: pythonInputBackend{}, Descriptor: inputs.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: inputs.TemplateEffectsContract, ScriptInputs: []inputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
+	plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: pythonInputBackend{}, Descriptor: checkinputs.ScriptEngineDescriptor{Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, TemplateContract: checkinputs.TemplateEffectsContract, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/python", Input: "source", Language: "python"}}}}}}
 	options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})}})
 	if err != nil {
 		t.Fatal(err)
@@ -228,10 +228,10 @@ func TestRuffInputFiltersOnlyManufacturedNames(t *testing.T) {
 
 type selectedInputBackend struct {
 	inputReplacementBackend
-	descriptor inputs.ScriptEngineDescriptor
+	descriptor checkinputs.ScriptEngineDescriptor
 }
 
-func (b *selectedInputBackend) ScriptDescriptor() inputs.ScriptEngineDescriptor {
+func (b *selectedInputBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 	return b.descriptor
 }
 
@@ -269,7 +269,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					shell.Required = func(contract.Context) bool { return false }
 				}
 				loads := 0
-				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (inputs.ScriptBackend, error) {
+				_, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{providerRegistration(t, "ruff", scripts.Selection{Backend: activeRuff}), shell}, LoadScriptEngine: func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
 					if filepath.Base(path) == "default.wasm" {
 						return &inputReplacementBackend{}, nil
 					}
@@ -277,7 +277,7 @@ func TestInputDiscoveryRetainsSuccessfulToolSelection(t *testing.T) {
 					if failure == "missing" {
 						return nil, errors.New("override module missing")
 					}
-					return &selectedInputBackend{descriptor: inputs.ScriptEngineDescriptor{Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []inputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
+					return &selectedInputBackend{descriptor: checkinputs.ScriptEngineDescriptor{Engine: "shellcheck", Rule: rule.Descriptor{Name: "shellcheck"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "python"}}}}, nil
 				}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}})
 				// The composite action's own configuration enables the tool
 				// even when the calling workflow disables it (decision b5 in

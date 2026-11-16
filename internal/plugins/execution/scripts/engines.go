@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
 const maxScriptEngines = 4
@@ -15,7 +15,7 @@ var errScriptEnginesClosed = errors.New("WebAssembly engine session is closed")
 
 type scriptEngineLoad struct {
 	done    chan struct{}
-	backend inputs.ScriptBackend
+	backend checkinputs.ScriptBackend
 	err     error
 }
 
@@ -23,8 +23,8 @@ type scriptEngineLoad struct {
 // the four-path session limit.
 type ScriptEngines struct {
 	mu      sync.Mutex
-	load    func(context.Context, string) (inputs.ScriptBackend, error)
-	loaded  map[string]inputs.ScriptBackend
+	load    func(context.Context, string) (checkinputs.ScriptBackend, error)
+	loaded  map[string]checkinputs.ScriptBackend
 	failed  map[string]error
 	loading map[string]*scriptEngineLoad
 	done    chan struct{}
@@ -32,16 +32,16 @@ type ScriptEngines struct {
 }
 
 // NewScriptEngines wraps a loader. A nil loader rejects every configured engine.
-func NewScriptEngines(load func(context.Context, string) (inputs.ScriptBackend, error)) *ScriptEngines {
+func NewScriptEngines(load func(context.Context, string) (checkinputs.ScriptBackend, error)) *ScriptEngines {
 	return &ScriptEngines{
-		load: load, loaded: map[string]inputs.ScriptBackend{}, failed: map[string]error{},
+		load: load, loaded: map[string]checkinputs.ScriptBackend{}, failed: map[string]error{},
 		loading: map[string]*scriptEngineLoad{}, done: make(chan struct{}),
 	}
 }
 
 // LoadModuleBackend returns the engine for a module path, loading it on first use.
 // Loaders for distinct paths may run concurrently.
-func (s *ScriptEngines) LoadModuleBackend(ctx context.Context, path string) (inputs.ScriptBackend, error) {
+func (s *ScriptEngines) LoadModuleBackend(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
 	if s == nil || s.load == nil {
 		return nil, errors.New("this host has no WebAssembly engine loader")
 	}
@@ -80,7 +80,7 @@ func (s *ScriptEngines) LoadModuleBackend(ctx context.Context, path string) (inp
 	return s.finish(ctx, path, pending, backend, err)
 }
 
-func (s *ScriptEngines) wait(ctx context.Context, pending *scriptEngineLoad) (inputs.ScriptBackend, error) {
+func (s *ScriptEngines) wait(ctx context.Context, pending *scriptEngineLoad) (checkinputs.ScriptBackend, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -99,7 +99,7 @@ func (s *ScriptEngines) wait(ctx context.Context, pending *scriptEngineLoad) (in
 	}
 }
 
-func (s *ScriptEngines) finish(ctx context.Context, path string, pending *scriptEngineLoad, backend inputs.ScriptBackend, err error) (inputs.ScriptBackend, error) {
+func (s *ScriptEngines) finish(ctx context.Context, path string, pending *scriptEngineLoad, backend checkinputs.ScriptBackend, err error) (checkinputs.ScriptBackend, error) {
 	s.mu.Lock()
 	if s.closed {
 		delete(s.loading, path)

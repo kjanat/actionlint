@@ -7,17 +7,17 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
 func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {
 	t.Parallel()
-	sites := []inputs.ScriptInput{{Action: "owner/action/SubPath", Input: "source", Language: "python"}, {Action: "owner/action", Input: "code", Language: "javascript"}, {Action: "owner/action", Input: "other", Language: "python"}}
+	sites := []checkinputs.ScriptInput{{Action: "owner/action/SubPath", Input: "source", Language: "python"}, {Action: "owner/action", Input: "code", Language: "javascript"}, {Action: "owner/action", Input: "other", Language: "python"}}
 	var names []string
-	registration, err := RegisterEngine(inputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent"}, Shells: []string{"bash"}, ScriptInputs: sites}, routingBackend(func(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	registration, err := RegisterEngine(checkinputs.ScriptEngineDescriptor{Rule: rule.Descriptor{Name: "independent"}, Shells: []string{"bash"}, ScriptInputs: sites}, routingBackend(func(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 		names = append(names, request.Filename)
 		return nil, nil
 	}))

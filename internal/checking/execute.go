@@ -20,9 +20,9 @@ import (
 
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 

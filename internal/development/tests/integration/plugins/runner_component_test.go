@@ -15,10 +15,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/google/go-cmp/cmp"
@@ -98,13 +98,13 @@ func TestRunnerProviderComponent(t *testing.T) {
 	}
 }
 
-type runtimeObserver struct{ scripts []inputs.Script }
+type runtimeObserver struct{ scripts []checkinputs.Script }
 
-func (*runtimeObserver) Descriptor() inputs.Descriptor {
-	return inputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Execution}}
+func (*runtimeObserver) Descriptor() checkinputs.Descriptor {
+	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Execution}}
 }
 
-func (o *runtimeObserver) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.scripts = append(o.scripts, input.Scripts...)
 	return nil, nil
 }
@@ -126,7 +126,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 			observer := &runtimeObserver{}
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				Runners:   runnerapi.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-				Analyzers: []inputs.Registration{{Checker: observer}},
+				Analyzers: []checkinputs.Registration{{Checker: observer}},
 			}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
 			if err != nil {
 				t.Fatal(err)
@@ -160,7 +160,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []inputs.Registration{{Checker: observer}}}, []workspace.InputFile{{
+		checking.Options{Analyzers: []checkinputs.Registration{{Checker: observer}}}, []workspace.InputFile{{
 			Path:    "workflow.yml",
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
 			Config:  cfg,

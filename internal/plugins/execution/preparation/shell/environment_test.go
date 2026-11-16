@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
@@ -16,7 +16,7 @@ func TestEnvironmentPreparationPreservesNamesAndSourceMapping(t *testing.T) {
 		Scope: scripts.EnvironmentStep,
 		Names: []string{"lowercase", "UPPERCASE", "miXedCase", "bad; command", "bad\ncommand", "1bad", "bad=value"},
 	})
-	prepared, err := BuildShellScriptInput(inputs.Script{
+	prepared, err := BuildShellScriptInput(checkinputs.Script{
 		Text: `printf '%s\n' "$lowercase" "$UPPERCASE" "$miXedCase" "$missing_lowercase"`, Shell: "bash",
 		Environment: environments,
 	}, nil)
@@ -29,7 +29,7 @@ func TestEnvironmentPreparationPreservesNamesAndSourceMapping(t *testing.T) {
 	if slices.Contains(prepared.Excluded, uint32(2153)) || slices.Contains(prepared.Excluded, uint32(2154)) {
 		t.Fatal("known environment declarations disabled unassigned-variable checks")
 	}
-	if len(prepared.Lines) != 2 || prepared.Lines[0].Kind != inputs.ShellScriptGeneratedLine || prepared.Lines[1].Kind != inputs.ShellScriptSourceLine || prepared.Lines[1].Line != 1 {
+	if len(prepared.Lines) != 2 || prepared.Lines[0].Kind != checkinputs.ShellScriptGeneratedLine || prepared.Lines[1].Kind != checkinputs.ShellScriptSourceLine || prepared.Lines[1].Line != 1 {
 		t.Fatalf("environment prelude changed source coordinates: %+v", prepared.Lines)
 	}
 }
@@ -44,7 +44,7 @@ func TestEnvironmentPreparationPreservesDeclaredNamesWithUnknownRuntime(t *testi
 	if startup != "export DECLARED" || known {
 		t.Errorf("partial environment: startup=%q, known=%t", startup, known)
 	}
-	prepared, err := BuildShellScriptInput(inputs.Script{
+	prepared, err := BuildShellScriptInput(checkinputs.Script{
 		Text: `echo "$DECLARED" "$INHERITED"`, Shell: "bash", Environment: environments,
 	}, nil)
 	if err != nil || prepared == nil {
@@ -53,7 +53,7 @@ func TestEnvironmentPreparationPreservesDeclaredNamesWithUnknownRuntime(t *testi
 	if prepared.ShellSetup != "set -e -o pipefail; export DECLARED" {
 		t.Errorf("declared name was not exported: %q", prepared.ShellSetup)
 	}
-	if len(prepared.Lines) != 2 || prepared.Lines[0].Kind != inputs.ShellScriptGeneratedLine || prepared.Lines[1].Kind != inputs.ShellScriptSourceLine || prepared.Lines[1].Line != 1 {
+	if len(prepared.Lines) != 2 || prepared.Lines[0].Kind != checkinputs.ShellScriptGeneratedLine || prepared.Lines[1].Kind != checkinputs.ShellScriptSourceLine || prepared.Lines[1].Line != 1 {
 		t.Errorf("environment prelude changed source coordinates: %+v", prepared.Lines)
 	}
 }

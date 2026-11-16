@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
@@ -15,9 +15,9 @@ import (
 
 type sourceCommentsKey struct{}
 
-func suppliedComments(input inputs.AnalyzerInput) map[source.Reference][]facts.SourceComment {
+func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]facts.SourceComment {
 	comments := make(map[source.Reference][]facts.SourceComment)
-	add := func(script inputs.Script) {
+	add := func(script checkinputs.Script) {
 		if script.Reference != (source.Reference{}) {
 			comments[script.Reference] = slices.Clone(script.Comments)
 		}

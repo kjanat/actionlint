@@ -1,4 +1,4 @@
-package inputs
+package checkinputs
 
 import (
 	"strconv"
