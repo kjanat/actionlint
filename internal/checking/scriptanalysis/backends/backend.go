@@ -477,15 +477,15 @@ func inputFilename(site checkinputs.ScriptInput, extension string) string {
 }
 
 func scriptShell(script scriptanalysis.Unit) string {
-	shell, implicit := script.RuntimeShell()
-	if shell == "" && script.Shell != nil {
-		shell = *script.Shell
+	shell := script.RuntimeShell()
+	if !shell.Known() && script.Shell != nil {
+		shell.Name = *script.Shell
 	}
 	registry := script.Interpreters
 	if registry == nil {
 		registry = interpreters.Builtin()
 	}
-	invocation := registry.Analyze(shell, implicit)
+	invocation := registry.Analyze(shell.Name, shell.Implicit)
 	if invocation.Status == commands.Valid && invocation.Input == "file" && invocation.Language != "" {
 		return invocation.Language
 	}

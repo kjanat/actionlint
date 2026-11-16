@@ -140,7 +140,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 				t.Fatalf("missing shared execution facts: %#v", observer.scripts)
 			}
 			runtime := observer.scripts[0].Runtime
-			if runtime.Shell != tc.wantShell || runtime.ShellKnown != (tc.wantShell != "") {
+			if runtime.Shell.Name != tc.wantShell || runtime.Shell.Known() != (tc.wantShell != "") {
 				t.Fatalf("runtime = %#v", runtime)
 			}
 			if len(result.RunnerResults) != 1 || result.RunnerResults[0].ImplementationID != p.ArtifactDigest() {
@@ -176,7 +176,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	if len(observer.scripts) != 1 || observer.scripts[0].Runtime == nil {
 		t.Fatalf("missing shared execution facts: %#v", observer.scripts)
 	}
-	if runtime := observer.scripts[0].Runtime; runtime.Shell != "pwsh" || !runtime.ShellKnown {
+	if runtime := observer.scripts[0].Runtime; runtime.Shell.Name != "pwsh" || !runtime.Shell.Known() {
 		t.Fatalf("Windows runner lost its default shell: %#v", runtime)
 	}
 }

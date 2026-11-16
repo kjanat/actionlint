@@ -2,6 +2,8 @@ package shell
 
 import (
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestShellStartup(t *testing.T) {
@@ -35,7 +37,7 @@ func TestShellStartup(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			dialect, setup := (Shell{Name: tc.name, Implicit: tc.implicit}).Analysis()
+			dialect, setup := (Shell{Shell: scripts.Shell{Name: tc.name, Implicit: tc.implicit}}).Analysis()
 			if dialect == "" || setup != tc.setup {
 				t.Fatalf("got %q / %q, want setup %q", dialect, setup, tc.setup)
 			}
@@ -52,7 +54,7 @@ func TestUnknownScriptLanguage(t *testing.T) {
 	} {
 		t.Run(shell, func(t *testing.T) {
 			t.Parallel()
-			dialect, setup := (Shell{Name: shell}).Analysis()
+			dialect, setup := (Shell{Shell: scripts.Shell{Name: shell}}).Analysis()
 			if dialect != "" || setup != "" {
 				t.Fatalf("unknown script language inferred as %q / %q", dialect, setup)
 			}
@@ -74,7 +76,7 @@ func TestHeaderSelection(t *testing.T) {
 		{"echo ok\n# shellcheck shell=bash\n", false},
 		{"# Example: shellcheck shell=bash\n", false},
 	} {
-		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}}, tc.script)
+		prepared, err := prepareShellcheck(t, Run{Shell: Shell{Shell: scripts.Shell{Name: "bash"}}}, tc.script)
 		if err != nil {
 			t.Fatal(err)
 		}

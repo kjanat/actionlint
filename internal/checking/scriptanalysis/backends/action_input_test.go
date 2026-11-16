@@ -53,7 +53,7 @@ func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Execution: &scripts.Execution{Shell: "javascript", ShellKnown: true}}}}); err != nil {
+	if _, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Execution: &scripts.Execution{Shell: scripts.Shell{Name: "javascript"}}}}}); err != nil {
 		t.Fatal(err)
 	}
 	if backend.calls.Load() != 1 {

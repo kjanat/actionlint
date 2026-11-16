@@ -119,7 +119,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Input: actionInput(site, "input", &sourcetext.Position{Line: 11, Column: 7})}, {Run: runBody("run", nil), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}})
+	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Input: actionInput(site, "input", &sourcetext.Position{Line: 11, Column: 7})}, {Run: runBody("run", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}}})
 	if err == nil || !strings.Contains(err.Error(), "tools.tool.config: bad configuration") || strings.Contains(err.Error(), "input without end") || len(findings) != 3 || findings[0].Message != "native" || findings[1].Message != "input" || findings[2].Message != "input without end" || findings[2].Start != (sourcetext.Position{Line: 11, Column: 7}) {
 		t.Fatalf("prepared configuration failure lost partial findings or became a source diagnostic: findings=%+v err=%v", findings, err)
 	}
@@ -161,7 +161,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{
-		{Run: runBody("run", nil), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}},
+		{Run: runBody("run", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}},
 		{Input: actionInput(site, "input", &sourcetext.Position{Line: 11, Column: 7})},
 	}})
 	if !errors.Is(err, nativeFailure) || !errors.Is(err, inputFailure) || nativeCalls != 1 || inputCalls != 1 || len(findings) != 2 {
@@ -273,7 +273,7 @@ func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Run: runBody("native", nil), Execution: &scripts.Execution{Shell: "python", ShellKnown: true}}}})
+	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Run: runBody("native", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "python"}}}}})
 	if err != nil || len(findings) != 1 {
 		t.Fatalf("legacy native routing: %+v, %v", findings, err)
 	}
@@ -338,9 +338,9 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 	python, unadvertised := "python", "bash"
 	_, err = runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{
 		{Run: runBody("print(1)", nil), Shell: &python},
-		{Run: runBody("print(2)", nil), Execution: &scripts.Execution{Shell: `C:\Python\python.exe {0}`, ShellKnown: true}},
+		{Run: runBody("print(2)", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: `C:\Python\python.exe {0}`}}},
 		// The runner splits at the first literal space, without unquoting the executable.
-		{Run: runBody("not a runnable quoted executable", nil), Execution: &scripts.Execution{Shell: `"C:\Program Files\Python\python.exe" {0}`, ShellKnown: true}},
+		{Run: runBody("not a runnable quoted executable", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: `"C:\Program Files\Python\python.exe" {0}`}}},
 		{Run: runBody("echo no", nil), Shell: &unadvertised},
 	}})
 	if err != nil || calls != 1 {

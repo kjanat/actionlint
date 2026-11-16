@@ -46,9 +46,9 @@ func checkWorkflowCommandSyntax(ctx context.Context, input checkinputs.AnalyzerI
 		if invocation.Status == commands.Unknown && invocation.Reason == "no interpreter definition matches the command" {
 			// The runner recognizes these exact built-in shell names even when
 			// the corresponding optional language plugin is not installed.
-			switch script.Runtime.Shell {
+			switch script.Runtime.Shell.Name {
 			case "python", "pwsh", "powershell":
-				invocation = commands.Invocation{Status: commands.Valid, Language: script.Runtime.Shell, Input: "file"}
+				invocation = commands.Invocation{Status: commands.Valid, Language: script.Runtime.Shell.Name, Input: "file"}
 			}
 		}
 		seen := make(map[scripts.ScriptRange]bool)

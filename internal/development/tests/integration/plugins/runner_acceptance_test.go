@@ -88,7 +88,7 @@ func TestRunnerProviderFailureKeepsIndependentChecks(t *testing.T) {
 		}
 		independent = independent || strings.Contains(d.Message, "missing")
 	}
-	if !independent || len(observer.scripts) != 1 || observer.scripts[0].Runtime == nil || observer.scripts[0].Runtime.ShellKnown {
+	if !independent || len(observer.scripts) != 1 || observer.scripts[0].Runtime == nil || observer.scripts[0].Runtime.Shell.Known() {
 		t.Fatalf("independent analysis or uncertainty lost: %#v", result.Diagnostics)
 	}
 }

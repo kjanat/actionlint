@@ -58,7 +58,7 @@ func scriptFixture(t *testing.T, input string) scriptanalysis.Unit {
 	if !ok {
 		t.Fatal("fixture has no run")
 	}
-	return scriptanalysis.Unit{Run: &definition.ExecRun{Run: run.Run, Source: view.Source, RunPos: run.RunPos}, Path: "fix.yml", Content: []byte(content), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	return scriptanalysis.Unit{Run: &definition.ExecRun{Run: run.Run, Source: view.Source, RunPos: run.RunPos}, Path: "fix.yml", Content: []byte(content), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}
 }
 
 // generated prepares a script as a shell preparation does: a kept shebang,
@@ -426,7 +426,7 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 		}
 		close(release)
 	}()
-	scripts := []scriptanalysis.Unit{{Run: runBody("first", &sourcetext.Position{Line: 1, Column: 1}), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}, {Run: runBody("second", &sourcetext.Position{Line: 2, Column: 1}), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}
+	scripts := []scriptanalysis.Unit{{Run: runBody("first", &sourcetext.Position{Line: 1, Column: 1}), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}, {Run: runBody("second", &sourcetext.Position{Line: 2, Column: 1}), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}}
 	begin := time.Now()
 	findings, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: scripts})
 	if err != nil {
@@ -582,7 +582,7 @@ func TestSnippetEnginesGetNoDirectory(t *testing.T) {
 		return nil, errors.New("partial")
 	})
 	runner := buildRunner(t, backend, engineOptions{})
-	_, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Run: runBody("x", nil), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true, Directory: t.TempDir(), DirectoryKnown: true}}}})
+	_, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Run: runBody("x", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}, Directory: t.TempDir(), DirectoryKnown: true}}}})
 	if err == nil || len(requests) != 1 || requests[0].Directory != "" || requests[0].Filename != "actionlint-script" {
 		t.Fatalf("requests %+v err %v", requests, err)
 	}

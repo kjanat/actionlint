@@ -27,7 +27,7 @@ type resolverState struct {
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
 	shellEnvUnknown      bool
-	checkoutShell        execution.Shell
+	checkoutShell        scripts.Shell
 }
 
 type compositeBranch struct {

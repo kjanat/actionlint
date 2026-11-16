@@ -44,7 +44,7 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, shell := range []string{"shell-0", "python", `C:\Tools\PYTHON.exe -u`, "bash", "not-listed"} {
-			if _, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Execution: &scripts.Execution{Shell: shell, ShellKnown: true}}}}); err != nil {
+			if _, err := runner.Analyze(t.Context(), scriptanalysis.Batch{Scripts: []scriptanalysis.Unit{{Execution: &scripts.Execution{Shell: scripts.Shell{Name: shell}}}}}); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -128,7 +128,7 @@ func BenchmarkShellCatalogueSelection(b *testing.B) {
 			}
 			batch := scriptanalysis.Batch{Scripts: make([]scriptanalysis.Unit, 100)}
 			for i := range batch.Scripts {
-				batch.Scripts[i].Execution.Shell = "not-listed"
+				batch.Scripts[i].Execution.Shell.Name = "not-listed"
 			}
 			b.ReportAllocs()
 			for b.Loop() {

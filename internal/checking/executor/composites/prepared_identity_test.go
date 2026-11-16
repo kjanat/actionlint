@@ -198,7 +198,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 		if i == 1 {
 			name = "pwsh"
 		}
-		requests[i].Execution = &scripts.Execution{Shell: name, ShellKnown: true}
+		requests[i].Execution = &scripts.Execution{Shell: scripts.Shell{Name: name}}
 		executionByOccurrence[requests[i].Occurrence] = name
 	}
 	requests[0], requests[1] = requests[1], requests[0]
@@ -214,7 +214,7 @@ func TestPreparedBatchRoutesRequestsByGraphOwner(t *testing.T) {
 		if unit.Scope.Config != configByOwner[record.Owner] {
 			t.Fatalf("request for owner %q used another invocation config", record.Owner)
 		}
-		if unit.Execution == nil || unit.Execution.Shell != executionByOccurrence[unit.Occurrence] {
+		if unit.Execution == nil || unit.Execution.Shell.Name != executionByOccurrence[unit.Occurrence] {
 			t.Fatalf("request for occurrence %q used another execution", unit.Occurrence)
 		}
 	}

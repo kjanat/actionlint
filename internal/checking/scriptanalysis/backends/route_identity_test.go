@@ -29,7 +29,7 @@ func TestInputRequestsIdentifyLanguageAndSite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scripts := []scriptanalysis.Unit{{Run: runBody("echo run", nil), Execution: &scripts.Execution{Shell: "bash", ShellKnown: true}}}
+	scripts := []scriptanalysis.Unit{{Run: runBody("echo run", nil), Execution: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}}
 	for _, site := range sites {
 		scripts = append(scripts, scriptanalysis.Unit{Input: actionInput(site, "code", nil)})
 	}
