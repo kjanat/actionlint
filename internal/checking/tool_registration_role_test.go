@@ -40,9 +40,9 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 	}{{name: "integrated"}, {name: "explicit process", explicit: true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			selection := registry.Selections{"shellcheck": {Command: "shellcheck"}}
+			selection := registry.ToolSelections{"shellcheck": {Command: "shellcheck"}}
 			if tc.explicit {
-				selection = registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}
+				selection = registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}
 			}
 			options, err := checking.ConfigureToolIntegrations(checking.Options{Tools: registry.Registrations(selection), Analyzers: []checkinputs.Registration{{Checker: selectedToolGuest{}}}})
 			if err != nil {

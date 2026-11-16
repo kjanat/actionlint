@@ -282,7 +282,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if err != nil {
 		return nil, err
 	}
-	var selection *workspace.Selection
+	var selection *workspace.PreparedBatch
 	switch input.Kind {
 	case inputmodel.Files:
 		if input.Selection != nil {

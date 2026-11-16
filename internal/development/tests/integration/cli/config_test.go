@@ -263,7 +263,7 @@ lint:
 		if err := os.WriteFile(config, []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
-		result, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: config}, true)
+		result, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: config}, true)
 		if err != nil {
 			t.Fatal(err)
 		}

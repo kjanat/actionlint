@@ -78,10 +78,10 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: process}}
-				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}})
 			} else {
 				cfg.Tools = configuration.ToolsConfig{"shellcheck": {Backend: process}}
-				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})
 				shell = "bash"
 			}
 			requestSources = []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n" + "\npermissions: {}\n")}}

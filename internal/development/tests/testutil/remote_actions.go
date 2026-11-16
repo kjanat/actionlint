@@ -61,7 +61,7 @@ func (p *fixtureActions) Lookup(ctx context.Context, ref actions.Reference) (act
 	if !ok {
 		return actions.UnavailableManifest(availability.NotFetched()), nil
 	}
-	selection, err := actions.NewSelection(ref, manifest.identity, manifest.object, manifest.route, "")
+	selection, err := actions.NewReferenceSelection(ref, manifest.identity, manifest.object, manifest.route, "")
 	if err != nil {
 		return actions.Manifest{}, err
 	}
@@ -136,7 +136,7 @@ func FixtureActions(t *testing.T) actions.Provider {
 		if object == "" {
 			object = identity.Commit()
 		}
-		selection, err := actions.NewSelection(ref, identity, object, route, "")
+		selection, err := actions.NewReferenceSelection(ref, identity, object, route, "")
 		if err != nil {
 			t.Fatal(err)
 		}

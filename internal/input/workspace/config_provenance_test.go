@@ -24,7 +24,7 @@ func TestInheritedWarningsSurviveReplacement(t *testing.T) {
 			writeToolFixture(t, root, "left.yml", "extends: [base.yml]\n")
 			writeToolFixture(t, root, "right.yml", "extends: [base.yml]\n")
 			leaf := writeToolFixture(t, root, "leaf.yml", "extends: [left.yml, right.yml]\n"+replacement+"\n")
-			inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: leaf}, true)
+			inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: leaf}, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,7 +141,7 @@ func TestMigratedPolicyOriginsRetainSourceAndReset(t *testing.T) {
 			line := "policy: {require-commit-hash: " + value + "}"
 			base := writeToolFixture(t, root, "base.yml", "# source policy\n"+line+"\n")
 			leaf := writeToolFixture(t, root, "leaf.yml", "extends: [base.yml]\nconfig-variables: [SAFE]\n")
-			inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: leaf}, true)
+			inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: leaf}, true)
 			if err != nil {
 				t.Fatal(err)
 			}

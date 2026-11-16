@@ -58,7 +58,7 @@ func TestManagedDocumentPluginAndStandaloneSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tc.command}})}
+			options := checking.Options{WorkingDir: t.TempDir(), ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: tc.command}})}
 			result, err := checking.CheckWithPlugins(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Name: "ci.yml", Reader: strings.NewReader(workflow)}, selected)
 			if err != nil {
 				t.Fatal(err)
@@ -113,9 +113,9 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 					Shells:       []string{shell},
 					ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 				}}}}
-				selections := registry.Selections{}
+				selections := registry.ToolSelections{}
 				if enabled {
-					selections = registry.Selections{engine: {Command: engine}}
+					selections = registry.ToolSelections{engine: {Command: engine}}
 				}
 				options, err := checking.ConfigurePlugins(plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(selections)})
 				if err != nil {
@@ -177,7 +177,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				if runs {
 					engine.descriptor.Shells = []string{"bash"}
 				}
-				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
+				options := checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 					return engine, nil
 				}}
 				sources := pluginselection.Sources{Paths: []string{plugin}}

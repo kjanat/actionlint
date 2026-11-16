@@ -62,7 +62,7 @@ jobs:
 			if err := os.WriteFile(path, []byte(workflow), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}

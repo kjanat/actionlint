@@ -37,7 +37,7 @@ func TestReusableIgnoreSourcedFile(t *testing.T) {
 					fixturefiles.Write(t, root, "local/action.yml", "name: local\ndescription: test\nruns:\n  using: composite\n  steps:\n    "+strings.ReplaceAll(steps, "\n", "\n    ")+"\n")
 					steps = "- uses: ./local"
 				}
-				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
+				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})})
 				if len(result.Diagnostics) != tc.want {
 					t.Fatalf("want %d findings, got %+v", tc.want, result.Diagnostics)
 				}

@@ -37,7 +37,7 @@ func TestHydratedPluginsLoadAfterCachedArtifactRemoved(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry.ResetRequests()
-	sources, err := (pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (pluginselection.PluginSelection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

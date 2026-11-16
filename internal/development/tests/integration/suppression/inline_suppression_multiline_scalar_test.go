@@ -54,7 +54,7 @@ func TestInlineSuppressionRunFirstKey(t *testing.T) {
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {ruff: false}\n")
 			steps := "# actionlint:ignore-next-line shellcheck\n- run: " + value + "\n  shell: bash\n- run: echo $VALUE\n  shell: bash"
-			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || !strings.Contains(result.Diagnostics[0].Snippet, "run: echo $VALUE") {
 				t.Fatalf("expected only unsuppressed sibling script: %+v", result.Diagnostics)
 			}
@@ -71,7 +71,7 @@ func TestWorkflowMultilineScalarShellcheckSuppression(t *testing.T) {
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {ruff: false}\n")
 			steps := "- shell: bash\n  # actionlint:ignore-next-line shellcheck\n  run: " + value + "\n- shell: bash\n  run: echo $VALUE"
-			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || !strings.Contains(result.Diagnostics[0].Snippet, "run: echo $VALUE") {
 				t.Fatalf("expected only unsuppressed sibling script: %+v", result.Diagnostics)
 			}

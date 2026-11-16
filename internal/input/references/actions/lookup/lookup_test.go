@@ -52,7 +52,7 @@ func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		selection, err := actions.NewSelection(ref, identity, commit, route, "test-observation")
+		selection, err := actions.NewReferenceSelection(ref, identity, commit, route, "test-observation")
 		if err != nil {
 			t.Fatal(err)
 		}

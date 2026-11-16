@@ -50,7 +50,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 				t.Fatal(err)
 			}
 			var shellCalls int
-			registrations := registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
+			registrations := registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 				shellCalls++
 				return []byte(`{"comments":[]}`), nil
 			}}})

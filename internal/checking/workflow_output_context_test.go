@@ -60,7 +60,7 @@ jobs:
 			if err := os.WriteFile(path, []byte(caller), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			options := Options{WorkingDir: root, SkipProjectConfig: true, Tools: registry.Registrations(registry.Selections{
+			options := Options{WorkingDir: root, SkipProjectConfig: true, Tools: registry.Registrations(registry.ToolSelections{
 				"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
 				"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 			})}

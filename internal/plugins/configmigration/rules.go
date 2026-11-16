@@ -23,7 +23,7 @@ import (
 // missing cached manifest requires an explicit installation before migration.
 func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, path string) ([]rule.Descriptor, error) {
 	directory := filepath.Dir(path)
-	sources, err := (pluginselection.Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return nil, err
 	}

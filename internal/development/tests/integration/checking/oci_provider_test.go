@@ -133,7 +133,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, path, "plugins: ['"+pkg.reference+"']\n")
-			selection := pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
 			if explicit {
 				selection.ConfigFile = path
 			}

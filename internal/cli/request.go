@@ -82,13 +82,13 @@ type doctorRequest struct {
 	ResolverCommand   string
 	ResolverArguments []string
 	// Tools selects every bundled tool, as checks would run it.
-	Tools registry.Selections
+	Tools registry.ToolSelections
 	// NamedTools lists the tool ids --tool and --no-tool named.
 	NamedTools []string
 	// Deprecations holds a warning for each deprecated flag used; doctor
 	// prints them to stderr.
 	Deprecations []string
-	Config       configuration.Selection
+	Config       configuration.ConfigFileSelection
 	JSON         bool
 	Hyperlinks   hyperlinkMode
 }

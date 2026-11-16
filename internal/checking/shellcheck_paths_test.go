@@ -64,7 +64,7 @@ jobs:
 			}
 			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
@@ -123,7 +123,7 @@ jobs:
 permissions: {}
 `)
 			options := checking.Options{WorkingDir: root}
-			optionsTools := registry.Selections{"shellcheck": {Command: command}}
+			optionsTools := registry.ToolSelections{"shellcheck": {Command: command}}
 			if tc.explicit {
 				options.ConfigFile = config
 			}
@@ -221,7 +221,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 				workflow += "        working-directory: " + tc.stepDir + "\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: analyzer, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: analyzer, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
@@ -308,7 +308,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 				workflow += "        working-directory: " + tc.directory + "\n"
 			}
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
@@ -364,7 +364,7 @@ jobs:
           . ./value.sh
           echo $VALUE
 `)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
@@ -416,7 +416,7 @@ jobs:
           echo $VALUE
 permissions: {}
 `)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
@@ -455,7 +455,7 @@ jobs:
 `)
 			options := checking.Options{ConfigFile: config, WorkingDir: root}
 			session := options
-			session.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: command}})
+			session.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 			if err == nil {
 				t.Fatalf("invalid selected config silently accepted: %+v", result.Diagnostics)
@@ -492,7 +492,7 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			session := checking.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{ConfigFile: config, WorkingDir: workingDir, ConfigOverlays: []configuration.Overlay{overlay}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 			if err != nil {

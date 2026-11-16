@@ -33,7 +33,7 @@ func TestPinnedActionInputsAndOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, pinned, actions.ObjectRoute(), "test-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, pinned, actions.ObjectRoute(), "test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}

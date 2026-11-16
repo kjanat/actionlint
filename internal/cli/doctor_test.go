@@ -20,7 +20,7 @@ func TestDoctorToolPresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := doctorRequest{Config: configuration.Selection{Disabled: true}, Tools: registry.Selections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
+	request := doctorRequest{Config: configuration.ConfigFileSelection{Disabled: true}, Tools: registry.ToolSelections{"shellcheck": {Command: `"` + filepath.ToSlash(executable) + `"`}}, Hyperlinks: "never"}
 	var text, data bytes.Buffer
 	if err := writeDoctor(t.Context(), &text, request, pluginacquisition.Settings{}); err != nil {
 		t.Fatal(err)

@@ -34,10 +34,10 @@ func provisioningRequest(env func(string) string, acquisition pluginacquisition.
 	return a.prepareRequest(in, workspace)
 }
 
-func (req *lintRequest) pluginSelection() pluginselection.Selection {
+func (req *lintRequest) pluginSelection() pluginselection.PluginSelection {
 	defaults := req.requestedTools()
 	defaults = slices.DeleteFunc(defaults, func(id string) bool { return req.processes[id] != nil })
-	return pluginselection.WithTools(pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
+	return pluginselection.WithTools(pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: req.configFile, Overlays: req.overlays, Acquisition: req.acquisition, DefaultTools: defaults}, req.disabledTools, req.disabledTools)
 }
 
 func (req *lintRequest) pluginInput() inputmodel.Request {

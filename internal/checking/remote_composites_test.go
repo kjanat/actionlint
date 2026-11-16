@@ -58,7 +58,7 @@ func remoteCompositeProviderAtCommits(t *testing.T, manifests, commits map[strin
 		if err != nil {
 			return actions.Manifest{}, err
 		}
-		selection, err := actions.NewSelection(ref, identity, identity.Commit(), route, "test")
+		selection, err := actions.NewReferenceSelection(ref, identity, identity.Commit(), route, "test")
 		if err != nil {
 			return actions.Manifest{}, err
 		}

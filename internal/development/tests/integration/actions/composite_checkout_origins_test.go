@@ -56,7 +56,7 @@ runs:
 - uses: ./source/local
   id: local
 - run: echo '${{ steps.local.outputs.missing }}'`
-			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
@@ -119,7 +119,7 @@ runs:
 			result := testutil.Composite(t, root, tc.before+"\n- uses: $/local"+tc.call+`
 - shell: bash
   working-directory: .
-  run: ./bad.sh`, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+  run: ./bad.sh`, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			var shell, executable []results.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {

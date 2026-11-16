@@ -34,7 +34,7 @@ func TestMetadataPreparationForRepeatedAndStandaloneCompositeActions(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(reference, identity, commit, actions.ObjectRoute(), "fixture")
+	selection, err := actions.NewReferenceSelection(reference, identity, commit, actions.ObjectRoute(), "fixture")
 	if err != nil {
 		t.Fatal(err)
 	}

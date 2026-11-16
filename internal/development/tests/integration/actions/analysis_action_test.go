@@ -218,9 +218,9 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			var requestSources []workspace.InputFile
 			source := strings.Replace(testutil.CompositeAction, "echo ok", "echo $UNQUOTED", 1)
 			if tool == "shellcheck" {
-				request.Tools = registry.Registrations(registry.Selections{"shellcheck": {Command: executable}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Command: executable}})
 			} else {
-				request.Tools = registry.Registrations(registry.Selections{"ruff": {Command: executable}})
+				request.Tools = registry.Registrations(registry.ToolSelections{"ruff": {Command: executable}})
 				source = strings.Replace(testutil.CompositeAction, "echo ok", "print(UNDEFINED)", 1)
 				source = strings.Replace(source, "shell: bash", "shell: python", 1)
 			}
@@ -258,7 +258,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				WorkingDir: root,
 
-				Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: executable}}),
+				Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: executable}}),
 			}, []workspace.InputFile{
 				{Path: "ci.yml", Content: []byte(workflow), Project: project, Config: cfg},
 				{Path: "inner/action.yml", Content: []byte(manifest), Project: project, Config: cfg},

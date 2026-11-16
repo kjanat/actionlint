@@ -192,7 +192,7 @@ permissions: {}
 		}
 	}
 	project := workspace.Identity(root)
-	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 
 	for _, order := range [][]string{{"read.yaml", "write.yaml", "callee.yaml"}, {"callee.yaml", "write.yaml", "read.yaml"}} {
 		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
@@ -284,7 +284,7 @@ permissions: {}
 					}
 				}
 				project := workspace.Identity(root)
-				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 
 				check := func(diagnostics []*finding.Finding, entry string) {
 					t.Helper()
@@ -407,7 +407,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		}
 	}
 	project := workspace.Identity(root)
-	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 	var lConfig *configuration.Config
 	var err error
 

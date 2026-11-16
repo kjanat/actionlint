@@ -216,7 +216,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: checker})
 			continue
 		}
-		selection := backends.Selection{Command: name}
+		selection := backends.ToolSelection{Command: name}
 		if local.Files.Executable != "" {
 			selection.Process = &hostprocess.CommandOptions{Executable: &local.Files.Executable}
 		}

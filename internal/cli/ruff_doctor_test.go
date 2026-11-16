@@ -25,7 +25,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 	}
 	root := t.TempDir()
 	request := doctorRequest{
-		Config: configuration.Selection{Disabled: true}, Tools: registry.Selections{"ruff": {Command: "ignored", Process: &process.CommandOptions{
+		Config: configuration.ConfigFileSelection{Disabled: true}, Tools: registry.ToolSelections{"ruff": {Command: "ignored", Process: &process.CommandOptions{
 			Executable: &executable, Optional: true, WorkingDir: root,
 			Arguments: []string{"--select", "F"},
 			Environment: []string{

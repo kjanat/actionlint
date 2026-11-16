@@ -135,7 +135,7 @@ runs:
 					inputs += ", ref: \"" + tc.ref + "\""
 				}
 				steps := "- uses: actions/checkout@v6\n  with: {" + inputs + "}\n- uses: ./" + filepath.ToSlash(filepath.Join(destination, "local"))
-				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+				result := testutil.Composite(t, root, steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 				read := slices.Contains(result.Inputs, metadata) || slices.Contains(result.Inputs, decoy)
 				if read != tc.read {
 					t.Fatalf("metadata read=%v, want %v: %v", read, tc.read, result.Inputs)
@@ -156,7 +156,7 @@ runs:
 	root, metadata, _ := fixture(t)
 	result := testutil.Composite(t, root, `- uses: actions/checkout@v6
   with: {ref: v1}
-- uses: $/local`, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+- uses: $/local`, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if !slices.Contains(result.Inputs, metadata) {
 		t.Fatalf("independent action metadata lost after alternate checkout: %v", result.Inputs)
 	}

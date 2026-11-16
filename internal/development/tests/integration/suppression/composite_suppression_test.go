@@ -256,12 +256,12 @@ runs:
         echo $VALUE
 `
 	fixturefiles.Write(t, root, "local/action.yml", metadata)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatal(result.Diagnostics)
 	}
 	fixturefiles.Write(t, root, "local/action.yml", strings.Replace(metadata, " # actionlint:ignore shellcheck -- reviewed expansion", "", 1))
-	result = testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result = testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "shellcheck" || result.Diagnostics[0].Code != "SC2086" {
 		t.Fatalf("unsuppressed control did not run ShellCheck: %+v", result.Diagnostics)
 	}

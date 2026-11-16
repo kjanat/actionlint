@@ -322,7 +322,7 @@ type Config struct {
 	// or source for a direct artifact. Empty or null disables plugins.
 	Plugins PluginDeclarations `yaml:"plugins,omitempty" jsonschema:"nullable"`
 	// Files selects repository-relative inputs shared by analysis features.
-	Files selection.Selection `yaml:"files,omitempty" jsonschema:"nullable"`
+	Files selection.PathSelection `yaml:"files,omitempty" jsonschema:"nullable"`
 	// Output configures defaults for CLI reporting.
 	Output OutputConfig `yaml:"output,omitempty" jsonschema:"nullable"`
 	// Network controls fallback services for remote metadata.

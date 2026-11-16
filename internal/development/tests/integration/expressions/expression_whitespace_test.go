@@ -64,7 +64,7 @@ jobs:
 			if uses.Value != tc.parsed {
 				t.Fatalf("decoded uses changed: got %q, want %q", uses.Value, tc.parsed)
 			}
-			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.InputFile
 			var err error
 			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: source, Project: nil}}
@@ -88,7 +88,7 @@ func TestExpressionWhitespacePreservesExpressionErrors(t *testing.T) {
 	for _, value := range []string{"${{ ... }}", "${{ fromJSON( }}", "${{ 'unfinished }}"} {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
-			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.InputFile
 			var err error
 
@@ -124,7 +124,7 @@ jobs:
     steps:
       - run: echo ok
 ` + "\npermissions: {}\n"
-	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 	sources := []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source)}}
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, sources))
 	if err != nil {

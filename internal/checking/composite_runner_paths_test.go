@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: $/local
 `)
-				session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+				session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 				var err error
 
 				result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})

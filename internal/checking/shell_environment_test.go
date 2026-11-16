@@ -32,7 +32,7 @@ func TestShellcheckEnvironmentDeclarations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			content := "on: push\nenv: {lowercase: lower, UPPERCASE: upper, miXedCase: mixed, foo: outer}\njobs:\n  test:\n    runs-on: " + tc.runner + "\n    env: {FOO: inner, LOWERCASE: override}\n    steps:\n      - shell: bash\n        run: |\n          " + tc.script + "\n"
-			report, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}, []workspace.InputFile{{Path: "environment.yml", Content: []byte(content)}})
+			report, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}, []workspace.InputFile{{Path: "environment.yml", Content: []byte(content)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -56,7 +56,7 @@ func TestScriptEngineReceivesUnknownRunnerEnvironment(t *testing.T) {
 	t.Parallel()
 	engine := &recordingEngine{code: "SC2086"}
 	content := "on: push\npermissions: {}\nenv: {WORKFLOW_NAME: workflow}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n    env: {JOB_NAME: job}\n    steps:\n      - shell: bash\n        env: {STEP_NAME: step}\n        run: echo missing\n"
-	_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Backend: engine}})}, []workspace.InputFile{{Path: "environment.yml", Content: []byte(content)}})
+	_, err := checking.Analyze(t.Context(), checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: engine}})}, []workspace.InputFile{{Path: "environment.yml", Content: []byte(content)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestShellcheckInheritedRunnerEnvironment(t *testing.T) {
 				content += "    needs: plan\n    strategy:\n      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}\n"
 			}
 			content += "    runs-on: " + tc.runner + "\n    timeout-minutes: 5\n    steps:\n" + tc.previousStep + "      - shell: bash\n        run: |\n          printf '%s\\n' \"$" + tc.variable + "\"\n          echo $UNQUOTED\n"
-			report, err := checking.Analyze(t.Context(), checking.Options{ConfigFile: configFile, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "environment.yml", Content: []byte(content)}})
+			report, err := checking.Analyze(t.Context(), checking.Options{ConfigFile: configFile, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "environment.yml", Content: []byte(content)}})
 			if err != nil {
 				t.Fatal(err)
 			}

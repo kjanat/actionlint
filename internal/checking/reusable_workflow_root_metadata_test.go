@@ -75,7 +75,7 @@ permissions: {}
 			if !ok {
 				t.Fatal("workflow_call event missing")
 			}
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 
 			var previousMetadata *calls.Metadata
 			var previousDiagnostics []*finding.Finding
@@ -199,7 +199,7 @@ permissions: {}
 				if !ok {
 					t.Fatal("workflow_call event missing")
 				}
-				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 
 				var previousMetadata *calls.Metadata
 				var previousDiagnostics []*finding.Finding

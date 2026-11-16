@@ -46,7 +46,7 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, commit, route, "test-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, commit, route, "test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ jobs:
     steps:
       - id: action
         uses: ` + uses + tc.extra + "\npermissions: {}\n"
-				request := checking.Options{WorkingDir: root, RemoteActions: literalMetadataFixture{remote}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := checking.Options{WorkingDir: root, RemoteActions: literalMetadataFixture{remote}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.InputFile
 				var err error
 				requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: workspace.Identity(root), Config: workspace.Identity(root).Config()}}
@@ -132,7 +132,7 @@ jobs:
 func TestWorkflowLiteralCallInvalidSpec(t *testing.T) {
 	t.Parallel()
 	for _, uses := range []string{"oooops", "${{ 'oooops' }}"} {
-		request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+		request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 		var requestSources []workspace.InputFile
 		var err error
 		requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(`on: push

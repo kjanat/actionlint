@@ -37,7 +37,7 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 			t.Fatal("fallback initialized without the declined scope configuration")
 		}
 		nativeCalls++
-		registration, err := backends.RegisterProvider(backends.Provider{Manifest: shellcheckManifest, Programs: bundledproviders.Program, Selection: backends.Selection{Process: &hostprocess.CommandOptions{Executable: &executable}}})
+		registration, err := backends.RegisterProvider(backends.Provider{Manifest: shellcheckManifest, Programs: bundledproviders.Program, Selection: backends.ToolSelection{Process: &hostprocess.CommandOptions{Executable: &executable}}})
 		if err != nil {
 			return nil, err
 		}

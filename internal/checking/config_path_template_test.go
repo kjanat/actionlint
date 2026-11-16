@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - `+tc.step+"\n")
-					session := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+					session := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 					var err error
 
 					_, err = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
@@ -77,7 +77,7 @@ permissions: {}
 		`{source-path: ["${{ github.workspace }}/shared"]}`,
 	} {
 		config := writeFixture(t, repository, ".github/actionlint.yaml", "tools: {shellcheck: {config: "+selection+"}}\n")
-		session := checking.Options{WorkingDir: repository, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+		session := checking.Options{WorkingDir: repository, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 		var err error
 
 		result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})

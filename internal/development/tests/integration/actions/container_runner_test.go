@@ -71,7 +71,7 @@ func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-public-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-public-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}

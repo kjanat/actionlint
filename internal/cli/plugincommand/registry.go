@@ -47,7 +47,7 @@ type RegistryRequest struct {
 	Options   RegistryOptions
 	Paths     []string
 
-	Config configuration.Selection
+	Config configuration.ConfigFileSelection
 	JSON   bool
 }
 

@@ -18,7 +18,7 @@ import (
 // CheckProjects discovers inputs once, then loads each repository's plugins in
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
-func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.Selection) (*report.Analysis, error) {
+func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.PluginSelection) (*report.Analysis, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

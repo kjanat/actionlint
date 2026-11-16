@@ -178,7 +178,7 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 	if len(arguments) != 0 {
 		options = &process.CommandOptions{Arguments: arguments}
 	}
-	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
+	got := run(registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
 	compareParity(t, want, got)
 	t.Logf("%d identical findings, %d runner findings, error %q", len(got.Findings), len(got.Reported), got.Error)
 }
@@ -523,7 +523,7 @@ func TestProviderParityCases(t *testing.T) {
 			if !ok {
 				t.Fatalf("no Ruff-alone parity snapshot for %q", tc.name)
 			}
-			compareParity(t, hostSeverities(t, alone), run(registry.Registrations(registry.Selections{"ruff": {Command: ruff}}), &parityRecorder{}))
+			compareParity(t, hostSeverities(t, alone), run(registry.Registrations(registry.ToolSelections{"ruff": {Command: ruff}}), &parityRecorder{}))
 		})
 	}
 }
@@ -531,7 +531,7 @@ func TestProviderParityCases(t *testing.T) {
 func TestProviderEmbeddedRunnerArguments(t *testing.T) {
 	t.Parallel()
 	var args []string
-	registrations := registry.Registrations(registry.Selections{"shellcheck": backends.Selection{Runner: func(received []string, _ string) ([]byte, error) {
+	registrations := registry.Registrations(registry.ToolSelections{"shellcheck": backends.ToolSelection{Runner: func(received []string, _ string) ([]byte, error) {
 		args = received
 		return []byte(`{"comments":[]}`), nil
 	}}})

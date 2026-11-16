@@ -278,11 +278,11 @@ func (req *lintRequest) configureTools(env func(string) string) {
 // toolSelections selects every bundled tool: disabled when the inputs
 // disabled it, otherwise its default command in the working directory,
 // which is skipped with a warning when it cannot run.
-func (req *lintRequest) toolSelections() registry.Selections {
-	selections := registry.Selections{}
+func (req *lintRequest) toolSelections() registry.ToolSelections {
+	selections := registry.ToolSelections{}
 	for _, id := range registry.IDs() {
 		if slices.Contains(req.disabledTools, id) {
-			selections[id] = backends.Selection{}
+			selections[id] = backends.ToolSelection{}
 			continue
 		}
 		options := process.CommandOptions{Optional: true}
@@ -290,7 +290,7 @@ func (req *lintRequest) toolSelections() registry.Selections {
 			options = *replaced
 		}
 		options.WorkingDir = req.workingDir
-		selections[id] = backends.Selection{Command: id, Process: &options}
+		selections[id] = backends.ToolSelection{Command: id, Process: &options}
 	}
 	return selections
 }

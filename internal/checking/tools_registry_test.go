@@ -37,7 +37,7 @@ func TestIndependentProcessTool(t *testing.T) {
 					Output:         manifests.Output{Format: manifests.FormatEnvelope},
 				},
 			},
-			Selection: backends.Selection{Process: &process.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
+			Selection: backends.ToolSelection{Process: &process.CommandOptions{Executable: &executable, LauncherArguments: []string{"-test.run=^TestProcessToolHelper$"}, Environment: environment}},
 		})
 		if err != nil {
 			t.Fatal(err)

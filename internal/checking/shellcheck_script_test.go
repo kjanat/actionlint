@@ -57,7 +57,7 @@ func TestShellcheckScriptSemantics(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			options := checking.Options{WorkingDir: t.TempDir()}
-			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
+			optionsTools := registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.env}}}}
 			if tc.config != "" {
 				options.ConfigFile = writeFixture(t, options.WorkingDir, "actionlint.yaml", "tools: {shellcheck: {config: {"+tc.config+"}}}\n")
 			}

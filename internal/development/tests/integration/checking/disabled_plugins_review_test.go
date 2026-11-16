@@ -48,7 +48,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, workflow, "on: push\njobs:\n  test:\n    runs-on: unknown-runner\n    steps:\n      - run: echo hi\npermissions: {}\n")
-			selection := pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition, DisableTools: tc.all}
+			selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition, DisableTools: tc.all}
 			if !tc.direct {
 				var disabled []string
 				if !tc.all {
@@ -104,7 +104,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	configPath := filepath.Join(root, "config.yaml")
 	fixturefiles.WriteText(t, configPath, fmt.Sprintf("plugins: [{name: %s, version: v1.0.0, registry: %s}]\n", fixtureregistry.FixturePluginName, fixtureregistry.FixtureRegistryURL))
 	registry.ResetRequests()
-	for _, selection := range []pluginselection.Selection{
+	for _, selection := range []pluginselection.PluginSelection{
 		{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true},
 		{RuleSet: checking.ConfigurationRules(), Paths: []string{filepath.Join(root, "runner.wasm")}, Acquisition: acquisition, DisableTools: true},
 	} {
@@ -128,7 +128,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	if err := os.WriteFile(cachePath, []byte("corrupt"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	_, err = (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
 		t.Fatalf("corrupt cached artifact was ignored: %v", err)
 	}

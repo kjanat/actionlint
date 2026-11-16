@@ -116,7 +116,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 		t.Fatal(output)
 	}
 	cache := acquisition.UserCacheDir
-	selected, err := (pluginselection.Selection{Acquisition: acquisition}).SelectForCache(t.Context(), ".", inputmodel.Request{Kind: inputmodel.Files, Paths: []string{"workflow.yml"}})
+	selected, err := (pluginselection.PluginSelection{Acquisition: acquisition}).SelectForCache(t.Context(), ".", inputmodel.Request{Kind: inputmodel.Files, Paths: []string{"workflow.yml"}})
 	if err != nil {
 		t.Fatal(err)
 	}

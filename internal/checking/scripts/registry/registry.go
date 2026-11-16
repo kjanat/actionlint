@@ -16,16 +16,16 @@ import (
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
-// Selections chooses how each bundled provider runs, keyed by its rule name.
+// ToolSelections chooses how each bundled provider runs, keyed by its rule name.
 // A provider without a selection is registered disabled.
-type Selections map[string]backends.Selection
+type ToolSelections map[string]backends.ToolSelection
 
 // Registrations registers every bundled provider in directory order, binds
 // managed document analyzers to providers that name an integration
 // contract and routes repository-selected engines. The bundled data is a
 // build input that tests validate, so a defect in it panics, as does a
 // selection naming no bundled provider.
-func Registrations(selections Selections) []contract.Registration {
+func Registrations(selections ToolSelections) []contract.Registration {
 	registrations, err := bundledRegistrations(selections)
 	if err != nil {
 		panic(err)
@@ -33,7 +33,7 @@ func Registrations(selections Selections) []contract.Registration {
 	return registrations
 }
 
-func bundledRegistrations(selections Selections) ([]contract.Registration, error) {
+func bundledRegistrations(selections ToolSelections) ([]contract.Registration, error) {
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		return nil, err
@@ -76,14 +76,14 @@ func IDs() []string {
 // Defaults returns a selection for every bundled provider that runs the
 // provider's own command from PATH and skips the provider, with a warning,
 // when that command cannot run. It panics if the bundled data is invalid.
-func Defaults() Selections {
+func Defaults() ToolSelections {
 	manifests, err := pluginmanifests.Bundled()
 	if err != nil {
 		panic(err)
 	}
-	selections := make(Selections, len(manifests))
+	selections := make(ToolSelections, len(manifests))
 	for _, manifest := range manifests {
-		selections[manifest.Rule.Name] = backends.Selection{Command: manifest.Rule.Name, Process: &process.CommandOptions{Optional: true}}
+		selections[manifest.Rule.Name] = backends.ToolSelection{Command: manifest.Rule.Name, Process: &process.CommandOptions{Optional: true}}
 	}
 	return selections
 }

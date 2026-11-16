@@ -52,7 +52,7 @@ type checkInvocation struct {
 	ApplyFixes            bool
 	IncludeSuggestedFixes bool
 	Paths                 []string
-	Config                configuration.Selection
+	Config                configuration.ConfigFileSelection
 	StdinFilename         string
 	IgnoreRegex           []string
 	IgnoreSelectors       []string
@@ -66,7 +66,7 @@ type checkInvocation struct {
 	DeprecatedToolFlags []deprecatedToolFlag
 	// Tools selects every bundled tool. applyEnvironment sets it, and the
 	// two lists below, from the flags above and the environment.
-	Tools registry.Selections
+	Tools registry.ToolSelections
 	// DisabledTools lists the tool ids the flags disabled.
 	DisabledTools []string
 	// NamedTools lists the tool ids --tool and --no-tool named.

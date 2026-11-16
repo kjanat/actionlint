@@ -13,10 +13,10 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
-// Selection is a feature-independent file scope over validated patterns. Nil
+// PathSelection is a feature-independent file scope over validated patterns. Nil
 // includes selects everything; an explicit empty list selects nothing.
 // Exclusions always win. The zero value selects everything.
-type Selection struct {
+type PathSelection struct {
 	// includes selects repository-relative files using doublestar globs; ! excludes.
 	includes []string
 	// excludes removes matching files, regardless of include order.
@@ -29,13 +29,13 @@ type selectionDocument struct {
 	Excludes []string `yaml:"excludes,omitempty"`
 }
 
-// NewSelection validates both pattern lists and owns copies of them. A nil
+// NewPathSelection validates both pattern lists and owns copies of them. A nil
 // includes list selects everything; an empty one selects nothing.
-func NewSelection(includes, excludes []string) (Selection, error) {
+func NewPathSelection(includes, excludes []string) (PathSelection, error) {
 	if err := validatePatterns(includes, excludes); err != nil {
-		return Selection{}, err
+		return PathSelection{}, err
 	}
-	return Selection{includes: slices.Clone(includes), excludes: slices.Clone(excludes)}, nil
+	return PathSelection{includes: slices.Clone(includes), excludes: slices.Clone(excludes)}, nil
 }
 
 func validatePatterns(lists ...[]string) error {
@@ -50,7 +50,7 @@ func validatePatterns(lists ...[]string) error {
 }
 
 // IsZero distinguishes no selection from an explicitly empty includes list.
-func (s Selection) IsZero() bool { return s.includes == nil && s.excludes == nil }
+func (s PathSelection) IsZero() bool { return s.includes == nil && s.excludes == nil }
 
 // ValidPattern rejects ambiguous or escaping file patterns.
 func ValidPattern(pattern string) bool {
@@ -61,9 +61,9 @@ func ValidPattern(pattern string) bool {
 }
 
 // DecodeConfig validates the whole scope and rejects unknown keys.
-func (s *Selection) DecodeConfig(value any) error {
+func (s *PathSelection) DecodeConfig(value any) error {
 	if value == nil {
-		*s = Selection{}
+		*s = PathSelection{}
 		return nil
 	}
 	var next selectionDocument
@@ -73,12 +73,12 @@ func (s *Selection) DecodeConfig(value any) error {
 	if err := validatePatterns(next.Includes, next.Excludes); err != nil {
 		return err
 	}
-	*s = Selection{includes: next.Includes, excludes: next.Excludes}
+	*s = PathSelection{includes: next.Includes, excludes: next.Excludes}
 	return nil
 }
 
 // EncodeConfig preserves an explicit empty includes list across round trips.
-func (s Selection) EncodeConfig() (any, error) {
+func (s PathSelection) EncodeConfig() (any, error) {
 	v := map[string]any{}
 	if s.includes != nil {
 		v["includes"] = slices.Clone(s.includes)
@@ -90,13 +90,13 @@ func (s Selection) EncodeConfig() (any, error) {
 }
 
 // Match evaluates a normalized path. A rule cannot re-include an excluded file.
-func (s Selection) Match(path string) bool {
+func (s PathSelection) Match(path string) bool {
 	return MatchPatterns(s.includes, s.excludes, path)
 }
 
 // Excludes reports an explicit exclusion, including negated include patterns.
 // A directory outside a positive include glob is not an excluded subtree.
-func (s Selection) Excludes(path string) bool {
+func (s PathSelection) Excludes(path string) bool {
 	return !matchPatterns(s.includes, s.excludes, path, true)
 }
 
@@ -131,4 +131,4 @@ func normalizePattern(pattern string) string {
 }
 
 // CopyConfig shares immutable selection patterns. DecodeConfig replaces the selection.
-func (s Selection) CopyConfig() (any, error) { return s, nil }
+func (s PathSelection) CopyConfig() (any, error) { return s, nil }

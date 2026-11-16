@@ -23,7 +23,7 @@ func TestScriptActionUndeclaredOutputAndCompositeClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestRemoteCompositeOutputMappingIsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
+	selection, err := actions.NewReferenceSelection(ref, identity, sha, actions.ObjectRoute(), "recorded-test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -46,7 +46,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.InputFile
 				linterConfig := cfg
 				source := []byte("on: push\n" + tc.workflowPermissions + `jobs:

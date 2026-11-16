@@ -65,7 +65,7 @@ func TestLanguageServerRetainsConfiguredEngineUntilShutdown(t *testing.T) {
 	backend := &editorTestBackend{}
 	var loads atomic.Int32
 	options := checking.Options{
-		WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}),
+		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}),
 		LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) {
 			loads.Add(1)
 			return backend, nil
@@ -388,7 +388,7 @@ func TestEditorSessionRetainsConfiguredInputSelectors(t *testing.T) {
 	}
 	engine := &describedValidatingEditorBackend{}
 	var loads atomic.Int32
-	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Settings{})
+	session, err := newEditorPluginHost(t.Context(), checking.Options{WorkingDir: root, ConfigFile: filepath.Join(root, ".github/actionlint.yaml"), Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { loads.Add(1); return engine, nil }}, nil, pluginacquisition.Settings{})
 	if err != nil {
 		t.Fatal(err)
 	}

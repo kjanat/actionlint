@@ -254,7 +254,7 @@ func selectedFile(ref actions.Reference, repository, kind string, id repository.
 		return repositoryFile{reference: ref, identity: identity, observedAt: observed}, true
 	}
 	if err == nil {
-		if selection, err := actions.NewSelection(ref, identity, object, route, observed); err == nil {
+		if selection, err := actions.NewReferenceSelection(ref, identity, object, route, observed); err == nil {
 			return repositoryFile{reference: ref, identity: identity, selection: selection, observedAt: observed}, true
 		}
 	}
@@ -604,9 +604,9 @@ func cachedRepositoryFile(ref actions.Reference, record cacheRecord) (repository
 	if err != nil {
 		return repositoryFile{}, false
 	}
-	var selection actions.Selection
+	var selection actions.ReferenceSelection
 	if record.Filename != "" {
-		if selection, err = actions.NewSelection(ref, identity, strings.ToLower(ref.Ref()), actions.ObjectRoute(), record.ObservedAt); err != nil {
+		if selection, err = actions.NewReferenceSelection(ref, identity, strings.ToLower(ref.Ref()), actions.ObjectRoute(), record.ObservedAt); err != nil {
 			return repositoryFile{}, false
 		}
 	}

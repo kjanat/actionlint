@@ -19,29 +19,29 @@ import (
 )
 
 type PathOptions struct {
-	Config configuration.Selection
+	Config configuration.ConfigFileSelection
 	JSON   bool
 }
 
 type ShowOptions struct {
-	Config       configuration.Selection
+	Config       configuration.ConfigFileSelection
 	Plugins      []string
 	JSON, Origin bool
 }
 
 type ValidateOptions struct {
-	Config  configuration.Selection
+	Config  configuration.ConfigFileSelection
 	Plugins []string
 	JSON    bool
 }
 
 type SchemaOptions struct {
-	Config  configuration.Selection
+	Config  configuration.ConfigFileSelection
 	Plugins []string
 }
 
 type MigrateOptions struct {
-	Config             configuration.Selection
+	Config             configuration.ConfigFileSelection
 	JSON, Write, Check bool
 }
 

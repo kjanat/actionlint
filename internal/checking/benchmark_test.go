@@ -168,7 +168,7 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: bm.shellcheck}})}, selected.Sources)
+				result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: bm.shellcheck}})}, selected.Sources)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -221,7 +221,7 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})}, selected.Sources)
+		result, err := checking.Analyze(b.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck}})}, selected.Sources)
 		if err != nil {
 			b.Fatal(err)
 		}

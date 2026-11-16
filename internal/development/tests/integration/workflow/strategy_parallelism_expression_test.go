@@ -32,7 +32,7 @@ func TestStrategyExpressionParallelism(t *testing.T) {
 				case "JSON field":
 					field = "strategy:\n      max-parallel: ${{ fromJSON('" + tc.value + "') }}"
 				}
-				request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+				request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 				var requestSources []workspace.InputFile
 				var err error
 

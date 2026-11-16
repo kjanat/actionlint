@@ -65,7 +65,7 @@ func TestKnownShellExternalLinters(t *testing.T) {
 			if tc.stepShell != "" {
 				source += "        shell: " + tc.stepShell + "\n"
 			}
-			session := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
+			session := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Process: &process.CommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Stdin, Reader: bytes.NewReader([]byte(source)), Name: "test.yaml", NormalizePath: false})

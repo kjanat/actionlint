@@ -16,7 +16,7 @@ import (
 )
 
 type documentChecks struct {
-	selection.Selection
+	selection.CheckSelection
 	scripts          scripts.Service
 	resolveExecution bool
 	registeredTools  []contract.Registration
@@ -24,7 +24,7 @@ type documentChecks struct {
 
 func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext contract.Context, action bool) (documentChecks, error) {
 	rules, err := selection.CreateRules(ConfigurationRules(), context, action)
-	selected := documentChecks{Selection: rules}
+	selected := documentChecks{CheckSelection: rules}
 	if err != nil {
 		return selected, err
 	}

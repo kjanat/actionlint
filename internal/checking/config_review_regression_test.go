@@ -32,7 +32,7 @@ func checkoutManifestProvider(t *testing.T) actions.Provider {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(reference, identity, commit, route, "test-fixture")
+	selection, err := actions.NewReferenceSelection(reference, identity, commit, route, "test-fixture")
 	if err != nil {
 		t.Fatal(err)
 	}

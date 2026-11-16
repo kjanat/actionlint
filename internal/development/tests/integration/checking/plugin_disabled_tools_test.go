@@ -47,7 +47,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	}
 
 	registry.ResetRequests()
-	selection := pluginselection.WithTools(pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
+	selection := pluginselection.WithTools(pluginselection.PluginSelection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
 	sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 	for _, id := range []string{fixtureregistry.FixturePluginName, "sudo-check"} {
 		t.Run(id, func(t *testing.T) {
 			t.Parallel()
-			selection := pluginselection.WithTools(pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
+			selection := pluginselection.WithTools(pluginselection.PluginSelection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
 			sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
 			if err != nil {
 				t.Fatal(err)

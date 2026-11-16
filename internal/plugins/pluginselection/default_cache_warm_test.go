@@ -22,7 +22,7 @@ func TestCacheWarmDownloadsDefaultEnginesWithoutScripts(t *testing.T) {
 	if err := os.WriteFile(config, []byte("{}"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	selection := pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: config, DefaultTools: []string{"ruff"}, Acquisition: pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
+	selection := pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), ConfigFile: config, DefaultTools: []string{"ruff"}, Acquisition: pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}}
 	ctx, _ := network.WithSession(t.Context(), network.Options{WarmCache: true})
 	for _, version := range []string{"v1.0.0", "v1.0.1"} {
 		registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "example-engine", BaseURL: pluginregistry.DefaultURL, Name: "github.com/publisher/engine", Aliases: []string{"ruff"}, RepositoryID: 99}, version, []byte{0, 97, 115, 109, 1, 0, 0, 0})

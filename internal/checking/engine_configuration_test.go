@@ -62,10 +62,10 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 						t.Fatal(err)
 					}
 					engine := &configurationEngine{}
-					options := registry.Selections{"ruff": {Command: "ruff"}}
+					options := registry.ToolSelections{"ruff": {Command: "ruff"}}
 					applicationOptions := checking.Options{WorkingDir: root}
 					if injected {
-						options = registry.Selections{"ruff": {Backend: engine}}
+						options = registry.ToolSelections{"ruff": {Backend: engine}}
 					} else {
 						applicationOptions.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }
 					}
@@ -88,7 +88,7 @@ func TestEngineConfigurationFailurePreventsCheck(t *testing.T) {
 	root, workflows := writeScriptEngineRepository(t)
 	failure := errors.New("engine rejected settings")
 	engine := &configurationEngine{failure: failure}
-	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }}
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }}
 	_, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]})
 	if !errors.Is(err, failure) || len(engine.validated) != 1 || engine.checked != 0 {
 		t.Fatalf("error=%v validations=%d checks=%d", err, len(engine.validated), engine.checked)

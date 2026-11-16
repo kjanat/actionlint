@@ -38,7 +38,7 @@ func (p budgetManifestProvider) Lookup(_ context.Context, ref actions.Reference)
 	if err != nil {
 		return actions.Manifest{}, err
 	}
-	selection, err := actions.NewSelection(ref, identity, identity.Commit(), route, "test")
+	selection, err := actions.NewReferenceSelection(ref, identity, identity.Commit(), route, "test")
 	if err != nil {
 		return actions.Manifest{}, err
 	}

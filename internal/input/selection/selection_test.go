@@ -33,7 +33,7 @@ func TestMatchNormalizesPatterns(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			selection, err := NewSelection(tc.includes, tc.excludes)
+			selection, err := NewPathSelection(tc.includes, tc.excludes)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,14 +55,14 @@ func TestMatchNormalizesPatterns(t *testing.T) {
 
 func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
 	t.Parallel()
-	if _, err := NewSelection([]string{"../*"}, nil); err == nil {
+	if _, err := NewPathSelection([]string{"../*"}, nil); err == nil {
 		t.Fatal("accepted escaping include")
 	}
-	if _, err := NewSelection(nil, []string{"/tmp/*"}); err == nil {
+	if _, err := NewPathSelection(nil, []string{"/tmp/*"}); err == nil {
 		t.Fatal("accepted absolute exclusion")
 	}
 	includes := []string{"local/*"}
-	selection, err := NewSelection(includes, nil)
+	selection, err := NewPathSelection(includes, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
 	if !selection.Match("local/file.yml") || selection.Match("other/file.yml") {
 		t.Fatal("selection aliases caller storage")
 	}
-	if empty, err := NewSelection([]string{}, nil); err != nil || empty.IsZero() || empty.Match("file.yml") {
+	if empty, err := NewPathSelection([]string{}, nil); err != nil || empty.IsZero() || empty.Match("file.yml") {
 		t.Fatalf("explicit empty includes = %v, %v; want non-zero selection matching nothing", empty, err)
 	}
 }
@@ -78,7 +78,7 @@ func TestNewSelectionOwnsValidatedPatterns(t *testing.T) {
 func TestSelectionYAMLRoundTrip(t *testing.T) {
 	t.Parallel()
 	for _, source := range []string{"includes: []\n", "excludes:\n    - local/skip.yml\nincludes:\n    - local/*\n"} {
-		var selection Selection
+		var selection PathSelection
 		if err := decodeSelectionConfig([]byte(source), &selection); err != nil {
 			t.Fatal(err)
 		}
@@ -90,7 +90,7 @@ func TestSelectionYAMLRoundTrip(t *testing.T) {
 			t.Errorf("round trip of %q = %q", source, encoded)
 		}
 	}
-	var selection Selection
+	var selection PathSelection
 	if err := decodeSelectionConfig([]byte("includes: [../*]\n"), &selection); err == nil {
 		t.Fatal("accepted escaping include")
 	}

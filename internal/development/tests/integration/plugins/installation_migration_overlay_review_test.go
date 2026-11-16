@@ -35,7 +35,7 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				selection := pluginselection.Selection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
+				selection := pluginselection.PluginSelection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
 				if explicit {
 					selection.ConfigFile = path
 				}

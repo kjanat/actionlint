@@ -165,7 +165,7 @@ runs:
   with: {path: source}
 - uses: ./source/local`, analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 		return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-	}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -207,7 +207,7 @@ runs:
 			root, metadata := fixture(t)
 			result := compositeAnalysis(t, root, "- uses: actions/checkout@v6\n  with: {sparse-checkout: "+tc.sparse+"}\n- uses: ./local", analysisRequest{OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 				return slices.DeleteFunc(rules, func(rule workflowvisit.Rule) bool { return rule.Name() == "executable-bit" })
-			}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("best-effort metadata validation lost: %v", result.Inputs)
 			}

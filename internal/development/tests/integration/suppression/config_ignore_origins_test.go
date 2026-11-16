@@ -61,7 +61,7 @@ permissions: {}
 		result, err := checking.Analyze(t.Context(), checking.Options{
 			WorkingDir: root,
 
-			Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}),
+			Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}),
 		}, []workspace.InputFile{{Path: filepath.Join(root, ".github/workflows/ci.yml"), Content: []byte(source), Config: config, Project: workspace.Identity(root)}},
 		)
 		if err != nil {

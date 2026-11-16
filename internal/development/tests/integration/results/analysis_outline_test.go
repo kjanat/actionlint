@@ -318,7 +318,7 @@ permissions: {}
 			for _, path := range slices.Sorted(maps.Keys(tc.sources)) {
 				sources = append(sources, workspace.InputFile{Path: path, Content: []byte(tc.sources[path]), Project: workspace.Identity(root), Config: tc.config})
 			}
-			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: tc.ruff}})}, sources)
+			analysis, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"ruff": {Command: tc.ruff}})}, sources)
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("fixture must fail with %q: %v", tc.wantErr, err)
 			}

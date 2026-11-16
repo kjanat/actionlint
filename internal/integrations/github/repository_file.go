@@ -13,7 +13,7 @@ import (
 type repositoryFile struct {
 	reference         actions.Reference
 	identity          actions.Identity
-	selection         actions.Selection
+	selection         actions.ReferenceSelection
 	observedAt        string
 	filename, content string
 	missing           availability.Unavailability

@@ -194,7 +194,7 @@ func TestSelectedPathAllFormats(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(dir)
-			got, err := configuration.SelectedPath(configuration.Selection{})
+			got, err := configuration.SelectedPath(configuration.ConfigFileSelection{})
 			if err != nil || got != want {
 				t.Fatalf("got %q, %v; want %q", got, err, want)
 			}

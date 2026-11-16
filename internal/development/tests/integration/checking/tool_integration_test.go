@@ -26,7 +26,7 @@ type integratedAnalyzer struct {
 }
 
 func managedTestOptions(guest *integratedAnalyzer, options json.RawMessage) checking.Options {
-	return checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest, Options: options}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}})}
+	return checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest, Options: options}}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}})}
 }
 
 func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
@@ -47,7 +47,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 				t.Fatal(err)
 			}
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: true}
-			options := checking.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+			options := checking.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"workflow.yml"})
 			if err != nil || needed["shellcheck"] != tc.want {
 				t.Fatalf("native fallback required=%v, want %t; error=%v", needed, tc.want, err)
@@ -132,7 +132,7 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := managedTestOptions(guest, nil)
 		if disabled {
-			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Process: &process.CommandOptions{Executable: new("")}}})
 		}
 		result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 		if err != nil {
@@ -154,7 +154,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 		return &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 	}
 	options := checking.Options{
-		Tools:     registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}}),
+		Tools:     registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}}),
 		Analyzers: []checkinputs.Registration{{Checker: valid()}},
 	}
 	configured, err := checking.ConfigureToolIntegrations(options)
@@ -185,7 +185,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
 	if _, err := checking.ConfigureToolIntegrations(options, "shellcheck"); err == nil {
 		t.Fatal("document analyzer replaced an already selected engine")
 	}
@@ -197,7 +197,7 @@ func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T) {
 	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
 	configured, err := checking.ConfigureToolIntegrations(options)
 	if err != nil {
 		t.Fatal(err)

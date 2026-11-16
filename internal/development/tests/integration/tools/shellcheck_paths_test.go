@@ -18,7 +18,7 @@ func TestShellcheckSourcesUseAnalysisDirectoryWithoutProject(t *testing.T) {
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: root,
 
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: testutil.RequireTool(t, "shellcheck"), Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}),
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: testutil.RequireTool(t, "shellcheck"), Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}),
 	}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(`on: push
 jobs:
   test:

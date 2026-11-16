@@ -11,7 +11,7 @@ func TestConfigLoadedCallbackCanReenterSession(t *testing.T) {
 	t.Parallel()
 	var session *InputPreparer
 	var calls int
-	var reentered *Selection
+	var reentered *PreparedBatch
 	var reentryErr error
 	session, err := New(t.Context(), Options{OnConfigLoaded: func(configreport.Report) {
 		calls++

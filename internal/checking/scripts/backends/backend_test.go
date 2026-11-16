@@ -73,7 +73,7 @@ func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 		manifest := envelopeManifest("execution", tc.shells)
 		manifest.Selectors.Inputs = inputs
 		manifest.Capabilities.Resources = tc.resources
-		registration, err := RegisterProvider(Provider{Manifest: manifest, Selection: Selection{Command: "execution"}})
+		registration, err := RegisterProvider(Provider{Manifest: manifest, Selection: ToolSelection{Command: "execution"}})
 		if err != nil {
 			t.Fatal(err)
 		}

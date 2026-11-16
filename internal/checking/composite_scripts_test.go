@@ -37,7 +37,7 @@ permissions: {}
 `
 	first := writeFixture(t, root, ".github/workflows/a.yml", workflow)
 	second := writeFixture(t, root, ".github/workflows/b.yml", workflow)
-	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheckForTest(t)}})}
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheckForTest(t)}})}
 	var err error
 
 	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       `+strings.ReplaceAll(tc.workflowSteps, "\n", "\n      ")+"\npermissions: {}\n")
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
@@ -261,7 +261,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: {path: '`+checkout+"'}\n      - uses: ./"+prefix+"outer\n")
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
@@ -306,7 +306,7 @@ runs:
 jobs:
   first:
 `+job+"  second:\n"+job)
-	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 	var err error
 
 	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})

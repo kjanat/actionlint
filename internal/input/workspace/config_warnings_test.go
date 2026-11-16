@@ -20,7 +20,7 @@ paths:
   '**':
     ignores: [something]
 `)
-	inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
+	inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

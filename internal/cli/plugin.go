@@ -55,9 +55,9 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	return parent
 }
 
-func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings) pluginselection.Selection {
+func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings) pluginselection.PluginSelection {
 	// A tool disabled by --no-tool is not run by plugins either.
-	return pluginselection.WithTools(pluginselection.Selection{
+	return pluginselection.WithTools(pluginselection.PluginSelection{
 		RuleSet: checking.ConfigurationRules(),
 		Paths:   c.Plugins, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
 		Acquisition:  acquisition,
@@ -86,7 +86,7 @@ func implicitProcessOptions(options *process.CommandOptions) bool {
 		len(options.Environment) == 0 && options.WorkingDir == ""
 }
 
-func selectedRulePlugins(ctx context.Context, selection pluginselection.Selection) (pluginselection.Sources, error) {
+func selectedRulePlugins(ctx context.Context, selection pluginselection.PluginSelection) (pluginselection.Sources, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return pluginselection.Sources{}, err

@@ -28,7 +28,7 @@ func TestWorkflowDiscoveryRecordsListedDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, result := range map[string]*workspace.Selection{"repository": repository, "directory": directory} {
+	for name, result := range map[string]*workspace.PreparedBatch{"repository": repository, "directory": directory} {
 		for _, dir := range []string{workflows, filepath.Join(workflows, "nested")} {
 			if !slices.Contains(result.Inputs, dir) {
 				t.Errorf("%s inputs %q lack the listed directory %q", name, result.Inputs, dir)

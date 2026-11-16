@@ -44,7 +44,7 @@ files: {includes: ['**/*.yml'], excludes: ['**/skip.yml']}
 	if len(loaded.Provenance.Sources()) != 3 {
 		t.Fatal(loaded.Provenance.Sources())
 	}
-	inspection, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
+	inspection, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{Path: path}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

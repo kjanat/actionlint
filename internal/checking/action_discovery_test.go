@@ -86,7 +86,7 @@ overrides:
       rules:
         external: {shellcheck: on, ruff: on}
 `)
-	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}, "ruff": {Command: "ruff"}})}
+	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}, "ruff": {Command: "ruff"}})}
 	for _, paths := range [][]string{nil, {"."}, {root}} {
 		got, err := checking.RequiredTools(t.Context(), options, paths)
 		if err != nil || !got["shellcheck"] || !got["ruff"] {

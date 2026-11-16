@@ -112,7 +112,7 @@ func TestWorkflowFixturesOK(t *testing.T) {
 				t.Skip("skipping", f, "because \"shellcheck\" command does not exist in system")
 			}
 
-			request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
+			request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck}})})
 			requestSources := testutil.FixtureSources(t, []string{f}, proj, &configuration.Config{})
 			errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 			if err != nil {
@@ -232,7 +232,7 @@ func TestWorkflowFixtureDiagnostics(t *testing.T) {
 					}
 					tool = shellcheck
 				}
-				request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: tool}})})
+				request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: tool}})})
 				requestSources := []workspace.InputFile{{Path: "test.yaml", Content: b, Project: proj, Config: &configuration.Config{}}}
 				errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 				if err != nil {
@@ -266,7 +266,7 @@ func TestWorkflowFixturesBatch(t *testing.T) {
 	}
 	files = append(files, fs...)
 
-	request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck}})})
+	request := testutil.WithFixtureKnowledge(t, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: shellcheck}})})
 	requestSources := testutil.FixtureSources(t, files, proj, &configuration.Config{})
 	errs, err := testutil.Diagnostics(checking.Analyze(t.Context(), request, requestSources))
 	if err != nil {

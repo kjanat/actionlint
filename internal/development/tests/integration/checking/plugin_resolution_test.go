@@ -36,13 +36,13 @@ func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil || len(sources.Paths) != 1 {
 		t.Fatalf("exact config required a lockfile: %+v, %v", sources, err)
 	}
 	registry.ResetRequests()
 	registry.SetOffline(true)
-	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err != nil {
+	if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.Requests()) != 0 {

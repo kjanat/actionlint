@@ -127,14 +127,14 @@ func TestConfiguredBackendLiteralArgumentsAndEnvironment(t *testing.T) {
 			t.Parallel()
 			cfg := &configuration.Config{}
 			request := analysisRequest{WorkingDir: t.TempDir(), AllowConfigProcesses: true}
-			options := registry.Selections{}
+			options := registry.ToolSelections{}
 			shell := "python"
 			if name == "ruff" {
 				cfg.Tools = configuration.ToolsConfig{"ruff": {Backend: process}}
-				options["ruff"] = backends.Selection{Command: "ruff"}
+				options["ruff"] = backends.ToolSelection{Command: "ruff"}
 			} else {
 				cfg.Tools = configuration.ToolsConfig{"shellcheck": {Backend: process}}
-				options["shellcheck"] = backends.Selection{Command: "shellcheck"}
+				options["shellcheck"] = backends.ToolSelection{Command: "shellcheck"}
 				shell = "bash"
 			}
 			request.Sources = []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\npermissions: {}\n")}}

@@ -76,7 +76,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := (pluginselection.Selection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{ConfigFile: configPath, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		t.Fatal(err)
 	}

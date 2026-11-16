@@ -55,7 +55,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		selection, err := actions.NewSelection(request, identity, "0123456789abcdef0123456789abcdef01234567", route, "2026-10-31T00:00:00Z")
+		selection, err := actions.NewReferenceSelection(request, identity, "0123456789abcdef0123456789abcdef01234567", route, "2026-10-31T00:00:00Z")
 		if err != nil {
 			t.Fatal(err)
 		}

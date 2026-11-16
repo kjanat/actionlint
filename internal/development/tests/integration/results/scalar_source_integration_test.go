@@ -28,7 +28,7 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(), checking.Options{
 		WorkingDir: dir,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Runner: func([]string, string) ([]byte, error) {
 			return fmt.Appendf(nil, `{"comments":[{"file":%s,"line":2,"column":6,"endLine":2,"endColumn":12,"level":"info","code":2086,"message":"Quote expansion"}]}`, strconv.Quote(filepath.ToSlash(path))), nil
 		}}}),
 	}, []workspace.InputFile{{Path: "ci.yml", Content: []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo test\npermissions: {}\n")}},

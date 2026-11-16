@@ -29,8 +29,8 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 		name         string
 		registration contract.Registration
 	}{
-		{"ruff", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", providerRegistration(t, "ruff", backends.ToolSelection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
+		{"shellcheck", providerRegistration(t, "shellcheck", backends.ToolSelection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -85,8 +85,8 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		name, shell, source, filename string
 		registration                  contract.Registration
 	}{
-		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", backends.ToolSelection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
+		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", backends.ToolSelection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

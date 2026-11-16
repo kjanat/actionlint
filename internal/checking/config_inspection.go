@@ -24,7 +24,7 @@ import (
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
 	ctx = source.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
@@ -38,7 +38,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err != nil {
 		return inspection, err
 	}
-	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return inspection, err
 	}
@@ -82,12 +82,12 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition pluginacquisition.Settings) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.ConfigFileSelection, paths []string, acquisition pluginacquisition.Settings) ([]pluginmanifests.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return nil, err
 	}

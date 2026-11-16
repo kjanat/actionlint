@@ -29,10 +29,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
-// Selection chooses plugins from explicit arguments or repository configuration.
+// PluginSelection chooses plugins from explicit arguments or repository configuration.
 // Explicit sources replace automatic selection. Explicit configs are
 // invocation-wide; automatic declarations belong to their nearest repository.
-type Selection struct {
+type PluginSelection struct {
 	RuleSet configuration.RuleSet
 	Paths   []string
 
@@ -59,7 +59,7 @@ type Selection struct {
 // skipped before it runs when its metadata names a disabled id as its engine
 // or one of its rules. After plugins load, each named id must name a bundled
 // tool, a loaded plugin or a skipped plugin.
-func WithTools(selection Selection, disabled, named []string) Selection {
+func WithTools(selection PluginSelection, disabled, named []string) PluginSelection {
 	selection.DisabledTools, selection.NamedTools = slices.Clone(disabled), slices.Clone(named)
 	return selection
 }
@@ -87,7 +87,7 @@ type Sources struct {
 	Acquisition pluginacquisition.Settings
 }
 
-func (s Selection) Resolve(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
+func (s PluginSelection) Resolve(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
 	s.lazyDefaults = !network.Settings(ctx).WarmCache
 	selected, err := s.Select(ctx, directory, input)
 	if err != nil {
@@ -101,7 +101,7 @@ func (s Selection) Resolve(ctx context.Context, directory string, input inputmod
 
 // ResolveForRules selects declared plugins without validating unrelated lint
 // settings.
-func (s Selection) ResolveForRules(ctx context.Context, directory string) (Sources, error) {
+func (s PluginSelection) ResolveForRules(ctx context.Context, directory string) (Sources, error) {
 	selected, err := s.selectSources(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository}, configplugins.PluginDeclarationsOnly)
 	if err != nil {
 		return Sources{}, err
@@ -114,17 +114,17 @@ func (s Selection) ResolveForRules(ctx context.Context, directory string) (Sourc
 
 // Select resolves exact registry metadata without downloading artifacts or
 // running plugin code. Hosts can restore artifacts before Hydrate verifies them.
-func (s Selection) Select(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
+func (s PluginSelection) Select(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
 	return s.selectSources(ctx, directory, input, configplugins.CompleteConfiguration)
 }
 
 // SelectForCache selects the same declared releases as analysis without fetching
 // artifacts or implicitly migrating project files.
-func (s Selection) SelectForCache(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
+func (s PluginSelection) SelectForCache(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
 	return s.Select(ctx, directory, input)
 }
 
-func (s Selection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+func (s PluginSelection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
 	if s.DisableTools {
 		s.DefaultTools = nil
 	}
@@ -146,7 +146,7 @@ func (s Selection) selectSources(ctx context.Context, directory string, input in
 	return selected, nil
 }
 
-func (s Selection) selectDeclared(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+func (s PluginSelection) selectDeclared(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
 	if len(s.Paths) > 0 {
 		return SourcesFromArguments(s.Paths, s.Acquisition)
 	}
@@ -266,7 +266,7 @@ func RepositorySearchStart(path string) string {
 	return filepath.Dir(path)
 }
 
-func (s Selection) prepareProject(project *installation.Project) (*configuration.Config, error) {
+func (s PluginSelection) prepareProject(project *installation.Project) (*configuration.Config, error) {
 	resolved, err := s.RuleSet.ResolveBeforePlugins(project.Manifest.MergedDocument(), s.Overlays)
 	if err != nil {
 		return nil, err
@@ -298,7 +298,7 @@ func (s Selection) prepareProject(project *installation.Project) (*configuration
 	return resolved.Config, nil
 }
 
-func (s Selection) sourcesFromProject(ctx context.Context, project *installation.Project, root string) (Sources, error) {
+func (s PluginSelection) sourcesFromProject(ctx context.Context, project *installation.Project, root string) (Sources, error) {
 	prepared, err := s.prepareProject(project)
 	if err != nil {
 		return Sources{}, err
@@ -333,7 +333,7 @@ func (s Selection) sourcesFromProject(ctx context.Context, project *installation
 
 // selectedPlugins filters named declarations before registry lookup. When all
 // tools are disabled, cached components may still provide non-tool roles.
-func (s Selection) selectedPlugins(ctx context.Context, project *installation.Project) (pluginregistry.ResolvedPlugins, []string, error) {
+func (s PluginSelection) selectedPlugins(ctx context.Context, project *installation.Project) (pluginregistry.ResolvedPlugins, []string, error) {
 	selected := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{}}
 	var skipped []string
 	if s.DisableTools {
@@ -461,7 +461,7 @@ func (s *Sources) ValidateScope(ctx context.Context, rules configuration.RuleSet
 			if err != nil {
 				return err
 			}
-			if _, err := (Selection{RuleSet: rules, Overlays: s.Overlays}).prepareProject(project); err != nil {
+			if _, err := (PluginSelection{RuleSet: rules, Overlays: s.Overlays}).prepareProject(project); err != nil {
 				return err
 			}
 			pins, err := project.SelectedPlugins(ctx, project.Manifest.References)

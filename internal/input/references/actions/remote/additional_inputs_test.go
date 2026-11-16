@@ -89,7 +89,7 @@ func TestAdditionalInputsRequireReviewedManifest(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			selection, err := actions.NewSelection(request, identity, revision, actions.ObjectRoute(), "")
+			selection, err := actions.NewReferenceSelection(request, identity, revision, actions.ObjectRoute(), "")
 			if err != nil {
 				t.Fatal(err)
 			}

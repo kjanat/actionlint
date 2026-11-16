@@ -203,7 +203,7 @@ jobs:
 
 func lintCredentialsExpressionTest(t *testing.T, source string) []results.Diagnostic {
 	t.Helper()
-	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 	var requestSources []workspace.InputFile
 	var err error
 	requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}

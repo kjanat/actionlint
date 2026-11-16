@@ -237,7 +237,7 @@ func migrationPathInsideRepository(root, path string) (bool, error) {
 
 // MigrateSelection upgrades the local configs selection would read before
 // runtime plugin selection.
-func MigrateSelection(ctx context.Context, selection pluginselection.Selection, directory string, input inputmodel.Request, options installation.DefaultPluginOptions) error {
+func MigrateSelection(ctx context.Context, selection pluginselection.PluginSelection, directory string, input inputmodel.Request, options installation.DefaultPluginOptions) error {
 	if selection.Disabled || len(selection.Paths) != 0 {
 		return nil
 	}
@@ -299,7 +299,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 		}{root, path})
 	}
 	if len(seen) > 1 {
-		// Check existing plugin scopes before planning migrations. pluginselection.Selection is
+		// Check existing plugin scopes before planning migrations. pluginselection.PluginSelection is
 		// read-only and catches active configs in repositories with no legacy file.
 		if _, err := selection.SelectForCache(ctx, directory, input); err != nil {
 			return err

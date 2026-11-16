@@ -49,7 +49,7 @@ func (b *configuredBackend) Close(ctx context.Context) error {
 	return b.closeError
 }
 
-func configuredEngineSelections() registry.Selections {
+func configuredEngineSelections() registry.ToolSelections {
 	selections := registry.Defaults()
 	for name, selection := range selections {
 		selection.Process = &process.CommandOptions{Executable: new(""), AllowWasm: true}
@@ -168,7 +168,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); !errors.Is(err, failure) {
 				t.Fatalf("loader error lost: %v", err)
 			}
-			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.ToolSelections{"ruff": {Process: &process.CommandOptions{Executable: new("")}}})
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); err != nil {
 				t.Fatalf("explicit disable ignored: %v", err)
 			}
@@ -203,7 +203,7 @@ func TestConfiguredShellcheckAndCallerOwnedBackend(t *testing.T) {
 		t.Fatalf("configured ShellCheck: result=%+v err=%v checks=%d closes=%d", result, err, backend.checks.Load(), backend.closes.Load())
 	}
 	explicit := &configuredBackend{}
-	options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Backend: explicit}})
+	options.Tools = registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: explicit}})
 	options.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) {
 		t.Fatal("explicit backend must override configured engine")
 		return nil, nil
@@ -266,8 +266,8 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				if result.Diagnostics[0].Rule != tool.name || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
 					t.Fatalf("unexpected diagnostic: %+v", result.Diagnostics[0])
 				}
-				disabled := backends.Selection{Process: &process.CommandOptions{Executable: new("")}}
-				options.Tools = registry.Registrations(registry.Selections{tool.name: disabled})
+				disabled := backends.ToolSelection{Process: &process.CommandOptions{Executable: new("")}}
+				options.Tools = registry.Registrations(registry.ToolSelections{tool.name: disabled})
 				result, err = runConfiguredAnalysis(t, mode, root, paths[:1], cfg, options)
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || loads.Load() != 1 || backend.checks.Load() != wantChecks || backend.closes.Load() != 1 {
 					t.Fatalf("explicit disable: result=%+v err=%v checks=%d loads=%d closes=%d", result, err, backend.checks.Load(), loads.Load(), backend.closes.Load())

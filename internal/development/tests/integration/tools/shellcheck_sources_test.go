@@ -27,7 +27,7 @@ runs:
       working-directory: app
       run: . ./lib/check.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"-a"}}}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"-a"}}}})})
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}
@@ -58,7 +58,7 @@ runs:
         . ./value.sh
         echo $VALUE
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 0 {
 		t.Fatalf("composite did not analyze sibling source: %+v", result.Diagnostics)
 	}

@@ -47,7 +47,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 			var requestSources []workspace.InputFile
 			var err error
 			requestSources = []workspace.InputFile{{Path: "test.yaml", InputPath: "test.yaml", Content: []byte(source), Project: nil}}

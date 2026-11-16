@@ -77,7 +77,7 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 		t.Skip("set ACTIONLINT_TEST_PSSCRIPTANALYZER=1 with pwsh and PSScriptAnalyzer installed")
 	}
 	manifest, programs := loadPSScriptAnalyzer(t)
-	registration, err := backends.RegisterProvider(backends.Provider{Manifest: manifest, Programs: programs, Selection: backends.Selection{Command: "pwsh"}})
+	registration, err := backends.RegisterProvider(backends.Provider{Manifest: manifest, Programs: programs, Selection: backends.ToolSelection{Command: "pwsh"}})
 	if err != nil {
 		t.Fatal(err)
 	}

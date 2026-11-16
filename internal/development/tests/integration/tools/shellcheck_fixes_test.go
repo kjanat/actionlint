@@ -47,7 +47,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "shellcheck")
 	workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo\té 🐚 $VALUE\npermissions: {}\n"
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if changed != strings.Replace(workflow, "$VALUE", `"$VALUE"`, 1) {
 		t.Fatalf("wrong ShellCheck edit: %q", changed)
 	}
-	rechecked, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(changed)}})
+	rechecked, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(changed)}})
 	if err != nil || len(rechecked.Diagnostics) != 0 {
 		t.Fatalf("fixed workflow findings: %+v, %v", rechecked, err)
 	}
@@ -96,7 +96,7 @@ runs:
         echo $VALUE
 `
 	path := fixturefiles.Write(t, root, "local/action.yml", input)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if len(result.Diagnostics) != 1 || len(result.Diagnostics[0].Fixes) != 1 {
 		t.Fatalf("composite fixes missing: %+v", result.Diagnostics)
 	}
@@ -113,7 +113,7 @@ runs:
 	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if checked := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}); len(checked.Diagnostics) != 0 {
+	if checked := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}); len(checked.Diagnostics) != 0 {
 		t.Fatalf("fixed composite findings: %+v", checked.Diagnostics)
 	}
 }

@@ -130,7 +130,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		}{})
 		mapping.OneOf = []*jsonschema.Schema{{Required: []string{"before"}}, {Required: []string{"on"}}}
 		return mapping
-	case reflect.TypeFor[selection.Selection]():
+	case reflect.TypeFor[selection.PathSelection]():
 		mapping := reflectMapping(struct {
 			Includes []string `yaml:"includes" jsonschema:"nullable,description=Repository-relative doublestar globs. Omitted or null selects all files; an empty array selects none. A leading ! excludes a match."`
 			Excludes []string `yaml:"excludes" jsonschema:"nullable,description=Repository-relative exclusions. Exclusions always win over includes."`

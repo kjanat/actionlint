@@ -26,7 +26,7 @@ func TestAnalysisPartialFindingsOnCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
+	result, err := checking.Analyze(ctx, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 		cancel()
 		return []byte(`{"comments":[{"line":3,"endLine":3,"column":1,"endColumn":2,"level":"warning","code":9999,"message":"reported ShellCheck finding"}]}`), nil
 	}}})}, []workspace.InputFile{{Path: "cancelled.yml", Content: []byte(strings.Replace(badWorkflow, "permissions: {}\n", "", 1) + `        shell: bash
@@ -89,9 +89,9 @@ permissions: {}
 				var result *report.Analysis
 				var analysisErr error
 				if adapter == "sources" {
-					result, analysisErr = checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}, sources)
+					result, analysisErr = checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Process: options("shellcheck")}})}, sources)
 				} else {
-					session := checking.Options{WorkingDir: root, ConfigFile: configPath, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}
+					session := checking.Options{WorkingDir: root, ConfigFile: configPath, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Process: options("shellcheck")}})}
 
 					paths := []string{filepath.Join(root, sources[0].Path), filepath.Join(root, sources[1].Path)}
 					result, analysisErr = checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: paths})

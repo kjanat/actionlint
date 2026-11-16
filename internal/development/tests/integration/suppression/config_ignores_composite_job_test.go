@@ -48,7 +48,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 				}
 				source.WriteString("permissions: {}\n")
 				path := fixturefiles.Write(t, root, ".github/workflows/ci.yml", source.String())
-				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}, []workspace.InputFile{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
+				result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}, []workspace.InputFile{{Path: path, Content: []byte(source.String()), Config: config, Project: workspace.Identity(root)}})
 				if err != nil {
 					t.Fatal(err)
 				}

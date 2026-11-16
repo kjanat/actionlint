@@ -49,7 +49,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 				return actions.Manifest{}, err
 			}
 		}
-		selection, err := actions.NewSelection(request, identity, commit, route, "")
+		selection, err := actions.NewReferenceSelection(request, identity, commit, route, "")
 		if err != nil {
 			return actions.Manifest{}, err
 		}

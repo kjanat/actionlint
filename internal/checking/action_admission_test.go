@@ -45,7 +45,7 @@ func TestActionRecoveredDeclarationsDoNotEnableScriptAnalysis(t *testing.T) {
 			{Checker: failedActionFactProbe{name: "failed-action-source", fact: rule.Source, calls: &sourceCalls}},
 			{Checker: failedActionFactProbe{name: "failed-action-scripts", fact: rule.Scripts, calls: &scriptCalls}},
 		},
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) {
 			calls.Add(1)
 			return []byte(`{"comments":[]}`), nil
 		}}}),

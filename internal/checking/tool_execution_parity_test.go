@@ -56,7 +56,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 	options := checking.Options{WorkingDir: "repo", ConfigFile: "actionlint.yml"}
 	check(checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}))
 	check(checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}}))
-	planning := checking.Options{WorkingDir: "repo", ConfigFile: "actionlint.yml", Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	planning := checking.Options{WorkingDir: "repo", ConfigFile: "actionlint.yml", Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
 	for _, path := range []string{workflow, filepath.Join(".github", "workflows", "ci.yml")} {
 		needed, err := checking.RequiredTools(t.Context(), planning, []string{path})
 		if err != nil || !needed["shellcheck"] {
@@ -90,7 +90,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			writeFixture(t, root, ".github/actionlint.yaml", tc.config)
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", goodWorkflow)
 
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Process: &process.CommandOptions{Executable: &executable, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 			if err != nil || needed["shellcheck"] != tc.enabled {
 				t.Fatalf("tool requirement: %+v, %v", needed, err)

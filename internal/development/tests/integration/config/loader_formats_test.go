@@ -104,7 +104,7 @@ func TestInspectFindsEveryRepositoryFormat(t *testing.T) {
 			}
 			want := writeConfig(t, github, name, formatSources[name])
 			t.Chdir(github)
-			got, err := checking.ConfigurationRules().Inspect(configuration.Selection{}, true)
+			got, err := checking.ConfigurationRules().Inspect(configuration.ConfigFileSelection{}, true)
 			if err != nil {
 				t.Fatal(err)
 			}

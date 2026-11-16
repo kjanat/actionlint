@@ -95,7 +95,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 			}
 			result, err := Analyze(t.Context(), Options{
 				WorkingDir: root,
-				Tools: registry.Registrations(registry.Selections{"shellcheck": {
+				Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {
 					Command: "shellcheck", Process: &process.CommandOptions{Executable: &missing, Optional: true},
 				}}),
 			}, []workspace.InputFile{{Path: "workflow.yml", Config: cfg, Content: []byte("on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok # ignore shellcheck expression-reference\npermissions: {}\n")}})
@@ -132,7 +132,7 @@ func TestUnavailableToolRetainsNestedActionSuppression(t *testing.T) {
 	missing := filepath.Join(root, "scanner-not-installed")
 	result, err := Check(t.Context(), Options{
 		WorkingDir: root,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {
 			Command: "shellcheck", Process: &process.CommandOptions{Executable: &missing, Optional: true},
 		}}),
 	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})

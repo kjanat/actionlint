@@ -40,7 +40,7 @@ func Bind(base contract.Registration, p backends.Provider) contract.Registration
 
 // defaultSelection reports whether a selection runs the provider's default
 // command, which a managed analyzer may replace.
-func defaultSelection(sel backends.Selection, name string) bool {
+func defaultSelection(sel backends.ToolSelection, name string) bool {
 	if sel.Backend != nil || sel.Runner != nil || sel.Command != name {
 		return false
 	}

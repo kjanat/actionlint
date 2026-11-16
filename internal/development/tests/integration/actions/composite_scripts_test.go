@@ -31,7 +31,7 @@ runs:
       run: |
         echo $VALUE
 `)
-			result := testutil.Composite(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, "- uses: ./.github/actions/lint\n- uses: ./.github/actions/lint", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			var findings []results.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -88,7 +88,7 @@ runs:
         . value.sh
         echo $VALUE
 `)
-			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			var findings []results.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
@@ -134,7 +134,7 @@ runs:
         print(
     - uses: ./outer
 `)
-	result := testutil.Composite(t, root, "- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	for _, rule := range []string{"shellcheck"} {
 		if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 			return d.Rule == rule && filepath.Join(root, d.Path) == metadata
@@ -269,7 +269,7 @@ runs:
       if: `+tc.inner+"\n")
 			result := testutil.Composite(t, root, `- uses: actions/checkout@v6
 - uses: ./local
-  if: `+tc.outer, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+  if: `+tc.outer, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			finding := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == inner
 			})
@@ -302,7 +302,7 @@ runs:
     ignore: ['SC2086']
 `} {
 		fixturefiles.Write(t, root, ".github/actionlint.yaml", config)
-		result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+		result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 		if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 			t.Fatalf("config ignored: %+v", result.Diagnostics)
 		}
@@ -324,7 +324,7 @@ runs:
   steps:
     - shell: bash
 `+directory+"      run: . ./lib.sh\n")
-		result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+		result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 		found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 			return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == file
 		})
@@ -361,7 +361,7 @@ runs:
       working-directory: ${{ github.action_path }}
       run: . ./lib.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner
 	}) {
@@ -706,7 +706,7 @@ runs:
 `)
 	fixturefiles.Write(t, root, "lib.sh", "if then\n")
 	fixturefiles.Write(t, root, "relocated/lib.sh", "echo wrong file\n")
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
@@ -775,7 +775,7 @@ runs:
       with: {path: relocated}
 `)
 			fixturefiles.Write(t, root, "lib.sh", "VALUE=42\n")
-			result := testutil.Composite(t, root, tc.steps, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+			result := testutil.Composite(t, root, tc.steps, checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 			warnings := 0
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" && diagnostic.Code == "SC2086" {
@@ -827,7 +827,7 @@ runs:
       run: . ./lib.sh
 `)
 	fixturefiles.Write(t, root, "lib.sh", "if then\n")
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})})
 	if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("unknown checkout sourced local decoy: %+v", result.Diagnostics)
 	}

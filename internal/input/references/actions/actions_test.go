@@ -67,7 +67,7 @@ func TestRawTagObjectPreservesRequestAndTerminalCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(request, identity, object, actions.ObjectRoute(), "observation")
+	selection, err := actions.NewReferenceSelection(request, identity, object, actions.ObjectRoute(), "observation")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestRawTagObjectPreservesRequestAndTerminalCommit(t *testing.T) {
 
 func TestInvalidSelectionCannotBecomeManifest(t *testing.T) {
 	t.Parallel()
-	if _, err := actions.NewManifest(actions.Selection{}, []byte("name: example")); err == nil {
+	if _, err := actions.NewManifest(actions.ReferenceSelection{}, []byte("name: example")); err == nil {
 		t.Fatal("zero selection became a manifest")
 	}
 	request, err := actions.ParseReference("github.com", "example/action@"+strings.Repeat("a", 40))
@@ -95,7 +95,7 @@ func TestInvalidSelectionCannotBecomeManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := actions.NewSelection(request, identity, strings.Repeat("b", 40), actions.ObjectRoute(), ""); err == nil {
+	if _, err := actions.NewReferenceSelection(request, identity, strings.Repeat("b", 40), actions.ObjectRoute(), ""); err == nil {
 		t.Fatal("a raw object request selected another original object")
 	}
 }
@@ -140,7 +140,7 @@ func TestIdentityWithoutRepositoryID(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		selection, err := actions.NewSelection(request, identity, commit, route, "observation")
+		selection, err := actions.NewReferenceSelection(request, identity, commit, route, "observation")
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -99,7 +99,7 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		URIFromPath: workspace.URI,
 		Complete:    lsp.CompleteDocument,
 		Analyze: func(ctx context.Context, documents map[string]lsp.Document) (lsp.Analysis, error) {
-			selections := registry.Selections{}
+			selections := registry.ToolSelections{}
 			for _, name := range tools {
 				selections[name] = toolSelection(ctx, name)
 			}
@@ -128,8 +128,8 @@ func serve(ctx context.Context, in io.Reader, out io.Writer) error {
 	})
 }
 
-func toolSelection(ctx context.Context, name string) backends.Selection {
-	return backends.Selection{Runner: func(args []string, script string) ([]byte, error) {
+func toolSelection(ctx context.Context, name string) backends.ToolSelection {
+	return backends.ToolSelection{Runner: func(args []string, script string) ([]byte, error) {
 		value, err := hostRequest(ctx, "actionlint/runTool", struct {
 			Name  string   `json:"name"`
 			Args  []string `json:"args"`

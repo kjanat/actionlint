@@ -112,7 +112,7 @@ jobs:
 				}
 			}
 			project := workspace.Identity(root)
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 
 			checkDiagnostics := func(diagnostics []*finding.Finding, includeCallee bool) {
 				t.Helper()

@@ -52,7 +52,7 @@ overrides: [{includes: ['.github/workflows/**'], tools: {shellcheck: {backend: {
 			writeFixture(t, root, "shell-action/action.yml", "name: Shell\ndescription: test\nruns:\n  using: composite\n  steps: [{shell: bash, run: echo hello}]\n")
 			writeFixture(t, root, ".github/actionlint.yaml", tc.config)
 			for _, command := range []string{"shellcheck", ""} {
-				options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+				options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 				needed, err := checking.RequiredTools(t.Context(), options, []string{workflow})
 				if err != nil || needed["shellcheck"] != (tc.want && command != "") {
 					t.Fatalf("command %q: needed=%+v, error=%v", command, needed, err)
@@ -70,7 +70,7 @@ func TestShellcheckRequiredToolsExplicitProcessAndCancellation(t *testing.T) {
 	defer cancel()
 	options := checking.Options{
 		WorkingDir: root, ConfigFile: config,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}),
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}),
 	}
 	needed, err := checking.RequiredTools(ctx, options, []string{"never-read.yml"})
 	if err != nil || !needed["shellcheck"] {
@@ -98,7 +98,7 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {proce
 	backend := &recordingEngine{code: "SC2086"}
 	options := checking.Options{
 		WorkingDir: root,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{
+		Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{
 			Executable: &executable, AllowWasm: true,
 			LauncherArguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"},
 		}}}),

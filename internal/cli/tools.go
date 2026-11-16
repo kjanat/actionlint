@@ -158,9 +158,9 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	}
 	var resolved resolvedTools
 	if c.NoTools {
-		resolved.tools = make(registry.Selections, len(manifests))
+		resolved.tools = make(registry.ToolSelections, len(manifests))
 		for _, manifest := range manifests {
-			resolved.tools[manifest.Rule.Name] = backends.Selection{}
+			resolved.tools[manifest.Rule.Name] = backends.ToolSelection{}
 			resolved.disabled = append(resolved.disabled, manifest.Rule.Name)
 		}
 		return resolved, nil
@@ -187,22 +187,22 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 			resolved.disabled = append(resolved.disabled, id)
 		}
 	}
-	resolved.tools = make(registry.Selections, len(manifests))
+	resolved.tools = make(registry.ToolSelections, len(manifests))
 	for _, manifest := range manifests {
 		id := manifest.Rule.Name
 		command, explicit := commands[id]
 		switch {
 		case slices.Contains(resolved.disabled, id):
-			resolved.tools[id] = backends.Selection{}
+			resolved.tools[id] = backends.ToolSelection{}
 		case explicit:
-			resolved.tools[id] = backends.Selection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
+			resolved.tools[id] = backends.ToolSelection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
 		default:
 			options, err := toolEnvironment(id)
 			if err != nil {
 				return resolvedTools{}, err
 			}
 			if options != nil {
-				resolved.tools[id] = backends.Selection{Command: id, Process: options}
+				resolved.tools[id] = backends.ToolSelection{Command: id, Process: options}
 				continue
 			}
 			selection, disabled := defaultSelection(id, c.DeprecatedToolFlags)
@@ -218,7 +218,7 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 // resolvedTools is how resolveTools selects the external tools.
 type resolvedTools struct {
 	// tools selects every bundled tool.
-	tools registry.Selections
+	tools registry.ToolSelections
 	// disabled lists the tool ids the flags disabled.
 	disabled []string
 	// named lists the tool ids --tool and --no-tool named.
@@ -229,14 +229,14 @@ type resolvedTools struct {
 // or environment variable selected it: its default command, changed by the
 // last deprecated flag with an ignored value used for id. It also reports
 // whether that flag disabled the tool.
-func defaultSelection(id string, used []deprecatedToolFlag) (backends.Selection, bool) {
-	selection := backends.Selection{Command: id, Process: &process.CommandOptions{Optional: true}}
+func defaultSelection(id string, used []deprecatedToolFlag) (backends.ToolSelection, bool) {
+	selection := backends.ToolSelection{Command: id, Process: &process.CommandOptions{Optional: true}}
 	for _, flag := range slices.Backward(used) {
 		if flag.id != id {
 			continue
 		}
 		if disablesTool(flag.value) {
-			return backends.Selection{}, true
+			return backends.ToolSelection{}, true
 		}
 		selection.Process.Arguments = slices.Clone(flag.flag.Arguments)
 		break

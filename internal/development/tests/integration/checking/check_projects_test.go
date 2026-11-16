@@ -46,7 +46,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		fixturefiles.WriteText(t, filepath.Join(root, ".github", "workflows", "ci.yml"), ociProviderInput)
 	}
 	for _, paths := range [][]string{{parent}, {filepath.Join(parent, "*"), parent}} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestCheckProjectsIsolatesRepositoryPlugins(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"first", "second"} {
-		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Repository, Directory: name}, pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
+		result, err := checking.CheckProjects(t.Context(), checking.Options{WorkingDir: parent, AllowConfigProcesses: true}, inputmodel.Request{Kind: inputmodel.Repository, Directory: name}, pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: registryAcquisition(registry)})
 		if err != nil {
 			t.Fatal(err)
 		}

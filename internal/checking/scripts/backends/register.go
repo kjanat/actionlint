@@ -20,8 +20,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 )
 
-// Selection chooses how a tool provider runs. The zero value disables it.
-type Selection struct {
+// ToolSelection chooses how a tool provider runs. The zero value disables it.
+type ToolSelection struct {
 	// Command is the process command line. The provider's rule name selects
 	// the manifest's entry on PATH and lets repository configuration choose
 	// a backend; empty disables the process unless Process names an
@@ -46,7 +46,7 @@ type Provider struct {
 	Manifest manifests.Manifest
 	// Programs resolves the manifest's transform digests.
 	Programs  manifests.Programs
-	Selection Selection
+	Selection ToolSelection
 	// Bind completes a registration, such as with a managed document
 	// analyzer route; nil leaves it as is. RegisterProvider applies it to every
 	// registration it derives.
@@ -55,7 +55,7 @@ type Provider struct {
 
 // selection is a Selection as a registration applies it.
 type selection struct {
-	Selection
+	ToolSelection
 	// fallback marks Backend as a default plugin, which a repository's
 	// tools.<name>.backend replaces.
 	fallback bool
@@ -78,11 +78,11 @@ func (s selection) defaultCommand(name string) bool {
 }
 
 // forConfig lets a repository backend replace a default plugin.
-func (s selection) forConfig(name string, cfg *configuration.Config) Selection {
+func (s selection) forConfig(name string, cfg *configuration.Config) ToolSelection {
 	if s.fallback && cfg != nil && cfg.Tools[name].Backend != nil {
 		s.Backend, s.Command, s.Process = nil, name, &hostprocess.CommandOptions{Optional: true}
 	}
-	return s.Selection
+	return s.ToolSelection
 }
 
 // selected reports whether the selection can run the provider at all.
@@ -98,7 +98,7 @@ func (s selection) selected(name string) bool {
 // select a WebAssembly engine or, with --allow-config-processes, another
 // process for the default command.
 func RegisterProvider(p Provider) (contract.Registration, error) {
-	return register(p, selection{Selection: p.Selection})
+	return register(p, selection{ToolSelection: p.Selection})
 }
 
 func register(p Provider, sel selection) (contract.Registration, error) {
@@ -178,8 +178,8 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 			return contract.Registration{}, fmt.Errorf("%s plugin conflicts with an explicitly selected backend or command", name)
 		}
 		next := p
-		next.Selection = Selection{Backend: backend, ManagedOnly: sel.ManagedOnly}
-		return register(next, selection{Selection: next.Selection, fallback: true})
+		next.Selection = ToolSelection{Backend: backend, ManagedOnly: sel.ManagedOnly}
+		return register(next, selection{ToolSelection: next.Selection, fallback: true})
 	}
 	probes := &versionProbes{}
 	registration.Build = func(c contract.Context) (contract.Runner, error) {

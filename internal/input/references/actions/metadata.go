@@ -21,7 +21,7 @@ const (
 // run. Its zero value is unavailable/not-fetched; unavailable is never invalid.
 type MetadataAvailability struct {
 	state     MetadataState
-	selection Selection
+	selection ReferenceSelection
 	filename  string
 	missing   availability.Unavailability
 	problems  []actionmeta.MetadataProblem
@@ -58,7 +58,7 @@ func (m MetadataAvailability) Reason() availability.Reason {
 	}
 	return m.missing.Reason()
 }
-func (m MetadataAvailability) Selection() Selection { return m.selection }
+func (m MetadataAvailability) Selection() ReferenceSelection { return m.selection }
 func (m MetadataAvailability) Problems() []actionmeta.MetadataProblem {
 	return slices.Clone(m.problems)
 }

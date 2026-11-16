@@ -208,7 +208,7 @@ func TestNetworkPolicyDefaultOriginsAfterReset(t *testing.T) {
 				if got := applied.MetadataMirrorAccess(); got != tc.wantAccess {
 					t.Fatalf("mirror access = %v, want %v", got, tc.wantAccess)
 				}
-				inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), configuration.Selection{Disabled: true}, true, nil, policy)
+				inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), configuration.ConfigFileSelection{Disabled: true}, true, nil, policy)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -256,7 +256,7 @@ func TestNetworkPolicyInspectionReportsEffectiveSettingsAndOrigins(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), configuration.Selection{Disabled: true}, true, nil, policy)
+	inspected, err := checking.ConfigurationRules().InspectContextWithRegistrations(t.Context(), configuration.ConfigFileSelection{Disabled: true}, true, nil, policy)
 	if err != nil {
 		t.Fatal(err)
 	}

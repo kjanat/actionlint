@@ -44,7 +44,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, path, "plugins: ['"+source+"']\n")
-	for _, selection := range []pluginselection.Selection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
+	for _, selection := range []pluginselection.PluginSelection{{Acquisition: acquisition}, {ConfigFile: path, Acquisition: acquisition}} {
 		sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 		if err != nil {
 			t.Fatal(err)
@@ -76,7 +76,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 func TestExplicitPluginSelectionCarriesOnlyItsOwnSourceGrant(t *testing.T) {
 	t.Parallel()
 	source := "https://127.0.0.1:8443/plugin.wasm#sha256=" + strings.Repeat("a", 64)
-	sources, err := (pluginselection.Selection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := (pluginselection.PluginSelection{Paths: []string{source}, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), t.TempDir(), inputmodel.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}

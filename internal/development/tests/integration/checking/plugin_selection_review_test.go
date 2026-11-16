@@ -26,7 +26,7 @@ func TestPluginSelectionEmptyDeclarationsAcrossRepositories(t *testing.T) {
 			}
 			fixturefiles.WriteText(t, filepath.Join(root, ".github", "actionlint.yaml"), declaration)
 			input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "a.yml"), filepath.Join(other, "b.yml")}}
-			selected, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
+			selected, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
 			if err != nil || len(selected.Paths) != 0 {
 				t.Fatalf("empty selection: %+v, %v", selected, err)
 			}
@@ -58,7 +58,7 @@ func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
 			if err := os.Symlink(target, link); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
-			for _, selection := range []pluginselection.Selection{{}, {ConfigFile: path}} {
+			for _, selection := range []pluginselection.PluginSelection{{}, {ConfigFile: path}} {
 				selected, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 				if err != nil || len(selected.Paths) != 0 {
 					t.Fatalf("plugin-free linked config: %+v, %v", selected, err)
@@ -68,7 +68,7 @@ func TestPluginSelectionAllowsPluginFreeLinkedConfig(t *testing.T) {
 				t.Fatal("mutation accepted linked configuration")
 			}
 			fixturefiles.WriteText(t, target, "plugins: [publisher/plugin]\n")
-			if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
+			if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}); err == nil || !strings.Contains(err.Error(), "symlink refused") {
 				t.Fatalf("plugin activation accepted linked configuration: %v", err)
 			}
 		})

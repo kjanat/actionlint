@@ -50,7 +50,7 @@ func manifestWithID(t *testing.T, id repository.ID, repo, commit, directory, ref
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(request, identity, commit, route, "test-observation")
+	selection, err := actions.NewReferenceSelection(request, identity, commit, route, "test-observation")
 	if err != nil {
 		t.Fatal(err)
 	}

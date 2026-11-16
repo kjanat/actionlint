@@ -31,7 +31,7 @@ func TestRemoteMetadataIsSharedByInputsAndOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection, err := actions.NewSelection(reference, identity, strings.Repeat("a", 40), route, "test-observation")
+	selection, err := actions.NewReferenceSelection(reference, identity, strings.Repeat("a", 40), route, "test-observation")
 	if err != nil {
 		t.Fatal(err)
 	}

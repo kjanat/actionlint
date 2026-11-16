@@ -68,7 +68,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	}
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
-	sources, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil || len(sources.Paths) != 0 || len(registry.Requests()) != requests {
 		t.Fatalf("undeclared plugin activated: %+v %v", sources, err)
 	}
@@ -114,10 +114,10 @@ func TestPluginProjectMissingPinsAndForeignScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := inputmodel.Request{Kind: inputmodel.Repository}
-	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), foreign, input); err == nil || !strings.Contains(err.Error(), "plugin install") {
+	if _, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), foreign, input); err == nil || !strings.Contains(err.Error(), "plugin install") {
 		t.Fatalf("missing lock ignored: %v", err)
 	}
-	sources, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
+	sources, err := (pluginselection.PluginSelection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), root, input)
 	if err != nil {
 		t.Fatal(err)
 	}

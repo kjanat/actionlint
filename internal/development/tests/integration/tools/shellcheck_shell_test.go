@@ -56,7 +56,7 @@ jobs:
     steps:
       - run: '[[ -n "$HOME" ]]'
 `
-			request := checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
+			request := checking.Options{WorkingDir: t.TempDir(), Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: command}})}
 			var requestSources []workspace.InputFile
 			var err error
 			requestSources = []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Project: nil}}

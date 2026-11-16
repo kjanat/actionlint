@@ -259,7 +259,7 @@ func lintMatrixWithKnownRunnerLabels(t *testing.T, source string) []results.Diag
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
+	options := checking.Options{Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: ""}})}
 	sources := []workspace.InputFile{{Path: "workflow.yml", InputPath: "workflow.yml", Content: []byte(source), Config: cfg}}
 	result, err := checking.Analyze(t.Context(), options, sources)
 	errs, err := testutil.Diagnostics(result, err)

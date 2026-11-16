@@ -20,7 +20,7 @@ overrides:
   - includes: [disabled.yml]
     lint: {rules: {external: {shellcheck: off}}}
 `)
-	options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{WorkingDir: root, ConfigFile: config, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck"}})}
 	for _, tc := range []struct {
 		path string
 		want bool

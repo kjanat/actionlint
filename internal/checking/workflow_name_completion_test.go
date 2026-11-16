@@ -30,7 +30,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 		}
 	}
 	cause := errors.New("script checker initialization failed")
-	tools := registry.Registrations(registry.Selections{
+	tools := registry.Registrations(registry.ToolSelections{
 		"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
 		"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 	})
@@ -99,7 +99,7 @@ jobs:
 `
 			result, err := Analyze(t.Context(), Options{
 				WorkingDir: root, SkipProjectConfig: true,
-				Tools: registry.Registrations(registry.Selections{
+				Tools: registry.Registrations(registry.ToolSelections{
 					"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
 					"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 				}),
