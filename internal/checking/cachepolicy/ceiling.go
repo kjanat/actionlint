@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cachegrant"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
@@ -40,11 +40,11 @@ func CheckCeiling(call *definition.WorkflowCall, granted *definition.CacheMode, 
 		return nil
 	}
 	r := ceilingCheck{cache: lookup, debug: debug}
-	r.check(sourcetext.ZeroIfNil(call.Uses.Pos), spec, call.Uses.Value, cache.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
+	r.check(sourcetext.ZeroIfNil(call.Uses.Pos), spec, call.Uses.Value, cachegrant.FromDeclaration(granted), metadata, map[cacheModeVisit]bool{})
 	return r.findings
 }
 
-func (r *ceilingCheck) check(pos sourcetext.Position, spec, sourceSpec string, granted cache.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
+func (r *ceilingCheck) check(pos sourcetext.Position, spec, sourceSpec string, granted cachegrant.Grant, m *calls.Metadata, checked map[cacheModeVisit]bool) {
 	have, known := granted.Capabilities()
 	if granted.Present() && !known {
 		return
@@ -60,7 +60,7 @@ func (r *ceilingCheck) check(pos sourcetext.Position, spec, sourceSpec string, g
 
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		access := m.JobCacheAccess[id]
-		mode := granted.Override(cache.FromMetadata(access.Mode))
+		mode := granted.Override(cachegrant.FromMetadata(access.Mode))
 		want, valid := mode.Capabilities()
 		if mode.Present() && !valid {
 			continue

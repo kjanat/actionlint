@@ -72,7 +72,7 @@ func TestReusableMetadataFailureKeepsOtherEntryFindingsInBothOrders(t *testing.T
 				if err := cache.Seed(snapshot); err != nil {
 					t.Fatal(err)
 				}
-				callRule := workflowCallVisitor(t, workflow, cache, repository.Snapshot{})
+				callRule := workflowCallVisitor(t, workflow, cache, repository.Settings{})
 				labelRule := productionRunnerRule(t, snapshot, runners)
 				if err := workflowvisit.Visit(workflow, workflowvisit.Options{Passes: []workflowvisit.Pass{callRule, labelRule}}); err != nil {
 					t.Fatalf("metadata cache failure stopped recovered entry traversal: %v", err)

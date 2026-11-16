@@ -50,7 +50,7 @@ func checkCacheModeCall(t *testing.T, caller string, callees map[string]string, 
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := workflowCallVisitor(t, declarations.Workflow(w), cache, repository.Snapshot{})
+	rule := workflowCallVisitor(t, declarations.Workflow(w), cache, repository.Settings{})
 	if err := rule.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}

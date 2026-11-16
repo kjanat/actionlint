@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
-func (rule *Checker) checkMatrixSourceKey(source *definition.String, evaluated bool) {
+func (rule *Visitor) checkMatrixSourceKey(source *definition.String, evaluated bool) {
 	if source != nil && !evaluated {
 		rule.checkString(source, "jobs.<job_id>.strategy")
 	}
@@ -40,7 +40,7 @@ func (e *elementTypes) merged() exprtypes.Type {
 	return e.ty
 }
 
-func (rule *Checker) checkMatrixExpression(expr *definition.String) exprtypes.ObjectType {
+func (rule *Visitor) checkMatrixExpression(expr *definition.String) exprtypes.ObjectType {
 	ty, ok := rule.checkObjectExpression(expr, "matrix", "jobs.<job_id>.strategy")
 	if !ok {
 		return exprtypes.NewEmptyObjectType()
@@ -48,7 +48,7 @@ func (rule *Checker) checkMatrixExpression(expr *definition.String) exprtypes.Ob
 	return schema.MatrixType(ty)
 }
 
-func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolution) exprtypes.ObjectType {
+func (rule *Visitor) checkMatrix(m *definition.Matrix, resolution matrix.Resolution) exprtypes.ObjectType {
 	if m == nil {
 		return exprtypes.NewEmptyStrictObjectType()
 	}
@@ -109,7 +109,7 @@ func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolut
 	return resolution.ContextType(inferred)
 }
 
-func (rule *Checker) checkMatrixCombination(combination *definition.MatrixCombination, section string) {
+func (rule *Visitor) checkMatrixCombination(combination *definition.MatrixCombination, section string) {
 	if combination == nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (rule *Checker) checkMatrixCombination(combination *definition.MatrixCombin
 
 // checkMatrixRow returns the element type of a matrix row, or any when no
 // element has a known type.
-func (rule *Checker) checkMatrixRow(r *definition.MatrixRow) exprtypes.Type {
+func (rule *Visitor) checkMatrixRow(r *definition.MatrixRow) exprtypes.Type {
 	rule.checkMatrixSourceKey(r.Name, r.Evaluated)
 	if r.Expression != nil {
 		if ty, ok := rule.checkArrayExpression(r.Expression, "matrix row", "jobs.<job_id>.strategy"); ok {
@@ -148,7 +148,7 @@ func (rule *Checker) checkMatrixRow(r *definition.MatrixRow) exprtypes.Type {
 	return elements.merged()
 }
 
-func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, section string) {
+func (rule *Visitor) checkMatrixCombinationExpression(s *definition.String, section string) {
 	ty, ok := rule.checkOneExpression(s, "matrix combination at element of "+section+" section", "jobs.<job_id>.strategy")
 	if !ok {
 		return
@@ -180,7 +180,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, sect
 // checkMatrixSequenceItem returns the type of the values a sequence item adds.
 // ok is false when the item is an expression that inserts no values, such as
 // an empty array literal.
-func (rule *Checker) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty exprtypes.Type, ok bool) {
+func (rule *Visitor) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty exprtypes.Type, ok bool) {
 	ty = rule.checkRawYAMLValue(value)
 	if scalar, ok := value.(*definition.RawYAMLString); ok && syntax.ParseAssignedExpression(scalar.Value) != nil {
 		if array, ok := ty.Array(); ok {

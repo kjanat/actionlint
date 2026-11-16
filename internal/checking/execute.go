@@ -68,7 +68,7 @@ type analysisRequest struct {
 	ExecutionEnvironment
 	RemoteActions   actions.Provider
 	RemoteWorkflows reusableworkflows.Provider
-	Repository      func(context.Context, string) repository.Snapshot
+	Repository      func(context.Context, string) repository.Settings
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
 	Sources            []workspace.InputFile
@@ -362,13 +362,13 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	workflows := map[workflowCacheKey]*reusableworkflows.MetadataCache{}
 	remoteWorkflows := make(map[references.MirrorAccess]*reusableworkflows.Remote)
 	session.workingDir = absPath(cwd)
-	session.repositories = make(map[string]repository.Snapshot)
+	session.repositories = make(map[string]repository.Settings)
 	for _, source := range request.Sources {
 		root := projectRoot(source.Project)
 		if _, exists := session.repositories[root]; exists {
 			continue
 		}
-		var facts repository.Snapshot
+		var facts repository.Settings
 		if request.Repository != nil && root != "" {
 			facts = request.Repository(lifetime, root)
 		}

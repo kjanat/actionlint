@@ -267,9 +267,9 @@ type ProcessSpec struct {
 	Config      ConfigRendering `json:"config"`
 	ConfigFiles *ConfigFiles    `json:"config_files,omitempty"`
 	// ConfigSchema further restricts tools.<name>.config on this transport.
-	ConfigSchema json.RawMessage `json:"config_schema,omitempty"`
-	Version      *VersionProbe   `json:"version,omitempty"`
-	Output       Output          `json:"output"`
+	ConfigSchema json.RawMessage   `json:"config_schema,omitempty"`
+	Version      *VersionProbeSpec `json:"version,omitempty"`
+	Output       Output            `json:"output"`
 	// TemplateEffects maps diagnostic codes to template effects. It is honoured
 	// only when the probed version equals Version.TemplateEffects.
 	TemplateEffects map[string]scriptengine.TemplateEffect `json:"template_effects,omitempty"`
@@ -398,8 +398,8 @@ type Transform struct {
 	Inline   string            `json:"inline,omitempty"`
 }
 
-// VersionProbe identifies the installed engine version.
-type VersionProbe struct {
+// VersionProbeSpec identifies the installed engine version.
+type VersionProbeSpec struct {
 	// Args are literal arguments, including spaces within an argument. Version
 	// probes do not substitute the check command's argument placeholders.
 	Args []string `json:"args"`

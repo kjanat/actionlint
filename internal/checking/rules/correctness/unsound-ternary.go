@@ -5,9 +5,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // UnsoundTernaryRule is the single definition of the unsound-ternary rule.
@@ -76,7 +76,7 @@ func ternaryOperandTruthy(expr syntax.Node) (bool, bool) {
 		}
 	}
 	value, known := evaluate.ConditionConstantValue(expr)
-	return values.ExpressionTruthy(value), known
+	return exprvalues.ExpressionTruthy(value), known
 }
 
 func ternaryCaseTruthy(args []syntax.Node) (bool, bool) {

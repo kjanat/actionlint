@@ -125,7 +125,7 @@ reports expression problems. Recursive value-to-type conversion belongs to
 `internal/model/contexts/value`, which uses inferred types only for unknown
 parts and does not change evaluation state.
 
-`internal/model/workflows/cache` owns cache-grant inheritance and capability
+`internal/model/workflows/cachegrant` owns cache-grant inheritance and capability
 values. Cache rules receive the captured workflow before their job and step
 callbacks run. Shared write grants have a reporting job assigned in source order;
 the assignment includes all reachable restricted events and does not change when

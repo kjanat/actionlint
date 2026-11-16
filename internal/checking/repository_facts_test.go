@@ -26,15 +26,15 @@ func TestRepositoryHostKnowledgeIsScopedToIdentifiedRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := map[string]int{}
-	provider := func(_ context.Context, root string) repository.Snapshot {
+	provider := func(_ context.Context, root string) repository.Settings {
 		if !filepath.IsAbs(root) {
 			t.Errorf("unidentified repository reached host: %q", root)
 		}
 		calls[root]++
 		if root == first {
-			return repository.Snapshot{Variables: variables}
+			return repository.Settings{Variables: variables}
 		}
-		return repository.Snapshot{Variables: empty}
+		return repository.Settings{Variables: empty}
 	}
 	var sources []workspace.InputFile
 	for i, test := range []struct {
@@ -79,9 +79,9 @@ func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *tes
 	content := "on: push\njobs:\n  caller: {uses: ./.github/workflows/reuse.yml}\n  action: {runs-on: ubuntu-latest, steps: [{uses: ./.github/actions/hello}]}\npermissions: {}\n"
 	result, err := Analyze(t.Context(), Options{
 		WorkingDir: root,
-		Repository: func(context.Context, string) repository.Snapshot {
+		Repository: func(context.Context, string) repository.Settings {
 			t.Error("working directory was presented as an identified repository")
-			return repository.Snapshot{}
+			return repository.Settings{}
 		},
 	}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: []byte(content)}})
 	if err != nil {

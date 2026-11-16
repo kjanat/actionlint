@@ -64,7 +64,7 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 			if selection == "" {
 				selection = "desktop-pool"
 			}
-			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.Snapshot{
+			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.RunnerSnapshot{
 				Scope: "repo", Freshness: freshness, Complete: true,
 				Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"group":"build","os":"windows","default_shell":"pwsh"}]}`,
 			}}}

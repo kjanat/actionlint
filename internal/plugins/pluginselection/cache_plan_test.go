@@ -18,7 +18,7 @@ func TestCachePlanCombinesCandidateAndToolArtifacts(t *testing.T) {
 	t.Parallel()
 	cache := t.TempDir()
 	a, b, c := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64)
-	backend := func(path string) *tools.Backend {
+	backend := func(path string) *tools.BackendSelection {
 		module, err := tools.NewModule(path)
 		if err != nil {
 			t.Fatal(err)

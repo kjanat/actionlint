@@ -35,7 +35,7 @@ func TestFinalPublicationCannotAuditConflictedSource(t *testing.T) {
 			scope := registry.Prepare(nil, nil, nil)
 			batch := &policy.Batch{
 				Processor:  policy.Processor{RuleSet: rules},
-				Policy:     policy.Policy{Path: entryPath, ConfigPath: entryPath, WorkingDir: root, Content: entry.Bytes(), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{foreignPath: scope}},
+				Policy:     policy.DocumentInputs{Path: entryPath, ConfigPath: entryPath, WorkingDir: root, Content: entry.Bytes(), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{foreignPath: scope}},
 				Sources:    map[string][]byte{foreignPath: content},
 				References: map[string]facts.SourceIndex{foreignPath: {Document: sourcetext.Reference{Document: foreign.Revision().Document(), Revision: foreign.Revision().Digest()}}},
 			}

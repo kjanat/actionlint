@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cachegrant"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
@@ -41,14 +41,14 @@ func CheckCallOperations(call *definition.WorkflowCall, granted *definition.Cach
 		return nil
 	}
 	r := operationCheck{cache: lookup}
-	r.checkCallOperations(sourcetext.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cache.FromDeclaration(granted), map[cacheModeVisit]bool{})
+	r.checkCallOperations(sourcetext.ZeroIfNil(call.Uses.Pos), call.Uses.Value, cachegrant.FromDeclaration(granted), map[cacheModeVisit]bool{})
 	return r.findings
 }
 
 // checkCallOperations reports inherited restrictions at the call site, where
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
-func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec string, granted cache.Grant, checked map[cacheModeVisit]bool) {
+func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec string, granted cachegrant.Grant, checked map[cacheModeVisit]bool) {
 	spec, local := callreferences.LocalWorkflow(sourceSpec)
 	if !local {
 		return
@@ -72,7 +72,7 @@ func (r *operationCheck) checkCallOperations(pos sourcetext.Position, sourceSpec
 	}
 	for _, id := range slices.Sorted(maps.Keys(m.JobCacheAccess)) {
 		job := m.JobCacheAccess[id]
-		own := cache.FromMetadata(job.Mode)
+		own := cachegrant.FromMetadata(job.Mode)
 		mode := granted.Override(own)
 		want, valid := mode.Capabilities()
 		if mode.Present() && !valid || known && valid && want&^have != 0 {
@@ -99,7 +99,7 @@ func CheckStep(step workflows.BoundStep, mode *definition.CacheMode) []results.D
 	if !ok || action.Uses == nil {
 		return nil
 	}
-	access, valid := cache.FromDeclaration(mode).Capabilities()
+	access, valid := cachegrant.FromDeclaration(mode).Capabilities()
 	if !valid {
 		return nil
 	}

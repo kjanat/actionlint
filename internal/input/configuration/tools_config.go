@@ -35,7 +35,7 @@ type ToolConfig struct {
 	Enabled *bool `yaml:"enabled" jsonschema:"nullable,default=true"`
 	// Backend selects the execution transport and its settings.
 	// Explicit CLI or application invocation settings take precedence.
-	Backend *tools.Backend `yaml:"backend,omitempty"`
+	Backend *tools.BackendSelection `yaml:"backend,omitempty"`
 	// Config is the tool's own configuration: inline settings the provider
 	// validates, or a path to the tool's configuration file or directory.
 	Config *ToolSettings `yaml:"config"`

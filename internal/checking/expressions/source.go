@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func (rule *Checker) scopeExpressionSource(value string, pos *sourcetext.Position) func() {
+func (rule *Visitor) scopeExpressionSource(value string, pos *sourcetext.Position) func() {
 	previous, offset := rule.expressionSource, rule.expressionOffset
 	rule.expressionSource, rule.expressionOffset = nil, 0
 	if pos != nil {
@@ -30,7 +30,7 @@ func (rule *Checker) scopeExpressionSource(value string, pos *sourcetext.Positio
 	return func() { rule.expressionSource, rule.expressionOffset = previous, offset }
 }
 
-func (rule *Checker) expressionPosition(offset int, end bool) *sourcetext.Position {
+func (rule *Visitor) expressionPosition(offset int, end bool) *sourcetext.Position {
 	source := rule.expressionSource
 	if source == nil || offset < 0 || offset > len(source.Value) {
 		return nil

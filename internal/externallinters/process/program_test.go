@@ -205,7 +205,7 @@ func TestInlineProgramReadOnlyAndEntryProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifest, command := inlineBunManifest(t, "this source is deliberately not valid JavaScript")
-	manifest.Process.Version = &toolmanifest.VersionProbe{Args: []string{"--version"}, Pattern: `([0-9.]+)`}
+	manifest.Process.Version = &toolmanifest.VersionProbeSpec{Args: []string{"--version"}, Pattern: `([0-9.]+)`}
 	backend, err := NewBackend(manifest, command, Options{})
 	if err != nil {
 		t.Fatal(err)

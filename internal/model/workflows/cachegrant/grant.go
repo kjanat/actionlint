@@ -1,5 +1,5 @@
-// Package cache describes declared cache grants and their inheritance.
-package cache
+// Package cachegrant describes declared cache grants and their inheritance.
+package cachegrant
 
 import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"

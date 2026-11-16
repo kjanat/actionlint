@@ -46,7 +46,7 @@ func TestInlineProgramTypedValidation(t *testing.T) {
 			t.Fatal("invalid typed program accepted")
 		}
 	}
-	valid.Version = &toolmanifest.VersionProbe{Args: []string{"--version"}, Pattern: "^(.+)$"}
+	valid.Version = &toolmanifest.VersionProbeSpec{Args: []string{"--version"}, Pattern: "^(.+)$"}
 	if err := valid.ValidateProgram(); err != nil {
 		t.Fatal("entry version probe rejected", err)
 	}

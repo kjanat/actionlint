@@ -55,7 +55,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
 			t.Fatal(err)
 		}
-		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repository.Snapshot{})
+		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repository.Settings{})
 		if err := r.VisitWorkflowPre(declarations.Workflow(&definition.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
@@ -320,7 +320,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			w := &definition.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repository.Snapshot{}))
+			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repository.Settings{}))
 			if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}

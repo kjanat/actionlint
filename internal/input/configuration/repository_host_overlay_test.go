@@ -17,7 +17,7 @@ func TestRepositoryRunnerOverlayPreservesOtherHostFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := repository.Snapshot{RunnerLabels: names, Secrets: names}
+	host := repository.Settings{RunnerLabels: names, Secrets: names}
 	for _, tc := range []struct {
 		name, source string
 		runnersKnown bool

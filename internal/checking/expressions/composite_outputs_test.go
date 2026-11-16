@@ -36,7 +36,7 @@ func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	rule := NewExpressionRule(t.Context(), Rule.Base(), nil, nil, nil, nil)
-	parent := rule.Checker
+	parent := rule.Visitor
 	for _, closed := range []bool{true, false, true} {
 		using := "runs: {using: node24, main: index.js}\n"
 		if closed {
@@ -63,8 +63,8 @@ func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
 		if closed {
 			want = 2
 		}
-		if got := rule.FindingCount() - mark; got != want || rule.Checker != parent || len(rule.frames) != 0 {
-			t.Fatalf("closed=%t: findings=%d, want %d; parent restored=%t; frames=%d", closed, got, want, rule.Checker == parent, len(rule.frames))
+		if got := rule.FindingCount() - mark; got != want || rule.Visitor != parent || len(rule.frames) != 0 {
+			t.Fatalf("closed=%t: findings=%d, want %d; parent restored=%t; frames=%d", closed, got, want, rule.Visitor == parent, len(rule.frames))
 		}
 	}
 }

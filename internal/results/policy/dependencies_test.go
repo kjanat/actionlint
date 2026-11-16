@@ -40,7 +40,7 @@ func TestDependencyFindingsAndExitStatus(t *testing.T) {
 				t.Fatal(err)
 			}
 			findings := []*finding.Finding{{Path: tc.path, Rule: tc.rule, Code: tc.code, Severity: severity.Severity(tc.severity)}}
-			p := preparePolicy(rules, cfg, policy.Policy{Path: tc.entry}, nil, findings)
+			p := preparePolicy(rules, cfg, policy.DocumentInputs{Path: tc.entry}, nil, findings)
 			got, err := publishFindings(policy.Processor{RuleSet: rules}, p, findings, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -64,8 +64,8 @@ func TestDuplicateDependencyFindingUsesStricterCaller(t *testing.T) {
 	t.Parallel()
 	for _, firstNonBlocking := range []bool{false, true} {
 		files := []policy.Batch{
-			{InputPath: "one.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: results.DiagnosticSource{Content: []byte("name: action")}, Message: "same finding", NonBlocking: firstNonBlocking}}},
-			{InputPath: "two.yml", Policy: policy.Policy{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: results.DiagnosticSource{Content: []byte("name: action")}, Message: "same finding", NonBlocking: !firstNonBlocking}}},
+			{InputPath: "one.yml", Policy: policy.DocumentInputs{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: results.DiagnosticSource{Content: []byte("name: action")}, Message: "same finding", NonBlocking: firstNonBlocking}}},
+			{InputPath: "two.yml", Policy: policy.DocumentInputs{Content: []byte("on: push")}, Findings: []*finding.Finding{{Rule: "script-interpolation", Path: "https://example.test/action.yml", Source: results.DiagnosticSource{Content: []byte("name: action")}, Message: "same finding", NonBlocking: !firstNonBlocking}}},
 		}
 		for i := range files {
 			cfgText := "{}"
@@ -74,7 +74,7 @@ func TestDuplicateDependencyFindingUsesStricterCaller(t *testing.T) {
 			}
 			cfg := lifecycleRulesConfig(t, cfgText)
 			files[i].Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
-			files[i].Policy = preparePolicy(files[i].Processor.RuleSet, cfg, policy.Policy{Path: files[i].InputPath, Content: files[i].Policy.Content}, nil, files[i].Findings)
+			files[i].Policy = preparePolicy(files[i].Processor.RuleSet, cfg, policy.DocumentInputs{Path: files[i].InputPath, Content: files[i].Policy.Content}, nil, files[i].Findings)
 		}
 		published, err := policy.Publish(files, nil)
 		if err != nil {
@@ -91,8 +91,8 @@ func TestDuplicateDependencyMetadataUsesStricterCaller(t *testing.T) {
 	t.Parallel()
 	for _, firstNonBlocking := range []bool{false, true} {
 		files := []policy.Batch{
-			{InputPath: "one.yml", Policy: policy.Policy{Content: []byte("uses: example/action@v1")}},
-			{InputPath: "two.yml", Policy: policy.Policy{Content: []byte("uses: example/action@v1")}},
+			{InputPath: "one.yml", Policy: policy.DocumentInputs{Content: []byte("uses: example/action@v1")}},
+			{InputPath: "two.yml", Policy: policy.DocumentInputs{Content: []byte("uses: example/action@v1")}},
 		}
 		for i := range files {
 			files[i].Findings = []*finding.Finding{{
@@ -108,7 +108,7 @@ func TestDuplicateDependencyMetadataUsesStricterCaller(t *testing.T) {
 			}
 			cfg := lifecycleRulesConfig(t, cfgText)
 			files[i].Processor = policy.Processor{RuleSet: checking.ConfigurationRules()}
-			files[i].Policy = preparePolicy(files[i].Processor.RuleSet, cfg, policy.Policy{Path: files[i].InputPath, Content: files[i].Policy.Content}, nil, files[i].Findings)
+			files[i].Policy = preparePolicy(files[i].Processor.RuleSet, cfg, policy.DocumentInputs{Path: files[i].InputPath, Content: files[i].Policy.Content}, nil, files[i].Findings)
 		}
 		published, err := policy.Publish(files, nil)
 		if err != nil {

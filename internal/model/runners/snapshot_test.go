@@ -17,7 +17,7 @@ func TestSnapshotInventoryValidation(t *testing.T) {
 		`{"runners":[{"name":"a"},{"name":"a"}]}`,
 	} {
 		_, err := (snapshotProvider{}).ResolveRunners(t.Context(), runnerapi.Request{
-			Target: "github", Snapshot: runnerapi.Snapshot{Content: content},
+			Target: "github", Snapshot: runnerapi.RunnerSnapshot{Content: content},
 		})
 		if err == nil {
 			t.Errorf("accepted invalid inventory: %s", content)

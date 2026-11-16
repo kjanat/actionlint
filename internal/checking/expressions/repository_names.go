@@ -42,7 +42,7 @@ func unionNames(repository, environment []string) []string {
 	return names
 }
 
-func jobReferenceNames(facts repository.Snapshot, job workflows.BoundJob) ReferenceNames {
+func jobReferenceNames(facts repository.Settings, job workflows.BoundJob) ReferenceNames {
 	names := ReferenceNames{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)}
 	environment := job.Environment
 	if environment == nil {

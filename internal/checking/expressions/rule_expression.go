@@ -40,11 +40,11 @@ var Rule = &define.Rule{
 
 // ruleExpression connects workflow expression checking to host lookups and options.
 type ruleExpression struct {
-	*Checker
+	*Visitor
 	reporting.Logger
 	name, description string
 	bindings          *rulebinding.Scope
-	host              repository.Snapshot
+	host              repository.Settings
 	frames            []expressionInvocation
 	findings          workflowvisit.Findings
 	ctx               context.Context
@@ -53,15 +53,15 @@ type ruleExpression struct {
 
 type expressionInvocation struct {
 	scope  workflowvisit.Invocation
-	parent *Checker
+	parent *Visitor
 }
 
 func (r *ruleExpression) EnterInvocation(scope workflowvisit.Invocation) error {
 	if !scope.Context.Valid() || !scope.Source.Present() {
 		return invocation.ErrForeignContext
 	}
-	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Checker})
-	r.Checker = New(Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Bindings, r.host))
+	r.frames = append(r.frames, expressionInvocation{scope: scope, parent: r.Visitor})
+	r.Visitor = NewVisitor(Dependencies{Action: lookup.New(r.ctx, scope.Actions, r.remote).Lookup}, workflowExpressionOptionsWithFacts(scope.Bindings, r.host))
 	if body, available := scope.Source.ActionView(); available {
 		r.BeginComposite(body)
 	}
@@ -74,11 +74,11 @@ func (r *ruleExpression) LeaveInvocation(context invocation.Context) error {
 	}
 	frame := r.frames[len(r.frames)-1]
 	if body, available := frame.scope.Source.ActionView(); available {
-		mark := r.Checker.FindingCount()
+		mark := r.Visitor.FindingCount()
 		r.CheckCompositeOutputs(body)
 		r.findings.Report(r.FindingsSince(mark)...)
 	}
-	r.Checker = frame.parent
+	r.Visitor = frame.parent
 	r.frames = r.frames[:len(r.frames)-1]
 	return nil
 }
@@ -91,12 +91,12 @@ func (r *ruleExpression) collect(mark int, err error) error {
 }
 
 func (r *ruleExpression) VisitStep(step workflows.BoundStep) error {
-	mark := r.Checker.FindingCount()
-	return r.collect(mark, r.Checker.VisitStep(step))
+	mark := r.Visitor.FindingCount()
+	return r.collect(mark, r.Visitor.VisitStep(step))
 }
 
 func (r *ruleExpression) VisitInvocationStep(step workflows.BoundStep) error {
-	mark := r.Checker.FindingCount()
+	mark := r.Visitor.FindingCount()
 	return r.collect(mark, r.CheckCompositeStep(step))
 }
 
@@ -113,29 +113,29 @@ func (r *ruleExpression) VisitOpaqueAction(step workflows.BoundStep) error {
 }
 
 func (r *ruleExpression) VisitWorkflowPre(view workflows.BoundWorkflow) error {
-	mark := r.Checker.FindingCount()
-	return r.collect(mark, r.Checker.VisitWorkflowPre(view))
+	mark := r.Visitor.FindingCount()
+	return r.collect(mark, r.Visitor.VisitWorkflowPre(view))
 }
 
 func (r *ruleExpression) VisitWorkflowPost(view workflows.BoundWorkflow) error {
-	mark := r.Checker.FindingCount()
-	return r.collect(mark, r.Checker.VisitWorkflowPost(view))
+	mark := r.Visitor.FindingCount()
+	return r.collect(mark, r.Visitor.VisitWorkflowPost(view))
 }
 
 func (r *ruleExpression) VisitJobPre(view workflows.BoundJob) error {
-	mark := r.Checker.FindingCount()
-	return r.collect(mark, r.Checker.VisitJobPre(view))
+	mark := r.Visitor.FindingCount()
+	return r.collect(mark, r.Visitor.VisitJobPre(view))
 }
 
 func (r *ruleExpression) VisitJobPost(view workflows.BoundJob) error {
-	mark := r.Checker.FindingCount()
-	return r.collect(mark, r.Checker.VisitJobPost(view))
+	mark := r.Visitor.FindingCount()
+	return r.collect(mark, r.Visitor.VisitJobPost(view))
 }
 
 // NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
 func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache localactions.ActionMetadataLookup, workflowCache *reusableworkflows.ResolvedWorkflows, runners *runners.Knowledge, remote *remote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
-	r.Checker = New(Dependencies{
+	r.Visitor = NewVisitor(Dependencies{
 		Runners:  runners,
 		Action:   lookup.New(ctx, actionsCache, remote).Lookup,
 		Workflow: workflowCache.LookupForCall,
@@ -161,16 +161,16 @@ func (r *ruleExpression) SetBindings(scope *rulebinding.Scope) {
 	r.Configure(workflowExpressionOptionsWithFacts(scope, r.host))
 }
 
-func (r *ruleExpression) SetRepository(facts repository.Snapshot) {
+func (r *ruleExpression) SetRepository(facts repository.Settings) {
 	r.host = facts
 	r.Configure(workflowExpressionOptionsWithFacts(r.bindings, facts))
 }
 
 func workflowExpressionOptions(scope *rulebinding.Scope) Options {
-	return workflowExpressionOptionsWithFacts(scope, repository.Snapshot{})
+	return workflowExpressionOptionsWithFacts(scope, repository.Settings{})
 }
 
-func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repository.Snapshot) Options {
+func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repository.Settings) Options {
 	var config *configuration.Config
 	if scope != nil {
 		config = scope.Composite()

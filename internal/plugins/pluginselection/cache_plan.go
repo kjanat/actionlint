@@ -37,7 +37,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 	}
 	plan := CachePlan{Directory: directory, Artifacts: []string{}}
 	paths := slices.Clone(s.Paths)
-	add := func(backend *tools.Backend) {
+	add := func(backend *tools.BackendSelection) {
 		if module, ok := backend.Wasm(); ok {
 			paths = append(paths, module.Path())
 		}

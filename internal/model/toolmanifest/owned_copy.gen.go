@@ -194,12 +194,12 @@ func copyOwnedValue_2e6ea462b80c8bf810878a3de8bc5ce7(in *ConfigFiles) *ConfigFil
 	return (*ConfigFiles)(&out)
 }
 
-func copyOwnedValue_24b8dccb7c0ba893a896410c5d228dd6(in *VersionProbe) *VersionProbe {
+func copyOwnedValue_24b8dccb7c0ba893a896410c5d228dd6(in *VersionProbeSpec) *VersionProbeSpec {
 	if in == nil {
 		return nil
 	}
 	out := copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(*in)
-	return (*VersionProbe)(&out)
+	return (*VersionProbeSpec)(&out)
 }
 
 func copyOwnedOutput_dabc2f5e2a7752c1e8c7ae16585d3ffe(in Output) Output {
@@ -230,7 +230,7 @@ func copyOwnedConfigFiles_f7e690385486dfb553242bb8db83b152(in ConfigFiles) Confi
 	return out
 }
 
-func copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(in VersionProbe) VersionProbe {
+func copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(in VersionProbeSpec) VersionProbeSpec {
 	out := in
 	out.Args = slices.Clone(in.Args)
 	return out

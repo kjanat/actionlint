@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func newTestChecker() *Checker { return New(Dependencies{}, Options{UnsoundTernary: true}) }
+func newTestChecker() *Visitor { return NewVisitor(Dependencies{}, Options{UnsoundTernary: true}) }
 
-func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflows.BoundWorkflow) {
+func newTestCheckerForSource(t *testing.T, source string) (*Visitor, workflows.BoundWorkflow) {
 	t.Helper()
 	content := []byte(source)
 	document := parsing.Workflow(content)
@@ -34,7 +34,7 @@ func newTestCheckerForSource(t *testing.T, source string) (*Checker, workflows.B
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := New(Dependencies{Runners: runners}, Options{UnsoundTernary: true})
+	checker := NewVisitor(Dependencies{Runners: runners}, Options{UnsoundTernary: true})
 	return checker, workflow
 }
 

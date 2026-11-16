@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -153,7 +153,7 @@ func TestGitHubReferenceTruthiness(t *testing.T) {
 			t.Parallel()
 			node, _ := checkGitHubReference(t, tc.input)
 			got, known := evaluate.ConditionConstantValue(node)
-			if !known || values.ExpressionTruthy(got) != tc.want {
+			if !known || exprvalues.ExpressionTruthy(got) != tc.want {
 				t.Fatalf("value=%v known=%t, want truthy=%t", got, known, tc.want)
 			}
 		})

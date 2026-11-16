@@ -44,7 +44,7 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 	ref := sourcetext.Reference{Document: "physical-action.yml", Revision: sha256hex.Digest([]byte(content))}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
-	files := []evaluatedBatch{{Policy: Policy{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}
+	files := []evaluatedBatch{{Policy: DocumentInputs{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}
 	for _, name := range []string{"shellcheck", "expression-reference"} {
 		files[0].Findings = append(files[0].Findings, &finding.Finding{
 			Rule: "unused-suppression", Start: position, Reference: &ref, Path: "alias/action.yml", UnusedSuppressionRule: name,

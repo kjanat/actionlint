@@ -79,7 +79,7 @@ func Actionlint(src []byte) ([]byte, error) {
 	result, err := checking.Analyze(context.Background(), checking.Options{
 		WorkingDir: root,
 		ReadFile:   readDocumentationFile,
-		Repository: func(context.Context, string) repository.Snapshot { return repository.Snapshot{RunnerLabels: labels} },
+		Repository: func(context.Context, string) repository.Settings { return repository.Settings{RunnerLabels: labels} },
 		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}}}),
 	}, []workspace.InputFile{{Path: "test.yaml", Content: src, Project: project, Config: project.Config()}})
 	if err != nil {

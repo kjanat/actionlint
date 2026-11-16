@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // UnusedFormatArguments reports arguments absent from a known format template.
@@ -25,7 +25,7 @@ func UnusedFormatArguments(root syntax.Node, calls typecheck.CheckedCalls) []*ty
 		}
 		first := facts.Arguments[0].Value
 		format, isString := first.Value.(string)
-		if first.State != values.EvaluationKnown || !isString {
+		if first.State != exprvalues.EvaluationKnown || !isString {
 			return
 		}
 		count := len(facts.Arguments) - 1

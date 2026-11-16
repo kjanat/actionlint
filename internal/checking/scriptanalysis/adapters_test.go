@@ -135,7 +135,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 							for _, finding := range findings {
 								finding.Binding = scope.Rule(finding.Rule).ID()
 							}
-							resultPolicy := policy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
+							resultPolicy := policy.DocumentInputs{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
 							published, err := policy.Publish([]policy.Batch{{Processor: processor, Policy: resultPolicy, InputPath: "workflow.yml", Findings: findings, Sources: map[string][]byte{path: content}}}, nil)
 							var filtered []*finding.Finding
 							if len(published.Findings) > 0 {

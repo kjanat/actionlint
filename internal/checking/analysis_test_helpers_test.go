@@ -222,7 +222,7 @@ func publishTestDiagnostics(tb testing.TB, result *analysisResult) {
 		for _, finding := range file.errors {
 			finding.Binding = scope.Rule(finding.Rule).ID()
 		}
-		file.publication = &policy.Batch{Processor: policy.Processor{RuleSet: rules}, Policy: policy.Policy{Path: file.source.Path, ConfigPath: file.source.InputPath, Content: file.source.Content, Scope: scope, Bindings: registry.Seal()}}
+		file.publication = &policy.Batch{Processor: policy.Processor{RuleSet: rules}, Policy: policy.DocumentInputs{Path: file.source.Path, ConfigPath: file.source.InputPath, Content: file.source.Content, Scope: scope, Bindings: registry.Seal()}}
 	}
 	if err := result.publishDiagnostics(); err != nil {
 		tb.Fatal(err)

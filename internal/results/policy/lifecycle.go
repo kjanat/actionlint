@@ -11,7 +11,7 @@ import (
 )
 
 // assessLifecycle separates required findings before project suppressions run.
-func (processor Processor) assessLifecycle(p Policy, findings []*finding.Finding, authority map[*finding.Finding]obligation) ([]*finding.Finding, []*finding.Finding, error) {
+func (processor Processor) assessLifecycle(p DocumentInputs, findings []*finding.Finding, authority map[*finding.Finding]obligation) ([]*finding.Finding, []*finding.Finding, error) {
 	optional := make([]*finding.Finding, 0, len(findings))
 	var required []*finding.Finding
 	for _, finding := range findings {

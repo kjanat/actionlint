@@ -51,7 +51,7 @@ type Options struct {
 	// them when it also implements workflows.Provider.
 	RemoteWorkflows reusableworkflows.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
-	Repository func(context.Context, string) repository.Snapshot
+	Repository func(context.Context, string) repository.Settings
 	Tools      []contract.Registration
 	Resolver   references.Resolver
 	// SuggestCommitPins asks the resolver for commit-pin diagnostics as well as metadata.

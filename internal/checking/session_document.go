@@ -67,7 +67,7 @@ type analysisSession struct {
 	allowConfigProcesses bool
 	workflowNames        *nameindex.Index
 	remoteActions        map[references.MirrorAccess]*remote.Service
-	repositories         map[string]repository.Snapshot
+	repositories         map[string]repository.Settings
 	analysisLogger
 	ctx             context.Context
 	workingDir      string
@@ -247,7 +247,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		finding.Binding = scope.Rule(finding.Rule).ID()
 	}
-	resultPolicy := policy.Policy{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
+	resultPolicy := policy.DocumentInputs{Log: s.log, Debug: s.debug, Path: path, ConfigPath: sourcePath, Root: root, WorkingDir: s.workingDir, Content: content, ProjectRoot: projectRoot(project), Bindings: settings.registry.Seal(), Scope: entryBinding, SourceBindings: settings.bindings, Metadata: document.Metadata, AdditionalRules: names, IgnorePatterns: s.ignorePats}
 	resultPolicy.EnforcedLifecycle = s.environment.EnforcedLifecycle
 	resultPolicy.IgnoreSelectors = s.ignoreSelectors
 	// Suppression findings use paths relative to the working directory. Add those

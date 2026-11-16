@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cachegrant"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
@@ -130,8 +130,8 @@ func NewTrust(w workflows.BoundWorkflow) *Trust {
 		return cmp.Compare(a.ID.Text(), b.ID.Text())
 	})
 	for _, job := range jobs {
-		mode := cache.EffectiveMode(r.workflow, job.CacheMode)
-		access, valid := cache.FromDeclaration(mode).Capabilities()
+		mode := cachegrant.EffectiveMode(r.workflow, job.CacheMode)
+		access, valid := cachegrant.FromDeclaration(mode).Capabilities()
 		if valid && access&2 != 0 {
 			events := conditions.ReachableEvents(r.events, job.If.Text())
 			if len(events) != 0 {
@@ -162,7 +162,7 @@ func (r *Trust) CheckWrites(job workflows.BoundJob) []results.Diagnostic {
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
 func (r *Trust) CheckCall(job workflows.BoundJob) []results.Diagnostic {
 	call := job.WorkflowCall
-	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cache.EffectiveMode(r.workflow, job.CacheMode) != nil {
+	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cachegrant.EffectiveMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
 	if _, local := callreferences.LocalWorkflow(call.Uses.Value); !local {

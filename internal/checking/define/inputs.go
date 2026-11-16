@@ -35,7 +35,7 @@ type RuleInputs struct {
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
 	Config                        *configuration.Config
-	Repository                    repository.Snapshot
+	Repository                    repository.Settings
 	Actions                       *localactions.Resolver
 	RemoteActions                 *remote.ResolvedActions
 	WorkflowSources               *reusableworkflows.MetadataCache

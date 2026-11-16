@@ -30,7 +30,7 @@ func TestEqualityRetainsDiagnosticIdentity(t *testing.T) {
 			change.edit(&other)
 			input := []*finding.Finding{base.Clone(), &other}
 			rules := checking.ConfigurationRules()
-			p := preparePolicy(rules, nil, policy.Policy{Path: "ci.yml", Content: []byte("long enough token\nnext line\n")}, nil, input)
+			p := preparePolicy(rules, nil, policy.DocumentInputs{Path: "ci.yml", Content: []byte("long enough token\nnext line\n")}, nil, input)
 			result, err := policy.Publish([]policy.Batch{{Processor: policy.Processor{RuleSet: rules}, Policy: p, Findings: input}}, nil)
 			if err != nil {
 				t.Fatal(err)

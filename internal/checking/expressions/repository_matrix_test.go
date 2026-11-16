@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 
@@ -18,12 +18,12 @@ func TestExpressionRefinementStates(t *testing.T) {
 	checker := newTestChecker()
 	for _, tc := range []struct {
 		name       string
-		evaluation values.EvaluationResult
+		evaluation exprvalues.EvaluationResult
 		want       value.State
 	}{
-		{"known null", values.EvaluationResult{State: values.EvaluationKnown, Value: nil}, value.Evaluated},
-		{"unknown", values.EvaluationResult{State: values.EvaluationUnknown}, value.Dynamic},
-		{"invalid", values.EvaluationResult{State: values.EvaluationInvalid}, value.Invalid},
+		{"known null", exprvalues.EvaluationResult{State: exprvalues.EvaluationKnown, Value: nil}, value.Evaluated},
+		{"unknown", exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}, value.Dynamic},
+		{"invalid", exprvalues.EvaluationResult{State: exprvalues.EvaluationInvalid}, value.Invalid},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -32,7 +32,7 @@ func TestForeignSourcePolicyUsesSelectedToolRole(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			policy := policy.Policy{Path: "workflow.yml", Root: "."}
+			policy := policy.DocumentInputs{Path: "workflow.yml", Root: "."}
 			if _, err := publishFindings(t, policy, nil, nil, map[string][]byte{"action.yml": []byte("name: action\n")}, map[string]*configuration.Config{"action.yml": cfg}); err != nil {
 				t.Fatal(err)
 			}

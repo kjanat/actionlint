@@ -19,7 +19,7 @@ import (
 // Sources and References must contain only sources accepted by final capture validation.
 type Batch struct {
 	Processor          Processor
-	Policy             Policy
+	Policy             DocumentInputs
 	Project, InputPath string
 	Source             sourcetext.Revision
 	Action             bool

@@ -5,16 +5,16 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprvalues"
 	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
-func evaluateFromJSON(context EvaluationContext) values.EvaluationResult {
+func evaluateFromJSON(context EvaluationContext) exprvalues.EvaluationResult {
 	argument := context.Argument(0)
-	if argument.State != values.EvaluationKnown {
+	if argument.State != exprvalues.EvaluationKnown {
 		return argument
 	}
-	text, known := values.FunctionString(argument.Value)
+	text, known := exprvalues.FunctionString(argument.Value)
 	if !known {
 		return unknownValue()
 	}
@@ -62,9 +62,9 @@ func readFunctionJSON(text string) functionJSONRead {
 	return decodedFunctionJSON{parsed: parsed}
 }
 
-func evaluateToJSON(context EvaluationContext) values.EvaluationResult {
+func evaluateToJSON(context EvaluationContext) exprvalues.EvaluationResult {
 	argument := context.Argument(0)
-	if argument.State != values.EvaluationKnown {
+	if argument.State != exprvalues.EvaluationKnown {
 		return argument
 	}
 	switch value := argument.Value.(type) {

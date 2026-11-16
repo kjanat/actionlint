@@ -67,7 +67,7 @@ func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action
 		}
 		if native.Visits() {
 			r := native.NewVisitor(prepared)
-			if consumer, ok := r.(interface{ SetRepository(repository.Snapshot) }); ok {
+			if consumer, ok := r.(interface{ SetRepository(repository.Settings) }); ok {
 				consumer.SetRepository(prepared.Repository)
 			}
 			selected.Rules = append(selected.Rules, r)

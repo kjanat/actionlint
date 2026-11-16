@@ -32,7 +32,7 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	} {
 		item := base
 		change(&item)
-		files = append(files, policy.Batch{Policy: policy.Policy{Content: []byte("workflow")}, Findings: []*finding.Finding{&item}})
+		files = append(files, policy.Batch{Policy: policy.DocumentInputs{Content: []byte("workflow")}, Findings: []*finding.Finding{&item}})
 	}
 	published := publishBatches(t, files)
 	diagnostics := published.Diagnostics
@@ -44,14 +44,14 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	t.Parallel()
 	item := &finding.Finding{Rule: "shellcheck", Message: "finding", Start: sourcetext.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{Lines: sourcetext.LineRange{First: 2, Last: 3}}}
-	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*finding.Finding{item}}}).Diagnostics
+	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.DocumentInputs{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*finding.Finding{item}}}).Diagnostics
 	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "workflow.yml", Lines: sourcetext.LineRange{First: 2, Last: 3}}) {
 		t.Fatalf("same-source target not resolved: %+v", reported)
 	}
 	item.Path = "action.yml"
 	item.Source.Content = []byte("name: action\nrun: echo hi\n")
 	item.SuppressionOrigin.Path = "action.yml"
-	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: workflow\n")}, Findings: []*finding.Finding{item}, Sources: map[string][]byte{"action.yml": item.Source.Content}}, nil, map[string]*configuration.Config{"action.yml": nil})
+	batch := preparePublicationBatch(t, policy.Batch{InputPath: "workflow.yml", Policy: policy.DocumentInputs{Content: []byte("name: workflow\n")}, Findings: []*finding.Finding{item}, Sources: map[string][]byte{"action.yml": item.Source.Content}}, nil, map[string]*configuration.Config{"action.yml": nil})
 	published, err := policy.Publish([]policy.Batch{batch}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -95,8 +95,8 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 	declaration := &finding.Finding{Path: first, Rule: "syntax-check", Message: "invalid manifest"}
 	caller := &finding.Finding{Rule: "action", Message: "cannot parse manifest", MetadataParseSource: captured.Revision()}
 	files := []policy.Batch{
-		{InputPath: first, Source: captured.Revision(), Action: true, Policy: policy.Policy{Content: content}, Findings: []*finding.Finding{declaration}},
-		{InputPath: "ci.yml", Policy: policy.Policy{Content: []byte("workflow")}, Findings: []*finding.Finding{caller}},
+		{InputPath: first, Source: captured.Revision(), Action: true, Policy: policy.DocumentInputs{Content: content}, Findings: []*finding.Finding{declaration}},
+		{InputPath: "ci.yml", Policy: policy.DocumentInputs{Content: []byte("workflow")}, Findings: []*finding.Finding{caller}},
 	}
 	published := publishBatches(t, files)
 	diagnostics := published.Diagnostics
@@ -124,7 +124,7 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 				Reference: &sourcetext.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []results.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
 				Source: results.DiagnosticSource{Content: tc.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed)},
 			}
-			diagnostics := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow text")}, Findings: []*finding.Finding{item}}}).Diagnostics
+			diagnostics := publishBatches(t, []policy.Batch{{Policy: policy.DocumentInputs{Content: []byte("workflow text")}, Findings: []*finding.Finding{item}}}).Diagnostics
 			if len(diagnostics) != 1 || diagnostics[0].Reference != nil || len(diagnostics[0].Fixes) != 0 {
 				t.Fatalf("unavailable source gained revision evidence: %+v", diagnostics)
 			}
@@ -180,7 +180,7 @@ func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: sourcetext.Position{Line: 1, Column: 6}, Source: results.DiagnosticSource{Content: script}},
 		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: sourcetext.Position{Line: 2, Column: 6}, Source: results.DiagnosticSource{Content: script}},
 	}
-	reported := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow")}, Findings: findings}}).Diagnostics
+	reported := publishBatches(t, []policy.Batch{{Policy: policy.DocumentInputs{Content: []byte("workflow")}, Findings: findings}}).Diagnostics
 	if len(reported) != 2 {
 		t.Fatalf("sources = %d, want 2", len(reported))
 	}

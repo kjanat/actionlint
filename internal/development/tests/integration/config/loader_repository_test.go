@@ -84,7 +84,7 @@ func TestRepositoryOverrideAvailability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := repository.Snapshot{Secrets: names}
+	host := repository.Settings{Secrets: names}
 	for _, test := range []struct {
 		source string
 		known  bool
@@ -116,7 +116,7 @@ func TestRepositoryResetSurvivesPartialFileOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	host := repository.Snapshot{DefaultWorkflowPermissions: permissions}
+	host := repository.Settings{DefaultWorkflowPermissions: permissions}
 	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("repository: null\noverrides:\n  - includes: [release.yml]\n    repository: {secrets: [TOKEN]}\n"))
 	if err != nil {
 		t.Fatal(err)

@@ -61,7 +61,7 @@ func TestScriptInterpolationUsesRunnerProviderShell(t *testing.T) {
 			}
 			options := checking.Options{Runners: runnerapi.Options{
 				Target: "github", Provider: "expression-shell", Scope: "test",
-				Snapshot:  runnerapi.Snapshot{Scope: "test", Freshness: runnerapi.Fresh, Complete: true},
+				Snapshot:  runnerapi.RunnerSnapshot{Scope: "test", Freshness: runnerapi.Fresh, Complete: true},
 				Providers: []runnerapi.Registration{{ImplementationID: "test", Provider: expressionShellProvider{shell: tc.providerShell}}},
 			}}
 			result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(content), Config: cfg}})

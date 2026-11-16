@@ -137,7 +137,7 @@ func TestRegisteredAnalyzerForeignSuppression(t *testing.T) {
 	registry := rulebinding.NewRegistry(rules)
 	scope := registry.Prepare(nil, nil, nil)
 	item.Binding = scope.Rule(item.Rule).ID()
-	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
+	p := policy.DocumentInputs{Path: "workflow.yml", ConfigPath: "workflow.yml", Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}, AdditionalRules: []string{"no-sudo"}}
 	_, fixture := capturefixture.NewCapturedSources(t, t.TempDir())
 	snapshot, err := fixture.Capture(path, source, sourcetext.YAML)
 	if err != nil {

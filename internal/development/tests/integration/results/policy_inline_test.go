@@ -30,7 +30,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				got, err := publishFindings(t, policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Content: source}, cfg, findings, nil, nil)
+				got, err := publishFindings(t, policy.DocumentInputs{Path: "workflow.yml", ConfigPath: "workflow.yml", Content: source}, cfg, findings, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -58,7 +58,7 @@ func TestForeignInlineSuppressionSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := policy.Policy{Path: "workflow.yml", ConfigPath: "workflow.yml", Content: source}
+	p := policy.DocumentInputs{Path: "workflow.yml", ConfigPath: "workflow.yml", Content: source}
 	got, err := publishFindings(t, p, cfg, []*finding.Finding{item}, nil, nil)
 	if err != nil || len(got) != 1 || got[0].Rule != "shellcheck" {
 		t.Fatalf("caller suppressed foreign finding: %+v %v", got, err)

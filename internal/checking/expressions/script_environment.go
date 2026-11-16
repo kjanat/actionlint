@@ -46,7 +46,7 @@ func scriptEvaluatesArguments(command string, arguments []*syntax.Word) bool {
 	return false
 }
 
-func (rule *Checker) addScriptEnvironmentFix(report *report) {
+func (rule *Visitor) addScriptEnvironmentFix(report *report) {
 	first := rule.expressionOffset - 3
 	replacement, ok := rule.scriptEnvironment[first]
 	if !ok || !replacement.environment.Available(rule.compositeScript) {

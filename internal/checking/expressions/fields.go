@@ -27,7 +27,7 @@ import (
 
 // checkOneExpression checks a value that must be exactly one ${{ }}
 // expression. ok is false when s is absent or the expression has errors.
-func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Visitor) checkOneExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	// checkString is not available since it checks types for embedding values into a string
 	if s == nil {
 		return exprtypes.AnyType(), false
@@ -52,7 +52,7 @@ func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey 
 
 // checkObjectTy reports ty unless it is an object or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
+func (rule *Visitor) checkObjectTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindObject || k == exprtypes.KindAny {
 		return true
 	}
@@ -62,7 +62,7 @@ func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *sourcetext.Position, 
 
 // checkArrayTy reports ty unless it is an array or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
+func (rule *Visitor) checkArrayTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindArray || k == exprtypes.KindAny {
 		return true
 	}
@@ -72,7 +72,7 @@ func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *sourcetext.Position, w
 
 // checkNumberTy reports ty unless it is a number or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
+func (rule *Visitor) checkNumberTy(ty exprtypes.Type, pos *sourcetext.Position, what string) bool {
 	if k := ty.Kind(); k == exprtypes.KindNumber || k == exprtypes.KindAny {
 		return true
 	}
@@ -82,25 +82,25 @@ func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *sourcetext.Position, 
 
 // checkObjectExpression checks a single expression that must be an object.
 // ok is false when the expression has errors or another type.
-func (rule *Checker) checkObjectExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Visitor) checkObjectExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkObjectTy(ty, scalarPosition(s), what)
 }
 
 // checkArrayExpression checks a single expression that must be an array.
 // ok is false when the expression has errors or another type.
-func (rule *Checker) checkArrayExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Visitor) checkArrayExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkArrayTy(ty, scalarPosition(s), what)
 }
 
-func (rule *Checker) checkNumberExpression(s *definition.String, what, workflowKey string) {
+func (rule *Visitor) checkNumberExpression(s *definition.String, what, workflowKey string) {
 	if ty, ok := rule.checkOneExpression(s, what, workflowKey); ok {
 		rule.checkNumberTy(ty, scalarPosition(s), what)
 	}
 }
 
-func (rule *Checker) checkActionInputs(action *definition.ExecAction, uses *definition.String) {
+func (rule *Visitor) checkActionInputs(action *definition.ExecAction, uses *definition.String) {
 	const key = "jobs.<job_id>.steps.with"
 	if action == nil {
 		return
@@ -136,7 +136,7 @@ func (rule *Checker) checkActionInputs(action *definition.ExecAction, uses *defi
 	checkMapping(action.Inputs, action.InputsExpression, action.InputInsertions)
 }
 
-func (rule *Checker) checkEnv(env *definition.Env, workflowKey string) {
+func (rule *Visitor) checkEnv(env *definition.Env, workflowKey string) {
 	if env == nil {
 		return
 	}
@@ -162,7 +162,7 @@ func (rule *Checker) checkEnv(env *definition.Env, workflowKey string) {
 	checkValues(env)
 }
 
-func (rule *Checker) checkContainer(c *definition.Container, workflowKey, childWorkflowKeyPrefix string) {
+func (rule *Visitor) checkContainer(c *definition.Container, workflowKey, childWorkflowKeyPrefix string) {
 	if c == nil {
 		return
 	}
@@ -199,7 +199,7 @@ func (rule *Checker) checkContainer(c *definition.Container, workflowKey, childW
 	rule.checkString(c.Entrypoint, workflowKey)
 }
 
-func (rule *Checker) checkConcurrency(c *definition.Concurrency, workflowKey string) {
+func (rule *Visitor) checkConcurrency(c *definition.Concurrency, workflowKey string) {
 	if c == nil {
 		return
 	}
@@ -239,7 +239,7 @@ func (rule *Checker) checkConcurrency(c *definition.Concurrency, workflowKey str
 	}
 }
 
-func (rule *Checker) checkDefaults(d *definition.Defaults, workflowKey string) {
+func (rule *Visitor) checkDefaults(d *definition.Defaults, workflowKey string) {
 	if d == nil || d.Run == nil {
 		return
 	}
@@ -248,7 +248,7 @@ func (rule *Checker) checkDefaults(d *definition.Defaults, workflowKey string) {
 	rule.checkString(d.Run.WorkingDirectory, workflowKey)
 }
 
-func (rule *Checker) checkWorkflowCall(c *definition.WorkflowCall) {
+func (rule *Visitor) checkWorkflowCall(c *definition.WorkflowCall) {
 	if c == nil || c.Uses == nil {
 		return
 	}
@@ -311,7 +311,7 @@ func (rule *Checker) checkWorkflowCall(c *definition.WorkflowCall) {
 	}
 }
 
-func (rule *Checker) checkSnapshot(s *definition.Snapshot) {
+func (rule *Visitor) checkSnapshot(s *definition.Snapshot) {
 	if s == nil {
 		return
 	}
@@ -329,20 +329,20 @@ func (rule *Checker) checkSnapshot(s *definition.Snapshot) {
 	rule.checkIfCondition(s.If, "jobs.<job_id>.snapshot.if")
 }
 
-func (rule *Checker) checkWebhookEventFilter(f *definition.WebhookEventFilter) {
+func (rule *Visitor) checkWebhookEventFilter(f *definition.WebhookEventFilter) {
 	if f == nil {
 		return
 	}
 	rule.checkStrings(f.Values, "")
 }
 
-func (rule *Checker) checkStrings(ss []*definition.String, workflowKey string) {
+func (rule *Visitor) checkStrings(ss []*definition.String, workflowKey string) {
 	for _, s := range ss {
 		rule.checkString(s, workflowKey)
 	}
 }
 
-func (rule *Checker) checkIfCondition(str *definition.String, workflowKey string) {
+func (rule *Visitor) checkIfCondition(str *definition.String, workflowKey string) {
 	if str == nil {
 		return
 	}
@@ -387,7 +387,7 @@ func (rule *Checker) checkIfCondition(str *definition.String, workflowKey string
 	}
 }
 
-func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
+func (rule *Visitor) checkTemplateEvaluatedType(ts []typedExpr) {
 	for _, t := range ts {
 		ty := t.ty
 		if t.refinement.hasTemplateInvalid {
@@ -403,7 +403,7 @@ func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
 	}
 }
 
-func (rule *Checker) checkString(str *definition.String, workflowKey string) []typedExpr {
+func (rule *Visitor) checkString(str *definition.String, workflowKey string) []typedExpr {
 	if str == nil {
 		return nil
 	}
@@ -422,7 +422,7 @@ func (rule *Checker) checkString(str *definition.String, workflowKey string) []t
 	return ts
 }
 
-func (rule *Checker) checkScriptString(str *definition.String, workflowKey string, shell ...string) {
+func (rule *Visitor) checkScriptString(str *definition.String, workflowKey string, shell ...string) {
 	if str == nil {
 		return
 	}
@@ -453,7 +453,7 @@ func (rule *Checker) checkScriptString(str *definition.String, workflowKey strin
 	rule.checkTemplateEvaluatedType(ts)
 }
 
-func (rule *Checker) checkBool(b *definition.Bool, workflowKey string) {
+func (rule *Visitor) checkBool(b *definition.Bool, workflowKey string) {
 	if b == nil || b.Expression == nil {
 		return
 	}
@@ -468,7 +468,7 @@ func (rule *Checker) checkBool(b *definition.Bool, workflowKey string) {
 	}
 }
 
-func (rule *Checker) checkMaxParallel(i *definition.Int, workflowKey string) {
+func (rule *Visitor) checkMaxParallel(i *definition.Int, workflowKey string) {
 	if i == nil || i.Expression == nil {
 		return
 	}
@@ -483,14 +483,14 @@ func (rule *Checker) checkMaxParallel(i *definition.Int, workflowKey string) {
 	}
 }
 
-func (rule *Checker) checkFloat(f *definition.Float, workflowKey string) {
+func (rule *Visitor) checkFloat(f *definition.Float, workflowKey string) {
 	if f == nil {
 		return
 	}
 	rule.checkNumberExpression(f.Expression, "float number value", workflowKey)
 }
 
-func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type {
+func (rule *Visitor) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type {
 	if object, ok := v.(*definition.RawYAMLObject); ok {
 		properties := map[string]exprtypes.Type{}
 		for key, property := range object.Props {
@@ -513,7 +513,7 @@ func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type
 	panic("unreachable")
 }
 
-func (rule *Checker) checkRawYAMLString(y *definition.RawYAMLString) exprtypes.Type {
+func (rule *Visitor) checkRawYAMLString(y *definition.RawYAMLString) exprtypes.Type {
 	ts, ok := rule.checkExprsIn(y.Value, y.Pos(), false, false, "jobs.<job_id>.strategy")
 
 	if definition.IsExprAssigned(y.Value) {
@@ -543,7 +543,7 @@ func (rule *Checker) checkRawYAMLString(y *definition.RawYAMLString) exprtypes.T
 	return exprtypes.StringType()
 }
 
-func (rule *Checker) checkWorkflowExpression(s *definition.String, what, key string, shape schema.Shape) {
+func (rule *Visitor) checkWorkflowExpression(s *definition.String, what, key string, shape schema.Shape) {
 	if s == nil {
 		return
 	}
