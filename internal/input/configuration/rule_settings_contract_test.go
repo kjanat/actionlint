@@ -14,7 +14,7 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 	for _, d := range checking.ConfigurationRules().Rules() {
 		t.Run(d.Name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
+			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Category, d.Name))
 			if err != nil {
 				t.Fatal(err)
 			}

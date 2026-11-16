@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration"
-
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
@@ -14,8 +12,8 @@ import (
 
 func TestDeprecatedCommandsCheckerUsesItsRuleDeclaration(t *testing.T) {
 	t.Parallel()
-	declaration := correctness.DeprecatedCommandsRule.Declaration()
-	checker := correctness.DeprecatedCommandsRule.Registration(configuration.Rule{}).Script
+	declaration := correctness.DeprecatedCommandsRule.ResolvedDeclaration()
+	checker := correctness.DeprecatedCommandsRule.Registration(rule.Declaration{}).Script
 	descriptor := checker.Descriptor()
 	if !reflect.DeepEqual(descriptor.Descriptor, declaration.Descriptor) ||
 		descriptor.Scope != declaration.Scope || descriptor.SupportsActions != declaration.SupportsActions {

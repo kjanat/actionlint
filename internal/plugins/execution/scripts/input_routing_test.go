@@ -26,7 +26,7 @@ func TestInputRouteUsesResolvedNativeEligibility(t *testing.T) {
 	disabled.Overrides = []configuration.Override{{Includes: []string{"other/**"}}}
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "javascript"}
 	registration := tools.Registration{
-		Descriptor: rule.Descriptor{Name: "tool"},
+		Name: "tool",
 		Enabled: func(c tools.Context) bool {
 			if c.ProjectRoot != "" || c.ProjectConfig != nil || len(c.Config.Overrides) != 0 {
 				t.Fatal("input eligibility used project planning instead of resolved script configuration")
@@ -82,7 +82,7 @@ func TestInputRouteKeepsPreparedConfigurationFailuresSeparate(t *testing.T) {
 	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "sh"}
 	registration := tools.Registration{
-		Descriptor: rule.Descriptor{Name: "tool"},
+		Name: "tool",
 		PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 			return preparation.Prepared{Source: "# options\n" + script.Text, Config: []byte(`{"shell":"sh"}`), LineMap: func(line int) preparation.Line {
 				if line < 2 {
@@ -171,7 +171,7 @@ func TestInputRoutePreservesPartialResultsAndIndices(t *testing.T) {
 func TestInputFilterCannotHideForeignSource(t *testing.T) {
 	t.Parallel()
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
-	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
+	registration := tools.Registration{Name: "tool", PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 		return preparation.Prepared{Source: script.Text, AcceptDiagnostic: func(checkinputs.ScriptDiagnostic) bool { return false }}, nil
 	}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 	engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
@@ -196,7 +196,7 @@ func TestInputFilterRequiresDeclaredTemplateContract(t *testing.T) {
 	site := checkinputs.ScriptInput{Action: "owner/action", Input: "source", Language: "python"}
 	for _, contract := range []string{"", "unknown", checkinputs.TemplateEffectsContract} {
 		calls := 0
-		registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
+		registration := tools.Registration{Name: "tool", PrepareInput: func(_ context.Context, script tools.Script) (preparation.Prepared, error) {
 			return preparation.Prepared{Source: script.Text, TemplateContract: checkinputs.TemplateEffectsContract}, nil
 		}, Build: func(tools.Context) (tools.Runner, error) { return routingEmpty{}, nil }}
 		engine := routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
@@ -256,7 +256,7 @@ func (b describedRoutingBackend) ScriptDescriptor() checkinputs.ScriptEngineDesc
 func TestConfiguredLegacyDescriptorPreservesNativeRoutes(t *testing.T) {
 	t.Parallel()
 	engine := describedRoutingBackend{descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool"}}
-	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
+	registration := tools.Registration{Name: "tool", Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			if len(batch.Scripts) != 1 || batch.Scripts[0].Text != "native" {
 				t.Fatalf("legacy metadata discarded native route: %+v", batch.Scripts)
@@ -287,7 +287,7 @@ func TestConfiguredRoutesValidateEveryScopeOnceWithoutRuns(t *testing.T) {
 		checks++
 		return nil, nil
 	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "custom-rule"}, ScriptInputs: []checkinputs.ScriptInput{site}}}
-	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
+	registration := WithConfiguredEngine(tools.Registration{Name: "tool", Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			nativeCalls++
 			if len(batch.Scopes) != 3 || len(batch.Scripts) != 0 {
@@ -317,7 +317,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 		t.Fatal("native route bypassed adapter")
 		return nil, nil
 	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "tool", Rule: rule.Descriptor{Name: "tool"}, Shells: []string{"python"}}}
-	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
+	registration := WithConfiguredEngine(tools.Registration{Name: "tool", Build: func(tools.Context) (tools.Runner, error) {
 		return routingRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 			calls++
 			if len(batch.Scripts) != 2 || batch.Scripts[0].Text != "print(1)" || batch.Scripts[1].Text != "print(2)" {
@@ -346,7 +346,7 @@ func TestConfiguredRouteRetainsExplicitShellWithoutExecutionFacts(t *testing.T) 
 func TestConfigureBindsLoaderOnce(t *testing.T) {
 	t.Parallel()
 	loads, nativeCalls := 0, 0
-	registration := tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, ConfiguredBackend: func(tools.Context) (checkinputs.ScriptBackend, error) {
+	registration := tools.Registration{Name: "tool", ConfiguredBackend: func(tools.Context) (checkinputs.ScriptBackend, error) {
 		loads++
 		return routingBackend(func(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
 			t.Fatal("native adapter bypassed")
@@ -373,7 +373,7 @@ func TestConfiguredRouteRejectsForeignEngineIdentity(t *testing.T) {
 		calls++
 		return nil, nil
 	}), descriptor: checkinputs.ScriptEngineDescriptor{Engine: "other", Rule: rule.Descriptor{Name: "tool"}, ScriptInputs: []checkinputs.ScriptInput{{Action: "owner/action", Input: "source", Language: "python"}}}}
-	registration := WithConfiguredEngine(tools.Registration{Descriptor: rule.Descriptor{Name: "tool"}, Build: func(tools.Context) (tools.Runner, error) {
+	registration := WithConfiguredEngine(tools.Registration{Name: "tool", Build: func(tools.Context) (tools.Runner, error) {
 		return routingEmpty{}, nil
 	}}, func(tools.Context) (checkinputs.ScriptBackend, error) { return foreign, nil })
 	if _, err := registration.InputSelectors(tools.Context{}); err == nil || !strings.Contains(err.Error(), `does not match tool "tool"`) {

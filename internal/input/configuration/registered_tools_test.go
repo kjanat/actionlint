@@ -14,7 +14,7 @@ func TestRegisteredToolSettingsForFiles(t *testing.T) {
 		Schema:     json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
 		Shorthands: map[string]toolsettings.Shorthand{"limit": {Path: []string{"limit"}, Precedence: toolsettings.PrecedenceShorthand}},
 	}
-	registration := RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata}
+	registration := RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration}, ToolSettings: &metadata}
 	rules, err := (RuleSet{}).WithRegisteredRules(registration)
 	if err != nil {
 		t.Fatal(err)
@@ -47,8 +47,8 @@ func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
 	t.Parallel()
 	metadata := toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
 	rules, err := (RuleSet{}).WithRegisteredRules(
-		RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
-		RuleRegistration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata})
+		RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration}, ToolSettings: &metadata},
+		RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration}, ToolSettings: &metadata})
 	if err != nil {
 		t.Fatal(err)
 	}

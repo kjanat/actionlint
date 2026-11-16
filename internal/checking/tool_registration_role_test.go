@@ -48,16 +48,16 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			index := slices.IndexFunc(options.Tools, func(tool tools.Registration) bool { return tool.Descriptor.Name == "shellcheck" })
+			index := slices.IndexFunc(options.Tools, func(tool tools.Registration) bool { return tool.Name == "shellcheck" })
 			if index < 0 {
 				t.Fatal("shellcheck registration missing")
 			}
 			got := options.Tools[index]
 			if tc.explicit {
-				if got.ToolIntegration != nil || got.Descriptor.Provider == "shellcheck-rs" {
+				if got.ToolIntegration != nil || got.Provider == "shellcheck-rs" {
 					t.Fatalf("unselected guest became provider: %+v", got.Descriptor)
 				}
-			} else if got.ToolIntegration == nil || got.Descriptor.Provider != "shellcheck-rs" {
+			} else if got.ToolIntegration == nil || got.Provider != "shellcheck-rs" {
 				t.Fatalf("selected guest lost provider identity: %+v", got.Descriptor)
 			}
 		})

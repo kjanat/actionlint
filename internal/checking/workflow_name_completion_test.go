@@ -35,7 +35,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 		"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
 	})
 	for i := range tools {
-		if tools[i].Descriptor.Name == "shellcheck" {
+		if tools[i].Name == "shellcheck" {
 			tools[i].Enabled, tools[i].Required = nil, nil
 			tools[i].Build = func(scripttools.Context) (scripttools.Runner, error) { return nil, cause }
 		}

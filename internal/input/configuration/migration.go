@@ -88,7 +88,7 @@ var migratedMembers = append([]string{"lint", "repository", "overrides"}, legacy
 // category, a disable entry or an ignore. A rule whose name kept a narrower
 // meaning cannot tell old broad intent from a deliberate selection, so
 // migration explains the change instead of aliasing the name.
-func legacyRuleControls(root any, descriptor Rule) bool {
+func legacyRuleControls(root any, descriptor rule.Declaration) bool {
 	rules := field(field(root, "lint"), "rules")
 	if field(field(rules, descriptor.Category), descriptor.Name) != nil {
 		return true
@@ -155,7 +155,7 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 			return fmt.Errorf("cannot migrate %s: no rule declaration for %q", origin, name)
 		}
 		name = descriptor.Name
-		group := cloneMapping(field(rules, descriptor.Group))
+		group := cloneMapping(field(rules, descriptor.Category))
 		if !isMapping(group) {
 			// Expand a valid group shorthand without dropping its baseline.
 			var decoded Group
@@ -171,14 +171,14 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 			}
 		}
 		if previous := field(group, name); previous != nil {
-			merged, err := mergeMigration(previous, setting, "lint.rules."+descriptor.Group+"."+name, origin)
+			merged, err := mergeMigration(previous, setting, "lint.rules."+descriptor.Category+"."+name, origin)
 			if err != nil {
 				return err
 			}
 			setting = merged
 		}
 		setField(group, name, setting)
-		setField(rules, descriptor.Group, group)
+		setField(rules, descriptor.Category, group)
 		return nil
 	}
 	for _, key := range legacyKeys {

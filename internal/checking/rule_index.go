@@ -39,7 +39,7 @@ var providerRules = sync.OnceValue(func() []rule.Descriptor {
 func BuiltinRuleDeclarations() []rule.Declaration {
 	declarations := slices.Clone(builtins)
 	for i := range declarations {
-		declarations[i].Descriptor = declarations[i].Clone()
+		declarations[i] = declarations[i].Clone()
 	}
 	return declarations
 }
@@ -62,7 +62,7 @@ func FindRule(name string) (rule.Descriptor, bool) {
 	name = ResolveRuleAlias(name)
 	for _, r := range builtins {
 		if r.Name == name {
-			return r.Clone(), true
+			return r.Descriptor.Clone(), true
 		}
 	}
 	for _, r := range providerRules() {

@@ -34,11 +34,11 @@ func TestToolRequirementsCannotMutateSiblingConfiguration(t *testing.T) {
 	}
 	seen := 0
 	providers := []tools.Registration{
-		{Descriptor: rule.Descriptor{Name: "mutator", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
+		{Name: "mutator", Category: "correctness", NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			cfg.Lint.Enabled, project.Lint.Enabled = new(false), new(false)
 			return false, nil
 		}},
-		{Descriptor: rule.Descriptor{Name: "observer", Category: "correctness"}, NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
+		{Name: "observer", Category: "correctness", NeedsProcess: func(_ context.Context, cfg, project *configuration.Config) (bool, error) {
 			seen++
 			if cfg.Lint.Enabled == nil || !*cfg.Lint.Enabled || project.Lint.Enabled == nil || !*project.Lint.Enabled {
 				t.Error("tool requirement callback mutated another provider's configuration")
@@ -73,8 +73,8 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 				}
 			}
 			provider := tools.Registration{
-				Descriptor: rule.Descriptor{Name: "ownership-test", Category: "correctness"},
-				Scope:      rule.SourceConfiguration, SupportsActions: true,
+				Name: "ownership-test", Category: "correctness",
+				Scope: rule.SourceConfiguration, SupportsActions: true,
 				Build: func(c tools.Context) (tools.Runner, error) {
 					if callback == "build" {
 						mutate(c)

@@ -66,7 +66,7 @@ func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
 	}
 	base := rules
 	plugin := rule.Descriptor{Name: "plugin", Category: "security", Maturity: "stable", DefaultLevel: "warn"}
-	rules, err = rules.WithRegisteredRules(RuleRegistration{Descriptor: plugin})
+	rules, err = rules.WithRegisteredRules(RuleRegistration{Declaration: rule.Declaration{Descriptor: plugin}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := base.ResolveRegisteredRules(Presets{}, cfg, RuleRegistration{Descriptor: plugin})
+	resolved, err := base.ResolveRegisteredRules(Presets{}, cfg, RuleRegistration{Declaration: rule.Declaration{Descriptor: plugin}})
 	if err != nil {
 		t.Fatal(err)
 	}

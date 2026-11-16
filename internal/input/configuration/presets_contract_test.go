@@ -27,7 +27,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				descriptor := configuration.Rule{Name: "example", Category: category, Maturity: "stable", Group: category}
+				descriptor := rule.Declaration{Name: "example", Category: category, Maturity: "stable"}
 				want := tc.want
 				if category == "conventions" && tc.settings == "{}" {
 					want = "off"
@@ -43,7 +43,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 func TestNurserySelectionIsIndependent(t *testing.T) {
 	t.Parallel()
 	// Exercise the lifecycle without misclassifying a shipping rule as nursery.
-	descriptor := configuration.Rule{Name: "under-development", Category: "correctness", Maturity: "nursery", Group: "nursery"}
+	descriptor := rule.Declaration{Name: "under-development", Category: "correctness", Maturity: "nursery"}
 	for _, tc := range []struct {
 		rules   string
 		presets configuration.Presets

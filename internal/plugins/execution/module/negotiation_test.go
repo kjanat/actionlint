@@ -126,7 +126,7 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	}}
 	nativeCalls := 0
 	registration := backendroute.WithConfiguredEngine(tools.Registration{
-		Descriptor: rule.Descriptor{Name: "ruff"},
+		Name: "ruff",
 		Build: func(tools.Context) (tools.Runner, error) {
 			return coreBatchRunner(func(_ context.Context, batch tools.Batch) ([]tools.ToolFinding, error) {
 				nativeCalls++

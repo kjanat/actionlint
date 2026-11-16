@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
-func presetLevel(p Preset, d Rule, fallback Level) Level {
+func presetLevel(p Preset, d rule.Declaration, fallback Level) Level {
 	switch p {
 	case "none":
 		return "off"
@@ -33,19 +33,19 @@ func presetLevel(p Preset, d Rule, fallback Level) Level {
 	}
 }
 
-func defaultLevel(d Rule) Level {
+func defaultLevel(d rule.Declaration) Level {
 	if d.DefaultLevel != "" {
 		return Level(d.DefaultLevel)
 	}
 	return "on"
 }
 
-func (ruleSet RuleSet) SettingFor(cfg *Config, d Rule, p Presets, selected bool) Setting {
+func (ruleSet RuleSet) SettingFor(cfg *Config, d rule.Declaration, p Presets, selected bool) Setting {
 	setting, _ := ruleSet.settingFor(cfg, d, p, selected)
 	return setting
 }
 
-func (ruleSet RuleSet) settingFor(cfg *Config, d Rule, p Presets, selected bool) (Setting, bool) {
+func (ruleSet RuleSet) settingFor(cfg *Config, d rule.Declaration, p Presets, selected bool) (Setting, bool) {
 	if p.Experimental == nil && cfg != nil {
 		p.Experimental = cfg.Lint.Experimental
 	}
@@ -54,7 +54,7 @@ func (ruleSet RuleSet) settingFor(cfg *Config, d Rule, p Presets, selected bool)
 	if d.Experimental() || !d.Recommended && !selected {
 		level = "off"
 	}
-	if policy, projected := d.policySetting(); projected && policy.enabled != nil {
+	if policy, projected := policySettings[d.Policy]; projected && policy.enabled != nil {
 		level = "off"
 		if policy.enabled(cfg) {
 			level = "on"
@@ -181,7 +181,7 @@ func (ruleSet RuleSet) DiagnosticLevel(cfg *Config, name string) Level {
 func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...rule.Descriptor) (*Config, error) {
 	registrations := make([]RuleRegistration, len(descriptors))
 	for i, descriptor := range descriptors {
-		registrations[i] = RuleRegistration{Descriptor: descriptor}
+		registrations[i] = RuleRegistration{Declaration: rule.Declaration{Descriptor: descriptor}}
 	}
 	return ruleSet.ResolveRegisteredRules(p, config, registrations...)
 }
@@ -189,11 +189,11 @@ func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...ru
 // RuleRegistration identifies a rule and, for a selected tool integration, the
 // bundled tool whose descriptor it replaces. Ordinary analyzers leave ReplacesTool empty.
 type RuleRegistration struct {
-	ToolSettings    *toolsettings.Settings
-	Descriptor      rule.Descriptor
-	Scope           rule.ConfigurationScope
-	SupportsActions bool
-	ReplacesTool    string
+	ToolSettings *toolsettings.Settings
+	// Declaration supplies the rule's metadata and configuration scope. Its
+	// Options constructor is ignored; registered rules decode options as JSON.
+	Declaration  rule.Declaration
+	ReplacesTool string
 	// Options overrides repository options when the registration supplies JSON.
 	Options json.RawMessage
 }
@@ -231,7 +231,7 @@ func (ruleSet RuleSet) ResolveRegisteredRules(p Presets, config *Config, registr
 		resolved[d.Name] = setting.Level()
 		next.Lint.Rules.resolvedFixed[d.Name] = fixed
 		next.Lint.Rules.boundSettings[d.Name] = boundSetting{Setting: setting}
-		if policy, projected := d.policySetting(); projected {
+		if policy, projected := policySettings[d.Policy]; projected {
 			policy.configure(&next, setting)
 		}
 	}
@@ -268,15 +268,13 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 	if optionOverrides == nil {
 		optionOverrides = map[string]json.RawMessage{}
 	}
-	for i := range descriptors {
-		descriptors[i].Group = descriptors[i].Category
-	}
 	for _, registration := range registrations {
-		descriptor := registration.Descriptor
-		switch registration.Scope {
+		declaration := registration.Declaration
+		descriptor := declaration.Descriptor
+		switch declaration.Scope {
 		case rule.CallerConfiguration, rule.SourceConfiguration, rule.CompositeConfiguration:
 		default:
-			return nil, fmt.Errorf("rule %q declares invalid configuration scope %d", descriptor.Name, registration.Scope)
+			return nil, fmt.Errorf("rule %q declares invalid configuration scope %d", descriptor.Name, declaration.Scope)
 		}
 		if descriptor.Name == "" || strings.TrimSpace(descriptor.Name) != descriptor.Name || strings.ContainsAny(descriptor.Name, " \t\r\n") {
 			return nil, fmt.Errorf("invalid rule name %q", descriptor.Name)
@@ -293,7 +291,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 			if err != nil {
 				return nil, fmt.Errorf("tool %q: %w", descriptor.Name, err)
 			}
-			provider.scope = registration.Scope
+			provider.scope = declaration.Scope
 			providers[descriptor.Name] = provider
 		}
 		if len(registration.Options) != 0 {
@@ -314,7 +312,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 			}
 		}
 		if len(registration.Options) != 0 {
-			if err := validateOptionsJSON(Rule{Descriptor: descriptor}, registration.Options); err != nil {
+			if err := validateOptionsJSON(rule.Declaration{Descriptor: descriptor}, registration.Options); err != nil {
 				return nil, binding.Context(fmt.Sprintf("options for rule %q", descriptor.Name), err)
 			}
 		}
@@ -326,9 +324,8 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 					return nil, fmt.Errorf("registered rule %q conflicts with existing rule from provider %q", descriptor.Name, descriptors[i].Provider)
 				}
 				descriptors[i].Descriptor = descriptor
-				descriptors[i].Group = descriptor.Category
-				descriptors[i].Scope = registration.Scope
-				descriptors[i].SupportsActions = registration.SupportsActions
+				descriptors[i].Scope = declaration.Scope
+				descriptors[i].SupportsActions = declaration.SupportsActions
 				replaced = true
 				break
 			}
@@ -336,7 +333,8 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 		if replaced {
 			continue
 		}
-		descriptors = append(descriptors, Rule{Descriptor: descriptor, Group: descriptor.Category, Scope: registration.Scope, SupportsActions: registration.SupportsActions, Options: func() any { return new(map[string]any) }})
+		declaration.Options = func() any { return new(map[string]any) }
+		descriptors = append(descriptors, declaration)
 	}
 	metadata := make([]rule.Descriptor, len(descriptors))
 	for i, descriptor := range descriptors {
@@ -349,7 +347,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 	return &registeredRules{rules: RuleSet{entries: descriptors, names: names, registered: seen, optionOverrides: optionOverrides, providers: providers}, seen: seen, options: optionOverrides}, nil
 }
 
-func (ruleSet RuleSet) bindSettings(config *Config, descriptors []Rule, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {
+func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declaration, registered map[string]bool, optionOverrides map[string]json.RawMessage) error {
 	// Binding writes name indexes into policies and override lint structs.
 	// Detach those structs from configurations shared by workflow checks.
 	if policy := config.Policy.DisallowSuppressions; policy != nil {
@@ -376,7 +374,7 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []Rule, register
 			return fmt.Errorf("config source %q: %w", source.origin, err)
 		}
 	}
-	index := make(map[string]Rule, len(descriptors))
+	index := make(map[string]rule.Declaration, len(descriptors))
 	categories := make(map[string]string, len(descriptors))
 	for _, descriptor := range descriptors {
 		index[descriptor.Name] = descriptor
@@ -456,7 +454,7 @@ func (ruleSet RuleSet) disabled(names []string, name string) bool {
 	return slices.ContainsFunc(names, func(disabled string) bool { return ruleSet.ResolveAlias(disabled) == name })
 }
 
-func validateRegisteredOptions(descriptor Rule, setting Setting) error {
+func validateRegisteredOptions(descriptor rule.Declaration, setting Setting) error {
 	if !setting.HasOptions() {
 		return nil
 	}
@@ -471,7 +469,7 @@ func validateRegisteredOptions(descriptor Rule, setting Setting) error {
 	return validateOptionsJSON(descriptor, document)
 }
 
-func validateOptionsJSON(descriptor Rule, document json.RawMessage) error {
+func validateOptionsJSON(descriptor rule.Declaration, document json.RawMessage) error {
 	if !json.Valid(document) {
 		return errors.New("invalid options JSON")
 	}

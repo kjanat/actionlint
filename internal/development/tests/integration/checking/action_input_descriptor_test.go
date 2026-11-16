@@ -29,7 +29,7 @@ import (
 func providerRegistration(t *testing.T, name string, selection scripts.Selection) tools.Registration {
 	t.Helper()
 	for _, registration := range registry.Registrations(registry.Selections{name: selection}) {
-		if registration.Descriptor.Name == name {
+		if registration.Name == name {
 			return registration
 		}
 	}

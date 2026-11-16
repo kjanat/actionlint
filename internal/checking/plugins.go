@@ -149,7 +149,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 		found := false
 		options.Tools = slices.Clone(options.Tools)
 		for i, registration := range options.Tools {
-			if registration.Descriptor.Name != metadata.Engine {
+			if registration.Name != metadata.Engine {
 				continue
 			}
 			if registration.WithBackend == nil {
@@ -226,7 +226,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 			return options, &pluginexec.LoadError{Err: err}
 		}
 		registration.ToolSettings = new(local.Files.Manifest.Settings())
-		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Descriptor.Name == name })
+		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing tools.Registration) bool { return existing.Name == name })
 		options.Tools = append(options.Tools, registration)
 	}
 
@@ -244,7 +244,7 @@ func ConfigurePlugins(l *pluginexec.Loaded, ctx context.Context, options Options
 func checkPluginTools(l *pluginexec.Loaded, registrations []tools.Registration) error {
 	known := slices.Concat(l.SkippedTools, l.ToolIDs)
 	for _, registration := range registrations {
-		known = append(known, registration.Descriptor.Name)
+		known = append(known, registration.Name)
 	}
 	var unknown []string
 	for _, id := range l.NamedTools {

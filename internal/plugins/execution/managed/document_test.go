@@ -32,7 +32,7 @@ import (
 // which a managed analyzer speaking its integration contract may replace.
 func shellcheckRegistration(selection scripts.Selection) tools.Registration {
 	for _, registration := range registry.Registrations(registry.Selections{"shellcheck": selection}) {
-		if registration.Descriptor.Name == "shellcheck" {
+		if registration.Name == "shellcheck" {
 			return registration
 		}
 	}

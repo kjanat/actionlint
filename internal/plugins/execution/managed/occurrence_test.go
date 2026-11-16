@@ -146,7 +146,7 @@ func TestDocumentPluginReceivesRunScriptsAndSkipsOtherToolInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	route := tools.Registration{
-		Descriptor:   rulemeta.Descriptor{Name: "input-observer", Category: "correctness", Recommended: true},
+		Name: "input-observer", Category: "correctness", Recommended: true,
 		ScriptInputs: []checkinputs.ScriptInput{{Action: "actions/github-script", Input: "script", Language: "javascript"}},
 		Build:        func(tools.Context) (tools.Runner, error) { return observer, nil },
 	}

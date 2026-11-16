@@ -132,7 +132,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	entryBinding := settings.bindEntry(sourcePath, cfg)
 	names := selection.RuleNames(s.analyzers)
 	for _, registration := range s.ruleRegistrations {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Declaration.Name)
 	}
 	if err := settings.rules.ValidateRuleNames(cfg, names...); err != nil {
 		return nil, nil, nil, err

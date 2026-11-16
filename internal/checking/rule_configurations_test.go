@@ -24,7 +24,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}
+			registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: tc.scope, SupportsActions: tc.actions}}
 			rules, err := ConfigurationRules().WithRegisteredRules(registration)
 			if err != nil {
 				t.Fatal(err)
@@ -60,7 +60,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 
 func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 	t.Parallel()
-	registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}
+	registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true}}
 	setting, err := configuration.NewSetting("error", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 
 func TestRegisteredRuleRejectsUnknownConfigurationScope(t *testing.T) {
 	t.Parallel()
-	registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}
+	registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable"}, Scope: 255}}
 	if _, err := ConfigurationRules().WithRegisteredRules(registration); err == nil {
 		t.Fatal("unknown configuration scope was accepted")
 	}
@@ -109,7 +109,7 @@ func TestExplicitPluginOptionsUseTheirJSONSchema(t *testing.T) {
 	} {
 		t.Run(tc.schema+"/"+tc.options, func(t *testing.T) {
 			t.Parallel()
-			registration := configuration.RuleRegistration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}, Options: json.RawMessage(tc.options)}
+			registration := configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "plugin-check", Category: "correctness", Maturity: "stable", OptionsSchema: json.RawMessage(tc.schema)}}, Options: json.RawMessage(tc.options)}
 			_, err := ConfigurationRules().ResolveRegisteredRules(configuration.Presets{}, &configuration.Config{}, registration)
 			if (err == nil) != tc.valid {
 				t.Fatalf("options=%s schema=%s: %v", tc.options, tc.schema, err)
@@ -201,8 +201,7 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	t.Parallel()
 	registration := configuration.RuleRegistration{
-		Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true},
-		Scope:      rule.SourceConfiguration, SupportsActions: true,
+		Declaration:  rule.Declaration{Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true}, Scope: rule.SourceConfiguration, SupportsActions: true},
 		ToolSettings: &toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
 	}
 	rules, err := ConfigurationRules().WithRegisteredRules(registration)

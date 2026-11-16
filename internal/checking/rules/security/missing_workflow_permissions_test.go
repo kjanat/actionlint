@@ -12,7 +12,7 @@ import (
 
 func TestMissingPermissions(t *testing.T) {
 	t.Parallel()
-	if security.MissingPermissionsRule.Declaration().DefaultLevel != "error" || !security.MissingPermissionsRule.Declaration().Recommended {
+	if security.MissingPermissionsRule.ResolvedDeclaration().DefaultLevel != "error" || !security.MissingPermissionsRule.ResolvedDeclaration().Recommended {
 		t.Fatal("missing permissions must be an error by default")
 	}
 	const local = "    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"

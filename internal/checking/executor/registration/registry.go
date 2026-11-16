@@ -79,7 +79,7 @@ var All = []*define.Rule{
 func Declarations() []rule.Declaration {
 	out := make([]rule.Declaration, len(All))
 	for i, native := range All {
-		out[i] = native.Declaration()
+		out[i] = native.ResolvedDeclaration()
 	}
 	return out
 }
@@ -103,7 +103,7 @@ func Registrations(rules configuration.RuleSet) []define.Registration {
 			out[i] = native.Registration(metadata)
 			continue
 		}
-		out[i] = define.Registration{Rule: metadata}
+		out[i] = define.Registration{Declaration: metadata}
 	}
 	return out
 }

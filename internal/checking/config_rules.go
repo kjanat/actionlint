@@ -25,20 +25,19 @@ func configurationRegistrations(checkers []checkinputs.Registration, providers [
 		if validation.IsNil(checker.Checker) {
 			continue
 		}
-		descriptor := checker.Checker.Descriptor()
-		registrations = append(registrations, configuration.RuleRegistration{Descriptor: descriptor.Clone(), Scope: descriptor.Scope, SupportsActions: descriptor.SupportsActions, Options: slices.Clone(checker.Options)})
+		registrations = append(registrations, configuration.RuleRegistration{Declaration: checker.Checker.Descriptor().Clone(), Options: slices.Clone(checker.Options)})
 	}
 	for _, provider := range providers {
-		_, builtin := FindRule(provider.Descriptor.Name)
+		_, builtin := FindRule(provider.Name)
 		if builtin && provider.ToolIntegration == nil && provider.ToolSettings == nil {
 			continue
 		}
-		registration := configuration.RuleRegistration{Descriptor: provider.Descriptor.Clone(), Scope: provider.Scope, SupportsActions: provider.SupportsActions, ToolSettings: provider.ToolSettings}
-		if provider.ToolIntegration != nil && provider.ToolIntegration.Tool == provider.Descriptor.Name {
+		registration := configuration.RuleRegistration{Declaration: provider.Clone(), ToolSettings: provider.ToolSettings}
+		if provider.ToolIntegration != nil && provider.ToolIntegration.Tool == provider.Name {
 			registration.ReplacesTool = provider.ToolIntegration.Tool
 		}
 		if builtin && provider.ToolSettings != nil {
-			registration.ReplacesTool = provider.Descriptor.Name
+			registration.ReplacesTool = provider.Name
 		}
 		registrations = append(registrations, registration)
 	}

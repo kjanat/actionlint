@@ -45,7 +45,7 @@ func TestCancellationStopsPreparedMetadataCheckBeforeItsStep(t *testing.T) {
 	defer cancel()
 	f := newInvocationFixture(t, ctx, "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: actions/checkout@v4}]}}\n", nil, nil)
 	check := conventions.MissingActionMetadataChecks(nil)
-	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.Declaration()})
+	rules, err := configuration.NewRuleSet([]rulemeta.Declaration{conventions.MissingActionMetadataRule.ResolvedDeclaration()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,6 +14,7 @@ import (
 
 	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"github.com/kjanat/go-yaml/v4"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -78,7 +79,7 @@ func (ruleSet RuleSet) DefaultDocument(version string, format FileFormat) ([]byt
 	}
 	groups := make(map[string]map[string]Level)
 	entries := ruleSet.Rules()
-	slices.SortFunc(entries, func(a, b Rule) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(entries, func(a, b rule.Declaration) int { return strings.Compare(a.Name, b.Name) })
 	for _, entry := range entries {
 		if groups[entry.Category] == nil {
 			groups[entry.Category] = make(map[string]Level)

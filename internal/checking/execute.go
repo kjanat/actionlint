@@ -201,7 +201,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	seenTools := map[string]bool{}
 	for _, registration := range request.Tools {
-		name := registration.Descriptor.Name
+		name := registration.Name
 		if seenTools[name] {
 			return nil, fmt.Errorf("duplicate script tool %q", name)
 		}
@@ -223,7 +223,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	for _, registration := range request.Tools {
 		if registration.Build == nil {
-			return nil, fmt.Errorf("tool %q has no adapter", registration.Descriptor.Name)
+			return nil, fmt.Errorf("tool %q has no adapter", registration.Name)
 		}
 		if registration.Validate != nil {
 			if err := registration.Validate(); err != nil {

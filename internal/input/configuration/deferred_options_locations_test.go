@@ -15,8 +15,7 @@ import (
 
 func deferredOptionsRegistration() configuration.RuleRegistration {
 	return configuration.RuleRegistration{
-		Descriptor: rule.Descriptor{Name: "custom-check", Category: "security", Provider: "community", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
-		Scope:      rule.SourceConfiguration,
+		Declaration: rule.Declaration{Descriptor: rule.Descriptor{Name: "custom-check", Category: "security", Provider: "community", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}, Scope: rule.SourceConfiguration},
 	}
 }
 

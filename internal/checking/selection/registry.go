@@ -105,7 +105,7 @@ func Templates(ruleSet configuration.RuleSet) []rule.Descriptor {
 	var rules []rule.Descriptor
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
 		if descriptor.Provider == "actionlint" && descriptor.Build == nil && descriptor.Script == nil {
-			rules = append(rules, descriptor.Clone())
+			rules = append(rules, descriptor.Descriptor.Clone())
 		}
 	}
 	return rules

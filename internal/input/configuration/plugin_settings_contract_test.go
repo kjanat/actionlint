@@ -5,11 +5,12 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 )
 
 func TestRegisteredNurseryPresetSelection(t *testing.T) {
 	t.Parallel()
-	descriptor := configuration.Rule{Name: "experimental-plugin", Maturity: "nursery", Group: "plugins"}
+	descriptor := rule.Declaration{Name: "experimental-plugin", Maturity: "nursery"}
 	for _, test := range []struct {
 		root, group configuration.Preset
 		want        configuration.Level

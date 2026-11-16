@@ -47,13 +47,13 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext too
 			if registration.Required == nil || registration.Required(owned) {
 				return selected, err
 			}
-			s.log(fmt.Sprintf("Tool %q was disabled:", registration.Descriptor.Name), err)
+			s.log(fmt.Sprintf("Tool %q was disabled:", registration.Name), err)
 			if toolContext.Skipped != nil {
-				toolContext.Skipped(registration.Descriptor.Name)
+				toolContext.Skipped(registration.Name)
 			}
 			continue
 		}
-		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.Tool{Name: registration.Descriptor.Name, Runner: adapter})
+		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.Tool{Name: registration.Name, Runner: adapter})
 		selected.registeredTools = append(selected.registeredTools, registration)
 		selected.ScriptInfo = append(selected.ScriptInfo, registration.Descriptor)
 		selected.resolveExecution = selected.resolveExecution || registration.RequiresExecution
@@ -75,7 +75,7 @@ func (d documentChecks) inputSelectors(c tools.Context, scope *rulebinding.Scope
 		if err != nil {
 			return nil, err
 		}
-		if ConfigurationRules().DiagnosticLevel(cfg, registration.Descriptor.Name) == "off" || registration.Enabled != nil && !registration.Enabled(owned) {
+		if ConfigurationRules().DiagnosticLevel(cfg, registration.Name) == "off" || registration.Enabled != nil && !registration.Enabled(owned) {
 			continue
 		}
 		inputs = append(inputs, registration.ScriptInputs...)

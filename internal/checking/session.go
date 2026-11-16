@@ -261,7 +261,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 		}
 	}
 	for _, registration := range options.Tools {
-		names = append(names, registration.Descriptor.Name)
+		names = append(names, registration.Name)
 	}
 	selectionLog := func(args ...any) {
 		if options.LogSelection && request.LogLevel >= LogLevelVerbose {

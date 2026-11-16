@@ -128,8 +128,8 @@ func WithConfiguredEngine(registration tools.Registration, load func(tools.Conte
 		}
 		if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
 			descriptor := described.ScriptDescriptor()
-			if descriptor.Engine != registration.Descriptor.Name {
-				return nil, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, registration.Descriptor.Name)
+			if descriptor.Engine != registration.Name {
+				return nil, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, registration.Name)
 			}
 			return descriptor.ScriptInputs, nil
 		}
@@ -172,7 +172,7 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 			resolved.Overrides = nil
 			c.Config = &resolved
 		}
-		if r.registration.Enabled != nil && !r.registration.Enabled(c) || cfg.RuleSet().DiagnosticLevel(cfg, r.registration.Descriptor.Name) == "off" {
+		if r.registration.Enabled != nil && !r.registration.Enabled(c) || cfg.RuleSet().DiagnosticLevel(cfg, r.registration.Name) == "off" {
 			continue
 		}
 		engine, err := r.load(c)
@@ -186,8 +186,8 @@ func (r configuredRouting) Analyze(ctx context.Context, batch tools.Batch) ([]to
 			continue
 		}
 		descriptor := described.ScriptDescriptor()
-		if descriptor.Engine != r.registration.Descriptor.Name {
-			failures = errors.Join(failures, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, r.registration.Descriptor.Name))
+		if descriptor.Engine != r.registration.Name {
+			failures = errors.Join(failures, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, r.registration.Name))
 			continue
 		}
 		// Legacy engines without routes inherit the native adapter's selectors.

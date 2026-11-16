@@ -19,9 +19,7 @@ import (
 
 // Descriptor declares identity and input requirements before execution.
 type Descriptor struct {
-	rulemeta.Descriptor
-	Scope                 rulemeta.ConfigurationScope
-	SupportsActions       bool
+	rulemeta.Declaration
 	InvocationDefinitions []commands.Definition
 }
 

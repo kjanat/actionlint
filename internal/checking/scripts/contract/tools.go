@@ -42,10 +42,8 @@ type Registration struct {
 	ToolSettings          *toolsettings.Settings
 	InvocationDefinitions []commands.Definition
 	// ToolIntegration identifies a negotiated document provider for this tool.
-	ToolIntegration   *checkinputs.ToolIntegration
-	Descriptor        rule.Descriptor
-	Scope             rule.ConfigurationScope
-	SupportsActions   bool
+	ToolIntegration *checkinputs.ToolIntegration
+	rule.Declaration
 	ScriptInputs      []checkinputs.ScriptInput
 	InputSelectors    func(Context) ([]checkinputs.ScriptInput, error)
 	ConfiguredBackend func(Context) (checkinputs.ScriptBackend, error)
