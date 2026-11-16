@@ -12,16 +12,12 @@ import (
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
@@ -68,35 +64,15 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	if err != nil {
 		return 0, err
 	}
-	options := checking.Options{
-		EnforcePolicies:      c.EnforcePolicies,
-		NoIgnore:             c.NoIgnore,
-		AllowConfigProcesses: c.AllowConfigProcesses,
-		WorkingDir:           workingDir, ConfigFile: c.Config.Path,
-		SkipProjectConfig: c.Config.Disabled || (!inv.Legacy && c.Config.Path != ""),
-
-		IgnorePatterns: c.IgnoreRegex, Verbose: c.Verbose && !r.Quiet,
-		IgnoreSelectors: ignoreSelectors,
-		Debug:           c.Debug && !r.Quiet, LogWriter: log, LogSelection: inv.Legacy,
-		LegacyErrors: inv.Legacy, Presets: configuration.Presets{Strict: c.Strict}, Tools: registry.Registrations(c.Tools),
-	}
-	if c.ResolverCommand != "" && !c.Offline {
-		options.Resolver = execprotocol.NewProcess(c.ResolverCommand, c.ResolverArguments, 0)
-		options.SuggestCommitPins = true
-	}
-	options.RemoteActions, err = c.actionMetadata(streams.Acquisition)
+	options, err := c.checkingOptions(workingDir, streams.Acquisition, log, inv.Legacy)
 	if err != nil {
 		return 0, err
 	}
-	options.Runners, err = c.runners()
-	if err != nil {
-		return 0, err
-	}
-	service, err := services.FromGitHubServerURL(os.Getenv("GITHUB_SERVER_URL"))
-	if err != nil {
-		return 0, err
-	}
-	options.Service = service
+	options.NoIgnore = c.NoIgnore
+	options.IgnorePatterns, options.IgnoreSelectors = c.IgnoreRegex, ignoreSelectors
+	options.Verbose, options.Debug = c.Verbose && !r.Quiet, c.Debug && !r.Quiet
+	options.LogSelection, options.LegacyErrors = inv.Legacy, inv.Legacy
+	options.Presets = configuration.Presets{Strict: c.Strict}
 	if c.ExperimentalSet {
 		options.Presets.Experimental = &c.Experimental
 	}

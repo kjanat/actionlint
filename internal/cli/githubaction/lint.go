@@ -14,8 +14,6 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/integrations/github"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
@@ -24,11 +22,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
-	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -39,8 +37,11 @@ const lintTimeout = 300 * time.Second
 const lintCancellationGrace = time.Second
 
 type lintRequest struct {
-	ctx           context.Context
-	remoteActions actions.Provider
+	ctx context.Context
+	// connected holds the GitHub service, action metadata provider and
+	// configuration connections that configureEnvironment read from the
+	// environment. runLinter adds the fields of each run to a copy.
+	connected checking.Options
 	// disabledTools lists the tool ids the disable-tools input turned off.
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
@@ -56,7 +57,6 @@ type lintRequest struct {
 	files        []string
 	hints        []string
 	acquisition  pluginacquisition.Settings
-	service      services.Service
 }
 
 type lintOutcome struct {
@@ -79,18 +79,11 @@ func (r *lintResult) selectedFileCount() int {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	service, err := services.FromGitHubServerURL(env("GITHUB_SERVER_URL"))
+	connected, err := checkoptions.ConnectGitHub(checking.Options{}, checkoptions.GitHubAccess{Getenv: env, Acquisition: req.acquisition})
 	if err != nil {
 		return inputErrorf("%s", err)
 	}
-	req.service = service
-	options := github.EnvironmentOptions(github.Online, env, req.acquisition.UserCacheDir)
-	options.Transport = req.acquisition.Connections.Transport
-	metadata, err := github.New(options)
-	if err != nil {
-		return inputErrorf("%s", err)
-	}
-	req.remoteActions = metadata
+	req.connected = connected
 	req.configureTools(env)
 	req.sarif = env("INPUT_SARIF") == "true"
 	if value := env("INPUT_CONFIG"); strings.TrimSpace(value) != "" {
@@ -125,22 +118,20 @@ func runLinter(req *lintRequest) *lintResult {
 	if workspace == "" {
 		workspace = req.workingDir
 	}
-	opts := checking.Options{
-		Service:        req.service,
-		RemoteActions:  req.remoteActions,
-		IgnorePatterns: req.ignore,
-		ConfigFile:     req.configFile,
-		ConfigOverlays: req.overlays,
-		WorkingDir:     req.workingDir,
-		LogWriter:      &logs,
-		OnConfigLoaded: func(report configreport.Report) {
-			result.configs = append(result.configs, report)
-			result.report.AddConfiguration(report)
-		},
-		OnFilesSelected: func(files []string) {
-			result.report.FileCount = new(len(files))
-		}, Tools: registry.Registrations(req.toolSelections()),
+	opts := req.connected
+	opts.IgnorePatterns = req.ignore
+	opts.ConfigFile = req.configFile
+	opts.ConfigOverlays = req.overlays
+	opts.WorkingDir = req.workingDir
+	opts.LogWriter = &logs
+	opts.OnConfigLoaded = func(report configreport.Report) {
+		result.configs = append(result.configs, report)
+		result.report.AddConfiguration(report)
 	}
+	opts.OnFilesSelected = func(files []string) {
+		result.report.FileCount = new(len(files))
+	}
+	opts.Tools = registry.Registrations(req.toolSelections())
 
 	ctx := req.ctx
 	if ctx == nil {
