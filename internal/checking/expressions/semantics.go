@@ -304,7 +304,11 @@ func (rule *Checker) checkSemantics(src string, base sourcetext.Position, checkU
 }
 
 // documentPosition places at, a one-based position within an expression, in
-// the document where the expression starts at base.
+// the document where the expression starts at base. Only the first line of
+// the expression starts at base.Column; later lines start at column 1.
 func documentPosition(base, at sourcetext.Position) sourcetext.Position {
-	return sourcetext.Position{Line: base.Line + at.Line - 1, Column: base.Column + at.Column - 1}
+	if at.Line > 1 {
+		return sourcetext.Position{Line: base.Line + at.Line - 1, Column: at.Column}
+	}
+	return sourcetext.Position{Line: base.Line, Column: base.Column + at.Column - 1}
 }
