@@ -140,7 +140,7 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 // Its source is wide and long enough for the fixture's positions.
 func json1Request(t *testing.T, name string) (checkinputs.ScriptRequest, []byte) {
 	t.Helper()
-	stdout, err := os.ReadFile(filepath.Join("..", "..", "manifests", "bundled", "shellcheck", "testdata", name, "stdout.json"))
+	stdout, err := os.ReadFile(filepath.Join("..", "..", "..", "model", "bundledproviders", "shellcheck", "testdata", name, "stdout.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
