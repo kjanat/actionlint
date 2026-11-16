@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/canonical"
-	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
 )

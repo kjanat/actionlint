@@ -6,7 +6,7 @@ import (
 	maps "maps"
 	slices "slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	document "actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func copyOwnedruleState(in ruleState) ruleState {
