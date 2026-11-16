@@ -17,8 +17,8 @@ func TestUnavailableSourceProducerGate(t *testing.T) {
 	// The process runner and the managed document route each produce the
 	// marker once.
 	producers := []string{
-		filepath.Join(root, "internal", "plugins", "execution", "managed", "sources.go"),
-		filepath.Join(root, "internal", "plugins", "execution", "scripts", "sources.go"),
+		filepath.Join(root, "internal", "checking", "scripts", "managed", "sources.go"),
+		filepath.Join(root, "internal", "checking", "scripts", "backends", "sources.go"),
 	}
 	want := map[string][]string{"ReportedSourceUnavailable": producers}
 	counts := map[string]int{}
