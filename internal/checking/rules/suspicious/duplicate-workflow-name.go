@@ -33,7 +33,7 @@ var DuplicateWorkflowNameRule = &define.Rule{
 	Prepare: prepareDuplicateWorkflowName,
 	Enabled: define.Inputs.InProjectWorkflows,
 	Checks: func(c define.Inputs) define.Checks {
-		return define.Checks{Workflow: func(w declaration.Workflow) []reporting.Finding {
+		return define.Checks{Workflow: func(w declaration.Workflow) []reporting.StepFinding {
 			return DuplicateWorkflowName(c.WorkflowNameInventory, w)
 		}}
 	},
@@ -42,7 +42,7 @@ var DuplicateWorkflowNameRule = &define.Rule{
 // DuplicateWorkflowName reports the workflow's plain-text name when another
 // workflow in others uses it too. others must not contain the workflow itself.
 // It does not read files.
-func DuplicateWorkflowName(others namemodel.Inventory, w declaration.Workflow) []reporting.Finding {
+func DuplicateWorkflowName(others namemodel.Inventory, w declaration.Workflow) []reporting.StepFinding {
 	if !w.Present() {
 		return nil
 	}
@@ -62,7 +62,7 @@ func DuplicateWorkflowName(others namemodel.Inventory, w declaration.Workflow) [
 		}
 	}
 	slices.Sort(described)
-	return []reporting.Finding{reporting.Warning(duplicateWorkflowNameRuleName, "", w.Name.Pos,
+	return []reporting.StepFinding{reporting.Warning(duplicateWorkflowNameRuleName, "", w.Name.Pos,
 		"workflow name %q is also used by %s; the Actions tab cannot tell these workflows apart",
 		name, strings.Join(described, ", "))}
 }
