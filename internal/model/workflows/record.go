@@ -141,6 +141,18 @@ func (j Job) Workflow() Workflow { return j.owner.Workflow() }
 // Steps yields the job's top-level steps.
 func (j Job) Steps() iter.Seq[Step] { return boundSteps(j.owner, j.stepNodes()) }
 
+// AllSteps yields every step of the job, each parallel group before the steps
+// inside it, in the order of workflowlang.AllSteps.
+func (j Job) AllSteps() iter.Seq[Step] {
+	return func(yield func(Step) bool) {
+		for step := range workflowlang.AllSteps(j.stepNodes()) {
+			if !yield(Step{step, j.owner}) {
+				return
+			}
+		}
+	}
+}
+
 func (j Job) stepNodes() []*workflowlang.Step {
 	if !j.Present() {
 		return nil

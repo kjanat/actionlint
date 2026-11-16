@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"fmt"
+	"iter"
 	"math"
 	"sort"
 	"strconv"
@@ -680,6 +681,30 @@ type ExecParallel struct {
 // Kind returns the step execution kind.
 func (e *ExecParallel) Kind() ExecKind {
 	return ExecKindParallel
+}
+
+// AllSteps yields steps in source order, each parallel group before the steps
+// inside it. It skips nil steps. Walks that need the nesting itself, such as
+// outlines and fingerprints, recurse over ExecParallel instead.
+func AllSteps(steps []*Step) iter.Seq[*Step] {
+	return func(yield func(*Step) bool) {
+		walkSteps(steps, yield)
+	}
+}
+
+func walkSteps(steps []*Step, yield func(*Step) bool) bool {
+	for _, step := range steps {
+		if step == nil {
+			continue
+		}
+		if !yield(step) {
+			return false
+		}
+		if parallel, ok := step.Exec.(*ExecParallel); ok && parallel != nil && !walkSteps(parallel.Steps, yield) {
+			return false
+		}
+	}
+	return true
 }
 
 // RawYAMLValueKind identifies the kind of a raw YAML value.
