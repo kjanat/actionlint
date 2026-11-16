@@ -21,6 +21,9 @@ import (
 
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -84,7 +87,7 @@ func ociFindings(t *testing.T, result *checking.Result) []results.Diagnostic {
 // the process transport, and keeps running offline from the store.
 func TestOCIBinaryProviderRunsFromStore(t *testing.T) {
 	t.Parallel()
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	check := func() *checking.Result {
 		t.Helper()
@@ -121,7 +124,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
 		t.Run(map[bool]string{false: "automatic", true: "config-flag"}[explicit], func(t *testing.T) {
 			t.Parallel()
-			acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 			pkg := publishOCIProvider(t)
 			root := repositoryfixture.Directory(t)
 			path := filepath.Join(root, ".github", "actionlint.yaml")
@@ -129,7 +132,7 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixturefiles.WriteText(t, path, "plugins: ['"+pkg.reference+"']\n")
-			selection := plugininstall.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
+			selection := pluginselection.Selection{RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}
 			if explicit {
 				selection.ConfigFile = path
 			}
@@ -161,9 +164,9 @@ func TestOCIBinaryProviderConfigurationCannotGrantPrivateNetwork(t *testing.T) {
 
 func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 	t.Parallel()
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
-	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference}, acquisition)
+	sources, err := pluginselection.SourcesFromArguments([]string{pkg.reference}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,10 +189,10 @@ func TestOCIBinaryProviderDisabledByID(t *testing.T) {
 // OCI manifests supply the complete host cache plan without a project lock.
 func TestCachePlanListsOCIBlobs(t *testing.T) {
 	t.Parallel()
-	acquisition := plugininstall.Acquisition{UserCacheDir: t.TempDir()}
+	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir()}
 	pkg := publishOCIProvider(t)
 	_, root, _ := strings.Cut(pkg.reference, "@sha256:")
-	sources, err := plugininstall.SourcesFromArguments([]string{pkg.reference}, acquisition)
+	sources, err := pluginselection.SourcesFromArguments([]string{pkg.reference}, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +214,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: plugininstall.StatusOptions{Network: grant, Acquisition: acquisition}}
+	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

@@ -9,7 +9,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestEditorRemoteConfigUsesSessionConnections(t *testing.T) {
@@ -33,12 +34,12 @@ func TestEditorRemoteConfigUsesSessionConnections(t *testing.T) {
 			if err := os.WriteFile(path, []byte("on: push\npermissions: {}\njobs: {}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+			acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
 			options := checking.Options{WorkingDir: root, ConfigFile: config}
-			sources := plugininstall.Sources{Acquisition: acquisition}
+			sources := pluginselection.Sources{Acquisition: acquisition}
 			if explicit {
 				options.ConfigConnections = registry.Connections()
-				sources.Acquisition = plugininstall.Acquisition{}
+				sources.Acquisition = pluginacquisition.Settings{}
 			}
 			session, err := newEditorSources(t.Context(), options, sources)
 			if err != nil {

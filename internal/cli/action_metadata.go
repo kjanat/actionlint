@@ -9,10 +9,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-func (c checkInvocation) actionMetadata(acquisition plugininstall.Acquisition) (actions.Provider, error) {
+func (c checkInvocation) actionMetadata(acquisition pluginacquisition.Settings) (actions.Provider, error) {
 	mode := github.Online
 	if c.Offline {
 		mode = github.Offline

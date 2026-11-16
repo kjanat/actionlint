@@ -5,10 +5,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 // OpenForSelection reads declarations without granting permission to edit a symlinked configuration.
-func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition Acquisition, directory, configPath string, readMode configplugins.ReadMode) (*Project, error) {
+func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, directory, configPath string, readMode configplugins.ReadMode) (*Project, error) {
 	configPath, err := projectConfigPath(directory, configPath)
 	if err != nil {
 		return nil, err
@@ -19,5 +21,5 @@ func OpenForSelection(ctx context.Context, rules configuration.RuleSet, acquisit
 	if err != nil {
 		return nil, err
 	}
-	return &Project{Manifest: manifest, StatusOptions: StatusOptions{Acquisition: acquisition}}, nil
+	return &Project{Manifest: manifest, StatusOptions: pluginregistry.StatusOptions{Acquisition: acquisition}}, nil
 }

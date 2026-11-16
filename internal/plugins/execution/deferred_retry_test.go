@@ -10,7 +10,8 @@ import (
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 func TestDeferredFailureExpiresAtAnalysisBoundary(t *testing.T) {
@@ -34,8 +35,8 @@ func TestDeferredFailureExpiresAtAnalysisBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	bytes := registry.AddPlugin(t, fixtureregistry.PluginPublisher{PluginID: "echo-component", BaseURL: fixtureregistry.FixtureRegistryURL, Name: "github.com/publisher/plugin", RepositoryID: 10, Metadata: metadata}, "v1.0.0", component)
-	acquisition := plugininstall.Acquisition{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
-	client, err := plugininstall.New(fixtureregistry.FixtureRegistryURL, acquisition)
+	acquisition := pluginacquisition.Settings{UserCacheDir: registry.UserCacheDir(), Connections: registry.Connections()}
+	client, err := pluginregistry.New(fixtureregistry.FixtureRegistryURL, acquisition)
 	if err != nil {
 		t.Fatal(err)
 	}

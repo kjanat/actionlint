@@ -11,6 +11,8 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 type InspectOptions struct {
@@ -20,7 +22,7 @@ type InspectOptions struct {
 }
 
 // Run reads plugin metadata without executing the plugin.
-func (r InspectOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition plugininstall.Acquisition) (int, error) {
+func (r InspectOptions) Run(ctx context.Context, streams commandstreams.Streams, acquisition pluginacquisition.Settings) (int, error) {
 	info, err := inspectSource(ctx, r, acquisition)
 	if err != nil {
 		return 0, err
@@ -49,7 +51,7 @@ func (r InspectOptions) Run(ctx context.Context, streams commandstreams.Streams,
 	return 0, commandstreams.WriteJSON(streams.Stdout, info.Metadata)
 }
 
-func inspectSource(ctx context.Context, r InspectOptions, acquisition plugininstall.Acquisition) (pluginartifact.ArtifactProvenance, error) {
+func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacquisition.Settings) (pluginartifact.ArtifactProvenance, error) {
 	_, statErr := os.Stat(r.Source)
 	local := statErr == nil || filepath.IsAbs(r.Source) || strings.HasPrefix(r.Source, ".") || strings.Contains(r.Source, `\`)
 	if local || strings.Contains(r.Source, "://") {
@@ -63,5 +65,5 @@ func inspectSource(ctx context.Context, r InspectOptions, acquisition plugininst
 	if err != nil {
 		return pluginartifact.ArtifactProvenance{}, err
 	}
-	return plugininstall.InspectRelease(ctx, ref, acquisition)
+	return pluginregistry.InspectRelease(ctx, ref, acquisition)
 }

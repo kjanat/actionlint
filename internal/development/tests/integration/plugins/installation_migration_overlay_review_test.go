@@ -11,7 +11,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
 func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
@@ -33,11 +35,11 @@ func TestAutomaticMigrationHonorsOverlayBeforeDownloads(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				selection := plugininstall.Selection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
+				selection := pluginselection.Selection{Acquisition: acquisition, Overlays: []configuration.Overlay{overlay}, RuleSet: checking.ConfigurationRules()}
 				if explicit {
 					selection.ConfigFile = path
 				}
-				if err := selection.Migrate(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+				if err := configmigration.MigrateSelection(t.Context(), selection, root, inputmodel.Request{Kind: inputmodel.Repository}, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
 					t.Fatal(err)
 				}
 				if len(registry.Requests()) != 0 {

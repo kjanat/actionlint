@@ -9,6 +9,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"github.com/spf13/cobra"
 )
@@ -21,7 +24,7 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	a.commonFlags(parent, parent.PersistentFlags())
 	a.configFlags(parent.PersistentFlags())
 	inspect := &cobra.Command{Use: "inspect <plugin-or-path-or-uri>", Short: "Read metadata without executing the plugin", Args: cobra.ExactArgs(1), RunE: a.capture(operationPluginInspect)}
-	inspect.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+plugininstall.DefaultURL+")")
+	inspect.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+pluginregistry.DefaultURL+")")
 	annotateFlag(inspect.Flags(), "registry", "Registry")
 	parent.AddCommand(inspect)
 	parent.AddCommand(a.pluginAuthoringCommands()...)
@@ -40,7 +43,7 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	} {
 		c := &cobra.Command{Use: item.use, Short: item.description, Args: item.args, RunE: a.capture(item.op)}
 		if item.op == operationPluginSearch || item.op == operationPluginVersions || item.op == operationPluginInstall || item.op == operationPluginUpdate || item.op == operationPluginRemove {
-			c.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+plugininstall.DefaultURL+")")
+			c.Flags().StringVar(&a.inv.Plugin.Registry, "registry", "", "HTTPS catalogue or local candidate file URI (default "+pluginregistry.DefaultURL+")")
 			annotateFlag(c.Flags(), "registry", "Registry")
 		}
 		if item.op == operationPluginInstall || item.op == operationPluginUpdate {
@@ -52,9 +55,9 @@ func (a *commandApp) pluginCommand() *cobra.Command {
 	return parent
 }
 
-func (c checkInvocation) pluginSelection(acquisition plugininstall.Acquisition) plugininstall.Selection {
+func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings) pluginselection.Selection {
 	// A tool disabled by --no-tool is not run by plugins either.
-	return plugininstall.WithTools(plugininstall.Selection{
+	return pluginselection.WithTools(pluginselection.Selection{
 		RuleSet: checking.ConfigurationRules(),
 		Paths:   c.Plugins, ConfigFile: c.Config.Path, Disabled: c.Config.Disabled,
 		Acquisition:  acquisition,
@@ -83,10 +86,10 @@ func implicitProcessOptions(options *process.CommandOptions) bool {
 		len(options.Environment) == 0 && options.WorkingDir == ""
 }
 
-func selectedRulePlugins(ctx context.Context, selection plugininstall.Selection) (plugininstall.Sources, error) {
+func selectedRulePlugins(ctx context.Context, selection pluginselection.Selection) (pluginselection.Sources, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return plugininstall.Sources{}, err
+		return pluginselection.Sources{}, err
 	}
 	sources, err := selection.ResolveForRules(ctx, cwd)
 	return sources, err

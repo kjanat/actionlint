@@ -14,7 +14,8 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -23,7 +24,7 @@ import (
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition plugininstall.Acquisition) (inspection configreport.Inspection, err error) {
+func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
 	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
@@ -37,7 +38,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err != nil {
 		return inspection, err
 	}
-	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return inspection, err
 	}
@@ -81,12 +82,12 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 // that the --plugin flags or the selected configuration name: local manifest
 // files and the manifests of oci:// sources. It runs no plugin and downloads
 // no executable; other plugins are resolved but skipped.
-func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition plugininstall.Acquisition) ([]pluginmanifests.Manifest, error) {
+func InstalledProviders(ctx context.Context, selection configuration.Selection, paths []string, acquisition pluginacquisition.Settings) ([]pluginmanifests.Manifest, error) {
 	directory, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	sources, err := (plugininstall.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: ConfigurationRules(), Paths: paths, ConfigFile: selection.Path, Disabled: selection.Disabled, Acquisition: acquisition}).Resolve(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +116,10 @@ func InstalledProviders(ctx context.Context, selection configuration.Selection, 
 		if artifact.Info.Kind != pluginartifact.ProviderManifest {
 			continue
 		}
-		if err := plugininstall.ValidateProviderArtifact(ctx, artifact, sources.ArtifactOptions(path)); err != nil {
+		if err := process.ValidateProviderArtifact(ctx, artifact, sources.ArtifactOptions(path)); err != nil {
 			return nil, err
 		}
-		manifest, err := plugininstall.ReadProviderArtifact(artifact)
+		manifest, err := process.ReadProviderArtifact(artifact)
 		if err != nil {
 			return nil, err
 		}

@@ -14,7 +14,8 @@ import (
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
 const deferredRetryDelay = 5 * time.Second
@@ -28,8 +29,8 @@ type deferredBackend interface {
 type deferredScriptEngine struct {
 	gate        chan struct{}
 	descriptor  checkinputs.ScriptEngineDescriptor
-	pin         plugininstall.Pin
-	acquisition plugininstall.Acquisition
+	pin         pluginregistry.Pin
+	acquisition pluginacquisition.Settings
 	backend     deferredBackend
 	failure     error
 	retryAfter  time.Time
@@ -37,7 +38,7 @@ type deferredScriptEngine struct {
 	closed      bool
 }
 
-func newDeferredScriptEngine(pin plugininstall.Pin, acquisition plugininstall.Acquisition, reserved rule.Names) (*deferredScriptEngine, error) {
+func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition pluginacquisition.Settings, reserved rule.Names) (*deferredScriptEngine, error) {
 	var descriptor checkinputs.ScriptEngineDescriptor
 	if pin.Kind == pluginartifact.Component {
 		var err error
@@ -84,8 +85,8 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 			b.retryAfter = time.Now().Add(deferredRetryDelay)
 		}
 	}()
-	releases := plugininstall.ResolvedPlugins{Plugins: []plugininstall.Pin{b.pin}}
-	if err := releases.CheckStatuses(ctx, plugininstall.StatusOptions{Acquisition: b.acquisition}); err != nil {
+	releases := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{b.pin}}
+	if err := releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition}); err != nil {
 		return nil, err
 	}
 	artifact, err := pluginartifact.Resolve(ctx, b.pin.Source(), b.acquisition.ArtifactOptions())

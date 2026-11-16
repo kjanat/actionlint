@@ -16,8 +16,8 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -62,7 +62,7 @@ func nativeDocumentManifest(t *testing.T) manifests.Manifest {
 	}
 }
 
-func documentPluginSources(t *testing.T, manifest manifests.Manifest) plugininstall.Sources {
+func documentPluginSources(t *testing.T, manifest manifests.Manifest) pluginselection.Sources {
 	t.Helper()
 	data, err := json.Marshal(manifest)
 	if err != nil {
@@ -71,7 +71,7 @@ func documentPluginSources(t *testing.T, manifest manifests.Manifest) plugininst
 	sum := sha256.Sum256(data)
 	location := "https://plugins.example.invalid/document.json#sha256=" + hex.EncodeToString(sum[:])
 	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Kind: pluginartifact.ProviderManifest, Source: location}, Bytes: data}
-	return plugininstall.Sources{Paths: []string{location}, Artifacts: map[string]*pluginartifact.Artifact{location: artifact}}
+	return pluginselection.Sources{Paths: []string{location}, Artifacts: map[string]*pluginartifact.Artifact{location: artifact}}
 }
 
 func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {

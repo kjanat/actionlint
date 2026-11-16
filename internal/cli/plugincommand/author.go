@@ -18,8 +18,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
 const (
@@ -72,7 +72,7 @@ type authoringCaseResult struct {
 }
 
 // Run validates the manifest without running its tool.
-func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams, _ plugininstall.Acquisition) (int, error) {
+func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams, _ pluginacquisition.Settings) (int, error) {
 	manifest, programs, err := loadAuthorManifest(ctx, streams, r.Path)
 	if err == nil {
 		err = process.ValidateManifest(manifest, programs)
@@ -99,7 +99,7 @@ func (r ValidateOptions) Run(ctx context.Context, streams commandstreams.Streams
 }
 
 // Run applies the manifest transforms to fixtures without running its tool.
-func (r TestOptions) Run(ctx context.Context, streams commandstreams.Streams, _ plugininstall.Acquisition) (int, error) {
+func (r TestOptions) Run(ctx context.Context, streams commandstreams.Streams, _ pluginacquisition.Settings) (int, error) {
 	manifest, programs, fixtures, err := loadAuthorTests(ctx, streams, r.Paths)
 	cases := []authoringCaseResult{}
 	report := authoringReport{SchemaVersion: 1, Valid: true, Cases: &cases}

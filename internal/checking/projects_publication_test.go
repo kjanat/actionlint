@@ -9,7 +9,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -56,7 +56,7 @@ func TestCheckProjectsPreservesIncompleteChecksAcrossRepositories(t *testing.T) 
 		}
 		paths = append(paths, consumer)
 	}
-	result, err := CheckProjects(t.Context(), Options{SkipProjectConfig: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, plugininstall.Selection{Disabled: true, DisableTools: true})
+	result, err := CheckProjects(t.Context(), Options{SkipProjectConfig: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, pluginselection.Selection{Disabled: true, DisableTools: true})
 	if err != nil || result == nil {
 		t.Fatalf("check projects: result=%+v error=%v", result, err)
 	}

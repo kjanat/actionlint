@@ -12,7 +12,9 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -24,8 +26,8 @@ import (
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition plugininstall.Acquisition) (result *Result, err error) {
-	sources, err := plugininstall.SourcesFromArguments(paths, acquisition)
+func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition pluginacquisition.Settings) (result *Result, err error) {
+	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +35,7 @@ func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel
 }
 
 // CheckWithPlugins loads the selected plugins and checks the input.
-func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources plugininstall.Sources) (result *Result, err error) {
+func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources pluginselection.Sources) (result *Result, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -42,7 +44,7 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 		log = io.Discard
 	}
 	if sources.Releases != nil {
-		if err := sources.Releases.CheckStatuses(ctx, plugininstall.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }, Acquisition: sources.Acquisition}); err != nil {
+		if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }, Acquisition: sources.Acquisition}); err != nil {
 			return nil, &pluginexec.LoadError{Err: err}
 		}
 	}
@@ -67,8 +69,8 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
-func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, plugins []string, acquisition plugininstall.Acquisition) (needed ToolRequirements, err error) {
-	sources, err := plugininstall.SourcesFromArguments(plugins, acquisition)
+func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, plugins []string, acquisition pluginacquisition.Settings) (needed ToolRequirements, err error) {
+	sources, err := pluginselection.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
 		return needed, err
 	}
@@ -77,7 +79,7 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, p
 
 // RequiredToolsWithPlugins applies the selected plugins before checking which
 // native tools are needed.
-func RequiredToolsWithPlugins(ctx context.Context, options Options, paths []string, sources plugininstall.Sources) (needed ToolRequirements, err error) {
+func RequiredToolsWithPlugins(ctx context.Context, options Options, paths []string, sources pluginselection.Sources) (needed ToolRequirements, err error) {
 	loaded, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err

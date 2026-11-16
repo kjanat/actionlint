@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"github.com/spf13/cobra"
 )
@@ -28,7 +28,7 @@ type Command struct {
 	Stdin       io.Reader
 	Stdout      io.Writer
 	Stderr      io.Writer
-	Acquisition plugininstall.Acquisition
+	Acquisition pluginacquisition.Settings
 }
 
 func (cmd *Command) commandStreams() commandstreams.Streams {
