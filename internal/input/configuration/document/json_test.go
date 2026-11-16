@@ -20,7 +20,7 @@ func TestDecodeJSONCommentsAndTrailingCommas(t *testing.T) {
 			if diff := cmp.Diff(map[string]any{"value": []any{true}, "text": "https://example.test/*literal*/"}, decodeValue(t, node)); diff != "" {
 				t.Fatal(diff)
 			}
-			key, value := keyAt(node, "/value"), node.Origins()["/value"]
+			key, value := keyAt(node, "/value"), valueAt(node, "/value")
 			if key.Line != 3 || key.Column != 3 || value.Line != 3 || value.Column != 12 {
 				t.Fatalf("source positions changed: key %d:%d, value %d:%d", key.Line, key.Column, value.Line, value.Column)
 			}

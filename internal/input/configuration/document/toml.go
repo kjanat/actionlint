@@ -7,6 +7,9 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pelletier/go-toml/v2/unstable"
+
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 )
 
 func parseTOML(path string, data []byte) (*parsedSource, error) {
@@ -31,7 +34,9 @@ func parseTOML(path string, data []byte) (*parsedSource, error) {
 	parser.Reset(data)
 	current := ""
 	arrays := map[string]int{}
-	loc := func(n *unstable.Node) position { return offsetPosition(data, int(n.Raw.Offset)) }
+	loc := func(n *unstable.Node) sourcepos.Position {
+		return sourceposition.RawLFPosition(data, int(n.Raw.Offset))
+	}
 	var indexValue func(*unstable.Node, string, int)
 	keyPath := func(base string, n *unstable.Node, resolveArrays bool) string {
 		it := n.Key()
@@ -75,7 +80,7 @@ func parseTOML(path string, data []byte) (*parsedSource, error) {
 		if n.Raw.Length > 0 {
 			fallback = int(n.Raw.Offset)
 		}
-		d.values[p] = offsetPosition(data, fallback)
+		d.values[p] = sourceposition.RawLFPosition(data, fallback)
 		if n.Kind == unstable.LocalDate || n.Kind == unstable.LocalTime || n.Kind == unstable.LocalDateTime || n.Kind == unstable.DateTime {
 			setPath(d.value, p, string(n.Data))
 		}
@@ -91,7 +96,7 @@ func parseTOML(path string, data []byte) (*parsedSource, error) {
 				if it.Node().Raw.Length > 0 {
 					start = int(it.Node().Raw.Offset)
 				}
-				d.keys[child] = offsetPosition(data, start)
+				d.keys[child] = sourceposition.RawLFPosition(data, start)
 				indexValue(it.Node(), child, start)
 				cursor = tomlValueEnd(data, start)
 				i++
@@ -120,7 +125,7 @@ func parseTOML(path string, data []byte) (*parsedSource, error) {
 					pos = int(it.Node().Raw.Offset)
 				}
 			}
-			d.values[current] = offsetPosition(data, pos)
+			d.values[current] = sourceposition.RawLFPosition(data, pos)
 		case unstable.ArrayTable:
 			parts := n.Key()
 			p := ""
@@ -158,8 +163,8 @@ func parseTOML(path string, data []byte) (*parsedSource, error) {
 					pos = int(it.Node().Raw.Offset)
 				}
 			}
-			d.keys[current] = offsetPosition(data, pos)
-			d.values[current] = offsetPosition(data, pos)
+			d.keys[current] = sourceposition.RawLFPosition(data, pos)
+			d.values[current] = sourceposition.RawLFPosition(data, pos)
 		case unstable.Invalid, unstable.Comment, unstable.Key, unstable.Array, unstable.InlineTable,
 			unstable.String, unstable.Bool, unstable.Float, unstable.Integer, unstable.LocalDate, unstable.LocalTime, unstable.LocalDateTime, unstable.DateTime:
 		case unstable.KeyValue:

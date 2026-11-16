@@ -161,7 +161,7 @@ paths:
 			}
 			if strings.HasPrefix(tc.in, "assume-default-permissions:") {
 				var source *configuration.SourceError
-				if !errors.As(err, &source) || source.Line != 1 || source.Column != 29 {
+				if !errors.As(err, &source) || source.Position.Line != 1 || source.Position.Column != 29 {
 					t.Fatalf("wrong source position: %v", err)
 				}
 			}
@@ -423,7 +423,7 @@ func TestConfigParsePolicyUnknownKey(t *testing.T) {
 		t.Fatal("no error occurred")
 	}
 	var source *configuration.SourceError
-	if !errors.As(err, &source) || source.Line != 2 || source.Column != 3 || !strings.Contains(err.Error(), "require-commit-hashes") || !strings.Contains(err.Error(), "unknown key") {
+	if !errors.As(err, &source) || source.Position.Line != 2 || source.Position.Column != 3 || !strings.Contains(err.Error(), "require-commit-hashes") || !strings.Contains(err.Error(), "unknown key") {
 		t.Fatalf("unexpected positioned unknown key error: %v", err)
 	}
 }
@@ -435,7 +435,7 @@ func TestConfigParsePolicyNotAMapping(t *testing.T) {
 		t.Fatal("no error occurred")
 	}
 	var source *configuration.SourceError
-	if !errors.As(err, &source) || source.Line != 1 || source.Column != 9 || !strings.Contains(err.Error(), "expected a map") {
+	if !errors.As(err, &source) || source.Position.Line != 1 || source.Position.Column != 9 || !strings.Contains(err.Error(), "expected a map") {
 		t.Fatalf("unexpected positioned mapping error: %v", err)
 	}
 }
@@ -722,7 +722,7 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 				t.Fatal(scanErr)
 			}
 			var source *configuration.SourceError
-			if !errors.As(err, &source) || source.Line != line || source.Column != column {
+			if !errors.As(err, &source) || source.Position.Line != line || source.Position.Column != column {
 				t.Fatalf("source location: %v, want %d:%d", err, line, column)
 			}
 			message := "must be a boolean or a mapping"

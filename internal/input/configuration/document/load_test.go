@@ -129,7 +129,7 @@ func TestInheritedNullThenPartialMappingOrigin(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := loaded.Root.Origins()["/tools"]
-	if source.File != leaf || source.Reset == nil || source.Reset.File != base || source.Reset.Line != 1 {
+	if source.File != leaf || source.Reset == nil || source.Reset.File != base || source.Reset.Value.Line != 1 {
 		t.Fatalf("lost inherited reset: %+v", source)
 	}
 	if loaded.Root.Origins()["/tools/shellcheck"].File != middle || loaded.Root.Origins()["/tools/pyflakes"].File != leaf {

@@ -20,6 +20,8 @@ type Inspection struct {
 }
 
 // Origin identifies the default, project file, policy file or Action input that supplied a setting.
+// Line and Column stay flat, rather than a source.Position, because they are
+// part of the JSON and YAML report, where both are omitted when zero.
 type Origin struct {
 	File   string `json:"file,omitempty" yaml:"file,omitempty"`
 	Source string `json:"source" yaml:"source"`
@@ -30,6 +32,7 @@ type Origin struct {
 }
 
 // Warning identifies an ignored setting without rejecting legacy config files.
+// Like Origin, it keeps Line and Column flat for the JSON and YAML report.
 type Warning struct {
 	File    string `json:"file,omitempty" yaml:"file,omitempty"`
 	Message string `json:"message" yaml:"message"`

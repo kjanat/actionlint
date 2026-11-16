@@ -10,6 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func (cfg *Config) IncludesFile(path, root string) bool {
@@ -238,16 +240,16 @@ func expandInheritedConfigDirectory(value, directory string) string {
 
 // SourceError identifies the source location of a configuration error.
 type SourceError struct {
-	File         string
-	Line, Column int
-	Cause        error
+	File     string
+	Position sourcepos.Position
+	Cause    error
 }
 
 func (e *SourceError) Error() string {
 	if e.File != "" {
-		return fmt.Sprintf("%s:%d:%d: %v", e.File, e.Line, e.Column, e.Cause)
+		return fmt.Sprintf("%s:%d:%d: %v", e.File, e.Position.Line, e.Position.Column, e.Cause)
 	}
-	return fmt.Sprintf("line %d, column %d: %v", e.Line, e.Column, e.Cause)
+	return fmt.Sprintf("line %d, column %d: %v", e.Position.Line, e.Position.Column, e.Cause)
 }
 func (e *SourceError) Unwrap() error { return e.Cause }
 func sourceError(err error, inputs map[string]document.Location) error {
@@ -267,12 +269,12 @@ func sourceError(err error, inputs map[string]document.Location) error {
 	}
 	pointer := bindingError.Path
 	for {
-		if input, ok := inputs[pointer]; ok && input.Line > 0 {
-			line, column := input.Line, input.Column
-			if errors.Is(err, binding.ErrUnknownKey) && input.KeyLine > 0 {
-				line, column = input.KeyLine, input.KeyColumn
+		if input, ok := inputs[pointer]; ok && input.Value.Line > 0 {
+			at := input.Value
+			if errors.Is(err, binding.ErrUnknownKey) && input.Key.Line > 0 {
+				at = input.Key
 			}
-			return &SourceError{File: input.File, Line: line, Column: column, Cause: err}
+			return &SourceError{File: input.File, Position: at, Cause: err}
 		}
 		at := strings.LastIndex(pointer, "/")
 		if at < 0 {

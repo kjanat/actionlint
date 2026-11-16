@@ -182,7 +182,7 @@ func (p *NetworkPolicy) Resolve(rules RuleSet, resolved ResolvedConfig) (Resolve
 		resolved.Origins = map[string]configreport.Origin{}
 	}
 	setOrigin := func(key string, input document.Location) {
-		resolved.Origins["/network/metadata-mirrors/"+key] = configreport.Origin{Source: "policy", State: "value", File: input.File, Line: input.Line, Column: input.Column}
+		resolved.Origins["/network/metadata-mirrors/"+key] = configreport.Origin{Source: "policy", State: "value", File: input.File, Line: input.Value.Line, Column: input.Value.Column}
 	}
 	for key, absent := range map[string]bool{"services": requested.Services == nil, "allow-unknown-repositories": requested.AllowUnknownRepositories == nil} {
 		if input, ok := p.defaultOrigins["/network/metadata-mirrors/"+key]; absent && ok {

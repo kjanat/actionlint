@@ -57,7 +57,7 @@ func TestConfigTimeoutBounds(t *testing.T) {
 			t.Parallel()
 			_, err := checking.ConfigurationRules().ParseConfig([]byte("policy:\n  require-job-timeout: " + tc.mapping))
 			var source *configuration.SourceError
-			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
+			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Position.Line != 2 || source.Position.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
 			}
 		})
@@ -152,7 +152,7 @@ func TestConfigRequirePermissions(t *testing.T) {
 			t.Parallel()
 			_, err := checking.ConfigurationRules().ParseConfig([]byte("policy:\n  require-permissions: " + tc.value))
 			var source *configuration.SourceError
-			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Line != 2 || source.Column < 1 {
+			if err == nil || !strings.Contains(err.Error(), tc.message) || !errors.As(err, &source) || source.Position.Line != 2 || source.Position.Column < 1 {
 				t.Fatalf("expected positioned %q error, got %v", tc.message, err)
 			}
 		})

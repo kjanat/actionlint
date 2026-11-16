@@ -7,17 +7,19 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestFormats(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name, src  string
-		key, value Location
+		key, value sourcepos.Position
 	}{
-		{"config.yaml", "repository:\n  runners: [gpu]\n", Location{File: "config.yaml", Line: 2, Column: 3}, Location{File: "config.yaml", Line: 2, Column: 12}},
-		{"config.jsonc", "{\n // comment\n \"repository\": {\"runners\": [\"gpu\"],},\n}", Location{File: "config.jsonc", Line: 3, Column: 17}, Location{File: "config.jsonc", Line: 3, Column: 28}},
-		{"config.toml", "[repository]\nrunners = [\"gpu\"]\n", Location{File: "config.toml", Line: 2, Column: 1}, Location{File: "config.toml", Line: 2, Column: 11}},
+		{"config.yaml", "repository:\n  runners: [gpu]\n", sourcepos.Position{Line: 2, Column: 3}, sourcepos.Position{Line: 2, Column: 12}},
+		{"config.jsonc", "{\n // comment\n \"repository\": {\"runners\": [\"gpu\"],},\n}", sourcepos.Position{Line: 3, Column: 17}, sourcepos.Position{Line: 3, Column: 28}},
+		{"config.toml", "[repository]\nrunners = [\"gpu\"]\n", sourcepos.Position{Line: 2, Column: 1}, sourcepos.Position{Line: 2, Column: 11}},
 	}
 	want := map[string]any{"repository": map[string]any{"runners": []any{"gpu"}}}
 	for _, tc := range tests {
@@ -30,27 +32,25 @@ func TestFormats(t *testing.T) {
 			if !reflect.DeepEqual(d.Value(), want) {
 				t.Fatalf("value %#v", d.Value())
 			}
-			if got := keyAt(d, "/repository/runners"); got != tc.key {
-				t.Errorf("key %+v", got)
+			at := d.Origins()["/repository/runners"]
+			if at.File != tc.name {
+				t.Errorf("file %q", at.File)
 			}
-			if got := valueAt(d, "/repository/runners"); got != tc.value {
-				t.Errorf("value location %+v", got)
+			if at.Key != tc.key {
+				t.Errorf("key %+v", at.Key)
+			}
+			if at.Value != tc.value {
+				t.Errorf("value location %+v", at.Value)
 			}
 		})
 	}
 }
 
-// keyAt returns the position of the key or list item at pointer as a Location's Line and Column.
-func keyAt(n *Node, pointer string) Location {
-	at := n.Origins()[pointer]
-	return Location{File: at.File, Line: at.KeyLine, Column: at.KeyColumn}
-}
+// keyAt returns the position of the key or list item at pointer.
+func keyAt(n *Node, pointer string) sourcepos.Position { return n.Origins()[pointer].Key }
 
-// valueAt returns the position of the value at pointer without its key position.
-func valueAt(n *Node, pointer string) Location {
-	at := n.Origins()[pointer]
-	return Location{File: at.File, Line: at.Line, Column: at.Column}
-}
+// valueAt returns the position of the value at pointer.
+func valueAt(n *Node, pointer string) sourcepos.Position { return n.Origins()[pointer].Value }
 
 func TestDuplicateKeys(t *testing.T) {
 	t.Parallel()
@@ -160,11 +160,11 @@ func TestNestedTOMLLocations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for p, col := range map[string]int{"/values": 10, "/values/0": 11, "/values/1": 16, "/values/1/1": 20, "/values/1/1/nested": 31} {
-		if loc := d.Origins()[p]; loc.Column != col {
+		if loc := d.Origins()[p]; loc.Value.Column != col {
 			t.Errorf("%s = %+v, want column %d", p, loc, col)
 		}
 	}
-	if loc := d.Origins()["/items/0"]; loc.Line != 2 || loc.Column != 1 {
+	if loc := d.Origins()["/items/0"]; loc.Value.Line != 2 || loc.Value.Column != 1 {
 		t.Errorf("array table = %+v", loc)
 	}
 }

@@ -30,7 +30,7 @@ func configOrigins(value any, prefix string, origins map[string]configreport.Ori
 		if _, present := origins[pointer]; !present {
 			continue
 		}
-		if source, exists := inputs[pointer]; exists && (source.Line != 0 || source.Column != 0 || source.Name != "") {
+		if source, exists := inputs[pointer]; exists && (source.Value.Line != 0 || source.Value.Column != 0 || source.Name != "") {
 			origins[pointer] = configValueOrigin(child, source)
 		}
 		if err := configOrigins(child, pointer, origins, inputs); err != nil {
@@ -41,7 +41,7 @@ func configOrigins(value any, prefix string, origins map[string]configreport.Ori
 }
 
 func configValueOrigin(value any, input document.Location) configreport.Origin {
-	origin := configreport.Origin{Source: "config", State: "null", File: input.File, Line: input.Line, Column: input.Column}
+	origin := configreport.Origin{Source: "config", State: "null", File: input.File, Line: input.Value.Line, Column: input.Value.Column}
 	if value != nil {
 		origin.State = "value"
 	}

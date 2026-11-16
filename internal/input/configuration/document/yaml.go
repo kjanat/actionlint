@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/kjanat/go-yaml/v4"
+
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func parseYAML(path string, data []byte) (*parsedSource, error) {
@@ -47,10 +49,10 @@ func parseYAML(path string, data []byte) (*parsedSource, error) {
 		}
 		active[n] = true
 		defer delete(active, n)
-		d.values[p] = position{n.Line, n.Column}
+		d.values[p] = sourcepos.Position{Line: n.Line, Column: n.Column}
 		if n.Kind == yaml.AliasNode {
 			walk(n.Alias, p, active)
-			d.values[p] = position{n.Line, n.Column}
+			d.values[p] = sourcepos.Position{Line: n.Line, Column: n.Column}
 			return
 		}
 		if n.Kind == yaml.ScalarNode && (n.ShortTag() == "!!int" || n.ShortTag() == "!!float") {
@@ -85,21 +87,21 @@ func parseYAML(path string, data []byte) (*parsedSource, error) {
 					walk(v, p, active)
 				}
 			}
-			d.values[p] = position{n.Line, n.Column}
+			d.values[p] = sourcepos.Position{Line: n.Line, Column: n.Column}
 			for i := 0; i+1 < len(n.Content); i += 2 {
 				k, v := n.Content[i], n.Content[i+1]
 				if k.ShortTag() == "!!merge" {
 					continue
 				}
 				child := Path(p, k.Value)
-				d.keys[child] = position{k.Line, k.Column}
+				d.keys[child] = sourcepos.Position{Line: k.Line, Column: k.Column}
 				walk(v, child, active)
 			}
 		case yaml.DocumentNode, yaml.ScalarNode, yaml.AliasNode, yaml.StreamNode:
 		case yaml.SequenceNode:
 			for i, v := range n.Content {
 				child := Index(p, i)
-				d.keys[child] = position{v.Line, v.Column}
+				d.keys[child] = sourcepos.Position{Line: v.Line, Column: v.Column}
 				walk(v, child, active)
 			}
 		}

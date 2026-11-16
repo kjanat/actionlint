@@ -7,17 +7,18 @@ import (
 	"maps"
 	"strconv"
 	"strings"
+
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // Location records where a configuration value came from. File names the
-// source file; Name names a command-line input instead of a file. Line and
-// Column point at the value, and KeyLine and KeyColumn at its key or list
-// item. Reset points at an inherited null that this value replaced.
+// source file; Name names a command-line input instead of a file. Value points
+// at the value and Key at its key or list item; a zero position is unknown.
+// Reset points at an inherited null that this value replaced.
 type Location struct {
-	Name, File         string
-	Line, Column       int
-	KeyLine, KeyColumn int
-	Reset              *Location
+	Name, File string
+	Value, Key sourcepos.Position
+	Reset      *Location
 }
 
 // Node is one configuration value together with the location of every child.
