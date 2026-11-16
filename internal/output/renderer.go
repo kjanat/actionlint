@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"io"
 
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Renderer formats analysis results.
 type Renderer struct {
-	format     Format
+	format     outputformat.Format
 	oneline    bool
 	version    func() string
 	rules      *ruleSet
@@ -21,16 +22,16 @@ type Renderer struct {
 }
 
 // New validates a built-in format or custom Go template before rendering.
-func New(format Format, template string, oneline bool, version func() string, rules []Rule) (*Renderer, error) {
+func New(format outputformat.Format, template string, oneline bool, version func() string, rules []Rule) (*Renderer, error) {
 	if format != "" && template != "" {
 		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
 	}
 	r := &Renderer{format: format, oneline: oneline, version: version, rules: newRuleSet(rules), width: 100}
 	switch format {
-	case "", FormatPretty, FormatGCC, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub:
-	case FormatText:
+	case "", outputformat.Pretty, outputformat.GCC, outputformat.JSON, outputformat.JSONL, outputformat.SARIF, outputformat.GitHub:
+	case outputformat.Text:
 		r.oneline = false
-	case FormatOneline:
+	case outputformat.Oneline:
 		r.oneline = true
 	default:
 		return nil, fmt.Errorf("unknown output format %q", format)
@@ -68,23 +69,23 @@ func (r *Renderer) Render(out io.Writer, result RenderedReport) error {
 		r.rules.register(rule)
 	}
 	switch r.format {
-	case FormatGCC:
+	case outputformat.GCC:
 		return WriteGCC(out, result.Diagnostics)
-	case FormatJSON, FormatJSONL:
+	case outputformat.JSON, outputformat.JSONL:
 		if result.Status == "" {
 			return errors.New("JSON rendering requires a command result with an explicit status")
 		}
-		return WriteJSON(out, result.CheckResult, r.format == FormatJSONL)
-	case FormatGitHub:
+		return WriteJSON(out, result.CheckResult, r.format == outputformat.JSONL)
+	case outputformat.GitHub:
 		return WriteGitHub(out, result.Diagnostics)
-	case FormatSARIF:
+	case outputformat.SARIF:
 		return WriteSARIF(out, r.version(), r.rules.sorted(), result.Diagnostics)
-	case FormatText, FormatPretty, FormatOneline:
+	case outputformat.Text, outputformat.Pretty, outputformat.Oneline:
 		// Text formats render findings below.
 	}
 	fields := make([]*TemplateFields, 0, len(result.Findings))
 	for _, finding := range result.Findings {
-		if r.format == FormatPretty {
+		if r.format == outputformat.Pretty {
 			configPath := ""
 			// Omit repeated rule descriptions from individual findings.
 			if rule := r.rules.lookup(finding.Rule); rule != nil {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -30,7 +31,7 @@ func TestLifecycleOutput(t *testing.T) {
 			map[string]any{"id": "retirement-required", "description": "Require migration", "origin": "organization", "severity": "error", "starts_on": "2026-11-01", "enforced": true},
 		},
 	}
-	for _, format := range []Format{FormatJSON, FormatJSONL, FormatSARIF} {
+	for _, format := range []outputformat.Format{outputformat.JSON, outputformat.JSONL, outputformat.SARIF} {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
 			renderer, err := New(format, "", false, testVersion, nil)
@@ -43,7 +44,7 @@ func TestLifecycleOutput(t *testing.T) {
 			}
 			var findings []map[string]any
 			switch format {
-			case FormatJSON:
+			case outputformat.JSON:
 				var document struct {
 					Diagnostics []map[string]any `json:"diagnostics"`
 				}
@@ -51,7 +52,7 @@ func TestLifecycleOutput(t *testing.T) {
 					t.Fatal(err)
 				}
 				findings = document.Diagnostics
-			case FormatJSONL:
+			case outputformat.JSONL:
 				decoder := json.NewDecoder(&out)
 				for range 2 {
 					var finding map[string]any
@@ -60,7 +61,7 @@ func TestLifecycleOutput(t *testing.T) {
 					}
 					findings = append(findings, finding)
 				}
-			case FormatSARIF:
+			case outputformat.SARIF:
 				sarif.RequireValid(t, out.Bytes())
 				var document struct {
 					Runs []struct {
@@ -90,7 +91,7 @@ func TestLifecycleOutput(t *testing.T) {
 	}
 	t.Run("pretty", func(t *testing.T) {
 		t.Parallel()
-		renderer, err := New(FormatPretty, "", false, testVersion, []Rule{{Name: "runner", Category: "workflow"}})
+		renderer, err := New(outputformat.Pretty, "", false, testVersion, []Rule{{Name: "runner", Category: "workflow"}})
 		if err != nil {
 			t.Fatal(err)
 		}

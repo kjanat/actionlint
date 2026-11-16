@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 )
 
 // OutputFormats lists the diagnostic representations selected by default.
@@ -33,7 +33,7 @@ func (c *OutputConfig) DecodeConfig(value any) error {
 		return err
 	}
 	for i, name := range next.Formats {
-		if !output.ValidFormat(name) {
+		if !outputformat.Valid(name) {
 			return binding.At("formats", binding.At(strconv.Itoa(i), fmt.Errorf("unknown output format %q", name)))
 		}
 	}

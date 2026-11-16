@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -69,7 +70,7 @@ func TestCommandWorkflowPaths(t *testing.T) {
 
 func TestCLIWriteErrors(t *testing.T) {
 	t.Parallel()
-	for _, format := range []output.Format{output.FormatText, output.FormatPretty, output.FormatOneline, output.FormatGCC, output.FormatJSON, output.FormatJSONL, output.FormatSARIF, output.FormatGitHub} {
+	for _, format := range []outputformat.Format{outputformat.Text, outputformat.Pretty, outputformat.Oneline, outputformat.GCC, outputformat.JSON, outputformat.JSONL, outputformat.SARIF, outputformat.GitHub} {
 		var stderr strings.Builder
 		cmd := cli.Command{Stdin: strings.NewReader(commandBadWorkflow), Stdout: commandFailingIO{}, Stderr: &stderr}
 		status := cmd.Main([]string{"actionlint", "--summary=false", "--no-tool=shellcheck", "--no-tool=ruff", "--output-format=" + string(format), "-"})
@@ -298,7 +299,7 @@ func TestCommandOutputSelection(t *testing.T) {
 
 func TestApplicationBuiltInOutput(t *testing.T) {
 	t.Parallel()
-	for _, format := range []output.Format{output.FormatText, output.FormatOneline, output.FormatJSON, output.FormatJSONL, output.FormatSARIF} {
+	for _, format := range []outputformat.Format{outputformat.Text, outputformat.Oneline, outputformat.JSON, outputformat.JSONL, outputformat.SARIF} {
 		var out bytes.Buffer
 		result, err := checking.Check(t.Context(), checking.Options{}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(commandBadWorkflow)})
 		if err != nil || len(result.Diagnostics) != 1 {
@@ -319,9 +320,9 @@ func TestApplicationBuiltInOutput(t *testing.T) {
 		}
 	}
 	for _, opts := range []struct {
-		format   output.Format
+		format   outputformat.Format
 		template string
-	}{{"csv", ""}, {output.FormatJSON, "{{json .}}"}} {
+	}{{"csv", ""}, {outputformat.JSON, "{{json .}}"}} {
 		if _, err := output.New(opts.format, opts.template, false, buildinfo.Version, nil); err == nil {
 			t.Fatalf("invalid output options accepted: %+v", opts)
 		}

@@ -27,6 +27,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -194,7 +195,7 @@ func runLinter(req *lintRequest) *lintResult {
 	}
 	if req.format == formatSARIF || req.sarif {
 		var sarif bytes.Buffer
-		sarifRenderer, err := output.New(output.FormatSARIF, "", false, buildinfo.Version, nil)
+		sarifRenderer, err := output.New(outputformat.SARIF, "", false, buildinfo.Version, nil)
 		if err == nil {
 			err = sarifRenderer.Render(&sarif, output.FromAnalysis(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
 		}

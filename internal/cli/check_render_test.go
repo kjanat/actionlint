@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -48,7 +49,7 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 	stop := make(chan struct{})
 	failures := make(chan error, 4)
 	var renders sync.WaitGroup
-	for _, format := range []output.Format{output.FormatText, output.FormatPretty, output.FormatText, output.FormatPretty} {
+	for _, format := range []outputformat.Format{outputformat.Text, outputformat.Pretty, outputformat.Text, outputformat.Pretty} {
 		renders.Go(func() {
 			renderer, err := output.New(format, "", false, buildinfo.Version, nil)
 			if err != nil {

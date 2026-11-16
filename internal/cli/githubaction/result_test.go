@@ -13,6 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -31,7 +32,7 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 		Start: source.Position{Line: 1, Column: 6}, End: source.Position{Line: 1, Column: 8},
 		Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{{Path: file}}}},
 	}}}
-	renderer, err := output.New(output.FormatSARIF, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(outputformat.SARIF, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

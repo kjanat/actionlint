@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +23,7 @@ func TestGCCOutput(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			renderer, err := New(FormatGCC, "", false, testVersion, nil)
+			renderer, err := New(outputformat.GCC, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

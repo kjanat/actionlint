@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -41,7 +42,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 			if legacyOut.String() != tc.legacySpan {
 				t.Fatalf("custom-template range changed: want %s, got %s", tc.legacySpan, legacyOut.String())
 			}
-			for _, format := range []Format{FormatSARIF, FormatGitHub} {
+			for _, format := range []outputformat.Format{outputformat.SARIF, outputformat.GitHub} {
 				t.Run(string(format), func(t *testing.T) {
 					t.Parallel()
 					renderer, err := New(format, "", false, testVersion, nil)
@@ -52,7 +53,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 					if err := renderer.Render(&out, FromAnalysis(result)); err != nil {
 						t.Fatal(err)
 					}
-					if format == FormatGitHub {
+					if format == outputformat.GitHub {
 						want := "::error file=input.yml," + tc.github + ",title=expression::bad range\n"
 						if out.String() != want {
 							t.Fatalf("want %s, got %s", want, out.String())
@@ -93,9 +94,9 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 		t.Fatalf("template inferred an unverified token extent: %+v", fields)
 	}
 	for _, mode := range []struct {
-		format   Format
+		format   outputformat.Format
 		template string
-	}{{format: FormatText}, {template: "{{range .}}{{.Snippet}}{{end}}"}} {
+	}{{format: outputformat.Text}, {template: "{{range .}}{{.Snippet}}{{end}}"}} {
 		renderer, err := New(mode.format, mode.template, false, testVersion, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -121,7 +122,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
 	result := report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{Content: source})}}
 
-	textRenderer, err := New(FormatText, "", true, testVersion, nil)
+	textRenderer, err := New(outputformat.Text, "", true, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +134,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 		t.Fatalf("explicit text format omitted source snippet: %q", text.String())
 	}
 
-	onelineRenderer, err := New(FormatOneline, "", false, testVersion, nil)
+	onelineRenderer, err := New(outputformat.Oneline, "", false, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +153,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 		Path: "input.yml", Rule: "expression", Message: "bad text",
 		Start: sourcepos.Position{Line: 1, Column: 1}, Snippet: "on: push",
 	}
-	for _, format := range []Format{"", FormatOneline} {
+	for _, format := range []outputformat.Format{"", outputformat.Oneline} {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
 			renderer, err := New(format, "", true, testVersion, nil)

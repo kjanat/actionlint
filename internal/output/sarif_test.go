@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -28,7 +29,7 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 					{Path: path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: `"$x"`},
 				}}},
 			}
-			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
+			renderer, err := New(outputformat.SARIF, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,7 +67,7 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 	t.Parallel()
 	absolute := filepath.Join(t.TempDir(), "workflow.yml")
 	{
-		renderer, err := New(FormatSARIF, "", false, testVersion, nil)
+		renderer, err := New(outputformat.SARIF, "", false, testVersion, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -110,7 +111,7 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 					{Path: "dir/my workflow.yml", Start: source.Position{Line: 7, Column: 16}, End: source.Position{Line: 7, Column: 16}, Replacement: `"`},
 				}}},
 			}
-			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
+			renderer, err := New(outputformat.SARIF, "", false, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -259,7 +260,7 @@ func TestSARIFRuleDefaultsAndResultSeverity(t *testing.T) {
 func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 	t.Parallel()
 	metadata := Rule{Name: "custom-rule", Description: "summary", Explanation: "explanation", Help: "repair instructions", DocumentationURL: "https://example.com/custom-rule", Examples: []rule.Example{{Description: "original example"}}}
-	renderer, err := New(FormatSARIF, "", false, testVersion, []Rule{metadata})
+	renderer, err := New(outputformat.SARIF, "", false, testVersion, []Rule{metadata})
 	if err != nil {
 		t.Fatal(err)
 	}

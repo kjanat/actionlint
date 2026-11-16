@@ -6,6 +6,7 @@ import (
 	"os"
 
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
 	"actionlint.kjanat.dev/v2/internal/output"
 )
@@ -53,7 +54,7 @@ func githubActionsColor(out io.Writer) bool {
 	return true
 }
 
-func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format output.Format) {
+func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format outputformat.Format) {
 	if r.Color != output.ColorAuto || os.Getenv("GITHUB_ACTIONS") != "true" {
 		return
 	}
@@ -62,9 +63,9 @@ func (r *renderOptions) resolveGitHubActionsColor(out io.Writer, format output.F
 		return
 	}
 	switch format {
-	case "", output.FormatText, output.FormatPretty, output.FormatOneline:
+	case "", outputformat.Text, outputformat.Pretty, outputformat.Oneline:
 		r.Color = output.ColorAlways
-	case output.FormatGCC, output.FormatJSON, output.FormatJSONL, output.FormatSARIF, output.FormatGitHub:
+	case outputformat.GCC, outputformat.JSON, outputformat.JSONL, outputformat.SARIF, outputformat.GitHub:
 		// Machine-readable formats stay uncolored.
 	}
 }

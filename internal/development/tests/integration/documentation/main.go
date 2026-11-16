@@ -25,6 +25,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/output"
@@ -84,7 +85,7 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	renderer, err := output.New(output.FormatText, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(outputformat.Text, "", false, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err
 	}

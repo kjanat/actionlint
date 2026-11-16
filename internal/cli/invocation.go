@@ -8,6 +8,7 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -89,7 +90,7 @@ type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
 	Hyperlinks         hyperlinkMode
-	Formats            []output.Format
+	Formats            []outputformat.Format
 	Template           string
 	TemplateFile       string
 	OutputFile         string
@@ -194,9 +195,9 @@ func (a *commandApp) prepareInvocation() error {
 		return commandargs.UsageError{Cause: errors.New("--diagnostic-width must be between 40 and 400")}
 	}
 	for _, mode := range o.output {
-		if output.ValidFormat(mode) {
+		if outputformat.Valid(mode) {
 			i.Render.Oneline = false
-			format := output.Format(mode)
+			format := outputformat.Format(mode)
 			if !slices.Contains(i.Render.Formats, format) {
 				i.Render.Formats = append(i.Render.Formats, format)
 			}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/mattn/go-runewidth"
 )
@@ -21,7 +22,7 @@ func TestPrettyWrappedHyperlinks(t *testing.T) {
 		Rule: "example", Message: "See " + target + ".",
 		Help: "Read [the help](" + help + ").", DocumentationURL: docs,
 	}
-	renderer, err := New(FormatPretty, "", false, testVersion, nil)
+	renderer, err := New(outputformat.Pretty, "", false, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func TestPrettyHyperlinksSanitizeControls(t *testing.T) {
 
 func TestPrettyDiagnostic(t *testing.T) {
 	t.Parallel()
-	r, err := New(FormatPretty, "", false, testVersion, nil)
+	r, err := New(outputformat.Pretty, "", false, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +204,7 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 		Help: rule.Help, Explanation: rule.Explanation,
 		DocumentationURL: rule.DocumentationURL,
 	}
-	r, err := New(FormatPretty, "", false, testVersion, []Rule{rule})
+	r, err := New(outputformat.Pretty, "", false, testVersion, []Rule{rule})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +255,7 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			renderer, err := New(FormatPretty, "", false, testVersion, tc.rules)
+			renderer, err := New(outputformat.Pretty, "", false, testVersion, tc.rules)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -326,7 +327,7 @@ func TestPrettyWidthAndCoordinates(t *testing.T) {
 func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	t.Parallel()
 	d := results.Diagnostic{Severity: "warning", Message: "message", Path: "file.yml", Start: source.Position{Line: 8, Column: 4}}
-	renderer, err := New(FormatPretty, "", false, testVersion, nil)
+	renderer, err := New(outputformat.Pretty, "", false, testVersion, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +351,7 @@ func TestRendererColorMode(t *testing.T) {
 		Path: "ci.yml", Start: source.Position{Line: 1, Column: 3}, End: source.Position{Line: 1, Column: 6},
 	}
 	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	for _, format := range []Format{FormatPretty, FormatText, FormatOneline} {
+	for _, format := range []outputformat.Format{outputformat.Pretty, outputformat.Text, outputformat.Oneline} {
 		for _, colored := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/color=%t", format, colored), func(t *testing.T) {
 				t.Parallel()
