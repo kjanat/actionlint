@@ -65,7 +65,8 @@ func ParseStatusPaths(output string) ([]string, error) {
 			return nil, fmt.Errorf("unexpected Git status entry %q", record)
 		}
 		paths = append(paths, record[3:])
-		if record[0] == 'R' || record[0] == 'C' {
+		// The index or the worktree column can mark a rename or copy.
+		if strings.ContainsAny(record[:2], "RC") {
 			i++
 		}
 	}
