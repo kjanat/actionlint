@@ -52,7 +52,7 @@ var VendorLockInRule = &define.Rule{
 	}},
 	SupportsActions: true,
 	Scope:           rule.SourceConfiguration,
-	Checks:          func(c define.Inputs) define.Checks { return VendorLockInChecks(c.Runners.Target()) },
+	Checks:          func(c define.RuleInputs) define.Checks { return VendorLockInChecks(c.Runners.Target()) },
 }
 
 func VendorLockIn(w declaration.Workflow, uses *workflowlang.String, target string) []results.Diagnostic {

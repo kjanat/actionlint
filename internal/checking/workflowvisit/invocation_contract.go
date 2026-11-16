@@ -18,7 +18,7 @@ type Invocation struct {
 
 	Path    string
 	Source  parsing.SourceSnapshot
-	Actions workspaceactions.MetadataLookup
+	Actions workspaceactions.ActionMetadataLookup
 }
 
 // InvocationParticipant observes resolved action execution without producing child rules.

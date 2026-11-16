@@ -21,7 +21,7 @@ import (
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
-func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (namemodel.Declared, error)) define.Inputs {
+func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (namemodel.Declared, error)) define.RuleInputs {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, ".github", "workflows", "consumer.yml")
@@ -40,7 +40,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 	if err != nil {
 		t.Fatal(err)
 	}
-	return define.Inputs{
+	return define.RuleInputs{
 		Bindings: rulebinding.NewRegistry(rules).Prepare(config, config, config),
 		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
@@ -88,7 +88,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 					t.Fatalf("loads=%d, want %d; preparation mutated its input", loads, wantLoads)
 				}
 				workflow, _ := inputs.SourceSnapshot.WorkflowView()
-				rule := registration.Build(prepared.Inputs)
+				rule := registration.Build(prepared.RuleInputs)
 				if err := rule.VisitWorkflowPre(workflow); err != nil {
 					t.Fatal(err)
 				}

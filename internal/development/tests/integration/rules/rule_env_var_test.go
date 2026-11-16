@@ -25,7 +25,7 @@ func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {
 		},
 	}
 	w := &workflowlang.Workflow{Env: e}
-	r := correctness.EnvVarRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+	r := correctness.EnvVarRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestRuleEnvVarCheckInvalidName(t *testing.T) {
 func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 	t.Parallel()
 	w := &workflowlang.Workflow{Env: nil}
-	r := correctness.EnvVarRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+	r := correctness.EnvVarRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestRuleEnvVarSkipEdgeCaseEnv(t *testing.T) {
 			Expression: &workflowlang.String{Value: ""},
 		},
 	}
-	r = correctness.EnvVarRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+	r = correctness.EnvVarRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 	if err := r.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}

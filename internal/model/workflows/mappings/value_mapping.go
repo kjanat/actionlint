@@ -18,11 +18,13 @@ type DeclaredEntry struct {
 	Evaluated bool
 }
 
-// Inputs is the source declaration consumed at the syntax ownership boundary.
-type Inputs struct {
+// DeclaredMapping is a mapping as written in source: literal entries, an
+// expression whose object value supplies further entries, and inserted
+// mappings. It is consumed at the syntax ownership boundary.
+type DeclaredMapping struct {
 	Values     map[string]DeclaredEntry
 	Expression value.Value
-	Insertions []*Inputs
+	Insertions []*DeclaredMapping
 }
 
 type mappingEntry struct {
@@ -49,9 +51,9 @@ type Mapping struct {
 }
 
 // Resolve applies key coercion, expression classification, and insertions once.
-func Resolve(inputs *Inputs) Mapping {
+func Resolve(declared *DeclaredMapping) Mapping {
 	result := Mapping{byName: map[string][]int{}, complete: true}
-	if inputs == nil {
+	if declared == nil {
 		return result
 	}
 	add := func(name, item value.Value, source string, evaluated bool) {
@@ -68,16 +70,16 @@ func Resolve(inputs *Inputs) Mapping {
 		result.byName[key] = append(result.byName[key], len(result.entries))
 		result.entries = append(result.entries, entry)
 	}
-	for _, sourceName := range slices.Sorted(maps.Keys(inputs.Values)) {
-		input := inputs.Values[sourceName]
+	for _, sourceName := range slices.Sorted(maps.Keys(declared.Values)) {
+		input := declared.Values[sourceName]
 		name := input.Name
 		if name.State() == value.Missing {
 			name = value.YAMLScalar(sourceName, "!!str", value.Origin{})
 		}
 		add(name, input.Value, input.Source, input.Evaluated)
 	}
-	if inputs.Expression.State() != value.Missing {
-		expression := inputs.Expression
+	if declared.Expression.State() != value.Missing {
+		expression := declared.Expression
 		if expression.Known() && expression.Kind() == value.Object {
 			for name, item := range expression.Props() {
 				add(value.FromJSON(name, expression.Origin()), item, name, true)
@@ -86,7 +88,7 @@ func Resolve(inputs *Inputs) Mapping {
 			result.complete = false
 		}
 	}
-	for _, insertion := range inputs.Insertions {
+	for _, insertion := range declared.Insertions {
 		inserted := Resolve(insertion)
 		result.complete = result.complete && inserted.complete
 		result.decls = append(result.decls, inserted.decls...)

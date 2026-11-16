@@ -32,7 +32,7 @@ var Rule = &define.Rule{
 	Help:            "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.",
 	SupportsActions: true,
 	Prepare:         define.PrepareWorkflowMetadata,
-	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
 		return NewExpressionRule(c.Context, base, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
 	},
 }
@@ -132,7 +132,7 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.Job) error {
 }
 
 // NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
-func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspaceactions.ActionMetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
 	r.Checker = New(Dependencies{
 		Runners:  runners,

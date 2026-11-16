@@ -28,7 +28,7 @@ type UnavailableCheck struct {
 	Name, Reason string
 }
 
-func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action bool) (Selection, error) {
+func CreateRules(ruleSet configuration.RuleSet, inputs define.RuleInputs, action bool) (Selection, error) {
 	inputs.Rules = ruleSet
 	var selected Selection
 	for _, descriptor := range ruleexec.Registrations(ruleSet) {
@@ -47,7 +47,7 @@ func CreateRules(ruleSet configuration.RuleSet, inputs define.Inputs, action boo
 			}
 			switch outcome := outcome.(type) {
 			case define.PreparedInputs:
-				prepared = outcome.Inputs
+				prepared = outcome.RuleInputs
 			case define.UnavailableInputs:
 				selected.Unavailable = append(selected.Unavailable, UnavailableCheck{Name: descriptor.Name, Reason: outcome.Reason})
 				continue

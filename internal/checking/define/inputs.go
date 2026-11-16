@@ -20,10 +20,10 @@ import (
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
-// Inputs supplies captured sources, resolved settings and model facts to rule constructors.
+// RuleInputs supplies captured sources, resolved settings and model facts to rule constructors.
 // It contains no process pool, application session or engine implementation.
 // Context controls cancellation for rule work, including filesystem reads.
-type Inputs struct {
+type RuleInputs struct {
 	Bindings                    *rulebinding.Scope
 	RequiredPermissionLocations []configuration.PermissionLocation
 	Lifecycle                   actionmeta.LifecycleContext
@@ -48,7 +48,7 @@ type Inputs struct {
 }
 
 // DocumentPath returns the absolute path of the checked document.
-func (c Inputs) DocumentPath() string {
+func (c RuleInputs) DocumentPath() string {
 	if filepath.IsAbs(c.Path) {
 		return c.Path
 	}
@@ -58,7 +58,7 @@ func (c Inputs) DocumentPath() string {
 // InProjectWorkflows reports whether the checked document is a workflow
 // directly under the project's .github/workflows directory and the session
 // can inventory that directory's workflow names.
-func (c Inputs) InProjectWorkflows() bool {
+func (c RuleInputs) InProjectWorkflows() bool {
 	if c.ProjectRoot == "" || c.WorkflowNames == nil {
 		return false
 	}
@@ -66,12 +66,12 @@ func (c Inputs) InProjectWorkflows() bool {
 }
 
 // ProjectWorkflowNames returns the inventory of the project's workflow names.
-// Call it only when [Inputs.InProjectWorkflows] reports true.
-func (c Inputs) ProjectWorkflowNames() (namemodel.Inventory, error) {
+// Call it only when [RuleInputs.InProjectWorkflows] reports true.
+func (c RuleInputs) ProjectWorkflowNames() (namemodel.Inventory, error) {
 	return c.WorkflowNames.ForRoot(c.projectRoot())
 }
 
-func (c Inputs) projectRoot() string {
+func (c RuleInputs) projectRoot() string {
 	if absolute, err := filepath.Abs(c.ProjectRoot); err == nil {
 		return absolute
 	}
@@ -80,12 +80,12 @@ func (c Inputs) projectRoot() string {
 
 // PrepareWorkflowMetadata resolves the reusable-workflow metadata that
 // workflow-call checks consult, when the session supplies a workflow cache.
-func PrepareWorkflowMetadata(c Inputs) (InputPreparation, error) {
+func PrepareWorkflowMetadata(c RuleInputs) (InputPreparation, error) {
 	if c.WorkflowSources != nil {
 		if err := c.WorkflowSources.Prepare(c.Context, c.SourceSnapshot); err != nil {
 			return nil, err
 		}
 		c.Workflows = c.WorkflowSources.Resolved()
 	}
-	return PreparedInputs{Inputs: c}, nil
+	return PreparedInputs{RuleInputs: c}, nil
 }

@@ -19,7 +19,7 @@ var RunnerLabelRule = &define.Rule{
 	MovedOptions: []rule.MovedOption{{Option: "labels", Repository: "runners"}},
 	Recommended:  true,
 	Help:         "Correct the runner label or declare repository-specific labels in repository.runners.",
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		labels := runnerlang.LabelSet{}
 		if known, available := configuration.RepositoryFacts(c.Config, c.Repository).RunnerLabels.Value(); available {
 			labels = runnerlang.KnownLabels(known.Values())

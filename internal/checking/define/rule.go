@@ -66,17 +66,17 @@ type Rule struct {
 	MigrationNote string
 
 	// Prepare acquires facts before construction. Nil means none are needed.
-	Prepare func(Inputs) (InputPreparation, error)
+	Prepare func(RuleInputs) (InputPreparation, error)
 	// Enabled reports whether the rule runs for these inputs. Nil means always.
-	Enabled func(Inputs) bool
+	Enabled func(RuleInputs) bool
 
 	// Checks supplies stateless checks of published workflow views. The
 	// adapter traverses workflows and, for rules that support actions,
 	// composite bodies, and attaches the rule's name to findings without one.
-	Checks func(Inputs) Checks
+	Checks func(RuleInputs) Checks
 	// Walker supplies a stateful traversal. The base carries the rule's name
 	// and description and is embedded in the returned visitor.
-	Walker func(Inputs, workflowvisit.Base) workflowvisit.Rule
+	Walker func(RuleInputs, workflowvisit.Base) workflowvisit.Rule
 	// Script analyzes document scripts.
 	Script ScriptCheck
 
@@ -91,8 +91,8 @@ func Options[T any]() func() any {
 }
 
 // Fixed supplies checks that need no inputs.
-func Fixed(checks Checks) func(Inputs) Checks {
-	return func(Inputs) Checks { return checks }
+func Fixed(checks Checks) func(RuleInputs) Checks {
+	return func(RuleInputs) Checks { return checks }
 }
 
 // Executable reports whether the rule runs anything.
@@ -181,7 +181,7 @@ func sentence(text string) string {
 
 // NewVisitor constructs the traversal for a rule that executes through Checks
 // or Walker. It does not run Prepare or consult Enabled.
-func (r *Rule) NewVisitor(in Inputs) workflowvisit.Rule {
+func (r *Rule) NewVisitor(in RuleInputs) workflowvisit.Rule {
 	return r.Registration(configuration.Rule{}).Build(in)
 }
 
@@ -190,10 +190,10 @@ type Registration struct {
 	configuration.Rule
 	// Prepare distinguishes usable inputs, unavailable knowledge and operation
 	// failures before construction. Nil means no preparation is needed.
-	Prepare func(Inputs) (InputPreparation, error)
-	Build   func(Inputs) workflowvisit.Rule
+	Prepare func(RuleInputs) (InputPreparation, error)
+	Build   func(RuleInputs) workflowvisit.Rule
 	Script  checkinputs.Checker
-	Enabled func(Inputs) bool
+	Enabled func(RuleInputs) bool
 }
 
 // Registration binds the rule's execution to its configuration metadata.
@@ -202,11 +202,11 @@ func (r *Rule) Registration(metadata configuration.Rule) Registration {
 	registration := Registration{Rule: metadata, Prepare: r.Prepare, Enabled: r.Enabled}
 	switch {
 	case r.Checks != nil:
-		registration.Build = func(c Inputs) workflowvisit.Rule {
+		registration.Build = func(c RuleInputs) workflowvisit.Rule {
 			return NewChecksVisitor(c.Rules, r.Name, r.Checks(c))
 		}
 	case r.Walker != nil:
-		registration.Build = func(c Inputs) workflowvisit.Rule {
+		registration.Build = func(c RuleInputs) workflowvisit.Rule {
 			return r.Walker(c, r.Base())
 		}
 	case r.Script != nil:

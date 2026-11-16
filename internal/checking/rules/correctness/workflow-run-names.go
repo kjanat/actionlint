@@ -22,8 +22,8 @@ var WorkflowRunNamesRule = &define.Rule{
 	Recommended: true,
 	Help:        "Use the exact name of an existing workflow in workflows; names are matched independently of filenames.",
 	Prepare:     prepareWorkflowRunNames,
-	Checks:      func(c define.Inputs) define.Checks { return WorkflowRunNamesChecks(c.WorkflowNameInventory) },
-	Enabled:     define.Inputs.InProjectWorkflows,
+	Checks:      func(c define.RuleInputs) define.Checks { return WorkflowRunNamesChecks(c.WorkflowNameInventory) },
+	Enabled:     define.RuleInputs.InProjectWorkflows,
 }
 
 // WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
@@ -89,13 +89,13 @@ func workflowRunNameDiagnostics(n namemodel.Inventory, references []*workflowlan
 	return findings
 }
 
-func prepareWorkflowRunNames(c define.Inputs) (define.InputPreparation, error) {
+func prepareWorkflowRunNames(c define.RuleInputs) (define.InputPreparation, error) {
 	if c.Rules.DiagnosticLevel(c.Config, "workflow-run-names") == "off" {
-		return define.PreparedInputs{Inputs: c}, nil
+		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	workflow, available := c.SourceSnapshot.WorkflowView()
 	if !available || len(WorkflowRunFilters(workflow)) == 0 {
-		return define.PreparedInputs{Inputs: c}, nil
+		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	inventory, err := c.ProjectWorkflowNames()
 	if err != nil {
@@ -105,5 +105,5 @@ func prepareWorkflowRunNames(c define.Inputs) (define.InputPreparation, error) {
 		return define.UnavailableInputs{Reason: "not every repository workflow name could be determined"}, nil
 	}
 	c.WorkflowNameInventory = inventory
-	return define.PreparedInputs{Inputs: c}, nil
+	return define.PreparedInputs{RuleInputs: c}, nil
 }

@@ -31,8 +31,8 @@ var DuplicateWorkflowNameRule = &define.Rule{
 		"are listed by their path and are not reported. Names written as expressions are not compared.",
 	Help:    "Give each workflow its own name.",
 	Prepare: prepareDuplicateWorkflowName,
-	Enabled: define.Inputs.InProjectWorkflows,
-	Checks: func(c define.Inputs) define.Checks {
+	Enabled: define.RuleInputs.InProjectWorkflows,
+	Checks: func(c define.RuleInputs) define.Checks {
 		return define.Checks{Workflow: func(w declaration.Workflow) []reporting.StepFinding {
 			return DuplicateWorkflowName(c.WorkflowNameInventory, w)
 		}}
@@ -70,16 +70,16 @@ func DuplicateWorkflowName(others namemodel.Inventory, w declaration.Workflow) [
 // prepareDuplicateWorkflowName loads the project's workflow names without the
 // checked workflow itself. An incomplete inventory still proves the duplicates
 // among the workflows it could read.
-func prepareDuplicateWorkflowName(c define.Inputs) (define.InputPreparation, error) {
+func prepareDuplicateWorkflowName(c define.RuleInputs) (define.InputPreparation, error) {
 	if c.Rules.DiagnosticLevel(c.Config, duplicateWorkflowNameRuleName) == "off" {
-		return define.PreparedInputs{Inputs: c}, nil
+		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	workflow, available := c.SourceSnapshot.WorkflowView()
 	if !available || !workflow.Present() {
-		return define.PreparedInputs{Inputs: c}, nil
+		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	if _, literal := namemodel.Declare(workflow.Name).Literal(); !literal {
-		return define.PreparedInputs{Inputs: c}, nil
+		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	inventory, err := c.ProjectWorkflowNames()
 	if err != nil {
@@ -89,5 +89,5 @@ func prepareDuplicateWorkflowName(c define.Inputs) (define.InputPreparation, err
 	c.WorkflowNameInventory = inventory.ExcludingLiteral(func(path string) bool {
 		return workflownames.SamePath(path, self)
 	})
-	return define.PreparedInputs{Inputs: c}, nil
+	return define.PreparedInputs{RuleInputs: c}, nil
 }

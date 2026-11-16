@@ -16,13 +16,13 @@ import (
 // It projects both sources into the same immutable action definition.
 type Resolver struct {
 	ctx    context.Context
-	local  workspaceactions.MetadataLookup
+	local  workspaceactions.ActionMetadataLookup
 	remote *actionremote.ResolvedActions
 }
 
 // New binds action-definition lookup to one request and workspace execution scope.
 // A nil metadata source leaves its references unresolved.
-func New(ctx context.Context, local workspaceactions.MetadataLookup, remote *actionremote.ResolvedActions) *Resolver {
+func New(ctx context.Context, local workspaceactions.ActionMetadataLookup, remote *actionremote.ResolvedActions) *Resolver {
 	return &Resolver{ctx: ctx, local: local, remote: remote}
 }
 

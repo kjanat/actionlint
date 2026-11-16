@@ -191,7 +191,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflowdecl.Workfl
 	rules := ConfigurationRules()
 	for _, descriptor := range ruleexec.Registrations(rules) {
 		if descriptor.Name == "expression" {
-			return workflow, descriptor.Build(define.Inputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
+			return workflow, descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
 		}
 	}
 	t.Fatal("expression rule is not registered")

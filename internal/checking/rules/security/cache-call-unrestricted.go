@@ -17,11 +17,11 @@ var CacheCallUnrestrictedRule = &define.Rule{
 	Recommended: true,
 	Explanation: "Report reusable workflow calls reachable from low-trust triggers without an explicit cache mode. The called workflow can request cache writes despite the trigger's read-only default.",
 	Help:        "Set cache-mode to read or none on the calling job or workflow.",
-	Checks: func(c define.Inputs) define.Checks {
+	Checks: func(c define.RuleInputs) define.Checks {
 		workflow, _ := c.SourceSnapshot.WorkflowView()
 		return CacheCallUnrestrictedChecks(workflow)
 	},
-	Enabled: func(c define.Inputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") },
+	Enabled: func(c define.RuleInputs) bool { return c.Config.CachePolicyEnabled("cache-call-unrestricted") },
 }
 
 // CacheCallUnrestrictedChecks requires an explicit cache ceiling on low-trust

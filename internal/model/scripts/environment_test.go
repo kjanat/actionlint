@@ -12,7 +12,7 @@ import (
 
 func TestDeclaredEnvironmentPreservesSourceOrderAndCase(t *testing.T) {
 	t.Parallel()
-	declarations := mapping.Resolve(&mapping.Inputs{Values: map[string]mapping.DeclaredEntry{
+	declarations := mapping.Resolve(&mapping.DeclaredMapping{Values: map[string]mapping.DeclaredEntry{
 		"foo": {Name: value.YAMLScalar("foo", "!!str", value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 2, Column: 3}}})},
 		"FOO": {Name: value.YAMLScalar("FOO", "!!str", value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 3, Column: 3}}})},
 	}})

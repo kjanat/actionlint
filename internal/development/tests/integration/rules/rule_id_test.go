@@ -63,7 +63,7 @@ func TestCheckInvalidJobNames(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(input+"/"+tc.where, func(t *testing.T) {
 				t.Parallel()
-				r := correctness.IdRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+				r := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 				if err := r.VisitJobPre(fixturedecl.Job(tc.job)); err != nil {
 					t.Fatal(err)
 				}
@@ -114,7 +114,7 @@ func TestCheckValidJobNames(t *testing.T) {
 					{ID: &workflowlang.String{Value: stepID, Pos: &source.Position{}}},
 				},
 			}
-			r := correctness.IdRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			r := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := r.VisitJobPre(fixturedecl.Job(job)); err != nil {
 				t.Fatal(err)
 			}

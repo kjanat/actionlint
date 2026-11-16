@@ -23,7 +23,7 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 		t.Fatal(errs)
 	}
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
-	check := correctness.IdRule.Checks(define.Inputs{})
+	check := correctness.IdRule.Checks(define.RuleInputs{})
 	if check.Step != nil || check.Workflow != nil {
 		t.Fatal("ID checking requests more than job declarations")
 	}
@@ -49,7 +49,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 		t.Fatal(errs)
 	}
 	w := declaration.Publish("", ast, false, "").Bind("test").Workflow()
-	findings := correctness.EnvVarRule.Checks(define.Inputs{}).Job(jobView(w, "test"))
+	findings := correctness.EnvVarRule.Checks(define.RuleInputs{}).Job(jobView(w, "test"))
 	if len(findings) != 2 {
 		t.Fatalf("want two invalid names: %v", findings)
 	}

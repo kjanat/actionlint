@@ -323,7 +323,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	}
 	defer func() { resultErr = errors.Join(resultErr, runnerErr) }()
 	resolvedActions.SetRunners(runners)
-	context := define.Inputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
+	context := define.RuleInputs{Bindings: settings.bindings[sourcePath], SourceSnapshot: snapshot, Context: s.ctx, Path: path, Config: cfg, Actions: resolvedActions, WorkflowSources: workflows, Workflows: workflows.Resolved(), WorkingDir: s.workingDir, ProjectRoot: projectRoot(project), Reader: s.reader, WorkflowNames: s.workflowNames}
 	context.Runners = runners
 	context.Lifecycle = actionmeta.LifecycleContext{Service: *runnerOptions.Service, AsOf: runnerOptions.AsOf}
 	context.Debug = s.debugWriter()

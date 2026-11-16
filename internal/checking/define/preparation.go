@@ -8,7 +8,7 @@ type InputPreparation interface {
 
 // PreparedInputs supplies the constructor's inputs after successful preparation.
 type PreparedInputs struct {
-	Inputs Inputs
+	RuleInputs RuleInputs
 }
 
 // UnavailableInputs prevents execution when required knowledge is incomplete.

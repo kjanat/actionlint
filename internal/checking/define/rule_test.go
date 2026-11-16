@@ -57,8 +57,8 @@ func TestDeclarationIsDetached(t *testing.T) {
 func TestValidateRejectsAmbiguousDefinitions(t *testing.T) {
 	t.Parallel()
 	base := Rule{Name: "example", Description: "d", Category: "c", Subcategory: "s"}
-	checks := func(Inputs) Checks { return Checks{} }
-	walker := func(Inputs, workflowvisit.Base) workflowvisit.Rule { return nil }
+	checks := func(RuleInputs) Checks { return Checks{} }
+	walker := func(RuleInputs, workflowvisit.Base) workflowvisit.Rule { return nil }
 	script := func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) { return nil, nil }
 	tests := map[string]struct {
 		edit    func(*Rule)
@@ -71,7 +71,7 @@ func TestValidateRejectsAmbiguousDefinitions(t *testing.T) {
 		"no form and no emitter": {func(*Rule) {}, "DeclaredBy"},
 		"checks and walker":      {func(r *Rule) { r.Checks, r.Walker = checks, walker }, "more than one"},
 		"executable and emitter": {func(r *Rule) { r.Checks, r.DeclaredBy = checks, "expression" }, "must not name DeclaredBy"},
-		"declared with enable":   {func(r *Rule) { r.DeclaredBy, r.Enabled = "expression", func(Inputs) bool { return true } }, "cannot prepare or enable"},
+		"declared with enable":   {func(r *Rule) { r.DeclaredBy, r.Enabled = "expression", func(RuleInputs) bool { return true } }, "cannot prepare or enable"},
 		"no name":                {func(r *Rule) { r.Name, r.Checks = "", checks }, "no name"},
 	}
 	for name, test := range tests {

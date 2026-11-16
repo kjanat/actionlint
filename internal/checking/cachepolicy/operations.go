@@ -15,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// MetadataLookup provides reusable workflow metadata without owning discovery or policy.
-type MetadataLookup interface {
+// ReusableWorkflowMetadataLookup provides reusable workflow metadata without owning discovery or policy.
+type ReusableWorkflowMetadataLookup interface {
 	LookupForCall(string) (*calls.Metadata, error)
 }
 
@@ -26,7 +26,7 @@ type cacheModeVisit struct {
 }
 
 type operationCheck struct {
-	cache    MetadataLookup
+	cache    ReusableWorkflowMetadataLookup
 	findings []results.Diagnostic
 }
 
@@ -36,7 +36,7 @@ func (r *operationCheck) Errorf(pos source.Position, format string, args ...any)
 
 // CheckCallOperations applies the caller's ceiling to inherited callee operations.
 // Results belong to the call site; policy evaluation is never cached with metadata.
-func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, lookup MetadataLookup) []results.Diagnostic {
+func CheckCallOperations(call *workflowlang.WorkflowCall, granted *workflowlang.CacheMode, lookup ReusableWorkflowMetadataLookup) []results.Diagnostic {
 	if call == nil || call.Uses == nil || lookup == nil {
 		return nil
 	}

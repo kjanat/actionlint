@@ -41,7 +41,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 			loads := 0
 			var recorded []string
 			snapshot := execution.NewIndexSnapshot(indexPath, map[string]string{"script.sh": "100644"}, tc.failure)
-			input := define.Inputs{
+			input := define.RuleInputs{
 				Rules: rules, Config: config, Context: t.Context(), ProjectRoot: root,
 				Reader: files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) }),
 				Index: func(_ context.Context, path string) *execution.IndexSnapshot {
@@ -84,10 +84,10 @@ func TestExecutableIndexPreparation(t *testing.T) {
 				}
 				return
 			}
-			if loads != 1 || !slices.Equal(recorded, []string{indexPath}) || prepared.Inputs.ExecutableIndex != snapshot || input.ExecutableIndex != nil {
+			if loads != 1 || !slices.Equal(recorded, []string{indexPath}) || prepared.RuleInputs.ExecutableIndex != snapshot || input.ExecutableIndex != nil {
 				t.Fatalf("preparation lost snapshot ownership: loads=%d recorded=%v", loads, recorded)
 			}
-			registrations[index].Build(prepared.Inputs)
+			registrations[index].Build(prepared.RuleInputs)
 			if loads != 1 {
 				t.Fatal("constructor loaded the index again")
 			}

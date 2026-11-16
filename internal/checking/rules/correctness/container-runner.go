@@ -35,7 +35,7 @@ var ContainerRunnerRule = &define.Rule{
 	}},
 	SupportsActions: true,
 	Scope:           rule.CompositeConfiguration,
-	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
 		return newContainerRunner(c.Context, base, c.Runners, c.Actions, c.RemoteActions)
 	},
 }

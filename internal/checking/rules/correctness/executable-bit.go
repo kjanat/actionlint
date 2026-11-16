@@ -23,13 +23,13 @@ var ExecutableBitRule = &define.Rule{
 	Recommended: true,
 	Help:        "Record the executable bit for the referenced script in Git, or invoke it explicitly through its interpreter.",
 	Prepare:     prepareExecutableIndex,
-	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+	Walker: func(c define.RuleInputs, base workflowvisit.Base) workflowvisit.Rule {
 		return NewRuleExecutableBit(base, ExecutableContext{
 			ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
 			Index: c.ExecutableIndex, Runners: c.Runners,
 		})
 	},
-	Enabled: func(c define.Inputs) bool { return c.ProjectRoot != "" && c.Index != nil },
+	Enabled: func(c define.RuleInputs) bool { return c.ProjectRoot != "" && c.Index != nil },
 }
 
 // ruleExecutableBit adapts workflow execution checks to traversal and composite scopes.
@@ -105,9 +105,9 @@ func (rule *ruleExecutableBit) LeaveInvocation(context invocation.Context) error
 
 var _ workflowvisit.InvocationParticipant = (*ruleExecutableBit)(nil)
 
-func prepareExecutableIndex(c define.Inputs) (define.InputPreparation, error) {
+func prepareExecutableIndex(c define.RuleInputs) (define.InputPreparation, error) {
 	if c.Rules.DiagnosticLevel(c.Config, "executable-bit") == "off" {
-		return define.PreparedInputs{Inputs: c}, nil
+		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	if err := c.Context.Err(); err != nil {
 		return nil, err
@@ -124,5 +124,5 @@ func prepareExecutableIndex(c define.Inputs) (define.InputPreparation, error) {
 	}
 	c.Reader.Record(snapshot.Path())
 	c.ExecutableIndex = snapshot
-	return define.PreparedInputs{Inputs: c}, nil
+	return define.PreparedInputs{RuleInputs: c}, nil
 }

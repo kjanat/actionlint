@@ -117,7 +117,7 @@ type analyzedFile struct {
 	outline     documentmodel.Outline
 }
 
-type inputFiles struct{ workspace.Inputs }
+type inputFiles struct{ workspace.InputFiles }
 
 func (f *inputFiles) add(path string) { f.Add(path) }
 func (f *inputFiles) list() []string  { return f.List() }

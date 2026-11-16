@@ -22,7 +22,7 @@ type documentChecks struct {
 	registeredTools  []tools.Registration
 }
 
-func (s *analysisSession) buildChecks(context define.Inputs, toolContext tools.Context, action bool) (documentChecks, error) {
+func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext tools.Context, action bool) (documentChecks, error) {
 	rules, err := selection.CreateRules(ConfigurationRules(), context, action)
 	selected := documentChecks{Selection: rules}
 	if err != nil {

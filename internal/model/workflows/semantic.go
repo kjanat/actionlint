@@ -212,11 +212,11 @@ func resolvedEnvironment(node *workflowlang.Env) mapping.Mapping {
 	return mapping.Resolve(environmentInputs(node))
 }
 
-func environmentInputs(node *workflowlang.Env) *mapping.Inputs {
+func environmentInputs(node *workflowlang.Env) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.Inputs{
+	inputs := &mapping.DeclaredMapping{
 		Values: make(map[string]mapping.DeclaredEntry, len(node.Vars)), Expression: mappingScalar(node.Expression),
 	}
 	for key, entry := range node.Vars {
@@ -231,11 +231,11 @@ func environmentInputs(node *workflowlang.Env) *mapping.Inputs {
 	return inputs
 }
 
-func actionInputs(node *workflowlang.ExecAction) *mapping.Inputs {
+func actionInputs(node *workflowlang.ExecAction) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.Inputs{
+	inputs := &mapping.DeclaredMapping{
 		Values: make(map[string]mapping.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.InputsExpression),
 	}
 	for key, entry := range node.Inputs {
@@ -250,11 +250,11 @@ func actionInputs(node *workflowlang.ExecAction) *mapping.Inputs {
 	return inputs
 }
 
-func actionMappingInputs(node *workflowlang.ActionInputMapping) *mapping.Inputs {
+func actionMappingInputs(node *workflowlang.ActionInputMapping) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.Inputs{
+	inputs := &mapping.DeclaredMapping{
 		Values: make(map[string]mapping.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.Expression),
 	}
 	for key, entry := range node.Inputs {
@@ -276,11 +276,11 @@ func sourceText(node *workflowlang.String) string {
 	return node.Value
 }
 
-func matrixMappingInputs(node *workflowlang.Matrix) *mapping.Inputs {
+func matrixMappingInputs(node *workflowlang.Matrix) *mapping.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.Inputs{
+	inputs := &mapping.DeclaredMapping{
 		Values: make(map[string]mapping.DeclaredEntry, len(node.Rows)+2), Expression: mappingScalar(node.Expression),
 	}
 	for key, row := range node.Rows {

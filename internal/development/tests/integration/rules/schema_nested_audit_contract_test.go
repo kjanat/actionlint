@@ -33,7 +33,7 @@ jobs:
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+	rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 	if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ jobs:
 		if len(errs) != 0 {
 			t.Fatalf("schema-supported image filters rejected: %v", errs)
 		}
-		rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+		rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 		if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 			t.Fatal(err)
 		}
@@ -94,7 +94,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +131,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.EventsRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.EventsRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitWorkflowPre(fixturedecl.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}
@@ -165,7 +165,7 @@ jobs:
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			rule := correctness.IdRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
+			rule := correctness.IdRule.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules()})
 			if err := rule.VisitJobPre(fixturedecl.Job(w.Jobs["test"])); err != nil {
 				t.Fatal(err)
 			}
