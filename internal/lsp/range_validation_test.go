@@ -21,7 +21,7 @@ func TestDiagnosticRangeRejectsUnresolvableCoordinates(t *testing.T) {
 	start := source.Position{Line: 1, Column: 2}
 	for _, end := range []source.Position{{}, {Line: 1, Column: 1}} {
 		rangeValue, err := diagnosticRange([]byte("😀bad"), start, end)
-		if err != nil || rangeValue.Start != (position{Line: 0, Character: 2}) || rangeValue.End != rangeValue.Start {
+		if err != nil || rangeValue.Start != (editorPosition{Line: 0, Character: 2}) || rangeValue.End != rangeValue.Start {
 			t.Fatalf("legitimate point was lost: %+v %v", rangeValue, err)
 		}
 	}
@@ -35,11 +35,11 @@ func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
 	finding := results.Diagnostic{Path: dependency, Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 1, Column: 5}, Fixes: []results.Fix{{Description: "update open caller", Applicability: results.FixSafe, Revisions: map[string]string{target: source.ContentDigest([]byte(content))}, Edits: []results.Edit{{Path: target, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
 	sources := map[string]Document{dependency: {Text: "😀bad"}}
 	open := map[string]Document{target: {URI: FileURI(target), Version: 3, Text: content}}
-	actions := codeActions(t.Context(), dependency, sourceRange{Start: position{Character: 5}, End: position{Character: 5}}, []results.Diagnostic{finding}, sources, open)
+	actions := codeActions(t.Context(), dependency, editorRange{Start: editorPosition{Character: 5}, End: editorPosition{Character: 5}}, []results.Diagnostic{finding}, sources, open)
 	if len(actions) != 1 {
 		t.Fatalf("closed dependency was ranged against a fabricated empty buffer: %+v", actions)
 	}
-	if actions := codeActions(t.Context(), dependency, sourceRange{}, []results.Diagnostic{finding}, nil, open); len(actions) != 0 {
+	if actions := codeActions(t.Context(), dependency, editorRange{}, []results.Diagnostic{finding}, nil, open); len(actions) != 0 {
 		t.Fatal("uncaptured dependency produced a code action")
 	}
 }
@@ -56,12 +56,12 @@ func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
 		{Path: path, Rule: "shellcheck", Code: "SC2154", Start: point, Fixes: []results.Fix{fix}},
 	}
 	sources, open := map[string]Document{path: doc}, map[string]Document{path: doc}
-	if actions := codeActions(t.Context(), path, sourceRange{}, findings, sources, open); len(actions) != 1 {
+	if actions := codeActions(t.Context(), path, editorRange{}, findings, sources, open); len(actions) != 1 {
 		t.Fatalf("identical suppression edits should appear once: %+v", actions)
 	}
 	doc.Text, doc.Version = "run: echo changed\n", 9
 	open[path] = doc
-	if actions := codeActions(t.Context(), path, sourceRange{}, findings, sources, open); len(actions) != 0 {
+	if actions := codeActions(t.Context(), path, editorRange{}, findings, sources, open); len(actions) != 0 {
 		t.Fatalf("stale suppression authorized an edit: %+v", actions)
 	}
 }
@@ -86,7 +86,7 @@ func TestCodeActionsUseEachFindingsFixes(t *testing.T) {
 		findings = append(findings, finding)
 	}
 	for i := range findings {
-		selection := sourceRange{Start: position{Line: i}, End: position{Line: i}}
+		selection := editorRange{Start: editorPosition{Line: i}, End: editorPosition{Line: i}}
 		actions := codeActions(t.Context(), path, selection, findings, documents, documents)
 		if i == 0 {
 			if len(actions) != 0 {

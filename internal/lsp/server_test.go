@@ -123,7 +123,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	if start["character"] != float64(2) {
 		t.Fatal(start)
 	}
-	send("textDocument/codeAction", 2, map[string]any{"textDocument": map[string]string{"uri": uri}, "range": sourceRange{position{0, 0}, position{0, 9}}})
+	send("textDocument/codeAction", 2, map[string]any{"textDocument": map[string]string{"uri": uri}, "range": editorRange{editorPosition{0, 0}, editorPosition{0, 9}}})
 	actions := read()["result"].([]any)
 	if len(actions) != 1 {
 		t.Fatal(actions)
@@ -132,7 +132,7 @@ func TestVersionedBuffersDiagnosticsAndQuickFix(t *testing.T) {
 	if changes[0].(map[string]any)["textDocument"].(map[string]any)["version"] != float64(1) {
 		t.Fatal(changes)
 	}
-	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 2}, "contentChanges": []any{map[string]any{"range": sourceRange{position{0, 2}, position{0, 5}}, "text": "good"}}})
+	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 2}, "contentChanges": []any{map[string]any{"range": editorRange{editorPosition{0, 2}, editorPosition{0, 5}}, "text": "good"}}})
 	params = read()["params"].(map[string]any)
 	if params["version"] != float64(2) || len(params["diagnostics"].([]any)) != 0 {
 		t.Fatal(params)
@@ -185,10 +185,10 @@ func readRawEnvelope(r *bufio.Reader) ([]byte, error) {
 
 func TestCoordinateBoundaries(t *testing.T) {
 	t.Parallel()
-	if _, err := byteOffset("😀x", position{0, 1}); err == nil {
+	if _, err := editorByteOffset("😀x", editorPosition{0, 1}); err == nil {
 		t.Fatal("accepted middle of surrogate pair")
 	}
-	if offset, err := byteOffset("😀x", position{0, 2}); err != nil || offset != 4 {
+	if offset, err := editorByteOffset("😀x", editorPosition{0, 2}); err != nil || offset != 4 {
 		t.Fatalf("%d %v", offset, err)
 	}
 	if _, err := ReadRPCMessage(bufio.NewReader(strings.NewReader("Content-Length: 999999999\r\n\r\n"))); err == nil {
@@ -261,7 +261,7 @@ func TestSupersededAnalysisCannotPublish(t *testing.T) {
 		t.Fatal(params)
 	}
 	// An invalid ranged update is rejected without changing version 2 or killing the server.
-	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 3}, "contentChanges": []any{map[string]any{"range": sourceRange{position{0, 99}, position{0, 100}}, "text": "x"}}})
+	send("textDocument/didChange", nil, map[string]any{"textDocument": Document{URI: uri, Version: 3}, "contentChanges": []any{map[string]any{"range": editorRange{editorPosition{0, 99}, editorPosition{0, 100}}, "text": "x"}}})
 	if receive()["method"] != "window/logMessage" {
 		t.Fatal("invalid notification was not reported")
 	}

@@ -71,7 +71,7 @@ func TestCapturedTextDefinesOpenDocumentRangesAndConflictClears(t *testing.T) {
 			Version     int    `json:"version"`
 			Message     string `json:"message"`
 			Diagnostics []struct {
-				Range   sourceRange       `json:"range"`
+				Range   editorRange       `json:"range"`
 				Related []json.RawMessage `json:"relatedInformation"`
 			} `json:"diagnostics"`
 		} `json:"params"`

@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
 
-func codeActions(ctx context.Context, path string, selection sourceRange, findings []results.Diagnostic, sources, documents map[string]Document) []any {
+func codeActions(ctx context.Context, path string, selection editorRange, findings []results.Diagnostic, sources, documents map[string]Document) []any {
 	actions := []any{}
 	var offered []results.Fix
 	for _, d := range findings {
@@ -25,7 +25,7 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 		if err != nil {
 			continue
 		}
-		if comparePosition(location.End, selection.Start) < 0 || comparePosition(location.Start, selection.End) > 0 {
+		if compareEditorPositions(location.End, selection.Start) < 0 || compareEditorPositions(location.Start, selection.End) > 0 {
 			continue
 		}
 		for _, f := range d.Fixes {

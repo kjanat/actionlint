@@ -48,17 +48,6 @@ func TestRefuseInvalidTransactions(t *testing.T) {
 	}
 }
 
-func TestYAMLPhysicalCoordinates(t *testing.T) {
-	t.Parallel()
-	for _, separator := range []string{"\r", "\r\n", "\n", "\u0085", "\u2028", "\u2029"} {
-		content := []byte("\ufeffα" + separator + "β")
-		offset, err := Offset(content, source.Position{Line: 2, Column: 1})
-		if err != nil || string(content[offset:]) != "β" {
-			t.Fatalf("separator=%q offset=%d err=%v", separator, offset, err)
-		}
-	}
-}
-
 func TestRemoteFixesDoNotPreventLocalEdits(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "workflow.yml")

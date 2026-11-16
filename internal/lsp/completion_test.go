@@ -61,7 +61,7 @@ func TestCompletionUsesCurrentBufferAndUTF16(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	result := request("textDocument/completion", 2, map[string]any{"textDocument": map[string]string{"uri": uri}, "position": position{0, 4}})
+	result := request("textDocument/completion", 2, map[string]any{"textDocument": map[string]string{"uri": uri}, "position": editorPosition{0, 4}})
 	items := result["result"].(map[string]any)["items"].([]any)
 	if len(items) != 1 {
 		t.Fatal(result)

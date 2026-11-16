@@ -114,9 +114,3 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 	}
 	return p, nil
 }
-
-// Offset converts an exclusive Unicode-scalar position to a byte offset without
-// accepting a coordinate inside CRLF or outside the document.
-func Offset(content []byte, p source.Position) (int, error) {
-	return sourceposition.Offset(content, source.YAML, p)
-}
