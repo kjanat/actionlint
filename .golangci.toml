@@ -123,7 +123,7 @@ paths     = [
 ]
 
 [[linters.exclusions.rules]]
-path    = '_test\.go$|^(\.github|cmd|fuzz|tools)/|^internal/(cli|input/files)/|^internal/development/(generators|tests/(conformance|integration/(documentation|plugins/package-fixture)))/'
+path    = '_test\.go$|^(\.github|cmd|fuzz|tools)/|^internal/(cli|base/files)/|^internal/development/(generators|tests/(conformance|integration/(documentation|plugins/package-fixture)))/'
 text    = "files\\.(Reader|Disk|ProbeDir)"
 linters = ["forbidigo"]
 
@@ -148,7 +148,7 @@ linters = ["dupword", "forcetypeassert", "prealloc", "unparam"]
 
 # testing.AllocsPerRun panics while a parallel test runs.
 [[linters.exclusions.rules]]
-path    = '^internal/(model/checkinputs/input_selection_cost|input/sourcetext/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
+path    = '^internal/(model/checkinputs/input_selection_cost|base/capture/handle|model/parsing/accessor_cost|model/workflows/parser/alias_admission)_test\.go$'
 text    = "(Function|test) Test(SelectedInvocationValidationAllocationBound|VerifyHandleRejectsForeignAndQuarantinedEvidence|SemanticAccessorsDoNotCopySourceBytes|WorkflowAdmissionDoesNotGrowWithAliasExpansion) missing"
 linters = ["paralleltest"]
 
