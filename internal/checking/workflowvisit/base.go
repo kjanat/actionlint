@@ -20,8 +20,13 @@ func NewBase(name string, desc string) Base {
 }
 
 // Report records findings produced outside the positional helpers and takes
-// ownership of them.
+// ownership of them. A finding that names no rule is attributed to this one.
 func (r *Base) Report(findings ...*findingmodel.Finding) {
+	for _, finding := range findings {
+		if finding != nil && finding.Rule == "" {
+			finding.Rule = r.name
+		}
+	}
 	r.findings.Report(findings...)
 }
 

@@ -1,17 +1,58 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"iter"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/identifier"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-// IdDeclaration describes the id rule.
-func IdDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "id", Description: "Report invalid job or step IDs and duplicate step IDs", Category: "correctness", Subcategory: "identity", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report invalid job or step IDs and duplicate step IDs.", Help: "Use a unique valid identifier within its job or workflow scope.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#id", Examples: []rule.Example{rule.WorkflowExample("Begin step IDs with a letter or underscore.",
-		"    steps:\n      - id: 1build\n        run: echo ok\n", "    steps:\n      - id: build\n        run: echo ok\n")}}
+// IdRule is the single definition of the id rule.
+var IdRule = &define.Rule{
+	Name:        "id",
+	Description: "Report invalid job or step IDs and duplicate step IDs",
+	Category:    "correctness",
+	Subcategory: "identity",
+	Recommended: true,
+	Help:        "Use a unique valid identifier within its job or workflow scope.",
+	Examples: []rule.Example{rule.WorkflowExample("Begin step IDs with a letter or underscore.",
+		"    steps:\n      - id: 1build\n        run: echo ok\n", "    steps:\n      - id: build\n        run: echo ok\n")},
+	Checks: define.Fixed(define.Checks{Job: checkIdentifiers}),
 }
 
-// IdCheck binds the rule to job declarations.
-func IdCheck() inputs.DeclarationCheck {
-	return inputs.DeclarationCheck{Declaration: IdDeclaration(), Job: checkIdentifiers}
+func checkIdentifiers(job declaration.Job) []reporting.Finding {
+	name := func(value *workflowlang.String) identifier.Name {
+		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: reporting.Position(value.Pos)}
+	}
+	input := identifier.Job{}
+	if job.ID != nil {
+		input.ID = new(name(job.ID))
+	}
+	for _, value := range job.Needs {
+		input.Needs = append(input.Needs, name(value))
+	}
+	owners := map[sourcepos.Position]declaration.Step{}
+	var collect func(iter.Seq[declaration.Step])
+	collect = func(steps iter.Seq[declaration.Step]) {
+		for step := range steps {
+			if step.ID != nil {
+				input.Steps = append(input.Steps, name(step.ID))
+				owners[reporting.Position(reporting.OptionalPosition(step.ID.Position()))] = step
+			}
+			if parallel, ok := step.ParallelSteps(); ok {
+				collect(parallel)
+			}
+		}
+	}
+	collect(job.Steps())
+	out := reporting.FromDiagnostics(identifier.Check(input))
+	for i := range out {
+		out[i].Step = owners[out[i].Start]
+	}
+	return out
 }

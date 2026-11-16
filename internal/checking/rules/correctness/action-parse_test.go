@@ -41,8 +41,8 @@ func TestMetadataParseFindingCarriesItsLookupRevision(t *testing.T) {
 				lookup = workspaceactions.NewResolver(cache, map[string]string{"./generated": "./broken"})
 				spec = "./generated"
 			}
-			rule := NewRuleAction(t.Context(), lookup, nil)
-			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &source.Position{Line: 3, Column: 5}}}}
+			rule := NewRuleAction(t.Context(), ActionRule.Base(), lookup, nil)
+			step := &workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: spec, Pos: &workflowlang.Pos{Line: 3, Col: 5}}}}
 			if err := rule.VisitStep(fixturedecl.Step(step)); err != nil {
 				t.Fatal(err)
 			}
@@ -70,8 +70,8 @@ func TestMetadataParseFindingRejectsMissingCaptureAndInterruption(t *testing.T) 
 	for _, failure := range []error{errors.New("invalid YAML"), context.Canceled, context.DeadlineExceeded} {
 		t.Run(failure.Error(), func(t *testing.T) {
 			t.Parallel()
-			rule := NewRuleAction(t.Context(), metadataParseFailureLookup{cause: failure}, nil)
-			err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &source.Position{Line: 1, Column: 1}}}}))
+			rule := NewRuleAction(t.Context(), ActionRule.Base(), metadataParseFailureLookup{cause: failure}, nil)
+			err := rule.VisitStep(fixturedecl.Step(&workflowlang.Step{Exec: &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./broken", Pos: &workflowlang.Pos{Line: 1, Col: 1}}}}))
 			if !errors.Is(err, failure) || len(rule.Errs()) != 0 {
 				t.Fatalf("unbound or interrupted parse became a finding: error=%v findings=%+v", err, rule.Errs())
 			}

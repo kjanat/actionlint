@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
-func callFinding(pos sourcepos.Position, format string, args ...any) results.Diagnostic {
-	return results.Diagnostic{Rule: "workflow-call", Message: fmt.Sprintf(format, args...), Start: pos}
+func callFinding(pos workflowlang.Pos, format string, args ...any) results.Diagnostic {
+	return results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: sourcepos.Position{Line: pos.Line, Column: pos.Col}}
 }
 
 // CheckArguments validates required and supplied inputs and secrets against

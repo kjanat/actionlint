@@ -91,13 +91,14 @@ validated without implicit file or network access. The catalogue generates `docs
 
 `traversal.Base` accumulates findings and supplies empty visitor callbacks.
 Adapters request configuration and logging explicitly.
-Source-local checks declare workflow, job and step callbacks through
-`inputs.DeclarationCheck`. Their metadata, bindings, implementations and semantic
-tests live under `internal/checking/rules/<category>`. Identifiers and dependencies
-receive complete scopes without accumulating state through callback order.
-`internal/checking/executor/declarations` invokes those callbacks and attaches
-finding ownership. It also projects options for the commit-pinning, timeout and
-required-permissions adapters.
+Each native rule is one `define.Rule`: its metadata, options, enablement, input
+preparation and exactly one executable form. Source-local checks declare workflow,
+job and step callbacks through `define.Checks`. The rule definitions, check
+implementations and semantic tests live under `internal/checking/rules/<category>`;
+`All` in `internal/checking/executor/registration` fixes their order. Identifiers and
+dependencies receive complete scopes without accumulating state through callback order.
+`internal/checking/define` invokes those callbacks, attaches the rule name and
+finding ownership, and derives the declaration and registration from the rule.
 Policy options are projected at construction; the check implementations do not load
 repository configuration. Reusable-workflow metadata and permissions live in
 `internal/model/calls`, and evaluated field shapes in `internal/model/workflows/schema`.

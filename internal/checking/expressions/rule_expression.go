@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 
-	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -21,16 +21,32 @@ import (
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
+// Rule is the single definition of the expression rule.
+var Rule = &define.Rule{
+	Name:            "expression",
+	Description:     "Validate expression values assigned to workflow fields",
+	Category:        "correctness",
+	Subcategory:     "expressions",
+	Recommended:     true,
+	Help:            "Use the expression value and interpolation form required by this workflow field. Syntax, references, context availability, calls, operand types, payload properties and script injection have separate rules.",
+	SupportsActions: true,
+	Prepare:         define.PrepareWorkflowMetadata,
+	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+		return NewExpressionRule(c.Context, base, c.Actions.Prepared(), c.Workflows, c.Runners, c.RemoteActions)
+	},
+}
+
 // ruleExpression connects workflow expression checking to host lookups and options.
 type ruleExpression struct {
 	*Checker
 	reporting.Logger
-	bindings *binding.Scope
-	host     repository.Snapshot
-	frames   []expressionInvocation
-	findings workflowvisit.Findings
-	ctx      context.Context
-	remote   *actionremote.ResolvedActions
+	name, description string
+	bindings          *binding.Scope
+	host              repository.Snapshot
+	frames            []expressionInvocation
+	findings          workflowvisit.Findings
+	ctx               context.Context
+	remote            *actionremote.ResolvedActions
 }
 
 type expressionInvocation struct {
@@ -115,8 +131,8 @@ func (r *ruleExpression) VisitJobPost(view workflowdecl.Job) error {
 }
 
 // NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
-func NewExpressionRule(ctx context.Context, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
-	r := &ruleExpression{Tag: "expression", ctx: ctx, remote: remote}
+func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspaceactions.MetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
 	r.Checker = New(Dependencies{
 		Runners:  runners,
 		Action:   lookup.New(ctx, actionsCache, remote).Lookup,
@@ -126,8 +142,8 @@ func NewExpressionRule(ctx context.Context, actionsCache workspaceactions.Metada
 	return r
 }
 
-func (r *ruleExpression) Name() string                  { return "expression" }
-func (r *ruleExpression) Description() string           { return correctness.ExpressionDeclaration().Description }
+func (r *ruleExpression) Name() string                  { return r.name }
+func (r *ruleExpression) Description() string           { return r.description }
 func (r *ruleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs() }
 
 // FindingCount counts the findings collected by the rule. It shadows the

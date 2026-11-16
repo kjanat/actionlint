@@ -135,7 +135,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
 			resolver := workspaceactions.NewResolver(nil, nil)
-			options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
+			options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), resolver, nil)}}
 			result, err := standaloneActionForTest(t, options, metadata)
 			if err != nil {
 				t.Fatal(err)
@@ -166,7 +166,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolver := workspaceactions.NewResolver(nil, nil)
-	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), resolver, nil)}}
+	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), resolver, nil)}}
 	result, err := standaloneActionForTest(t, options, metadata)
 	if err != nil {
 		t.Fatal(err)

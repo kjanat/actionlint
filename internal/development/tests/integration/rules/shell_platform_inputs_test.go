@@ -50,7 +50,7 @@ jobs:
 	if !available {
 		t.Fatal("fixture workflow is unavailable")
 	}
-	check := correctness.ShellNameCheck(knowledge)
+	check := correctness.ShellNameChecks(knowledge)
 	for range 2 {
 		for _, name := range []string{"linux", "windows"} {
 			job, found := workflow.Job(name)
@@ -70,7 +70,7 @@ jobs:
 				if len(findings) != 1 || findings[0].Step.Reference() != steps[index].Reference() || !strings.Contains(findings[0].Message, " on ") {
 					t.Fatalf("lost %s platform or source owner: %+v", name, findings)
 				}
-				if got := correctness.ShellNameCheck(nil).Step(steps[index]); len(got) != 0 {
+				if got := correctness.ShellNameChecks(nil).Step(steps[index]); len(got) != 0 {
 					t.Fatalf("unknown platform rejected a supported shell: %+v", got)
 				}
 			}

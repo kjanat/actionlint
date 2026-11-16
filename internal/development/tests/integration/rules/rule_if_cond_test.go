@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
-
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -44,7 +44,7 @@ func TestRuleIfCond(t *testing.T) {
 				s.If = &workflowlang.String{Value: tc.cond, Pos: &source.Position{}}
 			}
 
-			r := declarationchecks.New(checking.ConfigurationRules(), correctness.IfCondCheck())
+			r := correctness.IfCondRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
 			if err := r.VisitStep(fixturedecl.Step(&s)); err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestRuleIfCond(t *testing.T) {
 				}
 			}
 
-			r := declarationchecks.New(checking.ConfigurationRules(), correctness.IfCondCheck())
+			r := correctness.IfCondRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
 			if err := r.VisitJobPre(fixturedecl.Job(&j)); err != nil {
 				t.Fatal(err)
 			}

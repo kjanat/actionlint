@@ -23,7 +23,7 @@ type executableRule interface {
 
 func newExecutableRule(t *testing.T, input correctness.ExecutableContext) executableRule {
 	t.Helper()
-	rule, ok := correctness.NewRuleExecutableBit(input).(executableRule)
+	rule, ok := correctness.NewRuleExecutableBit(correctness.ExecutableBitRule.Base(), input).(executableRule)
 	if !ok {
 		t.Fatal("executable-bit rule lacks invocation, checkout or path hooks")
 	}

@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 )
 
@@ -50,13 +51,13 @@ jobs:
     steps:
       - run: echo ok
 `)
-				rule := declarationchecks.New(checking.ConfigurationRules(), correctness.MatrixCheck(checking.ConfigurationRules().DiagnosticLevel(nil, "mixed-type-matrix-filters") != "off"))
+				rule := define.NewChecksVisitor(checking.ConfigurationRules(), correctness.MatrixRule.Name, correctness.MatrixChecks(checking.ConfigurationRules().DiagnosticLevel(nil, "mixed-type-matrix-filters") != "off"))
 				if config != "" {
 					cfg, err := checking.ConfigurationRules().Parse([]byte(config))
 					if err != nil {
 						t.Fatal(err)
 					}
-					rule = declarationchecks.New(checking.ConfigurationRules(), correctness.MatrixCheck(checking.ConfigurationRules().DiagnosticLevel(cfg, "mixed-type-matrix-filters") != "off"))
+					rule = define.NewChecksVisitor(checking.ConfigurationRules(), correctness.MatrixRule.Name, correctness.MatrixChecks(checking.ConfigurationRules().DiagnosticLevel(cfg, "mixed-type-matrix-filters") != "off"))
 				}
 				if err := rule.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 					t.Fatal(err)

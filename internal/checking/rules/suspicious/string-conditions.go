@@ -1,8 +1,18 @@
 package suspicious
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+)
 
-// StringConditionsDeclaration describes the string-conditions rule.
-func StringConditionsDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "string-conditions", Description: "Flag string conditions whose truthiness may be misleading", Category: "suspicious", Subcategory: "expressions", Maturity: "stable", Provider: "actionlint", Recommended: false, Explanation: "Flag string conditions whose truthiness may be misleading.", Help: "Use a boolean expression; a nonempty string, including the string false, is truthy.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#string-conditions", SupportsActions: true, Scope: rule.CompositeConfiguration}
+// StringConditionsRule is the single definition of the string-conditions rule.
+var StringConditionsRule = &define.Rule{
+	Name:            "string-conditions",
+	Description:     "Flag string conditions whose truthiness may be misleading",
+	Category:        "suspicious",
+	Subcategory:     "expressions",
+	Help:            "Use a boolean expression; a nonempty string, including the string false, is truthy.",
+	SupportsActions: true,
+	Scope:           rule.CompositeConfiguration,
+	DeclaredBy:      "expression",
 }

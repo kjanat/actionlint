@@ -1,8 +1,18 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+)
 
-// ContextAvailabilityDeclaration describes the context-availability rule.
-func ContextAvailabilityDeclaration() rule.Declaration {
-	return rule.Declaration{ExecutionFailure: true, Name: "context-availability", Description: "Validate contexts and functions available at a workflow field", Category: "correctness", Subcategory: "contexts", Maturity: "stable", Provider: "actionlint", Explanation: "Validate contexts and functions available at a workflow field.", Help: "Move the expression to a field where its contexts and functions are available, or use an available value.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#context-availability", Recommended: true, SupportsActions: true}
+// ContextAvailabilityRule is the single definition of the context-availability rule.
+var ContextAvailabilityRule = &define.Rule{
+	ExecutionFailure: true,
+	Name:             "context-availability",
+	Description:      "Validate contexts and functions available at a workflow field",
+	Category:         "correctness",
+	Subcategory:      "contexts",
+	Help:             "Move the expression to a field where its contexts and functions are available, or use an available value.",
+	Recommended:      true,
+	SupportsActions:  true,
+	DeclaredBy:       "expression",
 }

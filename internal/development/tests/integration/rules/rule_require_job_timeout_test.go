@@ -4,11 +4,12 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/conventions"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -141,7 +142,7 @@ func TestRuleRequireJobTimeout(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			r := declarationchecks.NewRuleRequireJobTimeout(checking.ConfigurationRules(), tc.policy)
+			r := define.NewChecksVisitor(checking.ConfigurationRules(), conventions.JobTimeoutRule.Name, conventions.JobTimeoutChecks(conventions.TimeoutPolicyFrom(tc.policy)))
 			if err := r.VisitJobPre(fixturedecl.Job(tc.job)); err != nil {
 				t.Fatal(err)
 			}
@@ -191,7 +192,7 @@ func TestRuleRequireJobTimeoutRange(t *testing.T) {
 			if tc.call {
 				job.WorkflowCall = &workflowlang.WorkflowCall{}
 			}
-			rule := declarationchecks.NewRuleRequireJobTimeout(checking.ConfigurationRules(), policy)
+			rule := define.NewChecksVisitor(checking.ConfigurationRules(), conventions.JobTimeoutRule.Name, conventions.JobTimeoutChecks(conventions.TimeoutPolicyFrom(policy)))
 			if err := rule.VisitJobPre(fixturedecl.Job(job)); err != nil {
 				t.Fatal(err)
 			}

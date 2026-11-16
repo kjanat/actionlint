@@ -1,17 +1,76 @@
 package correctness
 
 import (
-	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"fmt"
+	"strings"
+
+	"actionlint.kjanat.dev/v2/internal/checking/define"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
+	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// EnvVarDeclaration describes the env-var rule.
-func EnvVarDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "env-var", Description: "Validate environment variable declarations", Category: "correctness", Subcategory: "environment", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Validate environment variable declarations.", Help: "Use valid environment variable names and values in the indicated mapping.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#env-var", Examples: []rule.Example{rule.WorkflowExample("Use environment names without spaces.",
-		"    env:\n      BAD NAME: value\n", "    env:\n      GOOD_NAME: value\n")}}
+// EnvVarRule is the single definition of the env-var rule.
+var EnvVarRule = &define.Rule{
+	Name:        "env-var",
+	Description: "Validate environment variable declarations",
+	Category:    "correctness",
+	Subcategory: "environment",
+	Recommended: true,
+	Help:        "Use valid environment variable names and values in the indicated mapping.",
+	Examples: []rule.Example{rule.WorkflowExample("Use environment names without spaces.",
+		"    env:\n      BAD NAME: value\n", "    env:\n      GOOD_NAME: value\n")},
+	Checks: define.Fixed(define.Checks{Workflow: checkWorkflowEnvironment, Job: checkJobEnvironment, Step: checkStepEnvironment}),
 }
 
-// EnvVarCheck binds the rule to workflow, job, and step declarations.
-func EnvVarCheck() inputs.DeclarationCheck {
-	return inputs.DeclarationCheck{Declaration: EnvVarDeclaration(), Workflow: checkWorkflowEnvironment, Job: checkJobEnvironment, Step: checkStepEnvironment}
+func checkEnvironmentMapping(env *workflowlang.Env) []reporting.Finding {
+	if env == nil {
+		return nil
+	}
+	var entries []workflowfacts.Entry
+	resolved := declaration.Environment(env)
+	for key := range resolved.KeyedEntries() {
+		if name, known := key.ScalarString(); known {
+			entries = append(entries, workflowfacts.Entry{Name: name, State: workflowfacts.KnownKey, Start: key.Origin().Span.Start})
+		}
+	}
+	return reporting.FromDiagnostics(environmentNameDiagnostics(entries))
+}
+
+func checkWorkflowEnvironment(w declaration.Workflow) []reporting.Finding {
+	return checkEnvironmentMapping(w.Env)
+}
+
+func checkStepEnvironment(step declaration.Step) []reporting.Finding {
+	return checkEnvironmentMapping(step.Env)
+}
+
+func checkJobEnvironment(job declaration.Job) []reporting.Finding {
+	out := checkEnvironmentMapping(job.Env)
+	if job.Container != nil {
+		out = append(out, checkEnvironmentMapping(job.Container.Env)...)
+	}
+	if job.Services != nil {
+		for _, service := range job.Services.Value {
+			if service != nil && service.Container != nil {
+				out = append(out, checkEnvironmentMapping(service.Container.Env)...)
+			}
+		}
+	}
+	return out
+}
+
+// environmentNameDiagnostics reports resolved environment names that contain '&', '=' or whitespace.
+func environmentNameDiagnostics(entries []workflowfacts.Entry) []results.Diagnostic {
+	var findings []results.Diagnostic
+	for _, entry := range entries {
+		if entry.State == workflowfacts.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
+			continue
+		}
+		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Start})
+	}
+	return findings
 }

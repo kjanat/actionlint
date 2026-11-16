@@ -1,8 +1,128 @@
 package correctness
 
-import rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+import (
+	"context"
+	"errors"
+	"os"
 
-// ExecutableBitDeclaration describes the executable-bit rule.
-func ExecutableBitDeclaration() rule.Declaration {
-	return rule.Declaration{Name: "executable-bit", Description: "Report directly invoked repository scripts not marked executable in Git", Category: "correctness", Subcategory: "scripts", Maturity: "stable", Provider: "actionlint", Recommended: true, Explanation: "Report directly invoked repository scripts not marked executable in Git.", Help: "Record the executable bit for the referenced script in Git, or invoke it explicitly through its interpreter.", DocumentationURL: "https://github.com/kjanat/actionlint/blob/master/docs/rules.md#executable-bit"}
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
+	workflowdecl "actionlint.kjanat.dev/v2/internal/model/workflows"
+	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+)
+
+// ExecutableBitRule is the single definition of the executable-bit rule.
+var ExecutableBitRule = &define.Rule{
+	Name:        "executable-bit",
+	Description: "Report directly invoked repository scripts not marked executable in Git",
+	Category:    "correctness",
+	Subcategory: "scripts",
+	Recommended: true,
+	Help:        "Record the executable bit for the referenced script in Git, or invoke it explicitly through its interpreter.",
+	Prepare:     prepareExecutableIndex,
+	Walker: func(c define.Inputs, base workflowvisit.Base) workflowvisit.Rule {
+		return NewRuleExecutableBit(base, ExecutableContext{
+			ProjectRoot: c.ProjectRoot, WorkingDir: c.WorkingDir,
+			Index: c.ExecutableIndex, Runners: c.Runners,
+		})
+	},
+	Enabled: func(c define.Inputs) bool { return c.ProjectRoot != "" && c.Index != nil },
+}
+
+// ruleExecutableBit adapts workflow execution checks to traversal and composite scopes.
+type ruleExecutableBit struct {
+	*ExecutableChecker
+	reporting.Logger
+	name, description string
+	frames            []executableInvocation
+	findings          workflowvisit.Findings
+}
+
+// NewRuleExecutableBit checks script executable bits using prepared Git-index facts.
+func NewRuleExecutableBit(base workflowvisit.Base, input ExecutableContext) workflowvisit.Rule {
+	r := &ruleExecutableBit{Tag: base.Name(), name: base.Name(), description: base.Description()}
+	input.Report = func(finding *findingmodel.Finding) { r.findings.Report(finding) }
+	r.ExecutableChecker = NewExecutableChecker(input)
+	return r
+}
+func (rule *ruleExecutableBit) Name() string        { return rule.name }
+func (rule *ruleExecutableBit) Description() string { return rule.description }
+
+func (rule *ruleExecutableBit) Errs() []*findingmodel.Finding { return rule.findings.Errs() }
+func (rule *ruleExecutableBit) FindingCount() int             { return rule.findings.FindingCount() }
+
+func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+	rule.findings.AnnotateSince(mark, annotate)
+}
+func (rule *ruleExecutableBit) VisitWorkflowPost(workflowdecl.Workflow) error { return nil }
+func (rule *ruleExecutableBit) VisitJobPost(workflowdecl.Job) error           { return nil }
+func (rule *ruleExecutableBit) ApplyCheckout(actions *workspaceactions.Resolver) {
+	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
+}
+
+type executableInvocation struct {
+	scope  workflowvisit.Invocation
+	parent *ExecutableChecker
+}
+
+func (rule *ruleExecutableBit) VisitStep(step workflowdecl.Step) error {
+	if _, action := step.Action(); action {
+		return nil
+	}
+	return rule.VisitInvocationStep(step)
+}
+
+func (rule *ruleExecutableBit) VisitInvocationStep(step workflowdecl.Step) error {
+	return rule.ExecutableChecker.VisitStep(step)
+}
+
+func (rule *ruleExecutableBit) VisitOpaqueAction(step workflowdecl.Step) error {
+	return rule.VisitInvocationStep(step)
+}
+
+func (rule *ruleExecutableBit) EnterInvocation(scope workflowvisit.Invocation) error {
+	if !scope.Context.Valid() || !scope.Source.Present() {
+		return invocation.ErrForeignContext
+	}
+	rule.frames = append(rule.frames, executableInvocation{scope: scope, parent: rule.ExecutableChecker})
+	rule.ExecutableChecker = rule.ForkComposite(scope.Context, scope.ActionPath, rule.Paths())
+	return nil
+}
+
+func (rule *ruleExecutableBit) LeaveInvocation(context invocation.Context) error {
+	if len(rule.frames) == 0 || rule.frames[len(rule.frames)-1].scope.Context != context {
+		return invocation.ErrForeignContext
+	}
+	frame := rule.frames[len(rule.frames)-1]
+	frame.parent.JoinComposite(context, rule.ExecutableChecker)
+	rule.ExecutableChecker = frame.parent
+	rule.frames = rule.frames[:len(rule.frames)-1]
+	return nil
+}
+
+var _ workflowvisit.InvocationParticipant = (*ruleExecutableBit)(nil)
+
+func prepareExecutableIndex(c define.Inputs) (define.InputPreparation, error) {
+	if c.Rules.DiagnosticLevel(c.Config, "executable-bit") == "off" {
+		return define.PreparedInputs{Inputs: c}, nil
+	}
+	if err := c.Context.Err(); err != nil {
+		return nil, err
+	}
+	snapshot := c.Index(c.Context, c.ProjectRoot)
+	if err := c.Context.Err(); err != nil {
+		return nil, err
+	}
+	if err := snapshot.Err(); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrPermission) {
+			return nil, err
+		}
+		return define.UnavailableInputs{Reason: "Git index could not be read: " + err.Error()}, nil
+	}
+	c.Reader.Record(snapshot.Path())
+	c.ExecutableIndex = snapshot
+	return define.PreparedInputs{Inputs: c}, nil
 }

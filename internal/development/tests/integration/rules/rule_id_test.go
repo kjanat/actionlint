@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	fixturedecl "actionlint.kjanat.dev/v2/internal/development/tests/support/capturefixture/declarations"
-
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -63,7 +63,7 @@ func TestCheckInvalidJobNames(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(input+"/"+tc.where, func(t *testing.T) {
 				t.Parallel()
-				r := declarationchecks.New(checking.ConfigurationRules(), correctness.IdCheck())
+				r := correctness.IdRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
 				if err := r.VisitJobPre(fixturedecl.Job(tc.job)); err != nil {
 					t.Fatal(err)
 				}
@@ -114,7 +114,7 @@ func TestCheckValidJobNames(t *testing.T) {
 					{ID: &workflowlang.String{Value: stepID, Pos: &source.Position{}}},
 				},
 			}
-			r := declarationchecks.New(checking.ConfigurationRules(), correctness.IdCheck())
+			r := correctness.IdRule.NewVisitor(define.Inputs{Rules: checking.ConfigurationRules()})
 			if err := r.VisitJobPre(fixturedecl.Job(job)); err != nil {
 				t.Fatal(err)
 			}

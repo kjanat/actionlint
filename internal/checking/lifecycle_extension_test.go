@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	declarationchecks "actionlint.kjanat.dev/v2/internal/checking/executor/declarations"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
@@ -48,9 +48,8 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 		WorkingDir: root,
 		Sources:    []sourceUnit{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
-			check := checkinputs.DeclarationCheck{
-				Declaration: correctness.RuntimeLifecycleDeclaration(),
-				Step: func(step workflowdecl.Step) []reporting.StepFinding {
+			check := define.Checks{
+				Step: func(step workflowdecl.Step) []reporting.Finding {
 					if _, run := step.Run(); !run {
 						return nil
 					}
@@ -59,7 +58,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 					return []reporting.StepFinding{{Rule: "runtime-lifecycle", Code: string(evidence.Kind), Message: "Plan a Python upgrade", Start: sourcepos.ZeroIfNil(sourcepos.NilUnlessPresent(position, present)), Step: step, LifecycleEvidence: &evidence}}
 				},
 			}
-			return []workflowvisit.Rule{declarationchecks.New(ConfigurationRules(), check)}
+			return []workflowvisit.Rule{define.NewChecksVisitor(ConfigurationRules(), correctness.RuntimeLifecycleRule.Name, check)}
 		},
 	})
 	if err != nil {

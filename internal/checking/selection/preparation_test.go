@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/checking/define"
+
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/binding"
 	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
@@ -17,7 +19,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (string, bool, error)) ruleexec.Inputs {
+func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(string) (string, bool, error)) define.Inputs {
 	t.Helper()
 	root := t.TempDir()
 	path := filepath.Join(root, ".github", "workflows", "consumer.yml")
@@ -36,7 +38,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ruleexec.Inputs{
+	return define.Inputs{
 		Bindings: binding.NewRegistry(rules).Prepare(config, config, config),
 		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
@@ -75,7 +77,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				prepared, ready := outcome.(ruleexec.PreparedInputs)
+				prepared, ready := outcome.(define.PreparedInputs)
 				if !ready {
 					t.Fatalf("preparation did not supply inputs: %T", outcome)
 				}
