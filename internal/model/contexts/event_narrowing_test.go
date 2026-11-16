@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
 	t.Parallel()
-	push := exprtypes.EventVariant{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}
-	issue := exprtypes.EventVariant{Event: "issues", Action: "opened", Payload: exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"action": exprtypes.StringType()})}
-	unknown := exprtypes.EventVariant{Payload: exprtypes.NewEmptyObjectType()}
-	event := exprtypes.NewEventType([]exprtypes.EventVariant{push, issue, unknown})
-	bindings := modelBindings{"github": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"event": event.Type()}).Type()}
+	push := types.EventVariant{Event: "push", Payload: types.NewEmptyStrictObjectType()}
+	issue := types.EventVariant{Event: "issues", Action: "opened", Payload: types.NewStrictObjectType(map[string]types.Type{"action": types.StringType()})}
+	unknown := types.EventVariant{Payload: types.NewEmptyObjectType()}
+	event := types.NewEventType([]types.EventVariant{push, issue, unknown})
+	bindings := modelBindings{"github": types.NewStrictObjectType(map[string]types.Type{"event": event.Type()}).Type()}
 	for _, input := range []string{"github.event_name == 'push'", "github.event.action == '0'", "format('pu{0}', 'sh') == github.event_name"} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
@@ -44,8 +44,8 @@ func TestEventTypeNarrowingPreservesUnknownVariants(t *testing.T) {
 
 func TestEventTypeNarrowingDistinguishesUnknownAndUnreachable(t *testing.T) {
 	t.Parallel()
-	event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: exprtypes.NewEmptyStrictObjectType()}})
-	bindings := modelBindings{"github": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"event": event.Type()}).Type()}
+	event := types.NewEventType([]types.EventVariant{{Event: "push", Payload: types.NewEmptyStrictObjectType()}})
+	bindings := modelBindings{"github": types.NewStrictObjectType(map[string]types.Type{"event": event.Type()}).Type()}
 	for _, tc := range []struct {
 		input    string
 		bindings modelBindings

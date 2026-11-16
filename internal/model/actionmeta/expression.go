@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -147,13 +147,13 @@ func ReadExpressions(s string, bare bool, field string, inputs calls.Inputs) Exp
 					}
 				}
 				if !slices.Contains(actionMetadataSpecialFunctions, name) {
-					function, ok := exprfunctions.Builtins[name]
+					function, ok := functions.Builtins[name]
 					signatures := function.Signatures
 					if !ok {
 						v.Code = CodeExpressionCall
 						v.Message = fmt.Sprintf("calls unknown function %q", name)
 						var candidates []string
-						for candidate, function := range exprfunctions.Builtins {
+						for candidate, function := range functions.Builtins {
 							signatures := function.Signatures
 							if slices.Contains(actionMetadataSpecialFunctions, candidate) {
 								if _, available := avail.functions[candidate]; !available {
@@ -208,7 +208,7 @@ func ReadExpressions(s string, bare bool, field string, inputs calls.Inputs) Exp
 	return ExpressionReadResult{Expressions: parsed, Problems: out}
 }
 
-func actionFunctionArityMatches(signatures []*exprfunctions.FuncSignature, count int) bool {
+func actionFunctionArityMatches(signatures []*functions.FuncSignature, count int) bool {
 	for _, signature := range signatures {
 		if signature.AcceptsArgumentCount(count) {
 			return true

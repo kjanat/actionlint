@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
@@ -115,13 +115,13 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			marker := filepath.Join(root, "executed")
-			command, err := toolconfig.NewCommand(executable,
+			command, err := tools.NewCommand(executable,
 				[]string{"-test.run=^TestRepositoryProcessHelper$", "--"},
 				map[string]string{"ACTIONLINT_REPOSITORY_PROCESS": "1", "ACTIONLINT_REPOSITORY_PROCESS_MARKER": marker, "ACTIONLINT_REPOSITORY_TOOL": tool})
 			if err != nil {
 				t.Fatal(err)
 			}
-			backend := toolconfig.ProcessBackend(command)
+			backend := tools.ProcessBackend(command)
 			cfg := &configuration.Config{Tools: configuration.ToolsConfig{tool: {Backend: backend}}}
 			options := registry.Selections{tool: {Command: tool}}
 			shell := "python"

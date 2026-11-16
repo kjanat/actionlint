@@ -1,118 +1,118 @@
 package contexts
 
-import exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 // builtinSecretProps are the secrets which GitHub Actions always provides to a workflow.
 // ACTIONS_STEP_DEBUG and ACTIONS_RUNNER_DEBUG seem supplied from caller of the workflow (#130).
-var builtinSecretProps = map[string]exprtypes.Type{
-	"github_token":         exprtypes.StringType(),
-	"actions_step_debug":   exprtypes.StringType(),
-	"actions_runner_debug": exprtypes.StringType(),
+var builtinSecretProps = map[string]types.Type{
+	"github_token":         types.StringType(),
+	"actions_step_debug":   types.StringType(),
+	"actions_runner_debug": types.StringType(),
 }
 
 // BuiltinGlobalVariableTypes defines types of all global variables. All context variables are
 // documented at https://docs.github.com/en/actions/learn-github-actions/contexts
-var BuiltinGlobalVariableTypes = map[string]exprtypes.Type{
+var BuiltinGlobalVariableTypes = map[string]types.Type{
 	// https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#github-context
 	// Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/contexts
-	"github": exprtypes.NewNamedObjectType(map[string]exprtypes.Type{
-		"action":                    exprtypes.StringType(),
-		"action_path":               exprtypes.StringType(), // Note: Composite actions only
-		"action_ref":                exprtypes.StringType(),
-		"action_repository":         exprtypes.StringType(),
-		"action_status":             exprtypes.StringType(), // Note: Composite actions only
-		"actor":                     exprtypes.StringType(),
-		"actor_id":                  exprtypes.StringType(),
-		"api_url":                   exprtypes.StringType(),
-		"artifact_cache_size_limit": exprtypes.NumberType(), // Note: Missing from the context reference
-		"artifacts":                 exprtypes.StringType(),
-		"artifacts_list":            exprtypes.StringType(),
-		"base_ref":                  exprtypes.StringType(),
-		"env":                       exprtypes.StringType(),
-		"event":                     exprtypes.NewEmptyObjectType().Type(), // Note: Stricter type check for this payload would be possible
-		"event_name":                exprtypes.StringType(),
-		"event_path":                exprtypes.StringType(),
-		"graphql_url":               exprtypes.StringType(),
-		"head_ref":                  exprtypes.StringType(),
-		"job":                       exprtypes.StringType(),
-		"output":                    exprtypes.StringType(), // Note: Runner-provided file command path missing from the context reference
-		"path":                      exprtypes.StringType(),
-		"ref":                       exprtypes.StringType(),
-		"ref_name":                  exprtypes.StringType(),
-		"ref_protected":             exprtypes.BoolType(),
-		"ref_type":                  exprtypes.StringType(),
-		"repository":                exprtypes.StringType(),
-		"repository_id":             exprtypes.StringType(),
-		"repository_owner":          exprtypes.StringType(),
-		"repository_owner_id":       exprtypes.StringType(),
-		"repository_visibility":     exprtypes.StringType(), // Note: Missing from the context reference; documented as an OIDC claim
-		"repositoryUrl":             exprtypes.StringType(),
-		"retention_days":            exprtypes.StringType(),
-		"run_attempt":               exprtypes.StringType(),
-		"run_id":                    exprtypes.StringType(),
-		"run_number":                exprtypes.StringType(),
-		"secret_source":             exprtypes.StringType(),
-		"server_url":                exprtypes.StringType(),
-		"sha":                       exprtypes.StringType(),
-		"state":                     exprtypes.StringType(), // Note: Runner-provided file command path missing from the context reference
-		"step_summary":              exprtypes.StringType(), // Note: Runner-provided file command path missing from the context reference
-		"token":                     exprtypes.StringType(),
-		"triggering_actor":          exprtypes.StringType(),
-		"workflow":                  exprtypes.StringType(),
-		"workflow_ref":              exprtypes.StringType(),
-		"workflow_sha":              exprtypes.StringType(),
-		"workspace":                 exprtypes.StringType(),
+	"github": types.NewNamedObjectType(map[string]types.Type{
+		"action":                    types.StringType(),
+		"action_path":               types.StringType(), // Note: Composite actions only
+		"action_ref":                types.StringType(),
+		"action_repository":         types.StringType(),
+		"action_status":             types.StringType(), // Note: Composite actions only
+		"actor":                     types.StringType(),
+		"actor_id":                  types.StringType(),
+		"api_url":                   types.StringType(),
+		"artifact_cache_size_limit": types.NumberType(), // Note: Missing from the context reference
+		"artifacts":                 types.StringType(),
+		"artifacts_list":            types.StringType(),
+		"base_ref":                  types.StringType(),
+		"env":                       types.StringType(),
+		"event":                     types.NewEmptyObjectType().Type(), // Note: Stricter type check for this payload would be possible
+		"event_name":                types.StringType(),
+		"event_path":                types.StringType(),
+		"graphql_url":               types.StringType(),
+		"head_ref":                  types.StringType(),
+		"job":                       types.StringType(),
+		"output":                    types.StringType(), // Note: Runner-provided file command path missing from the context reference
+		"path":                      types.StringType(),
+		"ref":                       types.StringType(),
+		"ref_name":                  types.StringType(),
+		"ref_protected":             types.BoolType(),
+		"ref_type":                  types.StringType(),
+		"repository":                types.StringType(),
+		"repository_id":             types.StringType(),
+		"repository_owner":          types.StringType(),
+		"repository_owner_id":       types.StringType(),
+		"repository_visibility":     types.StringType(), // Note: Missing from the context reference; documented as an OIDC claim
+		"repositoryUrl":             types.StringType(),
+		"retention_days":            types.StringType(),
+		"run_attempt":               types.StringType(),
+		"run_id":                    types.StringType(),
+		"run_number":                types.StringType(),
+		"secret_source":             types.StringType(),
+		"server_url":                types.StringType(),
+		"sha":                       types.StringType(),
+		"state":                     types.StringType(), // Note: Runner-provided file command path missing from the context reference
+		"step_summary":              types.StringType(), // Note: Runner-provided file command path missing from the context reference
+		"token":                     types.StringType(),
+		"triggering_actor":          types.StringType(),
+		"workflow":                  types.StringType(),
+		"workflow_ref":              types.StringType(),
+		"workflow_sha":              types.StringType(),
+		"workspace":                 types.StringType(),
 	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#env-context
-	"env": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(), // env.<env_name>
+	"env": types.NewMapObjectType(types.StringType()).Type(), // env.<env_name>
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#job-context
-	"job": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-		"check_run_id": exprtypes.NumberType(),
-		"container": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-			"id":      exprtypes.StringType(),
-			"network": exprtypes.StringType(),
+	"job": types.NewStrictObjectType(map[string]types.Type{
+		"check_run_id": types.NumberType(),
+		"container": types.NewStrictObjectType(map[string]types.Type{
+			"id":      types.StringType(),
+			"network": types.StringType(),
 		}).Type(),
-		"services": exprtypes.NewMapObjectType(
-			exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-				"id":      exprtypes.StringType(), // job.services.<service id>.id
-				"network": exprtypes.StringType(),
-				"ports":   exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),
+		"services": types.NewMapObjectType(
+			types.NewStrictObjectType(map[string]types.Type{
+				"id":      types.StringType(), // job.services.<service id>.id
+				"network": types.StringType(),
+				"ports":   types.NewMapObjectType(types.StringType()).Type(),
 			}).Type(),
 		).Type(),
-		"status":              exprtypes.StringType(),
-		"workflow_file_path":  exprtypes.StringType(), // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
-		"workflow_ref":        exprtypes.StringType(),
-		"workflow_repository": exprtypes.StringType(),
-		"workflow_sha":        exprtypes.StringType(),
+		"status":              types.StringType(),
+		"workflow_file_path":  types.StringType(), // https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
+		"workflow_ref":        types.StringType(),
+		"workflow_repository": types.StringType(),
+		"workflow_sha":        types.StringType(),
 	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context
-	"steps": exprtypes.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
+	"steps": types.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#runner-context
-	"runner": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-		"name":        exprtypes.StringType(),
-		"os":          exprtypes.StringType(),
-		"arch":        exprtypes.StringType(),
-		"temp":        exprtypes.StringType(),
-		"tool_cache":  exprtypes.StringType(),
-		"debug":       exprtypes.StringType(),
-		"environment": exprtypes.StringType(), // https://github.com/github/docs/issues/32443
+	"runner": types.NewStrictObjectType(map[string]types.Type{
+		"name":        types.StringType(),
+		"os":          types.StringType(),
+		"arch":        types.StringType(),
+		"temp":        types.StringType(),
+		"tool_cache":  types.StringType(),
+		"debug":       types.StringType(),
+		"environment": types.StringType(), // https://github.com/github/docs/issues/32443
 	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#secrets-context
-	"secrets": exprtypes.NewStrictObjectType(builtinSecretProps).WithMapped(exprtypes.StringType()).Type(),
+	"secrets": types.NewStrictObjectType(builtinSecretProps).WithMapped(types.StringType()).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#strategy-context
-	"strategy": exprtypes.NewObjectType(map[string]exprtypes.Type{
-		"fail-fast":    exprtypes.BoolType(),
-		"job-index":    exprtypes.NumberType(),
-		"job-total":    exprtypes.NumberType(),
-		"max-parallel": exprtypes.NumberType(),
+	"strategy": types.NewObjectType(map[string]types.Type{
+		"fail-fast":    types.BoolType(),
+		"job-index":    types.NumberType(),
+		"job-total":    types.NumberType(),
+		"max-parallel": types.NumberType(),
 	}).Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#matrix-context
-	"matrix": exprtypes.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
+	"matrix": types.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#needs-context
-	"needs": exprtypes.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
+	"needs": types.NewEmptyStrictObjectType().Type(), // This value will be updated contextually
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context
 	// https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
-	"inputs": exprtypes.NewEmptyStrictObjectType().Type(),
+	"inputs": types.NewEmptyStrictObjectType().Type(),
 	// https://docs.github.com/en/actions/learn-github-actions/contexts#vars-context
-	"vars": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(), // vars.<var_name>
+	"vars": types.NewMapObjectType(types.StringType()).Type(), // vars.<var_name>
 }

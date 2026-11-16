@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -59,7 +59,7 @@ func (processor Processor) filterConfigured(path, root string, source []byte, fi
 				if mode == configuration.ReportSuppression || mode == configuration.ReportAll {
 					policyError := *finding
 					policyError.Rule = "forbidden-suppression"
-					policyError.Binding = bindingmodel.ID{}
+					policyError.Binding = binding.ID{}
 					policyError.Message = fmt.Sprintf("configured suppression of %s is disallowed by policy.forbidden-suppression", ignore.Rule)
 					policyError.Code, policyError.Severity, policyError.Fixes = "", "", nil
 					filtered = append(filtered, &policyError)

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -36,7 +36,7 @@ func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
 		t.Fatal(err)
 	}
 	missing := 0
-	for _, finding := range actioncheck.Standalone(meta, facts) {
+	for _, finding := range action.Standalone(meta, facts) {
 		if finding.Code == "missing-file" {
 			missing++
 			if !strings.Contains(finding.Message, `"absent.js"`) {
@@ -47,7 +47,7 @@ func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
 	if missing != 1 || facts.Lookup("index.js") != actionmeta.FilePresent || facts.Lookup("absent.js") != actionmeta.FileMissing {
 		t.Fatalf("validation reread files: missing=%d", missing)
 	}
-	for _, finding := range actioncheck.Standalone(meta, actionmeta.ReferencedFiles{}) {
+	for _, finding := range action.Standalone(meta, actionmeta.ReferencedFiles{}) {
 		if finding.Code == "missing-file" {
 			t.Fatal("unknown availability became a missing-file finding")
 		}

@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -16,7 +16,7 @@ import (
 // the same record; publication never selects a configuration scope again.
 type Rule struct {
 	scope      *Scope
-	id         bindingmodel.ID
+	id         binding.ID
 	execution  *configuration.Config
 	policy     *configuration.Config
 	options    json.RawMessage
@@ -32,19 +32,19 @@ func (r *Rule) Options(explicit json.RawMessage) (json.RawMessage, error) {
 }
 
 // ID identifies the decision within its analysis registry. Zero is unbound.
-func (r *Rule) ID() bindingmodel.ID { return r.id }
+func (r *Rule) ID() binding.ID { return r.id }
 
 // Registry owns every prepared decision for one entry analysis.
 type Registry struct {
 	rules     configuration.RuleSet
 	records   []*Rule
-	namespace bindingmodel.Namespace
+	namespace binding.Namespace
 	sealed    bool
 }
 
 // Snapshot permits publication to read only decisions prepared before sealing.
 type Snapshot struct {
-	namespace bindingmodel.Namespace
+	namespace binding.Namespace
 	records   []*Rule
 }
 
@@ -56,7 +56,7 @@ func (r *Registry) Seal() *Snapshot {
 
 // NewRegistry creates an analysis-owned configuration binding registry.
 func NewRegistry(rules configuration.RuleSet) *Registry {
-	return &Registry{rules: rules, namespace: bindingmodel.NewNamespace()}
+	return &Registry{rules: rules, namespace: binding.NewNamespace()}
 }
 
 func (r *Registry) add(execution, policy *configuration.Config) *Rule {
@@ -66,7 +66,7 @@ func (r *Registry) add(execution, policy *configuration.Config) *Rule {
 }
 
 // Lookup returns a prepared decision without selecting configuration scope.
-func (r *Snapshot) Lookup(id bindingmodel.ID) (*Rule, bool) {
+func (r *Snapshot) Lookup(id binding.ID) (*Rule, bool) {
 	if r == nil {
 		return nil, false
 	}

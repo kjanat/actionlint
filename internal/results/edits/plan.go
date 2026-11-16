@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
+	"actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -76,7 +76,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 				if revision == "" || revision != source.ContentDigest(content) {
 					return Plan{}, fmt.Errorf("fix for %s has a missing or stale source revision", e.Path)
 				}
-				start, end, err := sourceposition.Range(content, source.YAML, e.Start, e.End)
+				start, end, err := position.Range(content, source.YAML, e.Start, e.End)
 				if err != nil {
 					return Plan{}, fmt.Errorf("%s: %w", path, err)
 				}
@@ -118,5 +118,5 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 // Offset converts an exclusive Unicode-scalar position to a byte offset without
 // accepting a coordinate inside CRLF or outside the document.
 func Offset(content []byte, p source.Position) (int, error) {
-	return sourceposition.Offset(content, source.YAML, p)
+	return position.Offset(content, source.YAML, p)
 }

@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -422,8 +422,8 @@ type ResolvedConfig struct {
 	Inputs     map[string]document.Location
 	Config     *Config
 	Values     map[string]any
-	Origins    map[string]configreport.Origin
-	Warnings   []configreport.Warning
+	Origins    map[string]report.Origin
+	Warnings   []report.Warning
 }
 
 // ResolveDocument parses one YAML or JSON document and resolves it without inheritance.
@@ -473,7 +473,7 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]document.Locatio
 	if err != nil {
 		return ResolvedConfig{}, err
 	}
-	origins := map[string]configreport.Origin{}
+	origins := map[string]report.Origin{}
 	configDefaultOrigins(values, "", origins)
 	if err := configOrigins(root, "", origins, inputs); err != nil {
 		return ResolvedConfig{}, err
@@ -527,7 +527,7 @@ func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string
 
 func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, bindRules bool, additional ...string) (*LoadedFile, error) {
 	reader := source.New(ctx, readFile, acquisitionhttp.Connections{})
-	warningsByFile := map[string][]configreport.Warning{}
+	warningsByFile := map[string][]report.Warning{}
 	var bindingSources []bindingSource
 	rules := document.NewFiles()
 	loaded, err := LoadSources(path, files, reader.ReadConfig, func(origin string, source *document.Node) (*document.Node, error) {

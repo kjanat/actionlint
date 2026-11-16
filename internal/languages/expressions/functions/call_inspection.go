@@ -1,14 +1,14 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
 // CallInspection describes failures and return-type refinements established from
 // already checked arguments. It does not traverse or evaluate expression syntax.
 type CallInspection struct {
-	ReturnType exprtypes.Type
+	ReturnType types.Type
 	Problems   []CallProblemReport
 }
 
@@ -64,7 +64,7 @@ func (JSONMemberCollision) callProblem() {}
 // InvalidCasePredicate identifies a predicate rejected by the boolean contract.
 type InvalidCasePredicate struct {
 	Index  int
-	Actual exprtypes.Type
+	Actual types.Type
 }
 
 func (InvalidCasePredicate) callProblem() {}
@@ -125,7 +125,7 @@ func inspectFromJSON(arguments []ParameterMatch, inspection *CallInspection) {
 	case decodedFunctionJSON:
 		inspectJSONMembers(read.parsed, inspection)
 		if len(read.parsed.Collisions) == 0 {
-			inspection.ReturnType = exprtypes.TypeOfJSONValue(read.parsed.Value)
+			inspection.ReturnType = types.TypeOfJSONValue(read.parsed.Value)
 		}
 	}
 }

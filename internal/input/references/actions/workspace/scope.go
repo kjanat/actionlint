@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 var (
@@ -46,7 +46,7 @@ func (c *Resolver) state() resolverState {
 }
 
 // BeginJob resets checkout and persistent environment assumptions for a new job.
-func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Value, job workflows.Job) {
+func (c *Resolver) BeginJob(workflowEnv mappings.Mapping, workflowShell value.Value, job workflows.Job) {
 	c.setCheckout(execution.Directory{})
 	knowledge := c.runners.Job(job)
 	c.platform = knowledge.Platform

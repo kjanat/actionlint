@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
@@ -101,7 +101,7 @@ func TestConditionConstantOutcomes(t *testing.T) {
 				t.Fatal(err)
 			}
 			value, known := evaluate.ConditionConstantValue(expr)
-			if !known || exprvalues.ExpressionTruthy(value) != tc.truthy {
+			if !known || values.ExpressionTruthy(value) != tc.truthy {
 				t.Fatalf("value=%v known=%v", value, known)
 			}
 		})

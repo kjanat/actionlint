@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 )
 
 type sourceCommentsKey struct{}
@@ -36,24 +36,24 @@ func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]fa
 
 type sourceAnnotations struct{}
 
-func (sourceAnnotations) Comments(ctx context.Context, reference invocationcontext.SourceReference) ([]annotationsbind.Comment, error) {
+func (sourceAnnotations) Comments(ctx context.Context, reference invocationcontext.SourceReference) ([]sourceannotations.Comment, error) {
 	comments, _ := ctx.Value(sourceCommentsKey{}).(map[source.Reference][]facts.SourceComment)
 	key := source.Reference{Document: reference.Document, Revision: reference.Revision, Node: reference.Node, Address: reference.Address}
-	var result []annotationsbind.Comment
+	var result []sourceannotations.Comment
 	for _, comment := range comments[key] {
 		if !strings.HasPrefix(comment.Text, "#") || strings.ContainsAny(comment.Text, "\r\n") || comment.Start.Line < 1 || comment.Start.Column < 1 {
 			return nil, fmt.Errorf("invalid physical source comment at %d:%d", comment.Start.Line, comment.Start.Column)
 		}
-		var placement annotationsbind.Placement
+		var placement sourceannotations.Placement
 		switch comment.Placement {
 		case facts.LeadingComment:
-			placement = annotationsbind.PlacementLeading
+			placement = sourceannotations.PlacementLeading
 		case facts.TrailingComment:
-			placement = annotationsbind.PlacementTrailing
+			placement = sourceannotations.PlacementTrailing
 		default:
 			return nil, fmt.Errorf("invalid source comment placement %d", comment.Placement)
 		}
-		result = append(result, annotationsbind.Comment{
+		result = append(result, sourceannotations.Comment{
 			Text: comment.Text, Placement: placement,
 			Start: invocationcontext.Position{Line: uint32(lowerU32(comment.Start.Line)), Column: uint32(lowerU32(comment.Start.Column))},
 		})

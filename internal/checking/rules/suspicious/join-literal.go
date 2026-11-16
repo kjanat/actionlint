@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -44,7 +44,7 @@ func JoinLiteral(root syntax.Node, calls typecheck.CheckedCalls) []*typecheck.Er
 			return
 		}
 		facts, known := calls.CallOf(call)
-		if !known || !facts.SignatureMatched || facts.Demand == exprfunctions.DemandSkipped {
+		if !known || !facts.SignatureMatched || facts.Demand == functions.DemandSkipped {
 			return
 		}
 		findings = append(findings, expressionFinding(

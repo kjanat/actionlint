@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -85,11 +85,11 @@ func TestOverlayErrorsAreClassifiable(t *testing.T) {
 			t.Parallel()
 			var err error
 			if mode == "files" {
-				_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+				_, err = checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{path}})
 			} else {
-				_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Repository, Directory: root})
+				_, err = checking.Check(t.Context(), options, input.Request{Kind: input.Repository, Directory: root})
 			}
-			var overlayError *configreport.OverlayError
+			var overlayError *report.OverlayError
 			if !errors.As(err, &overlayError) || errors.Unwrap(overlayError) == nil {
 				t.Fatalf("cannot classify merged overlay validation: %v", err)
 			}

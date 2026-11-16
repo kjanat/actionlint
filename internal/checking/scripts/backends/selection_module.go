@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
@@ -15,7 +15,7 @@ func AllowsModule(name, requested string, explicit *process.CommandOptions) bool
 }
 
 // Module returns the configured module unless an explicit process choice overrides it.
-func Module(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config) *toolconfig.Module {
+func Module(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config) *tools.Module {
 	if cfg == nil || !AllowsModule(name, requested, explicit) {
 		return nil
 	}

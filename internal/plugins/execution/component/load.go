@@ -8,13 +8,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
-	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
-	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -84,7 +84,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 	p.component = component
 	p.referenceResolver = roles.referenceResolver
 	if required.repositoryObjects {
-		p.repositoryFactory, err = repositorybind.NewFactory(ctx, p.engine)
+		p.repositoryFactory, err = repositoryobjects.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 			return err
 		}
 	}
-	p.hostFactory, err = hostbind.NewFactory(ctx, p.engine)
+	p.hostFactory, err = host.NewFactory(ctx, p.engine)
 	if err != nil {
 		return err
 	}
@@ -106,19 +106,19 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		}
 	}
 	if required.sourceAnnotations {
-		p.annotationsFactory, err = annotationsbind.NewFactory(ctx, p.engine)
+		p.annotationsFactory, err = sourceannotations.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}
 	}
 	if required.sourceFiles {
-		p.filesFactory, err = filesbind.NewFactory(ctx, p.engine)
+		p.filesFactory, err = sourcefiles.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}
 	}
 	if required.shellScriptInputs {
-		p.shellInputFactory, err = shellinputbind.NewFactory(ctx, p.engine)
+		p.shellInputFactory, err = shellscriptinputs.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}

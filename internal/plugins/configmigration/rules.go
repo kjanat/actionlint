@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
@@ -23,7 +23,7 @@ import (
 // missing cached manifest requires an explicit installation before migration.
 func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, path string) ([]rule.Descriptor, error) {
 	directory := filepath.Dir(path)
-	sources, err := (pluginselection.Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository})
+	sources, err := (pluginselection.Selection{RuleSet: rules, ConfigFile: path, Acquisition: acquisition}).SelectForCache(ctx, directory, input.Request{Kind: input.Repository})
 	if err != nil {
 		return nil, err
 	}

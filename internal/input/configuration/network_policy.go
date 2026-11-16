@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"github.com/bmatcuk/doublestar/v4"
@@ -179,10 +179,10 @@ func (p *NetworkPolicy) Resolve(rules RuleSet, resolved ResolvedConfig) (Resolve
 	}
 	resolved.Origins = maps.Clone(resolved.Origins)
 	if resolved.Origins == nil {
-		resolved.Origins = map[string]configreport.Origin{}
+		resolved.Origins = map[string]report.Origin{}
 	}
 	setOrigin := func(key string, input document.Location) {
-		resolved.Origins["/network/metadata-mirrors/"+key] = configreport.Origin{Source: "policy", State: "value", File: input.File, Line: input.Line, Column: input.Column}
+		resolved.Origins["/network/metadata-mirrors/"+key] = report.Origin{Source: "policy", State: "value", File: input.File, Line: input.Line, Column: input.Column}
 	}
 	for key, absent := range map[string]bool{"services": requested.Services == nil, "allow-unknown-repositories": requested.AllowUnknownRepositories == nil} {
 		if input, ok := p.defaultOrigins["/network/metadata-mirrors/"+key]; absent && ok {

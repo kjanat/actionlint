@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 )
 
 // AuthoringResult is the host's evaluation of one fixture stdout. It never
@@ -115,7 +115,7 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 		if prepared.Skip != "" {
 			return AuthoringResult{Source: request.Source, Preparation: plan, Config: request.Config, Variables: values}, nil
 		}
-		request.Source = shellprofile.Prepare(request.Source, prepared.Prefix, prepared.Startup).Text()
+		request.Source = shell.Prepare(request.Source, prepared.Prefix, prepared.Startup).Text()
 		request.Config = prepared.Config
 		maps.Copy(values, prepared.Variables)
 	}

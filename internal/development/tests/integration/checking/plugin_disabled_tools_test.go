@@ -11,8 +11,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -48,12 +48,12 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 
 	registry.ResetRequests()
 	selection := pluginselection.WithTools(pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, []string{"no-sudo"}, []string{"no-sudo"})
-	sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
+	sources, err := selection.Resolve(t.Context(), t.TempDir(), input.Request{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{
-		Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
+	result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input.Request{
+		Kind: input.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
 	}, sources)
 	if err != nil {
 		t.Fatal(err)
@@ -68,8 +68,8 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 
 func TestUnknownToolIDIsRejected(t *testing.T) {
 	t.Parallel()
-	_, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{
-		Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"),
+	_, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input.Request{
+		Kind: input.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"),
 	}, pluginselection.Sources{NamedTools: []string{"missing"}})
 	unknown, ok := errors.AsType[*checking.UnknownToolError](err)
 	if !ok || !slices.Equal(unknown.IDs(), []string{"missing"}) {
@@ -108,12 +108,12 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 		t.Run(id, func(t *testing.T) {
 			t.Parallel()
 			selection := pluginselection.WithTools(pluginselection.Selection{ConfigFile: config, RuleSet: checking.ConfigurationRules(), Acquisition: acquisition}, nil, []string{id})
-			sources, err := selection.Resolve(t.Context(), t.TempDir(), inputmodel.Request{})
+			sources, err := selection.Resolve(t.Context(), t.TempDir(), input.Request{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, inputmodel.Request{
-				Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
+			result, err := checking.CheckWithPlugins(t.Context(), checking.Options{}, input.Request{
+				Kind: input.Stdin, Reader: strings.NewReader("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps: [{run: sudo echo hello}]\n"),
 			}, sources)
 			if err != nil {
 				t.Fatal(err)
@@ -138,13 +138,13 @@ func TestMetadataToolsReadsStaticMetadata(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := pluginexec.MetadataTools(test.metadata)
+			got, err := execution.MetadataTools(test.metadata)
 			if err != nil || !slices.Equal(got, test.want) {
 				t.Fatalf("metadataTools = %q, %v; want %q", got, err, test.want)
 			}
 		})
 	}
-	if _, err := pluginexec.MetadataTools(json.RawMessage(`{`)); err == nil {
+	if _, err := execution.MetadataTools(json.RawMessage(`{`)); err == nil {
 		t.Fatal("malformed metadata was accepted")
 	}
 }

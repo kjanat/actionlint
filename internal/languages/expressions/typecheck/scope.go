@@ -4,9 +4,9 @@ import (
 	"slices"
 	"strings"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // Availability supplies the name restrictions and overloads for an expression.
@@ -14,18 +14,18 @@ import (
 // ContextNames supplies lowercase names.
 type Availability interface {
 	ContextNames() []string
-	FunctionAvailability() map[string]exprfunctions.Availability
-	FunctionOverloads() map[string][]*exprfunctions.FuncSignature
+	FunctionAvailability() map[string]functions.Availability
+	FunctionOverloads() map[string][]*functions.FuncSignature
 }
 
 // Scope supplies the initial variable types as well as name availability.
 type Scope interface {
 	Availability
-	ContextTypes() map[string]exprtypes.Type
+	ContextTypes() map[string]types.Type
 	// NarrowContext returns branch-specific type overrides and whether the branch
 	// is possible. Insufficient knowledge means possible. Implementations must not
 	// mutate syntax or types obtained through lookup.
-	NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool)
+	NarrowContext(guard syntax.Node, truth bool, lookup func(string) (types.Type, bool)) (map[string]types.Type, bool)
 }
 
 // SetAvailability replaces name restrictions and overloads without changing
@@ -33,9 +33,9 @@ type Scope interface {
 func (sema *Checker) SetAvailability(scope Availability) {
 	sema.SetContextAvailability(scope.ContextNames())
 	sema.SetFunctionAvailability(scope.FunctionAvailability())
-	sema.functionOverloads = make(map[string][]*exprfunctions.FuncSignature)
+	sema.functionOverloads = make(map[string][]*functions.FuncSignature)
 	for name, overloads := range scope.FunctionOverloads() {
-		copied := make([]*exprfunctions.FuncSignature, len(overloads))
+		copied := make([]*functions.FuncSignature, len(overloads))
 		for index, signature := range overloads {
 			value := *signature
 			value.Params = slices.Clone(signature.Params)
@@ -47,23 +47,23 @@ func (sema *Checker) SetAvailability(scope Availability) {
 
 // SetFunctionAvailability replaces the supplied restrictions. Functions absent
 // from the map have no location restriction.
-func (sema *Checker) SetFunctionAvailability(availability map[string]exprfunctions.Availability) {
-	sema.functionAvailability = make(map[string]exprfunctions.Availability, len(availability))
+func (sema *Checker) SetFunctionAvailability(availability map[string]functions.Availability) {
+	sema.functionAvailability = make(map[string]functions.Availability, len(availability))
 	for name, entry := range availability {
 		entry.AvailableAt = slices.Clone(entry.AvailableAt)
 		sema.functionAvailability[strings.ToLower(name)] = entry
 	}
 }
 
-func (sema *Checker) functionRestriction(callName string) (exprfunctions.Availability, bool) {
+func (sema *Checker) functionRestriction(callName string) (functions.Availability, bool) {
 	availability, restricted := sema.functionAvailability[strings.ToLower(callName)]
 	return availability, restricted && !availability.Allowed
 }
 
 // AvailableContexts returns permitted names and their current types. The caller
 // owns the map; later scope updates do not change the returned entries.
-func (sema *Checker) AvailableContexts() map[string]exprtypes.Type {
-	contexts := make(map[string]exprtypes.Type, len(sema.availableContexts))
+func (sema *Checker) AvailableContexts() map[string]types.Type {
+	contexts := make(map[string]types.Type, len(sema.availableContexts))
 	for _, name := range sema.availableContexts {
 		if ty, found := sema.vars[name]; found {
 			contexts[name] = ty

@@ -1,7 +1,7 @@
 package expressions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
@@ -35,20 +35,20 @@ func (rule *Checker) VisitWorkflowPre(n workflows.Workflow) error {
 				rule.checkString(schedule.Timezone, "")
 			}
 		} else if e, ok := event.(*definition.WorkflowDispatchEvent); ok {
-			var inputs exprtypes.ObjectBuilder
+			var inputs types.ObjectBuilder
 			for id, input := range e.Inputs {
 				rule.checkString(input.Description, "")
 				rule.checkString(input.Default, "")
 				rule.checkBool(input.Required, "")
 				rule.checkStrings(input.Options, "")
-				ty := exprtypes.AnyType()
+				ty := types.AnyType()
 				switch input.Type {
 				case definition.WorkflowDispatchEventInputTypeBoolean:
-					ty = exprtypes.BoolType()
+					ty = types.BoolType()
 				case definition.WorkflowDispatchEventInputTypeNumber:
-					ty = exprtypes.NumberType()
+					ty = types.NumberType()
 				case definition.WorkflowDispatchEventInputTypeString, definition.WorkflowDispatchEventInputTypeChoice, definition.WorkflowDispatchEventInputTypeEnvironment:
-					ty = exprtypes.StringType()
+					ty = types.StringType()
 				case definition.WorkflowDispatchEventInputTypeNone:
 				}
 				name := id
@@ -61,28 +61,28 @@ func (rule *Checker) VisitWorkflowPre(n workflows.Workflow) error {
 		} else if e, ok := event.(*definition.RepositoryDispatchEvent); ok {
 			rule.checkStrings(e.Types, "")
 		} else if e, ok := event.(*definition.WorkflowCallEvent); ok {
-			var inputs exprtypes.ObjectBuilder
+			var inputs types.ObjectBuilder
 			// Defaults can use earlier inputs, but cannot refer to their own
 			// definition, so rule.inputsTy is rebuilt after each input is added.
 			rule.inputsTy = new(inputs.Build())
 			for _, input := range e.Inputs {
 				rule.checkString(input.Description, "")
 				expressions := rule.checkString(input.Default, "on.workflow_call.inputs.<inputs_id>.default")
-				ty := exprtypes.AnyType()
+				ty := types.AnyType()
 				switch input.Type {
 				case definition.WorkflowCallEventInputTypeString:
-					ty = exprtypes.StringType()
+					ty = types.StringType()
 				case definition.WorkflowCallEventInputTypeBoolean:
-					ty = exprtypes.BoolType()
+					ty = types.BoolType()
 					if len(expressions) == 1 && input.Default.IsExpressionAssigned() {
-						if k := expressions[0].ty.Kind(); k != exprtypes.KindBool && k != exprtypes.KindAny {
+						if k := expressions[0].ty.Kind(); k != types.KindBool && k != types.KindAny {
 							rule.Errorf(scalarPosition(input.Default), "type of input %q must be bool but found type %s", input.Name.Text(), expressions[0].ty.String())
 						}
 					}
 				case definition.WorkflowCallEventInputTypeNumber:
-					ty = exprtypes.NumberType()
+					ty = types.NumberType()
 					if len(expressions) == 1 && input.Default.IsExpressionAssigned() {
-						if k := expressions[0].ty.Kind(); k != exprtypes.KindNumber && k != exprtypes.KindAny {
+						if k := expressions[0].ty.Kind(); k != types.KindNumber && k != types.KindAny {
 							rule.Errorf(scalarPosition(input.Default), "type of input %q must be number but found type %s", input.Name.Text(), expressions[0].ty.String())
 						}
 					}
@@ -93,16 +93,16 @@ func (rule *Checker) VisitWorkflowPre(n workflows.Workflow) error {
 			}
 			// Distinguish absent secrets (inheritance) from a declared empty mapping.
 			if e.Secrets != nil {
-				var secrets exprtypes.ObjectBuilder
+				var secrets types.ObjectBuilder
 				for id, secret := range e.Secrets {
 					name := id
 					if secret.Name != nil {
 						name = secret.Name.Text()
 					}
-					secrets.SetProperty(name, exprtypes.StringType())
+					secrets.SetProperty(name, types.StringType())
 				}
 				if hasNonWorkflowCallTrigger {
-					secrets.SetMapped(exprtypes.StringType())
+					secrets.SetMapped(types.StringType())
 				}
 				rule.secretsTy = new(secrets.Build())
 			}
@@ -166,13 +166,13 @@ func (rule *Checker) VisitJobPre(n workflows.Job) error {
 		if runner.LabelsExpr != nil {
 			if ty, ok := rule.checkOneExpression(runner.LabelsExpr, "runner label at \"runs-on\" section", "jobs.<job_id>.runs-on"); ok {
 				switch ty.Kind() {
-				case exprtypes.KindArray, exprtypes.KindString, exprtypes.KindAny:
+				case types.KindArray, types.KindString, types.KindAny:
 					if literal, known := expressionLiteral(runner.LabelsExpr.Text()); known {
 						if labels, ok := literal.([]any); ok && len(labels) == 0 {
 							rule.Error(scalarPosition(runner.LabelsExpr), "runs-on.labels must contain at least one value")
 						}
 					}
-				case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindObject:
+				case types.KindNull, types.KindNumber, types.KindBool, types.KindObject:
 					rule.Errorf(scalarPosition(runner.LabelsExpr), "type of expression at \"runs-on\" must be string or array but found type %q", ty.String())
 				}
 			}
@@ -201,7 +201,7 @@ func (rule *Checker) VisitJobPre(n workflows.Job) error {
 		}
 	}
 	rule.checkWorkflowCall(n.WorkflowCall)
-	rule.stepsTy = new(exprtypes.NewEmptyStrictObjectType())
+	rule.stepsTy = new(types.NewEmptyStrictObjectType())
 	return nil
 }
 
@@ -258,7 +258,7 @@ func (rule *Checker) VisitStep(n workflows.Step) error {
 		if n.ID.ContainsExpression() {
 			rule.checkString(n.ID, "")
 			// An evaluated step ID can name any step, so steps.<id> stays open.
-			steps = steps.WithMapped(exprtypes.AnyType())
+			steps = steps.WithMapped(types.AnyType())
 		}
 		step := outputs.StepType(rule.getActionOutputsType(spec))
 		rule.stepsTy = new(steps.WithProperty(n.ID.Text(), step.Type()))

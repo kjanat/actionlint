@@ -27,9 +27,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -448,9 +448,9 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			return []string{fmt.Sprintf("unexpected expression terminator at byte %d in standalone expression", lexer.Offset()-2)}
 		}
 		checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-		contexts := map[string]exprtypes.Type{}
+		contexts := map[string]types.Type{}
 		for name := range c.Contexts {
-			contexts[strings.ToLower(name)] = exprtypes.AnyType()
+			contexts[strings.ToLower(name)] = types.AnyType()
 		}
 		checker.SetContextTypes(contexts)
 		checker.SetContextAvailability(slices.Sorted(maps.Keys(contexts)))
@@ -466,7 +466,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 				diagnostics = append(diagnostics, errs...)
 			case *syntax.FuncCallNode:
 				callChecker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-				callChecker.SetContextTypes(map[string]exprtypes.Type{"argument": exprtypes.AnyType()})
+				callChecker.SetContextTypes(map[string]types.Type{"argument": types.AnyType()})
 				callChecker.SetContextAvailability([]string{"argument"})
 				callChecker.SetFunctionAvailability(contextspec.FunctionAvailability([]string{"always", "cancelled", "failure", "success", "hashfiles"}))
 				args := make([]syntax.Node, len(n.Args))
@@ -549,7 +549,7 @@ func checkUpstreamCase(t *testing.T, c upstreamCase) []string {
 			}
 		}
 		// Input binding belongs to invocation checking; these fixtures test the manifest contract.
-		out := upstreamDiagnostics(actioncheck.Check(meta, &source.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{}))
+		out := upstreamDiagnostics(action.Check(meta, &source.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{}))
 		quotedDir := strings.TrimSuffix(strings.TrimPrefix(strconv.Quote(dir), `"`), `"`)
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], filepath.ToSlash(dir), "<action>")

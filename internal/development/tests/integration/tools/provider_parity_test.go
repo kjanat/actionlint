@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
@@ -512,7 +512,7 @@ func TestProviderParityCases(t *testing.T) {
 					t.Fatal(err)
 				}
 				workflow := fixturefiles.Write(t, root, ".github/workflows/ci.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        shell: python\n    steps:\n      "+strings.ReplaceAll(tc.steps, "\n", "\n      ")+"\n")
-				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root, Tools: recorder.wrap(registrations)}, input.Request{Kind: input.Files, Paths: []string{workflow}})
 				return toolFindings(t, result, err, recorder, map[string]string{root: "<root>"})
 			}
 			snapshots.assertParity(t, tc.name, run, shellcheck, ruff, tc.arguments...)

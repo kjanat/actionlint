@@ -6,11 +6,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // CheckoutEnvironmentUnknown reports settings that can make checkout differ from the local index.
-func CheckoutEnvironmentUnknown(env mapping.Mapping, platform runners.Platform) bool {
+func CheckoutEnvironmentUnknown(env mappings.Mapping, platform runners.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, value string, known bool) bool {
 		if LoaderEnvironmentUnknown(name, value, known) {
 			return true
@@ -34,7 +34,7 @@ func CheckoutEnvironmentUnknown(env mapping.Mapping, platform runners.Platform) 
 }
 
 // EnvironmentContains evaluates mapping expressions once and tests their literal names and values.
-func EnvironmentContains(env mapping.Mapping, platform runners.Platform, matches func(string, string, bool) bool) bool {
+func EnvironmentContains(env mappings.Mapping, platform runners.Platform, matches func(string, string, bool) bool) bool {
 	check := func(name, value string, known bool) bool {
 		if platform != runners.MacOrLinux {
 			name = strings.ToUpper(name)
@@ -126,11 +126,11 @@ func MacOSRunner(selection value.Value) bool {
 	return true
 }
 
-func ShellEnvironmentUnknown(env mapping.Mapping) bool {
+func ShellEnvironmentUnknown(env mappings.Mapping) bool {
 	return ShellEnvironmentUnknownForPlatform(env, runners.MacOrLinux)
 }
 
-func ShellEnvironmentUnknownForPlatform(env mapping.Mapping, platform runners.Platform) bool {
+func ShellEnvironmentUnknownForPlatform(env mappings.Mapping, platform runners.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, value string, known bool) bool {
 		if LoaderEnvironmentUnknown(name, value, known) {
 			return true
@@ -148,11 +148,11 @@ func ShellEnvironmentUnknownForPlatform(env mapping.Mapping, platform runners.Pl
 	})
 }
 
-func ShellPathUnknown(env mapping.Mapping) bool {
+func ShellPathUnknown(env mappings.Mapping) bool {
 	return ShellPathUnknownForPlatform(env, runners.MacOrLinux)
 }
 
-func ShellPathUnknownForPlatform(env mapping.Mapping, platform runners.Platform) bool {
+func ShellPathUnknownForPlatform(env mappings.Mapping, platform runners.Platform) bool {
 	return EnvironmentContains(env, platform, func(name, _ string, _ bool) bool {
 		return name == "PATH"
 	})

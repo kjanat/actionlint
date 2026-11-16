@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/streams"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -25,7 +25,7 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []rule.Descriptor
 		for _, rule := range rules {
 			if rule.Name == name {
 				if asJSON {
-					return commandstreams.WriteJSON(out, rule)
+					return streams.WriteJSON(out, rule)
 				}
 				_, err := fmt.Fprintf(out, "%s (%s/%s)\n\n%s\n\n%s\n\nProvider: %s; Maturity: %s\n%s\n", rule.Name, rule.Category, rule.Subcategory, rule.Explanation, rule.Help, rule.Provider, rule.Maturity, rule.DocumentationURL)
 				if err != nil {
@@ -47,10 +47,10 @@ func writeRules(out io.Writer, name string, asJSON bool, rules []rule.Descriptor
 				return nil
 			}
 		}
-		return commandargs.UsageError{Cause: fmt.Errorf("unknown rule %q; run actionlint rules to list checks", name)}
+		return arguments.UsageError{Cause: fmt.Errorf("unknown rule %q; run actionlint rules to list checks", name)}
 	}
 	if asJSON {
-		return commandstreams.WriteJSON(out, rules)
+		return streams.WriteJSON(out, rules)
 	}
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	groups := map[string][]rule.Descriptor{}

@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
@@ -35,7 +35,7 @@ type InputFile struct {
 type Selection struct {
 	Sources        []InputFile
 	Inputs         []string
-	Configurations []configreport.Report
+	Configurations []report.Report
 }
 
 // Options controls only input preparation, not analysis or rendering.
@@ -53,7 +53,7 @@ type Options struct {
 	// such as by plugin selection. Configuration loads use them without
 	// reading them again and keep the files they read. Nil disables sharing.
 	ConfigSources     *document.Files
-	OnConfigLoaded    func(configreport.Report)
+	OnConfigLoaded    func(report.Report)
 	SkipProjectConfig bool
 	NoIgnore          bool
 	OnFilesSelected   func([]string)
@@ -108,7 +108,7 @@ func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 	a.projects.ruleNames = a.ruleNames
 	a.projects.configSources = opts.ConfigSources
 	a.projects.skipConfig = opts.SkipProjectConfig
-	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*configuration.Config), reports: make(map[*Project]configreport.Report)}
+	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*configuration.Config), reports: make(map[*Project]report.Report)}
 	var err error
 	if a.cwd == "" {
 		a.cwd, err = os.Getwd()

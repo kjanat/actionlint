@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
@@ -130,10 +130,10 @@ func NewTrust(w workflows.Workflow) *Trust {
 		return cmp.Compare(a.ID.Text(), b.ID.Text())
 	})
 	for _, job := range jobs {
-		mode := cachemodel.EffectiveMode(r.workflow, job.CacheMode)
-		access, valid := cachemodel.FromDeclaration(mode).Capabilities()
+		mode := cache.EffectiveMode(r.workflow, job.CacheMode)
+		access, valid := cache.FromDeclaration(mode).Capabilities()
 		if valid && access&2 != 0 {
-			events := workflowconditions.ReachableEvents(r.events, job.If.Text())
+			events := conditions.ReachableEvents(r.events, job.If.Text())
 			if len(events) != 0 {
 				declaration := r.declaration(mode, job)
 				declaration.reachable = append(declaration.reachable, events...)
@@ -162,7 +162,7 @@ func (r *Trust) CheckWrites(job workflows.Job) []results.Diagnostic {
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
 func (r *Trust) CheckCall(job workflows.Job) []results.Diagnostic {
 	call := job.WorkflowCall
-	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cachemodel.EffectiveMode(r.workflow, job.CacheMode) != nil {
+	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cache.EffectiveMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
 	if _, local := references.LocalWorkflow(call.Uses.Value); !local {
@@ -170,7 +170,7 @@ func (r *Trust) CheckCall(job workflows.Job) []results.Diagnostic {
 			return nil
 		}
 	}
-	events := workflowconditions.ReachableEvents(r.events, job.If.Text())
+	events := conditions.ReachableEvents(r.events, job.If.Text())
 	if len(events) == 0 {
 		return nil
 	}

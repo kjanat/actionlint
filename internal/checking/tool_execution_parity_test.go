@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -54,8 +54,8 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 	check(checking.Analyze(t.Context(), checking.Options{WorkingDir: "repo"}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg}}))
 	check(checking.Analyze(t.Context(), checking.Options{WorkingDir: "repo"}, []workspace.InputFile{{Path: ".github/workflows/ci.yml", Content: content, Config: cfg, Project: workspace.Identity("repo")}}))
 	options := checking.Options{WorkingDir: "repo", ConfigFile: "actionlint.yml"}
-	check(checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}))
-	check(checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}}))
+	check(checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{workflow}}))
+	check(checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}}))
 	planning := checking.Options{WorkingDir: "repo", ConfigFile: "actionlint.yml", Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	for _, path := range []string{workflow, filepath.Join(".github", "workflows", "ci.yml")} {
 		needed, err := checking.RequiredTools(t.Context(), planning, []string{path})
@@ -95,7 +95,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			if err != nil || needed["shellcheck"] != tc.enabled {
 				t.Fatalf("tool requirement: %+v, %v", needed, err)
 			}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatalf("ShellCheck execution failed, plan=%+v, error=%v", needed, err)
 			}

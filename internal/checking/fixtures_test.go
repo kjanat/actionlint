@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
@@ -159,7 +159,7 @@ jobs:
 	session := options
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}

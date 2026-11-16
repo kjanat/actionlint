@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/streams"
 )
 
 type commandResultWriter struct {
@@ -65,7 +65,7 @@ func (w *commandJSONLogWriter) Write(p []byte) (int, error) {
 			break
 		}
 		w.pending = rest
-		if err := commandstreams.WriteJSON(w.out, struct {
+		if err := streams.WriteJSON(w.out, struct {
 			Log string `json:"log"`
 		}{line}); err != nil {
 			return 0, err
@@ -80,7 +80,7 @@ func (a *commandApp) reportError(err error) int {
 		return 0
 	}
 	status := exitcode.ExitFailure
-	if _, ok := errors.AsType[commandargs.UsageError](err); ok {
+	if _, ok := errors.AsType[arguments.UsageError](err); ok {
 		status = exitcode.ExitInvalidCommandOption
 	}
 	if a.errorJSON || a.jsonOutput() {
@@ -97,10 +97,10 @@ func (a *commandApp) reportError(err error) int {
 					result.AddConfiguration(config)
 				}
 			}
-			_ = commandstreams.WriteJSON(a.streams.Stderr, result)
+			_ = streams.WriteJSON(a.streams.Stderr, result)
 			return status
 		}
-		_ = commandstreams.WriteJSON(a.streams.Stderr, struct {
+		_ = streams.WriteJSON(a.streams.Stderr, struct {
 			Error    string `json:"error"`
 			ExitCode int    `json:"exit_code"`
 		}{err.Error(), status})

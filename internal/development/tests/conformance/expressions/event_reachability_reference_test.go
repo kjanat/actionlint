@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 )
 
 func TestEventReachabilityReference(t *testing.T) {
@@ -22,7 +22,7 @@ func TestEventReachabilityReference(t *testing.T) {
 			t.Run(tc.expression+"/"+event, func(t *testing.T) {
 				t.Parallel()
 				want := slices.Contains(tc.want, event)
-				got := workflowconditions.ReachableEvents([]string{event}, tc.expression)
+				got := conditions.ReachableEvents([]string{event}, tc.expression)
 				if (len(got) != 0) != want {
 					t.Fatalf("event reachability=%v, want %t", got, want)
 				}

@@ -23,13 +23,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
-	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 )
 
 // Bind lets a managed document analyzer replace a provider whose manifest
 // names an integration contract. Other providers are returned unchanged.
 func Bind(base contract.Registration, p backends.Provider) contract.Registration {
-	if p.Manifest.Integration == nil || p.Manifest.Preparation != shellprofile.ID {
+	if p.Manifest.Integration == nil || p.Manifest.Preparation != shell.ID {
 		return base
 	}
 	base.WithAnalyzer = func(guest checkinputs.Checker) (contract.Registration, error) {
@@ -260,7 +260,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch scripts.Batch) ([]con
 			continue
 		}
 		fact, _ := batch.Fact(i, true)
-		prepared, err := shellprofile.BuildShellScriptInput(fact, nil)
+		prepared, err := shell.BuildShellScriptInput(fact, nil)
 		if err != nil {
 			failure = errors.Join(failure, err)
 			continue
@@ -397,6 +397,6 @@ func (r documentRunner) input(script checkinputs.Script, graph invocation.Graph)
 	} else {
 		input.Invoked = []checkinputs.Script{script}
 	}
-	input.BuildShellScriptInput = shellprofile.NewShellScriptInputBuilder([]checkinputs.Script{script})
+	input.BuildShellScriptInput = shell.NewShellScriptInputBuilder([]checkinputs.Script{script})
 	return input
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
@@ -23,7 +23,7 @@ func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
 		Analyzers:         []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}},
 		SkipProjectConfig: true,
 	}
-	baseline, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+	baseline, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{path}})
 	if err != nil || len(baseline.Diagnostics) != 1 {
 		t.Fatalf("baseline=%+v err=%v", baseline, err)
 	}
@@ -39,7 +39,7 @@ func TestPublicOverlayAcceptsRegisteredAnalyzerSelectors(t *testing.T) {
 			t.Fatal(err)
 		}
 		options.ConfigOverlays = []configuration.Overlay{overlay}
-		result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+		result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{path}})
 		if err != nil || len(result.Diagnostics) != 0 {
 			t.Fatalf("%s: result=%+v err=%v", source, result, err)
 		}

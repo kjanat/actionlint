@@ -12,11 +12,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
@@ -63,7 +63,7 @@ func (rule *Checker) checkExprsIn(s string, pos *source.Position, quoted, checkU
 		refinement := expressionRefinement{state: value.Dynamic}
 		if result.Valid {
 			refinement = rule.expressionType("${{"+s[:offsetAfter], result.Evaluation)
-			if refinement.state == value.Evaluated && (result.Call == nil || result.Call.ReturnDomain != exprfunctions.ReturnDomainExcludesValue) {
+			if refinement.state == value.Evaluated && (result.Call == nil || result.Call.ReturnDomain != functions.ReturnDomainExcludesValue) {
 				ty = refinement.ty
 			}
 		} else {
@@ -169,7 +169,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, line, col int, c
 		// Metadata validation reports unavailable contexts. Their property types are unknown.
 		for name := range contexts.BuiltinGlobalVariableTypes {
 			if !slices.Contains(available, name) {
-				c.SetContextType(name, exprtypes.AnyType())
+				c.SetContextType(name, types.AnyType())
 			}
 		}
 	}
@@ -274,7 +274,7 @@ func (rule *Checker) safeScriptStatusSelector(node syntax.Node) bool {
 	default:
 		return false
 	}
-	var properties *exprtypes.ObjectType
+	var properties *types.ObjectType
 	switch strings.ToLower(context) {
 	case "steps":
 		properties = rule.stepsTy
@@ -298,7 +298,7 @@ func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bo
 	expr, err := p.ParseExpression(l)
 	if err != nil {
 		rule.syntaxError(err, line, col)
-		return typecheck.ExpressionCheckResult{Type: exprtypes.AnyType()}, l.Offset(), false
+		return typecheck.ExpressionCheckResult{Type: types.AnyType()}, l.Offset(), false
 	}
 	return rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey), l.Offset(), true
 }

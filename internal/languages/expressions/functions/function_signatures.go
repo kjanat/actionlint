@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // FunctionEvaluationPolicy describes argument demand independently of return types.
@@ -25,11 +25,11 @@ type FuncSignature struct {
 	Name string
 	// Ret declares the function's return domain, including for invalid calls.
 	// A known result can refine this domain without replacing the declaration.
-	Ret exprtypes.Type
+	Ret types.Type
 	// Params describes the types consumed after parameter conversion. Accepted
 	// source types, conversion outcomes and converted values are recorded separately
 	// for each argument. The final parameter repeats for variadic signatures.
-	Params []exprtypes.Type
+	Params []types.Type
 	// VariableLengthParams allows zero or more arguments of the final parameter
 	// type. When true, Params must contain at least one type.
 	VariableLengthParams bool
@@ -64,10 +64,10 @@ var Builtins = map[string]Function{
 			Name:                    "contains",
 			EvaluationPolicy:        EvaluateContains,
 			CompositeStringFallback: true,
-			Ret:                     exprtypes.BoolType(),
-			Params: []exprtypes.Type{
-				exprtypes.StringType(),
-				exprtypes.StringType(),
+			Ret:                     types.BoolType(),
+			Params: []types.Type{
+				types.StringType(),
+				types.StringType(),
 			},
 			IsConstFunc: true,
 		},
@@ -75,10 +75,10 @@ var Builtins = map[string]Function{
 			Name:                    "contains",
 			EvaluationPolicy:        EvaluateContains,
 			CompositeStringFallback: true,
-			Ret:                     exprtypes.BoolType(),
-			Params: []exprtypes.Type{
-				exprtypes.NewArrayType(exprtypes.AnyType()).Type(),
-				exprtypes.AnyType(),
+			Ret:                     types.BoolType(),
+			Params: []types.Type{
+				types.NewArrayType(types.AnyType()).Type(),
+				types.AnyType(),
 			},
 			IsConstFunc: true,
 		},
@@ -87,10 +87,10 @@ var Builtins = map[string]Function{
 		Name:                    "startsWith",
 		EvaluationPolicy:        EvaluateStringPredicate,
 		CompositeStringFallback: true,
-		Ret:                     exprtypes.BoolType(),
-		Params: []exprtypes.Type{
-			exprtypes.StringType(),
-			exprtypes.StringType(),
+		Ret:                     types.BoolType(),
+		Params: []types.Type{
+			types.StringType(),
+			types.StringType(),
 		},
 		IsConstFunc: true,
 	}}, implementation: evaluateStartsWith},
@@ -98,10 +98,10 @@ var Builtins = map[string]Function{
 		Name:                    "endsWith",
 		EvaluationPolicy:        EvaluateStringPredicate,
 		CompositeStringFallback: true,
-		Ret:                     exprtypes.BoolType(),
-		Params: []exprtypes.Type{
-			exprtypes.StringType(),
-			exprtypes.StringType(),
+		Ret:                     types.BoolType(),
+		Params: []types.Type{
+			types.StringType(),
+			types.StringType(),
 		},
 		IsConstFunc: true,
 	}}, implementation: evaluateEndsWith},
@@ -109,17 +109,17 @@ var Builtins = map[string]Function{
 		Name:             "format",
 		EvaluationPolicy: EvaluateFormat,
 		MaxParams:        255,
-		Ret:              exprtypes.StringType(),
-		Params:           []exprtypes.Type{exprtypes.StringType()},
+		Ret:              types.StringType(),
+		Params:           []types.Type{types.StringType()},
 		IsConstFunc:      true,
 	}, {
 		Name:             "format",
 		EvaluationPolicy: EvaluateFormat,
 		MaxParams:        255,
-		Ret:              exprtypes.StringType(),
-		Params: []exprtypes.Type{
-			exprtypes.StringType(),
-			exprtypes.AnyType(), // variable length
+		Ret:              types.StringType(),
+		Params: []types.Type{
+			types.StringType(),
+			types.AnyType(), // variable length
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
@@ -129,26 +129,26 @@ var Builtins = map[string]Function{
 			Name:                    "join",
 			EvaluationPolicy:        EvaluateJoin,
 			CompositeStringFallback: true,
-			Ret:                     exprtypes.StringType(),
-			Params:                  []exprtypes.Type{exprtypes.StringType()},
+			Ret:                     types.StringType(),
+			Params:                  []types.Type{types.StringType()},
 			IsConstFunc:             true,
 		},
 		{
 			Name:                    "join",
 			EvaluationPolicy:        EvaluateJoin,
 			CompositeStringFallback: true,
-			Ret:                     exprtypes.StringType(),
-			Params:                  []exprtypes.Type{exprtypes.StringType(), exprtypes.StringType()},
+			Ret:                     types.StringType(),
+			Params:                  []types.Type{types.StringType(), types.StringType()},
 			IsConstFunc:             true,
 		},
 		{
 			Name:                    "join",
 			EvaluationPolicy:        EvaluateJoin,
 			CompositeStringFallback: true,
-			Ret:                     exprtypes.StringType(),
-			Params: []exprtypes.Type{
-				exprtypes.NewArrayType(exprtypes.AnyType()).Type(),
-				exprtypes.StringType(),
+			Ret:                     types.StringType(),
+			Params: []types.Type{
+				types.NewArrayType(types.AnyType()).Type(),
+				types.StringType(),
 			},
 			IsConstFunc: true,
 		},
@@ -157,67 +157,67 @@ var Builtins = map[string]Function{
 			Name:                    "join",
 			EvaluationPolicy:        EvaluateJoin,
 			CompositeStringFallback: true,
-			Ret:                     exprtypes.StringType(),
-			Params: []exprtypes.Type{
-				exprtypes.NewArrayType(exprtypes.AnyType()).Type(),
+			Ret:                     types.StringType(),
+			Params: []types.Type{
+				types.NewArrayType(types.AnyType()).Type(),
 			},
 			IsConstFunc: true,
 		},
 	}, implementation: evaluateJoin},
 	"tojson": {Signatures: []*FuncSignature{{
 		Name: "toJSON",
-		Ret:  exprtypes.StringType(),
-		Params: []exprtypes.Type{
-			exprtypes.AnyType(),
+		Ret:  types.StringType(),
+		Params: []types.Type{
+			types.AnyType(),
 		},
 		IsConstFunc: true,
 	}}, implementation: evaluateToJSON},
 	"fromjson": {Signatures: []*FuncSignature{{
 		Name: "fromJSON",
-		Ret:  exprtypes.AnyType(),
-		Params: []exprtypes.Type{
-			exprtypes.StringType(),
+		Ret:  types.AnyType(),
+		Params: []types.Type{
+			types.StringType(),
 		},
 		IsConstFunc: true,
 	}}, implementation: evaluateFromJSON, inspect: inspectFromJSON},
 	"hashfiles": {Signatures: []*FuncSignature{{
 		Name:      "hashFiles",
 		MaxParams: 255,
-		Ret:       exprtypes.StringType(),
-		Params: []exprtypes.Type{
-			exprtypes.StringType(),
+		Ret:       types.StringType(),
+		Params: []types.Type{
+			types.StringType(),
 		},
 		VariableLengthParams: true,
 	}}},
 	"success": {Signatures: []*FuncSignature{{
 		Name:   "success",
-		Ret:    exprtypes.BoolType(),
-		Params: []exprtypes.Type{},
+		Ret:    types.BoolType(),
+		Params: []types.Type{},
 	}}},
 	"always": {Signatures: []*FuncSignature{{
 		Name:   "always",
-		Ret:    exprtypes.BoolType(),
-		Params: []exprtypes.Type{},
+		Ret:    types.BoolType(),
+		Params: []types.Type{},
 	}}},
 	"cancelled": {Signatures: []*FuncSignature{{
 		Name:   "cancelled",
-		Ret:    exprtypes.BoolType(),
-		Params: []exprtypes.Type{},
+		Ret:    types.BoolType(),
+		Params: []types.Type{},
 	}}},
 	"failure": {Signatures: []*FuncSignature{{
 		Name:   "failure",
-		Ret:    exprtypes.BoolType(),
-		Params: []exprtypes.Type{},
+		Ret:    types.BoolType(),
+		Params: []types.Type{},
 	}}},
 	"case": {Signatures: []*FuncSignature{{
 		Name:             "case",
 		EvaluationPolicy: EvaluateCase,
 		MaxParams:        255,
-		Ret:              exprtypes.AnyType(),
-		Params: []exprtypes.Type{
-			exprtypes.BoolType(),
-			exprtypes.AnyType(),
-			exprtypes.AnyType(),
+		Ret:              types.AnyType(),
+		Params: []types.Type{
+			types.BoolType(),
+			types.AnyType(),
+			types.AnyType(),
 		},
 		VariableLengthParams: true,
 		IsConstFunc:          true,
@@ -228,12 +228,12 @@ var Builtins = map[string]Function{
 
 // ParameterAt returns the consumed type at index for a call with count arguments.
 // The caller validates argument count before requesting a parameter.
-func (sig *FuncSignature) ParameterAt(index, count int) exprtypes.Type {
+func (sig *FuncSignature) ParameterAt(index, count int) types.Type {
 	if sig.EvaluationPolicy == EvaluateCase {
 		if index < count-1 && index%2 == 0 {
-			return exprtypes.BoolType()
+			return types.BoolType()
 		}
-		return exprtypes.AnyType()
+		return types.AnyType()
 	}
 	return sig.Params[min(index, len(sig.Params)-1)]
 }

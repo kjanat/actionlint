@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -40,7 +40,7 @@ func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, a
 	if err != nil {
 		return "", err
 	}
-	defaults, _, err := configplugins.References(node.Value())
+	defaults, _, err := plugins.References(node.Value())
 	if err != nil {
 		return "", err
 	}

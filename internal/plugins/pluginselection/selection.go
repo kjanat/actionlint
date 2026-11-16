@@ -14,7 +14,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -102,7 +102,7 @@ func (s Selection) Resolve(ctx context.Context, directory string, input inputmod
 // ResolveForRules selects declared plugins without validating unrelated lint
 // settings.
 func (s Selection) ResolveForRules(ctx context.Context, directory string) (Sources, error) {
-	selected, err := s.selectSources(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository}, configplugins.PluginDeclarationsOnly)
+	selected, err := s.selectSources(ctx, directory, inputmodel.Request{Kind: inputmodel.Repository}, plugins.PluginDeclarationsOnly)
 	if err != nil {
 		return Sources{}, err
 	}
@@ -115,7 +115,7 @@ func (s Selection) ResolveForRules(ctx context.Context, directory string) (Sourc
 // Select resolves exact registry metadata without downloading artifacts or
 // running plugin code. Hosts can restore artifacts before Hydrate verifies them.
 func (s Selection) Select(ctx context.Context, directory string, input inputmodel.Request) (Sources, error) {
-	return s.selectSources(ctx, directory, input, configplugins.CompleteConfiguration)
+	return s.selectSources(ctx, directory, input, plugins.CompleteConfiguration)
 }
 
 // SelectForCache selects the same declared releases as analysis without fetching
@@ -124,7 +124,7 @@ func (s Selection) SelectForCache(ctx context.Context, directory string, input i
 	return s.Select(ctx, directory, input)
 }
 
-func (s Selection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+func (s Selection) selectSources(ctx context.Context, directory string, input inputmodel.Request, mode plugins.ReadMode) (Sources, error) {
 	if s.DisableTools {
 		s.DefaultTools = nil
 	}
@@ -133,7 +133,7 @@ func (s Selection) selectSources(ctx context.Context, directory string, input in
 		return Sources{}, err
 	}
 	if len(s.DefaultTools) != 0 && len(s.Paths) == 0 && len(selected.Configurations) == 0 {
-		project := &installation.Project{Manifest: &configplugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
+		project := &installation.Project{Manifest: &plugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
 		selected, err = s.sourcesFromProject(ctx, project, "")
 		if err != nil {
 			return Sources{}, err
@@ -146,7 +146,7 @@ func (s Selection) selectSources(ctx context.Context, directory string, input in
 	return selected, nil
 }
 
-func (s Selection) selectDeclared(ctx context.Context, directory string, input inputmodel.Request, mode configplugins.ReadMode) (Sources, error) {
+func (s Selection) selectDeclared(ctx context.Context, directory string, input inputmodel.Request, mode plugins.ReadMode) (Sources, error) {
 	if len(s.Paths) > 0 {
 		return SourcesFromArguments(s.Paths, s.Acquisition)
 	}
@@ -159,7 +159,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 			return Sources{}, err
 		}
 		if !project.Manifest.Exists {
-			if mode == configplugins.PluginDeclarationsOnly {
+			if mode == plugins.PluginDeclarationsOnly {
 				return Sources{}, fmt.Errorf("plugin configuration does not exist: %s", project.Manifest.Path)
 			}
 			return Sources{}, fmt.Errorf("could not read config file %q: %w", project.Manifest.Path, os.ErrNotExist)
@@ -245,7 +245,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 			selected.Paths = append(selected.Paths, source)
 		}
 		if resolved.Config.Plugins == nil && len(s.DefaultTools) != 0 {
-			project := &installation.Project{Manifest: &configplugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
+			project := &installation.Project{Manifest: &plugins.File{}, StatusOptions: pluginregistry.StatusOptions{Acquisition: s.Acquisition}}
 			return s.sourcesFromProject(ctx, project, "")
 		}
 		return selected, nil
@@ -290,7 +290,7 @@ func (s Selection) prepareProject(project *installation.Project) (*configuration
 			if source.IsRemoteAddress(path) {
 				continue
 			}
-			if err := configplugins.ValidateLocalPath(path); err != nil {
+			if err := plugins.ValidateLocalPath(path); err != nil {
 				return nil, err
 			}
 		}
@@ -457,7 +457,7 @@ func (s *Sources) ValidateScope(ctx context.Context, rules configuration.RuleSet
 			if root == "" {
 				continue
 			}
-			project, err := installation.OpenForSelection(ctx, rules, s.Acquisition, root, "", configplugins.CompleteConfiguration, nil)
+			project, err := installation.OpenForSelection(ctx, rules, s.Acquisition, root, "", plugins.CompleteConfiguration, nil)
 			if err != nil {
 				return err
 			}

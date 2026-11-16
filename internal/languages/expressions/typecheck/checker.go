@@ -7,8 +7,8 @@ import (
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
 )
 
@@ -35,13 +35,13 @@ type Checker struct {
 	skipEvaluation        bool
 	conditionalEvaluation bool
 	funcs                 map[string][]*exprfunctions.FuncSignature
-	vars                  map[string]exprtypes.Type
+	vars                  map[string]types.Type
 	errs                  []*Error
-	nodeTypes             map[syntax.Node]exprtypes.Type
+	nodeTypes             map[syntax.Node]types.Type
 	availableContexts     []string
 	functionAvailability  map[string]exprfunctions.Availability
 	functionOverloads     map[string][]*exprfunctions.FuncSignature
-	narrowContext         func(syntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool)
+	narrowContext         func(syntax.Node, bool, func(string) (types.Type, bool)) (map[string]types.Type, bool)
 	configVars            []string
 	configSecrets         []string
 	callFacts             map[*syntax.FuncCallNode]exprfunctions.FunctionCallFacts
@@ -60,7 +60,7 @@ func NewChecker(scope Scope, cfg *Options) *Checker {
 	}
 	c := &Checker{
 		funcs:         functions,
-		nodeTypes:     make(map[syntax.Node]exprtypes.Type),
+		nodeTypes:     make(map[syntax.Node]types.Type),
 		narrowContext: scope.NarrowContext,
 	}
 	c.SetContextTypes(scope.ContextTypes())
@@ -122,8 +122,8 @@ func (sema *Checker) calleeErrorf(kind findingKind, n *syntax.FuncCallNode, form
 
 // SetContextTypes replaces the expression's context names and types with a caller-supplied scope.
 // Names are case-insensitive. The Checker copies the map.
-func (sema *Checker) SetContextTypes(contexts map[string]exprtypes.Type) {
-	sema.vars = make(map[string]exprtypes.Type, len(contexts))
+func (sema *Checker) SetContextTypes(contexts map[string]types.Type) {
+	sema.vars = make(map[string]types.Type, len(contexts))
 	for name, ty := range contexts {
 		sema.vars[strings.ToLower(name)] = ty
 	}
@@ -131,13 +131,13 @@ func (sema *Checker) SetContextTypes(contexts map[string]exprtypes.Type) {
 
 // ContextType returns a context's supplied type and whether it was declared.
 // Names are case-insensitive; returned type values are immutable.
-func (sema *Checker) ContextType(name string) (exprtypes.Type, bool) {
+func (sema *Checker) ContextType(name string) (types.Type, bool) {
 	ty, found := sema.vars[strings.ToLower(name)]
 	return ty, found
 }
 
 // SetContextType replaces one context type without changing name availability.
-func (sema *Checker) SetContextType(name string, ty exprtypes.Type) {
+func (sema *Checker) SetContextType(name string, ty types.Type) {
 	sema.vars[strings.ToLower(name)] = ty
 }
 
@@ -171,19 +171,19 @@ func (sema *Checker) checkAvailableContext(n *syntax.VariableNode) {
 	)
 }
 
-func (sema *Checker) checkVariable(n *syntax.VariableNode) exprtypes.Type {
+func (sema *Checker) checkVariable(n *syntax.VariableNode) types.Type {
 	if value, found := sema.vars[n.Name]; found {
 		return value
 	}
-	return exprtypes.AnyType()
+	return types.AnyType()
 }
 
-func (sema *Checker) checkObjectDeref(n *syntax.ObjectDerefNode) exprtypes.Type {
+func (sema *Checker) checkObjectDeref(n *syntax.ObjectDerefNode) types.Type {
 	ty := sema.check(n.Receiver)
 	switch ty.Kind() {
-	case exprtypes.KindAny:
-		return exprtypes.AnyType()
-	case exprtypes.KindObject:
+	case types.KindAny:
+		return types.AnyType()
+	case types.KindObject:
 		object, _ := ty.Object()
 		if t, ok := object.Property(n.Property); ok {
 			return t
@@ -206,20 +206,20 @@ func (sema *Checker) checkObjectDeref(n *syntax.ObjectDerefNode) exprtypes.Type 
 			case "github", "job", "runner", "strategy":
 				if suggestion := sema.contextPropertySuggestion(n.Property); suggestion != "" {
 					sema.errorf(unknownProperty, n, "property %q is not defined in this context; did you mean %q?", n.PropertyName(), suggestion)
-					return exprtypes.AnyType()
+					return types.AnyType()
 				}
 			}
 		}
 		sema.missingProperty(n, n.Receiver, n.PropertyName(), object)
-		return exprtypes.AnyType()
-	case exprtypes.KindArray:
+		return types.AnyType()
+	case types.KindArray:
 		array, _ := ty.Array()
 		if !array.Deref() {
 			sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
-			return exprtypes.AnyType()
+			return types.AnyType()
 		}
 		elem := array.Elem()
-		if elem.Kind() == exprtypes.KindAny {
+		if elem.Kind() == types.KindAny {
 			// When element type is any, map the any type to any. Reuse `ty`
 			return ty
 		}
@@ -231,10 +231,10 @@ func (sema *Checker) checkObjectDeref(n *syntax.ObjectDerefNode) exprtypes.Type 
 				n.Property,
 				elem.String(),
 			)
-			return exprtypes.AnyType()
+			return types.AnyType()
 		}
 		// Map the element type of the dereferenced array.
-		mappedElem := exprtypes.AnyType()
+		mappedElem := types.AnyType()
 		if t, ok := et.Property(n.Property); ok {
 			mappedElem = t
 		} else if mapped, ok := et.Mapped(); ok {
@@ -242,11 +242,11 @@ func (sema *Checker) checkObjectDeref(n *syntax.ObjectDerefNode) exprtypes.Type 
 		} else {
 			sema.missingProperty(n, n.Receiver, n.PropertyName(), et)
 		}
-		return exprtypes.NewFilteredArrayType(mappedElem).Type()
-	case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindString:
+		return types.NewFilteredArrayType(mappedElem).Type()
+	case types.KindNull, types.KindNumber, types.KindBool, types.KindString:
 	}
 	sema.errorf(operandType, n, "receiver of object dereference %q must be type of object but got %q", n.Property, ty.String())
-	return exprtypes.AnyType()
+	return types.AnyType()
 }
 
 // Suggest only explicit properties in contexts available at this expression.
@@ -256,7 +256,7 @@ func (sema *Checker) contextPropertySuggestion(name string) string {
 	return ContextPropertySuggestion(name, sema.availableContexts, sema.vars)
 }
 
-func ContextPropertySuggestion(name string, contexts []string, variables map[string]exprtypes.Type) string {
+func ContextPropertySuggestion(name string, contexts []string, variables map[string]types.Type) string {
 	var suggestion string
 	for _, context := range contexts {
 		property, ok := strings.CutPrefix(name, context+"_")
@@ -353,73 +353,73 @@ func (sema *Checker) checkConfigSecrets(n syntax.Node, prop string) {
 	)
 }
 
-func (sema *Checker) checkArrayDeref(n *syntax.ArrayDerefNode) exprtypes.Type {
+func (sema *Checker) checkArrayDeref(n *syntax.ArrayDerefNode) types.Type {
 	ty := sema.check(n.Receiver)
 	switch ty.Kind() {
-	case exprtypes.KindAny:
-		return exprtypes.NewFilteredArrayType(exprtypes.AnyType()).Type()
-	case exprtypes.KindArray:
+	case types.KindAny:
+		return types.NewFilteredArrayType(types.AnyType()).Type()
+	case types.KindArray:
 		array, _ := ty.Array()
-		return exprtypes.NewFilteredArrayType(array.Elem()).Type()
-	case exprtypes.KindObject:
+		return types.NewFilteredArrayType(array.Elem()).Type()
+	case types.KindObject:
 		// Object filtering is available for objects, not only arrays (#66)
 		object, _ := ty.Object()
 
 		if mapped, ok := object.Mapped(); ok {
 			// For map object or loose object at receiver of .*
 			switch mapped.Kind() {
-			case exprtypes.KindAny, exprtypes.KindObject:
-				return exprtypes.NewFilteredArrayType(mapped).Type()
-			case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindString, exprtypes.KindArray:
+			case types.KindAny, types.KindObject:
+				return types.NewFilteredArrayType(mapped).Type()
+			case types.KindNull, types.KindNumber, types.KindBool, types.KindString, types.KindArray:
 			}
 			sema.errorf(operandType, n, "elements of object at receiver of object filtering `.*` must be type of object but got %q. the type of receiver was %q", mapped.String(), ty.String())
-			return exprtypes.AnyType()
+			return types.AnyType()
 		}
 
 		// Payload object filters select scalar members as well as object members.
 		if path := strings.ToLower(syntax.DisplayReference(n.Receiver)); path == "github.event" || strings.HasPrefix(path, "github.event.") || strings.HasPrefix(path, "github.event[") {
-			return exprtypes.NewFilteredArrayType(exprtypes.AnyType()).Type()
+			return types.NewFilteredArrayType(types.AnyType()).Type()
 		}
 		// For strict object at receiver of .*
 		found := false
 		for _, t := range object.Properties() {
-			if t.Kind() == exprtypes.KindObject {
+			if t.Kind() == types.KindObject {
 				found = true
 				break
 			}
 		}
 		if !found {
 			sema.errorf(operandType, n, "object type %q cannot be filtered by object filtering `.*` since it has no object element", ty.String())
-			return exprtypes.AnyType()
+			return types.AnyType()
 		}
 
-		return exprtypes.NewFilteredArrayType(exprtypes.AnyType()).Type()
-	case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindString:
+		return types.NewFilteredArrayType(types.AnyType()).Type()
+	case types.KindNull, types.KindNumber, types.KindBool, types.KindString:
 	}
 	sema.errorf(operandType, n, "receiver of object filtering `.*` must be type of array or object but got %q", ty.String())
-	return exprtypes.AnyType()
+	return types.AnyType()
 }
 
-func (sema *Checker) checkIndexAccess(n *syntax.IndexAccessNode) exprtypes.Type {
+func (sema *Checker) checkIndexAccess(n *syntax.IndexAccessNode) types.Type {
 	idx := sema.check(n.Index)
 
 	ty := sema.check(n.Operand)
 	switch ty.Kind() {
-	case exprtypes.KindAny:
-		return exprtypes.AnyType()
-	case exprtypes.KindArray:
+	case types.KindAny:
+		return types.AnyType()
+	case types.KindArray:
 		array, _ := ty.Array()
-		if k := idx.Kind(); k == exprtypes.KindAny || k == exprtypes.KindNumber {
+		if k := idx.Kind(); k == types.KindAny || k == types.KindNumber {
 			return array.Elem()
 		}
 		sema.errorf(operandType, n.Index, "index access of array must be type of number but got %q", idx.String())
-		return exprtypes.AnyType()
-	case exprtypes.KindObject:
+		return types.AnyType()
+	case types.KindObject:
 		object, _ := ty.Object()
 		switch idx.Kind() {
-		case exprtypes.KindAny:
-			return exprtypes.AnyType()
-		case exprtypes.KindString:
+		case types.KindAny:
+			return types.AnyType()
+		case types.KindString:
 			// Index access with String literal like foo['bar']
 			if lit, ok := n.Index.(*syntax.StringNode); ok {
 				if prop, ok := object.Property(strings.ToLower(lit.Value)); ok {
@@ -442,15 +442,15 @@ func (sema *Checker) checkIndexAccess(n *syntax.IndexAccessNode) exprtypes.Type 
 			if mapped, ok := object.Mapped(); ok {
 				return mapped
 			}
-			return exprtypes.AnyType() // Fallback
-		case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindObject, exprtypes.KindArray:
+			return types.AnyType() // Fallback
+		case types.KindNull, types.KindNumber, types.KindBool, types.KindObject, types.KindArray:
 		}
 		sema.errorf(operandType, n.Index, "property access of object must be type of string but got %q", idx.String())
-		return exprtypes.AnyType()
-	case exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindString:
+		return types.AnyType()
+	case types.KindNull, types.KindNumber, types.KindBool, types.KindString:
 	}
 	sema.errorf(operandType, n, "index access operand must be type of object or array but got %q", ty.String())
-	return exprtypes.AnyType()
+	return types.AnyType()
 }
 
 type signatureMatch struct {
@@ -484,20 +484,20 @@ func checkFuncSignature(n *syntax.FuncCallNode, sig *exprfunctions.FuncSignature
 // commonReturn reports a return contract only when every candidate declares
 // the same type. Type.Merge has expression-specific coercion semantics and is
 // not a union of overload return contracts.
-func commonReturn(matches []signatureMatch) (exprtypes.Type, bool) {
+func commonReturn(matches []signatureMatch) (types.Type, bool) {
 	if len(matches) == 0 {
-		return exprtypes.AnyType(), false
+		return types.AnyType(), false
 	}
 	ret := matches[0].signature.Ret
 	for _, match := range matches[1:] {
 		if !ret.Equal(match.signature.Ret) {
-			return exprtypes.AnyType(), false
+			return types.AnyType(), false
 		}
 	}
 	return ret, true
 }
 
-func (sema *Checker) checkBuiltinFuncCall(n *syntax.FuncCallNode, match signatureMatch) exprtypes.Type {
+func (sema *Checker) checkBuiltinFuncCall(n *syntax.FuncCallNode, match signatureMatch) types.Type {
 	sig := match.signature
 	if sema.skipEvaluation {
 		return sig.Ret
@@ -508,8 +508,8 @@ func (sema *Checker) checkBuiltinFuncCall(n *syntax.FuncCallNode, match signatur
 	return inspection.ReturnType
 }
 
-func (sema *Checker) checkDemandedExpression(node syntax.Node, demand exprfunctions.ArgumentDemand) (exprtypes.Type, bool) {
-	var ty exprtypes.Type
+func (sema *Checker) checkDemandedExpression(node syntax.Node, demand exprfunctions.ArgumentDemand) (types.Type, bool) {
+	var ty types.Type
 	invalid := sema.withEvaluationDemand(demand, func() { ty = sema.check(node) })
 	return ty, invalid
 }
@@ -531,7 +531,7 @@ func (sema *Checker) withEvaluationDemand(demand exprfunctions.ArgumentDemand, o
 	return invalid
 }
 
-func (sema *Checker) checkExpressionBranch(node syntax.Node, demand exprfunctions.ArgumentDemand) exprtypes.Type {
+func (sema *Checker) checkExpressionBranch(node syntax.Node, demand exprfunctions.ArgumentDemand) types.Type {
 	ty, _ := sema.checkDemandedExpression(node, demand)
 	return ty
 }
@@ -542,15 +542,15 @@ func (sema *Checker) checkCallArgument(node syntax.Node, demand exprfunctions.Ar
 	if invalid && demand != exprfunctions.DemandSkipped {
 		arg.State = exprfunctions.ArgumentInvalid
 	} else if demand != exprfunctions.DemandSkipped {
-		if value, found := sema.constants.Result(node); found && value.State == exprvalues.EvaluationKnown {
+		if value, found := sema.constants.Result(node); found && value.State == values.EvaluationKnown {
 			arg.Value, arg.State = value.Value, exprfunctions.ArgumentKnown
 		}
 	}
 	return arg
 }
 
-func (sema *Checker) checkCaseCall(n *syntax.FuncCallNode, sig *exprfunctions.FuncSignature) exprtypes.Type {
-	var alternatives []exprtypes.Type
+func (sema *Checker) checkCaseCall(n *syntax.FuncCallNode, sig *exprfunctions.FuncSignature) types.Type {
+	var alternatives []types.Type
 	args := make([]exprfunctions.CallArgument, 0, len(n.Args))
 	ty, _ := sema.checkCaseBranches(n.Args, &alternatives, &args, len(n.Args))
 	match := checkFuncSignature(n, sig, args)
@@ -571,7 +571,7 @@ func (sema *Checker) checkCaseCall(n *syntax.FuncCallNode, sig *exprfunctions.Fu
 // Predicates never contribute. Branches made unreachable by constant predicates
 // are still checked but skip evaluation, so their types are left out of the
 // merge. The second result reports whether any branch in args was reachable.
-func (sema *Checker) checkCaseBranches(args []syntax.Node, alternatives *[]exprtypes.Type, checked *[]exprfunctions.CallArgument, count int) (exprtypes.Type, bool) {
+func (sema *Checker) checkCaseBranches(args []syntax.Node, alternatives *[]types.Type, checked *[]exprfunctions.CallArgument, count int) (types.Type, bool) {
 	check := func(node syntax.Node) exprfunctions.CallArgument {
 		demand := exprfunctions.DemandForArgument(exprfunctions.EvaluateCase, len(*checked), count, *checked)
 		arg := sema.checkCallArgument(node, demand)
@@ -588,7 +588,7 @@ func (sema *Checker) checkCaseBranches(args []syntax.Node, alternatives *[]exprt
 	}
 	check(args[0])
 	var valueArgument exprfunctions.CallArgument
-	valueType := sema.withBranchContext(args[0], true, func() exprtypes.Type {
+	valueType := sema.withBranchContext(args[0], true, func() types.Type {
 		valueArgument = check(args[1])
 		return valueArgument.Source
 	})
@@ -598,9 +598,9 @@ func (sema *Checker) checkCaseBranches(args []syntax.Node, alternatives *[]exprt
 	}
 	// Later predicates and the default are reachable only when this predicate
 	// is false. Keep those guards nested so all earlier exclusions apply.
-	var restType exprtypes.Type
+	var restType types.Type
 	var restReachable bool
-	sema.withBranchContext(args[0], false, func() exprtypes.Type {
+	sema.withBranchContext(args[0], false, func() types.Type {
 		restType, restReachable = sema.checkCaseBranches(args[2:], alternatives, checked, count)
 		return restType
 	})
@@ -610,21 +610,21 @@ func (sema *Checker) checkCaseBranches(args []syntax.Node, alternatives *[]exprt
 	case valueReachable:
 		return valueType, true
 	case !restReachable:
-		return exprtypes.AnyType(), false
+		return types.AnyType(), false
 	default:
 		return restType, restReachable
 	}
 }
 
-func (sema *Checker) checkFuncCall(n *syntax.FuncCallNode) exprtypes.Type {
+func (sema *Checker) checkFuncCall(n *syntax.FuncCallNode) types.Type {
 	sigs := sema.callSignatures[n]
 	if len(sigs) == 0 {
-		return exprtypes.AnyType()
+		return types.AnyType()
 	}
 
-	declared := make([]exprtypes.Type, 0, len(sigs))
+	declared := make([]types.Type, 0, len(sigs))
 	for _, sig := range sigs {
-		if !slices.ContainsFunc(declared, func(ty exprtypes.Type) bool { return ty.Equal(sig.Ret) }) {
+		if !slices.ContainsFunc(declared, func(ty types.Type) bool { return ty.Equal(sig.Ret) }) {
 			declared = append(declared, sig.Ret)
 		}
 	}
@@ -679,7 +679,7 @@ func (sema *Checker) checkFuncCall(n *syntax.FuncCallNode) exprtypes.Type {
 	}
 	_, common := commonReturn(accepted)
 	if !common {
-		return exprtypes.AnyType()
+		return types.AnyType()
 	}
 	match := accepted[0]
 	// Prefer the overload requiring fewer conversions or fallback behaviors.
@@ -703,7 +703,7 @@ func (sema *Checker) checkFuncCall(n *syntax.FuncCallNode) exprtypes.Type {
 	sema.recordCallArguments(n, match)
 	facts := sema.callFacts[n]
 	if !refined.Equal(match.signature.Ret) {
-		facts.RefinedAlternatives = []exprtypes.Type{refined}
+		facts.RefinedAlternatives = []types.Type{refined}
 	}
 	sema.callFacts[n] = facts
 	return refined
@@ -713,13 +713,13 @@ func (sema *Checker) recordCallArguments(n *syntax.FuncCallNode, match signature
 	facts := sema.callFacts[n]
 	facts.SignatureMatched = match.err == nil
 	for _, arg := range match.arguments {
-		value := exprvalues.EvaluationResult{State: exprvalues.EvaluationState(arg.State), Value: arg.Value}
+		value := values.EvaluationResult{State: values.EvaluationState(arg.State), Value: arg.Value}
 		if arg.Argument.Demand == exprfunctions.DemandSkipped {
-			value = exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
+			value = values.EvaluationResult{State: values.EvaluationUnknown}
 		}
 		facts.Arguments = append(facts.Arguments, exprfunctions.FunctionArgumentFacts{
 			Source:      arg.Argument.Source,
-			SourceValue: exprvalues.EvaluationResult{State: exprvalues.EvaluationState(arg.Argument.State), Value: arg.Argument.Value},
+			SourceValue: values.EvaluationResult{State: values.EvaluationState(arg.Argument.State), Value: arg.Argument.Value},
 			Accepted:    arg.Accepted,
 			Demand:      arg.Argument.Demand,
 			Parameter:   arg.Parameter,
@@ -731,19 +731,19 @@ func (sema *Checker) recordCallArguments(n *syntax.FuncCallNode, match signature
 	sema.callFacts[n] = facts
 }
 
-func (sema *Checker) checkNotOp(n *syntax.NotOpNode) exprtypes.Type {
+func (sema *Checker) checkNotOp(n *syntax.NotOpNode) types.Type {
 	ty := sema.check(n.Operand)
-	if !exprtypes.BoolType().Assignable(ty) {
+	if !types.BoolType().Assignable(ty) {
 		sema.errorf(operandType, n, "type of operand of ! operator %q is not assignable to type \"bool\"", ty.String())
 	}
-	return exprtypes.BoolType()
+	return types.BoolType()
 }
 
-func (sema *Checker) checkCompareOp(n *syntax.CompareOpNode) exprtypes.Type {
+func (sema *Checker) checkCompareOp(n *syntax.CompareOpNode) types.Type {
 	sema.check(n.Left)
 	sema.check(n.Right)
 
-	return exprtypes.BoolType()
+	return types.BoolType()
 }
 
 // checkWithNarrowing checks type of given expression with type narrowing. Type narrowing narrows
@@ -752,7 +752,7 @@ func (sema *Checker) checkCompareOp(n *syntax.CompareOpNode) exprtypes.Type {
 // be narrowed down to `typeof(r)`.
 // This analysis is useful to make type checking more accurate. For example, `some_var && 60 || 20`
 // can be typed as `number` instead of `typeof(some_var) | number`. (#384)
-func (sema *Checker) checkWithNarrowing(n syntax.Node, isTruthy bool) exprtypes.Type {
+func (sema *Checker) checkWithNarrowing(n syntax.Node, isTruthy bool) types.Type {
 	switch n := n.(type) {
 	case *syntax.LogicalOpNode:
 		switch n.Kind {
@@ -760,7 +760,7 @@ func (sema *Checker) checkWithNarrowing(n syntax.Node, isTruthy bool) exprtypes.
 			// When `l && r` is true, narrow its type to `typeof(r)`
 			if isTruthy {
 				left := sema.check(n.Left)
-				right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
+				right := sema.withBranchContext(n.Left, true, func() types.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 				sema.nodeTypes[n] = left.Merge(right)
 				return right
 			}
@@ -768,7 +768,7 @@ func (sema *Checker) checkWithNarrowing(n syntax.Node, isTruthy bool) exprtypes.
 			// When `l || r` is false, narrow its type to `typeof(r)`
 			if !isTruthy {
 				left := sema.check(n.Left)
-				right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
+				right := sema.withBranchContext(n.Left, false, func() types.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 				sema.nodeTypes[n] = left.Merge(right)
 				return right
 			}
@@ -777,14 +777,14 @@ func (sema *Checker) checkWithNarrowing(n syntax.Node, isTruthy bool) exprtypes.
 		}
 		return sema.checkLogicalOp(n)
 	case *syntax.NotOpNode:
-		sema.nodeTypes[n] = exprtypes.BoolType()
+		sema.nodeTypes[n] = types.BoolType()
 		return sema.checkWithNarrowing(n.Operand, !isTruthy)
 	default:
 		return sema.check(n)
 	}
 }
 
-func (sema *Checker) checkLogicalOp(n *syntax.LogicalOpNode) (ty exprtypes.Type) {
+func (sema *Checker) checkLogicalOp(n *syntax.LogicalOpNode) (ty types.Type) {
 	defer func() { sema.nodeTypes[n] = ty }()
 
 	switch n.Kind {
@@ -792,13 +792,13 @@ func (sema *Checker) checkLogicalOp(n *syntax.LogicalOpNode) (ty exprtypes.Type)
 		// When `l` is false in `l && r`, its type is `typeof(l)`. Otherwise `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is falsy.
 		left := sema.checkWithNarrowing(n.Left, false)
-		right := sema.withBranchContext(n.Left, true, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
+		right := sema.withBranchContext(n.Left, true, func() types.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 		return left.Merge(right)
 	case syntax.LogicalOpNodeKindOr:
 		// When `l` is true in `l || r`, its type is `typeof(l)`. Otherwise it is `typeof(r)`.
 		// Narrow the type of LHS expression by assuming its value is truthy.
 		left := sema.checkWithNarrowing(n.Left, true)
-		right := sema.withBranchContext(n.Left, false, func() exprtypes.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
+		right := sema.withBranchContext(n.Left, false, func() types.Type { return sema.checkExpressionBranch(n.Right, sema.logicalRightDemand(n)) })
 		return left.Merge(right)
 	case syntax.LogicalOpNodeKindInvalid:
 		// Invalid operators still check both operands.
@@ -806,24 +806,24 @@ func (sema *Checker) checkLogicalOp(n *syntax.LogicalOpNode) (ty exprtypes.Type)
 	default:
 		sema.check(n.Left)
 		sema.check(n.Right)
-		return exprtypes.AnyType()
+		return types.AnyType()
 	}
 }
 
-func (sema *Checker) check(expr syntax.Node) (ty exprtypes.Type) {
+func (sema *Checker) check(expr syntax.Node) (ty types.Type) {
 	defer func() { sema.nodeTypes[expr] = ty }()
 
 	switch e := expr.(type) {
 	case *syntax.VariableNode:
 		return sema.checkVariable(e)
 	case *syntax.NullNode:
-		return exprtypes.NullType()
+		return types.NullType()
 	case *syntax.BoolNode:
-		return exprtypes.BoolType()
+		return types.BoolType()
 	case *syntax.StringNode:
-		return exprtypes.StringType()
+		return types.StringType()
 	case *syntax.IntNode, *syntax.FloatNode:
-		return exprtypes.NumberType()
+		return types.NumberType()
 	case *syntax.ObjectDerefNode:
 		return sema.checkObjectDeref(e)
 	case *syntax.ArrayDerefNode:
@@ -846,12 +846,12 @@ func (sema *Checker) check(expr syntax.Node) (ty exprtypes.Type) {
 // ExpressionCheckResult keeps inferred types, findings and failure phases
 // separate. An invalid call can still have a declared return type.
 type ExpressionCheckResult struct {
-	Type       exprtypes.Type
+	Type       types.Type
 	Types      InferredTypes
 	Calls      CheckedCalls
 	Valid      bool
 	Findings   []*Error
-	Evaluation exprvalues.EvaluationResult
+	Evaluation values.EvaluationResult
 	// Call is nil when the root expression has no known function contract.
 	Call         *exprfunctions.FunctionCallFacts
 	FailurePhase FailurePhase
@@ -872,7 +872,7 @@ func (sema *Checker) CheckResult(input EvaluationResults) ExpressionCheckResult 
 	expr := input.Expression()
 	sema.errs = []*Error{}
 	sema.callFacts = make(map[*syntax.FuncCallNode]exprfunctions.FunctionCallFacts)
-	sema.nodeTypes = make(map[syntax.Node]exprtypes.Type)
+	sema.nodeTypes = make(map[syntax.Node]types.Type)
 	sema.evaluationInvalid = false
 	sema.validationFailed = false
 	sema.staticInvalid = false
@@ -881,25 +881,25 @@ func (sema *Checker) CheckResult(input EvaluationResults) ExpressionCheckResult 
 	ty := sema.check(expr)
 	errs := detachErrors(sema.errs)
 
-	evaluation := exprvalues.EvaluationResult{State: exprvalues.EvaluationUnknown}
+	evaluation := values.EvaluationResult{State: values.EvaluationUnknown}
 	phase := FailureNone
 	switch {
 	case sema.staticInvalid:
-		evaluation.State = exprvalues.EvaluationNotAttempted
+		evaluation.State = values.EvaluationNotAttempted
 		phase = FailureStaticValidation
 	case sema.evaluationInvalid:
-		evaluation.State = exprvalues.EvaluationInvalid
+		evaluation.State = values.EvaluationInvalid
 		phase = FailureEvaluation
 	default:
 		evaluation, _ = sema.constants.Result(expr)
-		if evaluation.State == exprvalues.EvaluationInvalid {
+		if evaluation.State == values.EvaluationInvalid {
 			phase = FailureEvaluation
 		}
 	}
 	result := ExpressionCheckResult{Type: ty, Types: InferredTypes{byNode: sema.nodeTypes}, Valid: !sema.validationFailed, Findings: errs, Evaluation: evaluation, FailurePhase: phase}
 	if call, ok := expr.(*syntax.FuncCallNode); ok {
 		if facts, found := sema.callFacts[call]; found {
-			if evaluation.State == exprvalues.EvaluationKnown {
+			if evaluation.State == values.EvaluationKnown {
 				facts.ReturnDomain = exprfunctions.ReturnDomainExcludesValue
 				for _, declared := range facts.DeclaredReturns {
 					if returnContainsValue(declared, evaluation.Value) {
@@ -909,9 +909,9 @@ func (sema *Checker) CheckResult(input EvaluationResults) ExpressionCheckResult 
 				}
 			}
 			if facts.ReturnDomain == exprfunctions.ReturnDomainContainsValue {
-				actual := exprtypes.TypeOfJSONValue(evaluation.Value)
+				actual := types.TypeOfJSONValue(evaluation.Value)
 				if !actual.Equal(result.Type) {
-					facts.RefinedAlternatives = []exprtypes.Type{actual}
+					facts.RefinedAlternatives = []types.Type{actual}
 				}
 			}
 			sema.callFacts[call] = facts
@@ -925,19 +925,19 @@ func (sema *Checker) CheckResult(input EvaluationResults) ExpressionCheckResult 
 
 // returnContainsValue checks actual values against the declared shape without
 // applying expression coercions or the compatibility rules in Assignable.
-func returnContainsValue(declared exprtypes.Type, value any) bool {
-	if declared.Kind() == exprtypes.KindAny {
+func returnContainsValue(declared types.Type, value any) bool {
+	if declared.Kind() == types.KindAny {
 		return true
 	}
 	switch v := value.(type) {
 	case nil:
-		return declared.Kind() == exprtypes.KindNull
+		return declared.Kind() == types.KindNull
 	case bool:
-		return declared.Kind() == exprtypes.KindBool
+		return declared.Kind() == types.KindBool
 	case float64:
-		return declared.Kind() == exprtypes.KindNumber
+		return declared.Kind() == types.KindNumber
 	case string:
-		return declared.Kind() == exprtypes.KindString
+		return declared.Kind() == types.KindString
 	case []any:
 		array, ok := declared.Array()
 		if !ok {
@@ -973,7 +973,7 @@ func returnContainsValue(declared exprtypes.Type, value any) bool {
 }
 
 // Check returns the inferred type and findings using precomputed value results.
-func (sema *Checker) Check(input EvaluationResults) (exprtypes.Type, []*Error) {
+func (sema *Checker) Check(input EvaluationResults) (types.Type, []*Error) {
 	result := sema.CheckResult(input)
 	return result.Type, result.Findings
 }

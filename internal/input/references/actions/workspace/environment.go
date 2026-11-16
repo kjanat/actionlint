@@ -9,16 +9,16 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
 	"mvdan.cc/sh/v3/syntax"
 )
 
 // ObserveExecution tracks environment-file effects across steps and composite returns.
 func (c *Resolver) ObserveExecution(step workflows.Step) {
-	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
+	if enabled, known := conditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
 	run, ok := step.Run()
@@ -30,7 +30,7 @@ func (c *Resolver) ObserveExecution(step workflows.Step) {
 	}
 }
 
-func (c *Resolver) shellEnvironmentUnknown(env mapping.Mapping) bool {
+func (c *Resolver) shellEnvironmentUnknown(env mappings.Mapping) bool {
 	return execution.ShellEnvironmentUnknownForPlatform(env, c.platform) || execution.ShellPathUnknownForPlatform(env, c.platform)
 }
 
@@ -91,7 +91,7 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 
 // ObserveOpaqueAction invalidates persistent environment assumptions for opaque actions.
 func (c *Resolver) ObserveOpaqueAction(step workflows.Step, action *definition.ExecAction) {
-	if enabled, known := workflowconditions.Condition(step.Condition()); known && !enabled {
+	if enabled, known := conditions.Condition(step.Condition()); known && !enabled {
 		return
 	}
 	if action != nil && action.Uses != nil {

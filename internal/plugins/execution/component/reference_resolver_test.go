@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
 
@@ -82,24 +82,24 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 	}{
 		{"outside resolve", func(ctx context.Context, objects *repositoryObjects) error {
 			objects.active = false
-			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "owner/repo", repositoryobjects.SomeU64(7))
 			return err
 		}},
 		{"different repository", func(ctx context.Context, objects *repositoryObjects) error {
-			_, err := objects.open(ctx, "other/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "other/repo", repositoryobjects.SomeU64(7))
 			return err
 		}},
 		{"different identity", func(ctx context.Context, objects *repositoryObjects) error {
-			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(8))
+			_, err := objects.open(ctx, "owner/repo", repositoryobjects.SomeU64(8))
 			return err
 		}},
 		{"missing identity", func(ctx context.Context, objects *repositoryObjects) error {
-			_, err := objects.open(ctx, "owner/repo", repositorybind.NoneU64())
+			_, err := objects.open(ctx, "owner/repo", repositoryobjects.NoneU64())
 			return err
 		}},
 		{"unexpected identity", func(ctx context.Context, objects *repositoryObjects) error {
 			objects.request.ExpectedRepositoryID = repository.ID{}
-			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
+			_, err := objects.open(ctx, "owner/repo", repositoryobjects.SomeU64(7))
 			return err
 		}},
 		{"reference before open", func(ctx context.Context, objects *repositoryObjects) error {
@@ -107,7 +107,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if failure, ok := value.(repositorybind.ResultOptionStringStringErr); ok {
+			if failure, ok := value.(repositoryobjects.ResultOptionStringStringErr); ok {
 				return errors.New(failure.Value)
 			}
 			return nil
@@ -117,7 +117,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if failure, ok := value.(repositorybind.ResultOptionObjectStringErr); ok {
+			if failure, ok := value.(repositoryobjects.ResultOptionObjectStringErr); ok {
 				return errors.New(failure.Value)
 			}
 			return nil
@@ -142,7 +142,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			t.Parallel()
 			objects, access, session := newResolverRepositoryTest(t)
-			if _, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7)); err != nil {
+			if _, err := objects.open(t.Context(), "owner/repo", repositoryobjects.SomeU64(7)); err != nil {
 				t.Fatal(err)
 			}
 			if err := objects.finish(t.Context()); err != nil {
@@ -150,7 +150,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			}
 			switch operation {
 			case "second open":
-				_, _ = objects.Open(t.Context(), "owner/repo", repositorybind.SomeU64(7))
+				_, _ = objects.Open(t.Context(), "owner/repo", repositoryobjects.SomeU64(7))
 			case "reference after finish":
 				_, _ = objects.GetRef(t.Context(), "refs/tags/v1")
 			case "object after finish":
@@ -190,7 +190,7 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 			if tc.tree == peeled {
 				session.objects[peeled] = references.RepositoryTree{}
 			}
-			if _, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7)); err != nil {
+			if _, err := objects.open(t.Context(), "owner/repo", repositoryobjects.SomeU64(7)); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := objects.GetRef(t.Context(), "refs/tags/v1"); err != nil {
@@ -239,7 +239,7 @@ func TestReferenceResolverRejectsFailedFinish(t *testing.T) {
 	t.Parallel()
 	objects, _, session := newResolverRepositoryTest(t)
 	session.finishErr = errors.New("repository identity changed")
-	if _, err := objects.open(t.Context(), "owner/repo", repositorybind.SomeU64(7)); err != nil {
+	if _, err := objects.open(t.Context(), "owner/repo", repositoryobjects.SomeU64(7)); err != nil {
 		t.Fatal(err)
 	}
 	if err := objects.finish(t.Context()); !errors.Is(err, session.finishErr) {

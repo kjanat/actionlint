@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 )
 
 // Composite outputs are published through the manifest's value mapping:
@@ -49,7 +49,7 @@ func TestNestedCompositeOutputReferences(t *testing.T) {
 					// each occurrence must report its declaring action source.
 					entry = fixturefiles.Write(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n      - uses: $/outer\npermissions: {}\n")
 				}
-				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entry}})
+				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, input.Request{Kind: input.Files, Paths: []string{entry}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -95,7 +95,7 @@ func TestCompositeOutputReferencesAcrossStepFields(t *testing.T) {
 			fixturefiles.Write(t, root, "node/index.js", "")
 			content := "name: outer\ndescription: outer\n" + field.outputs + "runs:\n  using: composite\n  steps:\n    - uses: $/child\n      id: child\n" + field.step
 			entry := fixturefiles.Write(t, root, "outer/action.yml", content)
-			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entry}})
+			result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, input.Request{Kind: input.Files, Paths: []string{entry}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -142,7 +142,7 @@ func TestCompositeOutputReferencePolicy(t *testing.T) {
 					content += "    - run: echo ready\n      shell: bash\n      env:\n        VALUE: ${{ steps.child.outputs.missing }}" + tc.comment + "\n"
 				}
 				entry := fixturefiles.Write(t, root, "outer/action.yml", content)
-				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entry}})
+				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, input.Request{Kind: input.Files, Paths: []string{entry}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -171,7 +171,7 @@ func TestCompositePropertyFindingsHaveOneOwner(t *testing.T) {
 	root, _ := testutil.ExecutableFixture(t, "shellcheck")
 	fixturefiles.Write(t, root, ".github/actionlint.yaml", "tools: {shellcheck: false, ruff: false}\n")
 	entry := fixturefiles.Write(t, root, "outer/action.yml", "name: outer\ndescription: outer\noutputs:\n  result:\n    description: result\n    value: ${{ github.no_such_property }}\nruns:\n  using: composite\n  steps:\n    - run: echo ready\n      shell: bash\n      env:\n        VALUE: ${{ github.no_such_property }}\n")
-	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entry}})
+	result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, input.Request{Kind: input.Files, Paths: []string{entry}})
 	if err != nil {
 		t.Fatal(err)
 	}

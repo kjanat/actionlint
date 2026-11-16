@@ -1,8 +1,8 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 func inspectCase(arguments []ParameterMatch, inspection *CallInspection) {
@@ -14,16 +14,16 @@ func inspectCase(arguments []ParameterMatch, inspection *CallInspection) {
 		}
 		actual := argument.Source
 		if argument.State == ArgumentKnown {
-			actual = exprtypes.TypeOfJSONValue(argument.Value)
+			actual = types.TypeOfJSONValue(argument.Value)
 		}
 		inspection.addProblem(InvalidCasePredicate{Index: index, Actual: actual}, argument.Demand)
 	}
 }
 
-func evaluateCase(context EvaluationContext) exprvalues.EvaluationResult {
+func evaluateCase(context EvaluationContext) values.EvaluationResult {
 	for index := 0; index < context.ArgumentCount()-1; index += 2 {
 		predicate := context.Argument(index)
-		if predicate.State != exprvalues.EvaluationKnown {
+		if predicate.State != values.EvaluationKnown {
 			return predicate
 		}
 		value, boolean := predicate.Value.(bool)

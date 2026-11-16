@@ -1,30 +1,30 @@
 package expressions
 
 import (
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
 
 type expressionRefinement struct {
-	ty                 exprtypes.Type
+	ty                 types.Type
 	state              value.State
-	templateInvalid    exprtypes.Type
+	templateInvalid    types.Type
 	hasTemplateInvalid bool
 }
 
 // expressionType keeps finite matrix-dependent expressions precise without
 // choosing one row's value for another. Unknown or oversized matrices retain
 // the ordinary semantic checker's type.
-func (rule *Checker) expressionType(text string, evaluation exprvalues.EvaluationResult) expressionRefinement {
+func (rule *Checker) expressionType(text string, evaluation values.EvaluationResult) expressionRefinement {
 	switch evaluation.State {
-	case exprvalues.EvaluationKnown:
-		return expressionRefinement{ty: exprtypes.TypeOfJSONValue(evaluation.Value), state: value.Evaluated}
-	case exprvalues.EvaluationInvalid, exprvalues.EvaluationNotAttempted:
+	case values.EvaluationKnown:
+		return expressionRefinement{ty: types.TypeOfJSONValue(evaluation.Value), state: value.Evaluated}
+	case values.EvaluationInvalid, values.EvaluationNotAttempted:
 		return expressionRefinement{state: value.Invalid}
-	case exprvalues.EvaluationUnknown:
+	case values.EvaluationUnknown:
 	}
 	if !rule.scriptJob.Present() {
 		return expressionRefinement{state: value.Dynamic}
@@ -45,11 +45,11 @@ func (rule *Checker) expressionType(text string, evaluation exprvalues.Evaluatio
 			}
 			continue
 		}
-		inferred := resolved.TypeWithFallback(exprtypes.AnyType())
+		inferred := resolved.TypeWithFallback(types.AnyType())
 		switch inferred.Kind() {
-		case exprtypes.KindObject, exprtypes.KindArray:
+		case types.KindObject, types.KindArray:
 			result.templateInvalid, result.hasTemplateInvalid = inferred, true
-		case exprtypes.KindAny, exprtypes.KindString, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindNull:
+		case types.KindAny, types.KindString, types.KindNumber, types.KindBool, types.KindNull:
 		}
 		if first {
 			result.ty = inferred

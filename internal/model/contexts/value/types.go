@@ -1,27 +1,27 @@
 package value
 
-import exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+import "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 // TypeWithFallback derives a type from known values. Unknown values use inferred;
 // unknown object properties and array elements use its corresponding child type.
 // Pass AnyType when no type was inferred. This does not change evaluation state
 // or establish that a dynamic or invalid value can be evaluated successfully.
-func (v Value) TypeWithFallback(inferred exprtypes.Type) exprtypes.Type {
+func (v Value) TypeWithFallback(inferred types.Type) types.Type {
 	if !v.Known() {
 		return inferred
 	}
 	switch v.Kind() {
 	case Null:
-		return exprtypes.NullType()
+		return types.NullType()
 	case Bool:
-		return exprtypes.BoolType()
+		return types.BoolType()
 	case Number:
-		return exprtypes.NumberType()
+		return types.NumberType()
 	case String:
-		return exprtypes.StringType()
+		return types.StringType()
 	case Object:
 		object, _ := inferred.Object()
-		var properties exprtypes.ObjectBuilder
+		var properties types.ObjectBuilder
 		for name, property := range v.Props() {
 			propertyType, _ := object.Property(name)
 			properties.Set(name, property.TypeWithFallback(propertyType))
@@ -29,7 +29,7 @@ func (v Value) TypeWithFallback(inferred exprtypes.Type) exprtypes.Type {
 		return properties.Build().Type()
 	case Array:
 		array, _ := inferred.Array()
-		element := exprtypes.AnyType()
+		element := types.AnyType()
 		first := true
 		for child := range v.Items() {
 			ty := child.TypeWithFallback(array.Elem())
@@ -39,8 +39,8 @@ func (v Value) TypeWithFallback(inferred exprtypes.Type) exprtypes.Type {
 				element = element.Merge(ty)
 			}
 		}
-		return exprtypes.NewArrayType(element).Type()
+		return types.NewArrayType(element).Type()
 	case KindUnknown:
 	}
-	return exprtypes.AnyType()
+	return types.AnyType()
 }

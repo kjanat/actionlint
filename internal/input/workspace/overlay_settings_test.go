@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
@@ -79,8 +79,8 @@ paths:
 		}
 		overlays = append(overlays, o)
 	}
-	var reports []configreport.Report
-	l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r configreport.Report) { reports = append(reports, r) }, Rules: checking.ConfigurationRules()})
+	var reports []report.Report
+	l, err := workspace.New(t.Context(), workspace.Options{ConfigFile: path, ConfigOverlays: overlays, OnConfigLoaded: func(r report.Report) { reports = append(reports, r) }, Rules: checking.ConfigurationRules()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ paths:
 		t.Fatalf("report selected file and inputs once per project: %#v", reports)
 	}
 	inspection := reports[0].Inspection
-	for pointer, want := range map[string]configreport.Origin{
+	for pointer, want := range map[string]report.Origin{
 		"/repository/runners":                                     {Source: "input", Input: "self-hosted-runner", State: "value", Line: 1, Column: 9},
 		"/repository/variables":                                   {Source: "input", Input: "config-variables", State: "null", Line: 1, Column: 1},
 		"/repository/default-workflow-permissions":                {File: path, Source: "config", State: "value", Line: 4, Column: 29},

@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
@@ -72,7 +72,7 @@ jobs:
     steps:
       - run: |
           ` + strings.ReplaceAll(tc.script, "\n", "\n          ") + "\n        shell: " + tc.shell + "\npermissions: {}\n"
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(workflow), NormalizePath: false, Name: "workflow.yml"})
+			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Stdin, Reader: strings.NewReader(workflow), NormalizePath: false, Name: "workflow.yml"})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -11,7 +11,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 )
 
 func TestPluginSelectionDirectSourcesKeepRepositoryScope(t *testing.T) {
@@ -96,7 +96,7 @@ func TestPluginSelectionOverlaysDetermineLinkedActivation(t *testing.T) {
 					t.Fatalf("foreign scope ignored disabling overlay: %v", err)
 				}
 			}
-			for _, mode := range []configplugins.ReadMode{configplugins.CompleteConfiguration, configplugins.PluginDeclarationsOnly} {
+			for _, mode := range []plugins.ReadMode{plugins.CompleteConfiguration, plugins.PluginDeclarationsOnly} {
 				if _, err := (Selection{RuleSet: (configuration.RuleSet{})}).selectSources(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository}, mode); err == nil || !strings.Contains(err.Error(), "symlink refused") {
 					t.Fatalf("active direct plugin accepted linked config: %v", err)
 				}

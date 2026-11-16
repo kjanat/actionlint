@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
@@ -394,7 +394,7 @@ func (c *Resolver) localSpec(spec string) (string, bool) {
 
 // ObserveCheckout updates action resolution after a checkout step.
 func (c *Resolver) ObserveCheckout(step workflows.Step) {
-	enabled, known := workflowconditions.Condition(step.Condition())
+	enabled, known := conditions.Condition(step.Condition())
 	if known && !enabled {
 		return
 	}
@@ -430,7 +430,7 @@ func (c *Resolver) ObserveCheckout(step workflows.Step) {
 			return
 		}
 	}
-	certain := known && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.Background))
+	certain := known && !conditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !conditions.BoolMayBeTrue(workflows.Bool(step.Background))
 	if !certain {
 		checkout.Kind = execution.DirectoryUnknown
 	}
@@ -448,7 +448,7 @@ func (c *Resolver) ObserveCheckout(step workflows.Step) {
 		}
 	}
 	previous := c.CheckoutState()
-	if self && !known && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !workflowconditions.BoolMayBeTrue(workflows.Bool(step.Background)) && !workflowconditions.CanRunAfterFailure(step.Condition()) {
+	if self && !known && !conditions.BoolMayBeTrue(workflows.Bool(step.ContinueOnError)) && !conditions.BoolMayBeTrue(workflows.Bool(step.Background)) && !conditions.CanRunAfterFailure(step.Condition()) {
 		// Skipping or successfully refreshing the same self checkout both
 		// preserve its placement. A failed refresh cannot reach ordinary steps.
 		if previous.SameSelfCheckout(checkout.Path) {

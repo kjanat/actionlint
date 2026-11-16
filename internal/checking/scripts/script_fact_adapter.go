@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
+	"actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
@@ -42,9 +42,9 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	}
 	descriptor := adapter.Analyzer.Descriptor()
 	checker := describedFactChecker{Checker: adapter.Analyzer, descriptor: descriptor}
-	prepared := make(map[bindingmodel.ID]executor.PreparedRegistration)
+	prepared := make(map[binding.ID]executor.PreparedRegistration)
 	for _, scope := range batch.Scopes {
-		var identity bindingmodel.ID
+		var identity binding.ID
 		options := adapter.Options
 		if scope.Bindings != nil {
 			decision := scope.Bindings.Rule(descriptor.Name)
@@ -94,7 +94,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		} else {
 			input.Invoked = []checkinputs.Script{script}
 		}
-		var identity bindingmodel.ID
+		var identity binding.ID
 		if scope := unit.Scope.Bindings; scope != nil {
 			identity = scope.Rule(descriptor.Name).ID()
 		}

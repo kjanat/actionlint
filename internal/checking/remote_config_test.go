@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 )
 
 func TestRemoteConfigWithSourceOverlay(t *testing.T) {
@@ -31,7 +31,7 @@ func TestRemoteConfigWithSourceOverlay(t *testing.T) {
 				return nil, fmt.Errorf("unexpected source %q", name)
 			}
 		},
-	}, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader("on: push\njobs: {}\n"), Name: "workflow.yml"})
+	}, input.Request{Kind: input.Stdin, Reader: strings.NewReader("on: push\njobs: {}\n"), Name: "workflow.yml"})
 	if err != nil {
 		t.Fatal(err)
 	}

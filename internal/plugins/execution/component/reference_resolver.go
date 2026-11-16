@@ -11,11 +11,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
 
-const RepositoryObjectsInterface = repositorybind.InterfaceName
+const RepositoryObjectsInterface = repositoryobjects.InterfaceName
 
 var (
 	_ references.Resolver       = (*Plugin)(nil)
@@ -163,7 +163,7 @@ func (r *repositoryObjects) ready(ctx context.Context) error {
 	return nil
 }
 
-func (r *repositoryObjects) open(ctx context.Context, name string, expectedID repositorybind.OptionU64) (references.RepositoryIdentity, error) {
+func (r *repositoryObjects) open(ctx context.Context, name string, expectedID repositoryobjects.OptionU64) (references.RepositoryIdentity, error) {
 	if err := ctx.Err(); err != nil {
 		return references.RepositoryIdentity{}, r.fail(err)
 	}
@@ -194,70 +194,70 @@ func (r *repositoryObjects) open(ctx context.Context, name string, expectedID re
 	return identity, nil
 }
 
-func (r *repositoryObjects) Open(ctx context.Context, name string, expectedID repositorybind.OptionU64) (repositorybind.ResultRepositoryString, error) {
+func (r *repositoryObjects) Open(ctx context.Context, name string, expectedID repositoryobjects.OptionU64) (repositoryobjects.ResultRepositoryString, error) {
 	identity, err := r.open(ctx, name, expectedID)
 	if err != nil {
-		return repositorybind.ResultRepositoryStringErr{Value: r.fail(err).Error()}, nil
+		return repositoryobjects.ResultRepositoryStringErr{Value: r.fail(err).Error()}, nil
 	}
-	return repositorybind.ResultRepositoryStringOk{Value: repositorybind.Repository{Host: identity.Host, ID: lowerRepositoryID(identity.ID), Name: identity.Name, ObservedAt: identity.ObservedAt}}, nil
+	return repositoryobjects.ResultRepositoryStringOk{Value: repositoryobjects.Repository{Host: identity.Host, ID: lowerRepositoryID(identity.ID), Name: identity.Name, ObservedAt: identity.ObservedAt}}, nil
 }
 
-func (r *repositoryObjects) GetRef(ctx context.Context, name string) (repositorybind.ResultOptionStringString, error) {
+func (r *repositoryObjects) GetRef(ctx context.Context, name string) (repositoryobjects.ResultOptionStringString, error) {
 	if err := r.ready(ctx); err != nil {
-		return repositorybind.ResultOptionStringStringErr{Value: r.fail(err).Error()}, nil
+		return repositoryobjects.ResultOptionStringStringErr{Value: r.fail(err).Error()}, nil
 	}
 	value, found, err := r.session.Reference(ctx, name)
 	if err != nil {
-		return repositorybind.ResultOptionStringStringErr{Value: r.fail(err).Error()}, nil
+		return repositoryobjects.ResultOptionStringStringErr{Value: r.fail(err).Error()}, nil
 	}
 	if !found {
-		return repositorybind.ResultOptionStringStringOk{}, nil
+		return repositoryobjects.ResultOptionStringStringOk{}, nil
 	}
 	if !fullObjectID(value) {
-		return repositorybind.ResultOptionStringStringErr{Value: r.fail(errors.New("repository returned an invalid reference object ID")).Error()}, nil
+		return repositoryobjects.ResultOptionStringStringErr{Value: r.fail(errors.New("repository returned an invalid reference object ID")).Error()}, nil
 	}
 	if previous, exists := r.refs[name]; exists && previous != value {
-		return repositorybind.ResultOptionStringStringErr{Value: r.fail(errors.New("repository reference changed during resolution")).Error()}, nil
+		return repositoryobjects.ResultOptionStringStringErr{Value: r.fail(errors.New("repository reference changed during resolution")).Error()}, nil
 	}
 	r.refs[name] = value
-	return repositorybind.ResultOptionStringStringOk{Value: repositorybind.SomeString(value)}, nil
+	return repositoryobjects.ResultOptionStringStringOk{Value: repositoryobjects.SomeString(value)}, nil
 }
 
-func (r *repositoryObjects) GetObject(ctx context.Context, id string) (repositorybind.ResultOptionObjectString, error) {
+func (r *repositoryObjects) GetObject(ctx context.Context, id string) (repositoryobjects.ResultOptionObjectString, error) {
 	if err := r.ready(ctx); err != nil {
-		return repositorybind.ResultOptionObjectStringErr{Value: r.fail(err).Error()}, nil
+		return repositoryobjects.ResultOptionObjectStringErr{Value: r.fail(err).Error()}, nil
 	}
 	if !fullObjectID(id) {
-		return repositorybind.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository object lookup requires a full lowercase object ID")).Error()}, nil
+		return repositoryobjects.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository object lookup requires a full lowercase object ID")).Error()}, nil
 	}
 	value, found, err := r.session.Object(ctx, id)
 	if err != nil {
-		return repositorybind.ResultOptionObjectStringErr{Value: r.fail(err).Error()}, nil
+		return repositoryobjects.ResultOptionObjectStringErr{Value: r.fail(err).Error()}, nil
 	}
 	if !found {
-		return repositorybind.ResultOptionObjectStringOk{}, nil
+		return repositoryobjects.ResultOptionObjectStringOk{}, nil
 	}
-	var object repositorybind.Object
+	var object repositoryobjects.Object
 	switch value := value.(type) {
 	case references.RepositoryCommit:
-		object = repositorybind.ObjectCommit{}
+		object = repositoryobjects.ObjectCommit{}
 	case references.RepositoryTree:
-		object = repositorybind.ObjectTree{}
+		object = repositoryobjects.ObjectTree{}
 	case references.RepositoryPeeledTag:
 		if !fullObjectID(value.Commit) {
-			return repositorybind.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an invalid peeled commit ID")).Error()}, nil
+			return repositoryobjects.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an invalid peeled commit ID")).Error()}, nil
 		}
-		object = repositorybind.ObjectPeeledTag{Value: value.Commit}
+		object = repositoryobjects.ObjectPeeledTag{Value: value.Commit}
 	case references.RepositoryPeeledTreeTag:
 		if !fullObjectID(value.Tree) {
-			return repositorybind.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an invalid peeled tree ID")).Error()}, nil
+			return repositoryobjects.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an invalid peeled tree ID")).Error()}, nil
 		}
-		object = repositorybind.ObjectPeeledTreeTag{Value: value.Tree}
+		object = repositoryobjects.ObjectPeeledTreeTag{Value: value.Tree}
 	default:
-		return repositorybind.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an unknown object kind")).Error()}, nil
+		return repositoryobjects.ResultOptionObjectStringErr{Value: r.fail(errors.New("repository returned an unknown object kind")).Error()}, nil
 	}
 	r.objects[id] = value
-	return repositorybind.ResultOptionObjectStringOk{Value: repositorybind.SomeObject(object)}, nil
+	return repositoryobjects.ResultOptionObjectStringOk{Value: repositoryobjects.SomeObject(object)}, nil
 }
 
 func (r *repositoryObjects) finish(ctx context.Context) error {
@@ -276,11 +276,11 @@ func (r *repositoryObjects) finish(ctx context.Context) error {
 	return nil
 }
 
-func (r *repositoryObjects) Finish(ctx context.Context) (repositorybind.Result_String, error) {
+func (r *repositoryObjects) Finish(ctx context.Context) (repositoryobjects.Result_String, error) {
 	if err := r.finish(ctx); err != nil {
-		return repositorybind.Result_StringErr{Value: r.fail(err).Error()}, nil
+		return repositoryobjects.Result_StringErr{Value: r.fail(err).Error()}, nil
 	}
-	return repositorybind.Result_StringOk{}, nil
+	return repositoryobjects.Result_StringOk{}, nil
 }
 
 func (r *repositoryObjects) validate(result references.ResolutionRecord) error {
@@ -330,11 +330,11 @@ func (r *repositoryObjects) validate(result references.ResolutionRecord) error {
 	return nil
 }
 
-func lowerRepositoryID(id repository.ID) repositorybind.OptionU64 {
+func lowerRepositoryID(id repository.ID) repositoryobjects.OptionU64 {
 	if value, known := id.Value(); known {
-		return repositorybind.SomeU64(value)
+		return repositoryobjects.SomeU64(value)
 	}
-	return repositorybind.NoneU64()
+	return repositoryobjects.NoneU64()
 }
 
 func fullObjectID(id string) bool {

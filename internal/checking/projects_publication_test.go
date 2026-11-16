@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/git"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -56,7 +56,7 @@ func TestCheckProjectsPreservesIncompleteChecksAcrossRepositories(t *testing.T) 
 		}
 		paths = append(paths, consumer)
 	}
-	result, err := CheckProjects(t.Context(), Options{SkipProjectConfig: true}, inputmodel.Request{Kind: inputmodel.Files, Paths: paths}, pluginselection.Selection{Disabled: true, DisableTools: true})
+	result, err := CheckProjects(t.Context(), Options{SkipProjectConfig: true}, input.Request{Kind: input.Files, Paths: paths}, pluginselection.Selection{Disabled: true, DisableTools: true})
 	if err != nil || result == nil {
 		t.Fatalf("check projects: result=%+v error=%v", result, err)
 	}

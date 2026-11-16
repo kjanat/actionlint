@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -103,7 +103,7 @@ func TestConfigMigrationPreservesInheritedPluginList(t *testing.T) {
 	if err := os.WriteFile(base, []byte("plugins: [publisher/base, publisher/next]\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := configplugins.Open(t.Context(), checking.ConfigurationRules(), path, acquisitionhttp.Connections{})
+	manifest, err := plugins.Open(t.Context(), checking.ConfigurationRules(), path, acquisitionhttp.Connections{})
 	if err != nil {
 		t.Fatal(err)
 	}

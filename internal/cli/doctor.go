@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
-	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/streams"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
@@ -93,7 +93,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 		report.Tools = append(report.Tools, tool)
 	}
 	if req.JSON {
-		err = commandstreams.WriteJSON(out, report)
+		err = streams.WriteJSON(out, report)
 	} else {
 		file, terminal := terminalFile(out)
 		links := req.Hyperlinks.enabled(terminal, os.Getenv)
@@ -143,7 +143,7 @@ func checkDoctorTools(manifests []pluginmanifests.Manifest, named []string) erro
 	if len(unknown) == 0 {
 		return nil
 	}
-	return commandargs.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
+	return arguments.UsageError{Cause: checking.NewUnknownToolError(unknown, known)}
 }
 
 // probeDoctorVersion runs the manifest's version probe against command, as

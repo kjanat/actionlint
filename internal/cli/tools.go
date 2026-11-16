@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"github.com/spf13/pflag"
 
@@ -169,13 +169,13 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 	for _, value := range c.ToolFlags {
 		id, command, explicit := strings.Cut(value, "=")
 		if id == "" {
-			return resolvedTools{}, commandargs.UsageError{Cause: fmt.Errorf("--tool %q names no tool", value)}
+			return resolvedTools{}, arguments.UsageError{Cause: fmt.Errorf("--tool %q names no tool", value)}
 		}
 		if !explicit {
 			command = id
 		}
 		if !bundled(id) && !disablesTool(command) && command != id {
-			return resolvedTools{}, commandargs.UsageError{Cause: fmt.Errorf("--tool %s: only bundled tools take a command", value)}
+			return resolvedTools{}, arguments.UsageError{Cause: fmt.Errorf("--tool %s: only bundled tools take a command", value)}
 		}
 		if _, seen := commands[id]; !seen {
 			resolved.named = append(resolved.named, id)

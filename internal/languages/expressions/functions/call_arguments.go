@@ -1,8 +1,8 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // ArgumentValueState distinguishes an unknown value from a rejected conversion.
@@ -15,7 +15,7 @@ const (
 )
 
 type CallArgument struct {
-	Source exprtypes.Type
+	Source types.Type
 	Value  any
 	State  ArgumentValueState
 	Demand ArgumentDemand
@@ -26,40 +26,40 @@ type CallArgument struct {
 type ParameterMatch struct {
 	Argument   CallArgument
 	Accepted   bool
-	Parameter  exprtypes.Type
+	Parameter  types.Type
 	Conversion ArgumentConversion
-	Converted  exprtypes.Type
+	Converted  types.Type
 	Value      any
 	State      ArgumentValueState
 }
 
-func MatchParameter(parameter exprtypes.Type, arg CallArgument, compositeFallback bool) ParameterMatch {
+func MatchParameter(parameter types.Type, arg CallArgument, compositeFallback bool) ParameterMatch {
 	m := ParameterMatch{Argument: arg, Accepted: true, Parameter: parameter, Converted: arg.Source, Value: arg.Value, State: arg.State}
 	actual := arg.Source
-	if actual.Kind() == exprtypes.KindAny && arg.State == ArgumentKnown {
-		actual = exprtypes.TypeOfJSONValue(arg.Value)
+	if actual.Kind() == types.KindAny && arg.State == ArgumentKnown {
+		actual = types.TypeOfJSONValue(arg.Value)
 	}
-	if parameter.Kind() == exprtypes.KindString {
+	if parameter.Kind() == types.KindString {
 		switch actual.Kind() {
-		case exprtypes.KindAny, exprtypes.KindString:
+		case types.KindAny, types.KindString:
 			return m
-		case exprtypes.KindBool, exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindArray, exprtypes.KindObject:
-			if compositeFallback && (actual.Kind() == exprtypes.KindArray || actual.Kind() == exprtypes.KindObject) {
+		case types.KindBool, types.KindNull, types.KindNumber, types.KindArray, types.KindObject:
+			if compositeFallback && (actual.Kind() == types.KindArray || actual.Kind() == types.KindObject) {
 				m.Conversion = ConversionUnavailable
 				return m
 			}
 			m.Conversion = ConversionString
-			m.Converted = exprtypes.StringType()
+			m.Converted = types.StringType()
 			// Arrays convert to "Array" and objects to "Object", even when their contents are unknown.
 			if m.State == ArgumentUnknown {
-				if actual.Kind() == exprtypes.KindArray {
+				if actual.Kind() == types.KindArray {
 					m.Value, m.State = "Array", ArgumentKnown
-				} else if actual.Kind() == exprtypes.KindObject {
+				} else if actual.Kind() == types.KindObject {
 					m.Value, m.State = "Object", ArgumentKnown
 				}
 			}
 			if m.State == ArgumentKnown {
-				if value, ok := exprvalues.FunctionString(m.Value); ok {
+				if value, ok := values.FunctionString(m.Value); ok {
 					m.Value = value
 				} else {
 					m.Value, m.State = nil, ArgumentUnknown
@@ -82,8 +82,8 @@ func MatchParameter(parameter exprtypes.Type, arg CallArgument, compositeFallbac
 	}
 	// Function acceptance is a separate contract from Type.Assignable,
 	// which also includes expression-level boolean and string compatibility.
-	if parameter.Kind() != exprtypes.KindAny && actual.Kind() != exprtypes.KindAny &&
-		(parameter.Kind() != actual.Kind() || (parameter.Kind() == exprtypes.KindObject && !parameter.Assignable(actual))) {
+	if parameter.Kind() != types.KindAny && actual.Kind() != types.KindAny &&
+		(parameter.Kind() != actual.Kind() || (parameter.Kind() == types.KindObject && !parameter.Assignable(actual))) {
 		m.Accepted = false
 		m.State = ArgumentInvalid
 	}

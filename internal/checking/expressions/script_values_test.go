@@ -14,7 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -287,8 +287,8 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 	t.Parallel()
 	checker := &Checker{
-		stepsTy: new(exprtypes.NewObjectType(map[string]exprtypes.Type{"producer": exprtypes.StringType()})),
-		needsTy: new(exprtypes.NewObjectType(map[string]exprtypes.Type{"build": exprtypes.StringType()})),
+		stepsTy: new(types.NewObjectType(map[string]types.Type{"producer": types.StringType()})),
+		needsTy: new(types.NewObjectType(map[string]types.Type{"build": types.StringType()})),
 	}
 	for _, tc := range []struct {
 		expression string
@@ -319,14 +319,14 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 
 func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 	t.Parallel()
-	steps := exprtypes.NewObjectType(map[string]exprtypes.Type{
-		"producer": exprtypes.NewObjectType(map[string]exprtypes.Type{
-			"outcome": exprtypes.StringType(),
-			"outputs": exprtypes.NewObjectType(map[string]exprtypes.Type{"value": exprtypes.StringType()}).Type(),
+	steps := types.NewObjectType(map[string]types.Type{
+		"producer": types.NewObjectType(map[string]types.Type{
+			"outcome": types.StringType(),
+			"outputs": types.NewObjectType(map[string]types.Type{"value": types.StringType()}).Type(),
 		}).Type(),
 	})
-	needs := exprtypes.NewObjectType(map[string]exprtypes.Type{
-		"build": exprtypes.NewObjectType(map[string]exprtypes.Type{"result": exprtypes.StringType()}).Type(),
+	needs := types.NewObjectType(map[string]types.Type{
+		"build": types.NewObjectType(map[string]types.Type{"result": types.StringType()}).Type(),
 	})
 	rule := &Checker{stepsTy: &steps, needsTy: &needs}
 	for _, tc := range []struct {
@@ -353,8 +353,8 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 			semantic.SetContextAvailability([]string{"steps", "needs", "inputs"})
 			semantic.SetContextType("steps", steps.Type())
 			semantic.SetContextType("needs", needs.Type())
-			contexts.MergeInputTypes(semantic, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
-				"step": exprtypes.StringType(), "job": exprtypes.StringType(),
+			contexts.MergeInputTypes(semantic, types.NewStrictObjectType(map[string]types.Type{
+				"step": types.StringType(), "job": types.StringType(),
 			}))
 			checked := semantic.CheckResult(evaluate.EvaluateSubexpressions(node))
 			typeOf, errs := checked.Type, checked.Findings

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -20,7 +20,7 @@ func TestDeprecatedRuntimeKeepsInputValidation(t *testing.T) {
 	}
 	pos := &sourcepos.Position{Line: 1, Column: 1}
 	exec := &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: pos}}
-	findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
+	findings := action.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
 	var deprecated, missingScript bool
 	for _, err := range findings {
 		deprecated = deprecated || strings.Contains(err.Message, "deprecated")
@@ -53,7 +53,7 @@ func TestReferencedActionRuntimeCodeAndMessage(t *testing.T) {
 				t.Fatal(err)
 			}
 			exec := &definition.ExecAction{Uses: &definition.String{Value: spec, Pos: &sourcepos.Position{Line: 1, Column: 1}}}
-			findings := actioncheck.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
+			findings := action.Repository(ownedActionFixture(exec), actionmeta.NewDefinition(meta), actionmeta.LifecycleContext{})
 			if tc.code == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected lifecycle findings: %+v", findings)

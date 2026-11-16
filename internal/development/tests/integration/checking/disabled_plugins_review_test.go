@@ -11,9 +11,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -60,7 +60,7 @@ func TestDisabledPluginsDoNotPreventBuiltinFindings(t *testing.T) {
 			if tc.offline {
 				ctx, _ = network.WithSession(ctx, network.Options{Offline: true})
 			}
-			result, err := checking.CheckProjects(ctx, checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}, selection)
+			result, err := checking.CheckProjects(ctx, checking.Options{WorkingDir: root}, input.Request{Kind: input.Files, Paths: []string{workflow}}, selection)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -109,11 +109,11 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 		{RuleSet: checking.ConfigurationRules(), Paths: []string{filepath.Join(root, "runner.wasm")}, Acquisition: acquisition, DisableTools: true},
 	} {
 		fixturefiles.WriteText(t, filepath.Join(root, "runner.wasm"), string(component))
-		sources, err := selection.Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+		sources, err := selection.Resolve(t.Context(), root, input.Request{Kind: input.Repository})
 		if err != nil {
 			t.Fatal(err)
 		}
-		loaded, err := pluginexec.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
+		loaded, err := execution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +128,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 	if err := os.WriteFile(cachePath, []byte("corrupt"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true}).Resolve(t.Context(), root, inputmodel.Request{Kind: inputmodel.Repository})
+	_, err = (pluginselection.Selection{RuleSet: checking.ConfigurationRules(), ConfigFile: configPath, Acquisition: acquisition, DisableTools: true}).Resolve(t.Context(), root, input.Request{Kind: input.Repository})
 	if err == nil || !strings.Contains(err.Error(), "SHA256 mismatch") {
 		t.Fatalf("corrupt cached artifact was ignored: %v", err)
 	}

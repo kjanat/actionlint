@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -46,7 +46,7 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	for _, j := range jobs {
 		findings = append(findings, trust.CheckWrites(j)...)
 		findings = append(findings, trust.CheckCall(j)...)
-		mode := cachemodel.EffectiveMode(w.CacheMode, j.CacheMode)
+		mode := cache.EffectiveMode(w.CacheMode, j.CacheMode)
 		for step := range j.Steps() {
 			findings = append(findings, CheckStep(step, mode)...)
 		}

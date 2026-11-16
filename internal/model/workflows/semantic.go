@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
@@ -59,14 +59,14 @@ func boolean(node *definition.Bool) value.Value {
 func Bool(node *definition.Bool) value.Value { return boolean(node) }
 
 // Environment resolves an env mapping, including insertions.
-func Environment(node *definition.Env) mapping.Mapping { return resolvedEnvironment(node) }
+func Environment(node *definition.Env) mappings.Mapping { return resolvedEnvironment(node) }
 
 // ResolvedInputs resolves an action step's with: mapping, including insertions.
-func ResolvedInputs(node *definition.ExecAction) mapping.Mapping {
+func ResolvedInputs(node *definition.ExecAction) mappings.Mapping {
 	if node == nil {
-		return mapping.Mapping{}
+		return mappings.Mapping{}
 	}
-	return mapping.Resolve(actionInputs(node))
+	return mappings.Resolve(actionInputs(node))
 }
 
 // MatrixResolution resolves a strategy's matrix.
@@ -78,11 +78,11 @@ func MatrixResolution(node *definition.Strategy) matrix.Resolution {
 }
 
 // MatrixMapping resolves a matrix's keys as a mapping.
-func MatrixMapping(node *definition.Matrix) mapping.Mapping {
+func MatrixMapping(node *definition.Matrix) mappings.Mapping {
 	if node == nil {
-		return mapping.Mapping{}
+		return mappings.Mapping{}
 	}
-	return mapping.Resolve(matrixMappingInputs(node))
+	return mappings.Resolve(matrixMappingInputs(node))
 }
 
 // RunnerSelection decodes runs-on.
@@ -138,7 +138,7 @@ func defaultsRunValue(node *definition.DefaultsRun) value.Value {
 	return value.Map(origin(node.Pos, false), props...)
 }
 
-func containerValue(node *definition.Container, envMapping mapping.Mapping) value.Value {
+func containerValue(node *definition.Container, envMapping mappings.Mapping) value.Value {
 	if node == nil {
 		return value.Value{}
 	}
@@ -187,7 +187,7 @@ func credentialsValue(node *definition.Credentials) value.Value {
 	return value.Map(origin(node.Pos, false), props...)
 }
 
-func environmentValue(mapping mapping.Mapping, node *definition.Env) value.Value {
+func environmentValue(mapping mappings.Mapping, node *definition.Env) value.Value {
 	if !mapping.Complete() {
 		envOrigin := value.Origin{}
 		if node.Expression != nil {
@@ -208,22 +208,22 @@ func appendSourceProp(props *[]value.Prop, name string, source *definition.Strin
 	}
 }
 
-func resolvedEnvironment(node *definition.Env) mapping.Mapping {
-	return mapping.Resolve(environmentInputs(node))
+func resolvedEnvironment(node *definition.Env) mappings.Mapping {
+	return mappings.Resolve(environmentInputs(node))
 }
 
-func environmentInputs(node *definition.Env) *mapping.DeclaredMapping {
+func environmentInputs(node *definition.Env) *mappings.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.DeclaredMapping{
-		Values: make(map[string]mapping.DeclaredEntry, len(node.Vars)), Expression: mappingScalar(node.Expression),
+	inputs := &mappings.DeclaredMapping{
+		Values: make(map[string]mappings.DeclaredEntry, len(node.Vars)), Expression: mappingScalar(node.Expression),
 	}
 	for key, entry := range node.Vars {
 		if entry == nil {
 			continue
 		}
-		inputs.Values[key] = mapping.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
+		inputs.Values[key] = mappings.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
 	}
 	for _, insertion := range node.Insertions {
 		inputs.Insertions = append(inputs.Insertions, environmentInputs(insertion))
@@ -231,18 +231,18 @@ func environmentInputs(node *definition.Env) *mapping.DeclaredMapping {
 	return inputs
 }
 
-func actionInputs(node *definition.ExecAction) *mapping.DeclaredMapping {
+func actionInputs(node *definition.ExecAction) *mappings.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.DeclaredMapping{
-		Values: make(map[string]mapping.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.InputsExpression),
+	inputs := &mappings.DeclaredMapping{
+		Values: make(map[string]mappings.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.InputsExpression),
 	}
 	for key, entry := range node.Inputs {
 		if entry == nil {
 			continue
 		}
-		inputs.Values[key] = mapping.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
+		inputs.Values[key] = mappings.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
 	}
 	for _, insertion := range node.InputInsertions {
 		inputs.Insertions = append(inputs.Insertions, actionMappingInputs(insertion))
@@ -250,18 +250,18 @@ func actionInputs(node *definition.ExecAction) *mapping.DeclaredMapping {
 	return inputs
 }
 
-func actionMappingInputs(node *definition.ActionInputMapping) *mapping.DeclaredMapping {
+func actionMappingInputs(node *definition.ActionInputMapping) *mappings.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.DeclaredMapping{
-		Values: make(map[string]mapping.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.Expression),
+	inputs := &mappings.DeclaredMapping{
+		Values: make(map[string]mappings.DeclaredEntry, len(node.Inputs)), Expression: mappingScalar(node.Expression),
 	}
 	for key, entry := range node.Inputs {
 		if entry == nil {
 			continue
 		}
-		inputs.Values[key] = mapping.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
+		inputs.Values[key] = mappings.DeclaredEntry{Name: mappingScalar(entry.Name), Value: mappingScalar(entry.Value), Source: sourceText(entry.Name)}
 	}
 	for _, insertion := range node.Insertions {
 		inputs.Insertions = append(inputs.Insertions, actionMappingInputs(insertion))
@@ -276,12 +276,12 @@ func sourceText(node *definition.String) string {
 	return node.Value
 }
 
-func matrixMappingInputs(node *definition.Matrix) *mapping.DeclaredMapping {
+func matrixMappingInputs(node *definition.Matrix) *mappings.DeclaredMapping {
 	if node == nil {
 		return nil
 	}
-	inputs := &mapping.DeclaredMapping{
-		Values: make(map[string]mapping.DeclaredEntry, len(node.Rows)+2), Expression: mappingScalar(node.Expression),
+	inputs := &mappings.DeclaredMapping{
+		Values: make(map[string]mappings.DeclaredEntry, len(node.Rows)+2), Expression: mappingScalar(node.Expression),
 	}
 	for key, row := range node.Rows {
 		var name value.Value
@@ -295,7 +295,7 @@ func matrixMappingInputs(node *definition.Matrix) *mapping.DeclaredMapping {
 		} else {
 			name = value.YAMLScalar(key, definition.YamlTagStr, value.Origin{})
 		}
-		inputs.Values[key] = mapping.DeclaredEntry{Name: name, Source: source, Evaluated: row.Evaluated}
+		inputs.Values[key] = mappings.DeclaredEntry{Name: name, Source: source, Evaluated: row.Evaluated}
 	}
 	for key, filters := range map[string]*definition.MatrixCombinations{"include": node.Include, "exclude": node.Exclude} {
 		if filters == nil {
@@ -306,7 +306,7 @@ func matrixMappingInputs(node *definition.Matrix) *mapping.DeclaredMapping {
 		if filters.Evaluated && filters.Name != nil {
 			name = value.YAMLScalar(filters.Name.Value, definition.YamlTagStr, origin(filters.Name.Pos, true))
 		}
-		inputs.Values[key] = mapping.DeclaredEntry{Name: name, Source: source, Evaluated: filters.Evaluated}
+		inputs.Values[key] = mappings.DeclaredEntry{Name: name, Source: source, Evaluated: filters.Evaluated}
 	}
 	for _, insertion := range node.Insertions {
 		inputs.Insertions = append(inputs.Insertions, matrixMappingInputs(insertion))

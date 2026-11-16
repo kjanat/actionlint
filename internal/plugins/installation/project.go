@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -26,7 +26,7 @@ import (
 // Project edits exact plugin declarations in configuration.
 // Resolved registry metadata is stored only in the user cache.
 type Project struct {
-	Manifest      *configplugins.File
+	Manifest      *plugins.File
 	Releases      pluginregistry.ResolvedPlugins
 	StatusOptions pluginregistry.StatusOptions
 	// DefaultPlugins marks Manifest.References as the registry defaults chosen
@@ -70,10 +70,10 @@ func projectConfigPath(directory, selected string) (string, error) {
 		return "", errors.New("no repository found; select configuration with --config")
 	}
 	directory = filepath.Join(repository, ".github")
-	if err := configplugins.ValidateLocalPath(filepath.Join(discovery.PhysicalRepositoryRoot(repository), ".github")); err != nil {
+	if err := plugins.ValidateLocalPath(filepath.Join(discovery.PhysicalRepositoryRoot(repository), ".github")); err != nil {
 		return "", err
 	}
-	return configplugins.FindOrDefaultPath(directory)
+	return plugins.FindOrDefaultPath(directory)
 }
 
 func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition pluginacquisition.Settings, directory, configPath string) (*Project, error) {
@@ -81,7 +81,7 @@ func OpenProject(ctx context.Context, rules configuration.RuleSet, acquisition p
 	if err != nil {
 		return nil, err
 	}
-	manifest, err := configplugins.Open(ctx, rules, path, acquisition.Connections)
+	manifest, err := plugins.Open(ctx, rules, path, acquisition.Connections)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,7 @@ package action_test
 import (
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
@@ -35,9 +35,9 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 		findings []*finding.Finding
 		line     int
 	}{
-		{"standalone", actioncheck.StandaloneWithAdvisories(meta, actionmeta.ReferencedFiles{}, context), 4},
-		{"local call", actioncheck.CheckWithAdvisories(meta, caller, actionmeta.ReferencedFiles{}, context), 8},
-		{"repository call", actioncheck.Repository(exec, actionmeta.NewDefinition(meta), context), 8},
+		{"standalone", action.StandaloneWithAdvisories(meta, actionmeta.ReferencedFiles{}, context), 4},
+		{"local call", action.CheckWithAdvisories(meta, caller, actionmeta.ReferencedFiles{}, context), 8},
+		{"repository call", action.Repository(exec, actionmeta.NewDefinition(meta), context), 8},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

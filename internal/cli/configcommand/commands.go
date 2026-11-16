@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -66,9 +66,9 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 	}
 	if req.JSON {
 		return commandstreams.WriteJSON(out, struct {
-			Path     string                 `json:"path"`
-			Valid    bool                   `json:"valid"`
-			Warnings []configreport.Warning `json:"warnings,omitempty"`
+			Path     string           `json:"path"`
+			Valid    bool             `json:"valid"`
+			Warnings []report.Warning `json:"warnings,omitempty"`
 		}{inspection.Path, true, inspection.Warnings})
 	}
 	for _, warning := range inspection.Warnings {

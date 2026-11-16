@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -40,7 +40,7 @@ permissions: {}
 	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheckForTest(t)}})}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{first, second}})
+	result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{first, second}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ jobs:
 			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
 			if tc.wantError {
 				if err == nil || !strings.Contains(err.Error(), "tools.shellcheck.config") {
 					t.Fatalf("expected config error, got %v", err)
@@ -156,7 +156,7 @@ jobs:
 	session := checking.Options{WorkingDir: root}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +208,7 @@ runs:
 			session := checking.Options{WorkingDir: root}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -264,7 +264,7 @@ jobs:
 			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -309,7 +309,7 @@ jobs:
 	session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})}
 	var err error
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}

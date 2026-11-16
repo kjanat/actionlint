@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
@@ -137,7 +137,7 @@ func loadRunnerExpressions(t *testing.T, root fs.FS) []upstreamCase {
 func TestUpstreamConformanceContextScope(t *testing.T) {
 	t.Parallel()
 	checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contexts := map[string]exprtypes.Type{"CUSTOM": exprtypes.AnyType()}
+	contexts := map[string]types.Type{"CUSTOM": types.AnyType()}
 	checker.SetContextTypes(contexts)
 	checker.SetContextAvailability([]string{"custom"})
 	delete(contexts, "CUSTOM")

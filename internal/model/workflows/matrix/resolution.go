@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 // matrixAxis is one declared matrix row. Complete is false when a value or the
@@ -237,8 +237,8 @@ func resolveDeclaration(matrix *definition.Matrix) Resolution {
 				key = value.YAMLScalar(row.Name.Value, definition.YamlTagStr, key.Origin())
 			}
 		}
-		axisName, keyState := mapping.ResolveKey(key)
-		if keyState != mapping.KnownKey {
+		axisName, keyState := mappings.ResolveKey(key)
+		if keyState != mappings.KnownKey {
 			r.unknownKeys = true
 			continue
 		}
@@ -808,8 +808,8 @@ func declarationCombinations(filters *definition.MatrixCombinations, complete bo
 						name = value.YAMLScalar(assign.Key.Value, definition.YamlTagStr, name.Origin())
 					}
 				}
-				resolved, state := mapping.ResolveKey(name)
-				if state != mapping.KnownKey {
+				resolved, state := mappings.ResolveKey(name)
+				if state != mappings.KnownKey {
 					complete = false
 					continue
 				}

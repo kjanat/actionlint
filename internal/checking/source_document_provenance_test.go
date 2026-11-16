@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -43,7 +43,7 @@ func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
 			result, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
 				Analyzers:  []checkinputs.Registration{{Checker: actionSourceReferenceProbe{path: actionPath}}},
-			}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflowPath}})
+			}, input.Request{Kind: input.Files, Paths: []string{workflowPath}})
 			if err != nil {
 				t.Fatal(err)
 			}

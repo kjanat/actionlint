@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 )
 
@@ -70,7 +70,7 @@ func TestSelectedEngineOwnsConfigurationValidation(t *testing.T) {
 						applicationOptions.LoadScriptEngine = func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }
 					}
 					applicationOptions.Tools = registry.Registrations(options)
-					result, err := checking.Check(t.Context(), applicationOptions, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]})
+					result, err := checking.Check(t.Context(), applicationOptions, input.Request{Kind: input.Files, Paths: workflows[:1]})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -89,7 +89,7 @@ func TestEngineConfigurationFailurePreventsCheck(t *testing.T) {
 	failure := errors.New("engine rejected settings")
 	engine := &configurationEngine{failure: failure}
 	options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"ruff": {Command: "ruff"}}), LoadScriptEngine: func(context.Context, string) (checkinputs.ScriptBackend, error) { return engine, nil }}
-	_, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: workflows[:1]})
+	_, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: workflows[:1]})
 	if !errors.Is(err, failure) || len(engine.validated) != 1 || engine.checked != 0 {
 		t.Fatalf("error=%v validations=%d checks=%d", err, len(engine.validated), engine.checked)
 	}

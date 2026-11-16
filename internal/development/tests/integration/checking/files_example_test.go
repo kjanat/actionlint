@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 )
 
 func ExampleFiles() {
@@ -24,7 +24,7 @@ func ExampleFiles() {
 
 	result, err := checking.Check(context.Background(), checking.Options{
 		IgnorePatterns: []string{`label ".+" is unknown`},
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}},
+	}, input.Request{Kind: input.Files, Paths: []string{path}},
 	)
 	if err != nil {
 		panic(err)

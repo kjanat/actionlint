@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/wasmparser"
 	"github.com/kjanat/wazero/experimental"
@@ -101,7 +101,7 @@ func TestPluginCallAccountsForCoreTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	engine := wacogo.NewEngine(t.Context())
-	factory, err := hostbind.NewFactory(t.Context(), engine)
+	factory, err := host.NewFactory(t.Context(), engine)
 	if err != nil {
 		t.Fatal(err)
 	}

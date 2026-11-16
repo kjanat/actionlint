@@ -3,7 +3,7 @@ package cli
 import (
 	"os"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
@@ -28,7 +28,7 @@ func (c checkInvocation) actionMetadata(acquisition pluginacquisition.Settings) 
 	}
 	provider, err := github.New(options)
 	if err != nil {
-		return nil, commandargs.UsageError{Cause: err}
+		return nil, arguments.UsageError{Cause: err}
 	}
 	return provider, nil
 }

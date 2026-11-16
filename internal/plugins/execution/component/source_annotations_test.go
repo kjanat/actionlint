@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 )
 
 func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
@@ -24,7 +24,7 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 		Invoked:      []checkinputs.Script{{Reference: invoked, Comments: []facts.SourceComment{{Text: "# invoked", Start: source.Position{Line: 9, Column: 5}, Placement: facts.TrailingComment}}}},
 		ActionInputs: []checkinputs.ActionInput{{Script: inputScript}},
 	}
-	query := func(ctx context.Context, ref source.Reference) []annotationsbind.Comment {
+	query := func(ctx context.Context, ref source.Reference) []sourceannotations.Comment {
 		t.Helper()
 		comments, err := (sourceAnnotations{}).Comments(ctx, invocationcontext.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
 		if err != nil {
@@ -39,10 +39,10 @@ func TestSourceAnnotationsRestrictReferencesAndCallLifetime(t *testing.T) {
 	if got := query(ctx, root); len(got) != 1 || got[0].Text != "# root" || got[0].Start.Column != 3 {
 		t.Fatalf("snapshot root comments=%+v", got)
 	}
-	if got := query(ctx, invoked); len(got) != 1 || got[0].Text != "# invoked" || got[0].Placement != annotationsbind.PlacementTrailing || got[0].Start.Line != 9 {
+	if got := query(ctx, invoked); len(got) != 1 || got[0].Text != "# invoked" || got[0].Placement != sourceannotations.PlacementTrailing || got[0].Start.Line != 9 {
 		t.Fatalf("invoked comments=%+v", got)
 	}
-	if got := query(ctx, actionInput); len(got) != 1 || got[0].Text != "# action input" || got[0].Placement != annotationsbind.PlacementLeading || got[0].Start.Line != 12 {
+	if got := query(ctx, actionInput); len(got) != 1 || got[0].Text != "# action input" || got[0].Placement != sourceannotations.PlacementLeading || got[0].Start.Line != 12 {
 		t.Fatalf("action input comments=%+v", got)
 	}
 	// Returning a result must not give the caller ownership of the stored slice.
@@ -122,9 +122,9 @@ func TestSourceAnnotationsValidatePhysicalComments(t *testing.T) {
 	input := checkinputs.AnalyzerInput{Scripts: []checkinputs.Script{{Reference: ref, Comments: []facts.SourceComment{valid, {Text: "#", Start: source.Position{Line: 4, Column: 1}, Placement: facts.TrailingComment}}}}}
 	ctx := context.WithValue(t.Context(), sourceCommentsKey{}, suppliedComments(input))
 	got, err := (sourceAnnotations{}).Comments(ctx, invocationcontext.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address})
-	want := []annotationsbind.Comment{
-		{Text: valid.Text, Start: invocationcontext.Position{Line: 3, Column: 7}, Placement: annotationsbind.PlacementLeading},
-		{Text: "#", Start: invocationcontext.Position{Line: 4, Column: 1}, Placement: annotationsbind.PlacementTrailing},
+	want := []sourceannotations.Comment{
+		{Text: valid.Text, Start: invocationcontext.Position{Line: 3, Column: 7}, Placement: sourceannotations.PlacementLeading},
+		{Text: "#", Start: invocationcontext.Position{Line: 4, Column: 1}, Placement: sourceannotations.PlacementTrailing},
 	}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("valid physical comments=%+v, err=%v, want=%+v", got, err, want)

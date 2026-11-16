@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
-	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
 
 // CredentialsRule is the single definition of the credentials rule.
@@ -39,7 +39,7 @@ func Credentials(n workflows.Job) []reporting.StepFinding {
 	rule.checkContainer("\"container\" section", n.Container)
 	if n.Services != nil {
 		if expression := n.Services.Expression; expression != nil {
-			if value, known := workflowvalues.Constant(expression); known {
+			if value, known := values.Constant(expression); known {
 				if services, ok := value.(map[string]any); ok {
 					for name, container := range services {
 						rule.checkContainerValue(fmt.Sprintf("%q service", name), container, expression.Pos)
@@ -61,7 +61,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 		return
 	}
 	if n.Expression != nil {
-		if value, known := workflowvalues.Constant(n.Expression); known {
+		if value, known := values.Constant(n.Expression); known {
 			rule.checkContainerValue(where, value, n.Expression.Pos)
 		}
 		return
@@ -71,7 +71,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 		return
 	}
 	if credentials.Expression != nil {
-		if value, known := workflowvalues.Constant(credentials.Expression); known {
+		if value, known := values.Constant(credentials.Expression); known {
 			rule.checkCredentialsValue(where, value, credentials.Expression.Pos)
 		}
 		return
@@ -80,7 +80,7 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 	if p == nil {
 		return
 	}
-	if value, known := workflowvalues.Constant(p); known {
+	if value, known := values.Constant(p); known {
 		rule.checkPasswordValue(where, value, p.Pos)
 	} else if !p.IsExpressionAssigned() {
 		rule.reportPassword(where, p.Pos)

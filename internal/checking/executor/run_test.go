@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -29,7 +29,7 @@ func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.Analy
 func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("incomplete")
-	input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Source, rule.Mappings}, Mappings: []facts.Mapping{{Entries: []mapping.Declaration{{Name: "original"}}}}}
+	input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Source, rule.Mappings}, Mappings: []facts.Mapping{{Entries: []mappings.Declaration{{Name: "original"}}}}}
 	changed := make(chan struct{})
 	input.SourceRoots = []checkinputs.SourceRoot{{Host: "/source", Guest: "/workspace"}}
 	first := testAnalyzer{checkinputs.Descriptor{Name: "first", RequiredInputs: []rule.InputKind{rule.Mappings}}, func(_ context.Context, in checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {

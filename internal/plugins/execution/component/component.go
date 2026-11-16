@@ -9,13 +9,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
-	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
-	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
-	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
@@ -24,10 +24,10 @@ import (
 const AnalyzerInterface = canonicalAnalyzerInterface
 
 // HostInterface is the interface the host implements for plugins.
-const HostInterface = hostbind.InterfaceName
+const HostInterface = host.InterfaceName
 
 // SourceAnnotationsInterface provides optional, source-local YAML comments.
-const SourceAnnotationsInterface = annotationsbind.InterfaceName
+const SourceAnnotationsInterface = sourceannotations.InterfaceName
 
 // Plugin is a loaded component. It implements analyzer.Analyzer. Calls are
 // serialized; each analysis runs in a fresh instance.
@@ -54,13 +54,13 @@ type Plugin struct {
 
 	engine             *wacogo.Engine
 	component          *wacogo.Component
-	hostFactory        *hostbind.Factory
-	annotationsFactory *annotationsbind.Factory
-	filesFactory       *filesbind.Factory
-	shellInputFactory  *shellinputbind.Factory
+	hostFactory        *host.Factory
+	annotationsFactory *sourceannotations.Factory
+	filesFactory       *sourcefiles.Factory
+	shellInputFactory  *shellscriptinputs.Factory
 	invocationFactory  *invocationcontext.Factory
 	environmentFactory *environments.Factory
-	repositoryFactory  *repositorybind.Factory
+	repositoryFactory  *repositoryobjects.Factory
 
 	gate   *semaphore.Weighted
 	memory *memoryBudget

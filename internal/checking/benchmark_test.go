@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/output"
@@ -246,7 +246,7 @@ func BenchmarkLintRepository(b *testing.B) {
 	}
 
 	for b.Loop() {
-		result, err := checking.Check(b.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Repository})
+		result, err := checking.Check(b.Context(), checking.Options{WorkingDir: root}, input.Request{Kind: input.Repository})
 		if err != nil {
 			b.Fatal(err)
 		}

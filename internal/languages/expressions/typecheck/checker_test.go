@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -195,7 +195,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 		what          string
 		input         string
 		expected      exprtypes.Type
-		funcs         map[string][]*exprfunctions.FuncSignature
+		funcs         map[string][]*functions.FuncSignature
 		matrix        exprtypes.ObjectType
 		steps         exprtypes.ObjectType
 		needs         exprtypes.ObjectType
@@ -241,7 +241,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "object property dereference",
 			input:    "test().bar.piyo",
 			expected: exprtypes.BoolType(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -303,7 +303,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "array element dereference",
 			input:    "test().bar.*",
 			expected: exprtypes.NewFilteredArrayType(exprtypes.BoolType()).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -318,7 +318,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "filter object property by array element dereference",
 			input:    "test().foo.*.bar.piyo",
 			expected: exprtypes.NewFilteredArrayType(exprtypes.StringType()).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -339,7 +339,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "filter strict object property by array element dereference",
 			input:    "test().foo.*.bar.piyo",
 			expected: exprtypes.NewFilteredArrayType(exprtypes.StringType()).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -396,7 +396,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "object property index access",
 			input:    "test()['bar']['piyo']",
 			expected: exprtypes.BoolType(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -418,7 +418,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "array element dereference",
 			input:    "test()[0]",
 			expected: exprtypes.BoolType(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -436,7 +436,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "index access to dereferenced array",
 			input:    "test().foo.*.bar[0]",
 			expected: exprtypes.StringType(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -455,7 +455,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "coerce array dereference into array at function parameter",
 			input:    "contains(test().*.x, 10)",
 			expected: exprtypes.BoolType(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -466,7 +466,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 						).Type(),
 					},
 				},
-				"contains": exprfunctions.Builtins["contains"].Signatures,
+				"contains": functions.Builtins["contains"].Signatures,
 			},
 		},
 		{
@@ -541,7 +541,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 				"foo": exprtypes.NumberType(),
 				"bar": exprtypes.BoolType(),
 			}).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"foo": {
 					{
 						Name: "foo",
@@ -567,7 +567,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 				"foo": exprtypes.NumberType(),
 				"bar": exprtypes.BoolType(),
 			}).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"foo": {
 					{
 						Name: "foo",
@@ -690,7 +690,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "case insensitive comparison for object property",
 			input:    "test().foo-Bar_PIYO",
 			expected: exprtypes.NullType(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -725,7 +725,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "map object dreference on array filter",
 			input:    "test().*.foo",
 			expected: exprtypes.NewFilteredArrayType(exprtypes.NumberType()).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -740,7 +740,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			what:     "map object dreference on object filter",
 			input:    "test().*.foo",
 			expected: exprtypes.NewFilteredArrayType(exprtypes.NumberType()).Type(),
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -1205,7 +1205,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 		what          string
 		input         string
 		expected      []string
-		funcs         map[string][]*exprfunctions.FuncSignature
+		funcs         map[string][]*functions.FuncSignature
 		matrix        exprtypes.ObjectType
 		steps         exprtypes.ObjectType
 		needs         exprtypes.ObjectType
@@ -1251,7 +1251,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			expected: []string{
 				"property \"bar\" is not defined in this object",
 			},
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -1270,7 +1270,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			expected: []string{
 				"property filtered by \"bar\" at object filtering must be type of object but got \"string\"",
 			},
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -1320,7 +1320,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			expected: []string{
 				"index access of array must be type of number but got \"string\"",
 			},
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -1335,7 +1335,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 			expected: []string{
 				"index access of array must be type of number but got \"string\"",
 			},
-			funcs: map[string][]*exprfunctions.FuncSignature{
+			funcs: map[string][]*functions.FuncSignature{
 				"test": {
 					{
 						Name: "test",
@@ -1799,7 +1799,7 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 
 func TestExprBuiltinFunctionSignatures(t *testing.T) {
 	t.Parallel()
-	for name, function := range exprfunctions.Builtins {
+	for name, function := range functions.Builtins {
 		sigs := function.Signatures
 		if len(sigs) == 0 {
 			t.Errorf("overload candidates of %q should not be empty", name)

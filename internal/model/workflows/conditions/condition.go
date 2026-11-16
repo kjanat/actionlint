@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
@@ -127,7 +127,7 @@ func NeverRunsWithVariables(expression syntax.Node, variables func(string) (any,
 
 func conditionContextTruth(expression syntax.Node, status string, cancelled bool, variables func(string) (any, bool)) conditionTruth {
 	if result, known := evaluate.ExpressionValueWithLookup(expression, variables); known {
-		return knownConditionTruth(exprvalues.ExpressionTruthy(result))
+		return knownConditionTruth(values.ExpressionTruthy(result))
 	}
 	switch node := expression.(type) {
 	case *syntax.NullNode:
@@ -183,7 +183,7 @@ func conditionContextTruth(expression syntax.Node, status string, cancelled bool
 		}
 	case *syntax.CompareOpNode:
 		if result, known := conditionContextValue(node, status, cancelled, variables); known {
-			return knownConditionTruth(exprvalues.ExpressionTruthy(result))
+			return knownConditionTruth(values.ExpressionTruthy(result))
 		}
 	}
 	return conditionUnknown
@@ -206,11 +206,11 @@ func conditionContextValue(expression syntax.Node, status string, cancelled bool
 		}
 		switch node.Kind {
 		case syntax.LogicalOpNodeKindAnd:
-			if !exprvalues.ExpressionTruthy(left) {
+			if !values.ExpressionTruthy(left) {
 				return left, true
 			}
 		case syntax.LogicalOpNodeKindOr:
-			if exprvalues.ExpressionTruthy(left) {
+			if values.ExpressionTruthy(left) {
 				return left, true
 			}
 		case syntax.LogicalOpNodeKindInvalid:
@@ -221,7 +221,7 @@ func conditionContextValue(expression syntax.Node, status string, cancelled bool
 		left, leftKnown := conditionContextValue(node.Left, status, cancelled, variables)
 		right, rightKnown := conditionContextValue(node.Right, status, cancelled, variables)
 		if leftKnown && rightKnown {
-			return exprvalues.CompareConditionValues(node.Kind, left, right)
+			return values.CompareConditionValues(node.Kind, left, right)
 		}
 	}
 	return nil, false

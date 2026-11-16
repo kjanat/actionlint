@@ -1,7 +1,7 @@
 package expressions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
@@ -11,7 +11,7 @@ import (
 )
 
 // Get type of `outputs.<output name>`
-func (rule *Checker) getActionOutputsType(spec *definition.String) exprtypes.ObjectType {
+func (rule *Checker) getActionOutputsType(spec *definition.String) types.ObjectType {
 	if spec == nil {
 		return outputs.ActionType(actionmeta.Definition{})
 	}
@@ -39,7 +39,7 @@ func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.
 	return m
 }
 
-func (rule *Checker) calcNeedsType(job workflows.Job) exprtypes.ObjectType {
+func (rule *Checker) calcNeedsType(job workflows.Job) types.ObjectType {
 	resolved := map[workflows.Job]*calls.Metadata{}
 	for _, dependency := range outputs.DirectDependencies(rule.workflow, job) {
 		if call := dependency.WorkflowCall; call != nil {

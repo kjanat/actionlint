@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 )
 
 func TestPreparedScriptsRejectForeignReference(t *testing.T) {
@@ -18,12 +18,12 @@ func TestPreparedScriptsRejectForeignReference(t *testing.T) {
 		return nil, nil
 	}, occurrences: map[invocation.ID]struct{}{"known": {}}}
 	ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, scope)
-	result, err := (shellScriptInputs{}).ForScript(ctx, "foreign", shellinputbind.NoneString())
-	if _, ok := result.(shellinputbind.ResultOptionInputStringErr); !ok || err != nil || called {
+	result, err := (shellScriptInputs{}).ForScript(ctx, "foreign", shellscriptinputs.NoneString())
+	if _, ok := result.(shellscriptinputs.ResultOptionInputStringErr); !ok || err != nil || called {
 		t.Fatalf("foreign reference reached callback: %v, %v", result, err)
 	}
-	result, err = (shellScriptInputs{}).ForScript(ctx, "known", shellinputbind.NoneString())
-	accepted, ok := result.(shellinputbind.ResultOptionInputStringOk)
+	result, err = (shellScriptInputs{}).ForScript(ctx, "known", shellscriptinputs.NoneString())
+	accepted, ok := result.(shellscriptinputs.ResultOptionInputStringOk)
 	if !ok || accepted.Value.IsSome || err != nil || !called {
 		t.Fatalf("unsupported script result: %v, %v", result, err)
 	}
@@ -45,8 +45,8 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 				input.Scripts = []checkinputs.Script{script}
 			}
 			ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, newShellScriptInputScope(input))
-			result, err := (shellScriptInputs{}).ForScript(ctx, "run", shellinputbind.NoneString())
-			accepted, ok := result.(shellinputbind.ResultOptionInputStringOk)
+			result, err := (shellScriptInputs{}).ForScript(ctx, "run", shellscriptinputs.NoneString())
+			accepted, ok := result.(shellscriptinputs.ResultOptionInputStringOk)
 			if err != nil || !ok || !accepted.Value.IsSome {
 				t.Fatalf("standalone script unavailable: %v %v", result, err)
 			}
@@ -54,8 +54,8 @@ func TestStandaloneAnalyzerReceivesShellScriptInputs(t *testing.T) {
 			if strings.Contains(prepared.Text, "${{") || !strings.Contains(prepared.Text, "echo ") || !prepared.Dialect.IsSome || prepared.Dialect.Value != "bash" {
 				t.Fatalf("wrong masked Bash input: %+v", prepared)
 			}
-			result, err = (shellScriptInputs{}).ForScript(ctx, "foreign", shellinputbind.NoneString())
-			if _, ok := result.(shellinputbind.ResultOptionInputStringErr); err != nil || !ok {
+			result, err = (shellScriptInputs{}).ForScript(ctx, "foreign", shellscriptinputs.NoneString())
+			if _, ok := result.(shellscriptinputs.ResultOptionInputStringErr); err != nil || !ok {
 				t.Fatalf("foreign occurrence accepted: %v %v", result, err)
 			}
 		})
@@ -69,8 +69,8 @@ func TestStandaloneAnalyzerUsesExplicitShellScriptInputBuilder(t *testing.T) {
 		return &checkinputs.ShellScriptInput{Text: "custom input"}, nil
 	}}
 	ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, newShellScriptInputScope(input))
-	result, err := (shellScriptInputs{}).ForScript(ctx, "run", shellinputbind.NoneString())
-	accepted, ok := result.(shellinputbind.ResultOptionInputStringOk)
+	result, err := (shellScriptInputs{}).ForScript(ctx, "run", shellscriptinputs.NoneString())
+	accepted, ok := result.(shellscriptinputs.ResultOptionInputStringOk)
 	if err != nil || !ok || !accepted.Value.IsSome || accepted.Value.Value.Text != "custom input" {
 		t.Fatalf("custom builder was replaced: %v %v", result, err)
 	}
@@ -91,16 +91,16 @@ func TestPreparationScopeExcludesUnselectedAndNonRunOccurrences(t *testing.T) {
 	}}
 	ctx := context.WithValue(t.Context(), shellScriptInputsKey{}, scope)
 	for _, id := range []string{"", "unselected", "action-input", "entry", "call", "unknown"} {
-		result, err := (shellScriptInputs{}).ForScript(ctx, id, shellinputbind.NoneString())
-		if _, ok := result.(shellinputbind.ResultOptionInputStringErr); !ok || err != nil {
+		result, err := (shellScriptInputs{}).ForScript(ctx, id, shellscriptinputs.NoneString())
+		if _, ok := result.(shellscriptinputs.ResultOptionInputStringErr); !ok || err != nil {
 			t.Fatalf("unauthorized %q accepted: %v %v", id, result, err)
 		}
 	}
 	if calls != 0 {
 		t.Fatalf("unauthorized calls reached callback: %d", calls)
 	}
-	result, err := (shellScriptInputs{}).ForScript(ctx, "selected", shellinputbind.NoneString())
-	accepted, ok := result.(shellinputbind.ResultOptionInputStringOk)
+	result, err := (shellScriptInputs{}).ForScript(ctx, "selected", shellscriptinputs.NoneString())
+	accepted, ok := result.(shellscriptinputs.ResultOptionInputStringOk)
 	if !ok || !accepted.Value.IsSome || accepted.Value.Value.Text != "selected" || err != nil || calls != 1 {
 		t.Fatalf("selected preparation: %v %v calls=%d", result, err, calls)
 	}

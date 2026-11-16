@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
@@ -66,7 +66,7 @@ runs:
 			if err != nil || needed["ruff"] != tc.enabled {
 				t.Fatalf("needed=%+v, error=%v", needed, err)
 			}
-			if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}}); err != nil {
+			if _, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{workflow}}); err != nil {
 				t.Fatalf("checker initialization: %v", err)
 			}
 		})

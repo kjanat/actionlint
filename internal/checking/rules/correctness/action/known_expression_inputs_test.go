@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -43,7 +43,7 @@ jobs:
 				t.Fatal(parseErrors)
 			}
 			exec := workflow.Jobs["test"].Steps[0].Exec.(*definition.ExecAction)
-			errs := actioncheck.Inputs(meta, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
+			errs := action.Inputs(meta, ownedActionFixture(exec), func(*actionmeta.Metadata) string { return "example/action@v1" })
 			if tc.want == "" && len(errs) != 0 || tc.want != "" && (len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want)) {
 				t.Fatalf("wanted %q, got %v", tc.want, errs)
 			}

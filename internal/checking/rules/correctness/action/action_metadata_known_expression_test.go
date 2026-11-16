@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
@@ -81,7 +81,7 @@ runs:
 				t.Fatal(err)
 			}
 			meta.Filename, meta.Source = "action.yml", source
-			findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
+			findings := action.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
 			errs := findings
 			if tc.message == "" {
 				if len(errs) != 0 {

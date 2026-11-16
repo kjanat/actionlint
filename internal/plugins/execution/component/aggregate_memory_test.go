@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
@@ -22,7 +22,7 @@ func TestPluginRejectsAggregateInitialMemory(t *testing.T) {
 		t.Fatal(err)
 	}
 	engine := wacogo.NewEngine(t.Context())
-	factory, err := hostbind.NewFactory(t.Context(), engine)
+	factory, err := host.NewFactory(t.Context(), engine)
 	if err != nil {
 		t.Fatal(err)
 	}

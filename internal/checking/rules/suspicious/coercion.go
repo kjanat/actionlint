@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
@@ -45,15 +45,15 @@ func SuspiciousCoercion(root syntax.Node, types typecheck.InferredTypes, calls t
 			}
 		case *syntax.FuncCallNode:
 			facts, known := calls.CallOf(node)
-			if !known || !facts.SignatureMatched || facts.Demand == exprfunctions.DemandSkipped {
+			if !known || !facts.SignatureMatched || facts.Demand == functions.DemandSkipped {
 				return
 			}
 			for index, arg := range facts.Arguments {
-				if arg.Demand == exprfunctions.DemandSkipped || arg.Conversion != exprfunctions.ConversionString || (arg.Source.Kind() != exprtypes.KindBool && arg.Source.Kind() != exprtypes.KindNull) {
+				if arg.Demand == functions.DemandSkipped || arg.Conversion != functions.ConversionString || (arg.Source.Kind() != exprtypes.KindBool && arg.Source.Kind() != exprtypes.KindNull) {
 					continue
 				}
 				operation := "converts"
-				if facts.Demand == exprfunctions.DemandConditional || arg.Demand == exprfunctions.DemandConditional {
+				if facts.Demand == functions.DemandConditional || arg.Demand == functions.DemandConditional {
 					operation = "may convert"
 				}
 				findings = append(findings, expressionFinding(node.Args[index], "coercion", fmt.Sprintf("%s argument of %s() %s %s to a string; check whether a string value was intended", messages.Ordinal(index+1), node.Callee, operation, arg.Source)))

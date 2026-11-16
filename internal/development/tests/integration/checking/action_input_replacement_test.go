@@ -11,11 +11,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 )
 
 type inputReplacementBackend struct {
@@ -51,14 +51,14 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 				}
 			}
 			engine := &inputReplacementBackend{}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := execution.Loaded{ScriptEngines: []execution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}); err != nil {
+			if _, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}); err != nil {
 				t.Fatal(err)
 			}
 			engine.mu.Lock()
@@ -92,7 +92,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 			t.Parallel()
 			backend := &inputReplacementBackend{}
 			site := checkinputs.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := execution.Loaded{ScriptEngines: []execution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{site}, TemplateContract: checkinputs.TemplateEffectsContract,
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{tc.registration}})
@@ -103,7 +103,7 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 				t.Fatalf("replacement duplicated the tool registration: %+v", options.Tools)
 			}
 			workflow := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: example/execute@v1\n        with:\n          code: input_value\n      - run: " + tc.source + "\n        shell: " + tc.shell + "\n      - uses: example/other@v1\n        with:\n          code: unrelated_input\n      - run: unrelated_run\n        shell: custom {0}\n"
-			_, err = checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(workflow)})
+			_, err = checking.Check(t.Context(), options, input.Request{Kind: input.Stdin, Reader: strings.NewReader(workflow)})
 			if err != nil {
 				t.Fatal(err)
 			}

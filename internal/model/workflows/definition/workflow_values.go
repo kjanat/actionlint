@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func WorkflowExpressionLiteral(s *String) (any, bool) {
@@ -18,5 +18,5 @@ func WorkflowExpressionLiteral(s *String) (any, bool) {
 
 // WorkflowScalarString applies the runner's scalar conversion for string schemas.
 func WorkflowScalarString(value any) (string, bool) {
-	return mapping.ScalarString(value)
+	return mappings.ScalarString(value)
 }

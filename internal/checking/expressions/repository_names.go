@@ -3,7 +3,7 @@ package expressions
 import (
 	"strings"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -13,12 +13,12 @@ import (
 )
 
 func environmentReferenceNames(variables, secrets, environmentSecrets []string) ReferenceNames {
-	var extra exprtypes.ObjectBuilder
+	var extra types.ObjectBuilder
 	if environmentSecrets == nil {
-		extra.SetMapped(exprtypes.StringType())
+		extra.SetMapped(types.StringType())
 	}
 	for _, name := range environmentSecrets {
-		extra.SetProperty(name, exprtypes.StringType())
+		extra.SetProperty(name, types.StringType())
 	}
 	return ReferenceNames{Variables: variables, Secrets: secrets, EnvironmentSecrets: new(extra.Build())}
 }

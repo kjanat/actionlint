@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
@@ -39,11 +39,11 @@ func TestAdditionalInputsRetainDeclaredInputValidation(t *testing.T) {
 				if !ok {
 					t.Fatal("fixture step is not an action")
 				}
-				findings := actioncheck.Repository(exec, additional, actionmeta.LifecycleContext{})
+				findings := action.Repository(exec, additional, actionmeta.LifecycleContext{})
 				if test.want == "" && len(findings) != 0 || test.want != "" && (len(findings) != 1 || !strings.Contains(findings[0].Message, test.want)) {
 					t.Fatalf("want %q, findings=%v", test.want, findings)
 				}
-				if test.want == "" && len(actioncheck.Repository(exec, metadata, actionmeta.LifecycleContext{})) == 0 {
+				if test.want == "" && len(action.Repository(exec, metadata, actionmeta.LifecycleContext{})) == 0 {
 					t.Fatal("ordinary declared-input contract accepted unknown parameters")
 				}
 			}

@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -114,7 +114,7 @@ func TestBackendSelectionIsExclusive(t *testing.T) {
 		if _, err := checking.Analyze(t.Context(), options, nil); err == nil {
 			t.Fatal("accepted ambiguous tool")
 		}
-		if _, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: nil}); err == nil {
+		if _, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: nil}); err == nil {
 			t.Fatal("accepted ambiguous file tool")
 		}
 	}

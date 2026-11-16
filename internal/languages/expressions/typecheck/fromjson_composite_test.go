@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
@@ -29,10 +29,10 @@ func TestFromJSONCompositeConversion(t *testing.T) {
 				t.Fatal(err)
 			}
 			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil)
-			outputs := exprtypes.NewMapObjectType(exprtypes.StringType())
-			step := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"outputs": outputs.Type()})
-			checker.SetContextType("steps", exprtypes.NewMapObjectType(step.Type()).Type())
-			checker.SetContextType("matrix", exprtypes.NewMapObjectType(exprtypes.AnyType()).Type())
+			outputs := types.NewMapObjectType(types.StringType())
+			step := types.NewStrictObjectType(map[string]types.Type{"outputs": outputs.Type()})
+			checker.SetContextType("steps", types.NewMapObjectType(step.Type()).Type())
+			checker.SetContextType("matrix", types.NewMapObjectType(types.AnyType()).Type())
 			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			want := 0
 			if tc.invalid {
@@ -53,9 +53,9 @@ func TestFromJSONCompositeConversion(t *testing.T) {
 
 func TestFromJSONUnknownCollectionMembers(t *testing.T) {
 	t.Parallel()
-	for _, collection := range []exprtypes.Type{
-		exprtypes.NewArrayType(exprtypes.AnyType()).Type(),
-		exprtypes.NewMapObjectType(exprtypes.AnyType()).Type(),
+	for _, collection := range []types.Type{
+		types.NewArrayType(types.AnyType()).Type(),
+		types.NewMapObjectType(types.AnyType()).Type(),
 	} {
 		t.Run(collection.String(), func(t *testing.T) {
 			t.Parallel()
@@ -65,7 +65,7 @@ func TestFromJSONUnknownCollectionMembers(t *testing.T) {
 				t.Fatal(err)
 			}
 			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.env"), nil)
-			checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"collection": collection}).Type())
+			checker.SetContextType("matrix", types.NewStrictObjectType(map[string]types.Type{"collection": collection}).Type())
 			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if len(result.Findings) != 1 || result.Findings[0].Rule != "expression-call" || result.Findings[0].Code != "invalid-json" {
 				t.Fatalf("expected a JSON parsing failure without a type error: %+v", result.Findings)

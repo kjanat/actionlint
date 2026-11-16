@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 
 	"github.com/kjanat/wacogo"
 	"github.com/kjanat/wacogo/host"
@@ -177,7 +177,7 @@ func (c *callScope) prepareGuest(ctx context.Context) error {
 	if p.annotationsFactory != nil {
 		// Source annotations use the types of this call's invocation instance.
 		// Load creates the invocation factory when annotations are required.
-		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, &annotationsbind.Deps{InvocationContext: c.invocations.Core()})
+		annotations, err := p.annotationsFactory.NewInstance(ctx, sourceAnnotations{}, &sourceannotations.Deps{InvocationContext: c.invocations.Core()})
 		if err != nil {
 			return err
 		}

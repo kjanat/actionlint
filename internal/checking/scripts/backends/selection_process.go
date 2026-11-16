@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
@@ -18,7 +18,7 @@ func RequireProcessOptIn(name, requested string, explicit *process.CommandOption
 	return nil
 }
 
-func processCommand(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config) *toolconfig.Command {
+func processCommand(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config) *tools.Command {
 	// An empty command is an explicit disable. Application/CLI/env choices win
 	// over repository invocation settings, including an explicit default name.
 	if requested != name || cfg == nil || explicit != nil && (explicit.IgnoreConfig || !explicit.Optional) {

@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
 	"actionlint.kjanat.dev/v2/internal/input/selection"
@@ -290,7 +290,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return mapping
-	case reflect.TypeFor[toolconfig.Backend]():
+	case reflect.TypeFor[tools.Backend]():
 		return definitionRef("backend")
 	case reflect.TypeFor[configuration.PermissionLocationList]():
 		values := []any{}

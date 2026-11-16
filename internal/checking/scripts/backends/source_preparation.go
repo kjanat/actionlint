@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 )
 
 func applySourcePreparation(ctx context.Context, transform *preparation.SourcePlanner, script scripts.Unit, prepared preparation.Prepared, settings configuration.Settings, via route) (preparation.Prepared, error) {
@@ -19,7 +19,7 @@ func applySourcePreparation(ctx context.Context, transform *preparation.SourcePl
 	if script.Input != nil {
 		language = script.Input.Site.Language
 	}
-	declarations, known := shellprofile.EnvironmentStartup("", script.Environment)
+	declarations, known := shell.EnvironmentStartup("", script.Environment)
 	switch language {
 	case "bash", "sh", "dash", "ksh", "busybox":
 	default:
@@ -52,7 +52,7 @@ func applySourcePreparation(ctx context.Context, transform *preparation.SourcePl
 	if plan.Prefix == "" && plan.Startup == "" {
 		return prepared, nil
 	}
-	mapped := shellprofile.Prepare(prepared.Source, plan.Prefix, plan.Startup)
+	mapped := shell.Prepare(prepared.Source, plan.Prefix, plan.Startup)
 	previousMap := prepared.LineMap
 	prepared.Source = mapped.Text()
 	prepared.LineMap = func(row int) preparation.Line {

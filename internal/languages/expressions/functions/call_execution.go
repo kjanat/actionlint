@@ -1,8 +1,8 @@
 package functions
 
 import (
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // DemandForArgument is shared by semantic checking and constant evaluation. Earlier
@@ -16,7 +16,7 @@ func DemandForArgument(policy FunctionEvaluationPolicy, index, count int, args [
 		demand := DemandRequired
 		for i := 0; i < index; i += 2 {
 			predicate := args[i]
-			if predicate.State == ArgumentInvalid || !MatchParameter(exprtypes.BoolType(), predicate, false).Accepted {
+			if predicate.State == ArgumentInvalid || !MatchParameter(types.BoolType(), predicate, false).Accepted {
 				return DemandSkipped
 			}
 			if predicate.State != ArgumentKnown {
@@ -43,13 +43,13 @@ func DemandForArgument(policy FunctionEvaluationPolicy, index, count int, args [
 	if first.State != ArgumentKnown {
 		if policy == EvaluateStringPredicate || policy == EvaluateContains {
 			switch first.Source.Kind() {
-			case exprtypes.KindAny:
+			case types.KindAny:
 				return DemandConditional
-			case exprtypes.KindBool, exprtypes.KindNull, exprtypes.KindNumber, exprtypes.KindString:
+			case types.KindBool, types.KindNull, types.KindNumber, types.KindString:
 				return DemandRequired
-			case exprtypes.KindObject:
+			case types.KindObject:
 				return DemandSkipped
-			case exprtypes.KindArray:
+			case types.KindArray:
 				if policy == EvaluateStringPredicate {
 					return DemandSkipped
 				}
@@ -113,7 +113,7 @@ func ArgumentFormatPlan(first *CallArgument, count int) (FormatPlan, bool) {
 	if first.Format != nil {
 		return *first.Format, true
 	}
-	format, known := exprvalues.FunctionString(first.Value)
+	format, known := values.FunctionString(first.Value)
 	if first.State != ArgumentKnown || !known {
 		return FormatPlan{}, false
 	}

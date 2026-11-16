@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
@@ -57,11 +57,11 @@ func TestFromJSONIntegerBoundariesAgainstRunner(t *testing.T) {
 			result := evaluate.Evaluate(node, nil)
 			want := expressions.Expectation{Value: tc.want}
 			if tc.invalid {
-				if err == nil || known || result.State != exprvalues.EvaluationInvalid {
+				if err == nil || known || result.State != values.EvaluationInvalid {
 					t.Fatalf("accepted overflowing integer: parsed=%v error=%v folded=%v known=%t evaluation=%+v", value, err, folded, known, result)
 				}
 				want = expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "Newtonsoft.Json.JsonReaderException"}
-			} else if err != nil || value != tc.want || !known || folded != tc.want || result.State != exprvalues.EvaluationKnown || result.Value != tc.want {
+			} else if err != nil || value != tc.want || !known || folded != tc.want || result.State != values.EvaluationKnown || result.Value != tc.want {
 				t.Fatalf("parsed=%v error=%v folded=%v known=%t evaluation=%+v, want %v", value, err, folded, known, result, tc.want)
 			}
 			expressions.CheckOutcomeWithJSONMode(t, input, nil, expressions.LooseJSON, want)
@@ -97,7 +97,7 @@ func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
 				input := "fromJSON('" + source + "')"
 				node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 				result := evaluate.Evaluate(node, nil)
-				if result.State != exprvalues.EvaluationKnown || result.Value != want {
+				if result.State != values.EvaluationKnown || result.Value != want {
 					t.Fatalf("evaluation=%+v, want %v", result, want)
 				}
 				// JSON cannot encode infinity. Compare it inside the runner.

@@ -6,11 +6,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
@@ -382,7 +382,7 @@ func (u *UntrustedInputChecker) serializedContainers(expr syntax.Node) {
 	switch n := expr.(type) {
 	case *syntax.LogicalOpNode:
 		if value, known := evaluate.ConditionConstantValue(n.Left); known {
-			if exprvalues.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
+			if values.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
 				u.serializedContainers(n.Right)
 			}
 			return
@@ -397,7 +397,7 @@ func (u *UntrustedInputChecker) serializedContainers(expr syntax.Node) {
 		}
 		for i := 0; i < len(n.Args)-1; i += 2 {
 			if value, known := evaluate.ConditionConstantValue(n.Args[i]); known {
-				if !exprvalues.ExpressionTruthy(value) {
+				if !values.ExpressionTruthy(value) {
 					continue
 				}
 				u.serializedContainers(n.Args[i+1])
@@ -475,7 +475,7 @@ func (u *UntrustedInputChecker) OnVisitNodeEnter(n syntax.Node) {
 	if boolean {
 		u.booleanContexts++
 	}
-	if f, ok := n.(*syntax.FuncCallNode); ok && exprfunctions.IsStringPredicate(f.Callee) {
+	if f, ok := n.(*syntax.FuncCallNode); ok && functions.IsStringPredicate(f.Callee) {
 		u.safeCalls++
 	}
 }
@@ -493,7 +493,7 @@ func (u *UntrustedInputChecker) OnVisitNodeLeave(n syntax.Node) {
 	}()
 	// Skip unsafe checks if we are inside of safe function call expression
 	if u.safeCalls > 0 {
-		if f, ok := n.(*syntax.FuncCallNode); ok && exprfunctions.IsStringPredicate(f.Callee) {
+		if f, ok := n.(*syntax.FuncCallNode); ok && functions.IsStringPredicate(f.Callee) {
 			u.safeCalls--
 		}
 		return

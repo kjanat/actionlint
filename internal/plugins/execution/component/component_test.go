@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -62,7 +62,7 @@ func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *r
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: plugin}}, SkipProjectConfig: true,
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}},
+	}, input.Request{Kind: input.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +118,7 @@ func TestStandaloneActionHonorsPluginConfiguration(t *testing.T) {
 	})
 	result, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: root, ConfigFile: filepath.Join(root, "actionlint.yaml"), Analyzers: []checkinputs.Registration{{Checker: plugin}},
-	}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "action.yml")}})
+	}, input.Request{Kind: input.Files, Paths: []string{filepath.Join(root, "action.yml")}})
 	if err != nil {
 		t.Fatal(err)
 	}

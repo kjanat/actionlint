@@ -11,13 +11,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 func TestScriptSafeScalarReferences(t *testing.T) {
 	t.Parallel()
 	checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
-	contexts.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"enabled": exprtypes.BoolType(), "count": exprtypes.NumberType(), "text": exprtypes.StringType()}))
+	contexts.MergeInputTypes(checker, types.NewStrictObjectType(map[string]types.Type{"enabled": types.BoolType(), "count": types.NumberType(), "text": types.StringType()}))
 	for _, tc := range []struct {
 		input string
 		safe  bool
@@ -50,58 +50,58 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		expression string
-		typeOf     exprtypes.Type
+		typeOf     types.Type
 		finding    bool
 	}{
-		{"env.ARGUMENT", exprtypes.StringType(), true},
-		{"inputs.value", exprtypes.StringType(), true},
-		{"steps.build.outputs.value", exprtypes.AnyType(), true},
-		{"vars.ARGUMENT", exprtypes.StringType(), true},
-		{"matrix.target", exprtypes.StringType(), false},
-		{"matrix.unknown", exprtypes.StringType(), true},
-		{"inputs.count", exprtypes.NumberType(), false},
-		{"inputs.enabled", exprtypes.BoolType(), false},
-		{"github", exprtypes.ObjectType{}.Type(), false},
-		{"fromJSON('[1,2]')", exprtypes.NewArrayType(exprtypes.NumberType()).Type(), false},
-		{"github.repositoryUrl", exprtypes.StringType(), false},
-		{"github['repositoryUrl']", exprtypes.StringType(), false},
-		{"github.sha", exprtypes.StringType(), false},
-		{"github.run_id", exprtypes.StringType(), false},
-		{"runner.os", exprtypes.StringType(), false},
-		{"job.status", exprtypes.StringType(), false},
-		{"steps.test.conclusion", exprtypes.StringType(), false},
-		{"steps.test.outcome", exprtypes.StringType(), false},
-		{"steps['TEST']['CONCLUSION']", exprtypes.StringType(), false},
-		{"steps[inputs.id].outcome", exprtypes.StringType(), false},
-		{"steps['missing'].outcome", exprtypes.StringType(), false},
-		{"needs.build.result", exprtypes.StringType(), false},
-		{"needs['BUILD']['RESULT']", exprtypes.StringType(), false},
-		{"needs[inputs.job].result", exprtypes.StringType(), false},
-		{"needs['missing'].result", exprtypes.StringType(), false},
-		{"steps.test.outputs.conclusion", exprtypes.StringType(), true},
-		{"needs.build.outputs.result", exprtypes.StringType(), true},
-		{"steps.test[inputs.property]", exprtypes.AnyType(), true},
-		{"needs.build.conclusion", exprtypes.StringType(), true},
-		{"steps.test.result", exprtypes.StringType(), true},
-		{"github.ref_name", exprtypes.StringType(), true},
-		{"github.workflow", exprtypes.StringType(), true},
-		{"github.actor", exprtypes.StringType(), true},
-		{"'linux-x64'", exprtypes.StringType(), false},
-		{"'argument with spaces'", exprtypes.StringType(), true},
-		{"'$(command)'", exprtypes.StringType(), true},
-		{"'safe; command'", exprtypes.StringType(), true},
-		{"'safe\"command'", exprtypes.StringType(), true},
-		{"inputs.enabled && 'linux' || 'darwin'", exprtypes.StringType(), false},
-		{"inputs.enabled && env.ARGUMENT || 'darwin'", exprtypes.StringType(), true},
-		{"true && matrix.target", exprtypes.StringType(), false},
-		{"false && env.ARGUMENT", exprtypes.BoolType(), false},
-		{"case(inputs.enabled, 'linux', 'darwin')", exprtypes.StringType(), false},
-		{"case(inputs.enabled, 'linux', env.ARGUMENT)", exprtypes.StringType(), true},
-		{"case(true, 'linux', env.ARGUMENT)", exprtypes.StringType(), false},
-		{"hashFiles('**/go.sum')", exprtypes.StringType(), false},
-		{"toJSON(github.repository == null)", exprtypes.StringType(), false},
-		{"toJSON(!github.repository)", exprtypes.StringType(), false},
-		{"toJSON('safe')", exprtypes.StringType(), true},
+		{"env.ARGUMENT", types.StringType(), true},
+		{"inputs.value", types.StringType(), true},
+		{"steps.build.outputs.value", types.AnyType(), true},
+		{"vars.ARGUMENT", types.StringType(), true},
+		{"matrix.target", types.StringType(), false},
+		{"matrix.unknown", types.StringType(), true},
+		{"inputs.count", types.NumberType(), false},
+		{"inputs.enabled", types.BoolType(), false},
+		{"github", types.ObjectType{}.Type(), false},
+		{"fromJSON('[1,2]')", types.NewArrayType(types.NumberType()).Type(), false},
+		{"github.repositoryUrl", types.StringType(), false},
+		{"github['repositoryUrl']", types.StringType(), false},
+		{"github.sha", types.StringType(), false},
+		{"github.run_id", types.StringType(), false},
+		{"runner.os", types.StringType(), false},
+		{"job.status", types.StringType(), false},
+		{"steps.test.conclusion", types.StringType(), false},
+		{"steps.test.outcome", types.StringType(), false},
+		{"steps['TEST']['CONCLUSION']", types.StringType(), false},
+		{"steps[inputs.id].outcome", types.StringType(), false},
+		{"steps['missing'].outcome", types.StringType(), false},
+		{"needs.build.result", types.StringType(), false},
+		{"needs['BUILD']['RESULT']", types.StringType(), false},
+		{"needs[inputs.job].result", types.StringType(), false},
+		{"needs['missing'].result", types.StringType(), false},
+		{"steps.test.outputs.conclusion", types.StringType(), true},
+		{"needs.build.outputs.result", types.StringType(), true},
+		{"steps.test[inputs.property]", types.AnyType(), true},
+		{"needs.build.conclusion", types.StringType(), true},
+		{"steps.test.result", types.StringType(), true},
+		{"github.ref_name", types.StringType(), true},
+		{"github.workflow", types.StringType(), true},
+		{"github.actor", types.StringType(), true},
+		{"'linux-x64'", types.StringType(), false},
+		{"'argument with spaces'", types.StringType(), true},
+		{"'$(command)'", types.StringType(), true},
+		{"'safe; command'", types.StringType(), true},
+		{"'safe\"command'", types.StringType(), true},
+		{"inputs.enabled && 'linux' || 'darwin'", types.StringType(), false},
+		{"inputs.enabled && env.ARGUMENT || 'darwin'", types.StringType(), true},
+		{"true && matrix.target", types.StringType(), false},
+		{"false && env.ARGUMENT", types.BoolType(), false},
+		{"case(inputs.enabled, 'linux', 'darwin')", types.StringType(), false},
+		{"case(inputs.enabled, 'linux', env.ARGUMENT)", types.StringType(), true},
+		{"case(true, 'linux', env.ARGUMENT)", types.StringType(), false},
+		{"hashFiles('**/go.sum')", types.StringType(), false},
+		{"toJSON(github.repository == null)", types.StringType(), false},
+		{"toJSON(!github.repository)", types.StringType(), false},
+		{"toJSON('safe')", types.StringType(), true},
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
@@ -144,7 +144,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := ScriptInterpolation(node, exprtypes.StringType(), typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellWordInsertion, func(ref syntax.Node) bool {
+			findings := ScriptInterpolation(node, types.StringType(), typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellWordInsertion, func(ref syntax.Node) bool {
 				name := syntax.StaticReference(ref)
 				return tc.known && (name == "steps.test" || name == "needs.build")
 			})
@@ -158,7 +158,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings := ScriptInterpolation(node, exprtypes.StringType(), typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, nil)
+		findings := ScriptInterpolation(node, types.StringType(), typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).CheckResult(evaluate.EvaluateSubexpressions(node)).Types, ShellArgumentInsertion, nil)
 		if len(findings) != 0 {
 			t.Errorf("data argument rejected for %s: %v", expression, findings)
 		}

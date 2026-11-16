@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
@@ -241,7 +241,7 @@ jobs:
     steps:
       `+strings.ReplaceAll(steps, "\n", "\n      ")+"\npermissions: {}\n")
 	options.WorkingDir = root
-	result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
+	result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{workflow}})
 	if err != nil {
 		t.Fatal(err)
 	}

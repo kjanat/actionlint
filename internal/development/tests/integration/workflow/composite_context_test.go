@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 )
 
 func TestCompositeUnavailableContextsDoNotDuplicatePropertyFindings(t *testing.T) {
@@ -39,7 +39,7 @@ func TestCompositeUnavailableContextsDoNotDuplicatePropertyFindings(t *testing.T
 					content += expression + "\n"
 				}
 				entry := fixturefiles.Write(t, root, "outer/action.yml", content)
-				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{entry}})
+				result, err := checking.Check(t.Context(), checking.Options{WorkingDir: root}, input.Request{Kind: input.Files, Paths: []string{entry}})
 				if err != nil {
 					t.Fatal(err)
 				}

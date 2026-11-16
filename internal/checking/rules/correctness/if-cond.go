@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -74,7 +74,7 @@ func conditionDiagnostics(value string, start source.Position) []results.Diagnos
 		if strings.HasPrefix(text, "${{") {
 			text = strings.TrimSpace(text[3 : len(text)-2])
 		}
-		if exprvalues.ExpressionTruthy(constant) {
+		if values.ExpressionTruthy(constant) {
 			return report(fmt.Sprintf("constant expression %q in condition is always truthy. remove the if: section", text))
 		}
 		return report(fmt.Sprintf("constant expression %q in condition is always falsy. this step or job will be skipped", text))

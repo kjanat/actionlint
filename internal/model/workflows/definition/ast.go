@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
@@ -372,17 +372,17 @@ func ParseWorkflowCallEventInputType(spelling string) (WorkflowCallEventInputTyp
 
 // ExprType returns the expression type a value passed to the input must be
 // assignable to. An invalid or omitted type accepts every value.
-func (t WorkflowCallEventInputType) ExprType() exprtypes.Type {
+func (t WorkflowCallEventInputType) ExprType() types.Type {
 	switch t {
 	case WorkflowCallEventInputTypeBoolean:
-		return exprtypes.BoolType()
+		return types.BoolType()
 	case WorkflowCallEventInputTypeNumber:
-		return exprtypes.NumberType()
+		return types.NumberType()
 	case WorkflowCallEventInputTypeString:
-		return exprtypes.StringType()
+		return types.StringType()
 	case WorkflowCallEventInputTypeInvalid:
 	}
-	return exprtypes.AnyType()
+	return types.AnyType()
 }
 
 // String returns the expression type's spelling, as used in diagnostics.

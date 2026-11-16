@@ -9,15 +9,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 func TestEventGuardNarrowing(t *testing.T) {
 	t.Parallel()
-	opened := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"action": exprtypes.StringType(), "title": exprtypes.StringType()})
-	labeled := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"action": exprtypes.StringType(), "label": exprtypes.StringType()})
-	push := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": exprtypes.NewArrayType(exprtypes.StringType()).Type()})
-	event := exprtypes.NewEventType([]exprtypes.EventVariant{
+	opened := types.NewStrictObjectType(map[string]types.Type{"action": types.StringType(), "title": types.StringType()})
+	labeled := types.NewStrictObjectType(map[string]types.Type{"action": types.StringType(), "label": types.StringType()})
+	push := types.NewStrictObjectType(map[string]types.Type{"commits": types.NewArrayType(types.StringType()).Type()})
+	event := types.NewEventType([]types.EventVariant{
 		{Event: "issues", Action: "opened", Payload: opened},
 		{Event: "issues", Action: "labeled", Payload: labeled},
 		{Event: "push", Payload: push},
@@ -88,8 +88,8 @@ func TestEventGuardNarrowing(t *testing.T) {
 
 func TestEventGuardEliminatedBranches(t *testing.T) {
 	t.Parallel()
-	push := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": exprtypes.NewArrayType(exprtypes.StringType()).Type()})
-	event := exprtypes.NewEventType([]exprtypes.EventVariant{{Event: "push", Payload: push}})
+	push := types.NewStrictObjectType(map[string]types.Type{"commits": types.NewArrayType(types.StringType()).Type()})
+	event := types.NewEventType([]types.EventVariant{{Event: "push", Payload: push}})
 	for _, source := range []string{
 		"github.event_name == 'issues' && github.event.issue.title",
 		"github.event_name == format('iss{0}', 'ues') && github.event.issue.title",

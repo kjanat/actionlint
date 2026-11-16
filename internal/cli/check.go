@@ -8,7 +8,7 @@ import (
 	"os"
 	"slices"
 
-	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
@@ -24,7 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -35,7 +35,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	c, r := inv.Check, inv.Render
 	ignoreSelectors, err := policy.CompileIgnoreSelectors(c.IgnoreSelectors)
 	if err != nil {
-		return 0, commandargs.UsageError{Cause: err}
+		return 0, arguments.UsageError{Cause: err}
 	}
 	overwrite, err := selectReportDestination(ctx, streams, r.OutputFile, inv.Yes, slices.Contains(c.Paths, "-"))
 	if err != nil {
@@ -112,11 +112,11 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 	if err != nil {
-		if _, ok := errors.AsType[*pluginexec.LoadError](err); ok && len(c.Plugins) != 0 {
-			return 0, commandargs.UsageError{Cause: err}
+		if _, ok := errors.AsType[*execution.LoadError](err); ok && len(c.Plugins) != 0 {
+			return 0, arguments.UsageError{Cause: err}
 		}
 		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
-			return 0, commandargs.UsageError{Cause: err}
+			return 0, arguments.UsageError{Cause: err}
 		}
 		if result != nil {
 			err = &checkAnalysisError{result: result, err: err}
@@ -127,7 +127,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	for _, source := range c.Plugins {
 		_, local, err := artifacts.NormalizeSource(source, workingDir)
 		if err != nil {
-			return 0, commandargs.UsageError{Cause: err}
+			return 0, arguments.UsageError{Cause: err}
 		}
 		if local != "" {
 			inputs = append(inputs, local)
@@ -170,7 +170,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	if c.Fix {
 		if input.Kind == inputmodel.Stdin {
-			return 0, commandargs.UsageError{Cause: errors.New("fix requires files; stdin is read-only")}
+			return 0, arguments.UsageError{Cause: errors.New("fix requires files; stdin is read-only")}
 		}
 		reader := fixTargetReader(ctx, result.Inputs)
 		plan, planErr := edits.Build(ctx, results.Diagnostics(result.Diagnostics), reader, c.IncludeSuggestedFixes)

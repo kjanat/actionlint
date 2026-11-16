@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -116,7 +116,7 @@ func TestCandidateCLIInstallsAndExecutesOffline(t *testing.T) {
 		t.Fatal(output)
 	}
 	cache := acquisition.UserCacheDir
-	selected, err := (pluginselection.Selection{Acquisition: acquisition}).SelectForCache(t.Context(), ".", inputmodel.Request{Kind: inputmodel.Files, Paths: []string{"workflow.yml"}})
+	selected, err := (pluginselection.Selection{Acquisition: acquisition}).SelectForCache(t.Context(), ".", input.Request{Kind: input.Files, Paths: []string{"workflow.yml"}})
 	if err != nil {
 		t.Fatal(err)
 	}

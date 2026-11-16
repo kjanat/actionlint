@@ -12,7 +12,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
@@ -63,7 +63,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	if err != nil {
 		return nil, err
 	}
-	_, declaredLocally, err := configplugins.References(leaf.Value())
+	_, declaredLocally, err := plugins.References(leaf.Value())
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	}
 	content := migration.Content
 	if updatePlugins {
-		content, err = configplugins.EditManifest(migration.Path, migration.Content, refs)
+		content, err = plugins.EditManifest(migration.Path, migration.Content, refs)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,7 @@ func (m *Migration) Apply(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	content, err := configplugins.EditManifest(m.Path, m.Content, resolved)
+	content, err := plugins.EditManifest(m.Path, m.Content, resolved)
 	if err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func MigrateSelection(ctx context.Context, selection pluginselection.Selection, 
 		if root == "" {
 			continue
 		}
-		path, err := configplugins.FindOrDefaultPath(filepath.Join(root, ".github"))
+		path, err := plugins.FindOrDefaultPath(filepath.Join(root, ".github"))
 		if err != nil {
 			return err
 		}

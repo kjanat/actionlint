@@ -1,20 +1,20 @@
 package typecheck
 
 import (
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-func (sema *Checker) logicalRightDemand(node *syntax.LogicalOpNode) exprfunctions.ArgumentDemand {
+func (sema *Checker) logicalRightDemand(node *syntax.LogicalOpNode) functions.ArgumentDemand {
 	value, found := sema.constants.Result(node.Left)
-	if !found || value.State != exprvalues.EvaluationKnown {
-		return exprfunctions.DemandConditional
+	if !found || value.State != values.EvaluationKnown {
+		return functions.DemandConditional
 	}
-	if exprvalues.ExpressionTruthy(value.Value) == (node.Kind == syntax.LogicalOpNodeKindOr) {
-		return exprfunctions.DemandSkipped
+	if values.ExpressionTruthy(value.Value) == (node.Kind == syntax.LogicalOpNodeKindOr) {
+		return functions.DemandSkipped
 	}
-	return exprfunctions.DemandRequired
+	return functions.DemandRequired
 }

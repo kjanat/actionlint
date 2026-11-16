@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
-	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
 
 // GlobRule is the single definition of the glob rule.
@@ -94,13 +94,13 @@ func GlobJob(n workflows.Job) []reporting.StepFinding {
 		return rule.Findings
 	}
 	if expression := n.Snapshot.Expression; expression != nil {
-		if value, known := workflowvalues.Constant(expression); known {
+		if value, known := values.Constant(expression); known {
 			if snapshot, ok := value.(map[string]any); ok {
 				rule.checkKnownRefGlob(schema.Property(snapshot, "version"), expression.Pos)
 			}
 		}
 	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
-		if value, known := workflowvalues.Constant(version); known {
+		if value, known := values.Constant(version); known {
 			rule.checkKnownRefGlob(value, version.Pos)
 		}
 	} else {

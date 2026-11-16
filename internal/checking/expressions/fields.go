@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
@@ -21,27 +21,27 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
 // checkOneExpression checks a value that must be exactly one ${{ }}
 // expression. ok is false when s is absent or the expression has errors.
-func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey string) (ty types.Type, ok bool) {
 	// checkString is not available since it checks types for embedding values into a string
 	if s == nil {
-		return exprtypes.AnyType(), false
+		return types.AnyType(), false
 	}
 
 	ts, ok := rule.checkExprsIn(s.Value, scalarPosition(s), s.Quoted, false, workflowKey)
 
 	if len(ts) != 1 {
 		if !ok {
-			return exprtypes.AnyType(), false
+			return types.AnyType(), false
 		}
 		// This case should be unreachable since only one ${{ }} is included is checked by parser
 		rule.Errorf(scalarPosition(s), "one ${{ }} expression should be included in %q value but got %d expressions", what, len(ts))
-		return exprtypes.AnyType(), false
+		return types.AnyType(), false
 	}
 	if !ok {
 		return ts[0].semantics.Type, false
@@ -52,8 +52,8 @@ func (rule *Checker) checkOneExpression(s *definition.String, what, workflowKey 
 
 // checkObjectTy reports ty unless it is an object or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *source.Position, what string) bool {
-	if k := ty.Kind(); k == exprtypes.KindObject || k == exprtypes.KindAny {
+func (rule *Checker) checkObjectTy(ty types.Type, pos *source.Position, what string) bool {
+	if k := ty.Kind(); k == types.KindObject || k == types.KindAny {
 		return true
 	}
 	rule.Errorf(pos, "type of expression at %q must be object but found type %s", what, ty.String())
@@ -62,8 +62,8 @@ func (rule *Checker) checkObjectTy(ty exprtypes.Type, pos *source.Position, what
 
 // checkArrayTy reports ty unless it is an array or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *source.Position, what string) bool {
-	if k := ty.Kind(); k == exprtypes.KindArray || k == exprtypes.KindAny {
+func (rule *Checker) checkArrayTy(ty types.Type, pos *source.Position, what string) bool {
+	if k := ty.Kind(); k == types.KindArray || k == types.KindAny {
 		return true
 	}
 	rule.Errorf(pos, "type of expression at %q must be array but found type %s", what, ty.String())
@@ -72,8 +72,8 @@ func (rule *Checker) checkArrayTy(ty exprtypes.Type, pos *source.Position, what 
 
 // checkNumberTy reports ty unless it is a number or any, and returns whether
 // it is one of those.
-func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *source.Position, what string) bool {
-	if k := ty.Kind(); k == exprtypes.KindNumber || k == exprtypes.KindAny {
+func (rule *Checker) checkNumberTy(ty types.Type, pos *source.Position, what string) bool {
+	if k := ty.Kind(); k == types.KindNumber || k == types.KindAny {
 		return true
 	}
 	rule.Errorf(pos, "type of expression at %q must be number but found type %s", what, ty.String())
@@ -82,14 +82,14 @@ func (rule *Checker) checkNumberTy(ty exprtypes.Type, pos *source.Position, what
 
 // checkObjectExpression checks a single expression that must be an object.
 // ok is false when the expression has errors or another type.
-func (rule *Checker) checkObjectExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkObjectExpression(s *definition.String, what, workflowKey string) (ty types.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkObjectTy(ty, scalarPosition(s), what)
 }
 
 // checkArrayExpression checks a single expression that must be an array.
 // ok is false when the expression has errors or another type.
-func (rule *Checker) checkArrayExpression(s *definition.String, what, workflowKey string) (ty exprtypes.Type, ok bool) {
+func (rule *Checker) checkArrayExpression(s *definition.String, what, workflowKey string) (ty types.Type, ok bool) {
 	ty, ok = rule.checkOneExpression(s, what, workflowKey)
 	return ty, ok && rule.checkArrayTy(ty, scalarPosition(s), what)
 }
@@ -119,9 +119,9 @@ func (rule *Checker) checkActionInputs(action *definition.ExecAction, uses *defi
 			if input.Name == nil {
 				name = value.YAMLScalar(id, definition.YamlTagStr, value.Origin{})
 			}
-			canonical, state := mapping.ResolveKey(name)
+			canonical, state := mappings.ResolveKey(name)
 			isScriptAction := strings.HasPrefix(actionSpec, "actions/github-script@")
-			if isScriptAction && (state == mapping.UnknownKey || state == mapping.KnownKey && strings.EqualFold(canonical, "script")) {
+			if isScriptAction && (state == mappings.UnknownKey || state == mappings.KnownKey && strings.EqualFold(canonical, "script")) {
 				rule.checkScriptString(input.Value, key)
 			} else {
 				rule.checkString(input.Value, key)
@@ -275,17 +275,17 @@ func (rule *Checker) checkWorkflowCall(c *definition.WorkflowCall) {
 
 		v := strings.TrimSpace(i.Value.Value)
 
-		ty := exprtypes.StringType()
+		ty := types.StringType()
 		switch len(ts) {
 		case 0:
 			switch v {
 			case "null":
-				ty = exprtypes.NullType()
+				ty = types.NullType()
 			case "true", "false":
-				ty = exprtypes.BoolType()
+				ty = types.BoolType()
 			default:
 				if _, err := strconv.ParseFloat(v, 64); err == nil {
-					ty = exprtypes.NumberType()
+					ty = types.NumberType()
 				}
 			}
 		case 1:
@@ -381,7 +381,7 @@ func (rule *Checker) checkIfCondition(str *definition.String, workflowKey string
 		rule.checkString(str, workflowKey)
 		return
 	}
-	if result := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); result.Valid && !exprtypes.BoolType().Assignable(result.Type) {
+	if result := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); result.Valid && !types.BoolType().Assignable(result.Type) {
 		rule.Errorf(scalarPosition(str), "\"if\" condition should be type \"bool\" but got type %q", result.Type.String())
 	}
 }
@@ -393,9 +393,9 @@ func (rule *Checker) checkTemplateEvaluatedType(ts []typedExpr) {
 			ty = t.refinement.templateInvalid
 		}
 		switch ty.Kind() {
-		case exprtypes.KindObject, exprtypes.KindArray:
+		case types.KindObject, types.KindArray:
 			rule.Errorf(&t.pos, "object and array values should not be evaluated in template with ${{ }} but evaluating the value of type %s", ty)
-		case exprtypes.KindAny, exprtypes.KindNumber, exprtypes.KindBool, exprtypes.KindString, exprtypes.KindNull:
+		case types.KindAny, types.KindNumber, types.KindBool, types.KindString, types.KindNull:
 			// The runner converts null to the empty string, including missing
 			// matrix members. Script-position checks still guard that insertion.
 		}
@@ -462,7 +462,7 @@ func (rule *Checker) checkBool(b *definition.Bool, workflowKey string) {
 		return
 	}
 
-	if k := ty.Kind(); k != exprtypes.KindBool && k != exprtypes.KindAny {
+	if k := ty.Kind(); k != types.KindBool && k != types.KindAny {
 		rule.Errorf(scalarPosition(b.Expression), "type of expression must be bool but found type %s", ty.String())
 	}
 }
@@ -489,13 +489,13 @@ func (rule *Checker) checkFloat(f *definition.Float, workflowKey string) {
 	rule.checkNumberExpression(f.Expression, "float number value", workflowKey)
 }
 
-func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type {
+func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) types.Type {
 	if object, ok := v.(*definition.RawYAMLObject); ok {
-		properties := map[string]exprtypes.Type{}
+		properties := map[string]types.Type{}
 		for key, property := range object.Props {
 			properties[key] = rule.checkRawYAMLValue(property)
 		}
-		return exprtypes.NewStrictObjectType(properties).Type()
+		return types.NewStrictObjectType(properties).Type()
 	}
 	if array, ok := v.(*definition.RawYAMLArray); ok {
 		var elements elementTypes
@@ -504,7 +504,7 @@ func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type
 				elements.add(ty)
 			}
 		}
-		return exprtypes.NewArrayType(elements.merged()).Type()
+		return types.NewArrayType(elements.merged()).Type()
 	}
 	if scalar, ok := v.(*definition.RawYAMLString); ok {
 		return rule.checkRawYAMLString(scalar)
@@ -512,15 +512,15 @@ func (rule *Checker) checkRawYAMLValue(v definition.RawYAMLValue) exprtypes.Type
 	panic("unreachable")
 }
 
-func (rule *Checker) checkRawYAMLString(y *definition.RawYAMLString) exprtypes.Type {
+func (rule *Checker) checkRawYAMLString(y *definition.RawYAMLString) types.Type {
 	ts, ok := rule.checkExprsIn(y.Value, y.Pos(), false, false, "jobs.<job_id>.strategy")
 
 	if definition.IsExprAssigned(y.Value) {
 		if !ok || len(ts) != 1 {
-			return exprtypes.AnyType()
+			return types.AnyType()
 		}
 		if value, known := expressionLiteral(y.Value); known {
-			return exprtypes.TypeOfJSONValue(value)
+			return types.TypeOfJSONValue(value)
 		}
 		return ts[0].ty
 	}
@@ -528,18 +528,18 @@ func (rule *Checker) checkRawYAMLString(y *definition.RawYAMLString) exprtypes.T
 	switch y.Tag {
 	case definition.YamlTagBool:
 		if codec.IsCoreSchemaBool(y.Value) {
-			return exprtypes.BoolType()
+			return types.BoolType()
 		}
 	case definition.YamlTagNull:
 		if codec.IsCoreSchemaNull(y.Value) {
-			return exprtypes.NullType()
+			return types.NullType()
 		}
 	case definition.YamlTagInt, definition.YamlTagFloat:
 		if codec.IsCoreSchemaNumber(y.Value) {
-			return exprtypes.NumberType()
+			return types.NumberType()
 		}
 	}
-	return exprtypes.StringType()
+	return types.StringType()
 }
 
 func (rule *Checker) checkWorkflowExpression(s *definition.String, what, key string, shape schema.Shape) {

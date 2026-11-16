@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -52,7 +52,7 @@ func TestPluginConfigDiscoveryPreservesLookupErrors(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	fixturefiles.WriteText(t, filepath.Join(directory, "actionlint.yml"), "plugins: []\n")
-	if _, err := configplugins.FindOrDefaultPath(directory); err == nil {
+	if _, err := plugins.FindOrDefaultPath(directory); err == nil {
 		t.Fatal("configuration symlink loop ignored")
 	}
 }

@@ -33,7 +33,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
-	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -85,7 +85,7 @@ type compositeAnalyzer struct {
 	scriptWorkflowDir, scriptJobDir   execution.Directory
 	workflowScriptShell               *string
 	jobScriptShell                    *string
-	workflowEnv                       mapping.Mapping
+	workflowEnv                       mappings.Mapping
 	workflowShell                     value.Value
 	jobID                             string
 	environmentLayers                 []scriptmodel.EnvironmentLayer

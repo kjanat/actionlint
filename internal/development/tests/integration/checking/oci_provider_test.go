@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
-	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -215,7 +215,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := installation.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
+	project := installation.Project{Manifest: &plugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

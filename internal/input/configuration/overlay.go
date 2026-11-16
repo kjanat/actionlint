@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 )
 
 // Keys returns the supported top-level configuration keys in declaration order.
@@ -122,7 +122,7 @@ func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resol
 	}
 	resolved, err := ruleSet.resolveValue(node, inputs, false)
 	if err != nil && len(names) != 0 {
-		return ResolvedConfig{}, configreport.NewOverlayError(names, err)
+		return ResolvedConfig{}, report.NewOverlayError(names, err)
 	}
 	return resolved, err
 }
@@ -139,9 +139,9 @@ func (o Overlay) Name() string { return o.name }
 // BindPaths returns a copy whose relative tool paths resolve from directory.
 func (o Overlay) BindPaths(directory string) (Overlay, error) {
 	node := cloneValue(o.node)
-	toolconfig.NormalizePaths(node, directory)
+	tools.NormalizePaths(node, directory)
 	rules := captureRuleDocument(o.rules)
-	toolconfig.NormalizePaths(rules, directory)
+	tools.NormalizePaths(rules, directory)
 	return Overlay{name: o.name, node: node, rules: rules, inputs: maps.Clone(o.inputs)}, nil
 }
 
@@ -188,7 +188,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Over
 		var err error
 		resolved, err = ruleSet.ResolveValue(node, inputs, additional...)
 		if err != nil {
-			return nil, ResolvedConfig{}, configreport.NewOverlayError(names, err)
+			return nil, ResolvedConfig{}, report.NewOverlayError(names, err)
 		}
 		cfg = resolved.Config
 		cfg.Lint.Rules.bindingSources = bindingSources

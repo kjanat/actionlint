@@ -7,30 +7,30 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		source  string
-		demand  exprfunctions.ArgumentDemand
+		demand  functions.ArgumentDemand
 		matched bool
 	}{
-		{"startsWith(true, 't')", exprfunctions.DemandRequired, true},
-		{"startsWith(true)", exprfunctions.DemandRequired, false},
-		{"case(false, startsWith(true, 't'), false)", exprfunctions.DemandSkipped, true},
-		{"case(inputs.flag, startsWith(true, 't'), false)", exprfunctions.DemandConditional, true},
+		{"startsWith(true, 't')", functions.DemandRequired, true},
+		{"startsWith(true)", functions.DemandRequired, false},
+		{"case(false, startsWith(true, 't'), false)", functions.DemandSkipped, true},
+		{"case(inputs.flag, startsWith(true, 't'), false)", functions.DemandConditional, true},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
 			root := syntax.ParseAssignedExpression("${{ " + tc.source + " }}")
 			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
-			contexts.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
+			contexts.MergeInputTypes(checker, types.NewStrictObjectType(map[string]types.Type{"flag": types.BoolType()}))
 			result := checker.CheckResult(evaluate.EvaluateSubexpressions(root))
 			found := false
 			syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
@@ -42,7 +42,7 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 				if !known || facts.SignatureMatched != tc.matched || facts.Demand != tc.demand {
 					t.Fatalf("call facts=%+v known=%t", facts, known)
 				}
-				if len(facts.DeclaredReturns) != 1 || facts.DeclaredReturns[0].Kind() != exprtypes.KindBool {
+				if len(facts.DeclaredReturns) != 1 || facts.DeclaredReturns[0].Kind() != types.KindBool {
 					t.Fatalf("declared return lost: %+v", facts)
 				}
 				found = true
@@ -89,11 +89,11 @@ func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
 	change(facts.Arguments[0].SourceValue.Value)
 	change(facts.Arguments[0].Value.Value)
 	change(first.Call.Arguments[0].SourceValue.Value)
-	first.Call.DeclaredReturns[0] = exprtypes.StringType()
-	facts.DeclaredReturns[0] = exprtypes.NumberType()
+	first.Call.DeclaredReturns[0] = types.StringType()
+	facts.DeclaredReturns[0] = types.NumberType()
 	checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ always() }}")))
 	again, known := first.Calls.CallOf(call)
-	if !known || again.DeclaredReturns[0].Kind() != exprtypes.KindBool {
+	if !known || again.DeclaredReturns[0].Kind() != types.KindBool {
 		t.Fatalf("call snapshot changed: %+v", again)
 	}
 	for _, value := range []any{again.Arguments[0].SourceValue.Value, again.Arguments[0].Value.Value} {

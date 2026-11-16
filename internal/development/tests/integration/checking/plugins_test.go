@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
@@ -70,7 +70,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "multiple plugins provide script engine") {
 		t.Fatalf("duplicate core/component engine accepted: %v", err)
 	}
-	loaded, err := pluginexec.ScriptEngineLoader(pluginacquisition.Settings{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), module)
+	loaded, err := execution.ScriptEngineLoader(pluginacquisition.Settings{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), module)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
 		t.Fatalf("configured component backend: %#v, %v", findings, err)
 	}
-	if _, err := pluginexec.ScriptEngineLoader(pluginacquisition.Settings{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), "../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm"); err == nil {
+	if _, err := execution.ScriptEngineLoader(pluginacquisition.Settings{}, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), "../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm"); err == nil {
 		t.Fatal("analyzer-only component accepted as configured script engine")
 	}
 }

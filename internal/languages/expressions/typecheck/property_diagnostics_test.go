@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 func TestPropertyDiagnostics(t *testing.T) {
@@ -30,10 +30,10 @@ func TestPropertyDiagnostics(t *testing.T) {
 			t.Parallel()
 			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 			// displayNme is equally close to two declared names: never guess.
-			author := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType(), "displayNme2": exprtypes.StringType()})
+			author := types.NewNamedObjectType(map[string]types.Type{"displayName": types.StringType(), "displayNme2": types.StringType()})
 			gh, _ := contexts.BuiltinGlobalVariableTypes["github"].Object()
-			gh = gh.With("event", exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"author": author.Type()}).Type()).Type())
-			checker.SetContextTypes(map[string]exprtypes.Type{"github": gh.Type(), "env": exprtypes.NewMapObjectType(exprtypes.StringType()).Type()})
+			gh = gh.With("event", types.NewArrayType(types.NewStrictObjectType(map[string]types.Type{"author": author.Type()}).Type()).Type())
+			checker.SetContextTypes(map[string]types.Type{"github": gh.Type(), "env": types.NewMapObjectType(types.StringType()).Type()})
 			checker.SetContextAvailability([]string{"github", "env"})
 			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
 			if err != nil {
@@ -53,17 +53,17 @@ func TestPropertyDiagnostics(t *testing.T) {
 
 func TestCanonicalPropertyNamesSurviveCopies(t *testing.T) {
 	t.Parallel()
-	original := exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"displayName": exprtypes.StringType()})
-	merged, _ := original.Type().Merge(exprtypes.NewNamedObjectType(map[string]exprtypes.Type{"otherField": exprtypes.BoolType()}).Type()).Object()
-	for _, object := range []exprtypes.ObjectType{
-		original.With("other", exprtypes.BoolType()),
-		original.WithMapped(exprtypes.StringType()),
+	original := types.NewNamedObjectType(map[string]types.Type{"displayName": types.StringType()})
+	merged, _ := original.Type().Merge(types.NewNamedObjectType(map[string]types.Type{"otherField": types.BoolType()}).Type()).Object()
+	for _, object := range []types.ObjectType{
+		original.With("other", types.BoolType()),
+		original.WithMapped(types.StringType()),
 		merged,
 	} {
 		if object.PropertyName("displayname") != "displayName" {
 			t.Fatal(object)
 		}
-		if renamed := object.WithProperty("DISPLAYNAME", exprtypes.BoolType()); renamed.PropertyName("displayname") != "DISPLAYNAME" {
+		if renamed := object.WithProperty("DISPLAYNAME", types.BoolType()); renamed.PropertyName("displayname") != "DISPLAYNAME" {
 			t.Fatal(renamed)
 		}
 		if original.PropertyName("displayname") != "displayName" || object.PropertyName("displayname") != "displayName" {

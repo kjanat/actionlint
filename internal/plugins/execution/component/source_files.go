@@ -4,21 +4,21 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 )
 
-const SourceFilesInterface = filesbind.InterfaceName
+const SourceFilesInterface = sourcefiles.InterfaceName
 
 type (
 	sourceRootsKey struct{}
 	sourceFiles    struct{}
 )
 
-func (sourceFiles) Roots(ctx context.Context) ([]filesbind.SourceRoot, error) {
+func (sourceFiles) Roots(ctx context.Context) ([]sourcefiles.SourceRoot, error) {
 	roots, _ := ctx.Value(sourceRootsKey{}).([]checkinputs.SourceRoot)
-	result := make([]filesbind.SourceRoot, len(roots))
+	result := make([]sourcefiles.SourceRoot, len(roots))
 	for i, root := range roots {
-		result[i] = filesbind.SourceRoot{Host: root.Host, Guest: root.Guest}
+		result[i] = sourcefiles.SourceRoot{Host: root.Host, Guest: root.Guest}
 	}
 	return result, nil
 }

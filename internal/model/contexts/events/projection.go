@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
 // Trigger identifies a possible event and optional activity filters. Unknown
@@ -15,16 +15,16 @@ type Trigger struct {
 }
 
 // FromTriggers builds a payload type from the selected events and activities.
-func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
-	b := builder{cache: map[int]exprtypes.Type{}, active: map[int]bool{}}
-	var selected []exprtypes.EventVariant
+func FromTriggers(triggers []Trigger) types.ObjectType {
+	b := builder{cache: map[int]types.Type{}, active: map[int]bool{}}
+	var selected []types.EventVariant
 	for _, trigger := range triggers {
 		name := trigger.Name
 		if name == "pull_request_target" {
 			name = "pull_request"
 		}
 		variants, known := PayloadVariants(name)
-		var dispatch exprtypes.ObjectType
+		var dispatch types.ObjectType
 		hasDispatch := false
 		if trigger.Name == "repository_dispatch" {
 			// OpenAPI indexes this shared schema by an example event_type. That
@@ -34,7 +34,7 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 				combined = combine(combined, b.build(variants[action]))
 			}
 			if object, ok := combined.ty.Object(); ok {
-				dispatch = object.With("client_payload", exprtypes.NewEmptyObjectType().Type())
+				dispatch = object.With("client_payload", types.NewEmptyObjectType().Type())
 				hasDispatch = true
 			}
 		}
@@ -55,7 +55,7 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 		}
 		for _, action := range actions {
 			id, ok := variants[action]
-			object := exprtypes.NewEmptyObjectType()
+			object := types.NewEmptyObjectType()
 			if hasDispatch {
 				object = dispatch
 			} else if known && ok {
@@ -71,15 +71,15 @@ func FromTriggers(triggers []Trigger) exprtypes.ObjectType {
 				// A reusable workflow inherits its caller's actual event name.
 				event = ""
 			}
-			selected = append(selected, exprtypes.EventVariant{Event: event, Action: action, Payload: object})
+			selected = append(selected, types.EventVariant{Event: event, Action: action, Payload: object})
 		}
 	}
-	return exprtypes.NewEventType(selected)
+	return types.NewEventType(selected)
 }
 
 // Keep the established Actions repository metadata overlay on each alternative,
 // so narrowing cannot discard it. Copy only the path being changed.
-func workflowRunPayload(object exprtypes.ObjectType) exprtypes.ObjectType {
+func workflowRunPayload(object types.ObjectType) types.ObjectType {
 	runType, _ := object.Property("workflow_run")
 	run, ok := runType.Object()
 	if !ok {
@@ -90,7 +90,7 @@ func workflowRunPayload(object exprtypes.ObjectType) exprtypes.ObjectType {
 	if !ok {
 		return object
 	}
-	repository = repository.With("homepage", exprtypes.StringType())
+	repository = repository.With("homepage", types.StringType())
 	run = run.With("head_repository", repository.Type())
 	return object.With("workflow_run", run.Type())
 }
@@ -99,14 +99,14 @@ func workflowRunPayload(object exprtypes.ObjectType) exprtypes.ObjectType {
 // schema nodes and for a strict object's undeclared properties. When present
 // is false, ty is the zero Type.
 type member struct {
-	ty      exprtypes.Type
+	ty      types.Type
 	present bool
 }
 
-func present(t exprtypes.Type) member { return member{t, true} }
+func present(t types.Type) member { return member{t, true} }
 
 type builder struct {
-	cache  map[int]exprtypes.Type
+	cache  map[int]types.Type
 	active map[int]bool
 }
 
@@ -117,7 +117,7 @@ func (b *builder) build(id int) member {
 	// Recursive payloads are finite at runtime but have unbounded schema depth.
 	// Keep the recursive edge open instead of expanding or rejecting it.
 	if b.active[id] {
-		return present(exprtypes.AnyType())
+		return present(types.AnyType())
 	}
 	b.active[id] = true
 	defer delete(b.active, id)
@@ -127,19 +127,19 @@ func (b *builder) build(id int) member {
 	case "absent", "null":
 		return member{}
 	case "string":
-		m = present(exprtypes.StringType())
+		m = present(types.StringType())
 	case "number":
-		m = present(exprtypes.NumberType())
+		m = present(types.NumberType())
 	case "boolean":
-		m = present(exprtypes.BoolType())
+		m = present(types.BoolType())
 	case "array":
-		m = present(exprtypes.NewArrayType(known(b.build(n.Element))).Type())
+		m = present(types.NewArrayType(known(b.build(n.Element))).Type())
 	case "union", "intersection":
 		for _, alternative := range n.Alternatives {
 			m = combine(m, b.build(alternative))
 		}
 	case "object":
-		var o exprtypes.ObjectBuilder
+		var o types.ObjectBuilder
 		o.SetDisplayName("object")
 		for _, name := range slices.Sorted(maps.Keys(n.Properties)) {
 			o.SetProperty(name, known(b.build(n.Properties[name].Type)))
@@ -149,7 +149,7 @@ func (b *builder) build(id int) member {
 		}
 		m = present(o.Build().Type())
 	default:
-		m = present(exprtypes.AnyType())
+		m = present(types.AnyType())
 	}
 	t := known(m)
 	b.cache[id] = t
@@ -157,14 +157,14 @@ func (b *builder) build(id int) member {
 }
 
 // known types an absent member as any.
-func known(m member) exprtypes.Type {
+func known(m member) types.Type {
 	if !m.present {
-		return exprtypes.AnyType()
+		return types.AnyType()
 	}
 	return m.ty
 }
 
-func mappedMember(o exprtypes.ObjectType) member {
+func mappedMember(o types.ObjectType) member {
 	t, ok := o.Mapped()
 	return member{t, ok}
 }
@@ -185,24 +185,24 @@ func combine(a, b member) member {
 	}
 	if x, ok := a.ty.Array(); ok {
 		if y, ok := b.ty.Array(); ok {
-			return present(exprtypes.NewArrayType(combine(present(x.Elem()), present(y.Elem())).ty).Type())
+			return present(types.NewArrayType(combine(present(x.Elem()), present(y.Elem())).ty).Type())
 		}
 	}
 	if a.ty.Kind() == b.ty.Kind() {
 		switch a.ty.Kind() {
-		case exprtypes.KindString, exprtypes.KindNumber, exprtypes.KindBool:
+		case types.KindString, types.KindNumber, types.KindBool:
 			return a
-		case exprtypes.KindAny, exprtypes.KindNull, exprtypes.KindObject, exprtypes.KindArray:
+		case types.KindAny, types.KindNull, types.KindObject, types.KindArray:
 		}
 	}
-	return present(exprtypes.AnyType())
+	return present(types.AnyType())
 }
 
 // combineObjects returns a strict object holding the properties of x and y.
 // A property in both has the combined type. The declared spelling from y wins
 // over the one from x.
-func combineObjects(x, y exprtypes.ObjectType) exprtypes.Type {
-	var o exprtypes.ObjectBuilder
+func combineObjects(x, y types.ObjectType) types.Type {
+	var o types.ObjectBuilder
 	o.SetDisplayName("object")
 	for name, t := range x.Properties() {
 		setMember(&o, x, name, t)
@@ -226,7 +226,7 @@ func combineObjects(x, y exprtypes.ObjectType) exprtypes.Type {
 // setMember stores t under key in o and keeps the spelling that from declared
 // for key. A declared spelling always lower-cases to its key, so SetProperty
 // stores it under the same key.
-func setMember(o *exprtypes.ObjectBuilder, from exprtypes.ObjectType, key string, t exprtypes.Type) {
+func setMember(o *types.ObjectBuilder, from types.ObjectType, key string, t types.Type) {
 	if spelling := from.PropertyName(key); spelling != key {
 		o.SetProperty(spelling, t)
 		return

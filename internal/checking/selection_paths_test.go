@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	inputmodel "actionlint.kjanat.dev/v2/internal/input"
+	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -35,7 +35,7 @@ func TestCallerRelativeDisplaySpelling(t *testing.T) {
 			}}
 			var err error
 
-			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{path}})
+			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{path}})
 			if err != nil || result == nil || len(result.Diagnostics) == 0 {
 				t.Fatalf("missing diagnostics: %+v, %v", result, err)
 			}
@@ -73,7 +73,7 @@ func TestCallerRelativeSelection(t *testing.T) {
 	}
 	session := checking.Options{WorkingDir: parent}
 
-	result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{relative}})
+	result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{relative}})
 	if err != nil || result.FileCount != 1 || len(result.Diagnostics) == 0 || !slices.Contains(result.Inputs, workflow) {
 		t.Fatalf("caller-relative workflow was dropped: %+v, %v", result, err)
 	}
@@ -99,7 +99,7 @@ func TestCallerRelativeOverlaySelection(t *testing.T) {
 				working = "repo"
 			}
 			options := checking.Options{WorkingDir: working, SkipProjectConfig: true, SourceOverlays: []checking.SourceOverlay{{Path: ".github/workflows/ci.yml", Content: []byte(badWorkflow)}}}
-			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}})
+			result, err := checking.Check(t.Context(), options, input.Request{Kind: input.Files, Paths: []string{filepath.Join("repo", ".github", "workflows", "ci.yml")}})
 			if err != nil || result == nil || result.FileCount != 1 || len(result.Diagnostics) == 0 {
 				t.Fatalf("caller input missed WorkingDir-relative overlay: %+v, %v", result, err)
 			}
@@ -125,7 +125,7 @@ func TestExcludedSelectionRetainsConfigurations(t *testing.T) {
 	var err error
 
 	for range 2 {
-		result, err := checking.Check(t.Context(), session, inputmodel.FromFiles(workspace.FileSelection{Files: []workspace.File{{Path: workflow}}}))
+		result, err := checking.Check(t.Context(), session, input.FromFiles(workspace.FileSelection{Files: []workspace.File{{Path: workflow}}}))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -214,7 +214,7 @@ func TestRelativeWorkingDirectoryStdinPaths(t *testing.T) {
 		session := checking.Options{WorkingDir: "repo"}
 		var err error
 
-		result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Stdin, Reader: strings.NewReader(badWorkflow), NormalizePath: true, Name: name})
+		result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Stdin, Reader: strings.NewReader(badWorkflow), NormalizePath: true, Name: name})
 		if err != nil || len(result.Diagnostics) == 0 {
 			t.Fatalf("stdin analysis: %+v, %v", result, err)
 		}
