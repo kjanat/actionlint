@@ -33,8 +33,8 @@ type AuthoringResult struct {
 type AuthoringTester struct {
 	manifest      manifests.Manifest
 	backend       *Backend
-	configuration *configuration.Transform
-	preparation   *preparation.SourceTransform
+	configuration *configuration.SettingsResolver
+	preparation   *preparation.SourcePlanner
 }
 
 // ValidateManifest compiles every jq program and schema in a process manifest
@@ -50,15 +50,15 @@ func NewAuthoringTester(manifest manifests.Manifest, programs manifests.Programs
 	if err != nil {
 		return nil, err
 	}
-	transform, err := configuration.New(manifest, programs)
+	settingsResolver, err := configuration.New(manifest, programs)
 	if err != nil {
 		return nil, err
 	}
-	sourceTransform, err := preparation.NewSourceTransform(manifest.PreparationTransform, programs)
+	sourcePlanner, err := preparation.NewSourcePlanner(manifest.PreparationTransform, programs)
 	if err != nil {
 		return nil, err
 	}
-	return &AuthoringTester{manifest: manifest, backend: backend, configuration: transform, preparation: sourceTransform}, nil
+	return &AuthoringTester{manifest: manifest, backend: backend, configuration: settingsResolver, preparation: sourcePlanner}, nil
 }
 
 // EvaluateFixture applies the exact config and stdout pipeline used by a
@@ -73,7 +73,7 @@ func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs 
 
 // Evaluate applies the compiled pipeline to one fixture. The per-case
 // context bounds jq evaluation; no child process runs.
-func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.TransformInput) (AuthoringResult, error) {
+func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.SourcePlanInput) (AuthoringResult, error) {
 	if err := ctx.Err(); err != nil {
 		return AuthoringResult{}, err
 	}
@@ -94,7 +94,7 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 	}
 	var plan *preparation.SourcePlan
 	if manifest.ConfigurationTransform != nil || manifest.PreparationTransform != nil || len(manifest.ConfigurationPaths) != 0 {
-		settings, err := t.configuration.Apply(ctx, request.Config, "", nil)
+		settings, err := t.configuration.Resolve(ctx, request.Config, "", nil)
 		if err != nil {
 			return AuthoringResult{}, err
 		}
@@ -102,12 +102,12 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 		if manifest.PreparationTransform != nil && facts == nil {
 			return AuthoringResult{}, errors.New("fixture needs preparation facts for the preparation transform")
 		}
-		context := preparation.TransformInput{}
+		context := preparation.SourcePlanInput{}
 		if facts != nil {
 			context = *facts
 		}
 		context.Source, context.Settings = request.Source, settings
-		prepared, err := t.preparation.Apply(ctx, context)
+		prepared, err := t.preparation.Plan(ctx, context)
 		if err != nil {
 			return AuthoringResult{}, err
 		}
@@ -128,8 +128,8 @@ func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.Scri
 		return AuthoringResult{}, err
 	}
 	engine := engineConfig{value: config}
-	if backend.transform != nil {
-		engine, err = backend.transform.apply(ctx, config, values)
+	if backend.configProgram != nil {
+		engine, err = backend.configProgram.apply(ctx, config, values)
 		if err != nil {
 			return AuthoringResult{}, fmt.Errorf("tools.%s.config: %w", backend.name, err)
 		}

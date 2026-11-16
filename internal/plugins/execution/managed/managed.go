@@ -63,11 +63,11 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 	if !defaultSelection(sel, name) {
 		return base, nil
 	}
-	transform, err := integrationconfig.New(m, p.Programs)
+	settingsResolver, err := integrationconfig.New(m, p.Programs)
 	if err != nil {
 		return tools.Registration{}, err
 	}
-	route := documentRoute{name: name, capabilities: m.Capabilities, transform: transform}
+	route := documentRoute{name: name, capabilities: m.Capabilities, settingsResolver: settingsResolver}
 	next := base
 	next.Descriptor = guest.Descriptor().Descriptor
 	integration := *integrator.ToolIntegration()
@@ -127,9 +127,9 @@ func withAnalyzer(base tools.Registration, p scripts.Provider, guest checkinputs
 
 // documentRoute negotiates one provider's configuration with a guest.
 type documentRoute struct {
-	transform    *integrationconfig.Transform
-	name         string
-	capabilities manifests.Capabilities
+	settingsResolver *integrationconfig.SettingsResolver
+	name             string
+	capabilities     manifests.Capabilities
 }
 
 // enabled reports whether configuration leaves the provider on.
@@ -188,7 +188,7 @@ func (r documentRoute) options(ctx context.Context, cfg *configuration.Config, e
 			}
 		}
 	}
-	options, err := r.transform.Apply(ctx, inline, file, expand)
+	options, err := r.settingsResolver.Resolve(ctx, inline, file, expand)
 	if err != nil {
 		return integrationconfig.Settings{}, fmt.Errorf("tools.%s.config: %w", r.name, err)
 	}

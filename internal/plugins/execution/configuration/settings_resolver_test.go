@@ -24,7 +24,7 @@ func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	var expanded []string
-	got, err := transform.Apply(t.Context(), []byte(`{"limit":7,"search":["${ROOT}/lib"],"pattern":"${ROOT}"}`), "", func(path string) (string, error) {
+	got, err := transform.Resolve(t.Context(), []byte(`{"limit":7,"search":["${ROOT}/lib"],"pattern":"${ROOT}"}`), "", func(path string) (string, error) {
 		expanded = append(expanded, path)
 		return strings.ReplaceAll(path, "${ROOT}", "/repo"), nil
 	})
@@ -42,7 +42,7 @@ func TestIntegrationDefinesItsOwnOptionsAndPaths(t *testing.T) {
 		t.Fatalf("options=%s, prefix=%q", got.Options, got.Prefix)
 	}
 	for _, invalid := range []string{`{"limit":6}`, `{"limit":"7"}`, `{"limit":7,"unknown":true}`} {
-		if _, err := transform.Apply(t.Context(), []byte(invalid), "", nil); err == nil {
+		if _, err := transform.Resolve(t.Context(), []byte(invalid), "", nil); err == nil {
 			t.Fatalf("invalid user setting accepted: %s", invalid)
 		}
 	}
@@ -54,7 +54,7 @@ func TestPathPointersHandleEscapedNamesAndOptionalValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := transform.Apply(t.Context(), []byte(`{"a/b":{"~root":"lib"},"nullable":null,"records":[{"directory":"nested"}]}`), "", func(path string) (string, error) { return "/repo/" + path, nil })
+	got, err := transform.Resolve(t.Context(), []byte(`{"a/b":{"~root":"lib"},"nullable":null,"records":[{"directory":"nested"}]}`), "", func(path string) (string, error) { return "/repo/" + path, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestConfigurationPreservesLargeIntegers(t *testing.T) {
 			t.Fatal(err)
 		}
 		const input = `{"identifier":9007199254740993}`
-		got, err := transform.Apply(t.Context(), []byte(input), "", nil)
+		got, err := transform.Resolve(t.Context(), []byte(input), "", nil)
 		if err != nil || string(got.Options) != input {
 			t.Fatalf("program=%q options=%s error=%v", program, got.Options, err)
 		}
@@ -91,7 +91,7 @@ func TestConfigurationTransformRejectsInvalidResults(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := transform.Apply(t.Context(), nil, "", nil); err == nil {
+			if _, err := transform.Resolve(t.Context(), nil, "", nil); err == nil {
 				t.Fatal("invalid transform result accepted")
 			}
 		})
@@ -106,7 +106,7 @@ func TestConfigurationTransformCancelsInfinitePrograms(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
-	if _, err := transform.Apply(ctx, nil, "", nil); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := transform.Resolve(ctx, nil, "", nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("cancellation: %v", err)
 	}
 }

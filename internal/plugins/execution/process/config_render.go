@@ -44,12 +44,12 @@ func decodeConfig(data []byte) (any, error) {
 	return value, nil
 }
 
-// configTransform runs a manifest's configuration transform. Its program maps
-// the configuration to {"config": ..., "vars": {...}} and sees the argument
+// processConfigProgram runs a process manifest's config.transform program. It
+// maps the configuration to {"config": ..., "vars": {...}} and sees the argument
 // variables as $vars.
-type configTransform struct{ program *jq.Program }
+type processConfigProgram struct{ program *jq.Program }
 
-func (t *configTransform) apply(ctx context.Context, config any, vars map[string]string) (engineConfig, error) {
+func (t *processConfigProgram) apply(ctx context.Context, config any, vars map[string]string) (engineConfig, error) {
 	output, err := t.program.Apply(ctx, config, stringVariables(vars))
 	if err != nil {
 		return engineConfig{}, fmt.Errorf("configuration transform: %w", err)

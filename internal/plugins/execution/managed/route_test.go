@@ -28,5 +28,5 @@ var shellcheckRoute = func() documentRoute {
 	if err != nil {
 		panic(err)
 	}
-	return documentRoute{name: shellcheckManifest.Rule.Name, capabilities: shellcheckManifest.Capabilities, transform: transform}
+	return documentRoute{name: shellcheckManifest.Rule.Name, capabilities: shellcheckManifest.Capabilities, settingsResolver: transform}
 }()

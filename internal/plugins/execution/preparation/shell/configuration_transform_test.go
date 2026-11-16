@@ -25,7 +25,7 @@ func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Set
 		if err != nil {
 			t.Fatal(err)
 		}
-		return transform.Apply(t.Context(), inline, "", nil)
+		return transform.Resolve(t.Context(), inline, "", nil)
 	}
 	t.Fatal("no ShellCheck integration")
 	return integrationconfig.Settings{}, nil
@@ -126,7 +126,7 @@ func prepareShellcheck(t *testing.T, run Run, source string) (preparation.Prepar
 		if provider.Rule.Name != "shellcheck" {
 			continue
 		}
-		run.Transform, err = preparation.NewSourceTransform(provider.PreparationTransform, bundled.Program)
+		run.SourcePlanner, err = preparation.NewSourcePlanner(provider.PreparationTransform, bundled.Program)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -46,18 +46,18 @@ type authoringReport struct {
 }
 
 type authoringFixture struct {
-	Preparation       *preparation.TransformInput `json:"preparation,omitempty"`
-	ExpectSource      *string                     `json:"expect_source,omitempty"`
-	ExpectPreparation *preparation.SourcePlan     `json:"expect_preparation,omitempty"`
-	Name              string                      `json:"name"`
-	Request           checkinputs.ScriptRequest   `json:"request"`
-	Stdout            *string                     `json:"stdout,omitempty"`
-	Variables         map[string]string           `json:"variables,omitempty"`
-	ExitCode          *int                        `json:"exit_code,omitempty"`
-	Expect            *process.Result             `json:"expect,omitempty"`
-	ExpectConfig      json.RawMessage             `json:"expect_config,omitempty"`
-	ExpectVars        map[string]string           `json:"expect_vars,omitempty"`
-	ExpectError       string                      `json:"expect_error,omitempty"`
+	Preparation       *preparation.SourcePlanInput `json:"preparation,omitempty"`
+	ExpectSource      *string                      `json:"expect_source,omitempty"`
+	ExpectPreparation *preparation.SourcePlan      `json:"expect_preparation,omitempty"`
+	Name              string                       `json:"name"`
+	Request           checkinputs.ScriptRequest    `json:"request"`
+	Stdout            *string                      `json:"stdout,omitempty"`
+	Variables         map[string]string            `json:"variables,omitempty"`
+	ExitCode          *int                         `json:"exit_code,omitempty"`
+	Expect            *process.Result              `json:"expect,omitempty"`
+	ExpectConfig      json.RawMessage              `json:"expect_config,omitempty"`
+	ExpectVars        map[string]string            `json:"expect_vars,omitempty"`
+	ExpectError       string                       `json:"expect_error,omitempty"`
 }
 
 type authoringCaseResult struct {
