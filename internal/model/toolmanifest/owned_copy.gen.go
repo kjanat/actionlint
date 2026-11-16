@@ -147,7 +147,7 @@ func copyOwnedProcessSpec_66ae21ad388d36a307a1bd08be3f2330(in ProcessSpec) Proce
 	out.Config = copyOwnedConfigRendering_38e3970184e1d56059f250febcafcf63(in.Config)
 	out.ConfigFiles = copyOwnedValue_2e6ea462b80c8bf810878a3de8bc5ce7(in.ConfigFiles)
 	out.ConfigSchema = slices.Clone(in.ConfigSchema)
-	out.Version = copyOwnedValue_24b8dccb7c0ba893a896410c5d228dd6(in.Version)
+	out.Version = copyOwnedValue_1c96a02d41a4b984cc81acaac4511f90(in.Version)
 	out.Output = copyOwnedOutput_dabc2f5e2a7752c1e8c7ae16585d3ffe(in.Output)
 	out.TemplateEffects = maps.Clone(in.TemplateEffects)
 	out.UserArgs = copyOwnedValue_c52d180501bebfd34d2758414b011180(in.UserArgs)
@@ -194,11 +194,11 @@ func copyOwnedValue_2e6ea462b80c8bf810878a3de8bc5ce7(in *ConfigFiles) *ConfigFil
 	return (*ConfigFiles)(&out)
 }
 
-func copyOwnedValue_24b8dccb7c0ba893a896410c5d228dd6(in *VersionProbeSpec) *VersionProbeSpec {
+func copyOwnedValue_1c96a02d41a4b984cc81acaac4511f90(in *VersionProbeSpec) *VersionProbeSpec {
 	if in == nil {
 		return nil
 	}
-	out := copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(*in)
+	out := copyOwnedVersionProbeSpec_c8b703224bccb13b3b30a83ed8c893c0(*in)
 	return (*VersionProbeSpec)(&out)
 }
 
@@ -230,7 +230,7 @@ func copyOwnedConfigFiles_f7e690385486dfb553242bb8db83b152(in ConfigFiles) Confi
 	return out
 }
 
-func copyOwnedVersionProbe_c1b518e5bbe9a630b768625825d53a77(in VersionProbeSpec) VersionProbeSpec {
+func copyOwnedVersionProbeSpec_c8b703224bccb13b3b30a83ed8c893c0(in VersionProbeSpec) VersionProbeSpec {
 	out := in
 	out.Args = slices.Clone(in.Args)
 	return out
