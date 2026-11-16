@@ -11,7 +11,7 @@ import (
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 )
 
-func applySourcePreparation(ctx context.Context, transform *preparation.SourceTransform, script tools.Script, prepared preparation.Prepared, settings integrationconfig.Settings, via route) (preparation.Prepared, error) {
+func applySourcePreparation(ctx context.Context, transform *preparation.SourcePlanner, script tools.Script, prepared preparation.Prepared, settings integrationconfig.Settings, via route) (preparation.Prepared, error) {
 	if transform == nil || prepared.Skip != "" {
 		return prepared, nil
 	}
@@ -25,7 +25,7 @@ func applySourcePreparation(ctx context.Context, transform *preparation.SourceTr
 	default:
 		declarations = ""
 	}
-	plan, err := transform.Apply(ctx, preparation.TransformInput{
+	plan, err := transform.Plan(ctx, preparation.SourcePlanInput{
 		Source: script.Text, Language: language,
 		EnvironmentStartup: declarations, EnvironmentKnown: known,
 		Settings:   settings,

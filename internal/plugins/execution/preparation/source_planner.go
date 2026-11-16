@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-// TransformInput supplies source, interpreter facts and integration settings to
-// a preparation transform. EnvironmentStartup declares names without values.
-type TransformInput struct {
+// SourcePlanInput supplies source, interpreter facts and integration settings to
+// a SourcePlanner. EnvironmentStartup declares names without values.
+type SourcePlanInput struct {
 	Source             string                     `json:"source"`
 	Language           string                     `json:"language"`
 	Startup            string                     `json:"startup"`
@@ -38,10 +38,13 @@ type SourcePlan struct {
 	Skip      string            `json:"skip,omitempty"`
 }
 
-// SourceTransform is a compiled integration-provided preparation program.
-type SourceTransform struct{ program *jq.Program }
+// SourcePlanner runs a manifest's preparation_transform program, which plans
+// the generated text and tool options added to a script.
+type SourcePlanner struct{ program *jq.Program }
 
-func NewSourceTransform(spec *manifests.Transform, programs manifests.Programs) (*SourceTransform, error) {
+// NewSourcePlanner compiles spec. A nil spec yields a nil planner, whose Plan
+// passes the supplied settings on.
+func NewSourcePlanner(spec *manifests.Transform, programs manifests.Programs) (*SourcePlanner, error) {
 	if spec == nil {
 		return nil, nil
 	}
@@ -53,12 +56,12 @@ func NewSourceTransform(spec *manifests.Transform, programs manifests.Programs) 
 	if err != nil {
 		return nil, err
 	}
-	return &SourceTransform{program: program}, nil
+	return &SourcePlanner{program: program}, nil
 }
 
-// Apply returns an integration's preparation plan. Without a program it inserts
+// Plan returns an integration's preparation plan. Without a program it inserts
 // the supplied comments and startup text, and passes the supplied options on.
-func (t *SourceTransform) Apply(ctx context.Context, input TransformInput) (SourcePlan, error) {
+func (t *SourcePlanner) Plan(ctx context.Context, input SourcePlanInput) (SourcePlan, error) {
 	if err := ctx.Err(); err != nil {
 		return SourcePlan{}, err
 	}

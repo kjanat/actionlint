@@ -26,17 +26,13 @@ func ReadScriptMetadata(data []byte, reserved rule.Names) (checkinputs.ScriptEng
 			Name    string `json:"name"`
 			Version string `json:"version"`
 		} `json:"engine"`
-		Capabilities struct {
-			Shells          []string                       `json:"script_shells"`
-			Fixes           bool                           `json:"fixes"`
-			ReportedSources bool                           `json:"reported_sources"`
-			Resources       []checkinputs.ToolResourceKind `json:"resources"`
-		} `json:"capabilities"`
+		Capabilities staticScriptCapabilities `json:"capabilities"`
 	}
 	if err := jsonv2.Unmarshal(data, &declared); err != nil {
 		return checkinputs.ScriptEngineDescriptor{}, fmt.Errorf("script engine metadata: %w", err)
 	}
-	if declared.Interface != ScriptEngineInterface && declared.Interface != ScriptEngine03Interface {
+	protocol, ok := scriptEngineProtocolNamed(declared.Interface)
+	if !ok {
 		return checkinputs.ScriptEngineDescriptor{}, errors.New("metadata does not declare a supported script engine interface")
 	}
 	if len(declared.Rules) != 1 {
@@ -78,14 +74,8 @@ func ReadScriptMetadata(data []byte, reserved rule.Names) (checkinputs.ScriptEng
 	if len(d.Rule.OptionsSchema) != 0 && !json.Valid(d.Rule.OptionsSchema) {
 		return checkinputs.ScriptEngineDescriptor{}, errors.New("plugin options schema is not JSON")
 	}
-	if declared.Interface == ScriptEngine03Interface {
-		d.Fixes, d.ReportedSources = declared.Capabilities.Fixes, declared.Capabilities.ReportedSources
-		for _, resource := range declared.Capabilities.Resources {
-			if resource != checkinputs.ToolDirectory || slices.Contains(d.Resources, resource) {
-				return checkinputs.ScriptEngineDescriptor{}, fmt.Errorf("script descriptor requests invalid or duplicate resource %q", resource)
-			}
-			d.Resources = append(d.Resources, resource)
-		}
+	if err := protocol.readStaticCapabilities(declared.Capabilities, &d); err != nil {
+		return checkinputs.ScriptEngineDescriptor{}, err
 	}
 	if err := verifyScriptMetadata(data, declared.Interface, &d); err != nil {
 		return checkinputs.ScriptEngineDescriptor{}, err

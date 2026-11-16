@@ -44,7 +44,7 @@ func (p *Plugin) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 // loadScriptEngine describes the engine through the script-engine version it
 // exports, which extensionRoles negotiated.
 func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, p.scriptInterface, "describe")
+	value, err := p.callInterface(ctx, p.script.interfaceName(), "describe")
 	if err != nil {
 		return err
 	}
@@ -52,16 +52,10 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 	if err != nil {
 		return err
 	}
-	if p.scriptInterface == ScriptEngine03Interface {
-		r, err := liftRecord(value, "script descriptor")
-		if err != nil {
-			return err
-		}
-		if err := liftScriptCapabilities(r.Field("capabilities"), &descriptor); err != nil {
-			return err
-		}
+	if err := p.script.liftCapabilities(value, &descriptor); err != nil {
+		return err
 	}
-	if err := verifyScriptMetadata(staticMetadata, p.scriptInterface, &descriptor); err != nil {
+	if err := verifyScriptMetadata(staticMetadata, p.script.interfaceName(), &descriptor); err != nil {
 		return err
 	}
 	p.scriptDescriptor = &descriptor
@@ -69,7 +63,7 @@ func (p *Plugin) loadScriptEngine(ctx context.Context, staticMetadata []byte) er
 }
 
 func (p *Plugin) loadTemplateEffects(ctx context.Context, staticMetadata []byte) error {
-	value, err := p.callInterface(ctx, p.templateInterface, "contract")
+	value, err := p.callInterface(ctx, p.script.templateEffects().interfaceName(), "contract")
 	if err != nil {
 		return err
 	}
@@ -109,7 +103,7 @@ func (p *Plugin) ValidateConfig(ctx context.Context, config json.RawMessage) err
 	if err != nil {
 		return err
 	}
-	value, err := p.callInterface(ctx, p.scriptInterface, "validate-config", wacogo.ValString(options))
+	value, err := p.callInterface(ctx, p.script.interfaceName(), "validate-config", wacogo.ValString(options))
 	if err != nil {
 		return err
 	}
@@ -164,24 +158,11 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 	if err != nil {
 		return nil, err
 	}
-	current := p.scriptInterface == ScriptEngine03Interface
-	var grant scriptGrant
-	var input wacogo.Val
-	if current {
-		grant = p.grantScriptResources(request)
-		input = lowerScriptRequest03(request, options, grant)
-	} else {
-		input = wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
-			field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options)))
-	}
-	contract := p.scriptInterface
+	input, grant := p.script.lowerRequest(request, options, p.scriptDescriptor)
+	contract := p.script.interfaceName()
 	ctx = context.WithValue(ctx, environmentContextKey{}, snippetEnvironmentNames(request.Environment))
-	effects := template_effects_effect
 	if p.scriptDescriptor.TemplateContract != "" {
-		contract = p.templateInterface
-		if current {
-			effects = template_effects_03_effect
-		}
+		contract = p.script.templateEffects().interfaceName()
 	}
 	value, err := p.callInterface(context.WithValue(ctx, fileSystemsKey{}, grant.files), contract, "check", input)
 	if err != nil {
@@ -221,7 +202,7 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 				return nil, err
 			}
 			value = wrapped.Field("diagnostic")
-			tag, err := liftRunnerEnum(wrapped.Field("effect"), effects)
+			tag, err := liftRunnerEnum(wrapped.Field("effect"), p.script.templateEffects().effects)
 			if err != nil {
 				return nil, err
 			}
@@ -230,11 +211,7 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 				return nil, errors.New("unknown template effect")
 			}
 		}
-		lift := liftScriptDiagnostic
-		if current {
-			lift = liftScriptDiagnostic03
-		}
-		finding, err := lift(value)
+		finding, err := p.script.liftDiagnostic(value)
 		if err != nil {
 			return nil, err
 		}
@@ -243,15 +220,13 @@ func (p *Plugin) Check(ctx context.Context, request checkinputs.ScriptRequest) (
 		if resultBytes > maxScriptResultBytes {
 			return nil, errors.New("script engine result exceeds 8 MiB")
 		}
-		if current {
-			if err := p.checkScriptDiagnostic03(&finding, grant, lines, starts); err != nil {
-				return nil, err
-			}
-			if finding.Source != "" {
-				// Positions are the reported file's own, not the snippet's.
-				diagnostics = append(diagnostics, finding)
-				continue
-			}
+		if err := p.script.checkDiagnostic(&finding, p.scriptDescriptor, grant, lines, starts); err != nil {
+			return nil, err
+		}
+		if finding.Source != "" {
+			// Positions are the reported file's own, not the snippet's.
+			diagnostics = append(diagnostics, finding)
+			continue
 		}
 		if finding.Filename != request.Filename || finding.Code == "" || finding.Message == "" ||
 			!validScriptPosition(lines, finding.Location) || !validScriptPosition(lines, finding.EndLocation) ||

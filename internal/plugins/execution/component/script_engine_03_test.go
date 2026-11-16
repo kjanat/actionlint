@@ -56,16 +56,16 @@ func TestScriptEngine03ContractCurrent(t *testing.T) {
 func TestScriptEngineNegotiatesExportedVersion(t *testing.T) {
 	t.Parallel()
 	current := loadScriptFixture03(t)
-	if current.scriptInterface != ScriptEngine03Interface {
-		t.Fatalf("negotiated %q", current.scriptInterface)
+	if current.script != (scriptEngineProtocol03{}) {
+		t.Fatalf("negotiated %q", current.script.interfaceName())
 	}
 	d := current.ScriptDescriptor()
 	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {
 		t.Fatalf("0.3.0 capabilities = %+v", d)
 	}
 	legacy := loadScriptFixture(t)
-	if legacy.scriptInterface != ScriptEngineInterface {
-		t.Fatalf("negotiated %q", legacy.scriptInterface)
+	if legacy.script != (scriptEngineProtocol02{}) {
+		t.Fatalf("negotiated %q", legacy.script.interfaceName())
 	}
 	if d := legacy.ScriptDescriptor(); d.Fixes || d.ReportedSources || len(d.Resources) != 0 {
 		t.Fatalf("0.2.0 capabilities = %+v", d)
@@ -102,14 +102,14 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	}
 	for _, version := range []string{ScriptEngineInterface, ScriptEngine03Interface} {
 		roles, err := extensionRoles(instance(version))
-		if err != nil || roles.script != version || roles.templateEffects != "" {
+		if err != nil || roles.script.interfaceName() != version || roles.templateEffects != nil {
 			t.Fatalf("%s: roles=%+v err=%v", version, roles, err)
 		}
 	}
 	// Each template-effects version pairs with the script engine of its package.
 	for script, template := range map[string]string{ScriptEngineInterface: TemplateEffectsInterface, ScriptEngine03Interface: TemplateEffects03Interface} {
 		roles, err := extensionRoles(instance(script, template))
-		if err != nil || roles.script != script || roles.templateEffects != template {
+		if err != nil || roles.script.interfaceName() != script || roles.templateEffects.interfaceName() != template {
 			t.Fatalf("%s with %s: roles=%+v err=%v", script, template, roles, err)
 		}
 	}
@@ -327,8 +327,8 @@ func TestTemplateEffects03Check(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	if p.scriptInterface != ScriptEngine03Interface || p.templateInterface != TemplateEffects03Interface {
-		t.Fatalf("negotiated %q and %q", p.scriptInterface, p.templateInterface)
+	if p.script != (scriptEngineProtocol03{}) || p.script.templateEffects() != templateEffects03 {
+		t.Fatalf("negotiated %q and %q", p.script.interfaceName(), p.script.templateEffects().interfaceName())
 	}
 	d := p.ScriptDescriptor()
 	if d.TemplateContract != checkinputs.TemplateEffectsContract || !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {

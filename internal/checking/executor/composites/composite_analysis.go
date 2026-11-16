@@ -63,6 +63,7 @@ type compositionSession struct {
 	captures         *capture.Store
 	remoteActions    *remote.Service
 	remoteDocuments  map[string]remoteDocument
+	onRemoteDocument func(capture.CapturedDocument, parsing.Document)
 	remoteLookups    map[actions.Reference]struct{}
 	prepareSource    func(parsing.SourceSnapshot, []string) error
 	invocations      *invocation.Builder

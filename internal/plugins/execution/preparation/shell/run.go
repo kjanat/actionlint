@@ -15,15 +15,15 @@ var ErrNoSourceAccess = errors.New("a snippet engine does not provide external s
 
 // Run supplies interpreter facts and integration settings for one script.
 type Run struct {
-	Shell       Shell
-	Settings    *integrationconfig.Settings
-	Transform   *preparation.SourceTransform
-	ConfigFile  string
-	Sources     bool
-	Engine      bool
-	Input       bool
-	Language    string
-	Environment []scriptmodel.EnvironmentNames
+	Shell         Shell
+	Settings      *integrationconfig.Settings
+	SourcePlanner *preparation.SourcePlanner
+	ConfigFile    string
+	Sources       bool
+	Engine        bool
+	Input         bool
+	Language      string
+	Environment   []scriptmodel.EnvironmentNames
 }
 
 // PrepareRun validates the invocation, applies an integration's preparation plan
@@ -45,7 +45,7 @@ func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, 
 		return preparation.Prepared{}, ErrNoSourceAccess
 	}
 	declarations, known := EnvironmentStartup("", r.Environment)
-	plan, err := r.Transform.Apply(ctx, preparation.TransformInput{
+	plan, err := r.SourcePlanner.Plan(ctx, preparation.SourcePlanInput{
 		Source: text, Language: language, Startup: setup,
 		EnvironmentStartup: declarations, EnvironmentKnown: known,
 		Settings: settings, ConfigFile: r.ConfigFile,

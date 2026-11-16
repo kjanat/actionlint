@@ -112,7 +112,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 	if _, err := integrationconfig.New(m, p.Programs); err != nil {
 		return tools.Registration{}, fmt.Errorf("tool provider %s configuration: %w", name, err)
 	}
-	if _, err := preparation.NewSourceTransform(m.PreparationTransform, p.Programs); err != nil {
+	if _, err := preparation.NewSourcePlanner(m.PreparationTransform, p.Programs); err != nil {
 		return tools.Registration{}, fmt.Errorf("tool provider %s preparation: %w", name, err)
 	}
 	if _, err := shellCatalogue(m.Rule, m.Selectors.Shells); err != nil {

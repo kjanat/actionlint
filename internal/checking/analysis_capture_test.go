@@ -380,3 +380,41 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 		})
 	}
 }
+
+// Completion outlines a manifest composition already parsed from the
+// document it parsed, not from a second parse of the sealed bytes.
+func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
+	t.Parallel()
+	address := filepath.Join(t.TempDir(), "action.yml")
+	content := []byte("name: captured\ndescription: outline\nruns: {using: composite, steps: []}\n")
+	store, err := capture.New(t.Context(), []capture.Overlay{{Path: address, Content: content, Coordinates: source.YAML}}, func(context.Context, string) ([]byte, error) {
+		return nil, os.ErrNotExist
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	capturefixture.CloseCaptures(t, store)
+	documents := &actionDocuments{byPath: make(map[string]documentmodel.Action)}
+	documents.request(address)
+	captured, err := store.Read(t.Context(), address, source.YAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A stand-in for composition's parse: its outline differs from the
+	// captured bytes, so a second parse would be visible.
+	documents.parsed(captured, parsing.Action(address, []byte("name: parsed\ndescription: outline\nruns: {using: composite, steps: []}\n")))
+	if err := store.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	consumed, err := store.ReadAliases()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := documents.complete(store, consumed); err != nil {
+		t.Fatal(err)
+	}
+	outlines := documents.list()
+	if len(outlines) != 1 || outlines[0].Name != "parsed" {
+		t.Fatalf("outlines = %+v, want the parsed document's outline", outlines)
+	}
+}

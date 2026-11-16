@@ -54,7 +54,7 @@ func TestRuffConfigTransform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	transform := configTransform{program: compiled}
+	transform := processConfigProgram{program: compiled}
 	py312, py311, all, selectF := "py312", "py311", "ALL", "F"
 	for _, tc := range []struct {
 		config, want string
@@ -100,7 +100,7 @@ func TestConfigTransformContract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = (&configTransform{program: compiled}).apply(t.Context(), map[string]any{}, nil)
+		_, err = (&processConfigProgram{program: compiled}).apply(t.Context(), map[string]any{}, nil)
 		if err == nil || !strings.Contains(err.Error(), tc.problem) {
 			t.Errorf("%s: %v, want %q", tc.program, err, tc.problem)
 		}

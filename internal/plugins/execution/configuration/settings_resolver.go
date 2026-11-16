@@ -34,14 +34,17 @@ type Settings struct {
 	ReadAccess ReadAccess      `json:"read_access"`
 }
 
-type Transform struct {
+// SettingsResolver validates integration settings against the manifest's
+// schema, expands its configuration paths and runs its
+// configuration_transform program.
+type SettingsResolver struct {
 	schema  *configschema.Schema
 	paths   []string
 	program *jq.Program
 }
 
-func New(m manifests.Manifest, programs manifests.Programs) (*Transform, error) {
-	t := &Transform{paths: append([]string(nil), m.ConfigurationPaths...)}
+func New(m manifests.Manifest, programs manifests.Programs) (*SettingsResolver, error) {
+	t := &SettingsResolver{paths: append([]string(nil), m.ConfigurationPaths...)}
 	for _, path := range t.paths {
 		if path == "" || !jsontext.Pointer(path).IsValid() {
 			return nil, fmt.Errorf("configuration path %q must be a JSON pointer to a property", path)
@@ -68,9 +71,10 @@ func New(m manifests.Manifest, programs manifests.Programs) (*Transform, error) 
 	return t, nil
 }
 
-// Apply validates settings and expands the path options declared in the
-// manifest. The transform receives config and config_file.
-func (t *Transform) Apply(ctx context.Context, inline json.RawMessage, file string, expand func(string) (string, error)) (Settings, error) {
+// Resolve validates settings and expands the path options declared in the
+// manifest. The configuration_transform program receives config and
+// config_file.
+func (t *SettingsResolver) Resolve(ctx context.Context, inline json.RawMessage, file string, expand func(string) (string, error)) (Settings, error) {
 	if err := ctx.Err(); err != nil {
 		return Settings{}, err
 	}

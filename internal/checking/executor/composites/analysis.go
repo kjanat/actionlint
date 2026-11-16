@@ -34,6 +34,9 @@ type Options struct {
 	SourceSnapshots *parsing.SourceSnapshots
 	Captures        *capture.Store
 	RemoteActions   *remote.Service
+	// OnRemoteActionDocument receives each remote action manifest this
+	// composition captures, with the document parsed from the captured bytes.
+	OnRemoteActionDocument func(capture.CapturedDocument, parsing.Document)
 	// PrepareSource acquires only the supplied references before checks observe the source.
 	PrepareSource func(parsing.SourceSnapshot, []string) error
 	Runners       *runnerlang.Knowledge
@@ -158,6 +161,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 			sourceSnapshots:      options.SourceSnapshots,
 			captures:             options.Captures,
 			remoteActions:        options.RemoteActions,
+			onRemoteDocument:     options.OnRemoteActionDocument,
 			remoteDocuments:      map[string]remoteDocument{},
 			metadataCopies:       findingmodel.NewCopier(),
 			remoteLookups:        map[actions.Reference]struct{}{},

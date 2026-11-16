@@ -145,24 +145,23 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 			return err
 		}
 	}
-	if roles.runner != "" {
-		p.runnerInterface = roles.runner
+	if roles.runner != nil {
+		p.runner = roles.runner
 		if err := p.loadRunner(ctx); err != nil {
 			return err
 		}
 	}
-	if roles.script != "" {
-		p.scriptInterface = roles.script
+	if roles.script != nil {
+		p.script = roles.script
 		if err := p.loadScriptEngine(ctx, staticMetadata); err != nil {
 			return err
 		}
 	}
-	if roles.templateEffects != "" {
-		p.templateInterface = roles.templateEffects
+	if roles.templateEffects != nil {
 		if err := p.loadTemplateEffects(ctx, staticMetadata); err != nil {
 			return err
 		}
-	} else if roles.script != "" {
+	} else if roles.script != nil {
 		if err := verifyTemplateMetadata(staticMetadata, ""); err != nil {
 			return err
 		}

@@ -179,7 +179,7 @@ func TestAuthoringEvaluatesShellCheckPreparation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	facts := preparation.TransformInput{Language: "bash", Startup: "set -e", EnvironmentStartup: "export lowercase", EnvironmentKnown: true}
+	facts := preparation.SourcePlanInput{Language: "bash", Startup: "set -e", EnvironmentStartup: "export lowercase", EnvironmentKnown: true}
 	request := checkinputs.ScriptRequest{Filename: "script.sh", Source: "# shellcheck shell=sh\n[[ -n \"$HOME\" ]]\n", Config: json.RawMessage(`{"disable":["SC2086"]}`)}
 	stdout := `{"comments":[]}`
 	result, err := tester.Evaluate(t.Context(), request, &stdout, nil, nil, &facts)
