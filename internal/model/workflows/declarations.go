@@ -84,12 +84,7 @@ func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref
 }
 
 func (d *declarationSet) mapping(scope string, owner sourcepos.Reference, values mapping.Mapping) {
-	record := workflowfacts.Mapping{Scope: scope, Reference: owner, Complete: values.Complete()}
-	for declaration := range values.Declarations() {
-		record.Entries = append(record.Entries, workflowfacts.Entry{
-			Name: declaration.Name, State: declaration.State, Source: declaration.Source,
-			Evaluated: declaration.Evaluated, Start: declaration.Origin.Span.Start,
-		})
-	}
-	d.mappings = append(d.mappings, record)
+	d.mappings = append(d.mappings, workflowfacts.Mapping{
+		Scope: scope, Reference: owner, Complete: values.Complete(), Entries: slices.Collect(values.Declarations()),
+	})
 }

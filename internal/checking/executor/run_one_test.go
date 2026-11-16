@@ -20,6 +20,7 @@ import (
 	rulemeta "actionlint.kjanat.dev/v2/internal/model/rules"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -29,7 +30,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 	options := json.RawMessage(`{"mode":"safe"}`)
 	input := checkinputs.AnalyzerInput{
 		Path: "unit.yml", Options: json.RawMessage(`{"unregistered":true}`), AvailableInputs: []rulemeta.InputKind{rulemeta.Scripts},
-		Mappings:     []workflowfacts.Mapping{{Scope: "original", Entries: []workflowfacts.Entry{{Name: "original"}}}},
+		Mappings:     []workflowfacts.Mapping{{Scope: "original", Entries: []mapping.Declaration{{Name: "original"}}}},
 		Dependencies: []workflowfacts.Dependency{{Uses: "original"}}, Files: []checkinputs.FileSystem{{Path: "/original", FS: fstest.MapFS{}}},
 		SourceRoots: []checkinputs.SourceRoot{{Host: "/host", Guest: "/original"}},
 		Scripts:     []checkinputs.Script{{Text: "echo ok", Spans: []scriptmodel.Span{{Line: 1, End: 8}}, Comments: []workflowfacts.SourceComment{{Text: "# original"}}, Runtime: &scriptmodel.Execution{Shell: "bash"}}},

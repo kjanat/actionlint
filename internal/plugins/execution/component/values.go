@@ -127,7 +127,7 @@ func lowerMappings(mappings []workflowfacts.Mapping) *wacogo.ValList {
 			entries = append(entries, wacogo.NewValRecord(
 				field("name", wacogo.ValString(entry.Name)), field("state", wacogo.NewValEnum(keyStateDiscriminants[entry.State])),
 				field("source", wacogo.ValString(entry.Source)), field("evaluated", wacogo.ValBool(entry.Evaluated)),
-				field("start", lowerPosition(entry.Start)),
+				field("start", lowerPosition(entry.Origin.Span.Start)),
 			))
 		}
 		values = append(values, wacogo.NewValRecord(

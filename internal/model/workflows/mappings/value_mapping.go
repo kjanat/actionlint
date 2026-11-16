@@ -33,8 +33,11 @@ type mappingEntry struct {
 }
 
 // Declaration preserves source-facing key data independently of lookup entries.
+// Name is the resolved key and Source its source text. Evaluated declarations
+// came from object expressions and must not be interpreted again.
 type Declaration struct {
-	Key       value.Value
+	// Key is immutable, so owned copies share it.
+	Key       value.Value `clone:"shared"`
 	Name      string
 	State     KeyState
 	Source    string
