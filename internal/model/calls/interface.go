@@ -80,6 +80,11 @@ type Output struct {
 // Actions and reusable workflows both match output names case insensitively.
 type Outputs map[string]Output
 
+// Names returns the declared spelling of every output, sorted.
+func (outputs Outputs) Names() []string {
+	return declaredNames(outputs, func(Output) bool { return true }, func(output Output) string { return output.Name })
+}
+
 func declaredNames[T any](declarations map[string]T, keep func(T) bool, name func(T) string) []string {
 	names := make([]string, 0, len(declarations))
 	for _, declaration := range declarations {
