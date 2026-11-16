@@ -20,7 +20,7 @@ func TestJSONRendererUsesSuppliedCompletion(t *testing.T) {
 			}
 			given := report.CheckResult{SchemaVersion: 1, Status: "failure", Completed: false, ExitCode: 3, Error: "dependency unavailable", Diagnostics: diagnostics}
 			var output bytes.Buffer
-			if err := renderer.Render(&output, Result{CheckResult: given}); err != nil {
+			if err := renderer.Render(&output, RenderedReport{CheckResult: given}); err != nil {
 				t.Fatal(err)
 			}
 			if format == FormatJSON {

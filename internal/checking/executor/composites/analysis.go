@@ -60,9 +60,9 @@ type Options struct {
 	Debug                            io.Writer
 }
 
-// Result is a plain record of one composition run. It holds no invariants of
+// Composition is a plain record of one composition run. It holds no invariants of
 // its own; CheckInput validates its batch against the entry snapshot.
-type Result struct {
+type Composition struct {
 	IncompleteChecks []report.IncompleteCheck
 	Findings         []*findingmodel.Finding
 	EntrySnapshot    parsing.SourceSnapshot
@@ -83,7 +83,7 @@ type SourceDocument interface {
 // Workflow runs one workflow composition with the caller's collaborators.
 // It enters the workflow pass lifecycle; Action never uses this path.
 // Options.Join runs exactly once per call.
-func Workflow(options Options, snapshot parsing.SourceSnapshot) (Result, error) {
+func Workflow(options Options, snapshot parsing.SourceSnapshot) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if !snapshot.Present() {
 			return errors.New("workflow source snapshot is unavailable")
@@ -105,7 +105,7 @@ func Workflow(options Options, snapshot parsing.SourceSnapshot) (Result, error) 
 
 // Action runs one standalone action composition with the caller's collaborators.
 // Options.Join runs exactly once per call.
-func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Result, error) {
+func Action(options Options, snapshot parsing.SourceSnapshot, deployment scriptexecution.Deployment, metadata *actionmeta.Metadata) (Composition, error) {
 	return analyze(options, func(c *compositeAnalyzer) error {
 		if snapshot.Kind() != parsing.KindAction {
 			return errors.New("action source snapshot is unavailable")
@@ -120,7 +120,7 @@ func Action(options Options, snapshot parsing.SourceSnapshot, deployment scripte
 	})
 }
 
-func analyze(options Options, visit func(*compositeAnalyzer) error) (result Result, err error) {
+func analyze(options Options, visit func(*compositeAnalyzer) error) (result Composition, err error) {
 	// Join even when a visit fails. Collection happens only after all started work ends.
 	joined := false
 	join := func() error {
@@ -208,7 +208,7 @@ func analyze(options Options, visit func(*compositeAnalyzer) error) (result Resu
 	for path, document := range c.remoteDocuments {
 		documents[path], sources[path] = document, document.Content()
 	}
-	return Result{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents}, err
+	return Composition{IncompleteChecks: c.incompleteChecks, Findings: findings, EntrySnapshot: c.sourceSnapshot, Batch: batch, Invocations: graph, ResolveExecution: c.resolveScriptExecution, Sources: sources, SourceDocuments: documents}, err
 }
 
 func scriptInputCatalogue(additional []checkinputs.ScriptInput) ([]checkinputs.ScriptInput, error) {

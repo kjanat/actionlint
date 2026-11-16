@@ -14,7 +14,7 @@ func BindRepositoryAccess(provider Resolver, access RepositoryAccess) Resolver {
 	return repositoryBoundResolver{provider: provider, access: access}
 }
 
-func (r repositoryBoundResolver) Resolve(ctx context.Context, request Request) (Result, error) {
+func (r repositoryBoundResolver) Resolve(ctx context.Context, request Request) (ResolutionRecord, error) {
 	return r.provider.Resolve(WithRepositoryAccess(ctx, r.access), request)
 }
 

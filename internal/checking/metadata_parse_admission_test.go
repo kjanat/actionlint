@@ -135,7 +135,7 @@ func TestMissingParseProvenanceReportsCanonicalResolutionFailure(t *testing.T) {
 	cancel()
 	session := analysisSession{ctx: ctx, captures: store, workingDir: root}
 	path := filepath.Join("broken", "action.yml")
-	rejected, err := session.admitSourceDocuments(composites.Result{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]workflowfacts.SourceIndex{})
+	rejected, err := session.admitSourceDocuments(composites.Composition{Sources: map[string][]byte{path: []byte("name: [\n")}}, map[string]workflowfacts.SourceIndex{})
 	if !errors.Is(err, context.Canceled) || !rejected[path] || !strings.Contains(err.Error(), "no admitted parse provenance") {
 		t.Fatalf("canonical resolution failure was hidden: rejected=%v error=%v", rejected, err)
 	}
@@ -174,7 +174,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			parse := producer.Errs()[0]
 			retained := &findingmodel.Finding{Message: "entry observation"}
 			displayPath := filepath.Join("broken", "action.yml")
-			composed := composites.Result{Sources: map[string][]byte{displayPath: []byte("different consumer bytes")}, SourceDocuments: map[string]composites.SourceDocument{displayPath: document}}
+			composed := composites.Composition{Sources: map[string][]byte{displayPath: []byte("different consumer bytes")}, SourceDocuments: map[string]composites.SourceDocument{displayPath: document}}
 			if missing {
 				composed.Sources[displayPath] = metadata.Bytes()
 				delete(composed.SourceDocuments, displayPath)

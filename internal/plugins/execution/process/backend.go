@@ -325,7 +325,7 @@ func (b *Backend) execution(args []string, stdin, directory string) process.Exec
 // placeholders and transforms; "filename", "filename_abs" and "exit_code"
 // are the host's own. An optional provider whose version cannot be
 // established returns no result and no error.
-func (b *Backend) Run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string) (Result, error) {
+func (b *Backend) Run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string) (DecodedCheck, error) {
 	result, err := b.run(ctx, request, vars, nil)
 	return result, owned(ctx, err)
 }
@@ -342,22 +342,22 @@ func owned(ctx context.Context, err error) error {
 	return errors.New(err.Error())
 }
 
-func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string, document *checkinputs.DocumentRequest) (result Result, err error) {
+func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, vars map[string]string, document *checkinputs.DocumentRequest) (result DecodedCheck, err error) {
 	if err := ctx.Err(); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	if b.commandProblem != "" {
-		return Result{}, errors.New(b.commandProblem)
+		return DecodedCheck{}, errors.New(b.commandProblem)
 	}
 	if available, err := b.available(ctx); err != nil || !available {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	directory, err := b.directory(request.Directory)
 	if err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	if err := checkUserArgs(b.name, b.spec.UserArgs, b.user, directory); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	values := maps.Clone(vars)
 	if values == nil {
@@ -370,12 +370,12 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 	}
 	config, err := decodeConfig(request.Config)
 	if err != nil {
-		return Result{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
+		return DecodedCheck{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
 	}
 	engine := engineConfig{value: config}
 	if b.configProgram != nil {
 		if engine, err = b.configProgram.apply(ctx, config, values); err != nil {
-			return Result{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
+			return DecodedCheck{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
 		}
 	}
 	for name, value := range engine.vars {
@@ -393,13 +393,13 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 		delete(values, name)
 	}
 	if err := checkForbidden(b.name, engine.value, b.spec.Config.Forbidden); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	in := argInputs{vars: values, user: b.user}
 	if b.spec.Program != nil {
 		path, cleanup, programErr := materializeProgram(ctx, *b.spec.Program)
 		if programErr != nil {
-			return Result{}, programErr
+			return DecodedCheck{}, programErr
 		}
 		defer func() { err = errors.Join(err, cleanup()) }()
 		in.programFile = path
@@ -407,12 +407,12 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 	switch b.spec.Config.Render {
 	case manifests.RenderTOMLPairs:
 		if in.tomlPairs, err = tomlPairs(pairsOption(b.spec.Args), engine.value); err != nil {
-			return Result{}, fmt.Errorf("tools.%s.%w", b.name, err)
+			return DecodedCheck{}, fmt.Errorf("tools.%s.%w", b.name, err)
 		}
 	case manifests.RenderTOMLFile, manifests.RenderJSONFile:
 		path, remove, err := writeConfigFile(b.spec.Config.Render, engine.value)
 		if err != nil {
-			return Result{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
+			return DecodedCheck{}, fmt.Errorf("tools.%s.config: %w", b.name, err)
 		}
 		defer remove()
 		in.configFile = path
@@ -420,7 +420,7 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 	}
 	args, err := renderArgs(b.spec.Args, in)
 	if err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	var stdin string
 	if document != nil && b.spec.Stdin == manifests.StdinRequest {
@@ -437,13 +437,13 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 		stdin, err = b.stdin(request, engine.value)
 	}
 	if err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	execution := b.execution(args, stdin, directory)
 	b.debug("%s: Running %q with arguments %q in %q", b.name, b.command.Exe, execution.Args, directory)
 	stdout, code, err := b.command.Invoke(ctx, execution)
 	if err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	values["exit_code"] = strconv.Itoa(code)
 	decoding := ctx
@@ -456,14 +456,14 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 	}
 	result, err = b.decoder.Decode(decoding, stdout, values)
 	if err != nil {
-		return Result{}, fmt.Errorf("tools.%s: %w", b.name, err)
+		return DecodedCheck{}, fmt.Errorf("tools.%s: %w", b.name, err)
 	}
 	result.Directory = directory
 	if document != nil {
 		result.Diagnostics = documentFindings(result.Diagnostics, request, directory)
 	}
 	if err := b.review(&result, request); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	var failures error
 	for _, message := range result.Errors {
@@ -473,7 +473,7 @@ func (b *Backend) run(ctx context.Context, request checkinputs.ScriptRequest, va
 }
 
 // detached copies a decoded result into storage no decoder retains.
-func detached(result Result) Result {
+func detached(result DecodedCheck) DecodedCheck {
 	diagnostics := make([]checkinputs.ScriptDiagnostic, len(result.Diagnostics))
 	for i, d := range result.Diagnostics {
 		fixes := make([]checkinputs.ScriptFix, len(d.Fixes))
@@ -486,7 +486,7 @@ func detached(result Result) Result {
 			Source: d.Source, Fixes: fixes,
 		}
 	}
-	return Result{Diagnostics: diagnostics, Sources: slices.Clone(result.Sources), Errors: slices.Clone(result.Errors), Directory: result.Directory}
+	return DecodedCheck{Diagnostics: diagnostics, Sources: slices.Clone(result.Sources), Errors: slices.Clone(result.Errors), Directory: result.Directory}
 }
 
 // directory returns the absolute working directory of a check.
@@ -555,7 +555,7 @@ func pairsOption(args []string) string {
 // request's snippet, a reported one must come from a provider that declares
 // reported sources; snippet positions are converted to contract
 // coordinates and template effects come from the reviewed table.
-func (b *Backend) review(result *Result, request checkinputs.ScriptRequest) error {
+func (b *Backend) review(result *DecodedCheck, request checkinputs.ScriptRequest) error {
 	coordinates := newCoordinates(request.Source, b.spec.Output.Coordinates)
 	for i := range result.Diagnostics {
 		d := &result.Diagnostics[i]

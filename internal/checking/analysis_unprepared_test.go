@@ -45,7 +45,7 @@ func TestSourceAnalyzerSurvivesUnavailableComposition(t *testing.T) {
 			if name == "partial workflow" && len(parsed.SyntaxErrors) == 0 {
 				t.Fatal("fixture did not reproduce a recovered parse")
 			}
-			input, err := composites.CheckInput(composites.Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
+			input, err := composites.CheckInput(composites.Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 				t.Fatalf("missing preparation error: %v", err)
 			}

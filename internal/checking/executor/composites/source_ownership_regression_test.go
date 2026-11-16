@@ -173,7 +173,7 @@ func TestCheckoutFactsStayBoundToCanonicalStepBeforeTraversal(t *testing.T) {
 	}
 }
 
-func checkoutSnapshot(result Result) []string {
+func checkoutSnapshot(result Composition) []string {
 	var paths []string
 	for _, scope := range result.Batch.Scopes() {
 		if placement := scope.Paths.Placements; placement.Present() {

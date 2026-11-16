@@ -16,9 +16,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
-type resolveFunc func(context.Context, references.Request) (references.Result, error)
+type resolveFunc func(context.Context, references.Request) (references.ResolutionRecord, error)
 
-func (f resolveFunc) Resolve(ctx context.Context, r references.Request) (references.Result, error) {
+func (f resolveFunc) Resolve(ctx context.Context, r references.Request) (references.ResolutionRecord, error) {
 	return f(ctx, r)
 }
 
@@ -26,11 +26,11 @@ func TestNamedMetadataRequiresActionSelectionEvidence(t *testing.T) {
 	t.Parallel()
 	for _, selectedRef := range []string{"", "refs/heads/v1"} {
 		client, err := New(Options{Mode: Online, Resolver: func() references.Resolver {
-			return resolveFunc(func(ctx context.Context, r references.Request) (references.Result, error) {
+			return resolveFunc(func(ctx context.Context, r references.Request) (references.ResolutionRecord, error) {
 				if r.Kind != "action" || !r.ExpectedRepositoryID.IsZero() || refListingFromContext(ctx) == nil {
 					t.Fatalf("wrong profile, guard or listing: %+v", r)
 				}
-				return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: selectedRef, ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
+				return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: selectedRef, ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
 			})
 		}, Transport: transport(func(r *http.Request) (*http.Response, error) {
 			switch r.URL.Host + r.URL.Path {
@@ -64,19 +64,19 @@ func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
 	otherRepositoryID := knownRepositoryID(t, 99)
 	for _, tc := range []struct {
 		name     string
-		change   func(*references.Result)
+		change   func(*references.ResolutionRecord)
 		fallback bool
 	}{
-		{"version", func(r *references.Result) { r.Version = 2 }, false},
-		{"error", func(r *references.Result) { r.Error = "resolution failed" }, false},
-		{"repository ID", func(r *references.Result) { r.RepositoryID = otherRepositoryID }, true},
-		{"repository name", func(r *references.Result) { r.Repository = "another/action" }, false},
-		{"commit", func(r *references.Result) { r.Commit = "short" }, false},
-		{"tree", func(r *references.Result) { r.Tree = sha }, false},
-		{"observation", func(r *references.Result) { r.ObservedAt = "" }, false},
-		{"fetch log", func(r *references.Result) { r.FetchLog = nil }, false},
-		{"selected object", func(r *references.Result) { r.SelectedObject = "" }, false},
-		{"selected ref", func(r *references.Result) { r.SelectedRef = "" }, false},
+		{"version", func(r *references.ResolutionRecord) { r.Version = 2 }, false},
+		{"error", func(r *references.ResolutionRecord) { r.Error = "resolution failed" }, false},
+		{"repository ID", func(r *references.ResolutionRecord) { r.RepositoryID = otherRepositoryID }, true},
+		{"repository name", func(r *references.ResolutionRecord) { r.Repository = "another/action" }, false},
+		{"commit", func(r *references.ResolutionRecord) { r.Commit = "short" }, false},
+		{"tree", func(r *references.ResolutionRecord) { r.Tree = sha }, false},
+		{"observation", func(r *references.ResolutionRecord) { r.ObservedAt = "" }, false},
+		{"fetch log", func(r *references.ResolutionRecord) { r.FetchLog = nil }, false},
+		{"selected object", func(r *references.ResolutionRecord) { r.SelectedObject = "" }, false},
+		{"selected ref", func(r *references.ResolutionRecord) { r.SelectedRef = "" }, false},
 	} {
 		for _, fallback := range []bool{false, true} {
 			if tc.fallback && !fallback {
@@ -100,8 +100,8 @@ func TestInvalidResolverResultsDoNotFetchManifests(t *testing.T) {
 					return nil, nil
 				}}
 				client, err := New(Options{Resolver: func() references.Resolver {
-					return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
-						result := references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}
+					return resolveFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
+						result := references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}
 						tc.change(&result)
 						return result, nil
 					})
@@ -346,11 +346,11 @@ func TestCacheRecordRepositoryIDIsOptional(t *testing.T) {
 func TestResolverWithoutRepositoryIDUsesLearnedID(t *testing.T) {
 	t.Parallel()
 	client, err := New(Options{Mode: Online, Resolver: func() references.Resolver {
-		return resolveFunc(func(ctx context.Context, r references.Request) (references.Result, error) {
+		return resolveFunc(func(ctx context.Context, r references.Request) (references.ResolutionRecord, error) {
 			if r.ExpectedRepositoryID != knownRepositoryID(t, 42) || refListingFromContext(ctx) != nil {
 				t.Fatalf("fallback resolution without the learned ID: %+v", r)
 			}
-			return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
+			return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
 		})
 	}, Transport: transport(func(r *http.Request) (*http.Response, error) { return restFallback(t, r) })})
 	if err != nil {
@@ -367,8 +367,8 @@ func TestRESTCacheHitStoresNamedReferenceForOffline(t *testing.T) {
 	cache := t.TempDir()
 	hosts := &recorder{handle: func(r *http.Request) (*http.Response, error) { return restFallback(t, r) }}
 	client, err := New(Options{CacheDir: cache, Transport: hosts, Resolver: func() references.Resolver {
-		return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
-			return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
+		return resolveFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
+			return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-10-31T00:00:00Z", FetchLog: json.RawMessage(`{"profile":"GithubAction"}`)}, nil
 		})
 	}})
 	if err != nil {
@@ -443,8 +443,8 @@ func TestRESTFallbackValidatesRepositoryCommitAndManifest(t *testing.T) {
 				return nil, nil
 			}}
 			client, err := New(Options{CacheDir: cache, Transport: hosts, Resolver: func() references.Resolver {
-				return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
-					return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+				return resolveFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
+					return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 				})
 			}})
 			if err != nil {

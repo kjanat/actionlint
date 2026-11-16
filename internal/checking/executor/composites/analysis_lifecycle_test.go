@@ -105,7 +105,7 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 	t.Parallel()
 	for _, content := range []string{"on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\n", "jobs: ["} {
 		parsed := parsing.Workflow([]byte(content))
-		input, err := CheckInput(Result{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
+		input, err := CheckInput(Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 		if parsed.Facts != nil {
 			if !errors.Is(err, scriptexecution.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)

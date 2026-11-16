@@ -24,7 +24,7 @@ func (e *admissionRejectedError) Error() string {
 func (*admissionRejectedError) Code() string { return "admission-rejected" }
 func (e *admissionRejectedError) Count() int { return e.count }
 
-func (s *analysisSession) admitSourceDocuments(composed composites.Result, references map[string]workflowfacts.SourceIndex) (map[string]bool, error) {
+func (s *analysisSession) admitSourceDocuments(composed composites.Composition, references map[string]workflowfacts.SourceIndex) (map[string]bool, error) {
 	rejected := map[string]bool{}
 	var failure error
 	for path, content := range composed.Sources {
@@ -60,7 +60,7 @@ func (s *analysisSession) admitSourceDocuments(composed composites.Result, refer
 	return rejected, failure
 }
 
-func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entryPath, sourcePath string, composed composites.Result, rejected map[string]bool) ([]*findingmodel.Finding, error) {
+func (s *analysisSession) admitReportedSources(all []*findingmodel.Finding, entryPath, sourcePath string, composed composites.Composition, rejected map[string]bool) ([]*findingmodel.Finding, error) {
 	var failure error
 	count := 0
 	metadataSources := make(map[source.Revision]bool, len(composed.SourceDocuments))

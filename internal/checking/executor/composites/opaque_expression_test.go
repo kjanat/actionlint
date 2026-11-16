@@ -24,7 +24,7 @@ func TestOpaqueCompositeInputsKeepInspectExpressionAfterCycleFrontier(t *testing
 					content += "    - uses: actions/github-script@v7\n      with:\n        script: ${{ " + sink.expression + " }}\n"
 					fixture := newInvocationFixture(t, t.Context(), "on: issues\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/outer}]}}\n", map[string]string{"outer/action.yml": content}, nil)
 					fixture.options.Rules = []workflowvisit.Rule{expressions.NewExpressionRule(t.Context(), expressions.Rule.Base(), fixture.options.Actions, nil, nil, nil)}
-					var result Result
+					var result Composition
 					var err error
 					if standalone {
 						lookup, _ := fixture.cache.LookupMetadata("$/outer")

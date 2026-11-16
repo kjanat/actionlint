@@ -26,7 +26,7 @@ type AuthoringResult struct {
 	Preparation *preparation.SourcePlan `json:"preparation,omitempty"`
 	Config      json.RawMessage         `json:"config"`
 	Variables   map[string]string       `json:"variables"`
-	Result      *Result                 `json:"result,omitempty"`
+	Result      *DecodedCheck           `json:"result,omitempty"`
 }
 
 // AuthoringTester compiles a process pipeline once and evaluates each fixture independently.

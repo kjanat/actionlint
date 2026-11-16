@@ -61,7 +61,7 @@ func (r *Renderer) SetWidth(width int) error {
 }
 
 // Render writes the result in the selected format.
-func (r *Renderer) Render(out io.Writer, result Result) error {
+func (r *Renderer) Render(out io.Writer, result RenderedReport) error {
 	for _, rule := range result.Rules {
 		r.rules.register(rule)
 	}

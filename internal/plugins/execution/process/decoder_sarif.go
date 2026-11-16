@@ -123,46 +123,46 @@ func sarifSuppressed(suppressions []sarifSuppression) (bool, error) {
 // Decode implements Decoder. A result whose artifact is not vars["filename"]
 // (or vars["filename_abs"]) is a finding in a file the engine read: its
 // Filename and Source are the artifact URI.
-func (SARIF) Decode(ctx context.Context, stdout []byte, vars map[string]string) (Result, error) {
+func (SARIF) Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error) {
 	if err := ctx.Err(); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	if err := checkInput(stdout); err != nil {
-		return Result{}, err
+		return DecodedCheck{}, err
 	}
 	var log sarifLog
 	if err := jsonv2.Unmarshal(stdout, &log); err != nil {
-		return Result{}, fmt.Errorf("decode SARIF log: %w", err)
+		return DecodedCheck{}, fmt.Errorf("decode SARIF log: %w", err)
 	}
 	if log.Version != "2.1.0" {
-		return Result{}, fmt.Errorf("unsupported SARIF version %q; expected 2.1.0", log.Version)
+		return DecodedCheck{}, fmt.Errorf("unsupported SARIF version %q; expected 2.1.0", log.Version)
 	}
 	if len(log.InlineExternalProperties) > 0 {
-		return Result{}, errors.New("SARIF inline external properties are unsupported")
+		return DecodedCheck{}, errors.New("SARIF inline external properties are unsupported")
 	}
-	var result Result
+	var result DecodedCheck
 	for _, run := range log.Runs {
 		if run.ExternalPropertyFileReferences != nil {
-			return Result{}, errors.New("SARIF external property files are unsupported")
+			return DecodedCheck{}, errors.New("SARIF external property files are unsupported")
 		}
 		if len(run.NewlineSequences) > 0 && (len(run.NewlineSequences) != 2 || run.NewlineSequences[0] != "\r\n" || run.NewlineSequences[1] != "\n") {
-			return Result{}, errors.New("SARIF custom newline sequences are unsupported")
+			return DecodedCheck{}, errors.New("SARIF custom newline sequences are unsupported")
 		}
 		for _, entry := range run.Results {
 			suppressed, err := sarifSuppressed(entry.Suppressions)
 			if err != nil {
-				return Result{}, err
+				return DecodedCheck{}, err
 			}
 			if suppressed || entry.Kind != "" && entry.Kind != "fail" {
 				continue
 			}
 			diagnostic, err := sarifDiagnostic(run, entry, vars)
 			if err != nil {
-				return Result{}, err
+				return DecodedCheck{}, err
 			}
 			result.Diagnostics = append(result.Diagnostics, diagnostic)
 			if err := checkCount(len(result.Diagnostics)); err != nil {
-				return Result{}, err
+				return DecodedCheck{}, err
 			}
 		}
 	}

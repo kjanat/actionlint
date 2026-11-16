@@ -9,7 +9,7 @@ import (
 )
 
 // ValidateResult checks the response version, repository identity, object ID and fetch log.
-func ValidateResult(request Request, result Result) error {
+func ValidateResult(request Request, result ResolutionRecord) error {
 	if result.Version != 1 {
 		return fmt.Errorf("unsupported resolver response version %d", result.Version)
 	}

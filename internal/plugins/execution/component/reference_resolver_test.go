@@ -207,19 +207,19 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 			if err := objects.finish(t.Context()); err != nil {
 				t.Fatal(err)
 			}
-			result := references.Result{Version: 1, RepositoryID: knownRepositoryID(t, 7), Repository: session.identity.Name, ObservedAt: session.identity.ObservedAt, SelectedObject: selected, SelectedRef: "refs/tags/v1", Commit: tc.commit, Tree: tc.tree}
+			result := references.ResolutionRecord{Version: 1, RepositoryID: knownRepositoryID(t, 7), Repository: session.identity.Name, ObservedAt: session.identity.ObservedAt, SelectedObject: selected, SelectedRef: "refs/tags/v1", Commit: tc.commit, Tree: tc.tree}
 			if err := objects.validate(result); err != nil {
 				t.Fatal(err)
 			}
-			for _, change := range []func(*references.Result){
-				func(result *references.Result) { result.RepositoryID = knownRepositoryID(t, 8) },
-				func(result *references.Result) { result.RepositoryID = repofacts.ID{} },
-				func(result *references.Result) { result.Repository = "other/repo" },
-				func(result *references.Result) { result.ObservedAt = "2026-11-10T00:00:01Z" },
-				func(result *references.Result) { result.SelectedRef = "refs/heads/missing" },
-				func(result *references.Result) { result.SelectedObject = peeled },
-				func(result *references.Result) { result.Commit = strings.Repeat("c", 40) },
-				func(result *references.Result) { result.Tree = strings.Repeat("c", 40) },
+			for _, change := range []func(*references.ResolutionRecord){
+				func(result *references.ResolutionRecord) { result.RepositoryID = knownRepositoryID(t, 8) },
+				func(result *references.ResolutionRecord) { result.RepositoryID = repofacts.ID{} },
+				func(result *references.ResolutionRecord) { result.Repository = "other/repo" },
+				func(result *references.ResolutionRecord) { result.ObservedAt = "2026-11-10T00:00:01Z" },
+				func(result *references.ResolutionRecord) { result.SelectedRef = "refs/heads/missing" },
+				func(result *references.ResolutionRecord) { result.SelectedObject = peeled },
+				func(result *references.ResolutionRecord) { result.Commit = strings.Repeat("c", 40) },
+				func(result *references.ResolutionRecord) { result.Tree = strings.Repeat("c", 40) },
 			} {
 				forged := result
 				change(&forged)
@@ -245,7 +245,7 @@ func TestReferenceResolverRejectsFailedFinish(t *testing.T) {
 	if err := objects.finish(t.Context()); !errors.Is(err, session.finishErr) {
 		t.Fatalf("finish error = %v", err)
 	}
-	if err := objects.validate(references.Result{}); !errors.Is(err, session.finishErr) {
+	if err := objects.validate(references.ResolutionRecord{}); !errors.Is(err, session.finishErr) {
 		t.Fatalf("validation error = %v", err)
 	}
 }
@@ -271,18 +271,18 @@ func TestReferenceResolverRoleAndImports(t *testing.T) {
 	}
 }
 
-type referenceResolverFunc func(context.Context, references.Request) (references.Result, error)
+type referenceResolverFunc func(context.Context, references.Request) (references.ResolutionRecord, error)
 
-func (f referenceResolverFunc) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (f referenceResolverFunc) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	return f(ctx, request)
 }
 
 func TestReferenceResolverSessionCachesExactRequests(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int64
-	session := &referenceResolverSession{resolver: referenceResolverFunc(func(context.Context, references.Request) (references.Result, error) {
+	session := &referenceResolverSession{resolver: referenceResolverFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
 		calls.Add(1)
-		return references.Result{FetchLog: json.RawMessage(`{"source":"host"}`)}, nil
+		return references.ResolutionRecord{FetchLog: json.RawMessage(`{"source":"host"}`)}, nil
 	})}
 	request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action"}
 	result, err := session.Resolve(t.Context(), request)
@@ -313,12 +313,12 @@ func TestReferenceResolverSessionCoalescesAndCancelsWaiter(t *testing.T) {
 	t.Parallel()
 	started, release := make(chan struct{}), make(chan struct{})
 	var calls atomic.Int64
-	session := &referenceResolverSession{resolver: referenceResolverFunc(func(context.Context, references.Request) (references.Result, error) {
+	session := &referenceResolverSession{resolver: referenceResolverFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
 		if calls.Add(1) == 1 {
 			close(started)
 		}
 		<-release
-		return references.Result{RepositoryID: knownRepositoryID(t, 7)}, nil
+		return references.ResolutionRecord{RepositoryID: knownRepositoryID(t, 7)}, nil
 	})}
 	request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action"}
 	first := make(chan error, 1)
@@ -344,12 +344,12 @@ func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) 
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		var calls atomic.Int64
-		session := &referenceResolverSession{resolver: referenceResolverFunc(func(ctx context.Context, _ references.Request) (references.Result, error) {
+		session := &referenceResolverSession{resolver: referenceResolverFunc(func(ctx context.Context, _ references.Request) (references.ResolutionRecord, error) {
 			if calls.Add(1) == 1 {
 				<-ctx.Done()
-				return references.Result{}, ctx.Err()
+				return references.ResolutionRecord{}, ctx.Err()
 			}
-			return references.Result{RepositoryID: knownRepositoryID(t, 7)}, nil
+			return references.ResolutionRecord{RepositoryID: knownRepositoryID(t, 7)}, nil
 		})}
 		request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action"}
 		initiator, cancel := context.WithCancel(t.Context())
@@ -359,7 +359,7 @@ func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) 
 		waiter, stop := references.StartLookupBudget(t.Context(), time.Second)
 		defer stop()
 		second := make(chan error, 1)
-		var result references.Result
+		var result references.ResolutionRecord
 		go func() {
 			var err error
 			result, err = session.Resolve(waiter, request)

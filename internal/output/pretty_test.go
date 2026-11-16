@@ -28,7 +28,7 @@ func TestPrettyWrappedHyperlinks(t *testing.T) {
 	if err := renderer.SetWidth(40); err != nil {
 		t.Fatal(err)
 	}
-	result := Result{Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}
+	result := RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}
 	var plain, linked strings.Builder
 	if err := renderer.Render(&plain, result); err != nil {
 		t.Fatal(err)
@@ -182,14 +182,14 @@ func TestPrettyDiagnostic(t *testing.T) {
 		Help: "Use a declared value.", Related: []results.Related{{Message: "declaration", Path: "other.yml", Start: sourcepos.Position{Line: 4, Column: 2}}},
 	}
 	var out strings.Builder
-	if err := r.Render(&out, Result{Findings: []RenderedFinding{RenderedFindingOf(d, []byte("  bad"))}}); err != nil {
+	if err := r.Render(&out, RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(d, []byte("  bad"))}}); err != nil {
 		t.Fatal(err)
 	}
 	want := "warning[expression-reference]\n  unknown variable\n  --> ci.yml:1:3\n  |\n1 |   bad\n  |   ^^^\n  = help: Use a declared value.\n  = related: declaration\n    --> other.yml:4:2\n\n"
 	if out.String() != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", &out, want)
 	}
-	if err := r.Render(failingRenderWriter{}, Result{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}}); err == nil {
+	if err := r.Render(failingRenderWriter{}, RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}}); err == nil {
 		t.Fatal("lost write failure")
 	}
 }
@@ -212,7 +212,7 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 			d.Help = "Quote this variable."
 		}
 		var out strings.Builder
-		result := Result{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}, Diagnostics: []results.Diagnostic{d}}
+		result := RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}, Diagnostics: []results.Diagnostic{d}}
 		if err := r.Render(&out, result); err != nil {
 			t.Fatal(err)
 		}
@@ -258,7 +258,7 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 				t.Fatal(err)
 			}
 			diagnostic := results.Diagnostic{Rule: tc.finding, Code: "specific-code", Message: "message"}
-			result := Result{Rules: tc.result, Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}
+			result := RenderedReport{Rules: tc.result, Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}
 			var out strings.Builder
 			if err := renderer.Render(&out, result); err != nil {
 				t.Fatal(err)
@@ -330,7 +330,7 @@ func TestPrettyColorAndUnavailableSource(t *testing.T) {
 	}
 	renderer.SetColor(true)
 	var out strings.Builder
-	if err := renderer.Render(&out, Result{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}}); err != nil {
+	if err := renderer.Render(&out, RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(d, nil)}}); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "\x1b[1;33mwarning\x1b[22;0m\n") {
@@ -361,7 +361,7 @@ func TestRendererColorMode(t *testing.T) {
 					t.Fatal(err)
 				}
 				renderer.SetColor(colored)
-				result := Result{Findings: []RenderedFinding{RenderedFindingOf(d, []byte("  bad"))}}
+				result := RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(d, []byte("  bad"))}}
 				var want, got strings.Builder
 				if err := plain.Render(&want, result); err != nil {
 					t.Fatal(err)

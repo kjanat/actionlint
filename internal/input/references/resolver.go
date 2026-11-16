@@ -18,9 +18,9 @@ type Request struct {
 	ExpectedRepositoryID repofacts.ID `json:"expected_repository_id,omitzero"`
 }
 
-// Result binds a resolution to immutable content and records the resolver's
+// ResolutionRecord binds a resolution to immutable content and records the resolver's
 // fetch log. Tree identities must never be presented as commit identities.
-type Result struct {
+type ResolutionRecord struct {
 	Version      int             `json:"version"`
 	RepositoryID repofacts.ID    `json:"repository_id,omitzero"`
 	Repository   string          `json:"repository"`
@@ -57,7 +57,7 @@ type RequestReport struct {
 }
 
 type Resolver interface {
-	Resolve(context.Context, Request) (Result, error)
+	Resolve(context.Context, Request) (ResolutionRecord, error)
 }
 
 // SessionFactory optionally scopes mutable-ref caches to one analysis request.

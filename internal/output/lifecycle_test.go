@@ -38,7 +38,7 @@ func TestLifecycleOutput(t *testing.T) {
 				t.Fatal(err)
 			}
 			var out bytes.Buffer
-			if err := renderer.Render(&out, Result{Status: "success", Diagnostics: []results.Diagnostic{diagnostic, {Rule: "other", Message: "ordinary"}}}); err != nil {
+			if err := renderer.Render(&out, RenderedReport{Status: "success", Diagnostics: []results.Diagnostic{diagnostic, {Rule: "other", Message: "ordinary"}}}); err != nil {
 				t.Fatal(err)
 			}
 			var findings []map[string]any
@@ -96,7 +96,7 @@ func TestLifecycleOutput(t *testing.T) {
 		}
 		renderer.SetHyperlinks(true)
 		var out bytes.Buffer
-		if err := renderer.Render(&out, Result{Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}); err != nil {
+		if err := renderer.Render(&out, RenderedReport{Findings: []RenderedFinding{RenderedFindingOf(diagnostic, nil)}}); err != nil {
 			t.Fatal(err)
 		}
 		for _, want := range []string{"config: lint.rules.workflow.runner", "lifecycle: retirement on 2026-12-01", "https://example.com/notice", "policy: retirement-warning (optional), starts 2026-09-01, from project", "policy: retirement-required (required), starts 2026-11-01, from organization", "\x1b]8;;https://example.com/notice\x1b\\"} {

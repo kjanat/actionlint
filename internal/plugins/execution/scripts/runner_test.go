@@ -227,7 +227,7 @@ func TestScriptFixRejectsAmbiguousChanges(t *testing.T) {
 // reportingBackend is a process-like backend whose results the test scripts.
 type reportingBackend struct {
 	directory  string
-	result     func(checkinputs.ScriptRequest) process.Result
+	result     func(checkinputs.ScriptRequest) process.DecodedCheck
 	concurrent bool
 	mu         sync.Mutex
 	requests   []checkinputs.ScriptRequest
@@ -239,7 +239,7 @@ func (b *reportingBackend) Check(ctx context.Context, request checkinputs.Script
 	return result.Diagnostics, err
 }
 
-func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequest, vars map[string]string) (process.Result, error) {
+func (b *reportingBackend) Run(_ context.Context, request checkinputs.ScriptRequest, vars map[string]string) (process.DecodedCheck, error) {
 	b.mu.Lock()
 	b.requests = append(b.requests, request)
 	b.vars = append(b.vars, vars)
@@ -275,8 +275,8 @@ func TestReportedSourceFindings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "lib.sh"), []byte("echo $x\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.Result {
-		return process.Result{Sources: []string{"lib.sh"}, Diagnostics: []checkinputs.ScriptDiagnostic{
+	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+		return process.DecodedCheck{Sources: []string{"lib.sh"}, Diagnostics: []checkinputs.ScriptDiagnostic{
 			{Filename: "lib.sh", Source: "lib.sh", Code: "X2086", Severity: "info", Message: "quote it", Location: checkinputs.ScriptPosition{Row: 1, Column: 6}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 8}},
 			{Filename: "missing.sh", Source: "missing.sh", Code: "X1", Severity: "warning", Message: "gone", Location: checkinputs.ScriptPosition{Row: 3, Column: 1}},
 		}}
@@ -326,8 +326,8 @@ func TestReportedSourcesUnderTemplateContract(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	at := checkinputs.ScriptPosition{Row: 1, Column: 1}
-	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.Result {
-		return process.Result{Diagnostics: []checkinputs.ScriptDiagnostic{
+	backend := &reportingBackend{directory: directory, result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+		return process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{
 			{Code: "X1", Severity: "warning", Message: "snippet", Location: at, TemplateEffect: checkinputs.TemplateEffectNone},
 			{Source: "lib.sh", Code: "X2", Severity: "warning", Message: "read file", Location: at},
 			{Source: "lib.sh", Code: "X3", Severity: "warning", Message: "effect", Location: at, TemplateEffect: checkinputs.TemplateEffectOpaqueName},
@@ -365,7 +365,9 @@ func TestLineOriginsAndMessages(t *testing.T) {
 		},
 		{Code: "X5", Severity: "info", Message: "end on startup", Location: checkinputs.ScriptPosition{Row: 3, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 2, Column: 1}},
 	}
-	backend := &reportingBackend{result: func(checkinputs.ScriptRequest) process.Result { return process.Result{Diagnostics: diagnostics} }}
+	backend := &reportingBackend{result: func(checkinputs.ScriptRequest) process.DecodedCheck {
+		return process.DecodedCheck{Diagnostics: diagnostics}
+	}}
 	prepared := generated(script.Text)
 	prepared.Vars = map[string]string{"dialect": "bash"}
 	runner := buildRunner(t, backend, engineOptions{
@@ -403,10 +405,10 @@ func TestConcurrentProcessChecksKeepScriptOrder(t *testing.T) {
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	started := make(chan struct{}, 2)
 	release := make(chan struct{})
-	backend := &reportingBackend{concurrent: true, result: func(request checkinputs.ScriptRequest) process.Result {
+	backend := &reportingBackend{concurrent: true, result: func(request checkinputs.ScriptRequest) process.DecodedCheck {
 		started <- struct{}{}
 		<-release
-		return process.Result{Diagnostics: []checkinputs.ScriptDiagnostic{{Code: request.Source, Message: request.Source, Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}}
+		return process.DecodedCheck{Diagnostics: []checkinputs.ScriptDiagnostic{{Code: request.Source, Message: request.Source, Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}}
 	}}
 	runner := buildRunner(t, backend, engineOptions{})
 	go func() {

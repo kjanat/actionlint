@@ -176,7 +176,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 			return all, outline, nil, err
 		}
 	}
-	composed := composites.Result{EntrySnapshot: snapshot, Sources: map[string][]byte{}}
+	composed := composites.Composition{EntrySnapshot: snapshot, Sources: map[string][]byte{}}
 	if document.CanAnalyze() {
 		composed, analysisErr = s.composeDocument(path, sourcePath, root, content, document, snapshot, action, project, cfg, projectConfig, settings, provenance, processes, actions, workflows, registrations, usedRules)
 		if composed.Sources == nil {
@@ -272,7 +272,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
 	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, registrations []checkinputs.Registration, usedRules *[]rulemeta.Descriptor,
-) (result composites.Result, resultErr error) {
+) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
 	skipped := make(map[string]bool)

@@ -202,8 +202,8 @@ type Backend struct{ /* spec, *analyzerhost.Command, Decoder, limits, probe cach
 func NewBackend(spec ProcessSpec, cmd *analyzerhost.Command, dec Decoder) *Backend
 // implements analyzer.ScriptBackend, DescribedScriptBackend, ScriptConfigValidator (schema), ScriptTemplateValidator (version probe; generalizes ruff/version_probe.go)
 
-type Decoder interface { Decode(ctx context.Context, stdout []byte, vars map[string]string) (Result, error) }
-type Result struct { Diagnostics []analyzer.ScriptDiagnostic; Sources, Errors []string }
+type Decoder interface { Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error) }
+type DecodedCheck struct { Diagnostics []analyzer.ScriptDiagnostic; Sources, Errors []string }
 // Envelope{} (process.go:52-56 shape), SARIF{}, JQ{program, limits}
 
 // Proposed additions to internal/plugins/artifacts

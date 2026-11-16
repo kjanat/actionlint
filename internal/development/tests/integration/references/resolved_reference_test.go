@@ -91,9 +91,9 @@ func TestDisabledResolutionDoesNotCallProvider(t *testing.T) {
 	}
 }
 
-func (f *fakeResolver) Resolve(_ context.Context, r references.Request) (references.Result, error) {
+func (f *fakeResolver) Resolve(_ context.Context, r references.Request) (references.ResolutionRecord, error) {
 	f.requests = append(f.requests, r)
-	result := references.Result{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: knownRepositoryID(42), ObservedAt: "2026-10-16T00:00:00Z"}
+	result := references.ResolutionRecord{Version: 1, Repository: r.Repository, FetchLog: json.RawMessage(`{}`), RepositoryID: knownRepositoryID(42), ObservedAt: "2026-10-16T00:00:00Z"}
 	if len(f.ids) >= len(f.requests) {
 		result.RepositoryID = f.ids[len(f.requests)-1]
 	}
@@ -191,14 +191,14 @@ type concurrentIdentityResolver struct {
 	count   atomic.Uint64
 }
 
-func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (r *concurrentIdentityResolver) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	id := r.count.Add(1)
 	r.started <- struct{}{}
 	select {
 	case <-r.release:
-		return references.Result{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(id), Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+		return references.ResolutionRecord{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(id), Commit: strings.Repeat("a", 40), ObservedAt: "2026-10-16T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 	case <-ctx.Done():
-		return references.Result{}, ctx.Err()
+		return references.ResolutionRecord{}, ctx.Err()
 	}
 }
 

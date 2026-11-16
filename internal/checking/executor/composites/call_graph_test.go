@@ -102,7 +102,7 @@ func TestAnalyzerEmptyCollectedGraphAndUnavailableGraph(t *testing.T) {
 	if !slices.Contains(input.AvailableInputs, rulemeta.Scripts) || !slices.Contains(input.AvailableInputs, rulemeta.Invocations) || !input.CallGraph.Valid() || input.CallGraph.ScriptCount() != 0 {
 		t.Fatal("empty collected graph was treated as unavailable")
 	}
-	input, err = CheckInput(Result{}, "bad.yml", "bad.yml", nil, parsing.Document{}, nil)
+	input, err = CheckInput(Composition{}, "bad.yml", "bad.yml", nil, parsing.Document{}, nil)
 	if err != nil || input.CallGraph.Valid() || slices.Contains(input.AvailableInputs, rulemeta.Invocations) {
 		t.Fatalf("unavailable graph: %+v %v", input, err)
 	}

@@ -17,13 +17,13 @@ func (s *Service) Resolved() *ResolvedActions { return &ResolvedActions{service:
 
 // Inspect returns not-fetched when source preparation has not acquired a reference.
 // A nil reader means remote metadata lookup is disabled.
-func (r *ResolvedActions) Inspect(spec string) Result {
+func (r *ResolvedActions) Inspect(spec string) ActionInspection {
 	if r == nil || r.service == nil {
-		return Result{availability: actions.MissingMetadata(availability.LookupDisabled())}
+		return ActionInspection{availability: actions.MissingMetadata(availability.LookupDisabled())}
 	}
 	reference, err := actions.ParseReference("github.com", spec)
 	if err != nil {
-		return Result{}
+		return ActionInspection{}
 	}
 	r.service.mu.Lock()
 	defer r.service.mu.Unlock()

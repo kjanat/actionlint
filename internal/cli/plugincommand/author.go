@@ -54,7 +54,7 @@ type authoringFixture struct {
 	Stdout            *string                      `json:"stdout,omitempty"`
 	Variables         map[string]string            `json:"variables,omitempty"`
 	ExitCode          *int                         `json:"exit_code,omitempty"`
-	Expect            *process.Result              `json:"expect,omitempty"`
+	Expect            *process.DecodedCheck        `json:"expect,omitempty"`
 	ExpectConfig      json.RawMessage              `json:"expect_config,omitempty"`
 	ExpectVars        map[string]string            `json:"expect_vars,omitempty"`
 	ExpectError       string                       `json:"expect_error,omitempty"`
@@ -67,7 +67,7 @@ type authoringCaseResult struct {
 	Passed      bool                    `json:"passed"`
 	Config      json.RawMessage         `json:"config"`
 	Variables   map[string]string       `json:"variables"`
-	Result      *process.Result         `json:"result,omitempty"`
+	Result      *process.DecodedCheck   `json:"result,omitempty"`
 	Error       string                  `json:"error,omitempty"`
 }
 

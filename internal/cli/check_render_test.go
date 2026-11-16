@@ -62,7 +62,7 @@ func TestCheckColorLeavesOtherRenderersPlain(t *testing.T) {
 				default:
 				}
 				var out strings.Builder
-				if err := renderer.Render(&out, render.Result{Findings: []render.RenderedFinding{finding}}); err != nil {
+				if err := renderer.Render(&out, render.RenderedReport{Findings: []render.RenderedFinding{finding}}); err != nil {
 					failures <- err
 					return
 				}

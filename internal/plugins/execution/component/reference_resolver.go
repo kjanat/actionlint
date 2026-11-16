@@ -24,31 +24,31 @@ var (
 
 func (p *Plugin) HasReferenceResolver() bool { return p.referenceResolver }
 
-func (p *Plugin) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (p *Plugin) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	defer accounting.RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true}, false)
 	if !p.HasReferenceResolver() {
-		return references.Result{}, errors.New("component does not implement the reference-resolver role")
+		return references.ResolutionRecord{}, errors.New("component does not implement the reference-resolver role")
 	}
 	input, err := lowerReferenceRequest(request)
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	objects := &repositoryObjects{request: request, access: references.RepositoryAccessFromContext(ctx)}
 	ctx = context.WithValue(ctx, repositoryCallKey{}, objects)
 	value, err := p.callInterface(ctx, ReferenceResolverInterface, "resolve", input)
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	result, err := liftReferenceResolution(value)
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	if err := objects.validate(result); err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	result.FetchLog = append(json.RawMessage(nil), objects.fetchLog...)
 	if err := references.ValidateResult(request, result); err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
 	return result, nil
 }
@@ -60,7 +60,7 @@ func (p *Plugin) NewSession() references.Resolver {
 
 type pendingReferenceResolution struct {
 	done      chan struct{}
-	result    references.Result
+	result    references.ResolutionRecord
 	err       error
 	abandoned bool
 }
@@ -68,14 +68,14 @@ type pendingReferenceResolution struct {
 type referenceResolverSession struct {
 	resolver references.Resolver
 	mu       sync.Mutex
-	cache    map[references.Request]references.Result
+	cache    map[references.Request]references.ResolutionRecord
 	pending  map[references.Request]*pendingReferenceResolution
 }
 
-func (s *referenceResolverSession) Resolve(ctx context.Context, request references.Request) (references.Result, error) {
+func (s *referenceResolverSession) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
 	for {
 		if err := ctx.Err(); err != nil {
-			return references.Result{}, err
+			return references.ResolutionRecord{}, err
 		}
 		s.mu.Lock()
 		if result, ok := s.cache[request]; ok {
@@ -96,7 +96,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 				return ctx.Err()
 			}
 		}); err != nil {
-			return references.Result{}, err
+			return references.ResolutionRecord{}, err
 		}
 		if !pending.abandoned {
 			accounting.RecordResolverCall(ctx, nil, true)
@@ -114,7 +114,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 	pending.result, pending.err, pending.abandoned = result, err, err != nil && ctx.Err() != nil
 	if err == nil {
 		if s.cache == nil {
-			s.cache = make(map[references.Request]references.Result)
+			s.cache = make(map[references.Request]references.ResolutionRecord)
 		}
 		s.cache[request] = pending.result
 	}
@@ -283,7 +283,7 @@ func (r *repositoryObjects) Finish(ctx context.Context) (repositorybind.Result_S
 	return repositorybind.Result_StringOk{}, nil
 }
 
-func (r *repositoryObjects) validate(result references.Result) error {
+func (r *repositoryObjects) validate(result references.ResolutionRecord) error {
 	if r.err != nil {
 		return fmt.Errorf("repository lookup failed: %w", r.err)
 	}
@@ -369,23 +369,23 @@ func lowerReferenceRequest(request references.Request) (wacogo.Val, error) {
 	return wacogo.NewValRecord(field("repository", wacogo.ValString(request.Repository)), field("reference", wacogo.ValString(request.Ref)), field("kind", wacogo.NewValEnum(kind)), field("expected-repository-id", expected)), nil
 }
 
-func liftReferenceResolution(value wacogo.Val) (references.Result, error) {
+func liftReferenceResolution(value wacogo.Val) (references.ResolutionRecord, error) {
 	outcome, ok := value.(*wacogo.ValResult)
 	if !ok {
-		return references.Result{}, liftError{"reference resolution", value}
+		return references.ResolutionRecord{}, liftError{"reference resolution", value}
 	}
 	if !outcome.IsOk() {
 		message, ok := outcome.Err().(wacogo.ValString)
 		if !ok {
-			return references.Result{}, liftError{"reference resolution error", outcome.Err()}
+			return references.ResolutionRecord{}, liftError{"reference resolution error", outcome.Err()}
 		}
-		return references.Result{}, fmt.Errorf("reference resolution failed: %s", message)
+		return references.ResolutionRecord{}, fmt.Errorf("reference resolution failed: %s", message)
 	}
 	record, err := liftRecord(outcome.Ok(), "reference resolution")
 	if err != nil {
-		return references.Result{}, err
+		return references.ResolutionRecord{}, err
 	}
-	result := references.Result{Version: 1}
+	result := references.ResolutionRecord{Version: 1}
 	identity, ok := record.Field("repository-id").(*wacogo.ValOption)
 	if !ok {
 		return result, liftError{"reference repository ID", record.Field("repository-id")}

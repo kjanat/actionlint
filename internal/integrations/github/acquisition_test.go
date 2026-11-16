@@ -472,9 +472,9 @@ func TestEnvironmentFailuresFallBackToAPI(t *testing.T) {
 				}}
 				resolutions := 0
 				client, err := New(Options{Transport: hosts, Resolver: func() references.Resolver {
-					return resolveFunc(func(ctx context.Context, r references.Request) (references.Result, error) {
+					return resolveFunc(func(ctx context.Context, r references.Request) (references.ResolutionRecord, error) {
 						resolutions++
-						return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+						return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 					})
 				}})
 				if err != nil {
@@ -591,11 +591,11 @@ func TestMissingSHAWithUnavailableListingFallsBackToAPI(t *testing.T) {
 		return restFallback(t, r)
 	}}
 	client, err := New(Options{Transport: hosts, Resolver: func() references.Resolver {
-		return resolveFunc(func(ctx context.Context, r references.Request) (references.Result, error) {
+		return resolveFunc(func(ctx context.Context, r references.Request) (references.ResolutionRecord, error) {
 			if refListingFromContext(ctx) != nil || r.ExpectedRepositoryID != knownRepositoryID(t, 42) {
 				t.Fatalf("fallback resolution used the listing or lost the learned ID: %+v", r)
 			}
-			return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+			return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 		})
 	}})
 	if err != nil {
@@ -623,8 +623,8 @@ func TestRESTTagObjectCacheSupportsBothObjectAndCommit(t *testing.T) {
 				return restFallback(t, r)
 			}}
 			client, err := New(Options{CacheDir: cache, Transport: hosts, Resolver: func() references.Resolver {
-				return resolveFunc(func(_ context.Context, request references.Request) (references.Result, error) {
-					return references.Result{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(t, 42), Commit: sha, SelectedObject: request.Ref, ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+				return resolveFunc(func(_ context.Context, request references.Request) (references.ResolutionRecord, error) {
+					return references.ResolutionRecord{Version: 1, Repository: request.Repository, RepositoryID: knownRepositoryID(t, 42), Commit: sha, SelectedObject: request.Ref, ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 				})
 			}})
 			if err != nil {
@@ -895,8 +895,8 @@ func TestEnvironmentListingFailureIsSharedPerAnalysis(t *testing.T) {
 		return respond(r, http.StatusServiceUnavailable, "", ""), nil
 	}}
 	client, err := New(Options{Transport: hosts, Resolver: func() references.Resolver {
-		return resolveFunc(func(context.Context, references.Request) (references.Result, error) {
-			return references.Result{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
+		return resolveFunc(func(context.Context, references.Request) (references.ResolutionRecord, error) {
+			return references.ResolutionRecord{Version: 1, Repository: "example/action", Commit: sha, SelectedObject: sha, SelectedRef: "refs/tags/v1", ObservedAt: "2026-11-12T00:00:00Z", FetchLog: json.RawMessage(`{}`)}, nil
 		})
 	}})
 	if err != nil {

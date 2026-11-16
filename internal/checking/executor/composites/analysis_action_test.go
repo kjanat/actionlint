@@ -20,7 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
-func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Result, error) {
+func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta.Metadata, fixtures ...*capturedSnapshots) (Composition, error) {
 	t.Helper()
 	content, available := metadata.OriginalSource()
 	if !available {

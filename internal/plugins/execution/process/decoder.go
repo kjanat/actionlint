@@ -22,15 +22,15 @@ const (
 // argument variables of the check, such as "filename"; Decode must honour
 // ctx cancellation.
 type Decoder interface {
-	Decode(ctx context.Context, stdout []byte, vars map[string]string) (Result, error)
+	Decode(ctx context.Context, stdout []byte, vars map[string]string) (DecodedCheck, error)
 }
 
-// Result is one decoded check. Errors are engine-reported failures; they may
+// DecodedCheck is one decoded check. Errors are engine-reported failures; they may
 // accompany diagnostics when the engine completed only part of its analysis.
 // Sources are files the engine read besides the snippet. Directory is where
 // the engine ran, from which relative sources resolve; decoders leave it
 // empty and Backend sets it.
-type Result struct {
+type DecodedCheck struct {
 	Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
 	Sources     []string                       `json:"sources,omitempty"`
 	Errors      []string                       `json:"errors,omitempty"`

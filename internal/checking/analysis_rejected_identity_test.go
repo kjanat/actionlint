@@ -33,7 +33,7 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	}
 	actual := entry
 	actual.Revision = "current"
-	input, err := composites.CheckInput(composites.Result{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]workflowfacts.SourceIndex{"ci.yml": {Document: actual}})
+	input, err := composites.CheckInput(composites.Composition{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]workflowfacts.SourceIndex{"ci.yml": {Document: actual}})
 	if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
 		t.Fatalf("mismatched graph accepted: %v", err)
 	}

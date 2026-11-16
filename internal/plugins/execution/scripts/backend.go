@@ -133,7 +133,7 @@ type runner struct {
 // takes preparation variables, reports the files the engine read and may run
 // checks at once, each holding a slot of the shared process pool.
 type processRunner interface {
-	Run(context.Context, checkinputs.ScriptRequest, map[string]string) (process.Result, error)
+	Run(context.Context, checkinputs.ScriptRequest, map[string]string) (process.DecodedCheck, error)
 	Concurrent() bool
 }
 

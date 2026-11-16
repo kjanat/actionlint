@@ -242,7 +242,7 @@ func TestScriptBudgetStopsEntryAndRetainsEarlierFacts(t *testing.T) {
 					"later/action.yml": "name: later\ndescription: unreachable\nruns: {using: composite, steps: []}\n",
 				}, &budget)
 				f.options.CollectScripts = collect
-				var result Result
+				var result Composition
 				var err error
 				wantCalls, wantDocuments := 0, 0
 				if mode == "standalone" {

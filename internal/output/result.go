@@ -4,9 +4,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
-// Result supplies report data and captured snippets for rendering. The caller
+// RenderedReport supplies report data and captured snippets for rendering. The caller
 // sets command completion in CheckResult before requesting JSON output.
-type Result struct {
+type RenderedReport struct {
 	report.CheckResult
 	Findings []RenderedFinding
 	Rules    []Rule
@@ -14,8 +14,8 @@ type Result struct {
 
 // FromAnalysis prepares display data without choosing command status. It converts
 // half-open source spans to inclusive columns for text and template output.
-func FromAnalysis(analysis report.Analysis) Result {
-	r := Result{
+func FromAnalysis(analysis report.Analysis) RenderedReport {
+	r := RenderedReport{
 		CheckResult: report.FromAnalysis(analysis),
 		Rules:       analysis.Rules,
 	}
