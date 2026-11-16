@@ -57,7 +57,7 @@ func TestBackendRoundTripsThroughYAML(t *testing.T) {
 		data, err := encodeBackendConfig(&backend)
 		original, parseErr := document.Parse("test.yaml", []byte(input))
 		roundTrip, roundTripErr := document.Parse("test.yaml", data)
-		if err != nil || parseErr != nil || roundTripErr != nil || !reflect.DeepEqual(original.Value, roundTrip.Value) {
+		if err != nil || parseErr != nil || roundTripErr != nil || !reflect.DeepEqual(original.Value(), roundTrip.Value()) {
 			t.Fatalf("%q encoded as %q, err=%v", input, data, err)
 		}
 	}
@@ -100,9 +100,10 @@ func TestNormalizePathsBindsModulesToTheirConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	NormalizePaths(node.Value, filepath.Join(root, ".github"))
+	value := node.Value()
+	NormalizePaths(value, filepath.Join(root, ".github"))
 	var out string
-	if data, err := document.Marshal("test.yaml", node.Value); err == nil {
+	if data, err := document.Marshal("test.yaml", value); err == nil {
 		out = string(data)
 	} else {
 		t.Fatal(err)
@@ -122,8 +123,9 @@ func TestNormalizePathsPreservesPluginURIs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		NormalizePaths(node.Value, t.TempDir())
-		data, err := document.Marshal("test.yaml", node.Value)
+		value := node.Value()
+		NormalizePaths(value, t.TempDir())
+		data, err := document.Marshal("test.yaml", value)
 		if err != nil || strings.Count(string(data), uri) != 2 {
 			t.Fatalf("URI rebased: %s %v", data, err)
 		}

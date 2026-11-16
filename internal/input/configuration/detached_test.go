@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func TestDetachedConfigPreservesAndSeparatesMutableSettings(t *testing.T) {
@@ -34,8 +35,8 @@ func TestDetachedConfigPreservesAndSeparatesMutableSettings(t *testing.T) {
 	longest.Longest()
 	cfg.Paths = map[string]PathConfig{"**": {Ignore: IgnorePatterns{longest, regexp.MustCompile("x|xy")}}}
 	cfg.Policy.RequireCommitHash = new(true)
-	cfg.Lint.locations = map[string]Input{"/lint/lifecycle/policies/0/id": {File: "base.toml", Reset: &Input{File: "reset.toml"}}}
-	cfg.Lint.Rules.bindingSources = []bindingSource{{rules: LintRulesConfig{Disable: []string{"example"}}, inputs: map[string]Input{"/origin": {File: "base", Reset: &Input{File: "parent"}}}, prefix: []string{"lint"}}}
+	cfg.Lint.locations = map[string]document.Location{"/lint/lifecycle/policies/0/id": {File: "base.toml", Reset: &document.Location{File: "reset.toml"}}}
+	cfg.Lint.Rules.bindingSources = []bindingSource{{rules: LintRulesConfig{Disable: []string{"example"}}, inputs: map[string]document.Location{"/origin": {File: "base", Reset: &document.Location{File: "parent"}}}, prefix: []string{"lint"}}}
 	lintPattern := regexp.MustCompile("y|yz")
 	lintPattern.Longest()
 	cfg.Lint.MessageIgnores = map[string]IgnorePatterns{"**": {lintPattern}}

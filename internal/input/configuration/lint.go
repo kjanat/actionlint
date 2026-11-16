@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -56,7 +57,7 @@ type LintRulesConfig struct {
 // is only read through copying projections.
 type lintState struct {
 	source    any `clone:"shared"`
-	locations map[string]Input
+	locations map[string]document.Location
 }
 
 // ruleState owns prepared rule decisions. The shared handles are immutable:
@@ -80,12 +81,12 @@ type boundSetting struct {
 type bindingSource struct {
 	origin string
 	rules  LintRulesConfig
-	inputs map[string]Input
+	inputs map[string]document.Location
 	prefix []string
 }
 
-func ruleBindingSources(origin string, config *Config, locations ...map[string]Input) []bindingSource {
-	var inputs map[string]Input
+func ruleBindingSources(origin string, config *Config, locations ...map[string]document.Location) []bindingSource {
+	var inputs map[string]document.Location
 	if len(locations) > 0 {
 		inputs = maps.Clone(locations[0])
 	}

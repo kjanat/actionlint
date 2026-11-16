@@ -28,7 +28,7 @@ func TestSettingCanonicalLevels(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			setting, err := parseSetting(parsed.Value)
+			setting, err := parseSetting(parsed.Value())
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -1,4 +1,3 @@
-// Package document parses configuration formats and records source locations.
 package document
 
 import (
@@ -16,21 +15,35 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-type Location struct {
-	File         string
-	Line, Column int
-}
-type Document struct {
-	Value          any
-	Locations      map[string]Location
-	ValueLocations map[string]Location
+// position is a 1-based line and column in one source file.
+type position struct{ line, column int }
+
+// parsedSource collects a decoded value and the positions of its keys and
+// values while one file is parsed. Parse turns it into a Node.
+type parsedSource struct {
+	file   string
+	value  any
+	keys   map[string]position
+	values map[string]position
 }
 
-func Path(parent, key string) string {
-	return parent + "/" + strings.ReplaceAll(strings.ReplaceAll(key, "~", "~0"), "/", "~1")
+func newParsedSource(file string) *parsedSource {
+	start := position{1, 1}
+	return &parsedSource{file: file, keys: map[string]position{"": start}, values: map[string]position{"": start}}
 }
-func Index(parent string, i int) string { return Path(parent, strconv.Itoa(i)) }
-func location(file string, data []byte, offset int) Location {
+
+// node locates every pointer that has a value position. Key positions without
+// a value, such as the intermediate keys of a dotted TOML key, are dropped.
+func (p *parsedSource) node() *Node {
+	locations := make(map[string]Location, len(p.values))
+	for pointer, value := range p.values {
+		key := p.keys[pointer]
+		locations[pointer] = Location{File: p.file, Line: value.line, Column: value.column, KeyLine: key.line, KeyColumn: key.column}
+	}
+	return Capture(p.value, locations)
+}
+
+func offsetPosition(data []byte, offset int) position {
 	if offset < 0 {
 		offset = 0
 	}
@@ -38,12 +51,7 @@ func location(file string, data []byte, offset int) Location {
 		offset = len(data)
 	}
 	prefix := data[:offset]
-	return Location{file, 1 + bytes.Count(prefix, []byte{'\n'}), 1 + utf8.RuneCount(prefix[bytes.LastIndexByte(prefix, '\n')+1:])}
-}
-
-func newDocument(path string) Document {
-	l := Location{path, 1, 1}
-	return Document{Locations: map[string]Location{"": l}, ValueLocations: map[string]Location{"": l}}
+	return position{1 + bytes.Count(prefix, []byte{'\n'}), 1 + utf8.RuneCount(prefix[bytes.LastIndexByte(prefix, '\n')+1:])}
 }
 
 // normalize keeps the same scalar and container types across formats.

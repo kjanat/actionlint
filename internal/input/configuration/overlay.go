@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
 // Keys returns the supported top-level configuration keys in declaration order.
@@ -32,7 +31,7 @@ type Overlay struct {
 	name   string
 	node   any
 	rules  any
-	inputs map[string]Input
+	inputs map[string]document.Location
 }
 
 // ParseOverlay parses a complete YAML/JSON document (input "config") or
@@ -56,8 +55,8 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 	if err != nil {
 		return Overlay{}, fmt.Errorf("input %s: %w", input, err)
 	}
-	node := parsed.Value
-	inputs := documentInputs(parsed)
+	node := parsed.Value()
+	inputs := parsed.Origins()
 	for path, location := range inputs {
 		location.Name, location.File = input, ""
 		inputs[path] = location
@@ -71,7 +70,7 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 			return Overlay{}, fmt.Errorf("unknown configuration input %q", input)
 		}
 		node = map[string]any{input: node}
-		prefixed := make(map[string]Input, len(inputs)+1)
+		prefixed := make(map[string]document.Location, len(inputs)+1)
 		prefixed[""] = inputs[""]
 		for path, location := range inputs {
 			prefixed[document.Path("", input)+path] = location
@@ -114,10 +113,10 @@ func (ruleSet RuleSet) parseOverlay(input string, content []byte, bindRules bool
 // ResolveBeforePlugins merges already parsed overlays for dependency selection.
 // Only rule-name binding is deferred; it is repeated by the analysis session.
 func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (ResolvedConfig, error) {
-	inputs := make(map[string]Input)
+	inputs := make(map[string]document.Location)
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
-		merged := configtree.Overlay(configtree.Capture(node, inputs), configtree.Capture(overlay.node, overlay.inputs), MergePlan())
+		merged := document.Merge(document.Capture(node, inputs), document.Capture(overlay.node, overlay.inputs), MergePlan())
 		node, inputs = merged.Value(), merged.Origins()
 		names = append(names, overlay.name)
 	}
@@ -133,8 +132,6 @@ type LoadedFile struct {
 	ResolvedConfig
 	Filename string
 }
-
-type Input = configtree.Input
 
 // Name returns the input that supplied this overlay.
 func (o Overlay) Name() string { return o.name }
@@ -173,7 +170,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Over
 	}
 	inputs := maps.Clone(resolved.Inputs)
 	if inputs == nil {
-		inputs = make(map[string]Input)
+		inputs = make(map[string]document.Location)
 	}
 	names := make([]string, 0, len(overlays))
 	for _, overlay := range overlays {
@@ -183,7 +180,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Over
 			return nil, ResolvedConfig{}, err
 		}
 		bindingSources = append(bindingSources, ruleBindingSources(overlay.name, &settings, overlay.inputs)...)
-		merged := configtree.Overlay(configtree.Capture(node, inputs), configtree.Capture(overlay.node, overlay.inputs), MergePlan())
+		merged := document.Merge(document.Capture(node, inputs), document.Capture(overlay.node, overlay.inputs), MergePlan())
 		node, inputs = merged.Value(), merged.Origins()
 		names = append(names, overlay.name)
 	}

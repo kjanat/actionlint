@@ -1,32 +1,37 @@
-package tree
+package document
 
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
-// Loaded contains merged values, source files, and source locations by JSON pointer.
+// Loaded is a configuration file merged over the files it extends.
+// Files lists every source file in merge order, ending with the selected file.
+// Selected holds the selected file as parsed, before normalization, so it can
+// be edited without parsing it again.
 type Loaded struct {
-	Value   any
-	Files   []string
-	Origins map[string]Input
-	Node    *Node
+	Root     *Node
+	Files    []string
+	Selected *Editor
 }
 
-func Load(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error)) (Loaded, error) {
-	return LoadWithMerge(path, read, normalize, nil)
-}
+// Normalizer rewrites one parsed source before it is merged. origin is the
+// source's normalized address; the node's locations still name the spelling
+// that was read. A nil Normalizer keeps each source unchanged.
+type Normalizer func(origin string, source *Node) (*Node, error)
 
-func LoadWithMerge(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error), plan Plan) (Loaded, error) {
+// Load reads path and the files it extends, depth first, and merges each
+// source over its bases according to plan. Each file is read and parsed once.
+func Load(path string, read func(string) ([]byte, error), normalize Normalizer, plan Plan) (Loaded, error) {
 	active := map[string]bool{}
 	cache := map[string]Loaded{}
 	var files []string
+	var selected *Editor
 	var load func(string, int) (Loaded, error)
 	load = func(path string, depth int) (Loaded, error) {
 		readPath := path
@@ -55,19 +60,24 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 		if err != nil {
 			return Loaded{}, fmt.Errorf("read config %q: %w", path, err)
 		}
-		doc, err := document.Parse(readPath, data)
+		parsed, err := Parse(readPath, data)
 		if err != nil {
 			return Loaded{}, fmt.Errorf("config %q: %w", path, err)
 		}
+		if depth == 0 {
+			selected = &Editor{path: readPath, syntax: syntaxOf(readPath), original: slices.Clone(data), root: cloneNode(parsed)}
+		}
 		if normalize != nil {
-			doc, err = normalize(path, doc)
+			parsed, err = normalize(path, parsed)
 			if err != nil {
 				return Loaded{}, fmt.Errorf("config %q: %w", path, err)
 			}
 		}
+		parsed = cloneNode(parsed)
+		parsed.setFile(path)
 		var bases []string
-		if object, ok := doc.Value.(map[string]any); ok {
-			if value, present := object["extends"]; present && value != nil {
+		if extends := parsed.Child("extends"); extends != nil {
+			if value := extends.Value(); value != nil {
 				list, ok := value.([]any)
 				if !ok {
 					return Loaded{}, fmt.Errorf("config %q extends must be a list of strings", path)
@@ -80,8 +90,9 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 					bases = append(bases, name)
 				}
 			}
+			delete(parsed.object, "extends")
 		}
-		result := Loaded{Origins: map[string]Input{}}
+		var result Loaded
 		for _, name := range bases {
 			resolved, err := source.ResolveAddress(path, name)
 			if err != nil {
@@ -95,29 +106,19 @@ func LoadWithMerge(path string, read func(string) ([]byte, error), normalize fun
 				}
 				return Loaded{}, extendsError{origin: path, cause: cause}
 			}
-			result.Node = Overlay(result.Node, inherited.Node, plan)
+			result.Root = Merge(result.Root, inherited.Root, plan)
 		}
-		source := map[string]Input{}
-		for pointer, loc := range doc.ValueLocations {
-			key := doc.Locations[pointer]
-			source[pointer] = Input{File: path, Line: loc.Line, Column: loc.Column, KeyLine: key.Line, KeyColumn: key.Column}
-		}
-		if object, ok := doc.Value.(map[string]any); ok {
-			object = maps.Clone(object)
-			delete(object, "extends")
-			doc.Value = object
-		}
-		result.Node = Overlay(result.Node, Capture(doc.Value, source), plan)
-		result.Value, result.Origins = result.Node.Value(), result.Node.Origins()
+		result.Root = Merge(result.Root, parsed, plan)
 		cache[path] = result
 		files = append(files, path)
 		return result, nil
 	}
 	result, err := load(path, 0)
-	result.Files = files
+	result.Files, result.Selected = files, selected
 	return result, err
 }
 
+// extendsError reports a base that failed to load from the file that extends it.
 type extendsError struct {
 	origin string
 	cause  error

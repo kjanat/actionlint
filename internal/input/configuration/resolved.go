@@ -5,11 +5,12 @@ import (
 	"maps"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 // configOrigins assigns source locations after inheritance and Action overrides.
-func configOrigins(value any, prefix string, origins map[string]configreport.Origin, inputs map[string]Input) error {
+func configOrigins(value any, prefix string, origins map[string]configreport.Origin, inputs map[string]document.Location) error {
 	selected, found := inputs[prefix]
 	if found {
 		reset := selected.Reset
@@ -39,7 +40,7 @@ func configOrigins(value any, prefix string, origins map[string]configreport.Ori
 	return nil
 }
 
-func configValueOrigin(value any, input Input) configreport.Origin {
+func configValueOrigin(value any, input document.Location) configreport.Origin {
 	origin := configreport.Origin{Source: "config", State: "null", File: input.File, Line: input.Line, Column: input.Column}
 	if value != nil {
 		origin.State = "value"

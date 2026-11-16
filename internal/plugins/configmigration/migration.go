@@ -63,7 +63,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	if err != nil {
 		return nil, err
 	}
-	_, declaredLocally, err := configplugins.References(leaf.Value)
+	_, declaredLocally, err := configplugins.References(leaf.Value())
 	if err != nil {
 		return nil, err
 	}

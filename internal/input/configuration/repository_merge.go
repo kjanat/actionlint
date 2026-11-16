@@ -7,11 +7,10 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
-var compiledMergePlan = sync.OnceValue(func() configtree.Plan {
-	plan, err := configtree.CompilePlan(reflect.TypeFor[Config]())
+var compiledMergePlan = sync.OnceValue(func() document.Plan {
+	plan, err := document.CompilePlan(reflect.TypeFor[Config]())
 	if err != nil {
 		panic(err)
 	}
@@ -19,7 +18,7 @@ var compiledMergePlan = sync.OnceValue(func() configtree.Plan {
 })
 
 // MergePlan returns detached overlay rules derived from configuration fields.
-func MergePlan() configtree.Plan {
+func MergePlan() document.Plan {
 	plan := maps.Clone(compiledMergePlan())
 	for path, rule := range plan {
 		rule.Members = slices.Clone(rule.Members)
@@ -28,6 +27,22 @@ func MergePlan() configtree.Plan {
 	return plan
 }
 
-func loadConfigTree(path string, read func(string) ([]byte, error), normalize func(string, document.Document) (document.Document, error)) (configtree.Loaded, error) {
-	return configtree.LoadWithMerge(path, read, normalize, MergePlan())
+// LoadSources reads a configuration file and the files it extends into one
+// merged tree, using the merge rules of Config. normalize rewrites each source
+// before it is merged.
+func LoadSources(path string, read func(string) ([]byte, error), normalize document.Normalizer) (document.Loaded, error) {
+	return document.Load(path, read, normalize, MergePlan())
+}
+
+// relocateSource returns value located by source, adding the locations of
+// settings that migration moved. Settings that stay in place keep their
+// parsed locations.
+func relocateSource(value any, source *document.Node, relocated map[string]document.Location) *document.Node {
+	locations := source.Origins()
+	for pointer, location := range relocated {
+		if _, parsed := locations[pointer]; !parsed {
+			locations[pointer] = location
+		}
+	}
+	return document.Capture(value, locations)
 }

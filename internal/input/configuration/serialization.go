@@ -13,7 +13,7 @@ func (ruleSet RuleSet) Unmarshal(source []byte, dst *Config) error {
 	if err != nil {
 		return err
 	}
-	return ruleSet.DecodeValue(parsed.Value, dst)
+	return ruleSet.DecodeValue(parsed.Value(), dst)
 }
 
 // DecodeValue replaces dst only after the complete configuration has decoded.

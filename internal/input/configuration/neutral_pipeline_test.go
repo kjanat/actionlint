@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/tree"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 func writeNeutralFixture(t *testing.T, dir, name, content string) string {
@@ -26,13 +26,13 @@ func TestNeutralMixedFormatExtends(t *testing.T) {
 	writeNeutralFixture(t, dir, "base.toml", "[repository]\nrunners = ['gpu']\nsecrets = ['BASE']\n")
 	writeNeutralFixture(t, dir, "middle.jsonc", "{\n // inherit TOML\n \"extends\": [\"base.toml\"],\n \"repository\": {\"secrets\": [],},\n}\n")
 	leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [middle.jsonc]\nrepository:\n  runners: []\n")
-	loaded, err := tree.Load(leaf, os.ReadFile, nil)
+	loaded, err := document.Load(leaf, os.ReadFile, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]any{"repository": map[string]any{"runners": []any{}, "secrets": []any{}}}
-	if !reflect.DeepEqual(loaded.Value, want) {
-		t.Fatalf("got %#v, want %#v", loaded.Value, want)
+	if !reflect.DeepEqual(loaded.Root.Value(), want) {
+		t.Fatalf("got %#v, want %#v", loaded.Root.Value(), want)
 	}
 	if len(loaded.Files) != 3 {
 		t.Fatalf("sources: %v", loaded.Files)
@@ -58,12 +58,12 @@ func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
 			dir := t.TempDir()
 			writeNeutralFixture(t, dir, "base.yaml", "mapping: {one: base}\nlist: [base]\n")
 			leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [base.yaml]\n"+tc.overlay+"\n")
-			got, err := tree.Load(leaf, os.ReadFile, nil)
+			got, err := document.Load(leaf, os.ReadFile, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(got.Value, tc.want) {
-				t.Fatalf("got %#v, want %#v", got.Value, tc.want)
+			if !reflect.DeepEqual(got.Root.Value(), tc.want) {
+				t.Fatalf("got %#v, want %#v", got.Root.Value(), tc.want)
 			}
 		})
 	}

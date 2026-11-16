@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	configtree "actionlint.kjanat.dev/v2/internal/input/configuration/tree"
 )
 
+// ruleSources keeps the extends and lint settings of every loaded file, the
+// encoded base configuration and the command-line overlays, so lint settings
+// can be decoded again once plugin rules are registered. root names the
+// selected file; documents is keyed by normalized file address.
 type ruleSources struct {
 	root      string
 	documents map[string]any
@@ -42,10 +46,10 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		return config, nil
 	}
 	sources := config.Lint.Rules.sources
-	merged := configtree.Capture(sources.base, nil)
-	cache := map[string]*configtree.Node{}
-	var load func(string) (*configtree.Node, error)
-	load = func(path string) (*configtree.Node, error) {
+	merged := document.Capture(sources.base, nil)
+	cache := map[string]*document.Node{}
+	var load func(string) (*document.Node, error)
+	load = func(path string) (*document.Node, error) {
 		if value, found := cache[path]; found {
 			return value, nil
 		}
@@ -59,7 +63,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 				return nil, err
 			}
 		}
-		var base *configtree.Node
+		var base *document.Node
 		for _, parent := range parents {
 			path, err := source.ResolveAddress(path, parent)
 			if err != nil {
@@ -69,13 +73,13 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			base = configtree.Overlay(base, inherited, MergePlan())
+			base = document.Merge(base, inherited, MergePlan())
 		}
 		normalized, err := ruleSet.normalizeRuleDocument(value)
 		if err != nil {
 			return nil, err
 		}
-		result := configtree.Overlay(base, configtree.Capture(normalized, nil), MergePlan())
+		result := document.Merge(base, document.Capture(normalized, nil), MergePlan())
 		cache[path] = result
 		return result, nil
 	}
@@ -89,7 +93,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		var err error
 		normalized, normalizeErr := ruleSet.normalizeRuleDocument(merged.Value())
 		err = normalizeErr
-		merged = configtree.Capture(normalized, nil)
+		merged = document.Capture(normalized, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +103,7 @@ func (ruleSet RuleSet) capturedRuleConfig(config *Config) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		merged = configtree.Overlay(merged, configtree.Capture(normalized, nil), MergePlan())
+		merged = document.Merge(merged, document.Capture(normalized, nil), MergePlan())
 	}
 	if merged.Value() == nil {
 		return config, nil

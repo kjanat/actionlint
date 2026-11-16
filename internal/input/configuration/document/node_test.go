@@ -1,4 +1,4 @@
-package tree
+package document
 
 import (
 	"reflect"
@@ -10,9 +10,9 @@ import (
 func TestLocatedOverlayPreservesKeyedOrigins(t *testing.T) {
 	t.Parallel()
 	policy := func(id string) any { return map[string]any{"id": id} }
-	base := Capture(map[string]any{"policies": []any{policy("a"), policy("b")}}, map[string]Input{"/policies/0/id": {File: "base"}, "/policies/1/id": {File: "base"}})
-	patch := Capture(map[string]any{"policies": []any{policy("b"), policy("c")}}, map[string]Input{"/policies/0/id": {File: "patch"}, "/policies/1/id": {File: "patch"}})
-	got := Overlay(base, patch, Plan{"/policies": {Mode: KeyedList, Key: "id"}})
+	base := Capture(map[string]any{"policies": []any{policy("a"), policy("b")}}, map[string]Location{"/policies/0/id": {File: "base"}, "/policies/1/id": {File: "base"}})
+	patch := Capture(map[string]any{"policies": []any{policy("b"), policy("c")}}, map[string]Location{"/policies/0/id": {File: "patch"}, "/policies/1/id": {File: "patch"}})
+	got := Merge(base, patch, Plan{"/policies": {Mode: KeyedList, Key: "id"}})
 	vals := got.Value().(map[string]any)["policies"].([]any)
 	origins := got.Origins()
 	for i, want := range []struct{ id, file string }{{"a", "base"}, {"b", "patch"}, {"c", "patch"}} {
@@ -24,9 +24,9 @@ func TestLocatedOverlayPreservesKeyedOrigins(t *testing.T) {
 
 func TestAtomicMembersAfterNullRetainsReset(t *testing.T) {
 	t.Parallel()
-	base := Capture(map[string]any{"facts": nil}, map[string]Input{"/facts": {File: "reset"}})
-	patch := Capture(map[string]any{"facts": map[string]any{"one": "value"}}, map[string]Input{"/facts": {File: "patch"}, "/facts/one": {File: "patch"}})
-	got := Overlay(base, patch, Plan{"/facts": {Mode: AtomicMembers, Members: []string{"one", "two"}}})
+	base := Capture(map[string]any{"facts": nil}, map[string]Location{"/facts": {File: "reset"}})
+	patch := Capture(map[string]any{"facts": map[string]any{"one": "value"}}, map[string]Location{"/facts": {File: "patch"}, "/facts/one": {File: "patch"}})
+	got := Merge(base, patch, Plan{"/facts": {Mode: AtomicMembers, Members: []string{"one", "two"}}})
 	facts := got.Value().(map[string]any)["facts"].(map[string]any)
 	origins := got.Origins()
 	if facts["one"] != "value" || facts["two"] != nil || origins["/facts"].Reset == nil || origins["/facts"].Reset.File != "reset" || origins["/facts/two"].File != "reset" {
@@ -96,9 +96,9 @@ func TestReplaceModeReplacesObjectAndOrigins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Capture(map[string]any{"settings": map[string]any{"old": "value"}}, map[string]Input{"/settings/old": {File: "base"}})
-	patch := Capture(map[string]any{"settings": map[string]any{"new": "value"}}, map[string]Input{"/settings/new": {File: "overlay"}})
-	got := Overlay(base, patch, plan)
+	base := Capture(map[string]any{"settings": map[string]any{"old": "value"}}, map[string]Location{"/settings/old": {File: "base"}})
+	patch := Capture(map[string]any{"settings": map[string]any{"new": "value"}}, map[string]Location{"/settings/new": {File: "overlay"}})
+	got := Merge(base, patch, plan)
 	values := got.Value().(map[string]any)["settings"].(map[string]any)
 	origins := got.Origins()
 	if len(values) != 1 || values["new"] != "value" || origins["/settings/new"].File != "overlay" {
