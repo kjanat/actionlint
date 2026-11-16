@@ -23,7 +23,6 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/cli/checkoptions"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
@@ -80,7 +79,7 @@ func (r *lintResult) selectedFileCount() int {
 }
 
 func (req *lintRequest) configureEnvironment(env func(string) string) error {
-	connected, err := checkoptions.ConnectGitHub(checking.Options{}, checkoptions.GitHubAccess{Getenv: env, Acquisition: req.acquisition})
+	connected, err := assembly.ConnectGitHub(checking.Options{}, assembly.GitHubAccess{Getenv: env, Acquisition: req.acquisition})
 	if err != nil {
 		return inputErrorf("%s", err)
 	}

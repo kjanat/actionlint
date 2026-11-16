@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
@@ -34,13 +35,13 @@ func LanguageServer(ctx context.Context, in io.Reader, out io.Writer, options ch
 func (s *editorPluginHost) analyze(ctx context.Context, documents map[string]Document) (Analysis, error) {
 	// A registry refresh in another process can revoke an already compiled
 	// plugin. Recheck local status before every analysis without network access.
-	if err := checkEditorPluginStatuses(ctx, s.sources, s.options.LogWriter); err != nil {
+	if err := assembly.CheckPluginStatuses(ctx, s.sources, s.options.LogWriter); err != nil {
 		return Analysis{}, err
 	}
 	if err := s.sources.ValidateScope(ctx, checking.ConfigurationRules(), slices.Collect(maps.Keys(documents))); err != nil {
 		return Analysis{}, err
 	}
-	if err := s.plugins.BeginAnalysis(ctx); err != nil {
+	if err := s.session.BeginAnalysis(ctx); err != nil {
 		return Analysis{}, err
 	}
 	return analyzeDocuments(ctx, s.options, documents)

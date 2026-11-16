@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -19,7 +17,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/plugins/toolproviders"
 )
@@ -43,15 +40,11 @@ func InspectConfig(ctx context.Context, selection configuration.ConfigFileSelect
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)
+	plugins, configured, err := loadDeclarations(ctx, sources)
 	if err != nil {
 		return inspection, err
 	}
 	defer func() { err = errors.Join(err, plugins.Close(context.WithoutCancel(ctx))) }()
-	configured, err := ConfigureManagedPlugins(plugins, checking.Options{Tools: registry.Registrations(nil), Analyzers: plugins.Registrations()})
-	if err != nil {
-		return inspection, err
-	}
 	rules := checking.ConfigurationRegistrations(configured.Analyzers, configured.Tools)
 	for _, engine := range plugins.ScriptEngines {
 		rules = append(rules, configuration.RuleRegistration{Declaration: rule.Declaration{Descriptor: engine.Descriptor.Rule, Scope: rule.SourceConfiguration, SupportsActions: true}, ReplacesTool: engine.Descriptor.Engine})

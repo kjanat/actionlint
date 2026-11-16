@@ -3,8 +3,9 @@
 // script engines, tool providers, runners and reference resolvers in the
 // checking options. Package checking runs rules and knows nothing about
 // plugin files; package plugins finds, fetches and instantiates plugins and
-// knows nothing about checking. The command-line and editor entry points
-// call this package.
+// knows nothing about checking. The command line, the GitHub Action and both
+// language servers build their checks through [Open] and connect to GitHub
+// through [ConnectGitHub].
 package assembly
 
 import (
@@ -28,7 +29,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
-	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -44,32 +44,17 @@ func CheckWithPluginPaths(ctx context.Context, options checking.Options, input c
 
 // CheckWithPlugins loads the selected plugins and checks the input.
 func CheckWithPlugins(ctx context.Context, options checking.Options, input checkrequest.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	log := options.LogWriter
-	if log == nil {
-		log = io.Discard
-	}
-	if sources.Releases != nil {
-		if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }, Acquisition: sources.Acquisition}); err != nil {
-			return nil, &pluginexecution.LoadError{Err: err}
-		}
-	}
-	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
+	session, err := Open(ctx, options, sources)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, plugins.Close(context.WithoutCancel(ctx))) }()
-	options, err = ConfigurePlugins(plugins, ctx, options)
-	if err != nil {
-		return nil, err
-	}
-	options, err = ConfigureManagedPlugins(plugins, options)
-	if err != nil {
-		return nil, err
-	}
+	defer func() { err = errors.Join(err, session.Close(ctx)) }()
+	options = session.Options
 	if options.LoadScriptEngine == nil {
+		log := options.LogWriter
+		if log == nil {
+			log = io.Discard
+		}
 		options.LoadScriptEngine = pluginexecution.ScriptEngineLoader(sources.Acquisition, checking.BuiltinRuleNames(), log, options.Debug)
 	}
 	return checking.Check(ctx, options, input)
@@ -86,22 +71,15 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options,
 }
 
 // RequiredToolsWithPlugins applies the selected plugins before checking which
-// native tools are needed.
+// native tools are needed. Plugin warnings and logs are discarded.
 func RequiredToolsWithPlugins(ctx context.Context, options checking.Options, paths []string, sources pluginselection.Sources) (needed workspace.ExternalToolRequirements, err error) {
-	loaded, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)
+	options.LogWriter, options.Debug = io.Discard, false
+	session, err := Open(ctx, options, sources)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, loaded.Close(context.WithoutCancel(ctx))) }()
-	options, err = ConfigurePlugins(loaded, ctx, options)
-	if err != nil {
-		return nil, err
-	}
-	options, err = ConfigureManagedPlugins(loaded, options)
-	if err != nil {
-		return nil, err
-	}
-	return checking.RequiredTools(ctx, options, paths)
+	defer func() { err = errors.Join(err, session.Close(ctx)) }()
+	return checking.RequiredTools(ctx, session.Options, paths)
 }
 
 // ConfigureManagedPlugins configures the built-in tool integrations, leaving
