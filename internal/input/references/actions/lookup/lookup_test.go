@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
@@ -73,7 +74,7 @@ func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 			t.Fatalf("%s: missing definition: %v", reference, err)
 		}
 		input, exists := definition.Input("token")
-		if definition.Using() != "composite" || !definition.OutputsComplete() || !slices.Equal(definition.OutputNames(), []string{"value"}) || !exists || !input.Required {
+		if definition.Using() != "composite" || !definition.OutputsComplete() || !slices.Equal(definition.OutputIDs(), []string{"value"}) || !exists || !input.Required {
 			t.Fatalf("%s: inconsistent inputs, outputs or runtime: %+v", reference, definition)
 		}
 	}
@@ -85,9 +86,9 @@ func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 		t.Fatal(err)
 	}
 	delete(metadata.Outputs, "value")
-	metadata.Inputs["token"].Required = false
+	metadata.Inputs["token"] = calls.Input{Name: "token"}
 	input, _ := definition.Input("token")
-	if !input.Required || !slices.Equal(definition.OutputNames(), []string{"value"}) {
+	if !input.Required || !slices.Equal(definition.OutputIDs(), []string{"value"}) {
 		t.Fatal("local metadata mutation changed a published definition")
 	}
 }

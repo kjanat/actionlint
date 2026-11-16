@@ -66,7 +66,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !definition.AllowsAdditionalInputs() || definition.OutputsComplete() || !slices.Equal(definition.OutputNames(), []string{"data", "headers", "status"}) {
+			if !definition.AllowsAdditionalInputs() || definition.OutputsComplete() || !slices.Equal(definition.OutputIDs(), []string{"data", "headers", "status"}) {
 				t.Fatal("selection lost additional inputs or the declared output names")
 			}
 			route, exists := definition.Input("route")

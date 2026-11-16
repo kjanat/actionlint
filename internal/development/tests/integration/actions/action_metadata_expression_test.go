@@ -11,6 +11,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
 func TestActionMetadataContextSuggestion(t *testing.T) {
@@ -63,7 +64,7 @@ func TestActionMetadataDeclaredInputSuggestion(t *testing.T) {
 		})
 	}
 	// Inputs cannot be referenced while evaluating their defaults.
-	violations := actionmeta.ValidateExpression("${{ github_repository }}", false, "inputs.*.default", actionmeta.Inputs{"github_repository": {Name: "github_repository"}})
+	violations := actionmeta.ValidateExpression("${{ github_repository }}", false, "inputs.*.default", calls.Inputs{"github_repository": {Name: "github_repository"}})
 	if len(violations) != 1 || !strings.Contains(violations[0].Message, `did you mean "github.repository"?`) {
 		t.Fatalf("suggested unavailable input context: %+v", violations)
 	}

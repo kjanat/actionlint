@@ -1,4 +1,6 @@
-// Package calls models reusable-workflow metadata and argument bindings.
+// Package calls models the declared interface of a callable (the inputs,
+// outputs and secrets of actions and reusable workflows), reusable-workflow
+// metadata and argument bindings.
 package calls
 
 import (
@@ -79,7 +81,7 @@ func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workfl
 	if event.Inputs != nil {
 		metadata.Inputs = make(Inputs, len(event.Inputs))
 		for _, input := range event.Inputs {
-			metadata.Inputs[input.ID] = ReusableWorkflowInput{
+			metadata.Inputs[input.ID] = Input{
 				Name:     input.Name.Value,
 				Required: input.IsRequired() && !hasDefault(input),
 				Type:     input.Type,
@@ -101,45 +103,6 @@ func MetadataFromWorkflowCallEvent(event *workflowlang.WorkflowCallEvent, workfl
 	metadata.JobPermissions, metadata.JobCacheAccess = JobPermissionsAndCacheAccess(workflow)
 	return metadata
 }
-
-// ReusableWorkflowInput describes an input declared by a local reusable workflow.
-type ReusableWorkflowInput struct {
-	// Name is a name of the input defined in the reusable workflow.
-	Name string
-	// Required is true when 'required' field of the input is set to true and no default value is set.
-	Required bool
-	// Type is the declared type of the input. GitHub accepts only boolean,
-	// number and string; any other or omitted type is
-	// WorkflowCallEventInputTypeInvalid and accepts every value.
-	Type workflowlang.WorkflowCallEventInputType
-}
-
-// Inputs maps lowercase input names to reusable workflow input metadata.
-// Workflow call input names are case insensitive.
-type Inputs map[string]ReusableWorkflowInput
-
-// Secret describes a secret declared by a local reusable workflow.
-type Secret struct {
-	// Name is a name of the secret in the reusable workflow.
-	Name string
-	// Required indicates whether the secret is required by its reusable workflow. When this value
-	// is true, workflow calls must set this secret unless they inherit secrets.
-	Required bool
-}
-
-// Secrets maps lowercase secret names to reusable workflow secret metadata.
-// Workflow call secret names are case insensitive.
-type Secrets map[string]Secret
-
-// Output describes an output declared by a local reusable workflow.
-type Output struct {
-	// Name is a name of the output in the reusable workflow.
-	Name string
-}
-
-// Outputs maps lowercase output names to reusable workflow output metadata.
-// Workflow call output names are case insensitive.
-type Outputs map[string]Output
 
 // Metadata describes reusable-workflow inputs, outputs, secrets and job access.
 // Clone detaches its maps and slices when a consumer needs its own copy.

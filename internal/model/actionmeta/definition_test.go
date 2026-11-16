@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	action "actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 )
 
 func TestDefinitionOwnsCallSiteFacts(t *testing.T) {
@@ -13,16 +14,16 @@ func TestDefinitionOwnsCallSiteFacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	definition := action.NewDefinition(metadata)
-	metadata.Inputs["token"].Name = "changed"
+	metadata.Inputs["token"] = calls.Input{Name: "changed"}
 	delete(metadata.Inputs, "token")
 	delete(metadata.Outputs, "result")
 	metadata.Runs.Using = "changed"
 	names := definition.InputNames()
 	names[0] = "changed"
-	outputs := definition.OutputNames()
+	outputs := definition.OutputIDs()
 	outputs[0] = "changed"
 	input, exists := definition.Input("token")
-	if !definition.Present() || !exists || input.Name != "token" || !input.Required || definition.Using() != "node24" || definition.InputNames()[0] != "token" || definition.OutputNames()[0] != "result" {
+	if !definition.Present() || !exists || input.Name != "token" || !input.Required || definition.Using() != "node24" || definition.InputNames()[0] != "token" || definition.OutputIDs()[0] != "result" {
 		t.Fatal("definition retained writable manifest storage")
 	}
 }

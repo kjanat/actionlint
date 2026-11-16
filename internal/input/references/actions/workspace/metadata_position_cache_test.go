@@ -35,7 +35,7 @@ func TestMetadataPositionCacheConstruction(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"inputs":{"token":{"name":"token"}}}`), decoded.Metadata); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Metadata.Name != "test" || decoded.Metadata.Inputs["token"] == nil {
+	if _, ok := decoded.Metadata.Inputs["token"]; decoded.Metadata.Name != "test" || !ok {
 		t.Fatal("JSON update lost existing fields or did not decode new fields")
 	}
 	checkSourceLess(decoded.Metadata)

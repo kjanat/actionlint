@@ -79,12 +79,12 @@ runs:
 		t.Fatal("source tree changed during metadata decoding")
 	}
 	for _, name := range []string{"MixedInput", "SecondInput"} {
-		input := meta.Inputs[strings.ToLower(name)]
-		if input == nil || input.Name != name || input.Required || !input.Deprecated || input.DeprecationMessage != "Use another input" {
+		input, ok := meta.Inputs[strings.ToLower(name)]
+		if !ok || input.Name != name || input.Required || !input.Deprecated || input.DeprecationMessage != "Use another input" {
 			t.Fatalf("incorrect input %s: %#v", name, input)
 		}
 	}
-	if output := meta.Outputs["mixedoutput"]; output == nil || output.Name != "MixedOutput" {
+	if output, ok := meta.Outputs["mixedoutput"]; !ok || output.Name != "MixedOutput" {
 		t.Fatalf("output name changed: %#v", output)
 	}
 	if len(meta.InputDefaults) != 2 {

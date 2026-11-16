@@ -22,7 +22,9 @@ func TestLocalActionSourceMappings(t *testing.T) {
 		if err != nil || meta == nil {
 			t.Fatalf("%s: %v, %v", spec, meta, err)
 		}
-		if meta.Path() != first || !meta.SourceMapped || meta.Inputs["token"] == nil || meta.Outputs["result"] == nil {
+		_, hasInput := meta.Inputs["token"]
+		_, hasOutput := meta.Outputs["result"]
+		if meta.Path() != first || !meta.SourceMapped || !hasInput || !hasOutput {
 			t.Fatalf("wrong mapped metadata: %+v", meta)
 		}
 		if _, ok := view.Sources()[first]; !ok {

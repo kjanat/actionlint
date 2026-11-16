@@ -37,7 +37,7 @@ func TestDecodePartialNullInputsOutputsAndDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if input := metadata.Inputs["token"]; input == nil || input.Name != "token" || input.Required {
+	if input, ok := metadata.Inputs["token"]; !ok || input.Name != "token" || input.Required {
 		t.Fatalf("null input definition = %#v", input)
 	}
 }
@@ -119,7 +119,7 @@ inputs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if input := metadata.Inputs["token"]; input == nil || input.Name != "token" || input.Required {
+	if input, ok := metadata.Inputs["token"]; !ok || input.Name != "token" || input.Required {
 		t.Fatalf("input metadata was lost: %#v", metadata.Inputs)
 	}
 	if problems := Validate(metadata).Problems; len(problems) != 0 {
@@ -136,7 +136,7 @@ func TestDecodePartialOutputIgnoresRecursiveAliasPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if output := metadata.Outputs["result"]; output == nil || output.Name != "result" {
+	if output, ok := metadata.Outputs["result"]; !ok || output.Name != "result" {
 		t.Fatalf("output declaration = %#v", output)
 	}
 }

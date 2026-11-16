@@ -7,6 +7,7 @@ import (
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -117,7 +118,7 @@ func (d manifestDecoder) fields(root codec.Entered, where string, handlers map[s
 	return errors.Join(errs...)
 }
 
-func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error) {
+func (d manifestDecoder) inputs(root codec.Entered) (calls.Inputs, []*KeyValue, error) {
 	n := root.Node()
 	if isNull(n) {
 		return nil, nil, nil
@@ -125,7 +126,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 	if n.Kind != codec.MappingNode {
 		return nil, nil, d.session.Wrap(n, expectedMapping("inputs", n))
 	}
-	md := make(Inputs, len(n.Content)/2)
+	md := make(calls.Inputs, len(n.Content)/2)
 	var defaults []*KeyValue
 	var sectionErr error
 	for key, value := range root.Pairs() {
@@ -144,7 +145,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 				if _, exists := md[id]; exists {
 					sectionErr = d.session.Wrap(n, fmt.Errorf("input %q is duplicated", name))
 				} else {
-					md[id] = &ActionInputMetadata{Name: name}
+					md[id] = calls.Input{Name: name}
 				}
 			}
 			continue
@@ -215,7 +216,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 			sectionErr = d.session.Wrap(n, fmt.Errorf("input %q is duplicated", name))
 			continue
 		}
-		md[id] = &ActionInputMetadata{name, required && defaultValue == nil, deprecated, strings.TrimSpace(deprecation)}
+		md[id] = calls.Input{Name: name, Required: required && defaultValue == nil, Deprecated: deprecated, DeprecationMessage: strings.TrimSpace(deprecation)}
 	}
 	if sectionErr != nil {
 		return nil, defaults, sectionErr
@@ -223,7 +224,7 @@ func (d manifestDecoder) inputs(root codec.Entered) (Inputs, []*KeyValue, error)
 	return md, defaults, nil
 }
 
-func (d manifestDecoder) outputs(root codec.Entered) (Outputs, error) {
+func (d manifestDecoder) outputs(root codec.Entered) (calls.Outputs, error) {
 	n := root.Node()
 	if isNull(n) {
 		return nil, nil
@@ -231,7 +232,7 @@ func (d manifestDecoder) outputs(root codec.Entered) (Outputs, error) {
 	if n.Kind != codec.MappingNode {
 		return nil, d.session.Wrap(n, expectedMapping("outputs", n))
 	}
-	md := make(Outputs, len(n.Content)/2)
+	md := make(calls.Outputs, len(n.Content)/2)
 	for key := range root.Pairs() {
 		kn, err := key.Enter()
 		if err != nil {
@@ -242,7 +243,7 @@ func (d manifestDecoder) outputs(root codec.Entered) (Outputs, error) {
 		if _, exists := md[id]; exists {
 			return nil, d.session.Wrap(n, fmt.Errorf("output %q is duplicated", name))
 		}
-		md[id] = &Output{name}
+		md[id] = calls.Output{Name: name}
 	}
 	return md, nil
 }

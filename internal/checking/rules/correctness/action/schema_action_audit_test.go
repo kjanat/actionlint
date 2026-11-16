@@ -7,13 +7,14 @@ import (
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/calls"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
 	t.Parallel()
-	meta := &actionmeta.Metadata{Inputs: actionmeta.Inputs{"token": {Name: "token", Required: true}}}
+	meta := &actionmeta.Metadata{Inputs: calls.Inputs{"token": {Name: "token", Required: true}}}
 	for _, dynamic := range []bool{false, true} {
 		exec := &workflowlang.ExecAction{Uses: &workflowlang.String{Value: "./audit", Pos: &sourcepos.Position{Line: 1, Column: 1}}}
 		if dynamic {

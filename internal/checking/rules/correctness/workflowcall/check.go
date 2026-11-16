@@ -28,60 +28,41 @@ func CheckArguments(call *workflowlang.WorkflowCall, m *calls.Metadata) []result
 		findings = append(findings, callFinding(pos, format, args...))
 	}
 	// Validate inputs
-	for n, i := range m.Inputs {
-		if i.Required {
-			if _, ok := call.Inputs[n]; !ok {
-				report(callPosition(u), "input %q is required by %q reusable workflow", i.Name, u.Value)
-			}
-		}
+	for _, i := range m.Inputs.MissingRequired(func(id string) bool { _, ok := call.Inputs[id]; return ok }) {
+		report(callPosition(u), "input %q is required by %q reusable workflow", i.Name, u.Value)
 	}
 	for n, i := range call.Inputs {
 		if _, ok := m.Inputs[n]; !ok {
-			note := "no input is defined"
-			if len(m.Inputs) > 0 {
-				is := make([]string, 0, len(m.Inputs))
-				for _, i := range m.Inputs {
-					is = append(is, i.Name)
-				}
-				if len(is) == 1 {
-					note = fmt.Sprintf("defined input is %q", is[0])
-				} else {
-					note = "defined inputs are " + messages.SortedQuotes(is)
-				}
-			}
-			report(callPosition(i.Name), "input %q is not defined in %q reusable workflow. %s", i.Name.Text(), u.Value, note)
+			report(callPosition(i.Name), "input %q is not defined in %q reusable workflow. %s", i.Name.Text(), u.Value, declaredNote("input", m.Inputs.Names()))
 		}
 	}
 
 	// Validate secrets
 	if !call.InheritSecrets {
-		for n, s := range m.Secrets {
-			if s.Required {
-				if _, ok := call.Secrets[n]; !ok {
-					report(callPosition(u), "secret %q is required by %q reusable workflow", s.Name, u.Value)
-				}
-			}
+		for _, s := range m.Secrets.MissingRequired(func(id string) bool { _, ok := call.Secrets[id]; return ok }) {
+			report(callPosition(u), "secret %q is required by %q reusable workflow", s.Name, u.Value)
 		}
 		for n, s := range call.Secrets {
 			if _, ok := m.Secrets[n]; !ok {
-				note := "no secret is defined"
-				if len(m.Secrets) > 0 {
-					ss := make([]string, 0, len(m.Secrets))
-					for _, s := range m.Secrets {
-						ss = append(ss, s.Name)
-					}
-					if len(ss) == 1 {
-						note = fmt.Sprintf("defined secret is %q", ss[0])
-					} else {
-						note = "defined secrets are " + messages.SortedQuotes(ss)
-					}
-				}
-				report(callPosition(s.Name), "secret %q is not defined in %q reusable workflow. %s", s.Name.Text(), u.Value, note)
+				report(callPosition(s.Name), "secret %q is not defined in %q reusable workflow. %s", s.Name.Text(), u.Value, declaredNote("secret", m.Secrets.Names()))
 			}
 		}
 	}
 
 	return findings
+}
+
+// declaredNote lists the names a reusable workflow declares for kind, which is
+// "input" or "secret", after a call supplies an undeclared one.
+func declaredNote(kind string, names []string) string {
+	switch len(names) {
+	case 0:
+		return fmt.Sprintf("no %s is defined", kind)
+	case 1:
+		return fmt.Sprintf("defined %s is %q", kind, names[0])
+	default:
+		return fmt.Sprintf("defined %ss are %s", kind, messages.SortedQuotes(names))
+	}
 }
 
 // CheckPermissions compares every callee job's requirements with the explicit

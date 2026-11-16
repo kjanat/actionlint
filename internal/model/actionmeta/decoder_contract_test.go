@@ -34,7 +34,7 @@ inputs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if metadata.Name != "example" || metadata.Runs.Using != "node24" || metadata.Runs.Main != "index.js" || metadata.Branding.Icon != "book" || metadata.Inputs["token"] == nil || !metadata.Inputs["token"].Required {
+	if metadata.Name != "example" || metadata.Runs.Using != "node24" || metadata.Runs.Main != "index.js" || metadata.Branding.Icon != "book" || !metadata.Inputs["token"].Required {
 		t.Fatalf("alias-key metadata: %+v", metadata)
 	}
 }

@@ -100,8 +100,8 @@ func TestInspectDefinitionOutputKnowledge(t *testing.T) {
 			if !valid {
 				t.Fatal(inspection.Problems())
 			}
-			if definition.OutputsComplete() != test.complete || !slices.Equal(definition.OutputNames(), test.names) {
-				t.Fatalf("output knowledge: complete=%v names=%v", definition.OutputsComplete(), definition.OutputNames())
+			if definition.OutputsComplete() != test.complete || !slices.Equal(definition.OutputIDs(), test.names) {
+				t.Fatalf("output knowledge: complete=%v names=%v", definition.OutputsComplete(), definition.OutputIDs())
 			}
 		})
 	}
