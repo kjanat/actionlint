@@ -15,12 +15,14 @@ import (
 const (
 	inactiveDisabledTool   = "disabled by --no-tool or disable-tools"
 	inactiveDisabledConfig = "disabled in configuration"
+	inactiveNoCheck        = "completed no check"
 )
 
 // providerStatuses lists the plugins sources selected and the tool providers
 // tools registers, with the reason each inactive one did not take part.
-// A tool counts as inactive when analysis reported it unavailable or every
-// configuration disables it.
+// A tool took part when its rule completed for at least one linted document;
+// path overrides can enable it where the base configuration disables it.
+// Incomplete lists every reason its incomplete checks gave.
 func providerStatuses(sources pluginselection.Sources, tools []contract.Registration, result *report.Analysis) []report.ProviderStatus {
 	var statuses []report.ProviderStatus
 	pinned := map[string]bool{}
@@ -42,13 +44,18 @@ func providerStatuses(sources pluginselection.Sources, tools []contract.Registra
 		}
 		statuses = append(statuses, status)
 	}
-	unavailable := map[string]string{}
-	if result != nil {
-		for _, check := range result.IncompleteChecks {
-			if check.Rule != "" && check.Reason != "" {
-				unavailable[check.Rule] = check.Reason
-			}
+	if result == nil {
+		result = &report.Analysis{}
+	}
+	incomplete := map[string][]string{}
+	for _, check := range result.IncompleteChecks {
+		if check.Rule != "" && check.Reason != "" && !slices.Contains(incomplete[check.Rule], check.Reason) {
+			incomplete[check.Rule] = append(incomplete[check.Rule], check.Reason)
 		}
+	}
+	completed := map[string]int{}
+	for _, collection := range result.CollectedByRule {
+		completed[collection.Rule] += collection.Completed
 	}
 	listed := map[string]bool{}
 	for _, registration := range tools {
@@ -56,14 +63,16 @@ func providerStatuses(sources pluginselection.Sources, tools []contract.Registra
 			continue
 		}
 		listed[registration.Name] = true
-		status := report.ProviderStatus{Kind: report.ToolProvider, Name: registration.Name}
+		status := report.ProviderStatus{Kind: report.ToolProvider, Name: registration.Name, Incomplete: slices.Sorted(slices.Values(incomplete[registration.Name]))}
 		switch {
 		case slices.Contains(sources.DisabledTools, registration.Name):
 			status.Inactive = inactiveDisabledTool
-		case result != nil && toolDisabledInConfigurations(registration.Name, result.Configurations):
+		case completed[registration.Name] != 0:
+			// It took part.
+		case toolDisabledInConfigurations(registration.Name, result.Configurations):
 			status.Inactive = inactiveDisabledConfig
-		case unavailable[registration.Name] != "":
-			status.Inactive = unavailable[registration.Name]
+		case len(status.Incomplete) != 0:
+			status.Inactive = inactiveNoCheck
 		}
 		statuses = append(statuses, status)
 	}

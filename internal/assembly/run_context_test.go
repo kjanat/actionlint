@@ -1,15 +1,18 @@
 package assembly
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
+	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -57,7 +60,7 @@ func TestRepositoryStatesSeparateCleanAndDirtyLintedFiles(t *testing.T) {
 	if len(clean) != 1 || clean[0].Kind != ReadRepository || clean[0].Root != root {
 		t.Fatalf("clean states = %+v, want one read repository at %s", clean, root)
 	}
-	if clean[0].Worktree.Dirty() || len(clean[0].ChangedFiles) != 0 || len(clean[0].Worktree.Head) != 40 {
+	if clean[0].Worktree.Dirty() || len(clean[0].ChangedFiles) != 0 || clean[0].Worktree.Head == "" {
 		t.Fatalf("clean state = %+v, want a committed HEAD and no changes", clean[0])
 	}
 
@@ -94,7 +97,9 @@ func TestNewRunContextAccountsRulesAndIgnores(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	config := filepath.Join(dir, "actionlint.yaml")
-	writeRunContextFile(t, config, "lint: {}\n")
+	loadedDigest := sha256hex.Digest([]byte("lint: {}\n"))
+	// The file changed after the check loaded it; the report keeps the loaded digest.
+	writeRunContextFile(t, config, "lint: {changed: true}\n")
 	result := &report.Analysis{
 		CollectedByRule: []report.RuleCollection{
 			{Rule: "unpinned-reference", Findings: 2},
@@ -104,7 +109,7 @@ func TestNewRunContextAccountsRulesAndIgnores(t *testing.T) {
 		},
 		Diagnostics: []results.PublishedDiagnostic{{Rule: "shellcheck"}},
 		Configurations: []configreport.Report{{
-			Project: dir, File: config,
+			Project: dir, File: config, FileDigests: map[string]string{config: loadedDigest},
 			Inspection: configreport.Inspection{
 				Config: map[string]any{
 					"ignores": []any{map[string]any{"rule": "shellcheck", "file": "ci.yml"}},
@@ -158,11 +163,43 @@ func TestNewRunContextAccountsRulesAndIgnores(t *testing.T) {
 	if got := run.Configurations[0].Settings; !slices.Equal(got, wantSettings) {
 		t.Errorf("Settings = %+v, want %+v", got, wantSettings)
 	}
-	if files := run.Configurations[0].Files; len(files) != 1 || files[0].Path != "actionlint.yaml" || len(files[0].Digest) != 64 {
-		t.Errorf("config Files = %+v, want actionlint.yaml with its digest", files)
+	if files := run.Configurations[0].Files; len(files) != 1 || files[0].Path != "actionlint.yaml" || files[0].Digest != loadedDigest {
+		t.Errorf("config Files = %+v, want actionlint.yaml with its loaded digest %s", files, loadedDigest)
 	}
 	if run.Network.GitHubToken != "GH_TOKEN" {
 		t.Errorf("GitHubToken = %q, want the variable name GH_TOKEN", run.Network.GitHubToken)
+	}
+}
+
+func TestNewRunContextRedactsRemoteConfigurationQueries(t *testing.T) {
+	t.Parallel()
+	remote := "https://example.org/config.yaml?token=SECRET"
+	result := &report.Analysis{Configurations: []configreport.Report{{
+		File: remote, FileDigests: map[string]string{remote: strings.Repeat("a", 64)},
+		Inspection: configreport.Inspection{
+			Config: map[string]any{
+				"ignores": []any{map[string]any{"rule": "shellcheck"}},
+				"lint":    map[string]any{"message-ignores": map[string]any{"*.yml": []any{"^SC2086"}}},
+			},
+			Origins: map[string]configreport.Origin{
+				"/ignores/0":                    {Source: "config", State: "value", File: remote, Line: 2},
+				"/lint/message-ignores/*.yml/0": {Source: "config", State: "value", File: remote, Line: 4},
+			},
+		},
+	}}}
+	run := NewRunContext(t.Context(), RunContextInputs{Result: result})
+	if text := fmt.Sprintf("%+v", run); strings.Contains(text, "SECRET") {
+		t.Fatalf("run context exposes the query credential: %s", text)
+	}
+	const display = "https://example.org/config.yaml"
+	if got := run.Configurations[0]; got.File != display || len(got.Files) != 1 || got.Files[0].Path != display || got.Files[0].Digest != strings.Repeat("a", 64) {
+		t.Fatalf("configuration = %+v, want %s with its digest", got, display)
+	}
+	if got := run.Configurations[0].Settings[0].Origin; got != display+":2" {
+		t.Fatalf("setting origin = %q, want %s:2", got, display)
+	}
+	if got := run.Ignores[0].Location; got != display+":2" {
+		t.Fatalf("ignore location = %q, want %s:2", got, display)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 // publication owns its maps and slices, including the decoded effective values.
 func configurationSnapshot(report configreport.Report) configreport.Report {
 	report.Overrides = slices.Clone(report.Overrides)
+	report.FileDigests = maps.Clone(report.FileDigests)
 	report.Inspection.Config = configurationMapSnapshot(report.Inspection.Config)
 	report.Inspection.Origins = maps.Clone(report.Inspection.Origins)
 	report.Inspection.Warnings = slices.Clone(report.Inspection.Warnings)
