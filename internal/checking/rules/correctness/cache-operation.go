@@ -31,14 +31,14 @@ var CacheOperationRule = &define.Rule{
 // effective cache grant. Each callback derives its job mode from its own input.
 func CacheOperationChecks(workflow workflowdecl.Workflow, lookup *workflowinputs.ResolvedWorkflows) define.Checks {
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			if lookup == nil {
 				return nil
 			}
 			mode := cachemodel.EffectiveMode(workflow.CacheMode, job.CacheMode)
 			return reporting.FromDiagnostics(cachepolicy.CheckCallOperations(job.WorkflowCall, mode, lookup))
 		},
-		Step: func(step workflowdecl.Step) []reporting.Finding {
+		Step: func(step workflowdecl.Step) []reporting.StepFinding {
 			// Composite action steps have no declaring workflow job, so the
 			// job layer contributes no cache override.
 			var jobMode *workflowlang.CacheMode

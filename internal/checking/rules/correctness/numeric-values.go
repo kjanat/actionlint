@@ -22,7 +22,7 @@ var NumericValuesRule = &define.Rule{
 }
 
 // NumericValues reports a max-parallel GitHub truncates or that cannot take effect.
-func NumericValues(job declaration.Job) []reporting.Finding {
+func NumericValues(job declaration.Job) []reporting.StepFinding {
 	if !job.Present() || job.Strategy == nil {
 		return nil
 	}
@@ -31,7 +31,7 @@ func NumericValues(job declaration.Job) []reporting.Finding {
 		return nil
 	}
 	pos := value.Pos
-	var out []reporting.Finding
+	var out []reporting.StepFinding
 	if from := value.TruncatedFrom; from != "" {
 		out = append(out, reporting.Warning("numeric-values", "truncated", pos, "\"max-parallel\" value %s is truncated to %d", from, value.Value))
 	}

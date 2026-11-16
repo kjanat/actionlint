@@ -42,8 +42,8 @@ var ContainerRunnerRule = &define.Rule{
 
 // ContainerRunnerFindings reports established container limitations. Source
 // acquisition, condition evaluation and invocation state belong to the host.
-func ContainerRunnerFindings(uses []runnerlang.ContainerUse) []reporting.Finding {
-	findings := make([]reporting.Finding, 0, len(uses))
+func ContainerRunnerFindings(uses []runnerlang.ContainerUse) []reporting.StepFinding {
+	findings := make([]reporting.StepFinding, 0, len(uses))
 	for _, use := range uses {
 		var description string
 		switch use.Kind {
@@ -65,7 +65,7 @@ func ContainerRunnerFindings(uses []runnerlang.ContainerUse) []reporting.Finding
 		case runnerlang.ContainerUnknown:
 			continue
 		}
-		findings = append(findings, reporting.Finding{Message: message, Severity: severity, Start: use.Position})
+		findings = append(findings, reporting.StepFinding{Message: message, Severity: severity, Start: use.Position})
 	}
 	return findings
 }

@@ -28,7 +28,7 @@ var GlobRule = &define.Rule{
 type globCheck struct{ reporting.Collector }
 
 // GlobWorkflow validates patterns in event declarations.
-func GlobWorkflow(n declaration.Workflow) []reporting.Finding {
+func GlobWorkflow(n declaration.Workflow) []reporting.StepFinding {
 	rule := &globCheck{}
 
 	for _, e := range n.On {
@@ -87,7 +87,7 @@ func (rule *globCheck) checkWorkflowNameGlobs(names []*workflowlang.String) {
 	}
 }
 
-func GlobJob(n declaration.Job) []reporting.Finding {
+func GlobJob(n declaration.Job) []reporting.StepFinding {
 	rule := &globCheck{}
 	if n.Snapshot == nil {
 		return rule.Findings

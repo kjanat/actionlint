@@ -30,16 +30,16 @@ var RunnerLabelRule = &define.Rule{
 // it checks labels against the supplied repository label set.
 func RunnerLabelChecks(runners *runnerlang.Knowledge, labels runnerlang.LabelSet) define.Checks {
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			var rejections []runnerapi.Rejection
 			if runners != nil {
 				rejections = runners.Job(job).Rejections
 			} else {
 				rejections = runnerlang.LabelRejections(job, labels)
 			}
-			findings := make([]reporting.Finding, 0, len(rejections))
+			findings := make([]reporting.StepFinding, 0, len(rejections))
 			for _, rejection := range rejections {
-				findings = append(findings, reporting.Finding{Start: rejection.Position, Message: rejection.Reason})
+				findings = append(findings, reporting.StepFinding{Start: rejection.Position, Message: rejection.Reason})
 			}
 			return findings
 		},

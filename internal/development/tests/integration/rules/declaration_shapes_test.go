@@ -19,7 +19,7 @@ func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
 	// The checks run here without the traversal adapter, which would name
 	// each finding after its rule.
-	named := func(name string, findings []reporting.Finding) []reporting.Finding {
+	named := func(name string, findings []reporting.StepFinding) []reporting.StepFinding {
 		for i := range findings {
 			findings[i].Rule = name
 		}

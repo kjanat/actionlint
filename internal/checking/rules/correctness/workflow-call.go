@@ -50,7 +50,7 @@ func WorkflowCallChecks(workflow workflowdecl.Workflow, cache *workflowinputs.Re
 		defaults = calls.ResolvedPermissions{Kind: calls.PermissionsDeclared, Levels: calls.DefaultPermissionLevels(permissions.String() == "write")}
 	}
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			check := workflowCallCheck{
 				workflowPermissions: workflow.Permissions, workflowCacheMode: workflow.CacheMode,
 				cache: cache, defaultPermissions: defaults, log: log,

@@ -22,7 +22,7 @@ var EmptyRunRule = &define.Rule{
 }
 
 // EmptyRun reports a run step whose script is empty.
-func EmptyRun(step declaration.Step) []reporting.Finding {
+func EmptyRun(step declaration.Step) []reporting.StepFinding {
 	run, ok := step.Run()
 	// Only a string run value carries a source scalar; other kinds already
 	// have a syntax-check finding.
@@ -31,5 +31,5 @@ func EmptyRun(step declaration.Step) []reporting.Finding {
 	}
 	finding := reporting.Warning("empty-run", "", run.RunPos, "step runs an empty script, so it does nothing")
 	finding.Step = step
-	return []reporting.Finding{finding}
+	return []reporting.StepFinding{finding}
 }

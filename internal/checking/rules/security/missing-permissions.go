@@ -31,7 +31,7 @@ var MissingPermissionsRule = &define.Rule{
 
 func MissingPermissionsChecks(locations []configuration.PermissionLocation) define.Checks {
 	locations = slices.Clone(locations)
-	return define.Checks{Workflow: func(workflow declaration.Workflow) []reporting.Finding {
+	return define.Checks{Workflow: func(workflow declaration.Workflow) []reporting.StepFinding {
 		return MissingPermissions(workflow, locations)
 	}}
 }

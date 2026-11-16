@@ -24,12 +24,12 @@ var EmptyJobRule = &define.Rule{
 }
 
 // EmptyJob reports a job that runs no steps. Reusable workflow calls have none.
-func EmptyJob(job declaration.Job) []reporting.Finding {
+func EmptyJob(job declaration.Job) []reporting.StepFinding {
 	if job.WorkflowCall != nil || job.DeclaredUses != nil {
 		return nil
 	}
 	for range job.Steps() {
 		return nil
 	}
-	return []reporting.Finding{{Severity: "error", Start: reporting.Position(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
+	return []reporting.StepFinding{{Severity: "error", Start: reporting.Position(job.Pos), Message: fmt.Sprintf("job %q must define at least one step or call a reusable workflow with uses", job.ID.Text())}}
 }

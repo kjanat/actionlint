@@ -30,7 +30,7 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
 	}
 	adapter := NewChecksVisitor(rules, declaration.Name, Checks{
-		Workflow: func(workflowdecl.Workflow) []reporting.Finding { return []reporting.Finding{{Finding: want}} },
+		Workflow: func(workflowdecl.Workflow) []reporting.StepFinding { return []reporting.StepFinding{{Finding: want}} },
 	})
 	if err := adapter.VisitWorkflowPre(workflowdecl.Workflow{}); err != nil {
 		t.Fatal(err)

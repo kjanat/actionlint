@@ -28,7 +28,7 @@ var CacheWriteUntrustedRule = &define.Rule{
 func CacheWriteUntrustedChecks(workflow workflowdecl.Workflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckWrites(job))
 		},
 	}

@@ -14,9 +14,9 @@ import (
 // and may run without any preceding or following callback. Findings may leave
 // Rule empty; the adapter attaches the rule's name.
 type Checks struct {
-	Workflow func(workflowdecl.Workflow) []reporting.Finding
-	Job      func(workflowdecl.Job) []reporting.Finding
-	Step     func(workflowdecl.Step) []reporting.Finding
+	Workflow func(workflowdecl.Workflow) []reporting.StepFinding
+	Job      func(workflowdecl.Job) []reporting.StepFinding
+	Step     func(workflowdecl.Step) []reporting.StepFinding
 }
 
 // checksVisitor is the traversal adapter for stateless checks.
@@ -78,7 +78,7 @@ func NewChecksVisitor(rules configuration.RuleSet, name string, checks Checks) w
 	return adapter
 }
 
-func (r *checksVisitor) collect(input []reporting.Finding, job string) {
+func (r *checksVisitor) collect(input []reporting.StepFinding, job string) {
 	for _, d := range input {
 		finding := new(d.Finding)
 		if finding.Rule == "" {

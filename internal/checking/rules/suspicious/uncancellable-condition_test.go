@@ -174,7 +174,7 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 			for _, job := range view.Jobs() {
 				for step := range job.Steps() {
 					check := suspicious.UncancellableConditionRule.Checks(define.Inputs{})
-					var findings []reporting.Finding
+					var findings []reporting.StepFinding
 					if check.Step != nil {
 						findings = check.Step(step)
 					}

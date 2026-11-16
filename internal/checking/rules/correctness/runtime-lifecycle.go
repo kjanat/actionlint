@@ -30,7 +30,7 @@ var RuntimeLifecycleRule = &define.Rule{
 
 func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 	return define.Checks{
-		Step: func(step workflowdecl.Step) []reporting.Finding {
+		Step: func(step workflowdecl.Step) []reporting.StepFinding {
 			action, ok := step.Action()
 			if !ok {
 				return nil
@@ -56,7 +56,7 @@ func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 			if position.Line == 0 {
 				return nil
 			}
-			return []reporting.Finding{{
+			return []reporting.StepFinding{{
 				Code: string(evidence.Kind), Severity: "warning",
 				Message: message, Start: position, Step: step, DocumentationURL: evidence.Source,
 				LifecycleEvidence: &evidence,

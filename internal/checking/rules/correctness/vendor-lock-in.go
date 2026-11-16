@@ -17,7 +17,7 @@ import (
 // VendorLockInChecks binds the execution target to job and step reference checks.
 func VendorLockInChecks(target string) define.Checks {
 	return define.Checks{
-		Job: func(job declaration.Job) []reporting.Finding {
+		Job: func(job declaration.Job) []reporting.StepFinding {
 			if !job.Present() || job.WorkflowCall == nil {
 				return nil
 			}

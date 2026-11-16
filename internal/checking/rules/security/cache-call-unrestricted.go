@@ -28,7 +28,7 @@ var CacheCallUnrestrictedRule = &define.Rule{
 func CacheCallUnrestrictedChecks(workflow workflowdecl.Workflow) define.Checks {
 	access := cachepolicy.NewTrust(workflow)
 	return define.Checks{
-		Job: func(job workflowdecl.Job) []reporting.Finding {
+		Job: func(job workflowdecl.Job) []reporting.StepFinding {
 			return reporting.FromDiagnostics(access.CheckCall(job))
 		},
 	}

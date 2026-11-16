@@ -31,14 +31,14 @@ var IfCondRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Job: checkJobConditions, Step: checkStepCondition}),
 }
 
-func checkCondition(value *workflowlang.String) []reporting.Finding {
+func checkCondition(value *workflowlang.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
 	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, reporting.Position(value.Pos)))
 }
 
-func checkJobConditions(job declaration.Job) []reporting.Finding {
+func checkJobConditions(job declaration.Job) []reporting.StepFinding {
 	out := checkCondition(job.If)
 	if job.Snapshot != nil {
 		out = append(out, checkCondition(job.Snapshot.If)...)
@@ -46,7 +46,7 @@ func checkJobConditions(job declaration.Job) []reporting.Finding {
 	return out
 }
 
-func checkStepCondition(step declaration.Step) []reporting.Finding {
+func checkStepCondition(step declaration.Step) []reporting.StepFinding {
 	return checkCondition(step.If)
 }
 
