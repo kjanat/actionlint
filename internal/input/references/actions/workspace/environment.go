@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -76,11 +76,11 @@ func preservesEnvironment(statement *syntax.Stmt) bool {
 			return false
 		}
 		for _, word := range command.Args {
-			if _, literal := scriptmodel.LiteralShellWord(word.Parts); !literal {
+			if _, literal := scripts.LiteralShellWord(word.Parts); !literal {
 				return false
 			}
 		}
-		name, _ := scriptmodel.LiteralShellWord(command.Args[0].Parts)
+		name, _ := scripts.LiteralShellWord(command.Args[0].Parts)
 		switch name {
 		case "echo", ":", "true", "cd", "chmod":
 			return true

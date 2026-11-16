@@ -4,10 +4,10 @@ import (
 	"slices"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -15,7 +15,7 @@ import (
 func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - &shared\n        run: echo ok\n      - *shared\n")
-	workflow, parseErrors := workflowparser.ParseWorkflow(content)
+	workflow, parseErrors := parser.ParseWorkflow(content)
 	if len(parseErrors) != 0 {
 		t.Fatal(parseErrors)
 	}
@@ -29,16 +29,16 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 	if !origin.HasPosition {
 		t.Fatal("owned suppression position unavailable")
 	}
-	refs := workflowfacts.Index("ci.yml", content, workflow, false)
+	refs := facts.Index("ci.yml", content, workflow, false)
 	firstRef := refs.Positions[[2]int{first.Pos.Line, first.Pos.Column}]
 	secondRef := refs.Positions[[2]int{second.Pos.Line, second.Pos.Column}]
-	explicit := sourcepos.Reference{Document: "provider", Node: "explicit"}
+	explicit := source.Reference{Document: "provider", Node: "explicit"}
 	for _, tc := range []struct {
 		name      string
 		owner     *findingmodel.Owner
-		reference *sourcepos.Reference
+		reference *source.Reference
 		raw       bool
-		want      sourcepos.Reference
+		want      source.Reference
 	}{
 		{name: "explicit owner", owner: &findingmodel.Owner{Job: "test", Step: second.Pos}, want: secondRef},
 		{name: "ignore alone", want: firstRef},
@@ -51,7 +51,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 				Start: *first.Pos, Owner: tc.owner,
 				IgnoreOrigin: &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses, StepPosition: new(origin.Position)}, Source: results.DiagnosticSource{RawScript: tc.raw}, Reference: tc.reference,
 			}
-			InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]workflowfacts.SourceIndex{"ci.yml": refs.SourceIndex()})
+			InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
 			if finding.Reference == nil || *finding.Reference != tc.want {
 				t.Fatalf("reference=%+v want=%+v", finding.Reference, tc.want)
 			}
@@ -62,7 +62,7 @@ func TestReferenceOwnershipIsIndependentOfSuppressionOrigin(t *testing.T) {
 func TestParsedMixedCaseJobReference(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  Build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
-	workflow, findings := workflowparser.ParseWorkflow(content)
+	workflow, findings := parser.ParseWorkflow(content)
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}
@@ -70,12 +70,12 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 	if job == nil || job.ID == nil || job.ID.Value != "Build" {
 		t.Fatalf("parsed job identity missing: %+v", workflow.Jobs)
 	}
-	refs := workflowfacts.Index("ci.yml", content, workflow, false)
+	refs := facts.Index("ci.yml", content, workflow, false)
 	finding := &findingmodel.Finding{
-		Start: sourcepos.Position{Line: 1, Column: 1},
+		Start: source.Position{Line: 1, Column: 1},
 		Owner: &findingmodel.Owner{Job: job.ID.Value},
 	}
-	InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]workflowfacts.SourceIndex{"ci.yml": refs.SourceIndex()})
+	InferReferences([]*findingmodel.Finding{finding}, "ci.yml", map[string]facts.SourceIndex{"ci.yml": refs.SourceIndex()})
 	want := refs.Jobs["build"]
 	if want.Node == "" || finding.Reference == nil || *finding.Reference != want {
 		t.Fatalf("mixed-case job reference = %+v, want %+v", finding.Reference, want)
@@ -84,10 +84,10 @@ func TestParsedMixedCaseJobReference(t *testing.T) {
 
 func TestReferenceInferenceRequiresPathOwnership(t *testing.T) {
 	t.Parallel()
-	references := workflowfacts.References{Document: sourcepos.Reference{Document: "entry", Revision: "revision", Node: "document"}}
+	references := facts.References{Document: source.Reference{Document: "entry", Revision: "revision", Node: "document"}}
 	foreign := &findingmodel.Finding{Path: "unrelated.sh"}
 	alias := &findingmodel.Finding{Path: "entry-alias.yml"}
-	InferReferences([]*findingmodel.Finding{foreign, alias}, "entry.yml", map[string]workflowfacts.SourceIndex{"entry.yml": references.SourceIndex()}, "entry-alias.yml")
+	InferReferences([]*findingmodel.Finding{foreign, alias}, "entry.yml", map[string]facts.SourceIndex{"entry.yml": references.SourceIndex()}, "entry-alias.yml")
 	if foreign.Reference != nil || alias.Reference == nil || *alias.Reference != references.Document {
 		t.Fatalf("path ownership inference changed: foreign=%+v alias=%+v", foreign.Reference, alias.Reference)
 	}

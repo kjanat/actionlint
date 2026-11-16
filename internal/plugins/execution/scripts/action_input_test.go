@@ -7,7 +7,7 @@ import (
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -48,11 +48,11 @@ func TestInputRegistrationUsesImmutableTypedSelectors(t *testing.T) {
 		{Action: "other/repository", Input: site.Input, Language: site.Language},
 		{Action: site.Action, Input: "other", Language: site.Language},
 	} {
-		if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Input: actionInput(candidate, "", nil)}}}); err != nil {
+		if _, err := runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Input: actionInput(candidate, "", nil)}}}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Execution: &scriptmodel.Execution{Shell: "javascript", ShellKnown: true}}}}); err != nil {
+	if _, err := runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Execution: &scriptmodel.Execution{Shell: "javascript", ShellKnown: true}}}}); err != nil {
 		t.Fatal(err)
 	}
 	if backend.calls.Load() != 1 {

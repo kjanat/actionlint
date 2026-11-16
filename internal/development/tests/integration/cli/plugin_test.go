@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -29,15 +29,15 @@ func TestPluginInspectReadsMetadataWithoutExecution(t *testing.T) {
 	// compilation or execution would fail; inspection must never start a runtime.
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 10, 1, 255)
 	metadata := `{"id":"inspect-only","engine":{"name":"ruff"}}`
-	payload := append([]byte{byte(len(pluginartifact.MetadataSection))}, pluginartifact.MetadataSection...)
+	payload := append([]byte{byte(len(artifacts.MetadataSection))}, artifacts.MetadataSection...)
 	payload = append(payload, metadata...)
 	data = append(data, binary.AppendUvarint([]byte{0}, uint64(len(payload)))...)
 	data = append(data, payload...)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(data) }))
 	defer server.Close()
 	got := testRunCommandWithAcquisition(acquisition, "", "plugin", "inspect", server.URL, "--json")
-	var info pluginartifact.ArtifactProvenance
-	if err := json.Unmarshal([]byte(got.Stdout), &info); err != nil || got.Status != 0 || string(info.Metadata) != metadata || info.Kind != pluginartifact.Core {
+	var info artifacts.ArtifactProvenance
+	if err := json.Unmarshal([]byte(got.Stdout), &info); err != nil || got.Status != 0 || string(info.Metadata) != metadata || info.Kind != artifacts.Core {
 		t.Fatalf("inspection=%+v error=%v info=%+v", got, err, info)
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
@@ -38,11 +38,11 @@ func (v Expression) MarshalJSON() ([]byte, error) {
 // refer to one of the supplied constraints or use (0, 0) for the containing job.
 type Constraint struct {
 	Value    Term
-	Position sourcepos.Position
+	Position source.Position
 }
 type Rejection struct {
 	Reason   string
-	Position sourcepos.Position
+	Position source.Position
 }
 
 // Selector is one conjunction. Separate selectors are alternatives, including

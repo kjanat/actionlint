@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Tool runs a registered Runner as a script analyzer.
@@ -13,7 +13,7 @@ type Tool struct {
 	Runner Runner
 }
 
-func (tool Tool) AnalyzeScripts(ctx context.Context, batch scripts.Batch) ([]*findingmodel.Finding, error) {
+func (tool Tool) AnalyzeScripts(ctx context.Context, batch scripts.Batch) ([]*finding.Finding, error) {
 	if !batch.Valid() {
 		return nil, scripts.ErrInvalidBatch
 	}
@@ -27,9 +27,9 @@ func (tool Tool) AnalyzeScripts(ctx context.Context, batch scripts.Batch) ([]*fi
 		}
 	}
 	findings, err := tool.Runner.Analyze(ctx, prepared)
-	out := make([]*findingmodel.Finding, 0, len(findings))
+	out := make([]*finding.Finding, 0, len(findings))
 	for _, result := range findings {
-		finding := findingmodel.FromDiagnostic(result.Diagnostic)
+		finding := finding.FromDiagnostic(result.Diagnostic)
 		finding.Source = result.Source
 		finding.SuppressionOrigin = result.Suppression
 		if result.Script >= 0 && result.Script < len(batch.Scripts) {

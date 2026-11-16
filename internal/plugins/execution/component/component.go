@@ -6,14 +6,14 @@ import (
 	"context"
 	"errors"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
-	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
-	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 	"github.com/kjanat/wacogo"
@@ -34,10 +34,10 @@ const SourceAnnotationsInterface = annotationsbind.InterfaceName
 type Plugin struct {
 	reservedRules rule.Names
 	// A non-nil descriptor identifies a validated, available role.
-	analyzerDescriptor *checkinputs.Descriptor
-	runnerDescriptor   *runner.Descriptor
-	scriptDescriptor   *checkinputs.ScriptEngineDescriptor
-	toolIntegration    *checkinputs.ToolIntegration
+	analyzerDescriptor *inputs.Descriptor
+	runnerDescriptor   *runnerapi.Descriptor
+	scriptDescriptor   *inputs.ScriptEngineDescriptor
+	toolIntegration    *inputs.ToolIntegration
 	referenceResolver  bool
 	// runner is the negotiated runner-provider version, nil without the
 	// role. Runner calls go through it.
@@ -58,8 +58,8 @@ type Plugin struct {
 	annotationsFactory *annotationsbind.Factory
 	filesFactory       *filesbind.Factory
 	shellInputFactory  *shellinputbind.Factory
-	invocationFactory  *invocationbind.Factory
-	environmentFactory *environmentbind.Factory
+	invocationFactory  *invocationcontext.Factory
+	environmentFactory *environments.Factory
 	repositoryFactory  *repositorybind.Factory
 
 	gate   *semaphore.Weighted

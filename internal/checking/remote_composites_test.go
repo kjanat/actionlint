@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -22,7 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func remoteCompositeProvider(t *testing.T, manifests map[string]string) (manifestProvider, func() map[string]int) {
@@ -50,7 +50,7 @@ func remoteCompositeProviderAtCommits(t *testing.T, manifests, commits map[strin
 		if commit == "" {
 			commit = strings.Repeat("a", 40)
 		}
-		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, commit, ref.Directory())
+		identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, commit, ref.Directory())
 		if err != nil {
 			return actions.Manifest{}, err
 		}
@@ -122,14 +122,14 @@ func TestRemoteCompositeContainerRunner(t *testing.T) {
 }
 
 type remoteGraphChecker struct {
-	inspect func(checkinputs.AnalyzerInput) error
+	inspect func(inputs.AnalyzerInput) error
 }
 
-func (remoteGraphChecker) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
+func (remoteGraphChecker) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "remote-graph", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Invocations, rule.Scripts}}
 }
 
-func (c remoteGraphChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (c remoteGraphChecker) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
 		"example/inner": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo nested}]}\n",
 	})
 	checked := false
-	checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
+	checker := remoteGraphChecker{inspect: func(input inputs.AnalyzerInput) error {
 		checked = true
 		if len(input.Invoked) != 2 || input.CallGraph.CallCount() != 4 {
 			return fmt.Errorf("want two scripts in four calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Calls())
@@ -161,7 +161,7 @@ func TestRemoteCompositeRepeatedInvocations(t *testing.T) {
 	}}
 	root := t.TempDir()
 	workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/outer@v1}, {uses: example/outer@v1}]}}\n"
-	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []inputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 			}
 			provider, requests := remoteCompositeProvider(t, manifests)
 			checked := false
-			checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
+			checker := remoteGraphChecker{inspect: func(input inputs.AnalyzerInput) error {
 				checked = true
 				calls := input.CallGraph.Calls()
 				if len(calls) == 0 {
@@ -216,7 +216,7 @@ func TestRemoteCompositeCycleAndUnavailableBody(t *testing.T) {
 			}}
 			root := t.TempDir()
 			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"
-			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []inputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -236,7 +236,7 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 	}
 	provider, requests := remoteCompositeProvider(t, manifests)
 	checked := false
-	checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
+	checker := remoteGraphChecker{inspect: func(input inputs.AnalyzerInput) error {
 		checked = true
 		calls := input.CallGraph.Calls()
 		if len(calls) != limit+1 {
@@ -249,7 +249,7 @@ func TestRemoteCompositeDepthLimit(t *testing.T) {
 	}}
 	root := t.TempDir()
 	workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action0@v1}]}}\n"
-	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+	_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []inputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +359,7 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 				t.Fatal(err)
 			}
 			checked := false
-			checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
+			checker := remoteGraphChecker{inspect: func(input inputs.AnalyzerInput) error {
 				checked = true
 				if len(input.Invoked) != 1 {
 					return fmt.Errorf("want one script, got %+v", input.CallGraph.Calls())
@@ -372,7 +372,7 @@ func TestRemoteCompositeRelativeActions(t *testing.T) {
 				return nil
 			}}
 			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n"
-			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []checkinputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: provider, Analyzers: []inputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -415,7 +415,7 @@ func TestRemoteCompositeRepositorySwitches(t *testing.T) {
 				return provider.Lookup(ctx, ref)
 			})
 			checked := false
-			checker := remoteGraphChecker{inspect: func(input checkinputs.AnalyzerInput) error {
+			checker := remoteGraphChecker{inspect: func(input inputs.AnalyzerInput) error {
 				checked = true
 				if len(input.Invoked) != 1 || input.CallGraph.CallCount() != 3 {
 					return fmt.Errorf("want one script across three calls, got scripts=%d graph=%+v", len(input.Invoked), input.CallGraph.Calls())
@@ -430,7 +430,7 @@ func TestRemoteCompositeRepositorySwitches(t *testing.T) {
 				return nil
 			}}
 			workflow := "on: push\npermissions: {}\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: example/outer@v1}]}}\n"
-			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: pinned, Analyzers: []checkinputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
+			_, err := Analyze(t.Context(), Options{WorkingDir: root, RemoteActions: pinned, Analyzers: []inputs.Registration{{Checker: checker}}}, []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte(workflow)}})
 			if err != nil {
 				t.Fatal(err)
 			}

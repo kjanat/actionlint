@@ -11,8 +11,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeShellcheckAcrossWorkflows(t *testing.T) {
@@ -55,15 +55,15 @@ permissions: {}
 			t.Errorf("input missing: %s", path)
 		}
 	}
-	renderer, err := render.New("", "{{json .}}", false, buildinfo.Version, nil)
+	renderer, err := output.New("", "{{json .}}", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out strings.Builder
-	if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
+	if err := renderer.Render(&out, output.FromAnalysis(*result)); err != nil {
 		t.Fatal(err)
 	}
-	var findings []render.TemplateFields
+	var findings []output.TemplateFields
 	if err := json.Unmarshal([]byte(out.String()), &findings); err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
 	}) {
 		t.Fatalf("nested action lost macOS path matching: %+v", result.Diagnostics)
@@ -215,7 +215,7 @@ runs:
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested metadata checks lost: %v", result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}
@@ -271,7 +271,7 @@ jobs:
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested metadata not analyzed: %v", result.Inputs)
 			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
+			if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 				t.Fatalf("Windows composite source not resolved: %+v", result.Diagnostics)
 			}
 		})
@@ -313,7 +313,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("previous job checkout leaked into caller: %+v", result.Diagnostics)
 	}
 }

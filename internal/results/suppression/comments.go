@@ -8,7 +8,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // inlineSuppressionComment is a real YAML comment attached to a declaration.
@@ -57,7 +57,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 	}
 	var comments []inlineSuppressionComment
 	blockEnds := map[int]int{}
-	scalarParser := workflowparser.NewSourceParser(source)
+	scalarParser := parser.NewSourceParser(source)
 	scalarParser.IndexScalarSources(root)
 	seen := map[int]bool{}
 	readComment := func(line int, comment string, standalone bool) {
@@ -166,7 +166,7 @@ func collectInlineSuppressionComments(source []byte) []inlineSuppressionComment 
 }
 
 // Suppression extents use the same scalar scan that maps diagnostic positions.
-func inlineSuppressionScalarEnd(p *workflowparser.Parser, node *codec.Node, endLine int) (int, int) {
+func inlineSuppressionScalarEnd(p *parser.Parser, node *codec.Node, endLine int) (int, int) {
 	if source := p.ScriptSource(node); source != nil {
 		return source.ContentStart.Line, min(source.ScalarEnd.Line, endLine)
 	}

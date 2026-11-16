@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -183,7 +183,7 @@ func (c *Cache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.M
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if c.root == "" || !strings.HasPrefix(spec, "./") || exprsyntax.ContainsExpression(spec) {
+	if c.root == "" || !strings.HasPrefix(spec, "./") || syntax.ContainsExpression(spec) {
 		return nil, nil
 	}
 

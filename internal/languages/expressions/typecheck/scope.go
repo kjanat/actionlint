@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
@@ -25,7 +25,7 @@ type Scope interface {
 	// NarrowContext returns branch-specific type overrides and whether the branch
 	// is possible. Insufficient knowledge means possible. Implementations must not
 	// mutate syntax or types obtained through lookup.
-	NarrowContext(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool)
+	NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool)
 }
 
 // SetAvailability replaces name restrictions and overloads without changing

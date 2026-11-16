@@ -1,8 +1,8 @@
 package runners
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -23,7 +23,7 @@ type ContainerUse struct {
 	Target   ContainerTarget
 	Kind     ContainerUseKind
 	Name     string
-	Position sourcepos.Position
+	Position source.Position
 }
 
 // MayRun excludes an alternative only when a condition is provably false.
@@ -33,7 +33,7 @@ func (target ContainerTarget) MayRun(conditions ...string) bool {
 		if condition == "" {
 			continue
 		}
-		node, err, _ := exprsyntax.ParseConditionExpression(condition)
+		node, err, _ := syntax.ParseConditionExpression(condition)
 		if err == nil && workflowconditions.NeverRunsWithVariables(node, target.LookupExpressionVariable) {
 			return false
 		}
@@ -41,7 +41,7 @@ func (target ContainerTarget) MayRun(conditions ...string) bool {
 	return true
 }
 
-func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *sourcepos.Position) ContainerUse {
+func containerUse(target ContainerTarget, kind ContainerUseKind, name string, pos *source.Position) ContainerUse {
 	use := ContainerUse{Target: target, Kind: kind, Name: name}
 	if pos != nil {
 		use.Position = *pos
@@ -106,7 +106,7 @@ func DockerActionUses(step workflows.Step, targets []ContainerTarget, guards []s
 	var uses []ContainerUse
 	for _, target := range targets {
 		if target.MayRun(guards...) && target.MayRun(step.If.Text()) {
-			var pos *sourcepos.Position
+			var pos *source.Position
 			if action.Uses != nil {
 				pos = action.Uses.Pos
 			}

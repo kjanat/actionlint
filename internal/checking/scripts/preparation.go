@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // ScriptInputAction removes the ref and lowercases the owner and repository.
@@ -68,7 +68,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 		}
 		request := requests[record.ID]
 		provenance := decl.Origin(job)
-		origin := &findingmodel.IgnoreOrigin{Job: provenance.Job, StepID: provenance.StepID, StepName: provenance.StepName, Uses: provenance.Uses}
+		origin := &finding.IgnoreOrigin{Job: provenance.Job, StepID: provenance.StepID, StepName: provenance.StepName, Uses: provenance.Uses}
 		if provenance.HasPosition {
 			origin.StepPosition = new(provenance.Position)
 		}
@@ -77,7 +77,7 @@ func prepareScripts(graph invocation.Graph, collection Collection, scopes map[in
 			Scope: scope, Execution: request.Execution,
 			Environment:  slices.Clone(request.Environment),
 			Interpreters: request.Interpreters,
-			Origin:       origin, Owner: &findingmodel.Owner{Job: job, Step: source.NilUnlessPresent(decl.Position())},
+			Origin:       origin, Owner: &finding.Owner{Job: job, Step: source.NilUnlessPresent(decl.Position())},
 			Path: scope.Deployment.SourcePath(),
 		}
 		captured, found := collection.Declarations.LookupDocument(record.Declaration.Document)

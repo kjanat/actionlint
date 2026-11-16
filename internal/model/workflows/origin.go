@@ -4,7 +4,7 @@ import (
 	"iter"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -19,7 +19,7 @@ func originSelector(s *definition.String) string {
 	if s == nil {
 		return ""
 	}
-	if literal := exprsyntax.LiteralExpressionValue(s.Value); literal != nil {
+	if literal := syntax.LiteralExpressionValue(s.Value); literal != nil {
 		return *literal
 	}
 	return s.Value

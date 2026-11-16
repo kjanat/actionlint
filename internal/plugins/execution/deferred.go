@@ -9,11 +9,11 @@ import (
 	"slices"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -21,14 +21,14 @@ import (
 const deferredRetryDelay = 5 * time.Second
 
 type deferredBackend interface {
-	checkinputs.DescribedScriptBackend
-	checkinputs.ScriptConfigValidator
+	inputs.DescribedScriptBackend
+	inputs.ScriptConfigValidator
 	Close(context.Context) error
 }
 
 type deferredScriptEngine struct {
 	gate        chan struct{}
-	descriptor  checkinputs.ScriptEngineDescriptor
+	descriptor  inputs.ScriptEngineDescriptor
 	pin         pluginregistry.Pin
 	acquisition pluginacquisition.Settings
 	backend     deferredBackend
@@ -39,15 +39,15 @@ type deferredScriptEngine struct {
 }
 
 func newDeferredScriptEngine(pin pluginregistry.Pin, acquisition pluginacquisition.Settings, reserved rule.Names) (*deferredScriptEngine, error) {
-	var descriptor checkinputs.ScriptEngineDescriptor
-	if pin.Kind == pluginartifact.Component {
+	var descriptor inputs.ScriptEngineDescriptor
+	if pin.Kind == artifacts.Component {
 		var err error
 		descriptor, err = component.ReadScriptMetadata([]byte(pin.Metadata), reserved)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		metadata, err := corewasm.ReadMetadata([]byte(pin.Metadata))
+		metadata, err := module.ReadMetadata([]byte(pin.Metadata))
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (b *deferredScriptEngine) get(ctx context.Context) (backend deferredBackend
 	if err := releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Acquisition: b.acquisition}); err != nil {
 		return nil, err
 	}
-	artifact, err := pluginartifact.Resolve(ctx, b.pin.Source(), b.acquisition.ArtifactOptions())
+	artifact, err := artifacts.Resolve(ctx, b.pin.Source(), b.acquisition.ArtifactOptions())
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +125,9 @@ func (b *deferredScriptEngine) beginAnalysis(ctx context.Context, now time.Time)
 	return nil
 }
 
-func (b *deferredScriptEngine) load(ctx context.Context, artifact *pluginartifact.Artifact) (deferredBackend, error) {
-	if b.pin.Kind == pluginartifact.Core {
-		return corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: b.acquisition.CompiledModuleCacheDir()})
+func (b *deferredScriptEngine) load(ctx context.Context, artifact *artifacts.Artifact) (deferredBackend, error) {
+	if b.pin.Kind == artifacts.Core {
+		return module.LoadArtifact(ctx, artifact, module.Options{CacheDir: b.acquisition.CompiledModuleCacheDir()})
 	}
 	engine, err := component.LoadArtifact(ctx, artifact, component.Options{ReservedRules: b.reserved})
 	if err != nil {
@@ -139,7 +139,7 @@ func (b *deferredScriptEngine) load(ctx context.Context, artifact *pluginartifac
 	return engine, nil
 }
 
-func sameScriptDescriptor(left, right checkinputs.ScriptEngineDescriptor) bool {
+func sameScriptDescriptor(left, right inputs.ScriptEngineDescriptor) bool {
 	leftSchema, rightSchema := left.Rule.OptionsSchema, right.Rule.OptionsSchema
 	left.Rule.OptionsSchema, right.Rule.OptionsSchema = nil, nil
 	if len(left.Rule.Examples) == 0 {
@@ -148,14 +148,14 @@ func sameScriptDescriptor(left, right checkinputs.ScriptEngineDescriptor) bool {
 	if len(right.Rule.Examples) == 0 {
 		right.Rule.Examples = nil
 	}
-	return reflect.DeepEqual(left, right) && (len(leftSchema) == 0 && len(rightSchema) == 0 || pluginartifact.SameMetadata(leftSchema, rightSchema))
+	return reflect.DeepEqual(left, right) && (len(leftSchema) == 0 && len(rightSchema) == 0 || artifacts.SameMetadata(leftSchema, rightSchema))
 }
 
-func (b *deferredScriptEngine) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b *deferredScriptEngine) ScriptDescriptor() inputs.ScriptEngineDescriptor {
 	return b.descriptor.Clone()
 }
 
-func (b *deferredScriptEngine) Check(ctx context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *deferredScriptEngine) Check(ctx context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	engine, err := b.get(ctx)
 	if err != nil {
 		return nil, err

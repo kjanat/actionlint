@@ -5,8 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -22,7 +22,7 @@ var (
 
 type resolverState struct {
 	checkout             execution.CheckoutPlacement
-	platform             runnerlang.Platform
+	platform             runners.Platform
 	caseInsensitive      bool
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
@@ -55,7 +55,7 @@ func (c *Resolver) BeginJob(workflowEnv mapping.Mapping, workflowShell value.Val
 	c.checkoutEnvUnknown = !knowledge.PathsKnown || execution.CheckoutEnvironmentUnknown(workflowEnv, c.platform) || execution.CheckoutEnvironmentUnknown(jobEnv, c.platform)
 	c.persistentEnvUnknown = false
 	c.shellEnvUnknown = c.shellEnvironmentUnknown(workflowEnv) || c.shellEnvironmentUnknown(jobEnv)
-	runnerShell := scriptmodel.DefaultShell(workflows.Container(job.Container), knowledge.Shell)
+	runnerShell := scripts.DefaultShell(workflows.Container(job.Container), knowledge.Shell)
 	c.checkoutShell = execution.ResolveShell(value.Value{}, execution.DefaultShell(workflows.DefaultsRun(job.Defaults)), workflowShell, runnerShell)
 }
 

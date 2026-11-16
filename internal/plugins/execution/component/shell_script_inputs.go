@@ -6,7 +6,7 @@ import (
 	"math"
 	"slices"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	shellprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/shell"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
@@ -17,13 +17,13 @@ const ShellScriptInputsInterface = shellinputbind.InterfaceName
 type (
 	shellScriptInputsKey  struct{}
 	shellScriptInputScope struct {
-		prepare     checkinputs.ShellScriptInputBuilder
+		prepare     inputs.ShellScriptInputBuilder
 		occurrences map[invocation.ID]struct{}
 	}
 )
 type shellScriptInputs struct{}
 
-func newShellScriptInputScope(input checkinputs.AnalyzerInput) shellScriptInputScope {
+func newShellScriptInputScope(input inputs.AnalyzerInput) shellScriptInputScope {
 	prepare := input.BuildShellScriptInput
 	if prepare == nil {
 		prepare = shellprofile.NewShellScriptInputBuilder(slices.Concat(input.Scripts, input.Invoked))
@@ -60,17 +60,17 @@ func (shellScriptInputs) ForScript(ctx context.Context, id string, dialect shell
 	}
 	for _, line := range value.Lines {
 		switch line.Kind {
-		case checkinputs.ShellScriptSourceLine:
+		case inputs.ShellScriptSourceLine:
 			if line.Line < 1 || uint64(line.Line) > math.MaxUint32 {
 				return nil, fmt.Errorf("invalid source script line %d", line.Line)
 			}
 			guestInput.Lines = append(guestInput.Lines, shellinputbind.LineSource{Value: uint32(line.Line)})
-		case checkinputs.ShellScriptCommentLine:
+		case inputs.ShellScriptCommentLine:
 			if line.Position.Line < 1 || line.Position.Column < 1 || uint64(line.Position.Line) > math.MaxUint32 || uint64(line.Position.Column) > math.MaxUint32 {
 				return nil, fmt.Errorf("invalid source comment position %v", line.Position)
 			}
 			guestInput.Lines = append(guestInput.Lines, shellinputbind.LineComment{Value: shellinputbind.Position{Line: uint32(line.Position.Line), Column: uint32(line.Position.Column)}})
-		case checkinputs.ShellScriptGeneratedLine:
+		case inputs.ShellScriptGeneratedLine:
 			guestInput.Lines = append(guestInput.Lines, shellinputbind.LineGenerated{})
 		default:
 			return nil, fmt.Errorf("invalid shell input line kind %q", line.Kind)
@@ -85,9 +85,9 @@ func shellInputFailure(err error) (shellinputbind.ResultOptionInputString, error
 
 // Only run scripts with supplied text can request preparation, even when the
 // graph describes additional occurrences.
-func suppliedOccurrences(input checkinputs.AnalyzerInput) map[invocation.ID]struct{} {
+func suppliedOccurrences(input inputs.AnalyzerInput) map[invocation.ID]struct{} {
 	occurrences := make(map[invocation.ID]struct{}, len(input.Scripts)+len(input.Invoked))
-	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
+	for _, scripts := range [][]inputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {
 			if script.Occurrence.ID != "" && script.Occurrence.Kind == invocation.ScriptRun {
 				occurrences[script.Occurrence.ID] = struct{}{}

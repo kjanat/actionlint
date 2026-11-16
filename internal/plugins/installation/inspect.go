@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -13,7 +13,7 @@ import (
 // PinSource resolves an OCI tag or an unpinned HTTPS artifact to its checksum.
 // Installation saves that checksum so later checks use the same plugin bytes.
 func PinSource(ctx context.Context, source string, acquisition pluginacquisition.Settings) (string, error) {
-	if !pluginartifact.IsOCI(source) {
+	if !artifacts.IsOCI(source) {
 		u, err := url.Parse(source)
 		if err == nil && u.Scheme == "https" && u.Fragment == "" {
 			info, err := Inspect(ctx, source, acquisition)
@@ -25,7 +25,7 @@ func PinSource(ctx context.Context, source string, acquisition pluginacquisition
 		}
 		return source, nil
 	}
-	grant, err := pluginartifact.ExplicitSource(source)
+	grant, err := artifacts.ExplicitSource(source)
 	if err != nil {
 		return "", err
 	}
@@ -35,10 +35,10 @@ func PinSource(ctx context.Context, source string, acquisition pluginacquisition
 }
 
 // Inspect resolves and reads metadata without creating a runtime.
-func Inspect(ctx context.Context, source string, acquisition pluginacquisition.Settings) (pluginartifact.ArtifactProvenance, error) {
-	grant, err := pluginartifact.ExplicitSource(source)
+func Inspect(ctx context.Context, source string, acquisition pluginacquisition.Settings) (artifacts.ArtifactProvenance, error) {
+	grant, err := artifacts.ExplicitSource(source)
 	if err != nil {
-		return pluginartifact.ArtifactProvenance{}, err
+		return artifacts.ArtifactProvenance{}, err
 	}
 	options := acquisition.ArtifactOptions()
 	options.Network = grant

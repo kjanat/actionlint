@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -17,10 +17,10 @@ func TestWorkspaceReportRebasesRelatedLocationsAndFixRevisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	analysis := &report.Analysis{Diagnostics: []results1.PublishedDiagnostic{{
+	analysis := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{
 		Path:    "ci.yml",
-		Related: []results1.Related{{Path: "other.yml", Message: "related declaration", Revision: revision, Coordinates: source.YAML}},
-		Fixes:   []results1.Fix{{Revisions: map[string]string{"other.yml": "revision"}, Edits: []results1.Edit{{Path: "other.yml"}}}},
+		Related: []results.Related{{Path: "other.yml", Message: "related declaration", Revision: revision, Coordinates: source.YAML}},
+		Fixes:   []results.Fix{{Revisions: map[string]string{"other.yml": "revision"}, Edits: []results.Edit{{Path: "other.yml"}}}},
 	}}}
 	reported := workspaceReportAnalysis(analysis, filepath.Join(workspace, "subdir"), workspace)
 	d := reported.Diagnostics[0]

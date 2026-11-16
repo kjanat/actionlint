@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -25,7 +25,7 @@ func TestDefaultShell(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			fallback := scriptmodel.DefaultShell(test.container, test.runner)
+			fallback := scripts.DefaultShell(test.container, test.runner)
 			text, known := fallback.ScalarString()
 			if text != test.want || known != test.known {
 				t.Fatalf("default shell = %q, known=%t; want %q, known=%t", text, known, test.want, test.known)
@@ -45,12 +45,12 @@ func TestDefaultShell(t *testing.T) {
 func TestContainerShellUsesSemanticValues(t *testing.T) {
 	t.Parallel()
 	container := value.Map(value.Origin{}, value.Prop{Name: "image", Value: value.YAMLScalar("node:22", "!!str", value.Origin{})})
-	if got := scriptmodel.ContainerShell(container); !got.Known() {
+	if got := scripts.ContainerShell(container); !got.Known() {
 		t.Fatalf("container shell state = %v", got.State())
 	} else if shell, _ := got.Text(); shell != "sh" {
 		t.Fatalf("container shell = %q", shell)
 	}
-	if got := scriptmodel.ContainerShell(value.DynamicValue("${{ inputs.container }}", value.Object, value.Origin{})); got.State() != value.Dynamic {
+	if got := scripts.ContainerShell(value.DynamicValue("${{ inputs.container }}", value.Object, value.Origin{})); got.State() != value.Dynamic {
 		t.Fatalf("dynamic container shell state = %v", got.State())
 	}
 }
@@ -68,7 +68,7 @@ func TestContainerScalarImages(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := scriptmodel.ContainerShell(value.Template(tc.source, value.Origin{}))
+			got := scripts.ContainerShell(value.Template(tc.source, value.Origin{}))
 			if got.State() != tc.state {
 				t.Fatalf("state=%v, want %v", got.State(), tc.state)
 			}

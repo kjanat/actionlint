@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -93,7 +93,7 @@ func TestActionAdmissionKeepsOriginalFatalDecodeFinding(t *testing.T) {
 	}
 	_, got := actionmeta.ParseActionMetadata("action.yml", content)
 	_, rejected := errors.AsType[*codec.AdmissionError](got)
-	if rejected != (workflowparser.AdmitYAMLAliases(root) != nil) || got.Error() != want.Error() {
+	if rejected != (parser.AdmitYAMLAliases(root) != nil) || got.Error() != want.Error() {
 		t.Fatalf("admission changed the original fatal error: got %v, want %v", got, want)
 	}
 	document := Action("action.yml", content)

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestExecutableBitUnixColonPaths(t *testing.T) {
@@ -50,7 +50,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []diagmodel.Diagnostic
+			var findings []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "executable-bit" {
 					findings = append(findings, diagnostic.Diagnostic)

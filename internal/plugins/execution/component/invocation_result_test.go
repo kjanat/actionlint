@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	bind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
 
 func TestInvocationContextQueriesStayScopedToCall(t *testing.T) {
 	t.Parallel()
-	var api bind.InvocationContext = invocationContext{}
+	var api invocationcontext.InvocationContext = invocationContext{}
 	graph, calls, scripts := invocationContextPagedGraph(t, 1)
 	populated := invocationContextFor(graph)
 	empty := invocationContextFor(invocationContextGraph(t))
@@ -24,23 +24,23 @@ func TestInvocationContextQueriesStayScopedToCall(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			summary, ok := requireInvocationResult(api.Describe(tc.ctx)).(bind.ResultSummaryStringOk)
+			summary, ok := requireInvocationResult(api.Describe(tc.ctx)).(invocationcontext.ResultSummaryStringOk)
 			if !ok || summary.Value.Calls != tc.count || summary.Value.Scripts != tc.count {
 				t.Fatalf("call summary = %+v", summary)
 			}
-			page, ok := requireInvocationResult(api.Calls(tc.ctx, 0, 1)).(bind.ResultListCallStringOk)
+			page, ok := requireInvocationResult(api.Calls(tc.ctx, 0, 1)).(invocationcontext.ResultListCallStringOk)
 			if !ok || len(page.Value) != int(tc.count) {
 				t.Fatalf("call page = %+v", page)
 			}
-			scriptPage, ok := requireInvocationResult(api.Scripts(tc.ctx, 0, 1)).(bind.ResultListScriptOccurrenceStringOk)
+			scriptPage, ok := requireInvocationResult(api.Scripts(tc.ctx, 0, 1)).(invocationcontext.ResultListScriptOccurrenceStringOk)
 			if !ok || len(scriptPage.Value) != int(tc.count) {
 				t.Fatalf("script page = %+v", scriptPage)
 			}
-			call, ok := requireInvocationResult(api.CallByID(tc.ctx, string(calls[0]))).(bind.ResultOptionCallStringOk)
+			call, ok := requireInvocationResult(api.CallByID(tc.ctx, string(calls[0]))).(invocationcontext.ResultOptionCallStringOk)
 			if !ok || call.Value.IsSome != (tc.count != 0) {
 				t.Fatalf("call lookup = %+v", call)
 			}
-			script, ok := requireInvocationResult(api.ScriptByID(tc.ctx, string(scripts[0]))).(bind.ResultOptionScriptOccurrenceStringOk)
+			script, ok := requireInvocationResult(api.ScriptByID(tc.ctx, string(scripts[0]))).(invocationcontext.ResultOptionScriptOccurrenceStringOk)
 			if !ok || script.Value.IsSome != (tc.count != 0) {
 				t.Fatalf("script lookup = %+v", script)
 			}

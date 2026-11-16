@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -27,7 +27,7 @@ func TestLoadedPluginsCloseAfterCommandCancellation(t *testing.T) {
 	if err := loaded.Close(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{}); err == nil || !strings.Contains(err.Error(), "closed") {
+	if _, err := plugin.CheckDocument(t.Context(), inputs.AnalyzerInput{}); err == nil || !strings.Contains(err.Error(), "closed") {
 		t.Fatalf("component remains usable after canceled command cleanup: %v", err)
 	}
 	if len(loaded.Components) != 0 {

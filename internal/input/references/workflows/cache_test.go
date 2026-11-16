@@ -12,9 +12,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"github.com/google/go-cmp/cmp"
@@ -616,7 +616,7 @@ func TestReusableWorkflowCacheFailureNamesCallSpelling(t *testing.T) {
 func TestReusableWorkflowMetadataJobPermissions(t *testing.T) {
 	t.Parallel()
 	readAll := calls.PermissionScopeLevels{}
-	for s, vs := range permission.Scopes() {
+	for s, vs := range permissions.Scopes() {
 		if slices.Contains(vs, "read") {
 			readAll[s] = calls.PermissionLevelRead
 		}
@@ -649,7 +649,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowparser.ParseWorkflow(src)
+	w, errs := parser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -698,7 +698,7 @@ jobs:
       - run: echo ok
 `)...)
 				}
-				workflow, diagnostics := workflowparser.ParseWorkflow(source)
+				workflow, diagnostics := parser.ParseWorkflow(source)
 				if exact && len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
 				}
@@ -748,11 +748,11 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	w, errs := workflowparser.ParseWorkflow(src)
+	w, errs := parser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
-	if !slices.ContainsFunc(errs, func(e *workflowparser.SyntaxError) bool {
+	if !slices.ContainsFunc(errs, func(e *parser.SyntaxError) bool {
 		return strings.Contains(e.Message, "defined but not used")
 	}) {
 		t.Fatal("parser did not report the unused anchor:", errs)

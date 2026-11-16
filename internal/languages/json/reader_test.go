@@ -7,15 +7,15 @@ import (
 	"strings"
 	"testing"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	evaluation "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	typecheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	jsonlang "actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
 // These cases follow the runner receipts in docs/expression-results/2026-09-14.md
@@ -56,24 +56,24 @@ func TestFromJSONValue(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			got, err := jsonlang.FromJSONValue(tc.source)
+			got, err := json.FromJSONValue(tc.source)
 			if err != nil || !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %#v, %v; want %#v", got, err, tc.want)
 			}
-			expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + strings.ReplaceAll(tc.source, "'", "''") + "') }}")
+			expr := syntax.ParseAssignedExpression("${{ fromJSON('" + strings.ReplaceAll(tc.source, "'", "''") + "') }}")
 			if expr == nil {
 				t.Fatal("failed to parse expression")
 			}
-			folded, known := evaluation.ConditionConstantValue(expr)
+			folded, known := evaluate.ConditionConstantValue(expr)
 			if !known || !reflect.DeepEqual(folded, tc.want) {
 				t.Fatalf("constant got %#v, known=%v", folded, known)
 			}
-			if _, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(evaluation.EvaluateSubexpressions(expr)); len(errs) != 0 {
+			if _, errs := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr)); len(errs) != 0 {
 				t.Fatal(errs)
 			}
 		})
 	}
-	got, err := jsonlang.FromJSONValue("NaN")
+	got, err := json.FromJSONValue("NaN")
 	n, ok := got.(float64)
 	if err != nil || !ok || !math.IsNaN(n) {
 		t.Fatalf("NaN got %v, %v", got, err)
@@ -83,7 +83,7 @@ func TestFromJSONValue(t *testing.T) {
 func TestFromJSONIntegerNegativeZeroRemainsModeDependent(t *testing.T) {
 	t.Parallel()
 	for _, text := range []string{"-0", "[-0]", "{value:-0}"} {
-		value, err := jsonlang.FromJSONValue(text)
+		value, err := json.FromJSONValue(text)
 		if err != nil {
 			t.Fatalf("valid loose JSON rejected: %s: %v", text, err)
 		}
@@ -93,8 +93,8 @@ func TestFromJSONIntegerNegativeZeroRemainsModeDependent(t *testing.T) {
 				t.Fatalf("loose integer -0 did not lose its sign: %#v", value)
 			}
 		}
-		expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + text + "') }}")
-		if value, known := evaluation.ConditionConstantValue(expr); known {
+		expr := syntax.ParseAssignedExpression("${{ fromJSON('" + text + "') }}")
+		if value, known := evaluate.ConditionConstantValue(expr); known {
 			t.Fatalf("mode-dependent sign became a constant: %s: %#v", text, value)
 		}
 	}
@@ -111,14 +111,14 @@ func TestFromJSONInvalidSyntax(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			if got, err := jsonlang.FromJSONValue(source); err == nil {
+			if got, err := json.FromJSONValue(source); err == nil {
 				t.Fatalf("accepted invalid input: %#v", got)
 			}
-			expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + strings.ReplaceAll(source, "'", "''") + "') }}")
-			if _, known := evaluation.ConditionConstantValue(expr); known {
+			expr := syntax.ParseAssignedExpression("${{ fromJSON('" + strings.ReplaceAll(source, "'", "''") + "') }}")
+			if _, known := evaluate.ConditionConstantValue(expr); known {
 				t.Fatal("folded invalid input")
 			}
-			_, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(evaluation.EvaluateSubexpressions(expr))
+			_, errs := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr))
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "broken JSON string") {
 				t.Fatal(errs)
 			}
@@ -136,8 +136,8 @@ func TestFromJSONErrorOffsets(t *testing.T) {
 		{"", 0},
 		{`[1 x]`, 4},
 	} {
-		_, err := jsonlang.FromJSONValue(tc.source)
-		var syntax *jsonlang.ReadError
+		_, err := json.FromJSONValue(tc.source)
+		var syntax *json.ReadError
 		if !errors.As(err, &syntax) || syntax.Offset != tc.offset {
 			t.Fatalf("%q: got %v; want offset %d", tc.source, err, tc.offset)
 		}
@@ -147,19 +147,19 @@ func TestFromJSONErrorOffsets(t *testing.T) {
 func TestFromJSONUnsupportedConstructor(t *testing.T) {
 	t.Parallel()
 	for _, source := range []string{"new Date(0)", "{a:new Date(0),}", "[new Foo(true,undefined,)]"} {
-		if _, err := jsonlang.FromJSONValue(source); !errors.Is(err, jsonlang.ErrUnsupportedValue) {
+		if _, err := json.FromJSONValue(source); !errors.Is(err, json.ErrUnsupportedValue) {
 			t.Fatalf("%s: %v", source, err)
 		}
-		expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + source + "') }}")
-		if _, known := evaluation.ConditionConstantValue(expr); known {
+		expr := syntax.ParseAssignedExpression("${{ fromJSON('" + source + "') }}")
+		if _, known := evaluate.ConditionConstantValue(expr); known {
 			t.Fatal("folded unsupported constructor")
 		}
-		if _, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(evaluation.EvaluateSubexpressions(expr)); len(errs) != 0 {
+		if _, errs := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr)); len(errs) != 0 {
 			t.Fatal(errs)
 		}
 	}
-	expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('{a:new Date(0), A:1}') }}")
-	_, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(evaluation.EvaluateSubexpressions(expr))
+	expr := syntax.ParseAssignedExpression("${{ fromJSON('{a:new Date(0), A:1}') }}")
+	_, errs := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr))
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, "collide under case-insensitive lookup") {
 		t.Fatal(errs)
 	}
@@ -168,23 +168,23 @@ func TestFromJSONUnsupportedConstructor(t *testing.T) {
 func TestFromJSONCollisionOffsets(t *testing.T) {
 	t.Parallel()
 	source := `{/*π*/ 'é':1, É:2, '\u00e9':3,} trailing`
-	collisions := jsonlang.JSONMemberCollisions(source)
-	want := []jsonlang.MemberCollision{
+	collisions := json.JSONMemberCollisions(source)
+	want := []json.MemberCollision{
 		{"é", "É", int64(strings.Index(source, "É:") + len("É"))},
 		{"é", "é", int64(strings.Index(source, "'\\u00e9'") + len("'\\u00e9'"))},
 	}
 	if !reflect.DeepEqual(collisions, want) {
 		t.Fatalf("got %#v; want %#v", collisions, want)
 	}
-	expr := exprsyntax.ParseAssignedExpression("${{ fromJSON('" + strings.ReplaceAll(source, "'", "''") + "') }}")
-	if _, known := evaluation.ConditionConstantValue(expr); known {
+	expr := syntax.ParseAssignedExpression("${{ fromJSON('" + strings.ReplaceAll(source, "'", "''") + "') }}")
+	if _, known := evaluate.ConditionConstantValue(expr); known {
 		t.Fatal("folded ambiguous member")
 	}
-	_, errs := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil).Check(evaluation.EvaluateSubexpressions(expr))
+	_, errs := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(expr))
 	if len(errs) != 2 {
 		t.Fatal(errs)
 	}
-	if got := jsonlang.JSONMemberCollisions(`/*comment*/{"a":1,"A":2}`); len(got) != 0 {
+	if got := json.JSONMemberCollisions(`/*comment*/{"a":1,"A":2}`); len(got) != 0 {
 		t.Fatal(got)
 	}
 }

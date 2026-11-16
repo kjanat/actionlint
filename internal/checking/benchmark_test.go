@@ -13,7 +13,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"golang.org/x/sys/execabs"
 )
@@ -173,11 +173,11 @@ func BenchmarkLintWorkflowFiles(b *testing.B) {
 					b.Fatal(err)
 				}
 
-				renderer, err := render.New("", bm.format, false, func() string { return "test" }, nil)
+				renderer, err := output.New("", bm.format, false, func() string { return "test" }, nil)
 				if err != nil {
 					b.Fatal(err)
 				}
-				if err := renderer.Render(io.Discard, render.FromAnalysis(*result)); err != nil {
+				if err := renderer.Render(io.Discard, output.FromAnalysis(*result)); err != nil {
 					b.Fatal(err)
 				}
 				if len(result.Diagnostics) > 0 {
@@ -226,11 +226,11 @@ func BenchmarkExamplesLintFiles(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		renderer, err := render.New("", "", false, func() string { return "test" }, nil)
+		renderer, err := output.New("", "", false, func() string { return "test" }, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
-		if err := renderer.Render(io.Discard, render.FromAnalysis(*result)); err != nil {
+		if err := renderer.Render(io.Discard, output.FromAnalysis(*result)); err != nil {
 			b.Fatal(err)
 		}
 		if len(result.Diagnostics) == 0 {

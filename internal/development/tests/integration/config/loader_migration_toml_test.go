@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
-	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -69,7 +69,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 		t.Fatalf("TOML migration is not idempotent: %v\n%s", err, second.Content)
 	}
 
-	before, err := configdocument.ParseConfigDocument("actionlint.toml", original)
+	before, err := document.ParseConfigDocument("actionlint.toml", original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := configdocument.ParseConfigDocument("actionlint.toml", migration.Content)
+	after, err := document.ParseConfigDocument("actionlint.toml", migration.Content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestTOMLMigrationCanonicalLintForms(t *testing.T) {
 			if !bytes.Contains(migration.Content, []byte("TOKEN#VALUE")) {
 				t.Fatalf("quoted hash changed:\n%s", migration.Content)
 			}
-			root, err := configdocument.ParseConfigDocument("actionlint.toml", migration.Content)
+			root, err := document.ParseConfigDocument("actionlint.toml", migration.Content)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -222,7 +222,7 @@ value = "kept"
 			t.Errorf("unrelated TOML bytes changed; missing %q:\n%s", preserved, migration.Content)
 		}
 	}
-	before, err := configdocument.ParseConfigDocument("actionlint.toml", original)
+	before, err := document.ParseConfigDocument("actionlint.toml", original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ value = "kept"
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := configdocument.ParseConfigDocument("actionlint.toml", migration.Content)
+	after, err := document.ParseConfigDocument("actionlint.toml", migration.Content)
 	if err != nil {
 		t.Fatal(err)
 	}

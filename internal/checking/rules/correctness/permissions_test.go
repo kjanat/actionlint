@@ -6,14 +6,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	permissionmodel "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestPermissionDiagnostics(t *testing.T) {
 	t.Parallel()
-	at := func(line, column int) sourcepos.Position { return sourcepos.Position{Line: line, Column: column} }
+	at := func(line, column int) source.Position { return source.Position{Line: line, Column: column} }
 	value := func(line, column int, text string) permissionValue {
 		return permissionValue{Text: text, Start: at(line, column)}
 	}
@@ -43,7 +43,7 @@ func TestPermissionDiagnostics(t *testing.T) {
 			}
 		})
 	}
-	for name := range permissionmodel.Scopes() {
+	for name := range permissions.Scopes() {
 		if !strings.Contains(permissionDiagnostics(permissionDeclaration{Scopes: []permissionScope{{permissionValue{Text: name}, permissionValue{Text: "bogus"}}}})[0].Message, `"bogus" is invalid as permission of scope "`+name+`"`) {
 			t.Errorf("scope %s accepted an unknown level", name)
 		}

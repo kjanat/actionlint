@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCredentialsKnownMappingExpressions(t *testing.T) {
@@ -201,7 +201,7 @@ jobs:
 	}
 }
 
-func lintCredentialsExpressionTest(t *testing.T, source string) []diagmodel.Diagnostic {
+func lintCredentialsExpressionTest(t *testing.T, source string) []results.Diagnostic {
 	t.Helper()
 	request := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 	var requestSources []workspace.InputFile

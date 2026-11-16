@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestSchemaActionDynamicRequiredInputs(t *testing.T) {
@@ -175,7 +175,7 @@ runs:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(tc.source))
-			var findings []*findingmodel.Finding
+			var findings []*finding.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
 				findings = actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})

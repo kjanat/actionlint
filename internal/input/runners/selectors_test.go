@@ -3,9 +3,9 @@ package runners
 import (
 	"testing"
 
-	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestPreparedMalformedSelectorsRemainUnknown(t *testing.T) {
@@ -25,7 +25,7 @@ func TestPreparedMalformedSelectorsRemainUnknown(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := k.Job(w.Views["test"])
-			if got.Platform != runnermodel.Any || got.Shell != "" || len(got.Rejections) != 0 {
+			if got.Platform != runners.Any || got.Shell != "" || len(got.Rejections) != 0 {
 				t.Fatalf("invalid shape acquired meaning: %#v", got)
 			}
 		})
@@ -39,7 +39,7 @@ func TestPartialSelectorsPreserveConstraints(t *testing.T) {
 		`${{ matrix.runner }}`,
 	} {
 		w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [windows-latest]\n        runner: [{group: prod, labels: [windows-latest, x64]}]\n        unknown: '${{ fromJSON(vars.AXIS) }}'\n    runs-on: "+selection+"\n    steps: [{run: echo ok}]\n")
-		selectors := runnermodel.Selectors(w.Views["test"])
+		selectors := runners.Selectors(w.Views["test"])
 		if len(selectors) != 2 {
 			t.Fatalf("%#v", selectors)
 		}
@@ -72,7 +72,7 @@ func TestDynamicMatrixSelector(t *testing.T) {
 func TestPartialSelectorsKeepIndependentLabels(t *testing.T) {
 	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [windows]\n        image: [ubuntu-lates]\n        include: '${{ fromJSON(vars.INCLUDE) }}'\n    runs-on: [linux, '${{ matrix.os }}', '${{ matrix.image }}']\n    steps: [{run: echo ok}]\n")
-	selectors := runnermodel.Selectors(w.Views["test"])
+	selectors := runners.Selectors(w.Views["test"])
 	if len(selectors) != 3 {
 		t.Fatalf("want separate fallback and two axis alternatives: %#v", selectors)
 	}
@@ -88,7 +88,7 @@ func TestPartialSelectorsKeepIndependentLabels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := k.Job(w.Views["test"]); got.Platform != runnermodel.Any || got.Shell != "" || len(got.Rejections) != 2 {
+	if got := k.Job(w.Views["test"]); got.Platform != runners.Any || got.Shell != "" || len(got.Rejections) != 2 {
 		t.Fatalf("partial selectors lost independent diagnostics or claimed certainty: %#v", got)
 	}
 }
@@ -96,7 +96,7 @@ func TestPartialSelectorsKeepIndependentLabels(t *testing.T) {
 func TestFixedSelectorDoesNotDependOnDynamicMatrix(t *testing.T) {
 	t.Parallel()
 	w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix:\n        item: '${{ fromJSON(vars.ITEMS) }}'\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n")
-	selectors := runnermodel.Selectors(w.Views["test"])
+	selectors := runners.Selectors(w.Views["test"])
 	if len(selectors) != 1 || selectors[0].Incomplete || len(selectors[0].Labels) != 1 || selectors[0].Labels[0].Value != runnerapi.Literal("ubuntu-latest") {
 		t.Fatalf("fixed selector acquired unrelated matrix uncertainty: %#v", selectors)
 	}
@@ -104,7 +104,7 @@ func TestFixedSelectorDoesNotDependOnDynamicMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := k.Job(w.Views["test"]); got.Platform != runnermodel.MacOrLinux || got.Shell != "bash" || len(got.Rejections) != 0 {
+	if got := k.Job(w.Views["test"]); got.Platform != runners.MacOrLinux || got.Shell != "bash" || len(got.Rejections) != 0 {
 		t.Fatalf("fixed runner lost shell facts: %#v", got)
 	}
 }
@@ -138,7 +138,7 @@ func TestMatrixIncludeUnresolvedLabelsKeepFixedConstraints(t *testing.T) {
 		t.Run(item, func(t *testing.T) {
 			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [a], include: [{os: a, runner: "+item+"}]}\n    runs-on: [self-hosted, '${{ matrix.runner }}']\n    steps: [{run: echo ok}]\n")
-			selectors := runnermodel.Selectors(w.Views["test"])
+			selectors := runners.Selectors(w.Views["test"])
 			if len(selectors) != 1 || !selectors[0].Incomplete || len(selectors[0].Labels) != 2 || selectors[0].Labels[0].Value != runnerapi.Literal("self-hosted") || selectors[0].Labels[1].Value != runnerapi.Expression("${{ matrix.runner }}") {
 				t.Fatalf("unresolved include lost constraints: %#v", selectors)
 			}
@@ -146,7 +146,7 @@ func TestMatrixIncludeUnresolvedLabelsKeepFixedConstraints(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := k.Job(w.Views["test"]); got.Platform != runnermodel.Any || got.Shell != "" || len(got.Rejections) != 0 {
+			if got := k.Job(w.Views["test"]); got.Platform != runners.Any || got.Shell != "" || len(got.Rejections) != 0 {
 				t.Fatalf("unresolved include acquired runner facts: %#v", got)
 			}
 		})
@@ -163,7 +163,7 @@ func TestDynamicMatrixFiltersKeepAlternativesIncomplete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: "+tc.matrix+"\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
-			selectors := runnermodel.Selectors(w.Views["test"])
+			selectors := runners.Selectors(w.Views["test"])
 			known := map[runnerapi.Term]bool{}
 			for _, selector := range selectors {
 				if !selector.Incomplete {
@@ -180,7 +180,7 @@ func TestDynamicMatrixFiltersKeepAlternativesIncomplete(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := k.Job(w.Views["test"]); got.Platform != runnermodel.Any || got.Shell != "" || len(got.Rejections) != 0 {
+			if got := k.Job(w.Views["test"]); got.Platform != runners.Any || got.Shell != "" || len(got.Rejections) != 0 {
 				t.Fatalf("dynamic filter claimed certainty: %#v", got)
 			}
 		})
@@ -191,7 +191,7 @@ func TestRejectedMatrixExclusionsCannotSupplyRunnerCertainty(t *testing.T) {
 	t.Parallel()
 	for _, filter := range []string{`[{os: windows-latest, nokey: x}]`, `"${{ fromJSON('[{}]') }}"`} {
 		w := runnerSource(t, "on: push\njobs:\n  test:\n    strategy:\n      matrix: {os: [ubuntu-latest, windows-latest], exclude: "+filter+"}\n    runs-on: '${{ matrix.os }}'\n    steps: [{run: echo ok}]\n")
-		selectors := runnermodel.Selectors(w.Views["test"])
+		selectors := runners.Selectors(w.Views["test"])
 		for _, selector := range selectors {
 			if !selector.Incomplete {
 				t.Fatalf("rejected exclusion supplied complete selector: %#v", selectors)
@@ -201,7 +201,7 @@ func TestRejectedMatrixExclusionsCannotSupplyRunnerCertainty(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := k.Job(w.Views["test"]); got.Platform != runnermodel.Any || got.Shell != "" {
+		if got := k.Job(w.Views["test"]); got.Platform != runners.Any || got.Shell != "" {
 			t.Fatalf("rejected exclusion supplied runner facts: %#v", got)
 		}
 	}

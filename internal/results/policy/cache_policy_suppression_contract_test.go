@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -13,9 +13,9 @@ import (
 func TestCachePolicyInlineSuppressionKeepsOtherDiagnostics(t *testing.T) {
 	t.Parallel()
 	source := []byte("name: café # actionlint:ignore cache-operation -- reviewed\n")
-	errs := []*findingmodel.Finding{
+	errs := []*finding.Finding{
 		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation"},
-		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation", Source: diagmodel.DiagnosticSource{Content: []byte("other file")}},
+		{Start: sourcepos.Position{Line: 1}, Rule: "cache-operation", Source: results.DiagnosticSource{Content: []byte("other file")}},
 		{Start: sourcepos.Position{Line: 1}, Rule: "syntax-check"},
 		{Start: sourcepos.Position{Line: 2}, Rule: "cache-operation"},
 	}

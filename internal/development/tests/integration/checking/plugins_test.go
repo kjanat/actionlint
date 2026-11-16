@@ -14,11 +14,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -33,8 +33,8 @@ func TestComponentEngineMapsCarriageReturnEscape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (sourcepos.Position{Line: 6, Column: 25}) ||
-		result.Diagnostics[0].End != (sourcepos.Position{Line: 6, Column: 32}) {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Start != (source.Position{Line: 6, Column: 25}) ||
+		result.Diagnostics[0].End != (source.Position{Line: 6, Column: 32}) {
 		t.Fatalf("escaped CR lost token coordinates: %+v", result.Diagnostics)
 	}
 }
@@ -83,7 +83,7 @@ func TestComponentEnginePluginRegistersAdvertisedShells(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	findings, err := loaded.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing", Filename: "script.py"})
+	findings, err := loaded.Check(t.Context(), inputs.ScriptRequest{Source: "missing", Filename: "script.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "ECHO001" {
 		t.Fatalf("configured component backend: %#v, %v", findings, err)
 	}
@@ -146,11 +146,11 @@ func TestModuleKindSelection(t *testing.T) {
 		path string
 		core bool
 	}{{"../../../../plugins/execution/module/testdata/engines/echo.wasm", true}, {"../../../../plugins/execution/component/testdata/plugins/no-sudo.wasm", false}} {
-		artifact, err := pluginartifact.Resolve(t.Context(), tc.path, pluginartifact.Options{})
+		artifact, err := artifacts.Resolve(t.Context(), tc.path, artifacts.Options{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if core := artifact.Info.Kind == pluginartifact.Core; core != tc.core {
+		if core := artifact.Info.Kind == artifacts.Core; core != tc.core {
 			t.Fatalf("%s: core=%v", tc.path, core)
 		}
 	}
@@ -158,7 +158,7 @@ func TestModuleKindSelection(t *testing.T) {
 	if err := os.WriteFile(path, []byte("not wasm"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pluginartifact.Resolve(context.Background(), path, pluginartifact.Options{}); err == nil {
+	if _, err := artifacts.Resolve(context.Background(), path, artifacts.Options{}); err == nil {
 		t.Fatal("accepted invalid header")
 	}
 }

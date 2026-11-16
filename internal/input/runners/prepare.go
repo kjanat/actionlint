@@ -9,23 +9,23 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
 // Prepare acquires runner answers with an explicitly known custom-label list.
-func Prepare(ctx context.Context, snapshot parsing.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*runner.Knowledge, error) {
-	return PrepareWithLabels(ctx, snapshot, runner.KnownLabels(custom), options, scope)
+func Prepare(ctx context.Context, snapshot parsing.SourceSnapshot, custom []string, options runnerapi.Options, scope string) (*runners.Knowledge, error) {
+	return PrepareWithLabels(ctx, snapshot, runners.KnownLabels(custom), options, scope)
 }
 
 // PrepareWithLabels selects and invokes a provider before constructing job knowledge.
 // Failed acquisition returns unknown capabilities with any established provider identity.
-func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, custom runner.LabelSet, options runnerapi.Options, scope string) (*runner.Knowledge, error) {
+func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, custom runners.LabelSet, options runnerapi.Options, scope string) (*runners.Knowledge, error) {
 	if options.Target == "" {
 		options.Target = "github"
 	}
-	unknown := runner.UnknownKnowledge(options.Target)
+	unknown := runners.UnknownKnowledge(options.Target)
 	if !snapshot.Present() {
 		return unknown, nil
 	}
@@ -47,13 +47,13 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 		return unknown, errors.New("runner snapshot scope does not match requested scope")
 	}
 	var selected runnerapi.Provider
-	selection := runner.ProviderSelection{}
+	selection := runners.ProviderSelection{}
 	if options.Target == "github" && (options.Provider == "" || options.Provider == "github") {
-		selected = runner.GitHubProvider(custom)
+		selected = runners.GitHubProvider(custom)
 		selection.BuiltinLabels, selection.ImplementationID = true, "builtin-github"
 	}
 	if options.Target == "github" && options.Provider == "snapshot" {
-		selected = runner.SnapshotProvider()
+		selected = runners.SnapshotProvider()
 		selection.ImplementationID = "builtin-github-snapshot-v1"
 	}
 	for _, registration := range options.Providers {
@@ -83,7 +83,7 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 		options.AsOf = runnerapi.DateOf(time.Now())
 	}
 	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot, Service: service, AsOf: options.AsOf}
-	plan, err := runner.NewResolutionPlan(snapshot, custom, request, selection, hasSnapshot)
+	plan, err := runners.NewResolutionPlan(snapshot, custom, request, selection, hasSnapshot)
 	if err != nil {
 		return unknown, err
 	}

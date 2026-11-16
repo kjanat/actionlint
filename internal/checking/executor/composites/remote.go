@@ -8,13 +8,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type remoteDocument struct {
@@ -23,10 +23,10 @@ type remoteDocument struct {
 	identity         actions.Identity
 	valid            bool
 	metadataChecked  bool
-	metadataFindings []*findingmodel.Finding
+	metadataFindings []*finding.Finding
 }
 
-func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *rulebinding.Scope, actions *workspaceactions.Resolver) error {
+func (analysis *compositeAnalyzer) checkRemoteMetadata(address string, meta *actionmeta.Metadata, snapshot parsing.SourceSnapshot, bindings *rulebinding.Scope, actions *workspace.Resolver) error {
 	document, remote := analysis.remoteDocuments[address]
 	if !remote {
 		return nil
@@ -154,16 +154,16 @@ func (analysis *compositeAnalyzer) resolveRemoteAction(spec string) (*actionmeta
 	return metadata, address, outcome, err
 }
 
-func (analysis *compositeAnalyzer) repositorySource(identity actions.Identity) func(string) (workspaceactions.RepositoryDocument, error) {
-	return func(local string) (workspaceactions.RepositoryDocument, error) {
+func (analysis *compositeAnalyzer) repositorySource(identity actions.Identity) func(string) (workspace.RepositoryDocument, error) {
+	return func(local string) (workspace.RepositoryDocument, error) {
 		spec := identity.Repository() + "/" + strings.TrimPrefix(local, "./") + "@" + identity.Commit()
 		_, address, _, err := analysis.resolveRemoteAction(spec)
 		if err != nil {
-			return workspaceactions.RepositoryDocument{}, err
+			return workspace.RepositoryDocument{}, err
 		}
 		if document, found := analysis.remoteDocuments[address]; found {
-			return workspaceactions.RepositoryDocument{Parsed: document.document, Captured: document.Capture(), Valid: document.valid}, nil
+			return workspace.RepositoryDocument{Parsed: document.document, Captured: document.Capture(), Valid: document.valid}, nil
 		}
-		return workspaceactions.RepositoryDocument{}, nil
+		return workspace.RepositoryDocument{}, nil
 	}
 }

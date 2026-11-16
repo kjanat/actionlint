@@ -7,12 +7,12 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	expr "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 
@@ -50,11 +50,11 @@ func Complete(content string, offset int) []Item {
 		}
 		start = lineStart + colon + 1
 	}
-	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	c.SetAvailability(contextspec.WorkflowExpressionScope(key))
-	parsed, _ := workflowparser.ParseWorkflow([]byte(content))
+	c := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+	c.SetAvailability(contexts.WorkflowExpressionScope(key))
+	parsed, _ := parser.ParseWorkflow([]byte(content))
 	w := workflows.Bind("editor-buffer", content, parsed, false, "").Workflow()
-	contextspec.SetEventPayloadType(c, events.Type(w))
+	contexts.SetEventPayloadType(c, events.Type(w))
 	if w.Present() {
 		for _, event := range w.On {
 			if dispatch, ok := event.(*definition.WorkflowDispatchEvent); ok && dispatch != nil {
@@ -76,7 +76,7 @@ func Complete(content string, offset int) []Item {
 					}
 					inputs.Set(strings.ToLower(name), ty)
 				}
-				contextspec.SetDispatchInputTypes(c, inputs.Build())
+				contexts.SetDispatchInputTypes(c, inputs.Build())
 			}
 		}
 	}
@@ -129,7 +129,7 @@ func keyAt(root *codec.Node, content string, offset int) string {
 	}
 	walk(root, nil)
 	for key != "" {
-		if contexts, _ := contextspec.WorkflowKeyAvailability(key); len(contexts) > 0 {
+		if contexts, _ := contexts.WorkflowKeyAvailability(key); len(contexts) > 0 {
 			return key
 		}
 		at := strings.LastIndexByte(key, '.')

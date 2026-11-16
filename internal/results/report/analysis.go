@@ -9,9 +9,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
 // Analysis is the completed or partial result of an analysis session. It contains
@@ -20,13 +20,13 @@ import (
 type Analysis struct {
 	IncompleteChecks []IncompleteCheck             `merge:"append"`
 	ActionMetadata   []actions.Coverage            `merge:"append"`
-	RunnerResults    []runner.Report               `merge:"append"`
+	RunnerResults    []runnerapi.Report            `merge:"append"`
 	FileCount        int                           `merge:"sum"`
 	Diagnostics      []results.PublishedDiagnostic `merge:"append"`
 	// CapturedSources projects only admitted rows after capture teardown joins.
 	// Keys are captured aliases; values and byte slices belong to this result.
 	CapturedSources map[string]CapturedSource `merge:"captured"`
-	Documents       documentmodel.Outlines    `merge:"append"`
+	Documents       outline.Outlines          `merge:"append"`
 	Configurations  []configreport.Report     `merge:"append"`
 	Inputs          []string                  `merge:"append"`
 	Rules           []rule.Descriptor         `merge:"rules"`

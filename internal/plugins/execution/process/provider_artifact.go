@@ -7,22 +7,22 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // ReadProviderArtifact parses a distributed process-provider manifest. A standalone
 // JSON file uses a PATH command and inline transforms; OCI supplies blob layers.
-func ReadProviderArtifact(artifact *pluginartifact.Artifact) (manifests.Manifest, error) {
+func ReadProviderArtifact(artifact *artifacts.Artifact) (manifests.Manifest, error) {
 	manifest, err := manifests.ParsePluginManifest(artifact.Bytes)
 	if err != nil {
 		return manifests.Manifest{}, fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
 	}
 	if manifest.Transport != manifests.TransportProcess {
-		return manifests.Manifest{}, fmt.Errorf("plugin %s: tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", artifact.Info.Source, manifest.Rule.Name, manifest.Transport, pluginartifact.MediaTypeWasm)
+		return manifests.Manifest{}, fmt.Errorf("plugin %s: tool provider %s uses the %s transport; an OCI tool provider manifest must use the process transport, and a WebAssembly plugin is published as a %s layer", artifact.Info.Source, manifest.Rule.Name, manifest.Transport, artifacts.MediaTypeWasm)
 	}
-	if !pluginartifact.IsOCI(artifact.Info.Source) {
+	if !artifacts.IsOCI(artifact.Info.Source) {
 		if len(manifest.Artifacts) != 0 {
 			return manifests.Manifest{}, errors.New("a standalone process provider cannot include executable artifacts; package its blob graph as OCI")
 		}
@@ -38,13 +38,13 @@ func ReadProviderArtifact(artifact *pluginartifact.Artifact) (manifests.Manifest
 // ValidateProviderArtifact compiles a distributed provider's schemas and jq
 // programs. OCI transforms are fetched by digest, but the process entry is
 // never resolved, probed, or invoked.
-func ValidateProviderArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options pluginartifact.Options) error {
+func ValidateProviderArtifact(ctx context.Context, artifact *artifacts.Artifact, options artifacts.Options) error {
 	manifest, err := ReadProviderArtifact(artifact)
 	if err != nil {
 		return err
 	}
 	var programs manifests.Programs
-	if pluginartifact.IsOCI(artifact.Info.Source) {
+	if artifacts.IsOCI(artifact.Info.Source) {
 		programs, err = manifests.LoadPrograms(manifest, func(digest string) ([]byte, error) {
 			return oci.Layer(ctx, artifact.Info.Source, strings.TrimPrefix(digest, "sha256:"), options)
 		})
@@ -74,19 +74,19 @@ func ValidateLocalProvider(ctx context.Context, path string) error {
 // InspectArtifact resolves source and returns its provenance. A process
 // provider manifest, local or distributed, is validated first; its process
 // entry is never resolved, probed or invoked.
-func InspectArtifact(ctx context.Context, source string, options pluginartifact.Options) (pluginartifact.ArtifactProvenance, error) {
+func InspectArtifact(ctx context.Context, source string, options artifacts.Options) (artifacts.ArtifactProvenance, error) {
 	if manifests.IsLocalManifest(source) {
 		if err := ValidateLocalProvider(ctx, source); err != nil {
-			return pluginartifact.ArtifactProvenance{}, err
+			return artifacts.ArtifactProvenance{}, err
 		}
 	}
-	artifact, err := pluginartifact.Resolve(ctx, source, options)
+	artifact, err := artifacts.Resolve(ctx, source, options)
 	if err != nil {
-		return pluginartifact.ArtifactProvenance{}, err
+		return artifacts.ArtifactProvenance{}, err
 	}
-	if artifact.Info.Kind == pluginartifact.ProviderManifest && !manifests.IsLocalManifest(source) {
+	if artifact.Info.Kind == artifacts.ProviderManifest && !manifests.IsLocalManifest(source) {
 		if err := ValidateProviderArtifact(ctx, artifact, options); err != nil {
-			return pluginartifact.ArtifactProvenance{}, err
+			return artifacts.ArtifactProvenance{}, err
 		}
 	}
 	return artifact.Info, nil

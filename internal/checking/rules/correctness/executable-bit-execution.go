@@ -12,11 +12,11 @@ import (
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -49,10 +49,10 @@ type ExecutableChecker struct {
 // Report receives each direct-execution finding; composite forks share it, so
 // the owner collects findings without reading checker state.
 type ExecutableContext struct {
-	Runners                 *runnerlang.Knowledge
+	Runners                 *runners.Knowledge
 	ProjectRoot, WorkingDir string
 	Index                   *execution.IndexSnapshot
-	Report                  func(*findingmodel.Finding)
+	Report                  func(*finding.Finding)
 }
 
 // NewExecutableChecker creates isolated state for one workflow's script execution.
@@ -68,7 +68,7 @@ func (rule *ExecutableChecker) SetPaths(paths execution.Paths) { rule.paths = pa
 
 func (rule *ExecutableChecker) Errorf(pos *source.Position, format string, args ...any) {
 	if rule.context.Report != nil {
-		rule.context.Report(findingmodel.Errorf(pos, "executable-bit", format, args...))
+		rule.context.Report(finding.Errorf(pos, "executable-bit", format, args...))
 	}
 }
 
@@ -102,11 +102,11 @@ func (rule *ExecutableChecker) VisitJobPre(declaration workflows.Job) error {
 	rule.jobDir, rule.jobShell = execution.DefaultDirectory(defaults), execution.DefaultShell(defaults)
 	rule.jobEnv = rule.workflowEnv || execution.ShellEnvironmentUnknown(jobEnv)
 	knowledge := rule.context.Runners.Job(declaration)
-	rule.runnerShell = scriptmodel.DefaultShell(workflows.Container(declaration.Container), knowledge.Shell)
+	rule.runnerShell = scripts.DefaultShell(workflows.Container(declaration.Container), knowledge.Shell)
 	platform := knowledge.Platform
 	rule.jobGitEnv = execution.CheckoutEnvironmentUnknown(rule.workflowGitEnv, platform) || execution.CheckoutEnvironmentUnknown(jobEnv, platform)
 	rule.jobPathUnknown = rule.workflowPathUnknown || execution.ShellPathUnknown(jobEnv)
-	rule.unix = platform == runnerlang.MacOrLinux && knowledge.PathsKnown
+	rule.unix = platform == runners.MacOrLinux && knowledge.PathsKnown
 	rule.caseInsensitive = knowledge.CaseInsensitive
 	rule.shIsDash = knowledge.ShIsDash
 	// Container mounts can replace the checked-out tree. Treat them as unknown.
@@ -343,10 +343,10 @@ func pipelineInvocation(statement *syntax.Stmt) (*syntax.Stmt, bool) {
 		if len(command.Args) == 0 {
 			return nil, false
 		}
-		name, known := scriptmodel.LiteralShellWord(command.Args[0].Parts)
+		name, known := scripts.LiteralShellWord(command.Args[0].Parts)
 		if known && len(command.Assigns) == 0 && (name == "true" || name == ":" || name == "echo") {
 			for _, word := range command.Args[1:] {
-				if _, literal := scriptmodel.LiteralShellWord(word.Parts); !literal {
+				if _, literal := scripts.LiteralShellWord(word.Parts); !literal {
 					return nil, false
 				}
 			}
@@ -363,7 +363,7 @@ func (rule *ExecutableChecker) redirectsKnown(redirects []*syntax.Redirect, dire
 		if redirect.Word == nil || redirect.Hdoc != nil || redirect.N != nil && !standardShellDescriptor(redirect.N.Value) {
 			return false
 		}
-		target, literal := scriptmodel.LiteralShellWord(redirect.Word.Parts)
+		target, literal := scripts.LiteralShellWord(redirect.Word.Parts)
 		if !literal {
 			return false
 		}
@@ -437,7 +437,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 			}
 		}
 	}
-	name, literal := scriptmodel.LiteralShellWord(command.Args[0].Parts)
+	name, literal := scripts.LiteralShellWord(command.Args[0].Parts)
 	if !literal {
 		rule.pristine = false
 		return
@@ -446,7 +446,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 	if name == "exec" || name == "command" {
 		arguments = arguments[1:]
 		if len(arguments) > 0 {
-			if option, literal := scriptmodel.LiteralShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.Name, "bash")) {
+			if option, literal := scripts.LiteralShellWord(arguments[0].Parts); literal && option == "--" && (name != "exec" || strings.EqualFold(shell.Name, "bash")) {
 				arguments = arguments[1:]
 			}
 		}
@@ -454,7 +454,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 			rule.pristine = false
 			return
 		}
-		name, literal = scriptmodel.LiteralShellWord(arguments[0].Parts)
+		name, literal = scripts.LiteralShellWord(arguments[0].Parts)
 		// Lookup-only flags and other options do not prove a script invocation.
 		if !literal || strings.HasPrefix(name, "-") || !strings.Contains(name, "/") {
 			rule.pristine = false
@@ -479,7 +479,7 @@ func (rule *ExecutableChecker) call(command *syntax.CallExpr, run *definition.Ex
 	}
 	args := make([]string, len(command.Args))
 	for i, word := range command.Args {
-		value, ok := scriptmodel.LiteralShellWord(word.Parts)
+		value, ok := scripts.LiteralShellWord(word.Parts)
 		if !ok {
 			rule.pristine = false
 			return

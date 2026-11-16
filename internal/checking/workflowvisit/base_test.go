@@ -3,8 +3,8 @@ package workflowvisit
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -16,27 +16,27 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 	if len(errs) > 0 {
 		t.Error("no error is expected", errs)
 	}
-	r.Error(&sourcepos.Position{Line: 1, Column: 2}, "this is test 1")
-	r.Errorf(&sourcepos.Position{Line: 3, Column: 4}, "this is test %d", 2)
+	r.Error(&source.Position{Line: 1, Column: 2}, "this is test 1")
+	r.Errorf(&source.Position{Line: 3, Column: 4}, "this is test %d", 2)
 	errs = r.Errs()
 	if len(errs) != 2 {
 		t.Error("wanted 2 errors but have", errs)
 	}
-	want := []*findingmodel.Finding{
+	want := []*finding.Finding{
 		{
-			Message: "this is test 1", Start: sourcepos.Position{
+			Message: "this is test 1", Start: source.Position{
 				Line:   1,
 				Column: 2,
 			}, Rule: "dummy name",
 		},
 		{
-			Message: "this is test 2", Start: sourcepos.Position{
+			Message: "this is test 2", Start: source.Position{
 				Line:   3,
 				Column: 4,
 			}, Rule: "dummy name",
 		},
 	}
-	if diff := cmp.Diff(errs, want, cmp.AllowUnexported(findingmodel.Finding{})); diff != "" {
+	if diff := cmp.Diff(errs, want, cmp.AllowUnexported(finding.Finding{})); diff != "" {
 		t.Error("unexpected errors from Errs() method:", diff)
 	}
 }
@@ -44,7 +44,7 @@ func TestRuleBaseErrorfAndErrs(t *testing.T) {
 func TestRuleBaseErrsAreDetached(t *testing.T) {
 	t.Parallel()
 	r := NewBase("rule", "description")
-	r.Error(&sourcepos.Position{Line: 1, Column: 1}, "message")
+	r.Error(&source.Position{Line: 1, Column: 1}, "message")
 	r.Errs()[0].Path = "changed"
 	if path := r.Errs()[0].Path; path != "" {
 		t.Fatalf("reader changed a recorded finding: path %q", path)
@@ -54,10 +54,10 @@ func TestRuleBaseErrsAreDetached(t *testing.T) {
 func TestRuleBaseAnnotateSince(t *testing.T) {
 	t.Parallel()
 	r := NewBase("rule", "description")
-	r.Error(&sourcepos.Position{Line: 1, Column: 1}, "before")
+	r.Error(&source.Position{Line: 1, Column: 1}, "before")
 	mark := r.FindingCount()
-	r.Error(&sourcepos.Position{Line: 2, Column: 1}, "after")
-	r.AnnotateSince(mark, func(finding *findingmodel.Finding) { finding.Path = "annotated" })
+	r.Error(&source.Position{Line: 2, Column: 1}, "after")
+	r.AnnotateSince(mark, func(finding *finding.Finding) { finding.Path = "annotated" })
 	if count := r.FindingCount(); count != 2 {
 		t.Fatalf("wanted 2 findings, have %d", count)
 	}
@@ -65,7 +65,7 @@ func TestRuleBaseAnnotateSince(t *testing.T) {
 	if errs[0].Path != "" || errs[1].Path != "annotated" {
 		t.Fatalf("annotation must cover only findings after the mark: %q, %q", errs[0].Path, errs[1].Path)
 	}
-	r.AnnotateSince(r.FindingCount()+1, func(*findingmodel.Finding) { t.Fatal("mark past the end annotates nothing") })
+	r.AnnotateSince(r.FindingCount()+1, func(*finding.Finding) { t.Fatal("mark past the end annotates nothing") })
 }
 
 func TestRuleBaseNameAndDescription(t *testing.T) {

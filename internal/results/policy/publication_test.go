@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	source "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
@@ -73,7 +73,7 @@ func TestPublicationFailureInvalidatesUnusedSuppressionProof(t *testing.T) {
 	t.Parallel()
 	content := []byte("# actionlint-ignore-next-line expression-reference -- intentional\nrun: echo ok\n")
 	ref := source.Reference{Document: "shared-action", Revision: source.ContentDigest(content)}
-	references := map[string]workflowfacts.SourceIndex{"action.yml": {Document: ref}}
+	references := map[string]facts.SourceIndex{"action.yml": {Document: ref}}
 	rules := checking.ConfigurationRules()
 	p := preparePolicy(rules, nil, policy.Policy{Path: "action.yml", ConfigPath: "action.yml", Content: content}, nil, nil)
 	result, err := policy.Publish([]policy.Batch{
@@ -90,7 +90,7 @@ func TestPublicationSharesOwnedForeignSourceAcrossOneHundredFindings(t *testing.
 	content := bytes.Repeat([]byte("echo ok\n"), 8192)
 	input := make([]*finding.Finding, 100)
 	for i := range input {
-		input[i] = &finding.Finding{Path: "shared/action.yml", Source: diagmodel.DiagnosticSource{Content: content}, Rule: "expression-reference", Message: "finding", Start: source.Position{Line: i + 1, Column: 1}}
+		input[i] = &finding.Finding{Path: "shared/action.yml", Source: results.DiagnosticSource{Content: content}, Rule: "expression-reference", Message: "finding", Start: source.Position{Line: i + 1, Column: 1}}
 	}
 	rules := checking.ConfigurationRules()
 	p := preparePolicy(rules, nil, policy.Policy{Path: "ci.yml", Content: []byte("entry\n")}, nil, input)

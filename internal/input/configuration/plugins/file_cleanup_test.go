@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestReadOnlyPluginManifestReplacementCleanup(t *testing.T) {

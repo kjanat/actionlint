@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"

@@ -5,16 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	render "actionlint.kjanat.dev/v2/internal/output"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestGitHubAnnotationEscaping(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
-	diagnostics := []diagmodel.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 2, Column: 5}}}
-	if err := render.WriteGitHub(&out, diagnostics); err != nil {
+	diagnostics := []results.Diagnostic{{Path: "a%,:\r\nb.yml", Message: "bad%\r\n::notice::text", Rule: "expression", Start: source.Position{Line: 2, Column: 3}, End: source.Position{Line: 2, Column: 5}}}
+	if err := output.WriteGitHub(&out, diagnostics); err != nil {
 		t.Fatal(err)
 	}
 	want := "::error file=a%25%2C%3A%0D%0Ab.yml,line=2,endLine=2,col=3,endColumn=4,title=expression::bad%25%0D%0A::notice::text\n"
@@ -27,7 +27,7 @@ func TestGitHubAnnotationLevels(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
 		var out bytes.Buffer
-		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Severity: tc.severity, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}); err != nil {
+		if err := output.WriteGitHub(&out, []results.Diagnostic{{Severity: tc.severity, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {
@@ -40,7 +40,7 @@ func TestGitHubAnnotationUsesDiagnosticCode(t *testing.T) {
 	t.Parallel()
 	for _, code := range []string{"missing-file", "runtime-deprecated", "SC2035"} {
 		var out bytes.Buffer
-		if err := render.WriteGitHub(&out, []diagmodel.Diagnostic{{Rule: "action", Code: code, Message: "problem"}}); err != nil {
+		if err := output.WriteGitHub(&out, []results.Diagnostic{{Rule: "action", Code: code, Message: "problem"}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), ",title="+code+"::problem\n") {
@@ -51,8 +51,8 @@ func TestGitHubAnnotationUsesDiagnosticCode(t *testing.T) {
 
 func TestTemplateRangeUsesInclusiveEndColumn(t *testing.T) {
 	t.Parallel()
-	d := diagmodel.Diagnostic{Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 2, Column: 4}}
-	if got := render.TemplateFieldsOf(diagmodel.Publish(d, diagmodel.DiagnosticSource{Content: []byte("abc\ndefgh")})).EndColumn; got != 3 {
+	d := results.Diagnostic{Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 2, Column: 4}}
+	if got := output.TemplateFieldsOf(results.Publish(d, results.DiagnosticSource{Content: []byte("abc\ndefgh")})).EndColumn; got != 3 {
 		t.Fatalf("want inclusive column 3, got %d", got)
 	}
 }

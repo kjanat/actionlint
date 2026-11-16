@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
 func TestWorkflowPathsLinearIdentityChecks(t *testing.T) {
@@ -84,12 +84,12 @@ func TestIndexSymlinkCheckout(t *testing.T) {
 		}
 	}
 	loads := 0
-	index := NewIndex([]string{overlay, missing}, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
+	index := NewIndex([]string{overlay, missing}, files.New(t.Context(), nil, nil), func(path string) (names.Declared, error) {
 		loads++
 		if path != overlay && path != missing {
 			t.Errorf("did not retain overlay spelling: %q", path)
 		}
-		return namemodel.Declare(nil), nil
+		return names.Declare(nil), nil
 	})
 	names, err := index.ForRoot(root)
 	if err != nil || !names.Complete() || names.Len() != 2 || !names.Contains(".github/workflows/build.yml") || !names.Contains(".github/workflows/new.yml") || loads != 2 {
@@ -119,12 +119,12 @@ func TestIndexUnnamedOverlaySpelling(t *testing.T) {
 		overlay = disk
 	}
 	loads := 0
-	index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
+	index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (names.Declared, error) {
 		loads++
 		if path != overlay {
 			t.Errorf("loaded %q instead of original overlay %q", path, overlay)
 		}
-		return namemodel.Declare(nil), nil
+		return names.Declare(nil), nil
 	})
 	names, err := index.ForRoot(root)
 	if err != nil || !names.Complete() || names.Len() != 1 || !names.Contains(".github/workflows/build.yml") || loads != 1 {
@@ -141,24 +141,24 @@ func TestIndexRecordsPlainTextNamesWithPaths(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	dir := filepath.Join(root, ".github", "workflows")
-	declared := map[string]namemodel.Declared{
-		filepath.Join(dir, "plain.yml"):      namemodel.Declare(&definition.String{Value: "CI"}),
-		filepath.Join(dir, "expression.yml"): namemodel.Declare(&definition.String{Value: "${{ 'CI' }}"}),
-		filepath.Join(dir, "unnamed.yml"):    namemodel.Declare(nil),
-		filepath.Join(dir, "unknown.yml"):    namemodel.Unknown(),
+	declared := map[string]names.Declared{
+		filepath.Join(dir, "plain.yml"):      names.Declare(&definition.String{Value: "CI"}),
+		filepath.Join(dir, "expression.yml"): names.Declare(&definition.String{Value: "${{ 'CI' }}"}),
+		filepath.Join(dir, "unnamed.yml"):    names.Declare(nil),
+		filepath.Join(dir, "unknown.yml"):    names.Unknown(),
 	}
 	var paths []string
 	for path := range declared {
 		paths = append(paths, path)
 	}
-	index := NewIndex(paths, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
+	index := NewIndex(paths, files.New(t.Context(), nil, nil), func(path string) (names.Declared, error) {
 		return declared[path], nil
 	})
 	got, err := index.ForRoot(root)
 	if err != nil || got.Complete() || !got.Contains("CI") || !got.Contains(".github/workflows/unnamed.yml") {
 		t.Fatalf("inventory=%+v err=%v", got, err)
 	}
-	want := []namemodel.NamedWorkflow{{Path: filepath.Join(dir, "plain.yml"), Name: "CI"}}
+	want := []names.NamedWorkflow{{Path: filepath.Join(dir, "plain.yml"), Name: "CI"}}
 	if sharing := got.SharingName("ci"); !slices.Equal(sharing, want) {
 		t.Fatalf("plain-text names = %v, want %v", sharing, want)
 	}
@@ -273,13 +273,13 @@ func TestIndexFilesystemCaseAlias(t *testing.T) {
 	}
 	for _, name := range []string{"New name", ""} {
 		loads := 0
-		index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (namemodel.Declared, error) {
+		index := NewIndex([]string{overlay}, files.New(t.Context(), nil, nil), func(path string) (names.Declared, error) {
 			loads++
 			if path != overlay {
 				t.Errorf("loaded stale disk spelling %q", path)
-				return namemodel.Unknown(), nil
+				return names.Unknown(), nil
 			}
-			return namemodel.Declare(&definition.String{Value: name}), nil
+			return names.Declare(&definition.String{Value: name}), nil
 		})
 		got, err := index.ForRoot(root)
 		if err != nil || !got.Complete() || loads != 1 || got.Len() != 1 {

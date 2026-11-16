@@ -3,7 +3,7 @@ package fuzz
 import (
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -38,6 +38,6 @@ jobs: {}
 			return
 		}
 
-		workflowparser.ParseWorkflow(data)
+		parser.ParseWorkflow(data)
 	})
 }

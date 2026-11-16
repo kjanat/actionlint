@@ -2,18 +2,18 @@ package composites
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // CheckInput projects a composition result onto the check input of its
 // entry document. A batch that disagrees with the entry snapshot is rejected.
-func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]workflowfacts.SourceIndex) (checkinputs.AnalyzerInput, error) {
+func CheckInput(result Composition, path, pathAbs string, content []byte, document parsing.Document, references map[string]facts.SourceIndex) (inputs.AnalyzerInput, error) {
 	units := result.Batch.Scripts
 	refs := references[pathAbs]
 	input := executor.SourceInput(document, path, content, refs.Document)
@@ -21,16 +21,16 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 		return input, nil
 	}
 	if !result.Batch.Valid() || !result.EntrySnapshot.Present() {
-		return input, scriptexecution.ErrInvalidBatch
+		return input, scripts.ErrInvalidBatch
 	}
 	input.CallGraph = result.Batch.CallGraph
 	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
-		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
+		return executor.SourceInput(document, path, content, refs.Document), scripts.ErrInvalidBatch
 	}
 	if input.Reference == (source.Reference{}) {
 		input.Reference = input.CallGraph.Entry().Reference
 	} else if input.Reference != input.CallGraph.Entry().Reference {
-		return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
+		return executor.SourceInput(document, path, content, refs.Document), scripts.ErrInvalidBatch
 	}
 	input.AvailableInputs = append(input.AvailableInputs, rule.Mappings, rule.Dependencies, rule.Invocations)
 	if result.Batch.Collected {
@@ -38,12 +38,12 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)
 			if !exists {
-				return executor.SourceInput(document, path, content, refs.Document), scriptexecution.ErrInvalidBatch
+				return executor.SourceInput(document, path, content, refs.Document), scripts.ErrInvalidBatch
 			}
 
 			switch {
 			case script.Occurrence.Kind == invocation.ScriptActionInput:
-				input.ActionInputs = append(input.ActionInputs, checkinputs.ActionInput{Script: script, Site: unit.Input.Site})
+				input.ActionInputs = append(input.ActionInputs, inputs.ActionInput{Script: script, Site: unit.Input.Site})
 			case script.Occurrence.Owner == input.CallGraph.RootID():
 				input.Scripts = append(input.Scripts, script)
 			default:

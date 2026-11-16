@@ -8,10 +8,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // ExecutableBitRule is the single definition of the executable-bit rule.
@@ -44,22 +44,22 @@ type ruleExecutableBit struct {
 // NewRuleExecutableBit checks script executable bits using prepared Git-index facts.
 func NewRuleExecutableBit(base workflowvisit.Base, input ExecutableContext) workflowvisit.Rule {
 	r := &ruleExecutableBit{Tag: base.Name(), name: base.Name(), description: base.Description()}
-	input.Report = func(finding *findingmodel.Finding) { r.findings.Report(finding) }
+	input.Report = func(finding *finding.Finding) { r.findings.Report(finding) }
 	r.ExecutableChecker = NewExecutableChecker(input)
 	return r
 }
 func (rule *ruleExecutableBit) Name() string        { return rule.name }
 func (rule *ruleExecutableBit) Description() string { return rule.description }
 
-func (rule *ruleExecutableBit) Errs() []*findingmodel.Finding { return rule.findings.Errs() }
-func (rule *ruleExecutableBit) FindingCount() int             { return rule.findings.FindingCount() }
+func (rule *ruleExecutableBit) Errs() []*finding.Finding { return rule.findings.Errs() }
+func (rule *ruleExecutableBit) FindingCount() int        { return rule.findings.FindingCount() }
 
-func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*finding.Finding)) {
 	rule.findings.AnnotateSince(mark, annotate)
 }
 func (rule *ruleExecutableBit) VisitWorkflowPost(workflows.Workflow) error { return nil }
 func (rule *ruleExecutableBit) VisitJobPost(workflows.Job) error           { return nil }
-func (rule *ruleExecutableBit) ApplyCheckout(actions *workspaceactions.Resolver) {
+func (rule *ruleExecutableBit) ApplyCheckout(actions *workspace.Resolver) {
 	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
 }
 

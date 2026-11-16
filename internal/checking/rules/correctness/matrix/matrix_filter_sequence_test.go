@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 func TestMatrixExcludeSequenceInsertions(t *testing.T) {
@@ -53,11 +53,11 @@ jobs:
     steps:
       - run: echo ok
 `, tc.axis, tc.filter)
-			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, parseErrors := parser.ParseWorkflow([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			findings := Check(matrixcheck.Resolve(workflow.Jobs["test"].Strategy), false)
+			findings := Check(matrix.Resolve(workflow.Jobs["test"].Strategy), false)
 			count := 0
 			for _, finding := range findings {
 				if strings.Contains(finding.Message, "does not match in matrix") {

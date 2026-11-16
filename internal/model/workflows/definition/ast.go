@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
@@ -108,7 +108,7 @@ type String struct {
 
 // ContainsExpression returns whether the String contains at least one ${{ }} expression.
 func (s *String) ContainsExpression() bool {
-	return s != nil && exprsyntax.ContainsExpression(s.Value)
+	return s != nil && syntax.ContainsExpression(s.Value)
 }
 
 // Text returns the decoded value, or "" when the scalar is absent.

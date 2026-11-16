@@ -10,14 +10,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -31,11 +31,11 @@ type sourceFactAnalyzer struct {
 	path string
 }
 
-func (a sourceFactAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "shellcheck"}
+func (a sourceFactAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "shellcheck"}
 }
 
-func (a sourceFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a sourceFactAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -136,7 +136,7 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 							}
 							policy := resultpolicy.Policy{Path: "workflow.yml", WorkingDir: filepath.Dir(path), Scope: scope, Bindings: registry.Seal(), SourceBindings: map[string]*rulebinding.Scope{path: scope}}
 							published, err := resultpolicy.Publish([]resultpolicy.Batch{{Processor: processor, Policy: policy, InputPath: "workflow.yml", Findings: findings, Sources: map[string][]byte{path: content}}}, nil)
-							var filtered []*findingmodel.Finding
+							var filtered []*finding.Finding
 							if len(published.Findings) > 0 {
 								filtered = published.Findings[0]
 							}
@@ -155,11 +155,11 @@ func TestScriptAdaptersPreserveActionDeployment(t *testing.T) {
 	}
 }
 
-func (a partialFactAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "test"}
+func (a partialFactAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "test"}
 }
 
-func (a partialFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a partialFactAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -168,7 +168,7 @@ func (a partialFactAnalyzer) CheckDocument(_ context.Context, input checkinputs.
 	if len(facts) != 1 || facts[0].Text != "echo ok" {
 		a.t.Fatalf("changed script facts: %+v", input)
 	}
-	return []results.Diagnostic{{Rule: "test", Message: "partial finding", Start: sourcepos.Position{Line: 1, Column: 1}}}, a.failure
+	return []results.Diagnostic{{Rule: "test", Message: "partial finding", Start: source.Position{Line: 1, Column: 1}}}, a.failure
 }
 
 type partialTool struct {
@@ -184,7 +184,7 @@ func (a partialTool) Analyze(_ context.Context, batch scripts.Batch) ([]contract
 	if batch.Scripts[0].Path != "" || batch.Scripts[0].Content != nil {
 		a.t.Fatal("workflow script lost the native adapter's root-source fallback")
 	}
-	return []contract.ToolFinding{{Rule: "test", Message: "partial finding", Start: sourcepos.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
+	return []contract.ToolFinding{{Rule: "test", Message: "partial finding", Start: source.Position{Line: 1, Column: 1}, Script: 0, Source: results.DiagnosticSource{Content: batch.Scripts[0].Content}}}, a.failure
 }
 
 func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
@@ -199,8 +199,8 @@ func TestScriptAdaptersPreserveOwnershipAndPartialFindings(t *testing.T) {
 	if !exists || !hasPosition {
 		t.Fatal("fixture source absent")
 	}
-	owner := &findingmodel.Owner{Job: "test", Step: &position}
-	origin := &findingmodel.IgnoreOrigin{Job: "test", StepPosition: &position}
+	owner := &finding.Owner{Job: "test", Step: &position}
+	origin := &finding.IgnoreOrigin{Job: "test", StepPosition: &position}
 	failure := errors.New("partial analysis failure")
 	for name, adapter := range map[string]func(*testing.T) scripts.Analyzer{
 		"fact": func(t *testing.T) scripts.Analyzer {

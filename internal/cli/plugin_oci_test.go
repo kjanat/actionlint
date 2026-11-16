@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/ocitest"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -27,8 +27,8 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 	}
 	registry := ocitest.New(t)
 	executable := registry.Blob("application/octet-stream", []byte("executable"))
-	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProviderManifest(t, executable))
-	index := registry.Index(t, map[string]ocitest.Descriptor{pluginartifact.HostPlatform(): registry.Manifest(t, manifest, executable)})
+	manifest := registry.Blob(artifacts.MediaTypeProviderManifest, ociProviderManifest(t, executable))
+	index := registry.Index(t, map[string]ocitest.Descriptor{artifacts.HostPlatform(): registry.Manifest(t, manifest, executable)})
 	registry.Tag("v1", index)
 	reference := registry.Reference(index)
 
@@ -41,7 +41,7 @@ func TestPluginInstallAndInspectOCI(t *testing.T) {
 		t.Fatalf("OCI install created a project lock: %v", err)
 	}
 	output := pluginCommandTest(t, acquisition, 0, "plugin", "inspect", reference)
-	for _, want := range []string{"Kind: manifest", "SHA256: " + index.Hex(), "Platform: " + pluginartifact.HostPlatform(), "Tool provider manifest:", "example.com/oci-tool"} {
+	for _, want := range []string{"Kind: manifest", "SHA256: " + index.Hex(), "Platform: " + artifacts.HostPlatform(), "Tool provider manifest:", "example.com/oci-tool"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("inspect output lacks %q:\n%s", want, output)
 		}
@@ -64,7 +64,7 @@ func ociProviderManifest(t *testing.T, executable ocitest.Descriptor) []byte {
 	manifest, err := json.Marshal(map[string]any{
 		"schema_version": 1, "id": "example.com/oci-tool", "version": "1.0.0", "role": "script", "scope": "source", "transport": "process",
 		"rule":         map[string]any{"name": "oci-tool", "description": "A tool from an OCI registry", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "oci-tool"},
-		"artifacts":    []map[string]any{{"platform": pluginartifact.HostPlatform(), "digest": executable.Digest, "filename": "oci-tool", "size": executable.Size}},
+		"artifacts":    []map[string]any{{"platform": artifacts.HostPlatform(), "digest": executable.Digest, "filename": "oci-tool", "size": executable.Size}},
 		"preparation":  "kjanat:actionlint/expression-mask@0.1.0",
 		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
 		"capabilities": map[string]any{"fixes": false, "reported_sources": false},
@@ -85,7 +85,7 @@ func TestConfigSchemaIncludesInstalledProvider(t *testing.T) {
 	t.Setenv("ACTIONLINT_NO_CONFIG", "1")
 	registry := ocitest.New(t)
 	executable := registry.Blob("application/octet-stream", []byte("executable"))
-	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProviderManifest(t, executable))
+	manifest := registry.Blob(artifacts.MediaTypeProviderManifest, ociProviderManifest(t, executable))
 	reference := registry.Reference(registry.Manifest(t, manifest, executable))
 
 	output := pluginCommandTest(t, acquisition, 0, "config", "schema", "--plugin", reference)
@@ -127,7 +127,7 @@ func TestPluginInstallRefusesInvalidOCIProviderManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := ocitest.New(t)
-	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, []byte(`{"schema_version":1,"id":"example.com/oci-tool"}`))
+	manifest := registry.Blob(artifacts.MediaTypeProviderManifest, []byte(`{"schema_version":1,"id":"example.com/oci-tool"}`))
 	reference := registry.Reference(registry.Manifest(t, manifest))
 	output := pluginCommandTest(t, acquisition, 3, "plugin", "install", reference)
 	if !strings.Contains(output, reference) || !strings.Contains(output, "invalid tool provider manifest") {
@@ -156,7 +156,7 @@ func TestPluginInstallValidatesProviderBeforeWritingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := ocitest.New(t)
-	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProcessManifest(t, "must-not-execute", "["))
+	manifest := registry.Blob(artifacts.MediaTypeProviderManifest, ociProcessManifest(t, "must-not-execute", "["))
 	reference := registry.Reference(registry.Manifest(t, manifest))
 	output := pluginCommandTest(t, acquisition, 3, "plugin", "install", reference)
 	if !strings.Contains(output, reference) || !strings.Contains(output, "parse jq transform") {
@@ -186,7 +186,7 @@ func TestPluginInstallDoesNotResolveProcessEntry(t *testing.T) {
 	}
 	registry := ocitest.New(t)
 	program := registry.Blob("application/vnd.actionlint.jq", []byte("[]"))
-	manifest := registry.Blob(pluginartifact.MediaTypeProviderManifest, ociProcessManifest(t, "actionlint-install-tool-does-not-exist", "sha256:"+program.Hex()))
+	manifest := registry.Blob(artifacts.MediaTypeProviderManifest, ociProcessManifest(t, "actionlint-install-tool-does-not-exist", "sha256:"+program.Hex()))
 	reference := registry.Reference(registry.Manifest(t, manifest, program))
 	output := pluginCommandTest(t, acquisition, 0, "plugin", "install", reference)
 	if !strings.Contains(output, reference) {

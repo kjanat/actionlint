@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -24,7 +24,7 @@ import (
 type inputOptionsBackend struct {
 	mu        sync.Mutex
 	name      string
-	requests  []checkinputs.ScriptRequest
+	requests  []inputs.ScriptRequest
 	validated map[string]int
 }
 
@@ -46,7 +46,7 @@ func (b *inputOptionsBackend) ValidateConfig(_ context.Context, options json.Raw
 	return nil
 }
 
-func (b *inputOptionsBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *inputOptionsBackend) Check(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.requests = append(b.requests, request)
@@ -59,7 +59,7 @@ func (b *inputOptionsBackend) Check(_ context.Context, request checkinputs.Scrip
 	}
 	before, _, _ := strings.Cut(request.Source, marker)
 	row := strings.Count(before, "\n") + 1
-	return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: checkinputs.ScriptPosition{Row: row, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: len(marker) + 1}}}, nil
+	return []inputs.ScriptDiagnostic{{Filename: request.Filename, Code: "INPUT", Message: "input", Location: inputs.ScriptPosition{Row: row, Column: 1}, EndLocation: inputs.ScriptPosition{Row: row, Column: len(marker) + 1}}}, nil
 }
 
 func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
@@ -90,8 +90,8 @@ func TestBuiltinInputRoutesPreserveEffectiveAdapterOptions(t *testing.T) {
 				}
 			}
 			engine := &inputOptionsBackend{name: tc.name, validated: map[string]int{}}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
-				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
+			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: inputs.ScriptEngineDescriptor{
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []inputs.ScriptInput{{Action: "example/execute", Input: "code", Language: tc.shell}},
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
 			if err != nil {

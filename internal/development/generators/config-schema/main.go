@@ -12,10 +12,10 @@ import (
 	"strings"
 	"unicode"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/output"
 
@@ -49,8 +49,8 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 	}
 	switch t {
 	case reflect.TypeFor[configuration.DependencyCategories]():
-		values := make([]any, 0, len(lintconfig.Categories()))
-		for _, category := range lintconfig.Categories() {
+		values := make([]any, 0, len(rules.Categories()))
+		for _, category := range rules.Categories() {
 			values = append(values, category)
 		}
 		return &jsonschema.Schema{Type: "array", Items: &jsonschema.Schema{Type: "string", Enum: values}}
@@ -150,7 +150,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		disable.Items = definitionRef("rule-name")
 		disable.Type = ""
 		disable.OneOf = []*jsonschema.Schema{{Type: "array"}, {Type: "null"}}
-		categories := lintconfig.Categories()
+		categories := rules.Categories()
 		knownByCategory := make(map[string][]string, len(categories))
 		knownNames := make([]string, 0)
 		for _, rule := range checking.ConfigurationRules().Rules() {
@@ -278,7 +278,7 @@ func mapYAMLType(t reflect.Type, lookupComment func(reflect.Type, string) string
 		mapping.Version = ""
 		mapping.ID = ""
 		return &jsonschema.Schema{OneOf: []*jsonschema.Schema{{Type: "boolean"}, mapping}}
-	case reflect.TypeFor[lintconfig.CommitHashOptions]():
+	case reflect.TypeFor[rules.CommitHashOptions]():
 		// The runtime type keeps validated patterns private. Keep this in sync
 		// with CommitHashOptions.UnmarshalYAML.
 		mapping := reflectMapping(struct {

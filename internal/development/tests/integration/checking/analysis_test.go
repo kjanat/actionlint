@@ -10,10 +10,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -28,11 +28,11 @@ permissions: {}
 
 type scriptAnalyzer struct{ failure error }
 
-func (scriptAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts}}
+func (scriptAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "custom-script", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
-func (a scriptAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a scriptAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		findings = append(findings, results.Diagnostic{Message: "observed script", Start: script.Start})
@@ -45,7 +45,7 @@ func TestPublicAnalysisContract(t *testing.T) {
 	failure := errors.New("partial analysis")
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{failure}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
+		checking.Options{Analyzers: []inputs.Registration{{Checker: scriptAnalyzer{failure}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 	)
 	if !errors.Is(err, failure) {
 		t.Fatalf("err=%v", err)
@@ -65,7 +65,7 @@ func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree, findings := workflowparser.ParseWorkflow([]byte(workflow))
+	tree, findings := parser.ParseWorkflow([]byte(workflow))
 	if tree == nil || tree.Jobs["build"] == nil || len(findings) != 0 {
 		t.Fatalf("tree=%v findings=%v", tree, findings)
 	}
@@ -88,7 +88,7 @@ func TestPublicActionScriptFacts(t *testing.T) {
 	t.Parallel()
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: scriptAnalyzer{}}}}, []workspace.InputFile{{Path: "action.yml", Content: []byte("name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n")}},
+		checking.Options{Analyzers: []inputs.Registration{{Checker: scriptAnalyzer{}}}}, []workspace.InputFile{{Path: "action.yml", Content: []byte("name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - run: echo hello\n      shell: bash\n")}},
 	)
 	if err != nil || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Rule != "custom-script" {
 		t.Fatalf("result=%v err=%v", result, err)

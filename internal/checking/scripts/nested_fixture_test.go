@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 func nestedActionBatch(t *testing.T, collection Collection, snapshot parsing.SourceSnapshot, deployments ...Deployment) (invocation.Graph, Collection) {
@@ -62,7 +62,7 @@ func nestedActionBatch(t *testing.T, collection Collection, snapshot parsing.Sou
 		}
 		scope := baseScope
 		scope.Context, scope.Deployment = owner, deployment
-		workflowexecution.ActionOrigin(&scope.Paths, owner, deployment.ActionPath())
+		execution.ActionOrigin(&scope.Paths, owner, deployment.ActionPath())
 		collection.Scopes = append(collection.Scopes, &scope)
 		for step := range body.Steps() {
 			ref := step.Reference()

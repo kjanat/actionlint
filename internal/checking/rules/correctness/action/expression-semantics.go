@@ -3,13 +3,13 @@ package action
 import (
 	"strings"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
@@ -21,14 +21,14 @@ import (
 func expressionSemanticFindings(expressions []actionmeta.ParsedExpression, field string, advisories bool) []actionmeta.ExpressionProblem {
 	var findings []actionmeta.ExpressionProblem
 	for _, expression := range expressions {
-		checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+		checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 		checker.SetContextAvailability(actionmeta.AllowedContexts(field))
-		contextspec.MergeInputTypes(checker, exprtypes.NewMapObjectType(exprtypes.StringType()))
+		contexts.MergeInputTypes(checker, exprtypes.NewMapObjectType(exprtypes.StringType()))
 		// Output names and values are unknown here. Each output is a string;
 		// the outputs property is an object.
 		step := outputs.StepType(exprtypes.NewMapObjectType(exprtypes.StringType()))
 		checker.SetContextType("steps", exprtypes.NewMapObjectType(step.Type()).Type())
-		evaluation := expreval.EvaluateSubexpressions(expression.Node)
+		evaluation := evaluate.EvaluateSubexpressions(expression.Node)
 		result := checker.CheckResult(evaluation)
 		semantic := result.Findings
 		if advisories {

@@ -6,20 +6,20 @@ import (
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func TestPreparerSelectsExactOccurrence(t *testing.T) {
 	t.Parallel()
-	reference := sourcepos.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
+	reference := source.Reference{Document: "workflow.yml", Revision: "r", Node: "run"}
 	bashID, shID := invocation.ID(strings.Repeat("a", 64)), invocation.ID(strings.Repeat("b", 64))
-	scripts := []checkinputs.Script{
-		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: bashID}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}},
-		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: shID}, Runtime: &scriptmodel.Execution{Shell: "sh", ShellKnown: true}},
+	scripts := []inputs.Script{
+		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: bashID}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}},
+		{Reference: reference, Text: "echo same", Occurrence: invocation.Script{ID: shID}, Runtime: &scripts.Execution{Shell: "sh", ShellKnown: true}},
 	}
 	prepare := NewShellScriptInputBuilder(scripts)
 	bash, err := prepare(t.Context(), bashID, nil)
@@ -35,8 +35,8 @@ func TestPreparerSelectsExactOccurrence(t *testing.T) {
 func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 	t.Parallel()
 	const id invocation.ID = "known"
-	script := checkinputs.Script{Text: "echo hi", Occurrence: invocation.Script{ID: id}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
-	prepare := NewShellScriptInputBuilder([]checkinputs.Script{script})
+	script := inputs.Script{Text: "echo hi", Occurrence: invocation.Script{ID: id}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
+	prepare := NewShellScriptInputBuilder([]inputs.Script{script})
 	for name, occurrence := range map[string]invocation.ID{"empty": "", "unknown": "foreign"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -45,7 +45,7 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 			}
 		})
 	}
-	duplicate := NewShellScriptInputBuilder([]checkinputs.Script{script, script})
+	duplicate := NewShellScriptInputBuilder([]inputs.Script{script, script})
 	if _, err := duplicate(t.Context(), id, nil); err == nil {
 		t.Fatal("ambiguous duplicate occurrence accepted")
 	}
@@ -58,7 +58,7 @@ func TestPreparerRejectsInvalidOccurrencesAndHonorsCancellation(t *testing.T) {
 
 func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []workflowfacts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: sourcepos.Position{Line: 4, Column: 7}}}, Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
+	script := inputs.Script{Text: "#!/bin/bash\necho ${{ inputs.value }}\n", Comments: []facts.SourceComment{{Text: "# shellcheck disable=SC2086", Start: source.Position{Line: 4, Column: 7}}}, Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)
@@ -66,7 +66,7 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 	if !strings.HasPrefix(prepared.Text, "#!/bin/bash\n# shellcheck disable=SC2086\nset -e -o pipefail\n") || strings.Contains(prepared.Text, "${{") {
 		t.Fatalf("source: %q", prepared.Text)
 	}
-	want := []checkinputs.ShellScriptLine{{Kind: checkinputs.ShellScriptSourceLine, Line: 1}, {Kind: checkinputs.ShellScriptCommentLine, Position: script.Comments[0].Start}, {Kind: checkinputs.ShellScriptGeneratedLine}, {Kind: checkinputs.ShellScriptSourceLine, Line: 2}}
+	want := []inputs.ShellScriptLine{{Kind: inputs.ShellScriptSourceLine, Line: 1}, {Kind: inputs.ShellScriptCommentLine, Position: script.Comments[0].Start}, {Kind: inputs.ShellScriptGeneratedLine}, {Kind: inputs.ShellScriptSourceLine, Line: 2}}
 	if len(prepared.Lines) != len(want) {
 		t.Fatalf("lines: %+v", prepared.Lines)
 	}
@@ -79,7 +79,7 @@ func TestPluginPreparationPreservesCommentAndScriptCoordinates(t *testing.T) {
 
 func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
+	script := inputs.Script{Text: "# shellcheck shell=sh\necho hi\n", Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil || prepared.Dialect == nil || *prepared.Dialect != "bash" || prepared.ShellSetup != "set -e -o pipefail" {
 		t.Fatalf("prepared=%+v err=%v", prepared, err)
@@ -98,7 +98,7 @@ func TestPluginPreparationReportsInterpreterWithoutInterpretingToolDirectives(t 
 // template, so no part of it reaches the plugin.
 func TestPluginPreparationMasksWholeTemplates(t *testing.T) {
 	t.Parallel()
-	script := checkinputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}
+	script := inputs.Script{Text: "echo ${{ '}}' }}\n", Runtime: &scripts.Execution{Shell: "bash", ShellKnown: true}}
 	prepared, err := BuildShellScriptInput(script, nil)
 	if err != nil || prepared == nil {
 		t.Fatalf("prepare: %v", err)

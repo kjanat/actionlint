@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -55,10 +55,10 @@ func TestSchemaSharesDefinitionsAndRuleDescriptions(t *testing.T) {
 	walk = func(value any) {
 		switch node := value.(type) {
 		case map[string]any:
-			if reflect.DeepEqual(node["enum"], enumValues(lintconfig.Levels())) {
+			if reflect.DeepEqual(node["enum"], enumValues(rules.Levels())) {
 				levelEnums++
 			}
-			if reflect.DeepEqual(node["enum"], enumValues(lintconfig.Presets())) {
+			if reflect.DeepEqual(node["enum"], enumValues(rules.Presets())) {
 				presetEnums++
 			}
 			if ref, ok := node["$ref"].(string); ok {

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -16,20 +16,20 @@ import (
 
 type selectedToolGuest struct{}
 
-func (selectedToolGuest) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs", Maturity: "stable"}
+func (selectedToolGuest) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "shellcheck", Category: "correctness", Provider: "shellcheck-rs", Maturity: "stable"}
 }
 
-func (selectedToolGuest) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (selectedToolGuest) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 
-func (selectedToolGuest) ToolIntegration() *checkinputs.ToolIntegration {
-	return &checkinputs.ToolIntegration{Tool: "shellcheck", Contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
+func (selectedToolGuest) ToolIntegration() *inputs.ToolIntegration {
+	return &inputs.ToolIntegration{Tool: "shellcheck", Contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 }
 
-func (selectedToolGuest) NegotiateTool(context.Context, json.RawMessage, json.RawMessage) (*checkinputs.ToolNegotiation, error) {
-	return &checkinputs.ToolNegotiation{Options: json.RawMessage(`{}`)}, nil
+func (selectedToolGuest) NegotiateTool(context.Context, json.RawMessage, json.RawMessage) (*inputs.ToolNegotiation, error) {
+	return &inputs.ToolNegotiation{Options: json.RawMessage(`{}`)}, nil
 }
 
 func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
@@ -44,7 +44,7 @@ func TestToolRegistrationUsesSelectedProvider(t *testing.T) {
 			if tc.explicit {
 				selection = registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}
 			}
-			options, err := checking.ConfigureToolIntegrations(checking.Options{Tools: registry.Registrations(selection), Analyzers: []checkinputs.Registration{{Checker: selectedToolGuest{}}}})
+			options, err := checking.ConfigureToolIntegrations(checking.Options{Tools: registry.Registrations(selection), Analyzers: []inputs.Registration{{Checker: selectedToolGuest{}}}})
 			if err != nil {
 				t.Fatal(err)
 			}

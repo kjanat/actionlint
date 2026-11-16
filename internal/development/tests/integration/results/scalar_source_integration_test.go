@@ -14,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/output"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -40,12 +40,12 @@ func TestSourcedScriptRenderingPreservesPhysicalLines(t *testing.T) {
 		t.Fatalf("diagnostics: %+v", result.Diagnostics)
 	}
 	for _, template := range []string{"", "{{range .}}{{.Snippet}}{{end}}"} {
-		renderer, err := render.New("", template, false, buildinfo.Version, nil)
+		renderer, err := output.New("", template, false, buildinfo.Version, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
+		if err := renderer.Render(&out, output.FromAnalysis(*result)); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), "echo $VALUE") || strings.Contains(out.String(), "still-first") {
@@ -74,7 +74,7 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 				}
 				var rendered bytes.Buffer
 				failure := &findingmodel.Finding{Start: finding.Start, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
-				render.PrettyPrint(&rendered, failure.Publish([]byte(src)))
+				output.PrettyPrint(&rendered, failure.Publish([]byte(src)))
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
 				}
@@ -103,7 +103,7 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 			b.SetBytes(int64(len(content)))
 			b.ResetTimer()
 			for b.Loop() {
-				p := workflowparser.NewSourceParser(content)
+				p := parser.NewSourceParser(content)
 				p.IndexScalarSources(root)
 				for i := 1; i < len(mapping.Content); i += 2 {
 					if p.ScriptSource(mapping.Content[i]) == nil {

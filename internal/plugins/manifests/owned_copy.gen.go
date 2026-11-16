@@ -6,9 +6,9 @@ import (
 	maps "maps"
 	slices "slices"
 
-	commands "actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	toolsettings "actionlint.kjanat.dev/v2/internal/model/toolsettings"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func copyOwnedManifest(in Manifest) Manifest {

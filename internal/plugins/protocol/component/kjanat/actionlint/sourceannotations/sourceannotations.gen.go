@@ -7,7 +7,7 @@ package sourceannotations
 import (
 	"context"
 
-	invocationcontext "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
 
 // InterfaceName is the canonical WIT id of the interface this binding

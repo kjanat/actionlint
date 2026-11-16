@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -68,8 +68,8 @@ func (c checkInvocation) pluginSelection(acquisition pluginacquisition.Settings)
 
 // defaultPlugins lets every bundled tool that runs its default command
 // receive a default plugin declaration.
-func (c checkInvocation) defaultPlugins(warning func(string)) plugininstall.DefaultPluginOptions {
-	options := plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Warning: warning}
+func (c checkInvocation) defaultPlugins(warning func(string)) installation.DefaultPluginOptions {
+	options := installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules(), Warning: warning}
 	for _, id := range slices.Sorted(maps.Keys(c.Tools)) {
 		if selection := c.Tools[id]; selection.Command == id && implicitProcessOptions(selection.Process) {
 			options.Tools = append(options.Tools, id)

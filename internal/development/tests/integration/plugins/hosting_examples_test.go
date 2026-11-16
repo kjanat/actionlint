@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 )
 
-var _ interface{ Limits() corewasm.Limits } = (*corewasm.Engine)(nil)
+var _ interface{ Limits() module.Limits } = (*module.Engine)(nil)
 
 func Example_componentLoading() {
 	ctx := context.Background()
-	component, err := componenthost.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), componenthost.Options{})
+	component, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), component.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -25,7 +25,7 @@ func Example_componentLoading() {
 	fmt.Println("loaded", component.Descriptor().Name, "with", component.Limits())
 	result, err := checking.Analyze(ctx,
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
+		checking.Options{Analyzers: []inputs.Registration{{Checker: component}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: curl -sSf https://example.com/install.sh | sh\npermissions: {}\n")}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)
@@ -40,7 +40,7 @@ func Example_componentLoading() {
 
 func Example_moduleLoading() {
 	ctx := context.Background()
-	engine, err := corewasm.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
+	engine, err := module.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -48,7 +48,7 @@ func Example_moduleLoading() {
 	defer engine.Close(ctx)
 	limits := engine.Limits()
 	fmt.Println("loaded", engine.Metadata().ID, "with", limits)
-	diagnostics, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	diagnostics, err := engine.Check(ctx, inputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)
 		return
@@ -63,7 +63,7 @@ func Example_moduleLoading() {
 
 func Example_componentScriptEngine() {
 	ctx := context.Background()
-	engine, err := componenthost.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "script-engine.wasm"), componenthost.Options{})
+	engine, err := component.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "script-engine.wasm"), component.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -74,7 +74,7 @@ func Example_componentScriptEngine() {
 		fmt.Println("config:", err)
 		return
 	}
-	findings, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
+	findings, err := engine.Check(ctx, inputs.ScriptRequest{Source: "print(missing)\n", Filename: "step.py"})
 	if err != nil {
 		fmt.Println("check:", err)
 		return

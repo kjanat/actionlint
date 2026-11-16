@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestCategoryMigrationPreservesSelection(t *testing.T) {

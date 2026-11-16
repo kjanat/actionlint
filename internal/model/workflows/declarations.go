@@ -4,9 +4,9 @@ import (
 	"maps"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
@@ -14,13 +14,13 @@ import (
 // It holds only the new slices it builds; each method reads the Bound it is
 // given.
 type declarationSet struct {
-	mappings     []workflowfacts.Mapping
-	dependencies []workflowfacts.Dependency
+	mappings     []facts.Mapping
+	dependencies []facts.Dependency
 }
 
 // Declarations returns the mappings and dependencies the document declares. A
 // nil Bound declares none.
-func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Dependency) {
+func (b *Bound) Declarations() ([]facts.Mapping, []facts.Dependency) {
 	if b == nil || b.workflow == nil {
 		return nil, nil
 	}
@@ -33,7 +33,7 @@ func (b *Bound) Declarations() ([]workflowfacts.Mapping, []workflowfacts.Depende
 	return set.mappings, set.dependencies
 }
 
-func (d *declarationSet) job(b *Bound, job *definition.Job, ref sourcepos.Reference) {
+func (d *declarationSet) job(b *Bound, job *definition.Job, ref source.Reference) {
 	scope := ref.Address
 	if job.WorkflowCall != nil {
 		d.dependency(job.WorkflowCall.Uses, "workflow", ref)
@@ -60,26 +60,26 @@ func (d *declarationSet) job(b *Bound, job *definition.Job, ref sourcepos.Refere
 	}
 }
 
-func (d *declarationSet) env(scope string, owner sourcepos.Reference, env *definition.Env) {
+func (d *declarationSet) env(scope string, owner source.Reference, env *definition.Env) {
 	if env != nil {
 		d.mapping(scope, owner, Environment(env))
 	}
 }
 
-func (d *declarationSet) dependency(value *definition.String, kind string, ref sourcepos.Reference) {
+func (d *declarationSet) dependency(value *definition.String, kind string, ref source.Reference) {
 	if value == nil || value.ContainsExpression() {
 		return
 	}
-	start := sourcepos.ZeroIfNil(value.Pos)
+	start := source.ZeroIfNil(value.Pos)
 	end := start
 	if physical := value.SourceScalar.End; physical.Line > 0 && physical.Column > 0 {
 		end = physical
 	}
-	d.dependencies = append(d.dependencies, workflowfacts.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
+	d.dependencies = append(d.dependencies, facts.Dependency{Reference: ref, Uses: value.Value, Kind: kind, Start: start, End: end})
 }
 
-func (d *declarationSet) mapping(scope string, owner sourcepos.Reference, values mapping.Mapping) {
-	d.mappings = append(d.mappings, workflowfacts.Mapping{
+func (d *declarationSet) mapping(scope string, owner source.Reference, values mapping.Mapping) {
+	d.mappings = append(d.mappings, facts.Mapping{
 		Scope: scope, Reference: owner, Complete: values.Complete(), Entries: slices.Collect(values.Declarations()),
 	})
 }

@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
@@ -35,7 +35,7 @@ func UncancellableCondition(w workflows.Workflow, value *definition.String) []re
 	if value == nil {
 		return nil
 	}
-	expr, err, offset := exprsyntax.ParseConditionExpression(value.Value)
+	expr, err, offset := syntax.ParseConditionExpression(value.Value)
 	if err != nil || expr == nil || !workflowconditions.AlwaysIgnoresCancellation(expr) {
 		return nil
 	}
@@ -43,10 +43,10 @@ func UncancellableCondition(w workflows.Workflow, value *definition.String) []re
 		"this job can continue after workflow cancellation. Review whether it must finish cancellation cleanup or reporting")
 	// Fix only a standalone call. Compound conditions can deliberately select
 	// cancellation-only work or have branches needing different cancellation behavior.
-	call, standalone := expr.(*exprsyntax.FuncCallNode)
+	call, standalone := expr.(*syntax.FuncCallNode)
 	source := w.ScalarSource(value)
-	if standalone && strings.EqualFold(call.Callee, "always") && len(call.Args) == 0 && source != nil && exprsyntax.ConditionSource(value.Value) == value.Value {
-		span := exprsyntax.ExpressionSpan(expr)
+	if standalone && strings.EqualFold(call.Callee, "always") && len(call.Args) == 0 && source != nil && syntax.ConditionSource(value.Value) == value.Value {
+		span := syntax.ExpressionSpan(expr)
 		startOffset, endOffset := offset+span.Start, offset+span.End
 		startLine, startColumn := decodedConditionPosition(value.Value, startOffset)
 		endLine, endColumn := decodedConditionPosition(value.Value, endOffset)

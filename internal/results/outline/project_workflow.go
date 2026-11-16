@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -89,7 +89,7 @@ func outlineString(value *definition.String) string {
 	return value.Value
 }
 
-func outlinePosition(pos *sourcepos.Position) *sourcepos.Position {
+func outlinePosition(pos *source.Position) *source.Position {
 	if pos == nil {
 		return nil
 	}

@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -52,7 +52,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 					return snapshot
 				},
 			}
-			registrations := ruleexec.Registrations(rules)
+			registrations := registration.Registrations(rules)
 			index := slices.IndexFunc(registrations, func(r define.Registration) bool { return r.Name == "executable-bit" })
 			if index < 0 || registrations[index].Prepare == nil {
 				t.Fatal("executable-bit has no preparation")

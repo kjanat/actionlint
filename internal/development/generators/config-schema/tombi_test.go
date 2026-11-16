@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -22,12 +22,12 @@ func TestTombiRuleOptions(t *testing.T) {
 		t.Skip("tombi is not installed")
 	}
 	generated := generatedSchema(t)
-	schema, err := configschema.Document(func(name string) ([]byte, error) {
-		if name == configschema.RootFile {
+	schema, err := schema.Document(func(name string) ([]byte, error) {
+		if name == schema.RootFile {
 			return generated, nil
 		}
 		return os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(name)))
-	}, []configschema.ToolProvider{{Rule: rule.Descriptor{
+	}, []schema.ToolProvider{{Rule: rule.Descriptor{
 		Name: "custom-check", Category: "conventions", Description: "Check a numeric limit",
 		OptionsSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
 	}}})

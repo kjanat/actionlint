@@ -2,7 +2,7 @@ package workflowvisit
 
 import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Pass visits immutable declarations in source order. Each method returns an
@@ -26,12 +26,12 @@ type Pass interface {
 type Rule interface {
 	Pass
 	// Errs returns copies of the reported findings, detached from the rule.
-	Errs() []*findingmodel.Finding
+	Errs() []*finding.Finding
 	// FindingCount returns the number of reported findings; it marks a
 	// position for AnnotateSince.
 	FindingCount() int
 	// AnnotateSince applies annotate to the findings reported after mark, in
 	// place. Callers attach invocation provenance through it.
-	AnnotateSince(mark int, annotate func(*findingmodel.Finding))
+	AnnotateSince(mark int, annotate func(*finding.Finding))
 	Name() string
 }

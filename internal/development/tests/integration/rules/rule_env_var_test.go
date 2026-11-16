@@ -8,15 +8,15 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-func testValidateEnvVarName(t *testing.T, name string) []*findingmodel.Finding {
+func testValidateEnvVarName(t *testing.T, name string) []*finding.Finding {
 	t.Helper()
 	n := &definition.String{Value: name, Pos: &source.Position{}}
 	e := &definition.Env{

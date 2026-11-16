@@ -7,23 +7,23 @@ import (
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestUnusedFormatArgumentDoesNotHideScriptSafety(t *testing.T) {
@@ -147,7 +147,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errors := parser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -156,7 +156,7 @@ func TestSafeMatrixScriptReferences(t *testing.T) {
 				want[path] = true
 			}
 			got := map[string]bool{}
-			for path, proof := range safeMatrixScriptReferences(matrixcheck.Resolve(workflow.Jobs["test"].Strategy)) {
+			for path, proof := range safeMatrixScriptReferences(matrix.Resolve(workflow.Jobs["test"].Strategy)) {
 				got[path] = proof != scriptUnsafe
 			}
 			if !maps.Equal(got, want) {
@@ -241,7 +241,7 @@ func TestSafeMatrixScriptReferenceIndexes(t *testing.T) {
 		{"matrix.target[matrix.index]", false, false},
 		{"matrix.target[matrix.index]", true, true},
 	} {
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -272,11 +272,11 @@ func TestMissingMatrixPathsAreArgumentOnly(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps:\n      - run: echo hello\n"
-			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errors := parser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			proofs := safeMatrixScriptReferences(matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+			proofs := safeMatrixScriptReferences(matrix.Resolve(workflow.Jobs["test"].Strategy))
 			if got := proofs[tc.path]; got != tc.want {
 				t.Fatalf("proof for %s = %v, want %v (all proofs: %v)", tc.path, got, tc.want, proofs)
 			}
@@ -306,7 +306,7 @@ func TestSafeScriptStatusSelectorsRequireKnownMembers(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -345,18 +345,18 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			semantic := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			semantic := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 			semantic.SetContextAvailability([]string{"steps", "needs", "inputs"})
 			semantic.SetContextType("steps", steps.Type())
 			semantic.SetContextType("needs", needs.Type())
-			contextspec.MergeInputTypes(semantic, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
+			contexts.MergeInputTypes(semantic, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 				"step": exprtypes.StringType(), "job": exprtypes.StringType(),
 			}))
-			checked := semantic.CheckResult(expreval.EvaluateSubexpressions(node))
+			checked := semantic.CheckResult(evaluate.EvaluateSubexpressions(node))
 			typeOf, errs := checked.Type, checked.Findings
 			if len(errs) != 0 {
 				t.Fatalf("expression did not typecheck: %v", errs)
@@ -369,7 +369,7 @@ func TestScriptStatusInterpolationUsesKnownMembers(t *testing.T) {
 				{"shell word", correctness.ShellWordInsertion, tc.wordSafe},
 				{"data argument", correctness.ShellArgumentInsertion, tc.argument},
 			} {
-				findings := correctness.ScriptInterpolation(node, typeOf, checked.Types, position.pos, func(node exprsyntax.Node) bool {
+				findings := correctness.ScriptInterpolation(node, typeOf, checked.Types, position.pos, func(node syntax.Node) bool {
 					return rule.safeScriptStatusSelector(node)
 				})
 				if (len(findings) == 0) != position.want {

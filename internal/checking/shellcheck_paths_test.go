@@ -14,7 +14,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestShellcheckExternalSourcesPrecedence(t *testing.T) {
@@ -228,7 +228,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []diagmodel.Diagnostic
+			var findings []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
 					findings = append(findings, diagnostic.Diagnostic)
@@ -315,7 +315,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var findings []diagmodel.Diagnostic
+			var findings []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
 					findings = append(findings, diagnostic.Diagnostic)
@@ -371,7 +371,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "shellcheck" && d.Code == "SC2086"
 			})
 			if found != tc.wantFinding {

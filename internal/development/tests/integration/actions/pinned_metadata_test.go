@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type pinnedMetadataFixture struct{ manifest actions.Manifest }
@@ -29,7 +29,7 @@ func TestPinnedActionInputsAndOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, pinned, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, pinned, "")
 	if err != nil {
 		t.Fatal(err)
 	}

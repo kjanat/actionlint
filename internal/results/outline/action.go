@@ -3,7 +3,7 @@ package outline
 import (
 	"encoding/json"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // Action is a lossy projection of selected action declarations.
@@ -22,19 +22,19 @@ type Action struct {
 // ActionInputOutline preserves declared required/default values independently.
 // A default does not erase an explicitly declared required: true.
 type ActionInputOutline struct {
-	ID          string              `json:"id"`
-	Description string              `json:"description,omitempty"`
-	Required    *bool               `json:"required,omitempty"`
-	Default     *string             `json:"default,omitempty"`
-	Start       *sourcepos.Position `json:"start,omitempty"`
+	ID          string           `json:"id"`
+	Description string           `json:"description,omitempty"`
+	Required    *bool            `json:"required,omitempty"`
+	Default     *string          `json:"default,omitempty"`
+	Start       *source.Position `json:"start,omitempty"`
 }
 
 // ActionOutputOutline preserves an output declaration and optional expression.
 type ActionOutputOutline struct {
-	ID          string              `json:"id"`
-	Description string              `json:"description,omitempty"`
-	Value       *string             `json:"value,omitempty"`
-	Start       *sourcepos.Position `json:"start,omitempty"`
+	ID          string           `json:"id"`
+	Description string           `json:"description,omitempty"`
+	Value       *string          `json:"value,omitempty"`
+	Start       *source.Position `json:"start,omitempty"`
 }
 
 func (Action) documentOutline() {}

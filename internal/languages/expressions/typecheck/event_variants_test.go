@@ -3,11 +3,11 @@ package typecheck
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
@@ -60,23 +60,23 @@ func TestEventGuardNarrowing(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			contextspec.SetEventPayloadType(checker, event)
+			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+			contexts.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github", "env"})
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := checker.Check(expreval.EvaluateSubexpressions(node))
+			_, findings := checker.Check(evaluate.EvaluateSubexpressions(node))
 			if len(findings) != tc.errors {
 				t.Fatalf("want %d errors; got %v", tc.errors, findings)
 			}
 			// A previous branch must not narrow the caller's next expression.
-			node, err = exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.label}}"))
+			node, err = syntax.NewParser().ParseExpression(syntax.NewLexer("github.event.label}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 0 {
+			if _, findings := checker.Check(evaluate.EvaluateSubexpressions(node)); len(findings) != 0 {
 				t.Fatal(findings)
 			}
 			if len(event.EventVariants()) != 3 {
@@ -100,21 +100,21 @@ func TestEventGuardEliminatedBranches(t *testing.T) {
 	} {
 		t.Run(source, func(t *testing.T) {
 			t.Parallel()
-			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			contextspec.SetEventPayloadType(checker, event)
+			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+			contexts.SetEventPayloadType(checker, event)
 			checker.SetContextAvailability([]string{"github"})
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 0 {
+			if _, findings := checker.Check(evaluate.EvaluateSubexpressions(node)); len(findings) != 0 {
 				t.Fatalf("unreachable event branch reported: %v", findings)
 			}
-			node, err = exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.issue.title}}"))
+			node, err = syntax.NewParser().ParseExpression(syntax.NewLexer("github.event.issue.title}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, findings := checker.Check(expreval.EvaluateSubexpressions(node)); len(findings) != 1 {
+			if _, findings := checker.Check(evaluate.EvaluateSubexpressions(node)); len(findings) != 1 {
 				t.Fatalf("guard leaked to next expression: %v", findings)
 			}
 			if len(event.EventVariants()) != 1 {

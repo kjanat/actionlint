@@ -1,7 +1,7 @@
 package names
 
 import (
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -35,7 +35,7 @@ func Declare(name *definition.String) Declared {
 	if name == nil || name.Value == "" {
 		return Declared{kind: unnamed}
 	}
-	if literal := exprsyntax.LiteralExpressionValue(name.Value); literal != nil {
+	if literal := syntax.LiteralExpressionValue(name.Value); literal != nil {
 		if *literal == "" {
 			return Declared{kind: unnamed}
 		}

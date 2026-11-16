@@ -5,11 +5,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -28,7 +28,7 @@ var WorkflowRunNamesRule = &define.Rule{
 
 // WorkflowRunNamesChecks checks trigger filters against the supplied inventory.
 // It does not read files or depend on prior callbacks.
-func WorkflowRunNamesChecks(inventory namemodel.Inventory) define.Checks {
+func WorkflowRunNamesChecks(inventory names.Inventory) define.Checks {
 	return define.Checks{
 		Workflow: func(workflow workflows.Workflow) []reporting.StepFinding {
 			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
@@ -52,12 +52,12 @@ func WorkflowRunFilters(w workflows.Workflow) []*definition.String {
 
 // workflowRunNameDiagnostics verifies name filters against a complete repository inventory.
 // Unknown expressions and incomplete inventories cannot establish missing producers.
-func workflowRunNameDiagnostics(n namemodel.Inventory, references []*definition.String) []results.Diagnostic {
+func workflowRunNameDiagnostics(n names.Inventory, references []*definition.String) []results.Diagnostic {
 	var findings []results.Diagnostic
 	if len(references) == 0 {
 		return findings
 	}
-	report := func(pos *sourcepos.Position, format string, args ...any) {
+	report := func(pos *source.Position, format string, args ...any) {
 		findings = append(findings, results.Diagnostic{Message: fmt.Sprintf(format, args...), Start: *pos})
 	}
 	if !n.Complete() {
@@ -71,7 +71,7 @@ func workflowRunNameDiagnostics(n namemodel.Inventory, references []*definition.
 			continue
 		}
 		value := ref.Value
-		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
+		if literal := syntax.LiteralExpressionValue(value); literal != nil {
 			value = *literal
 		} else if ref.ContainsExpression() {
 			allKnown = false

@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
@@ -58,7 +58,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 		if !strings.Contains(path, "://") {
 			continue
 		}
-		if pluginartifact.IsOCI(path) {
+		if artifacts.IsOCI(path) {
 			digests, err := s.ociDigests(ctx, path)
 			if err != nil {
 				return CachePlan{}, err
@@ -95,7 +95,7 @@ func (s *Sources) CachePlan(ctx context.Context) (CachePlan, error) {
 
 // ociDigests derives required blobs from the configured digest and OCI manifests.
 func (s *Sources) ociDigests(ctx context.Context, source string) ([]string, error) {
-	if err := pluginartifact.RequireRemotePin(source); err != nil {
+	if err := artifacts.RequireRemotePin(source); err != nil {
 		return nil, err
 	}
 	return oci.Digests(ctx, source, s.ArtifactOptions(source))

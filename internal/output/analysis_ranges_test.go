@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -27,8 +27,8 @@ func TestStructuredRenderRanges(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("abcde\nfghij\n")
-			finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
-			result := report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{Content: source})}}
+			finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
+			result := report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{Content: source})}}
 
 			legacy, err := New("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false, testVersion, nil)
 			if err != nil {
@@ -85,9 +85,9 @@ func TestStructuredRenderRanges(t *testing.T) {
 
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 	t.Parallel()
-	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
-	source := diagmodel.DiagnosticSource{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: diagmodel.ReportedSourceUnavailable("tool", "reported.sh", false)}
-	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(diagnostic, source)}})
+	diagnostic := results.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
+	source := results.DiagnosticSource{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: results.ReportedSourceUnavailable("tool", "reported.sh", false)}
+	result := FromAnalysis(report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(diagnostic, source)}})
 	fields := TemplateFieldsOf(result.Findings[0])
 	if fields.EndColumn != diagnostic.Start.Column || fields.Snippet != "echo long_unverified_token\n     ^" {
 		t.Fatalf("template inferred an unverified token extent: %+v", fields)
@@ -109,7 +109,7 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 		}
 	}
 	diagnostic.End.Column = 10
-	fields = TemplateFieldsOf(diagmodel.Publish(diagnostic, source))
+	fields = TemplateFieldsOf(results.Publish(diagnostic, source))
 	if fields.EndColumn != 9 || !strings.HasSuffix(fields.Snippet, "     ^~~~") {
 		t.Fatalf("reported extent was lost: %+v", fields)
 	}
@@ -118,8 +118,8 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	t.Parallel()
 	source := []byte("on: push\n")
-	finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
-	result := report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{Content: source})}}
+	finding := results.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
+	result := report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{Content: source})}}
 
 	textRenderer, err := New(FormatText, "", true, testVersion, nil)
 	if err != nil {
@@ -148,7 +148,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 
 func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	t.Parallel()
-	finding := diagmodel.Diagnostic{
+	finding := results.Diagnostic{
 		Path: "input.yml", Rule: "expression", Message: "bad text",
 		Start: sourcepos.Position{Line: 1, Column: 1}, Snippet: "on: push",
 	}
@@ -161,7 +161,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 			}
 			var result RenderedReport
 			for _, source := range [][]byte{nil, []byte("on: push\n")} {
-				result = FromAnalysis(report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{Content: source})}})
+				result = FromAnalysis(report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{Content: source})}})
 				var out bytes.Buffer
 				if err := renderer.Render(&out, result); err != nil {
 					t.Fatal(err)
@@ -179,7 +179,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{})}})
+	result := FromAnalysis(report.Analysis{Diagnostics: []results.PublishedDiagnostic{results.Publish(finding, results.DiagnosticSource{})}})
 	var out bytes.Buffer
 	if err := template.Render(&out, result); err != nil {
 		t.Fatal(err)

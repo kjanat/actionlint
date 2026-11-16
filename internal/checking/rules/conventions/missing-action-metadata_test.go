@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 
@@ -17,7 +17,7 @@ import (
 
 func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
 	t.Parallel()
-	remote := actionremote.New(metadataAvailabilityProvider{availability.Failed()})
+	remote := remote.New(metadataAvailabilityProvider{availability.Failed()})
 	if _, err := remote.Inspect(t.Context(), "actions/checkout@v4"); err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestMissingMetadataDoesNotReportDeliberatelySkippedLookups(t *testing.T) {
 	} {
 		t.Run(string(tc.reason.Reason()), func(t *testing.T) {
 			t.Parallel()
-			remote := actionremote.New(metadataAvailabilityProvider{tc.reason})
+			remote := remote.New(metadataAvailabilityProvider{tc.reason})
 			if _, err := remote.Inspect(t.Context(), "actions/checkout@v4"); err != nil {
 				t.Fatal(err)
 			}

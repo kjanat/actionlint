@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
@@ -16,11 +16,11 @@ func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			resolution := matrixmodel.Resolve(workflow.Jobs["test"].Strategy)
+			resolution := matrix.Resolve(workflow.Jobs["test"].Strategy)
 			if combinations, complete := resolution.Combinations(16); complete || len(combinations) != 0 {
 				t.Fatalf("invalid exclusion supplied execution combinations: %v", combinations)
 			}
@@ -55,11 +55,11 @@ func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			resolution := matrixmodel.Resolve(workflow.Jobs["test"].Strategy)
+			resolution := matrix.Resolve(workflow.Jobs["test"].Strategy)
 			if findings := Check(resolution, false); len(findings) != 0 {
 				t.Fatalf("open axis domain invented a missing-axis error: %v", findings)
 			}
@@ -71,11 +71,11 @@ func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
 				t.Fatal("test matrix has no exclusion declaration to replace")
 			}
 			emptySource := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + axes + `exclude: "${{ fromJSON('[{}]') }}"}` + "\n    steps: [{run: echo ok}]\n"
-			emptyWorkflow, emptyErrors := workflowparser.ParseWorkflow([]byte(emptySource))
+			emptyWorkflow, emptyErrors := parser.ParseWorkflow([]byte(emptySource))
 			if len(emptyErrors) != 0 {
 				t.Fatal(emptyErrors)
 			}
-			resolution = matrixmodel.Resolve(emptyWorkflow.Jobs["test"].Strategy)
+			resolution = matrix.Resolve(emptyWorkflow.Jobs["test"].Strategy)
 			findings := Check(resolution, false)
 			if len(findings) != 1 || findings[0].Message != `matrix filter in "exclude" must not be empty` {
 				t.Fatalf("open axis domain hid an empty exclusion: %v", findings)

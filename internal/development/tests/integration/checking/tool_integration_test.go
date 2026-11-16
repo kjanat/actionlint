@@ -10,9 +10,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -26,7 +26,7 @@ type integratedAnalyzer struct {
 }
 
 func managedTestOptions(guest *integratedAnalyzer, options json.RawMessage) checking.Options {
-	return checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest, Options: options}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}})}
+	return checking.Options{Analyzers: []inputs.Registration{{Checker: guest, Options: options}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}})}
 }
 
 func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
@@ -47,7 +47,7 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 				t.Fatal(err)
 			}
 			guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0", unsupported: true}
-			options := checking.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+			options := checking.Options{WorkingDir: root, ConfigFile: configPath, Analyzers: []inputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 			needed, err := checking.RequiredTools(t.Context(), options, []string{"workflow.yml"})
 			if err != nil || needed["shellcheck"] != tc.want {
 				t.Fatalf("native fallback required=%v, want %t; error=%v", needed, tc.want, err)
@@ -56,20 +56,20 @@ func TestManagedFallbackPlanningHonorsPluginRuleLevel(t *testing.T) {
 	}
 }
 
-func (a *integratedAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: a.tool, Category: "correctness", Provider: "arbitrary-fork", OptionsSchema: a.schema, RequiredInputs: []rule.InputKind{rule.Scripts}}
+func (a *integratedAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: a.tool, Category: "correctness", Provider: "arbitrary-fork", OptionsSchema: a.schema, RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
-func (a *integratedAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {
-	return &checkinputs.ToolIntegration{Tool: a.tool, Contract: a.contract, ConfigurationSchema: `{}`}
+func (a *integratedAnalyzer) ToolIntegration() *inputs.ToolIntegration {
+	return &inputs.ToolIntegration{Tool: a.tool, Contract: a.contract, ConfigurationSchema: `{}`}
 }
 
-func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage, explicit json.RawMessage) (*checkinputs.ToolNegotiation, error) {
+func (a *integratedAnalyzer) NegotiateTool(_ context.Context, _ json.RawMessage, explicit json.RawMessage) (*inputs.ToolNegotiation, error) {
 	a.explicit = explicit
 	if a.unsupported {
-		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: "unsupported test option"}
+		return nil, &inputs.UnsupportedToolConfigurationError{Reason: "unsupported test option"}
 	}
-	return &checkinputs.ToolNegotiation{Options: json.RawMessage(`{}`)}, nil
+	return &inputs.ToolNegotiation{Options: json.RawMessage(`{}`)}, nil
 }
 
 func TestPublicManagedOptionsStayOpaqueAndNativeFallbackStaysDisabled(t *testing.T) {
@@ -121,7 +121,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 	}
 }
 
-func (a *integratedAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a *integratedAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.calls++
 	return []results.Diagnostic{{Message: "managed finding", Path: input.Path, Start: input.Scripts[0].Start}}, nil
 }
@@ -155,7 +155,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 	}
 	options := checking.Options{
 		Tools:     registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", ManagedOnly: true}}),
-		Analyzers: []checkinputs.Registration{{Checker: valid()}},
+		Analyzers: []inputs.Registration{{Checker: valid()}},
 	}
 	configured, err := checking.ConfigureToolIntegrations(options)
 	if err != nil {
@@ -171,10 +171,10 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 	if !found {
 		t.Fatal("managed descriptor missing")
 	}
-	for _, guests := range [][]checkinputs.Checker{{valid(), valid()}, {&integratedAnalyzer{tool: "unknown", contract: "unknown@0.1.0"}}, {&integratedAnalyzer{tool: "shellcheck", contract: "unknown@0.1.0"}}} {
+	for _, guests := range [][]inputs.Checker{{valid(), valid()}, {&integratedAnalyzer{tool: "unknown", contract: "unknown@0.1.0"}}, {&integratedAnalyzer{tool: "shellcheck", contract: "unknown@0.1.0"}}} {
 		options.Analyzers = nil
 		for _, guest := range guests {
-			options.Analyzers = append(options.Analyzers, checkinputs.Registration{Checker: guest})
+			options.Analyzers = append(options.Analyzers, inputs.Registration{Checker: guest})
 		}
 		if _, err := checking.ConfigureToolIntegrations(options); err == nil {
 			t.Fatal("invalid managed integration accepted")
@@ -185,7 +185,7 @@ func TestPublicManagedRuleDiscoveryMatchesExecutionContracts(t *testing.T) {
 func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{Analyzers: []inputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	if _, err := checking.ConfigureToolIntegrations(options, "shellcheck"); err == nil {
 		t.Fatal("document analyzer replaced an already selected engine")
 	}
@@ -197,7 +197,7 @@ func TestManagedAnalyzerCannotReplaceSelectedScriptEngine(t *testing.T) {
 func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T) {
 	t.Parallel()
 	guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	options := checking.Options{Analyzers: []checkinputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
+	options := checking.Options{Analyzers: []inputs.Registration{{Checker: guest}}, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck"}})}
 	configured, err := checking.ConfigureToolIntegrations(options)
 	if err != nil {
 		t.Fatal(err)
@@ -207,7 +207,7 @@ func TestManagedIntegrationRepeatedConfigurationRejectsNewProvider(t *testing.T)
 		t.Fatalf("unchanged configuration must remain valid: %v", err)
 	}
 	other := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-	configured.Analyzers = []checkinputs.Registration{{Checker: other}}
+	configured.Analyzers = []inputs.Registration{{Checker: other}}
 	if _, err := checking.ConfigureToolIntegrations(configured); err == nil {
 		t.Fatal("new provider silently replaced existing negotiated integration")
 	}

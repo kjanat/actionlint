@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
-	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Settings, error) {
+func shellcheckConfiguration(t *testing.T, inline []byte) (configuration.Settings, error) {
 	t.Helper()
 	manifests, err := manifests.Bundled()
 	if err != nil {
@@ -21,14 +21,14 @@ func shellcheckConfiguration(t *testing.T, inline []byte) (integrationconfig.Set
 		if manifest.Rule.Name != "shellcheck" {
 			continue
 		}
-		transform, err := integrationconfig.New(manifest, bundledproviders.Program)
+		transform, err := configuration.New(manifest, bundledproviders.Program)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return transform.Resolve(t.Context(), inline, "", nil)
 	}
 	t.Fatal("no ShellCheck integration")
-	return integrationconfig.Settings{}, nil
+	return configuration.Settings{}, nil
 }
 
 func quotedDirectivePath(t *testing.T, path string) (string, error) {

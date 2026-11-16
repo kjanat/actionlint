@@ -13,7 +13,7 @@ import (
 
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func repositoryWorkflowSource(t *testing.T, name string) []byte {
@@ -30,7 +30,7 @@ func repositoryWorkflowSource(t *testing.T, name string) []byte {
 
 func parseRepositoryWorkflow(t *testing.T, name string) *definition.Workflow {
 	t.Helper()
-	workflow, findings := workflowparser.ParseWorkflow(repositoryWorkflowSource(t, name))
+	workflow, findings := parser.ParseWorkflow(repositoryWorkflowSource(t, name))
 	if len(findings) != 0 || workflow == nil {
 		t.Fatalf("repository workflow rejected: %v", findings)
 	}
@@ -156,8 +156,8 @@ func TestActupFlowNullWhitespace(t *testing.T) {
 	if mutated == string(source) {
 		t.Fatal("missing flow-null mutation target")
 	}
-	_, findings := workflowparser.ParseWorkflow([]byte(mutated))
-	if len(findings) != 1 || findings[0].Code != workflowparser.CodeFlowNull || findings[0].Line != 8 || findings[0].Column != 7 {
+	_, findings := parser.ParseWorkflow([]byte(mutated))
+	if len(findings) != 1 || findings[0].Code != parser.CodeFlowNull || findings[0].Line != 8 || findings[0].Column != 7 {
 		t.Fatalf("missing compatibility finding at the original flow key: %v", findings)
 	}
 }

@@ -8,17 +8,17 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 )
 
-func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *workflowinputs.ASTComparisonCache {
+func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) *workflows.ASTComparisonCache {
 	tb.Helper()
 	base, err := os.Getwd()
 	if err != nil {
 		tb.Fatal(err)
 	}
-	cache := workflowinputs.NewCache(root, debug)
+	cache := workflows.NewCache(root, debug)
 	store, err := capture.New(tb.Context(), nil, func(_ context.Context, path string) ([]byte, error) {
 		return os.ReadFile(filepath.FromSlash(path))
 	})
@@ -27,5 +27,5 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 	}
 	cache.SetSources(tb.Context(), store, base)
 	capturefixture.CloseCaptures(tb, store)
-	return &workflowinputs.ASTComparisonCache{Cache: cache, WorkingDir: cwd}
+	return &workflows.ASTComparisonCache{Cache: cache, WorkingDir: cwd}
 }

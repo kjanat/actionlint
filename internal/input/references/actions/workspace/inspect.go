@@ -7,15 +7,15 @@ import (
 	"os"
 	"path/filepath"
 
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 // InspectReferencedFiles records missing and present paths. Unrepresentable or otherwise
 // unchecked paths are unknown. Cancellation and access denial stop acquisition.
-func InspectReferencedFiles(ctx context.Context, meta *actionmeta.Metadata, reader *inputfiles.Reader) (actionmeta.ReferencedFiles, error) {
+func InspectReferencedFiles(ctx context.Context, meta *actionmeta.Metadata, reader *files.Reader) (actionmeta.ReferencedFiles, error) {
 	if reader == nil {
-		reader = inputfiles.New(ctx, nil, nil)
+		reader = files.New(ctx, nil, nil)
 	}
 	availability := make(map[string]actionmeta.FileAvailability)
 	for _, file := range meta.Runs.FileReferences() {

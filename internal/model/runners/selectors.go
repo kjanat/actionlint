@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )

@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -71,7 +71,7 @@ jobs:
 					t.Fatal(err)
 				}
 			}
-			workflow, errs := workflowparser.ParseWorkflow(callee)
+			workflow, errs := parser.ParseWorkflow(callee)
 			if len(errs) != 1 || !strings.Contains(errs[0].Message, "is duplicated") {
 				t.Fatalf("expected one duplicate key diagnostic, got %v", errs)
 			}
@@ -94,7 +94,7 @@ jobs:
 			}
 			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
-			check := func(errs []*findingmodel.Finding, want int) {
+			check := func(errs []*finding.Finding, want int) {
 				t.Helper()
 				if len(errs) != want {
 					t.Fatalf("wanted %d duplicate-key diagnostics, got %v", want, errs)

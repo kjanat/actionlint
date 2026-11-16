@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	bind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
 
-var invocationContextEntry = sourcepos.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
+var invocationContextEntry = source.Reference{Document: "workflow.yml", Revision: "revision", Node: "document"}
 
 func invocationContextBuilder(t *testing.T, budget invocation.Budget) *invocation.Builder {
 	t.Helper()
@@ -45,15 +45,15 @@ func invocationContextFor(graph invocation.Graph) context.Context {
 
 func invocationResultError(value any) (string, bool) {
 	switch result := value.(type) {
-	case bind.ResultSummaryStringErr:
+	case invocationcontext.ResultSummaryStringErr:
 		return result.Value, true
-	case bind.ResultListCallStringErr:
+	case invocationcontext.ResultListCallStringErr:
 		return result.Value, true
-	case bind.ResultListScriptOccurrenceStringErr:
+	case invocationcontext.ResultListScriptOccurrenceStringErr:
 		return result.Value, true
-	case bind.ResultOptionCallStringErr:
+	case invocationcontext.ResultOptionCallStringErr:
 		return result.Value, true
-	case bind.ResultOptionScriptOccurrenceStringErr:
+	case invocationcontext.ResultOptionScriptOccurrenceStringErr:
 		return result.Value, true
 	default:
 		return "", false
@@ -106,27 +106,27 @@ func TestInvocationContextUnavailableOutsideCallAndWhenCanceled(t *testing.T) {
 func TestInvocationContextValidEmptyGraph(t *testing.T) {
 	t.Parallel()
 	api, ctx := invocationContext{}, invocationContextFor(invocationContextGraph(t))
-	summaryResult, ok := requireInvocationResult(api.Describe(ctx)).(bind.ResultSummaryStringOk)
+	summaryResult, ok := requireInvocationResult(api.Describe(ctx)).(invocationcontext.ResultSummaryStringOk)
 	if !ok {
 		t.Fatal("empty graph summary unavailable")
 	}
 	summary := summaryResult.Value
-	if summary.Entry.Kind != bind.EntryKindWorkflow || summary.Entry.Reference.Document != "workflow.yml" || summary.Budget != (bind.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}) || summary.Calls != 0 || summary.Scripts != 0 || !summary.Complete || summary.Stop.IsSome || summary.EntryInterruption.IsSome {
+	if summary.Entry.Kind != invocationcontext.EntryKindWorkflow || summary.Entry.Reference.Document != "workflow.yml" || summary.Budget != (invocationcontext.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1}) || summary.Calls != 0 || summary.Scripts != 0 || !summary.Complete || summary.Stop.IsSome || summary.EntryInterruption.IsSome {
 		t.Fatalf("empty graph summary: %+v", summary)
 	}
-	calls, ok := requireInvocationResult(api.Calls(ctx, 0, 1)).(bind.ResultListCallStringOk)
+	calls, ok := requireInvocationResult(api.Calls(ctx, 0, 1)).(invocationcontext.ResultListCallStringOk)
 	if !ok || len(calls.Value) != 0 {
 		t.Fatalf("empty calls: %+v", calls)
 	}
-	scripts, ok := requireInvocationResult(api.Scripts(ctx, 0, 1)).(bind.ResultListScriptOccurrenceStringOk)
+	scripts, ok := requireInvocationResult(api.Scripts(ctx, 0, 1)).(invocationcontext.ResultListScriptOccurrenceStringOk)
 	if !ok || len(scripts.Value) != 0 {
 		t.Fatalf("empty scripts: %+v", scripts)
 	}
-	call, ok := requireInvocationResult(api.CallByID(ctx, "missing")).(bind.ResultOptionCallStringOk)
+	call, ok := requireInvocationResult(api.CallByID(ctx, "missing")).(invocationcontext.ResultOptionCallStringOk)
 	if !ok || call.Value.IsSome {
 		t.Fatalf("unknown call lookup: %+v", call)
 	}
-	script, ok := requireInvocationResult(api.ScriptByID(ctx, "missing")).(bind.ResultOptionScriptOccurrenceStringOk)
+	script, ok := requireInvocationResult(api.ScriptByID(ctx, "missing")).(invocationcontext.ResultOptionScriptOccurrenceStringOk)
 	if !ok || script.Value.IsSome {
 		t.Fatalf("unknown script lookup: %+v", script)
 	}
@@ -139,11 +139,11 @@ func invocationContextPagedGraph(t *testing.T, count int) (invocation.Graph, []i
 	builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: count, MaxCalls: count, MaxScripts: count})
 	owner, contexts := builder.RootContext(), make([]invocation.Context, 0, count)
 	callIDs, scriptIDs := make([]invocation.ID, 0, count), make([]invocation.ID, 0, count)
-	at := func(node string) sourcepos.Reference {
-		return sourcepos.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
+	at := func(node string) source.Reference {
+		return source.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 	}
 	for index := range count {
-		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: sourcepos.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
+		ticket, err := builder.Begin(owner, at(fmt.Sprintf("call-%d", index)), invocation.Facts{Step: source.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -176,9 +176,9 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 	t.Parallel()
 	graph, callIDs, scriptIDs := invocationContextPagedGraph(t, MaxInvocationPageSize+1)
 	api, ctx := invocationContext{}, invocationContextFor(graph)
-	var calls []bind.Call
+	var calls []invocationcontext.Call
 	for offset := uint32(0); offset < uint32(len(callIDs)); offset += MaxInvocationPageSize {
-		page, ok := requireInvocationResult(api.Calls(ctx, offset, MaxInvocationPageSize)).(bind.ResultListCallStringOk)
+		page, ok := requireInvocationResult(api.Calls(ctx, offset, MaxInvocationPageSize)).(invocationcontext.ResultListCallStringOk)
 		if !ok {
 			t.Fatalf("calls page at %d failed", offset)
 		}
@@ -192,9 +192,9 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 			t.Fatalf("call %d = %+v", i, call)
 		}
 	}
-	var scripts []bind.ScriptOccurrence
+	var scripts []invocationcontext.ScriptOccurrence
 	for offset := uint32(0); offset < uint32(len(scriptIDs)); offset += MaxInvocationPageSize {
-		page, ok := requireInvocationResult(api.Scripts(ctx, offset, MaxInvocationPageSize)).(bind.ResultListScriptOccurrenceStringOk)
+		page, ok := requireInvocationResult(api.Scripts(ctx, offset, MaxInvocationPageSize)).(invocationcontext.ResultListScriptOccurrenceStringOk)
 		if !ok {
 			t.Fatalf("scripts page at %d failed", offset)
 		}
@@ -209,18 +209,18 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 		}
 	}
 	calls[0].Ancestry[0] = "changed-call"
-	firstCall, ok := requireInvocationResult(api.CallByID(ctx, string(callIDs[0]))).(bind.ResultOptionCallStringOk)
+	firstCall, ok := requireInvocationResult(api.CallByID(ctx, string(callIDs[0]))).(invocationcontext.ResultOptionCallStringOk)
 	if !ok || !firstCall.Value.IsSome || firstCall.Value.Value.Ancestry[0] != string(graph.RootID()) {
 		t.Fatal("call page ancestry mutation changed graph")
 	}
 	wantScriptAncestor := scripts[0].Ancestry[1]
 	scripts[0].Ancestry[1] = "changed-script"
-	firstScript, ok := requireInvocationResult(api.ScriptByID(ctx, string(scriptIDs[0]))).(bind.ResultOptionScriptOccurrenceStringOk)
+	firstScript, ok := requireInvocationResult(api.ScriptByID(ctx, string(scriptIDs[0]))).(invocationcontext.ResultOptionScriptOccurrenceStringOk)
 	if !ok || !firstScript.Value.IsSome || firstScript.Value.Value.Ancestry[1] != wantScriptAncestor {
 		t.Fatal("script page ancestry mutation changed graph")
 	}
 	unknownCallResult := requireInvocationResult(api.CallByID(ctx, "unknown"))
-	unknownCall, ok := unknownCallResult.(bind.ResultOptionCallStringOk)
+	unknownCall, ok := unknownCallResult.(invocationcontext.ResultOptionCallStringOk)
 	if !ok {
 		t.Fatal("unknown call lookup did not return None")
 	}
@@ -228,7 +228,7 @@ func TestInvocationContextPagesAndLookupsRetainOrderAndDetachAncestry(t *testing
 		t.Fatal("unknown call lookup returned Some")
 	}
 	unknownScriptResult := requireInvocationResult(api.ScriptByID(ctx, "unknown"))
-	unknownScript, ok := unknownScriptResult.(bind.ResultOptionScriptOccurrenceStringOk)
+	unknownScript, ok := unknownScriptResult.(invocationcontext.ResultOptionScriptOccurrenceStringOk)
 	if !ok {
 		t.Fatal("unknown script lookup did not return None")
 	}
@@ -246,8 +246,8 @@ func TestInvocationContextPageBoundsAndNilEndPages(t *testing.T) {
 		calls := requireInvocationResult(api.Calls(ctx, bounds[0], bounds[1]))
 		scripts := requireInvocationResult(api.Scripts(ctx, bounds[0], bounds[1]))
 		if bounds[0] == count {
-			callPage, callOK := calls.(bind.ResultListCallStringOk)
-			scriptPage, scriptOK := scripts.(bind.ResultListScriptOccurrenceStringOk)
+			callPage, callOK := calls.(invocationcontext.ResultListCallStringOk)
+			scriptPage, scriptOK := scripts.(invocationcontext.ResultListScriptOccurrenceStringOk)
 			if !callOK || len(callPage.Value) != 0 || !scriptOK || len(scriptPage.Value) != 0 {
 				t.Fatalf("end pages: calls=%+v scripts=%+v", calls, scripts)
 			}
@@ -263,10 +263,10 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 	t.Run("stop", func(t *testing.T) {
 		t.Parallel()
 		builder := invocationContextBuilder(t, invocation.Budget{MaxDepth: 1, MaxCalls: 1, MaxScripts: 1})
-		at := func(node string) sourcepos.Reference {
-			return sourcepos.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
+		at := func(node string) source.Reference {
+			return source.Reference{Document: invocationContextEntry.Document, Revision: invocationContextEntry.Revision, Node: node}
 		}
-		facts := invocation.Facts{Step: sourcepos.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
+		facts := invocation.Facts{Step: source.Position{Line: 1, Column: 1}, Condition: invocation.ConditionEnabled}
 		ticket, err := builder.Begin(builder.RootContext(), at("call"), facts)
 		if err != nil {
 			t.Fatal(err)
@@ -283,8 +283,8 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 			t.Fatalf("second call was not stopped: %v %v", ticket.Status(), err)
 		}
 		graph := publishInvocationContext(t, builder)
-		summary, ok := requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))).(bind.ResultSummaryStringOk)
-		if !ok || summary.Value.Complete || !summary.Value.Stop.IsSome || summary.Value.Stop.Value.Limit != bind.StopLimitTotal || summary.Value.Stop.Value.Max != 1 || summary.Value.Stop.Value.Parent != string(graph.RootID()) || summary.Value.Stop.Value.Site.Node != "rejected" {
+		summary, ok := requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))).(invocationcontext.ResultSummaryStringOk)
+		if !ok || summary.Value.Complete || !summary.Value.Stop.IsSome || summary.Value.Stop.Value.Limit != invocationcontext.StopLimitTotal || summary.Value.Stop.Value.Max != 1 || summary.Value.Stop.Value.Parent != string(graph.RootID()) || summary.Value.Stop.Value.Site.Node != "rejected" {
 			t.Fatalf("stop summary: %+v", summary)
 		}
 	})
@@ -295,8 +295,8 @@ func TestInvocationContextDescribePreservesStopAndInterruption(t *testing.T) {
 			t.Fatal(err)
 		}
 		graph := publishInvocationContext(t, builder)
-		summary, ok := requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))).(bind.ResultSummaryStringOk)
-		if !ok || summary.Value.Complete || !summary.Value.EntryInterruption.IsSome || summary.Value.EntryInterruption.Value.Reason != bind.InterruptionReasonOperationalFailure || summary.Value.EntryInterruption.Value.Detail != "entry expansion failed" {
+		summary, ok := requireInvocationResult((invocationContext{}).Describe(invocationContextFor(graph))).(invocationcontext.ResultSummaryStringOk)
+		if !ok || summary.Value.Complete || !summary.Value.EntryInterruption.IsSome || summary.Value.EntryInterruption.Value.Reason != invocationcontext.InterruptionReasonOperationalFailure || summary.Value.EntryInterruption.Value.Detail != "entry expansion failed" {
 			t.Fatalf("interruption summary: %+v", summary)
 		}
 	})

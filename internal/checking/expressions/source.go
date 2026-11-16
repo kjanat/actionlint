@@ -5,9 +5,9 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -54,11 +54,11 @@ func scalarPosition(s *definition.String) *source.Position {
 }
 
 func expressionLiteral(text string) (any, bool) {
-	expression := exprsyntax.ParseAssignedExpression(text)
+	expression := syntax.ParseAssignedExpression(text)
 	if expression == nil {
 		return nil, false
 	}
-	return expreval.ConditionConstantValue(expression)
+	return evaluate.ConditionConstantValue(expression)
 }
 
 func rawValuePosition(value definition.RawYAMLValue) *source.Position {

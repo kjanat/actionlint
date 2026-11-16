@@ -10,7 +10,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestActionSupportComesFromDeclaration(t *testing.T) {
@@ -35,7 +35,7 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	t.Parallel()
 	const source = "name: Native\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: work\n        run: echo ok\n"
-	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
+	parsed, errs := parser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

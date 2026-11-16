@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestLifecycleNotificationStagesThroughCLI(t *testing.T) {
@@ -45,7 +45,7 @@ severity = "error"
 		if status > 1 {
 			t.Fatalf("%s %s: status %d: %s", tc.flag, tc.date, status, &log)
 		}
-		var report resultreport.CheckResult
+		var report report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 			t.Fatalf("%s: %v; output: %s", tc.date, err, &out)
 		}

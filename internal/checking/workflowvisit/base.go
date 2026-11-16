@@ -3,7 +3,7 @@ package workflowvisit
 import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Base accumulates findings and provides default callbacks for synchronous visitors.
@@ -21,7 +21,7 @@ func NewBase(name string, desc string) Base {
 
 // Report records findings produced outside the positional helpers and takes
 // ownership of them. A finding that names no rule is attributed to this one.
-func (r *Base) Report(findings ...*findingmodel.Finding) {
+func (r *Base) Report(findings ...*finding.Finding) {
 	for _, finding := range findings {
 		if finding != nil && finding.Rule == "" {
 			finding.Rule = r.name
@@ -47,23 +47,23 @@ func (r *Base) VisitWorkflowPost(node workflows.Workflow) error { return nil }
 
 // Error records a finding at pos. Errs returns the recorded findings.
 func (r *Base) Error(pos *source.Position, msg string) {
-	r.findings.Report(findingmodel.At(pos, r.name, msg))
+	r.findings.Report(finding.At(pos, r.name, msg))
 }
 
 // Errorf formats and records a finding at pos. Errs returns the recorded findings.
 func (r *Base) Errorf(pos *source.Position, format string, args ...any) {
-	r.findings.Report(findingmodel.Errorf(pos, r.name, format, args...))
+	r.findings.Report(finding.Errorf(pos, r.name, format, args...))
 }
 
 // ErrorfRange reports an error with an exclusive source-range end.
 func (r *Base) ErrorfRange(start, end *source.Position, format string, args ...any) {
-	err := findingmodel.Errorf(start, r.name, format, args...)
+	err := finding.Errorf(start, r.name, format, args...)
 	err.EndAt(end)
 	r.findings.Report(err)
 }
 
 // Errs returns copies of the findings reported by the rule, detached from it.
-func (r *Base) Errs() []*findingmodel.Finding {
+func (r *Base) Errs() []*finding.Finding {
 	return r.findings.Errs()
 }
 
@@ -71,7 +71,7 @@ func (r *Base) Errs() []*findingmodel.Finding {
 func (r *Base) FindingCount() int { return r.findings.FindingCount() }
 
 // AnnotateSince annotates the findings reported after mark, a prior FindingCount.
-func (r *Base) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+func (r *Base) AnnotateSince(mark int, annotate func(*finding.Finding)) {
 	r.findings.AnnotateSince(mark, annotate)
 }
 

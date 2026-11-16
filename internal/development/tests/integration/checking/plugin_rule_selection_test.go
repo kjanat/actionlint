@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -34,7 +34,7 @@ func TestRuleSelectionIgnoresUnrelatedConfigAndKeepsDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

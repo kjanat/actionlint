@@ -3,16 +3,16 @@ package composites
 import (
 	"testing"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 )
 
-func prepareCollectedScripts(t *testing.T, analysis *compositeAnalyzer) scriptexecution.Batch {
+func prepareCollectedScripts(t *testing.T, analysis *compositeAnalyzer) scripts.Batch {
 	t.Helper()
 	graph, err := analysis.invocations.Publish()
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{
+	batch, err := scripts.NewBatch(graph, scripts.Collection{
 		Declarations: analysis.sourceSnapshots,
 		Scopes:       analysis.scriptScopes,
 		Scripts:      analysis.scripts,
@@ -24,10 +24,10 @@ func prepareCollectedScripts(t *testing.T, analysis *compositeAnalyzer) scriptex
 	return batch
 }
 
-func requestsFromUnits(units []scriptexecution.Unit) []scriptexecution.ScriptRequest {
-	requests := make([]scriptexecution.ScriptRequest, len(units))
+func requestsFromUnits(units []scripts.Unit) []scripts.ScriptRequest {
+	requests := make([]scripts.ScriptRequest, len(units))
 	for i, unit := range units {
-		request := scriptexecution.ScriptRequest{
+		request := scripts.ScriptRequest{
 			Occurrence:   unit.Occurrence,
 			DefaultShell: unit.Shell,
 			Execution:    unit.Execution,

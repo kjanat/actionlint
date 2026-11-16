@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
@@ -21,13 +21,13 @@ func TestDeclarationAdapterPreservesInternalRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := findingmodel.Finding{
+	want := finding.Finding{
 		Rule: "native-record", Code: "example", Message: "Example finding", Severity: "warning",
 		Path: "script.sh", Start: source.Position{Line: 2, Column: 3},
 		LifecycleEvidence: &lifecycle.Evidence{Subject: lifecycle.LanguageRuntimes, Name: "example"},
 		End:               source.Position{Line: 2, Column: 9},
 		Source:            results.DiagnosticSource{Content: []byte("first\nsecond\n"), RawScript: true},
-		MetadataIdentity:  &findingmodel.MetadataIdentity{Key: findingmodel.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
+		MetadataIdentity:  &finding.MetadataIdentity{Key: finding.MetadataKey{Path: "action.yml", Message: "Example finding"}, Visit: 7},
 	}
 	adapter := NewChecksVisitor(rules, declaration.Name, Checks{
 		Workflow: func(workflows.Workflow) []reporting.StepFinding { return []reporting.StepFinding{{Finding: want}} },

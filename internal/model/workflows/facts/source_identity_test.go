@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func TestAnonymousStepIdentitySurvivesReordering(t *testing.T) {
@@ -65,13 +65,13 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			content := []byte(first + test.suffix)
-			workflow, findings := workflowparser.ParseWorkflow(content)
+			workflow, findings := parser.ParseWorkflow(content)
 			if len(findings) != 0 {
 				t.Fatal(findings)
 			}
 			first := workflow.Jobs["build"].Steps[0]
 			second := workflow.Jobs[test.secondJob].Steps[test.secondStep]
-			refs := workflowfacts.Index("ci.yml", content, workflow, false)
+			refs := facts.Index("ci.yml", content, workflow, false)
 			left, right := refs.Steps[first], refs.Steps[second]
 			if left.Node == "" || right.Node == "" || left.Node == right.Node {
 				t.Fatalf("aliased calls lost their owners: first=%+v second=%+v", left, right)
@@ -79,7 +79,7 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 			if left.Address != `jobs["build"].steps[0]` || right.Address != test.secondAddress {
 				t.Fatalf("owning addresses = %q, %q", left.Address, right.Address)
 			}
-			repeated := workflowfacts.Index("ci.yml", content, workflow, false)
+			repeated := facts.Index("ci.yml", content, workflow, false)
 			if repeated.Steps[first] != left || repeated.Steps[second] != right {
 				t.Fatal("declaration identities changed across indexing")
 			}
@@ -97,11 +97,11 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 		text.WriteString("\n")
 	}
 	content := text.String()
-	workflow, findings := workflowparser.ParseWorkflow([]byte(content))
+	workflow, findings := parser.ParseWorkflow([]byte(content))
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}
-	refs := workflowfacts.Index("workflow.yml", []byte(content), workflow, false)
+	refs := facts.Index("workflow.yml", []byte(content), workflow, false)
 	var result []source.Reference
 	for _, step := range workflow.Jobs["build"].Steps {
 		result = append(result, refs.Steps[step])

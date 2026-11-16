@@ -10,8 +10,8 @@ import (
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
@@ -19,7 +19,7 @@ import (
 
 type selectorBackend struct{ calls atomic.Int64 }
 
-func (b *selectorBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *selectorBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	b.calls.Add(1)
 	return nil, nil
 }
@@ -43,7 +43,7 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, shell := range []string{"shell-0", "python", `C:\Tools\PYTHON.exe -u`, "bash", "not-listed"} {
-			if _, err := runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Execution: &scriptmodel.Execution{Shell: shell, ShellKnown: true}}}}); err != nil {
+			if _, err := runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Execution: &scriptmodel.Execution{Shell: shell, ShellKnown: true}}}}); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -59,7 +59,7 @@ func TestLargeShellCatalogueIsAnImmutableRegistration(t *testing.T) {
 // it selects action inputs only.
 func TestRequiresExecutionFollowsShellsAndResources(t *testing.T) {
 	t.Parallel()
-	inputs := []checkinputs.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
+	inputs := []inputs.ScriptInput{{Action: "owner/repository", Input: "source", Language: "python"}}
 	for _, tc := range []struct {
 		name      string
 		shells    []string
@@ -125,7 +125,7 @@ func BenchmarkShellCatalogueSelection(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			batch := scriptexecution.Batch{Scripts: make([]scriptexecution.Unit, 100)}
+			batch := scripts.Batch{Scripts: make([]scripts.Unit, 100)}
 			for i := range batch.Scripts {
 				batch.Scripts[i].Execution.Shell = "not-listed"
 			}

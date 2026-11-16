@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestWorkflowCallCallbacksUseCapturedDefaultsIndependently(t *testing.T) {
@@ -24,7 +24,7 @@ jobs:
   inherited:
     uses: ./callee.yml
 `
-	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
+	decoded, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

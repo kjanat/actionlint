@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -63,7 +63,7 @@ func NewAuthoringTester(manifest manifests.Manifest, programs manifests.Programs
 
 // EvaluateFixture applies the exact config and stdout pipeline used by a
 // process backend. The timeout bounds jq evaluation; no child process runs.
-func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs manifests.Programs, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int) (AuthoringResult, error) {
+func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs manifests.Programs, request inputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int) (AuthoringResult, error) {
 	tester, err := NewAuthoringTester(manifest, programs)
 	if err != nil {
 		return AuthoringResult{}, err
@@ -73,7 +73,7 @@ func EvaluateFixture(ctx context.Context, manifest manifests.Manifest, programs 
 
 // Evaluate applies the compiled pipeline to one fixture. The per-case
 // context bounds jq evaluation; no child process runs.
-func (t *AuthoringTester) Evaluate(ctx context.Context, request checkinputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.SourcePlanInput) (AuthoringResult, error) {
+func (t *AuthoringTester) Evaluate(ctx context.Context, request inputs.ScriptRequest, stdout *string, variables map[string]string, exitCode *int, facts *preparation.SourcePlanInput) (AuthoringResult, error) {
 	if err := ctx.Err(); err != nil {
 		return AuthoringResult{}, err
 	}

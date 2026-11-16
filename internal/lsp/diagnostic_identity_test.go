@@ -3,7 +3,7 @@ package lsp
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -11,8 +11,8 @@ func TestDiagnosticCodesAreQualifiedByRule(t *testing.T) {
 	t.Parallel()
 	doc := Document{Text: "value"}
 	findings := []results.Diagnostic{
-		{Rule: "expression-reference", Code: "unknown-property", Message: "reference", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 6}},
-		{Rule: "event-payload", Code: "unknown-property", Message: "payload", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 6}},
+		{Rule: "expression-reference", Code: "unknown-property", Message: "reference", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 6}},
+		{Rule: "event-payload", Code: "unknown-property", Message: "payload", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 6}},
 	}
 	items := diagnosticItems(doc, findings, nil)
 	for i, finding := range findings {
@@ -35,7 +35,7 @@ func TestDiagnosticSeverities(t *testing.T) {
 			doc := Document{Text: "value"}
 			finding := results.Diagnostic{
 				Rule: "shellcheck", Severity: tc.severity, Message: "finding",
-				Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 6},
+				Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 6},
 			}
 			items := diagnosticItems(doc, []results.Diagnostic{finding}, nil)
 			item, ok := items[0].(map[string]any)

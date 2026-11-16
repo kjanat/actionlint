@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
 
@@ -13,7 +13,7 @@ import (
 // workflow field. Invocation-specific types can replace its initial types later.
 type ExpressionScope struct{ key string }
 
-func (scope ExpressionScope) NarrowContext(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+func (scope ExpressionScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	return NarrowEventTypes(guard, truth, lookup)
 }
 

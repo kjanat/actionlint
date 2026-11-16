@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
@@ -20,7 +20,7 @@ func TestInputDetachedKeepsCapabilitiesAndIsolatesData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	environment := scripts.EnvironmentAlternatives("bash", []runner.OS{runner.Linux}, scripts.EnvironmentLayer{Names: []string{"ORIGINAL"}})
+	environment := scripts.EnvironmentAlternatives("bash", []runnerapi.OS{runnerapi.Linux}, scripts.EnvironmentLayer{Names: []string{"ORIGINAL"}})
 	calls := 0
 	input := AnalyzerInput{
 		Scripts:               []Script{{Spans: []sourcemap.Span{{End: 7}}, Runtime: &scripts.Execution{Shell: "bash"}, Environment: environment, Interpreters: registry}},

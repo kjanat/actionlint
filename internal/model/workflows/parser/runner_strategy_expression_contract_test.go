@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	matrixlang "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestRunnerMatrixFilterExpansion(t *testing.T) {
@@ -58,11 +58,11 @@ jobs:
     steps:
       - run: echo ok
 `
-				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+				workflow, errs := parser.ParseWorkflow([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				combinations, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
+				combinations, known := matrix.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
 				if !known || len(combinations) != len(tc.want) {
 					t.Fatalf("known=%v, wanted %v, got %v", known, tc.want, combinations)
 				}
@@ -111,11 +111,11 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			combinations, known := matrixlang.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
+			combinations, known := matrix.Resolve(workflow.Jobs["test"].Strategy).Combinations(256)
 			if !known || (len(combinations) == 0) != tc.matches {
 				t.Fatalf("known=%v, expected exclusion=%v, got %v", known, tc.matches, combinations)
 			}

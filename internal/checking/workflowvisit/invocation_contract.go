@@ -2,7 +2,7 @@ package workflowvisit
 
 import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -18,7 +18,7 @@ type Invocation struct {
 
 	Path    string
 	Source  parsing.SourceSnapshot
-	Actions workspaceactions.ActionMetadataLookup
+	Actions workspace.ActionMetadataLookup
 }
 
 // InvocationParticipant observes resolved action execution without producing child rules.
@@ -40,13 +40,13 @@ type ExpandedActionParticipant interface {
 // CheckoutParticipant adapts its own script paths to the checkout placement
 // that actions resolved for the current invocation.
 type CheckoutParticipant interface {
-	ApplyCheckout(*workspaceactions.Resolver)
+	ApplyCheckout(*workspace.Resolver)
 }
 
 type (
 	MetadataParticipant interface {
 		Rule
 		CheckStandaloneMetadata(*actionmeta.Metadata, parsing.SourceSnapshot, actionmeta.ReferencedFiles) error
-		ForMetadata(*workspaceactions.Resolver) MetadataParticipant
+		ForMetadata(*workspace.Resolver) MetadataParticipant
 	}
 )

@@ -2,9 +2,9 @@
 package values
 
 import (
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -14,9 +14,9 @@ func Constant(value *definition.String) (any, bool) {
 	if value == nil {
 		return nil, false
 	}
-	expr := exprsyntax.ParseAssignedExpression(value.Value)
+	expr := syntax.ParseAssignedExpression(value.Value)
 	if expr == nil {
 		return nil, false
 	}
-	return expreval.ConditionConstantValue(expr)
+	return evaluate.ConditionConstantValue(expr)
 }

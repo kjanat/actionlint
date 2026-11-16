@@ -14,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/reportfixture"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -23,13 +23,13 @@ import (
 
 type editorPathAnalyzer struct{}
 
-func (editorPathAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (editorPathAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "editor-paths", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (editorPathAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (editorPathAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	reference := input.Reference
-	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
+	return []results.Diagnostic{{Reference: &reference, Path: input.Path, Rule: "editor-paths", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Related: []results.Related{{Revision: input.Revision, Coordinates: input.Coordinates, Path: input.Path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}}}, Fixes: []results.Fix{{Description: "normalize", Applicability: results.FixSafe, Revisions: map[string]string{input.Path: reference.Revision}, Edits: []results.Edit{{Path: input.Path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "o"}}}}}}, nil
 }
 
 func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testing.T) {
@@ -52,7 +52,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if directory != "" {
 			key = "workflow.yml"
 		}
-		analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+		analysis, err := analyzeDocuments(t.Context(), checking.Options{WorkingDir: directory, SkipProjectConfig: true, Analyzers: []inputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{key: {Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 		if err != nil || len(analysis.Diagnostics) != 1 {
 			t.Fatalf("working directory %q lost findings: %+v %v", directory, analysis, err)
 		}
@@ -60,7 +60,7 @@ func TestEditorRelativeAndEmptyWorkingDirectoryNormalizePrimaryAndFixes(t *testi
 		if finding.Path != path || !filepath.IsAbs(finding.Path) || analysis.Sources[path].Text == "" {
 			t.Fatalf("relative primary path escaped normalization: %+v", finding)
 		}
-		if len(finding.Related) != 1 || finding.Related[0].Path != path || !finding.Related[0].Revision.Valid() || finding.Related[0].Coordinates != sourcepos.YAML {
+		if len(finding.Related) != 1 || finding.Related[0].Path != path || !finding.Related[0].Revision.Valid() || finding.Related[0].Coordinates != source.YAML {
 			t.Fatalf("relative related path escaped captured normalization: %+v", finding.Related)
 		}
 		if len(finding.Fixes) != 2 || finding.Fixes[0].Applicability != results.FixSafe || finding.Fixes[1].Applicability != results.FixSuggested {
@@ -138,22 +138,22 @@ func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
 	for _, test := range []struct {
 		name                       string
 		content                    []byte
-		model                      sourcepos.Coordinates
+		model                      source.Coordinates
 		raw, unavailable, admitted bool
 	}{
-		{name: "known YAML", content: []byte("😀bad\n"), model: sourcepos.YAML, admitted: true},
-		{name: "raw LF equivalent", content: []byte("😀bad\n"), model: sourcepos.YAML, raw: true, admitted: true},
-		{name: "unavailable matching captured buffer", content: []byte("😀bad\n"), model: sourcepos.YAML, unavailable: true},
-		{name: "raw LF lone CR", content: []byte("first\rsecond\nbad"), model: sourcepos.YAML, raw: true},
-		{name: "non YAML capture", content: []byte("😀bad\n"), model: sourcepos.RawLF, raw: true},
-		{name: "invalid UTF8 capture", content: []byte{0xff}, model: sourcepos.YAML},
+		{name: "known YAML", content: []byte("😀bad\n"), model: source.YAML, admitted: true},
+		{name: "raw LF equivalent", content: []byte("😀bad\n"), model: source.YAML, raw: true, admitted: true},
+		{name: "unavailable matching captured buffer", content: []byte("😀bad\n"), model: source.YAML, unavailable: true},
+		{name: "raw LF lone CR", content: []byte("first\rsecond\nbad"), model: source.YAML, raw: true},
+		{name: "non YAML capture", content: []byte("😀bad\n"), model: source.RawLF, raw: true},
+		{name: "invalid UTF8 capture", content: []byte{0xff}, model: source.YAML},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			path := filepath.Join(root, "workflow.yml")
 			captured := reportfixture.CapturedSource(t, path, test.content, test.model)
-			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Rule: "evidence", Start: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: test.content, RawScript: test.raw, Unavailable: reportedSourceIf(test.unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Rule: "evidence", Start: source.Position{Line: 1, Column: 2}, Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: test.content, RawScript: test.raw, Unavailable: reportedSourceIf(test.unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			analysis, err := FromReport(result, root, map[string]Document{path: {Text: string(test.content)}})
 			if test.admitted {
 				if err != nil || len(analysis.Diagnostics) != 1 {
@@ -192,7 +192,7 @@ func TestEditorDriveCaseAliasKeepsCapturedIdentity(t *testing.T) {
 	if analysis.Diagnostics[0].Reference == nil || analysis.Diagnostics[0].Reference.Revision != analysis.Sources[path].Revision.Digest() {
 		t.Fatal("published alias was not bound to its captured revision")
 	}
-	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
+	analysis, err = analyzeDocuments(t.Context(), checking.Options{WorkingDir: root, SkipProjectConfig: true, Analyzers: []inputs.Registration{{Checker: editorPathAnalyzer{}}}}, map[string]Document{path: {URI: FileURI(path), Version: 5, Text: "on: push\njobs: {build: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}\npermissions: {}\n"}})
 	if err != nil || len(analysis.Diagnostics) != 1 || len(analysis.Diagnostics[0].Related) != 1 || analysis.Diagnostics[0].Related[0].Path != path || len(analysis.Diagnostics[0].Fixes) != 2 {
 		t.Fatalf("case alias lost related or fix ownership: %+v %v", analysis, err)
 	}

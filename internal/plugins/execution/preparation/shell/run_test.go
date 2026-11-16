@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
 
@@ -43,14 +43,14 @@ func TestPrepareRunVariables(t *testing.T) {
 			source: "# shellcheck shell=bash\necho $1\n",
 		},
 		{
-			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Settings: &integrationconfig.Settings{Language: &dash, ReadAccess: integrationconfig.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
+			name: "settings choose the dialect and refuse sources", run: Run{Shell: Shell{Name: "bash"}, Sources: true, Settings: &configuration.Settings{Language: &dash, ReadAccess: configuration.ReadAccess{Enabled: &no}}}, text: "echo ${{ x }}",
 			vars:   map[string]string{"dialect": "dash", "exclude": exclude},
 			source: "# shellcheck external-sources=false\necho ________\n",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			tc.run.Environment = scriptmodel.EnvironmentAlternatives(tc.run.Shell.Name, []runnerapi.OS{runnerapi.Linux})
+			tc.run.Environment = scripts.EnvironmentAlternatives(tc.run.Shell.Name, []runnerapi.OS{runnerapi.Linux})
 			prepared, err := prepareShellcheck(t, tc.run, tc.text)
 			if err != nil {
 				t.Fatal(err)
@@ -64,7 +64,7 @@ func TestPrepareRunVariables(t *testing.T) {
 
 func TestPrepareRunLineOrigins(t *testing.T) {
 	t.Parallel()
-	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &integrationconfig.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
+	prepared, err := prepareShellcheck(t, Run{Shell: Shell{Name: "bash"}, Settings: &configuration.Settings{Prefix: "# shellcheck disable=SC2086\n"}}, "echo $1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestPrepareRunForEngines(t *testing.T) {
 func TestEngineInputRefusesSources(t *testing.T) {
 	t.Parallel()
 	yes := true
-	if _, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Settings: &integrationconfig.Settings{ReadAccess: integrationconfig.ReadAccess{Enabled: &yes}}}, "echo $1"); !errors.Is(err, ErrNoSourceAccess) {
+	if _, err := prepareShellcheck(t, Run{Input: true, Engine: true, Language: "bash", Settings: &configuration.Settings{ReadAccess: configuration.ReadAccess{Enabled: &yes}}}, "echo $1"); !errors.Is(err, ErrNoSourceAccess) {
 		t.Fatalf("got %v", err)
 	}
 }

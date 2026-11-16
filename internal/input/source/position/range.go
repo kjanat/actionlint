@@ -7,17 +7,17 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 )
 
 // Offset resolves a physical Unicode-scalar position without inference or clamping.
-func Offset(content []byte, model sourcepos.Coordinates, p sourcepos.Position) (int, error) {
+func Offset(content []byte, model source.Coordinates, p source.Position) (int, error) {
 	if p.Line < 1 || p.Column < 1 || !utf8.Valid(content) {
 		return 0, fmt.Errorf("invalid source position %v", p)
 	}
 	switch model {
-	case sourcepos.YAML:
+	case source.YAML:
 		document := sourcemap.NewDocument(string(content))
 		if p.Line > document.LineCount() {
 			break
@@ -35,7 +35,7 @@ func Offset(content []byte, model sourcepos.Coordinates, p sourcepos.Position) (
 			offset += len(text) + len(ending)
 		}
 		return offset, nil
-	case sourcepos.RawLF:
+	case source.RawLF:
 		start := 0
 		for line := 1; ; line++ {
 			end := len(content)
@@ -43,7 +43,7 @@ func Offset(content []byte, model sourcepos.Coordinates, p sourcepos.Position) (
 				end = start + relative
 			}
 			if line == p.Line {
-				if column, ok := sourcepos.ByteOffsetAtColumn(string(content[start:end]), p.Column); ok {
+				if column, ok := source.ByteOffsetAtColumn(string(content[start:end]), p.Column); ok {
 					return start + column, nil
 				}
 				break
@@ -61,7 +61,7 @@ func Offset(content []byte, model sourcepos.Coordinates, p sourcepos.Position) (
 
 // Range validates both endpoints and order; zero-width ranges, including EOF,
 // are valid. Zero endpoints, reversed ranges and YAML CRLF interiors are not.
-func Range(content []byte, model sourcepos.Coordinates, start, end sourcepos.Position) (int, int, error) {
+func Range(content []byte, model source.Coordinates, start, end source.Position) (int, int, error) {
 	a, err := Offset(content, model, start)
 	if err != nil {
 		return 0, 0, err

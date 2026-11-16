@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/sarif"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -23,9 +23,9 @@ func TestNativeSARIFUNCPaths(t *testing.T) {
 			t.Parallel()
 			finding := results.Diagnostic{
 				Rule: "shellcheck", Message: "Quote", Path: path,
-				Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2},
+				Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2},
 				Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{
-					{Path: path, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: `"$x"`},
+					{Path: path, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: `"$x"`},
 				}}},
 			}
 			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
@@ -71,7 +71,7 @@ func TestNativeSARIFAbsoluteArtifactBase(t *testing.T) {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		err = renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}})
+		err = renderer.Render(&out, RenderedReport{Diagnostics: []results.Diagnostic{{Path: absolute, Rule: "test", Message: "test", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,10 +104,10 @@ func TestNativeSARIFRetainsAnalyzerFixes(t *testing.T) {
 			t.Parallel()
 			finding := results.Diagnostic{
 				Rule: "shellcheck", Code: "SC2086", Severity: tc.severity, Message: "Quote", Path: "dir/my workflow.yml",
-				Start: sourcepos.Position{Line: 7, Column: 12}, End: sourcepos.Position{Line: 7, Column: 16},
+				Start: source.Position{Line: 7, Column: 12}, End: source.Position{Line: 7, Column: 16},
 				Fixes: []results.Fix{{Description: "Quote variable", Edits: []results.Edit{
-					{Path: "dir/my workflow.yml", Start: sourcepos.Position{Line: 7, Column: 12}, End: sourcepos.Position{Line: 7, Column: 12}, Replacement: `"`},
-					{Path: "dir/my workflow.yml", Start: sourcepos.Position{Line: 7, Column: 16}, End: sourcepos.Position{Line: 7, Column: 16}, Replacement: `"`},
+					{Path: "dir/my workflow.yml", Start: source.Position{Line: 7, Column: 12}, End: source.Position{Line: 7, Column: 12}, Replacement: `"`},
+					{Path: "dir/my workflow.yml", Start: source.Position{Line: 7, Column: 16}, End: source.Position{Line: 7, Column: 16}, Replacement: `"`},
 				}}},
 			}
 			renderer, err := New(FormatSARIF, "", false, testVersion, nil)
@@ -166,13 +166,13 @@ func TestSARIFUnknownSourcePositions(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, path string
-		start      sourcepos.Position
+		start      source.Position
 		want       string
 	}{
-		{"no file", "", sourcepos.Position{}, ""},
-		{"file only", "workflow.yml", sourcepos.Position{}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"}}`},
-		{"line only", "workflow.yml", sourcepos.Position{Line: 7}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"},"region":{"startLine":7}}`},
-		{"start only", "workflow.yml", sourcepos.Position{Line: 7, Column: 3}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"},"region":{"startLine":7,"startColumn":3}}`},
+		{"no file", "", source.Position{}, ""},
+		{"file only", "workflow.yml", source.Position{}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"}}`},
+		{"line only", "workflow.yml", source.Position{Line: 7}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"},"region":{"startLine":7}}`},
+		{"start only", "workflow.yml", source.Position{Line: 7, Column: 3}, `{"artifactLocation":{"uri":"workflow.yml","uriBaseId":"%SRCROOT%"},"region":{"startLine":7,"startColumn":3}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -268,8 +268,8 @@ func TestSARIFSharedRuleMetadataAndRelatedLocations(t *testing.T) {
 		t.Fatal("renderer changed caller-owned metadata")
 	}
 	var output bytes.Buffer
-	related := results.Related{Message: "previous declaration", Path: "other workflow.yml", Start: sourcepos.Position{Line: 2, Column: 3}, End: sourcepos.Position{Line: 2, Column: 7}}
-	err = renderer.Render(&output, RenderedReport{Diagnostics: []results.Diagnostic{{Rule: metadata.Name, Message: "duplicate", Path: "workflow.yml", Start: sourcepos.Position{Line: 3, Column: 1}, End: sourcepos.Position{Line: 3, Column: 4}, Related: []results.Related{related}}}})
+	related := results.Related{Message: "previous declaration", Path: "other workflow.yml", Start: source.Position{Line: 2, Column: 3}, End: source.Position{Line: 2, Column: 7}}
+	err = renderer.Render(&output, RenderedReport{Diagnostics: []results.Diagnostic{{Rule: metadata.Name, Message: "duplicate", Path: "workflow.yml", Start: source.Position{Line: 3, Column: 1}, End: source.Position{Line: 3, Column: 4}, Related: []results.Related{related}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,8 +8,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -17,7 +17,7 @@ import (
 
 type documentChecks struct {
 	selection.Selection
-	scripts          scriptexecution.Service
+	scripts          scripts.Service
 	resolveExecution bool
 	registeredTools  []contract.Registration
 }
@@ -30,7 +30,7 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 	}
 	for _, a := range selected.Scripts {
 		execution := slices.Contains(a.Descriptor().RequiredInputs, rule.Execution)
-		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptexecution.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
+		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scripts.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
 		selected.resolveExecution = selected.resolveExecution || execution
 	}
 	for _, registration := range s.tools {
@@ -65,9 +65,9 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 	return selected, nil
 }
 
-func (d documentChecks) inputSelectors(c contract.Context, scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+func (d documentChecks) inputSelectors(c contract.Context, scope *rulebinding.Scope) ([]inputs.ScriptInput, error) {
 	c.ProjectConfig, c.ProjectRoot = nil, ""
-	var inputs []checkinputs.ScriptInput
+	var inputs []inputs.ScriptInput
 	for _, registration := range d.registeredTools {
 		cfg := scope.Rule(registration.Descriptor.Name).Config()
 		c.Config = cfg

@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"github.com/kjanat/wazero/api"
 	"github.com/kjanat/wazero/experimental"
 )
@@ -25,9 +25,9 @@ func enginePath(name string) string {
 	return filepath.Join("testdata", "engines", name+".wasm")
 }
 
-func loadEngine(t *testing.T, path string, options corewasm.Options) *corewasm.Engine {
+func loadEngine(t *testing.T, path string, options module.Options) *module.Engine {
 	t.Helper()
-	engine, err := corewasm.LoadModuleEngine(t.Context(), path, options)
+	engine, err := module.LoadModuleEngine(t.Context(), path, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,31 +41,31 @@ func loadEngine(t *testing.T, path string, options corewasm.Options) *corewasm.E
 
 func TestEchoEngineChecksAndValidates(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
+	engine := loadEngine(t, enginePath("echo"), module.Options{})
 	metadata := engine.Metadata()
 	if metadata.ID != "actionlint-engine-echo" || metadata.Engine.Version != "1.0.0" || metadata.Capabilities.MaxInputBytes != 8388608 {
 		t.Fatalf("metadata=%+v", metadata)
 	}
-	if engine.Limits() != (corewasm.Limits{Timeout: corewasm.DefaultTimeout, MemoryPages: corewasm.DefaultMemoryPages}) {
+	if engine.Limits() != (module.Limits{Timeout: module.DefaultTimeout, MemoryPages: module.DefaultMemoryPages}) {
 		t.Fatalf("limits=%+v", engine.Limits())
 	}
-	diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "label = 'é🦀'; print(missing)\n", Filename: "workflow.step.py", Config: json.RawMessage(`{"lint":{"select":["F821"]}}`)})
+	diagnostics, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "label = 'é🦀'; print(missing)\n", Filename: "workflow.step.py", Config: json.RawMessage(`{"lint":{"select":["F821"]}}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := checkinputs.ScriptDiagnostic{
+	want := inputs.ScriptDiagnostic{
 		Filename: "workflow.step.py", Code: "F821", Name: "undefined-name", Severity: "error", Message: "Undefined name `missing`",
-		Location: checkinputs.ScriptPosition{Row: 1, Column: 21}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 28},
+		Location: inputs.ScriptPosition{Row: 1, Column: 21}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 28},
 		URL: "https://docs.astral.sh/ruff/rules/undefined-name/",
 	}
 	if len(diagnostics) != 1 || !reflect.DeepEqual(diagnostics[0], want) {
 		t.Fatalf("diagnostics=%+v", diagnostics)
 	}
-	clean, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print('ok')\n", Filename: "step.py"})
+	clean, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print('ok')\n", Filename: "step.py"})
 	if err != nil || len(clean) != 0 {
 		t.Fatalf("clean=%+v err=%v", clean, err)
 	}
-	if _, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "x\n", Filename: "step.py", Config: json.RawMessage(`{"select":["FAKE999"]}`)}); err == nil || err.Error() != "engine actionlint-engine-echo: invalid Ruff config: unknown rule selector FAKE" {
+	if _, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "x\n", Filename: "step.py", Config: json.RawMessage(`{"select":["FAKE999"]}`)}); err == nil || err.Error() != "engine actionlint-engine-echo: invalid Ruff config: unknown rule selector FAKE" {
 		t.Fatalf("config error=%v", err)
 	}
 	if err := engine.ValidateConfig(t.Context(), json.RawMessage(`{"lint":{"select":["F821"]}}`)); err != nil {
@@ -77,7 +77,7 @@ func TestEchoEngineChecksAndValidates(t *testing.T) {
 	if err := engine.ValidateConfig(t.Context(), json.RawMessage(`{"select":["FAKE999"]}`)); err == nil || !strings.HasSuffix(err.Error(), "unknown rule selector FAKE") {
 		t.Fatalf("validate error=%v", err)
 	}
-	if _, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: strings.Repeat("x", 9*1024*1024), Filename: "step.py"}); err == nil || !strings.Contains(err.Error(), "exceeds the engine limit of 8388608 bytes") {
+	if _, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: strings.Repeat("x", 9*1024*1024), Filename: "step.py"}); err == nil || !strings.Contains(err.Error(), "exceeds the engine limit of 8388608 bytes") {
 		t.Fatalf("limit error=%v", err)
 	}
 }
@@ -100,7 +100,7 @@ func TestGzipModuleLoads(t *testing.T) {
 	if err := os.WriteFile(path, compressed.Bytes(), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	engine := loadEngine(t, path, corewasm.Options{CacheDir: filepath.Join(t.TempDir(), "cache")})
+	engine := loadEngine(t, path, module.Options{CacheDir: filepath.Join(t.TempDir(), "cache")})
 	if engine.Metadata().ID != "actionlint-engine-echo" {
 		t.Fatalf("metadata=%+v", engine.Metadata())
 	}
@@ -108,8 +108,8 @@ func TestGzipModuleLoads(t *testing.T) {
 
 func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
-	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "missing # partial", Filename: "step.py"})
+	engine := loadEngine(t, enginePath("echo"), module.Options{})
+	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "missing # partial", Filename: "step.py"})
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete") {
 		t.Fatalf("missing completion failure: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestFailedResponsePreservesDiagnostics(t *testing.T) {
 
 func TestFailuresDiscardTheInstance(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{MemoryPages: 64})
+	engine := loadEngine(t, enginePath("echo"), module.Options{MemoryPages: 64})
 	if engine.Limits().String() != "memory 4 MiB, time 10s" {
 		t.Fatalf("limits=%s", engine.Limits())
 	}
@@ -129,7 +129,7 @@ func TestFailuresDiscardTheInstance(t *testing.T) {
 		"grow":  "engine actionlint-engine-echo failed (memory 4 MiB, time 10s)",
 		"error": "",
 	} {
-		_, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: source, Filename: "step.py"})
+		_, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: source, Filename: "step.py"})
 		if want == "" {
 			if err != nil {
 				t.Fatalf("%s: err=%v", source, err)
@@ -139,14 +139,14 @@ func TestFailuresDiscardTheInstance(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Fatalf("%s: err=%v", source, err)
 		}
-		recovered, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+		recovered, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 		if err != nil || len(recovered) != 1 {
 			t.Fatalf("after %s: diagnostics=%+v err=%v", source, recovered, err)
 		}
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
+	if _, err := engine.Check(ctx, inputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled: err=%v", err)
 	}
 }
@@ -170,7 +170,7 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 		}
 		return nil
 	}))
-	engine, err := corewasm.LoadModuleEngine(loadCtx, enginePath("echo"), corewasm.Options{})
+	engine, err := module.LoadModuleEngine(loadCtx, enginePath("echo"), module.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,10 +179,10 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	if _, err := engine.Check(callCtx, checkinputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
+	if _, err := engine.Check(callCtx, inputs.ScriptRequest{Source: "hang", Filename: "step.py"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled guest: %v", err)
 	}
-	recovered, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	recovered, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(recovered) != 1 {
 		t.Fatalf("after cancellation: diagnostics=%+v err=%v", recovered, err)
 	}
@@ -193,13 +193,13 @@ func TestCancelledCallDiscardsTheInstance(t *testing.T) {
 
 func TestConcurrentChecks(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
+	engine := loadEngine(t, enginePath("echo"), module.Options{})
 	var wg sync.WaitGroup
 	errs := make(chan error, 32)
 	for range 8 {
 		wg.Go(func() {
 			for range 4 {
-				diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+				diagnostics, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 				if err == nil && (len(diagnostics) != 1 || diagnostics[0].Location.Column != 7) {
 					err = errors.New("unexpected diagnostics")
 				}
@@ -225,7 +225,7 @@ func TestLoadRefusesIncompatibleModules(t *testing.T) {
 		"abi-version":    "module reports ABI version 2; this host implements 1",
 		"no-check":       "metadata advertises no check version this host supports (versions 1 and 3)",
 	} {
-		engine, err := corewasm.LoadModuleEngine(t.Context(), filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{})
+		engine, err := module.LoadModuleEngine(t.Context(), filepath.Join("testdata", "wat", name+".wasm"), module.Options{})
 		if err == nil {
 			_ = engine.Close(t.Context())
 			t.Fatalf("%s loaded", name)
@@ -234,21 +234,21 @@ func TestLoadRefusesIncompatibleModules(t *testing.T) {
 			t.Fatalf("%s: err=%v", name, err)
 		}
 	}
-	if _, err := corewasm.LoadModuleEngine(t.Context(), filepath.Join("testdata", "missing.wasm"), corewasm.Options{}); !errors.Is(err, os.ErrNotExist) {
+	if _, err := module.LoadModuleEngine(t.Context(), filepath.Join("testdata", "missing.wasm"), module.Options{}); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing: err=%v", err)
 	}
 }
 
 func TestClosedEngineRejectsCalls(t *testing.T) {
 	t.Parallel()
-	engine, err := corewasm.LoadModuleEngine(t.Context(), enginePath("echo"), corewasm.Options{})
+	engine, err := module.LoadModuleEngine(t.Context(), enginePath("echo"), module.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := engine.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "x", Filename: "step.py"}); err == nil {
+	if _, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "x", Filename: "step.py"}); err == nil {
 		t.Fatal("check succeeded after close")
 	}
 }
@@ -261,7 +261,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			start := time.Now()
-			engine, err := corewasm.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
+			engine, err := module.LoadModuleEngine(ctx, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}
@@ -274,7 +274,7 @@ func TestInitializationHonorsEngineTimeout(t *testing.T) {
 
 func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 	t.Parallel()
-	const timeout = corewasm.DefaultTimeout
+	const timeout = module.DefaultTimeout
 	var compiledAt, initializedDeadline time.Time
 	var initialized sync.Once
 	ctx := experimental.WithFunctionListenerFactory(t.Context(), experimental.FunctionListenerFactoryFunc(func(api.FunctionDefinition) experimental.FunctionListener {
@@ -283,7 +283,7 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 			initialized.Do(func() { initializedDeadline, _ = ctx.Deadline() })
 		})
 	}))
-	engine, err := corewasm.LoadModuleEngine(ctx, enginePath("echo"), corewasm.Options{Timeout: timeout})
+	engine, err := module.LoadModuleEngine(ctx, enginePath("echo"), module.Options{Timeout: timeout})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestCompilationDoesNotConsumeGuestTimeout(t *testing.T) {
 	if initializedDeadline.Before(compiledAt.Add(timeout)) {
 		t.Fatalf("guest deadline %s includes compilation time observed at %s", initializedDeadline, compiledAt)
 	}
-	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
 		t.Fatalf("compiled engine failed: findings=%+v err=%v", findings, err)
 	}
@@ -330,7 +330,7 @@ func TestCompilationHonorsCallerCancellation(t *testing.T) {
 				}
 				return listener
 			}))
-			engine, err := corewasm.LoadModuleEngine(loadCtx, enginePath("echo"), corewasm.Options{})
+			engine, err := module.LoadModuleEngine(loadCtx, enginePath("echo"), module.Options{})
 			if engine != nil {
 				_ = engine.Close(context.Background())
 			}
@@ -346,11 +346,11 @@ func TestCleanupFailureDiscardsInstance(t *testing.T) {
 	for _, name := range []string{"trap-free-output", "trap-free-input", "hang-free-output"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), corewasm.Options{Timeout: 100 * time.Millisecond})
+			engine := loadEngine(t, filepath.Join("testdata", "wat", name+".wasm"), module.Options{Timeout: 100 * time.Millisecond})
 			// Trap fixtures fail only their first deallocation. Both calls must
 			// fail, proving the second call receives a fresh instance.
 			for range 2 {
-				_, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "hello", Filename: "step.py"})
+				_, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "hello", Filename: "step.py"})
 				if err == nil || !strings.Contains(err.Error(), "engine lifecycle") {
 					t.Fatalf("cleanup failure was lost: %v", err)
 				}

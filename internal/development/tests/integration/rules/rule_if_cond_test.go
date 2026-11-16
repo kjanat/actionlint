@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"

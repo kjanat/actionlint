@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
@@ -64,16 +64,16 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 		}
 	}
 	if err == nil {
-		return commandstatus.ExitSuccessNoProblem
+		return exitcode.ExitSuccessNoProblem
 	}
 	_, _ = fmt.Fprintln(stderr, err)
 	if _, ok := errors.AsType[*inputError](err); ok {
-		return commandstatus.ExitInvalidCommandOption
+		return exitcode.ExitInvalidCommandOption
 	}
 	if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
-		return commandstatus.ExitInvalidCommandOption
+		return exitcode.ExitInvalidCommandOption
 	}
-	return commandstatus.ExitFailure
+	return exitcode.ExitFailure
 }
 
 func (req *lintRequest) pluginPlan(ctx context.Context) (pluginselection.CachePlan, error) {

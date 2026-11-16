@@ -3,8 +3,8 @@ package pluginselection
 import (
 	"slices"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -13,7 +13,7 @@ import (
 func SourcesFromArguments(paths []string, acquisition pluginacquisition.Settings) (Sources, error) {
 	sources := Sources{Paths: slices.Clone(paths), NetworkGrants: make(map[string]acquisitionhttp.Grant, len(paths)), Acquisition: acquisition}
 	for _, source := range paths {
-		grant, err := pluginartifact.ExplicitSource(source)
+		grant, err := artifacts.ExplicitSource(source)
 		if err != nil {
 			return Sources{}, err
 		}
@@ -23,7 +23,7 @@ func SourcesFromArguments(paths []string, acquisition pluginacquisition.Settings
 }
 
 // ArtifactOptions supplies cache settings and the grant attached to source.
-func (s *Sources) ArtifactOptions(source string) pluginartifact.Options {
+func (s *Sources) ArtifactOptions(source string) artifacts.Options {
 	options := s.Acquisition.ArtifactOptions()
 	options.Network = s.NetworkGrants[source]
 	return options

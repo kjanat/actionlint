@@ -13,8 +13,8 @@ import (
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -74,7 +74,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 	if err != nil {
 		return 0, err
 	}
-	project, err := plugininstall.OpenProject(ctx, checking.ConfigurationRules(), acquisition, cwd, r.Config.Path)
+	project, err := installation.OpenProject(ctx, checking.ConfigurationRules(), acquisition, cwd, r.Config.Path)
 	if err != nil {
 		return 0, err
 	}
@@ -88,7 +88,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandstreams.Streams
 		explicitEndpoint = name
 	}
 	if explicitEndpoint != "" {
-		grant, err := pluginartifact.ExplicitSource(explicitEndpoint)
+		grant, err := artifacts.ExplicitSource(explicitEndpoint)
 		if err != nil {
 			return 0, commandargs.UsageError{Cause: err}
 		}
@@ -224,12 +224,12 @@ func RequestedPluginIndex(ref pluginreference.Reference, registry string, existi
 	return index, nil
 }
 
-func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Project, name string) error {
+func (r RegistryRequest) install(ctx context.Context, project *installation.Project, name string) error {
 	refs := slices.Clone(project.Manifest.References)
 	var err error
 	if name != "" {
 		// The declaration records the digest an oci:// tag names now.
-		name, err = plugininstall.PinSource(ctx, name, project.StatusOptions.Acquisition)
+		name, err = installation.PinSource(ctx, name, project.StatusOptions.Acquisition)
 		if err != nil {
 			return err
 		}
@@ -274,7 +274,7 @@ func (r RegistryRequest) install(ctx context.Context, project *plugininstall.Pro
 	return project.Save(ctx, refs)
 }
 
-func (r RegistryRequest) update(ctx context.Context, project *plugininstall.Project, name string) error {
+func (r RegistryRequest) update(ctx context.Context, project *installation.Project, name string) error {
 	refs := slices.Clone(project.Manifest.References)
 	update := refs
 	if name != "" {
@@ -306,7 +306,7 @@ func (r RegistryRequest) update(ctx context.Context, project *plugininstall.Proj
 	return project.Save(ctx, refs)
 }
 
-func removePlugin(ctx context.Context, project *plugininstall.Project, name, registry string) error {
+func removePlugin(ctx context.Context, project *installation.Project, name, registry string) error {
 	refs := slices.Clone(project.Manifest.References)
 	index, err := DeclaredPlugin(ctx, project, refs, name, registry)
 	if err != nil {
@@ -324,7 +324,7 @@ func removePlugin(ctx context.Context, project *plugininstall.Project, name, reg
 
 // DeclaredPlugin resolves command spelling against declarations and recorded
 // pins only. A shorthand from another registry never selects this declaration.
-func DeclaredPlugin(ctx context.Context, project *plugininstall.Project, refs []pluginreference.Reference, name, registry string) (int, error) {
+func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []pluginreference.Reference, name, registry string) (int, error) {
 	requested, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
 		return -1, commandargs.UsageError{Cause: err}

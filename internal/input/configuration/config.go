@@ -18,8 +18,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
@@ -526,7 +526,7 @@ func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string
 }
 
 func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, bindRules bool, additional ...string) (*LoadedFile, error) {
-	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
+	reader := source.New(ctx, readFile, acquisitionhttp.Connections{})
 	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
 	rules := document.NewFiles()
@@ -601,7 +601,7 @@ func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, r
 }
 
 func absPath(path string) string {
-	if configsource.IsRemoteAddress(path) {
+	if source.IsRemoteAddress(path) {
 		return path
 	}
 	if p, err := filepath.Abs(path); err == nil {

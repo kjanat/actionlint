@@ -9,14 +9,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -55,7 +55,7 @@ func standaloneActionForTest(t *testing.T, options Options, metadata *actionmeta
 	if fixture != nil {
 		address = fixture.Path(address)
 	}
-	deployment, err := scriptexecution.NewDeployment(registry, snapshot, address, metadata.Path(), metadata.SourceMapped)
+	deployment, err := scripts.NewDeployment(registry, snapshot, address, metadata.Path(), metadata.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func (*mutatingStandaloneMetadata) CheckStandaloneMetadata(metadata *actionmeta.
 	return nil
 }
 
-func (rule *mutatingStandaloneMetadata) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
+func (rule *mutatingStandaloneMetadata) ForMetadata(*workspace.Resolver) workflowvisit.MetadataParticipant {
 	return rule
 }
 
@@ -89,14 +89,14 @@ func TestStandaloneActionUsesCanonicalSnapshotAndDeployment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scriptexecution.NewDeployment(registry, snapshot, path, path, false)
+	deployment, err := scripts.NewDeployment(registry, snapshot, path, path, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rule := &mutatingStandaloneMetadata{Base: workflowvisit.NewBase("mutate", "")}
 	options := Options{
 		Bindings: testBindings(nil),
-		Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
+		Context:  t.Context(), Actions: workspace.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 	}
 	result, err := Action(options, snapshot, deployment, document.Metadata)
@@ -134,7 +134,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 			if metadata == nil {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
-			resolver := workspaceactions.NewResolver(nil, nil)
+			resolver := workspace.NewResolver(nil, nil)
 			options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), resolver, nil)}}
 			result, err := standaloneActionForTest(t, options, metadata)
 			if err != nil {
@@ -165,7 +165,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := workspaceactions.NewResolver(nil, nil)
+	resolver := workspace.NewResolver(nil, nil)
 	options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: resolver, CollectScripts: true, Rules: []workflowvisit.Rule{correctness.NewRuleAction(t.Context(), correctness.ActionRule.Base(), resolver, nil)}}
 	result, err := standaloneActionForTest(t, options, metadata)
 	if err != nil {

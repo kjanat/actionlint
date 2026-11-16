@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	pluginartifacts "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -95,7 +95,7 @@ func TestLockedStatusPolicyAndPermanentCachedRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock := pluginregistry.ResolvedPlugins{Plugins: []pluginregistry.Pin{pin}}
-	artifacts := pluginartifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
+	artifacts := artifacts.Options{CacheDir: t.TempDir(), Connections: registry.Connections()}
 	statuses := pluginregistry.StatusOptions{Acquisition: fixtureAcquisition(registry)}
 	if err := lock.Sync(t.Context(), artifacts, statuses); err != nil {
 		t.Fatal(err)

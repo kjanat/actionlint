@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"github.com/kjanat/wacogo"
 	"golang.org/x/sync/semaphore"
 )
@@ -23,7 +23,7 @@ func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
 
 func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 	t.Parallel()
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Source: "in-memory"}}
+	artifact := &artifacts.Artifact{Info: artifacts.ArtifactProvenance{Source: "in-memory"}}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("in-memory artifact bypassed memory option validation: %v", err)
 	}

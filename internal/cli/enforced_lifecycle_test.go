@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 const requiredRunnerPolicy = `lint:
@@ -50,7 +50,7 @@ func TestCLIEnforcedLifecycleCannotBeSuppressed(t *testing.T) {
 		if status != 1 {
 			t.Fatalf("%s: status %d, stdout %s, stderr %s", tc.name, status, &out, &log)
 		}
-		var report resultreport.CheckResult
+		var report report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 			t.Fatal(err)
 		}

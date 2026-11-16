@@ -3,34 +3,34 @@ package scripts
 import (
 	"slices"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 // Fact projects a validated script; false means the batch or index is unavailable.
 // With includeExecution, a run script always has a Runtime; it is empty when
 // the analysis did not resolve execution.
-func (batch Batch) Fact(index int, includeExecution bool) (checkinputs.Script, bool) {
+func (batch Batch) Fact(index int, includeExecution bool) (inputs.Script, bool) {
 	if !batch.Valid() || index < 0 || index >= len(batch.Scripts) {
-		return checkinputs.Script{}, false
+		return inputs.Script{}, false
 	}
 	unit := batch.Scripts[index]
 	occurrence, exists := batch.CallGraph.Script(unit.Occurrence)
 	if !exists || occurrence.Declaration != unit.Reference || (occurrence.Kind == invocation.ScriptActionInput) != (unit.Input != nil) {
-		return checkinputs.Script{}, false
+		return inputs.Script{}, false
 	}
 	script := fact(unit, batch.CallGraph, includeExecution)
 	script.Occurrence = occurrence
 	return script, true
 }
 
-func fact(unit Unit, graph invocation.Graph, includeExecution bool) checkinputs.Script {
-	var script checkinputs.Script
+func fact(unit Unit, graph invocation.Graph, includeExecution bool) inputs.Script {
+	var script inputs.Script
 	if input := unit.Input; input != nil {
-		script.Declaration = scriptmodel.FromInput(input.Value)
+		script.Declaration = scripts.FromInput(input.Value)
 	} else {
-		script.Declaration = scriptmodel.FromRun(unit.Run)
+		script.Declaration = scripts.FromRun(unit.Run)
 	}
 	if unit.Origin != nil {
 		script.JobID, script.StepID = unit.Origin.Job, unit.Origin.StepID
@@ -42,7 +42,7 @@ func fact(unit Unit, graph invocation.Graph, includeExecution bool) checkinputs.
 	script.Environment = slices.Clone(unit.Environment)
 	script.Interpreters = unit.Interpreters
 	if includeExecution && unit.Input == nil {
-		var runtime scriptmodel.Execution
+		var runtime scripts.Execution
 		if unit.Execution != nil {
 			runtime = *unit.Execution
 		}

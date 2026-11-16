@@ -9,13 +9,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	nameinput "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
@@ -44,7 +44,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		Bindings: rulebinding.NewRegistry(rules).Prepare(config, config, config),
 		Rules:    rules, Config: config, Context: t.Context(), SourceSnapshot: snapshot,
 		Path: path, WorkingDir: root, ProjectRoot: root,
-		WorkflowNames: nameinput.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),
+		WorkflowNames: names.NewIndex([]string{path}, files.New(t.Context(), nil, nil), load),
 	}
 }
 
@@ -67,7 +67,7 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 				return namemodel.Declare(&definition.String{Value: "Build"}), nil
 			})
 			found := false
-			for _, registration := range ruleexec.Registrations(inputs.Rules) {
+			for _, registration := range registration.Registrations(inputs.Rules) {
 				if registration.Name != "workflow-run-names" {
 					continue
 				}
@@ -115,7 +115,7 @@ func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
 		t.Fatalf("preparation failure lost its cause or operation: error=%v loads=%d", err, loads)
 	}
 	earlier := map[string]bool{}
-	for _, registration := range ruleexec.Registrations(inputs.Rules) {
+	for _, registration := range registration.Registrations(inputs.Rules) {
 		if registration.Name == "workflow-run-names" {
 			break
 		}

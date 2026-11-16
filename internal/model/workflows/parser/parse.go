@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
@@ -244,7 +244,7 @@ func (p *Parser) parseCondition(n *codec.Node) *definition.String {
 
 // parseStaticString folds a sole literal expression before downstream validation.
 func (p *Parser) parseStaticString(n *codec.Node) *definition.String {
-	if value := exprsyntax.LiteralExpressionValue(n.Value); value != nil {
+	if value := syntax.LiteralExpressionValue(n.Value); value != nil {
 		source := newString(n).SourceScalar
 		literal := *n
 		literal.Value = *value
@@ -485,7 +485,7 @@ func (p *Parser) parseMappingEntries(where delayedSprintf, n *codec.Node, allowE
 				id = strings.ToLower(id)
 			}
 
-			if insertions && exprsyntax.IsMappingInsertion(k.Value) {
+			if insertions && syntax.IsMappingInsertion(k.Value) {
 				if !yield(workflowMappingEntry{id, k, n.Content[i+1]}) {
 					break
 				}
@@ -962,7 +962,7 @@ func (p *Parser) parseEnvMapping(n *codec.Node, allowEmpty bool) *definition.Env
 
 	env := &definition.Env{Vars: map[string]*definition.EnvVar{}}
 	for e := range p.parseMappingEntries(sprintf("%q section", "env"), n, allowEmpty, false, true) {
-		if exprsyntax.IsMappingInsertion(e.key.Value) {
+		if syntax.IsMappingInsertion(e.key.Value) {
 			env.Insertions = append(env.Insertions, p.parseEnvMapping(e.val, true))
 			continue
 		}
@@ -1233,7 +1233,7 @@ func (p *Parser) ParseMatrixMapping(pos *source.Position, n *codec.Node, allowEm
 	ret := &definition.Matrix{Pos: pos, Rows: make(map[string]*definition.MatrixRow)}
 
 	for e := range p.parseMappingEntries(sprintf("%q section", "matrix"), n, allowEmpty, false, !evaluated) {
-		if !evaluated && exprsyntax.IsMappingInsertion(e.key.Value) {
+		if !evaluated && syntax.IsMappingInsertion(e.key.Value) {
 			ret.Insertions = append(ret.Insertions, p.ParseMatrixMapping(e.key.Pos, e.val, true, false))
 			continue
 		}
@@ -1449,7 +1449,7 @@ func (p *Parser) parseActionInputMapping(n *codec.Node, allowEmpty bool, docker 
 	mapping := &definition.ActionInputMapping{Inputs: map[string]*definition.ActionArgument{}}
 	for e := range p.parseMappingEntries(sprintf("%q section", "with"), n, allowEmpty, false, true) {
 		switch {
-		case exprsyntax.IsMappingInsertion(e.key.Value):
+		case syntax.IsMappingInsertion(e.key.Value):
 			mapping.Insertions = append(mapping.Insertions, p.parseActionInputMapping(e.val, true, docker))
 		case p.parseDockerInput(e, docker):
 		default:
@@ -1535,7 +1535,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 			with := p.parseMappingEntries(sprintf("%q section", "with"), e.val, false, false, true)
 			if isDocker {
 				for e := range with {
-					if exprsyntax.IsMappingInsertion(e.key.Value) {
+					if syntax.IsMappingInsertion(e.key.Value) {
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, ret))
 						continue
 					}
@@ -1545,7 +1545,7 @@ func (p *Parser) parseStepExecAction(entries []workflowMappingEntry, isDocker bo
 				}
 			} else {
 				for e := range with {
-					if exprsyntax.IsMappingInsertion(e.key.Value) {
+					if syntax.IsMappingInsertion(e.key.Value) {
 						ret.InputInsertions = append(ret.InputInsertions, p.parseActionInputMapping(e.val, true, nil))
 						continue
 					}
@@ -1741,7 +1741,7 @@ func (p *Parser) ParseStep(n *codec.Node) *definition.Step {
 			ret.Background = p.parseBool(e.val)
 		case "uses":
 			uses := e.val.Value
-			if literal := exprsyntax.LiteralExpressionValue(uses); literal != nil {
+			if literal := syntax.LiteralExpressionValue(uses); literal != nil {
 				uses = *literal
 			}
 			if e.val.Kind == codec.ScalarNode {

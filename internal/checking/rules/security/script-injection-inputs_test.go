@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // From https://securitylab.github.com/research/github-actions-untrusted-input/
@@ -86,11 +86,11 @@ func TestExprInsecureBuiltinUntrustedInputs(t *testing.T) {
 
 func testRunTrustedInputsCheckerForNode(t *testing.T, c *UntrustedInputChecker, input string) {
 	t.Helper()
-	n, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
+	n, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	exprsyntax.Visit(n, func(n, p exprsyntax.Node, entering bool) {
+	syntax.Visit(n, func(n, p syntax.Node, entering bool) {
 		if entering {
 			c.OnVisitNodeEnter(n)
 		} else {
@@ -740,11 +740,11 @@ func TestExprInsecureNoUntrustedObjectFiltering(t *testing.T) {
 }
 
 func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
-	parseNodes := func(exprs []string) []exprsyntax.Node {
-		ns := make([]exprsyntax.Node, 0, len(exprs))
-		p := exprsyntax.NewParser()
+	parseNodes := func(exprs []string) []syntax.Node {
+		ns := make([]syntax.Node, 0, len(exprs))
+		p := syntax.NewParser()
 		for _, e := range exprs {
-			n, err := p.ParseExpression(exprsyntax.NewLexer(e + "}}"))
+			n, err := p.ParseExpression(syntax.NewLexer(e + "}}"))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -801,7 +801,7 @@ func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			for j, n := range untrustedNodes {
 				c.Init()
-				exprsyntax.Visit(n, func(n, p exprsyntax.Node, entering bool) {
+				syntax.Visit(n, func(n, p syntax.Node, entering bool) {
 					if !entering {
 						c.OnVisitNodeLeave(n)
 					}
@@ -857,7 +857,7 @@ func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
 			c := NewUntrustedInputChecker(BuiltinUntrustedInputs)
 			for j, n := range trustedNodes {
 				c.Init()
-				exprsyntax.Visit(n, func(n, p exprsyntax.Node, entering bool) {
+				syntax.Visit(n, func(n, p syntax.Node, entering bool) {
 					if !entering {
 						c.OnVisitNodeLeave(n)
 					}
@@ -877,7 +877,7 @@ func FuzzUntrustedInputTraversal(f *testing.F) {
 		f.Add(source)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
-		node, issue := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+		node, issue := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 		if issue != nil {
 			return
 		}
@@ -890,9 +890,9 @@ func FuzzUntrustedInputTraversal(f *testing.F) {
 }
 
 func BenchmarkUntrustedInputs(b *testing.B) {
-	nodes := make([]exprsyntax.Node, 0, len(testAllUntrustedInputs))
+	nodes := make([]syntax.Node, 0, len(testAllUntrustedInputs))
 	for _, source := range testAllUntrustedInputs {
-		node, issue := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
+		node, issue := syntax.NewParser().ParseExpression(syntax.NewLexer(source + "}}"))
 		if issue != nil {
 			b.Fatal(issue)
 		}

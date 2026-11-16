@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
@@ -54,7 +54,7 @@ permissions: {}
 
 type reviewShellcheckBackend struct{ calls int }
 
-func (b *reviewShellcheckBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *reviewShellcheckBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	b.calls++
 	return nil, nil
 }

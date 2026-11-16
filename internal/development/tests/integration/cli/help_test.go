@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"github.com/fatih/color"
 )
 
@@ -70,7 +70,7 @@ func TestRootHelpOverview(t *testing.T) {
 // accepts each one.
 func TestLegacyHelpListsDeprecatedFlags(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}

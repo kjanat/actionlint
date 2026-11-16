@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 )
 
 // File records whether a path was literally named or found by discovery.
@@ -88,7 +88,7 @@ func FindFiles(ctx context.Context, paths []string, noIgnore bool) (FileSelectio
 		}
 	}
 	listed := &InputFiles{}
-	reader := inputfiles.New(ctx, nil, listed.Add)
+	reader := files.New(ctx, nil, listed.Add)
 	seen, directories := make(map[string]bool), make(map[string]bool)
 	options := discovery.Discovery{NoIgnore: noIgnore, Repositories: true, SkipDirectory: func(path string) bool {
 		key := fileIdentity(path)

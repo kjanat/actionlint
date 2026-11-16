@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
@@ -35,7 +35,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 	if err := project.Save(t.Context(), refs); err != nil {
 		t.Fatal(err)
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestPluginProjectDeclarationsAuthorizeLoading(t *testing.T) {
 func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{ref}); err != nil {
 		t.Fatal(err)
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

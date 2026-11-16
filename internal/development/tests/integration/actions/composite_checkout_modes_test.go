@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeCheckoutModeIsolation(t *testing.T) {
@@ -60,7 +60,7 @@ func TestCompositeCheckoutModeIsolation(t *testing.T) {
   working-directory: .
   run:`)
 			result := testutil.Composite(t, root, steps, checking.Options{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && strings.Contains(d.Message, `"bad.sh"`)
 			})
 			if found != tc.finding {
@@ -102,7 +102,7 @@ runs:
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 			})
 			if found != tc.read {

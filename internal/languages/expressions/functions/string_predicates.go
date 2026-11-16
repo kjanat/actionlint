@@ -3,9 +3,9 @@ package functions
 import (
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
 // IsStringPredicate reports whether a built-in tests strings and returns a boolean.
@@ -45,7 +45,7 @@ func evaluatePredicate(context EvaluationContext, operation string) exprvalues.E
 		}
 		known := true
 		for _, item := range items {
-			equal, comparisonKnown := exprvalues.CompareConditionValues(exprsyntax.CompareOpNodeKindEq, item, second.Value)
+			equal, comparisonKnown := exprvalues.CompareConditionValues(syntax.CompareOpNodeKindEq, item, second.Value)
 			if comparisonKnown && equal {
 				return knownValue(true)
 			}
@@ -73,7 +73,7 @@ func evaluatePredicate(context EvaluationContext, operation string) exprvalues.E
 	if !leftKnown || !rightKnown {
 		return unknownValue()
 	}
-	left, right = runnerjson.OrdinalIgnoreCaseKey(left), runnerjson.OrdinalIgnoreCaseKey(right)
+	left, right = json.OrdinalIgnoreCaseKey(left), json.OrdinalIgnoreCaseKey(right)
 	switch operation {
 	case "contains":
 		return knownValue(strings.Contains(left, right))

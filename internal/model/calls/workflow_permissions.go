@@ -5,13 +5,13 @@ import (
 	"slices"
 	"strings"
 
-	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-var allPermissionScopes = permission.Scopes()
+var allPermissionScopes = permissions.Scopes()
 
 // PermissionLevel is an access level of a single permission scope of the GITHUB_TOKEN.
 type PermissionLevel int

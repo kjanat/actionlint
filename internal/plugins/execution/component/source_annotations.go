@@ -6,18 +6,18 @@ import (
 	"slices"
 	"strings"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 )
 
 type sourceCommentsKey struct{}
 
-func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]workflowfacts.SourceComment {
-	comments := make(map[source.Reference][]workflowfacts.SourceComment)
-	add := func(script checkinputs.Script) {
+func suppliedComments(input inputs.AnalyzerInput) map[source.Reference][]facts.SourceComment {
+	comments := make(map[source.Reference][]facts.SourceComment)
+	add := func(script inputs.Script) {
 		if script.Reference != (source.Reference{}) {
 			comments[script.Reference] = slices.Clone(script.Comments)
 		}
@@ -36,8 +36,8 @@ func suppliedComments(input checkinputs.AnalyzerInput) map[source.Reference][]wo
 
 type sourceAnnotations struct{}
 
-func (sourceAnnotations) Comments(ctx context.Context, reference invocationbind.SourceReference) ([]annotationsbind.Comment, error) {
-	comments, _ := ctx.Value(sourceCommentsKey{}).(map[source.Reference][]workflowfacts.SourceComment)
+func (sourceAnnotations) Comments(ctx context.Context, reference invocationcontext.SourceReference) ([]annotationsbind.Comment, error) {
+	comments, _ := ctx.Value(sourceCommentsKey{}).(map[source.Reference][]facts.SourceComment)
 	key := source.Reference{Document: reference.Document, Revision: reference.Revision, Node: reference.Node, Address: reference.Address}
 	var result []annotationsbind.Comment
 	for _, comment := range comments[key] {
@@ -46,16 +46,16 @@ func (sourceAnnotations) Comments(ctx context.Context, reference invocationbind.
 		}
 		var placement annotationsbind.Placement
 		switch comment.Placement {
-		case workflowfacts.LeadingComment:
+		case facts.LeadingComment:
 			placement = annotationsbind.PlacementLeading
-		case workflowfacts.TrailingComment:
+		case facts.TrailingComment:
 			placement = annotationsbind.PlacementTrailing
 		default:
 			return nil, fmt.Errorf("invalid source comment placement %d", comment.Placement)
 		}
 		result = append(result, annotationsbind.Comment{
 			Text: comment.Text, Placement: placement,
-			Start: invocationbind.Position{Line: uint32(lowerU32(comment.Start.Line)), Column: uint32(lowerU32(comment.Start.Column))},
+			Start: invocationcontext.Position{Line: uint32(lowerU32(comment.Start.Line)), Column: uint32(lowerU32(comment.Start.Column))},
 		})
 	}
 	return result, nil

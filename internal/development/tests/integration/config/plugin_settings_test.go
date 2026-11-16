@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type settingsAnalyzer struct {
@@ -18,14 +18,14 @@ type settingsAnalyzer struct {
 	options json.RawMessage
 }
 
-func (*settingsAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
+func (*settingsAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "custom-check", Category: "security", Maturity: "stable", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"count":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 }
 
-func (a *settingsAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]diagmodel.Diagnostic, error) {
+func (a *settingsAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.calls++
 	a.options = input.Options
-	return []diagmodel.Diagnostic{{Message: "custom finding", Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
+	return []results.Diagnostic{{Message: "custom finding", Start: source.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestRegisteredAnalyzerSettings(t *testing.T) {
@@ -53,7 +53,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := &settingsAnalyzer{}
-			result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
+			result, err := checking.Analyze(t.Context(), checking.Options{Analyzers: []inputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -73,7 +73,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &settingsAnalyzer{}
-	request := checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}
+	request := checking.Options{Analyzers: []inputs.Registration{{Checker: a}}}
 	requestSources := []workspace.InputFile{{Path: "example.yml", Content: []byte(workflow), Config: cfg}}
 	if _, err := checking.Analyze(t.Context(), request, requestSources); err == nil || !strings.Contains(err.Error(), "options") || a.calls != 0 {
 		t.Fatalf("invalid options were executed: calls=%d err=%v", a.calls, err)

@@ -11,7 +11,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -49,7 +49,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 				p.Skipped++
 				continue
 			}
-			if slices.ContainsFunc(candidate.Edits, func(e results.Edit) bool { return sourcepos.RemoteAddress(e.Path) }) {
+			if slices.ContainsFunc(candidate.Edits, func(e results.Edit) bool { return source.RemoteAddress(e.Path) }) {
 				p.Skipped++
 				continue
 			}
@@ -73,10 +73,10 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 					sources[path] = content
 				}
 				revision := candidate.Revisions[e.Path]
-				if revision == "" || revision != sourcepos.ContentDigest(content) {
+				if revision == "" || revision != source.ContentDigest(content) {
 					return Plan{}, fmt.Errorf("fix for %s has a missing or stale source revision", e.Path)
 				}
-				start, end, err := sourceposition.Range(content, sourcepos.YAML, e.Start, e.End)
+				start, end, err := sourceposition.Range(content, source.YAML, e.Start, e.End)
 				if err != nil {
 					return Plan{}, fmt.Errorf("%s: %w", path, err)
 				}
@@ -109,7 +109,7 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 		}
 		after.Write(before[cursor:])
 		if after.String() != string(before) {
-			p.Changes = append(p.Changes, Change{path, string(before), after.String(), sourcepos.ContentDigest(before)})
+			p.Changes = append(p.Changes, Change{path, string(before), after.String(), source.ContentDigest(before)})
 		}
 	}
 	return p, nil
@@ -117,6 +117,6 @@ func Build(ctx context.Context, findings []results.Diagnostic, reader *files.Rea
 
 // Offset converts an exclusive Unicode-scalar position to a byte offset without
 // accepting a coordinate inside CRLF or outside the document.
-func Offset(content []byte, p sourcepos.Position) (int, error) {
-	return sourceposition.Offset(content, sourcepos.YAML, p)
+func Offset(content []byte, p source.Position) (int, error) {
+	return sourceposition.Offset(content, source.YAML, p)
 }

@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
 func actionBatchFixture(t *testing.T, mapped bool) (invocation.Graph, Collection, parsing.SourceSnapshot, string) {
@@ -43,7 +43,7 @@ func actionBatchFixtureWithDocument(t *testing.T, mapped bool) (invocation.Graph
 		t.Fatal(err)
 	}
 	scope := &Scope{Context: builder.RootContext(), Deployment: deployment, Composite: true, Config: &configuration.Config{}}
-	workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
+	execution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
 	collection := Collection{Declarations: registry, Scopes: []*Scope{scope}, Collected: true}
 	body, available := snapshot.ActionView()
 	steps := slices.Collect(body.Steps())
@@ -89,7 +89,7 @@ func TestDeploymentRejectsForeignSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	foreign.Scopes[0].Deployment = deployment
-	workflowexecution.ActionOrigin(&foreign.Scopes[0].Paths, foreign.Scopes[0].Context, deployment.ActionPath())
+	execution.ActionOrigin(&foreign.Scopes[0].Paths, foreign.Scopes[0].Context, deployment.ActionPath())
 	if _, err := NewBatch(foreignGraph, foreign); !errors.Is(err, ErrInvalidBatch) {
 		t.Fatalf("deployment from another action accepted: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestBatchRejectsUnindexedDeclarations(t *testing.T) {
 			case "input":
 				record = graph.Scripts()[1]
 				record.Input = "absent"
-				request.Input = &checkinputs.ScriptInput{Action: "actions/github-script", Input: "absent", Language: "javascript"}
+				request.Input = &inputs.ScriptInput{Action: "actions/github-script", Input: "absent", Language: "javascript"}
 			}
 			request.Occurrence, err = builder.AddScript(builder.RootContext(), record.Declaration, record.Kind, record.Input)
 			if err != nil {
@@ -188,14 +188,14 @@ func TestActionEntryWithoutScriptsNeedsDeploymentOnly(t *testing.T) {
 	}
 	for _, collected := range []bool{false, true} {
 		scope := &Scope{Context: builder.RootContext(), Deployment: deployment}
-		workflowexecution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
+		execution.ActionOrigin(&scope.Paths, scope.Context, deployment.ActionPath())
 		collection := Collection{Scopes: []*Scope{scope}, Collected: collected}
 		batch, err := NewBatch(graph, collection)
 		if err != nil || !batch.Valid() || len(batch.Scripts) != 0 || len(batch.Scopes) != 1 || batch.Scopes[0].Composite || batch.Collected != collected {
 			t.Fatalf("empty noncomposite action batch (collected=%v): %v", collected, err)
 		}
 		scope.Deployment = Deployment{}
-		workflowexecution.ActionOrigin(&scope.Paths, scope.Context, "")
+		execution.ActionOrigin(&scope.Paths, scope.Context, "")
 		if _, err := NewBatch(graph, collection); !errors.Is(err, ErrInvalidBatch) {
 			t.Fatalf("action entry without deployment accepted (collected=%v): %v", collected, err)
 		}

@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 // GitHub requires owner/repo[/path]@ref syntax for remote uses references.
@@ -56,7 +56,7 @@ func TestVendorLockInSelection(t *testing.T) {
 			// A reusable-only workflow does not request any runners. Its target
 			// must still be known without consulting a runner provider.
 			source := "on: push\njobs:\n  call:\n    uses: https://github.com/example/repo/.github/workflows/build.yml@v1" + tc.comment + "\n"
-			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Runners: runner.Options{Target: tc.target}, Presets: configuration.Presets{Strict: tc.strict}})
+			findings := testutil.WorkflowDiagnosticsWithOptions(t, source, "tools: {shellcheck: false, ruff: false}\n"+tc.config, checking.Options{Runners: runnerapi.Options{Target: tc.target}, Presets: configuration.Presets{Strict: tc.strict}})
 			count := 0
 			for _, finding := range findings {
 				if finding.Rule == "action" || finding.Rule == "workflow-call" {

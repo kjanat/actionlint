@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type mutateCanonicalCallRule struct {
@@ -58,8 +58,8 @@ runs:
 	if mutator.visits != 1 || !mutator.unchanged || mutator.copied != "./decoy" {
 		t.Fatalf("workflow callback changed its immutable declaration or did not run: %d", mutator.visits)
 	}
-	findings := func(result *analysisResult) []diagmodel.Diagnostic {
-		return slices.DeleteFunc(diagmodel.Diagnostics(result.Diagnostics), func(diagnostic diagmodel.Diagnostic) bool {
+	findings := func(result *analysisResult) []results.Diagnostic {
+		return slices.DeleteFunc(results.Diagnostics(result.Diagnostics), func(diagnostic results.Diagnostic) bool {
 			return diagnostic.Rule != "executable-bit"
 		})
 	}

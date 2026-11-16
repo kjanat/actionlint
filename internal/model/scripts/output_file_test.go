@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestNamedFileCommandFormat(t *testing.T) {
@@ -37,7 +37,7 @@ func TestNamedFileCommandFormat(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if problem := scriptmodel.NamedFileCommandError(tc.text); (problem != "") != tc.invalid {
+			if problem := scripts.NamedFileCommandError(tc.text); (problem != "") != tc.invalid {
 				t.Fatalf("format error = %q, want invalid=%t", problem, tc.invalid)
 			}
 		})
@@ -85,7 +85,7 @@ func TestKnownOutputFile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			for _, shell := range []string{"bash", "sh"} {
-				got, known := scriptmodel.KnownOutputFile(tc.script, shell)
+				got, known := scripts.KnownOutputFile(tc.script, shell)
 				if known == tc.unknown || known && got.Text != tc.want {
 					t.Fatalf("%s result = %+v, known=%t; want %q, unknown=%t", shell, got, known, tc.want, tc.unknown)
 				}
@@ -96,7 +96,7 @@ func TestKnownOutputFile(t *testing.T) {
 		})
 	}
 	for _, shell := range []string{"", "pwsh", "python", "custom bash {0}", "bash -c echo {0}"} {
-		if _, known := scriptmodel.KnownOutputFile(`echo '{' > "$GITHUB_OUTPUT"`, shell); known {
+		if _, known := scripts.KnownOutputFile(`echo '{' > "$GITHUB_OUTPUT"`, shell); known {
 			t.Errorf("unsupported shell %q produced known output", shell)
 		}
 	}
@@ -122,11 +122,11 @@ func TestOutputFileOriginalTeeWithBash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, known := scriptmodel.KnownOutputFile(script, "bash")
+	got, known := scripts.KnownOutputFile(script, "bash")
 	if !known || got.Text != string(actual) {
 		t.Fatalf("model = %+v, known=%t; Bash wrote %q", got, known, actual)
 	}
-	if problem := scriptmodel.NamedFileCommandError(string(actual)); problem == "" {
+	if problem := scripts.NamedFileCommandError(string(actual)); problem == "" {
 		t.Fatal("raw JSON unexpectedly passed named-output format validation")
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"testing/fstest"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	"github.com/kjanat/wacogo/wasi/filesystem/preopens"
 )
@@ -158,7 +158,7 @@ func TestFileGrantPreservesSymlinkParentTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	var inputs []string
-	files, err := inputfiles.NewSnapshot(t.Context(), root, inputfiles.New(t.Context(), nil, func(name string) { inputs = append(inputs, name) }), nil)
+	files, err := files.NewSnapshot(t.Context(), root, files.New(t.Context(), nil, func(name string) { inputs = append(inputs, name) }), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

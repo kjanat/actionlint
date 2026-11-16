@@ -10,7 +10,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 

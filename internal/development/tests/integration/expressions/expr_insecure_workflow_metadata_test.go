@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestWorkflowRunSiblingWorkflowMetadataInjection(t *testing.T) {
@@ -83,7 +83,7 @@ func TestWorkflowRunSiblingWorkflowMetadataSafeControls(t *testing.T) {
 	}
 }
 
-func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []diagmodel.Diagnostic {
+func lintSiblingWorkflowMetadata(t *testing.T, step, ending string) []results.Diagnostic {
 	t.Helper()
 	request := checking.Options{WorkingDir: t.TempDir()}
 	var requestSources []workspace.InputFile

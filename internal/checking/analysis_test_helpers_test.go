@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -21,7 +21,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
@@ -65,7 +65,7 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *workspaceactions.Cache, workflows *capturedWorkflowCache) ([]*findingmodel.Finding, error) {
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *workspaceactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
@@ -94,7 +94,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		address = source.Path
 	}
 	address = declarations.Path(address)
-	captured, err := declarations.Capture(address, source.Content, sourcemodel.YAML)
+	captured, err := declarations.Capture(address, source.Content, sourcepos.YAML)
 	if err != nil {
 		return nil, err
 	}
@@ -156,18 +156,18 @@ func runTestAnalysis(ctx context.Context, request analysisRequest) (*analysisRes
 
 // testFindings exposes traversal findings for assertions about their provenance.
 // Selection, rendering and invocation ownership are tested through their own APIs.
-func testFindings(result *analysisResult, err error) ([]*findingmodel.Finding, error) {
+func testFindings(result *analysisResult, err error) ([]*finding.Finding, error) {
 	if err != nil {
 		return nil, err
 	}
-	findings := make([]*findingmodel.Finding, 0, len(result.Diagnostics))
+	findings := make([]*finding.Finding, 0, len(result.Diagnostics))
 	for _, file := range result.files {
 		findings = append(findings, file.errors...)
 	}
 	return findings, nil
 }
 
-func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*findingmodel.Finding {
+func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*finding.Finding {
 	t.Helper()
 	request := analysisRequest{}
 	var lConfig *configuration.Config

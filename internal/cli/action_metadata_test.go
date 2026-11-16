@@ -12,9 +12,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
@@ -25,7 +25,7 @@ func TestActionMetadataCLIReportsOfflineCoverage(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("status=%d stderr=%s output=%s", code, log.String(), out.String())
 	}
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestSkippedMetadataLookupsDoNotProduceFindings(t *testing.T) {
 			if code != 0 {
 				t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
@@ -102,7 +102,7 @@ func TestStrictDoesNotRequireMetadataOrJobTimeoutWithoutConfiguration(t *testing
 			if code != 1 {
 				t.Fatalf("status=%d stderr=%s output=%s", code, &log, &out)
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}

@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	options "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 )
 
 func TestEffectiveConfigInheritance(t *testing.T) {
@@ -167,7 +167,7 @@ func TestEffectiveRuleOverrides(t *testing.T) {
 			if !ok {
 				t.Fatal("missing unpinned-reference")
 			}
-			pinOpt := new(options.CommitHashOptions)
+			pinOpt := new(rules.CommitHashOptions)
 			if _, err := pin.LoadOptions(pinOpt); err != nil {
 				t.Fatal(err)
 			}

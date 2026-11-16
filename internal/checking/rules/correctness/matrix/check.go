@@ -7,18 +7,18 @@ import (
 	"slices"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Check reports declaration problems using resolved matrix facts.
-func Check(resolution matrixmodel.Resolution, mixedTypes bool) []results.Diagnostic {
+func Check(resolution matrix.Resolution, mixedTypes bool) []results.Diagnostic {
 	axes := resolution.Axes()
 	var findings []results.Diagnostic
-	appendFinding := func(position sourcepos.Position, rule, format string, args ...any) {
+	appendFinding := func(position source.Position, rule, format string, args ...any) {
 		findings = append(findings, results.Diagnostic{Start: position, Rule: rule, Message: fmt.Sprintf(format, args...)})
 	}
 	for _, axis := range axes {
@@ -26,10 +26,10 @@ func Check(resolution matrixmodel.Resolution, mixedTypes bool) []results.Diagnos
 		for _, candidate := range axis.Values {
 			duplicate := false
 			for _, previous := range seen {
-				if matrixmodel.ValueHasUnknownParts(previous) != matrixmodel.ValueHasUnknownParts(candidate) {
+				if matrix.ValueHasUnknownParts(previous) != matrix.ValueHasUnknownParts(candidate) {
 					continue
 				}
-				if matrixmodel.EqualDeclaredValues(previous, candidate) {
+				if matrix.EqualDeclaredValues(previous, candidate) {
 					pos := previous.Origin().Span.Start
 					appendFinding(candidate.Origin().Span.Start, "matrix", "duplicate value %s is found in matrix %q. the same value is at line:%d,col:%d", display(candidate), axis.Name, pos.Line, pos.Column)
 					duplicate = true
@@ -43,11 +43,11 @@ func Check(resolution matrixmodel.Resolution, mixedTypes bool) []results.Diagnos
 	}
 	for issue := range resolution.ExclusionProblems() {
 		switch issue := issue.(type) {
-		case matrixmodel.ExclusionWithoutAxes:
+		case matrix.ExclusionWithoutAxes:
 			appendFinding(issue.Origin.Span.Start, "matrix", `"exclude" section exists but no matrix variation exists`)
-		case matrixmodel.EmptyExclusion:
+		case matrix.EmptyExclusion:
 			appendFinding(issue.Origin.Span.Start, "matrix", `matrix filter in "exclude" must not be empty`)
-		case matrixmodel.UnknownExclusionAxis:
+		case matrix.UnknownExclusionAxis:
 			names := make([]string, len(axes))
 			for i, axis := range axes {
 				names[i] = fmt.Sprintf("%q", axis.Name)
@@ -69,7 +69,7 @@ func Check(resolution matrixmodel.Resolution, mixedTypes bool) []results.Diagnos
 			}
 			matched := false
 			for _, candidate := range axis.Values {
-				if matrixmodel.Subset(candidate, expected) {
+				if matrix.Subset(candidate, expected) {
 					matched = true
 				}
 			}
@@ -83,7 +83,7 @@ func Check(resolution matrixmodel.Resolution, mixedTypes bool) []results.Diagnos
 			for name, expected := range filter.Values() {
 				if axis, exists := resolution.Axis(name); exists {
 					for _, candidate := range axis.Values {
-						if matrixmodel.FilterMayCompareDifferentTypes(candidate, expected) {
+						if matrix.FilterMayCompareDifferentTypes(candidate, expected) {
 							appendFinding(expected.Origin().Span.Start, "mixed-type-matrix-filters", "matrix filter for %q compares different or unknown scalar types using Actions loose equality; validate axis types before filtering", name)
 							break
 						}

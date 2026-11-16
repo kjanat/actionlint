@@ -11,7 +11,7 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
@@ -22,13 +22,13 @@ func TestExpressionFailurePhases(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		source string
-		phase  exprlang.FailurePhase
+		phase  typecheck.FailurePhase
 		state  exprvalues.EvaluationState
 		kind   exprtypes.TypeKind
 	}{
-		{"${{ startsWith(true) }}", exprlang.FailureStaticValidation, exprvalues.EvaluationNotAttempted, exprtypes.KindBool},
-		{"${{ startsWith(fromJSON(null), 'x') }}", exprlang.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindBool},
-		{"${{ case(1, 'a', 'b') }}", exprlang.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindAny},
+		{"${{ startsWith(true) }}", typecheck.FailureStaticValidation, exprvalues.EvaluationNotAttempted, exprtypes.KindBool},
+		{"${{ startsWith(fromJSON(null), 'x') }}", typecheck.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindBool},
+		{"${{ case(1, 'a', 'b') }}", typecheck.FailureEvaluation, exprvalues.EvaluationInvalid, exprtypes.KindAny},
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()

@@ -10,8 +10,8 @@ import (
 	"reflect"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 
@@ -54,11 +54,11 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	absolute, err := configsource.NormalizeAddress(path)
+	absolute, err := source.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
 	}
-	if configsource.IsRemoteAddress(absolute) {
+	if source.IsRemoteAddress(absolute) {
 		return nil, errors.New("remote config sources are read-only; select a local file to migrate")
 	}
 	parent, err := filepath.EvalSymlinks(filepath.Dir(absolute))
@@ -74,13 +74,13 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 		return nil, fmt.Errorf("cannot migrate non-regular config file %q", absolute)
 	}
 	snapshots := map[string]fileSnapshot{}
-	reader := configsource.New(ctx, nil, connections)
+	reader := source.New(ctx, nil, connections)
 	read := func(path string) ([]byte, error) {
 		content, err := reader.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
-		if configsource.IsRemoteAddress(path) {
+		if source.IsRemoteAddress(path) {
 			snapshots[path] = remoteConfigSnapshot{content: bytes.Clone(content)}
 		} else {
 			target, err := filepath.EvalSymlinks(path)
@@ -247,7 +247,7 @@ func (m *FileMigration) CheckUnchanged(ctx context.Context) error {
 	if parent != filepath.Dir(m.Path) {
 		return errors.New("config directory changed before migration; prepare the migration again")
 	}
-	reader := configsource.New(ctx, nil, m.connections)
+	reader := source.New(ctx, nil, m.connections)
 	for path, expected := range m.snapshots {
 		if _, remote := expected.(remoteConfigSnapshot); remote {
 			current, err := reader.ReadFile(path)

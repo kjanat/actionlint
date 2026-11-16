@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"github.com/kjanat/wazero"
 	"github.com/kjanat/wazero/api"
 )
@@ -90,7 +90,7 @@ func TestConcurrentChecksBoundActiveAndIdleInstances(t *testing.T) {
 	var calls sync.WaitGroup
 	for range 24 {
 		calls.Go(func() {
-			_, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+			_, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 			errs <- err
 		})
 	}
@@ -109,7 +109,7 @@ func TestConcurrentChecksBoundActiveAndIdleInstances(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	queued := make(chan error, 1)
 	go func() {
-		_, err := engine.Check(ctx, checkinputs.ScriptRequest{Source: "print(missing)", Filename: "cancelled.py"})
+		_, err := engine.Check(ctx, inputs.ScriptRequest{Source: "print(missing)", Filename: "cancelled.py"})
 		queued <- err
 	}()
 	cancel()
@@ -148,7 +148,7 @@ func TestCallTimeoutIncludesGuestInstantiation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	start := time.Now()
-	_, err = engine.Check(ctx, checkinputs.ScriptRequest{Source: "x", Filename: "step.py"})
+	_, err = engine.Check(ctx, inputs.ScriptRequest{Source: "x", Filename: "step.py"})
 	if err == nil || !strings.Contains(err.Error(), "exceeded its time limit") {
 		t.Fatalf("initializer escaped the call limit: %v", err)
 	}

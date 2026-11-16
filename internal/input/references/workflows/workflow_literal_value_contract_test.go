@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -17,7 +17,7 @@ jobs:
   call:
     uses: ${{ '$/leaf.yaml' }}
 `)
-	w, errs := workflowparser.ParseWorkflow(source)
+	w, errs := parser.ParseWorkflow(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

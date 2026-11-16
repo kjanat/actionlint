@@ -10,22 +10,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
-type actionInputObserver struct{ input checkinputs.AnalyzerInput }
+type actionInputObserver struct{ input inputs.AnalyzerInput }
 
-func (*actionInputObserver) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "action-input-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
+func (*actionInputObserver) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "action-input-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations, rule.Execution}}
 }
 
-func (o *actionInputObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (o *actionInputObserver) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.input = input
 	return nil, nil
 }
@@ -51,7 +51,7 @@ jobs:
 	observer := &actionInputObserver{}
 	_, err := checking.Check(t.Context(), checking.Options{
 		WorkingDir: t.TempDir(),
-		Analyzers:  []checkinputs.Registration{{Checker: observer}},
+		Analyzers:  []inputs.Registration{{Checker: observer}},
 	}, inputmodel.Request{Kind: inputmodel.Stdin, Name: "workflow.yml", Reader: strings.NewReader(workflow)})
 	if err != nil {
 		t.Fatal(err)
@@ -60,9 +60,9 @@ jobs:
 		t.Fatalf("action input facts=%+v", observer.input.ActionInputs)
 	}
 	first, second := observer.input.ActionInputs[0], observer.input.ActionInputs[1]
-	want := []workflowfacts.SourceComment{
-		{Text: "# alias leading", Start: sourcepos.Position{Line: 11, Column: 13}, Placement: workflowfacts.LeadingComment},
-		{Text: "# alias trailing", Start: sourcepos.Position{Line: 12, Column: 29}, Placement: workflowfacts.TrailingComment},
+	want := []facts.SourceComment{
+		{Text: "# alias leading", Start: source.Position{Line: 11, Column: 13}, Placement: facts.LeadingComment},
+		{Text: "# alias trailing", Start: source.Position{Line: 12, Column: 29}, Placement: facts.TrailingComment},
 	}
 	if len(first.Comments) != len(want) {
 		t.Fatalf("action input comments=%+v, want %+v", first.Comments, want)
@@ -76,7 +76,7 @@ jobs:
 		t.Fatalf("unannotated input inherited comments: %+v", second.Comments)
 	}
 	for _, input := range observer.input.ActionInputs {
-		if input.Text != "console.log('hello')" || len(input.Spans) == 0 || input.Spans[0].Document != (sourcepos.Position{Line: 3, Column: 20}) {
+		if input.Text != "console.log('hello')" || len(input.Spans) == 0 || input.Spans[0].Document != (source.Position{Line: 3, Column: 20}) {
 			t.Fatalf("aliased action input lost anchored text/span: %+v", input)
 		}
 	}
@@ -104,11 +104,11 @@ func TestPackagedComponentAnalyzesActionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	observer := &actionInputObserver{}
-	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Settings{})
+	result, err := checking.CheckWithPluginPaths(t.Context(), checking.Options{WorkingDir: root, Analyzers: []inputs.Registration{{Checker: observer}}}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}, []string{module}, pluginacquisition.Settings{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[sourcepos.Position]string{
+	want := map[source.Position]string{
 		{Line: 10, Column: 13}: "workflow.yml",
 		{Line: 14, Column: 36}: "workflow.yml",
 		{Line: 10, Column: 11}: "action.yml",

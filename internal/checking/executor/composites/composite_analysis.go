@@ -8,9 +8,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
@@ -18,15 +18,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -35,27 +35,27 @@ import (
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // compositionSession owns the graph and accumulated results shared by invocations.
 type compositionSession struct {
 	bindSource             func(*rulebinding.Scope, string) (*rulebinding.Scope, error)
-	scriptInputs           []checkinputs.ScriptInput
-	scriptInputsForScope   func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error)
-	scriptCatalogues       map[*rulebinding.Scope][]checkinputs.ScriptInput
-	runners                *runnerlang.Knowledge
+	scriptInputs           []inputs.ScriptInput
+	scriptInputsForScope   func(*rulebinding.Scope) ([]inputs.ScriptInput, error)
+	scriptCatalogues       map[*rulebinding.Scope][]inputs.ScriptInput
+	runners                *runners.Knowledge
 	resolveScriptExecution bool
-	scripts                []scriptexecution.ScriptRequest
-	scriptScopes           []*scriptexecution.Scope
+	scripts                []scripts.ScriptRequest
+	scriptScopes           []*scripts.Scope
 	scriptPaths            execution.Paths
 	reader                 *files.Reader
 	collectScripts         bool
 	ctx                    context.Context
 	passes                 []workflowvisit.Pass
-	metadataFindings       []*findingmodel.Finding
-	metadataCopies         *findingmodel.Copier
+	metadataFindings       []*finding.Finding
+	metadataCopies         *finding.Copier
 	incompleteChecks       []report.IncompleteCheck
 
 	configProvenance configuration.Provenance
@@ -76,9 +76,9 @@ type compositionSession struct {
 type compositeAnalyzer struct {
 	*compositionSession
 	bindings                          *rulebinding.Scope
-	actions                           *workspaceactions.Resolver
+	actions                           *workspace.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
-	scriptScope                       *scriptexecution.Scope
+	scriptScope                       *scripts.Scope
 	scriptConfig                      *configuration.Config
 	context                           invocation.Context
 	scriptJobShell, scriptRunnerShell value.Value
@@ -103,7 +103,7 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow)
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
-	analysis.beginEntryScope(scriptexecution.Deployment{})
+	analysis.beginEntryScope(scripts.Deployment{})
 	defaults := workflows.DefaultsRun(declaration.Defaults)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults)
@@ -113,21 +113,21 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow)
 	return nil
 }
 
-func (analysis *compositeAnalyzer) beginAction(deployment scriptexecution.Deployment) error {
+func (analysis *compositeAnalyzer) beginAction(deployment scripts.Deployment) error {
 	if analysis.sourceSnapshot.Kind() != parsing.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
-	validated, err := scriptexecution.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
+	validated, err := scripts.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
 	if err != nil || validated != deployment {
-		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptexecution.ErrInvalidBatch)
+		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scripts.ErrInvalidBatch)
 	}
 	analysis.beginEntryScope(deployment)
 	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentCaller, UnknownNames: true}}
 	return nil
 }
 
-func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptexecution.Deployment) {
-	analysis.scriptScope = &scriptexecution.Scope{
+func (analysis *compositeAnalyzer) beginEntryScope(deployment scripts.Deployment) {
+	analysis.scriptScope = &scripts.Scope{
 		Bindings: analysis.bindings,
 		Paths:    analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig, ConfigProvenance: analysis.configProvenance,
 		Deployment: deployment, Context: analysis.context,
@@ -214,12 +214,12 @@ func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job wor
 	return selection.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), selection.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }
 
-func canonicalStepOrigin(step workflows.Step, job string) *findingmodel.IgnoreOrigin {
+func canonicalStepOrigin(step workflows.Step, job string) *finding.IgnoreOrigin {
 	return canonicalOrigin(step.Origin(job))
 }
 
-func canonicalOrigin(owned workflows.Origin) *findingmodel.IgnoreOrigin {
-	origin := &findingmodel.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
+func canonicalOrigin(owned workflows.Origin) *finding.IgnoreOrigin {
+	origin := &finding.IgnoreOrigin{Job: owned.Job, StepID: owned.StepID, StepName: owned.StepName, Uses: owned.Uses}
 	if owned.HasPosition {
 		position := owned.Position
 		origin.StepPosition = &position

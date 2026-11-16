@@ -1,19 +1,19 @@
 package definition
 
 import (
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func WorkflowExpressionLiteral(s *String) (any, bool) {
-	expr := exprsyntax.ParseAssignedExpression(s.Value)
+	expr := syntax.ParseAssignedExpression(s.Value)
 	if expr == nil {
 		return nil, false
 	}
-	return expreval.ConditionConstantValue(expr)
+	return evaluate.ConditionConstantValue(expr)
 }
 
 // WorkflowScalarString applies the runner's scalar conversion for string schemas.

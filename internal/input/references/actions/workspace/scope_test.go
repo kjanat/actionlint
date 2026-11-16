@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -51,7 +51,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			parent := NewResolver(nil, nil)
-			parent.platform, parent.caseInsensitive = runnerlang.Windows, true
+			parent.platform, parent.caseInsensitive = runners.Windows, true
 			parent.checkoutShell = execution.Shell{Name: "bash", Implicit: true}
 			parent.setCheckout(execution.Directory{Kind: execution.DirectoryKnown, Path: "."})
 			before := parent.state()
@@ -70,7 +70,7 @@ func TestCompositeForkIsolatesTraversalAndJoinsConditionalEffects(t *testing.T) 
 				t.Fatal("fork lost the immutable checkout chain")
 			}
 			child.persistentEnvUnknown = true
-			child.platform, child.caseInsensitive = runnerlang.MacOrLinux, false
+			child.platform, child.caseInsensitive = runners.MacOrLinux, false
 			child.checkoutShell = execution.Shell{Name: "pwsh"}
 			if !tc.unchanged {
 				path := "child"

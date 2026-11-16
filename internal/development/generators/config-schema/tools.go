@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 
 	"github.com/invopop/jsonschema"
 )
@@ -22,7 +22,7 @@ import (
 // panics. Providers installed by plugins are not known when generating, so
 // any other name gets the host-owned shape only.
 func toolsSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +37,7 @@ func toolsSchema(reflectMapping func(any) *jsonschema.Schema) *jsonschema.Schema
 	return tools
 }
 
-func toolSchema(manifest pluginmanifests.Manifest, reflectMapping func(any) *jsonschema.Schema) (*jsonschema.Schema, error) {
+func toolSchema(manifest manifests.Manifest, reflectMapping func(any) *jsonschema.Schema) (*jsonschema.Schema, error) {
 	mapping := reflectMapping(struct {
 		Backend *toolconfig.Backend `yaml:"backend,omitempty" jsonschema:"description=Select the execution backend. Process settings apply only to the native adapter."`
 		Enabled *bool               `yaml:"enabled" jsonschema:"nullable,default=true,description=Enable this tool. Omission or null keeps it enabled."`
@@ -149,7 +149,7 @@ func publishedSchema(name string, document map[string]any) (string, error) {
 
 // configSchema describes tools.<name>.config: inline settings, and a path
 // when the provider reads configuration files.
-func configSchema(manifest pluginmanifests.Manifest, settings *jsonschema.Schema) *jsonschema.Schema {
+func configSchema(manifest manifests.Manifest, settings *jsonschema.Schema) *jsonschema.Schema {
 	markdown := "Inline settings validated by the tool's configuration schema. Omission or null uses the tool's defaults."
 	alternatives := []*jsonschema.Schema{
 		{Type: "object", AdditionalProperties: jsonschema.TrueSchema, Extras: map[string]any{"defaultSnippets": []any{map[string]string{"label": "Inline settings", "bodyText": "{}"}}}},

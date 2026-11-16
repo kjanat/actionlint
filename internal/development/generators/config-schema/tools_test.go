@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // The tools schema is generated from the bundled manifests: one entry per
@@ -16,7 +16,7 @@ import (
 // plugin's provider, so it gets the host keys only.
 func TestToolsSchemaFollowsBundledManifests(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}

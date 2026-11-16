@@ -7,10 +7,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func TestAnalyzerCallGraphIndependentOfScriptCollection(t *testing.T) {
@@ -66,10 +66,10 @@ func TestAnalyzerCallGraphRequiresMatchingDocumentIdentity(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			refs := map[string]workflowfacts.SourceIndex{"ci.yml": {Document: test.reference}}
+			refs := map[string]facts.SourceIndex{"ci.yml": {Document: test.reference}}
 			input, err := CheckInput(result, "ci.yml", "ci.yml", content, document, refs)
 			if !test.valid {
-				if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
+				if !errors.Is(err, scripts.ErrInvalidBatch) {
 					t.Fatalf("mismatched identity accepted: %v", err)
 				}
 				if input.Content != string(content) || input.Path != "ci.yml" || input.Reference != test.reference || len(input.AvailableInputs) != 1 || input.AvailableInputs[0] != rule.Source || input.CallGraph.Valid() {

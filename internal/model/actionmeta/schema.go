@@ -5,11 +5,11 @@ import (
 	"slices"
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
@@ -50,7 +50,7 @@ func Node(n *codec.Node) *codec.Node {
 func Scalar(n *codec.Node) *string {
 	v := actionSchemaLiteralScalar(n)
 	if v != nil {
-		if literal := exprsyntax.LiteralExpressionValue(*v); literal != nil {
+		if literal := syntax.LiteralExpressionValue(*v); literal != nil {
 			return literal
 		}
 	}
@@ -84,7 +84,7 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 		if n.Kind == codec.AliasNode {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLAlias, "YAML aliases are not supported in action metadata; replace alias %q", n.Value)
 		}
-		if message := workflowparser.RawYAMLTagError(n); message != "" {
+		if message := parser.RawYAMLTagError(n); message != "" {
 			rule.metadataErrorfAt(meta, n.Line, n.Column, nil, CodeYAMLTag, "%s in action metadata", message)
 		}
 		for _, child := range n.Content {
@@ -92,7 +92,7 @@ func (rule *schemaChecker) checkActionMetadataSchema(meta *Metadata) {
 		}
 	}
 	checkSyntax(meta.Root)
-	if err := workflowparser.AdmitYAMLAliases(meta.Root); err != nil {
+	if err := parser.AdmitYAMLAliases(meta.Root); err != nil {
 		return
 	}
 	rule.checkActionSchemaValue(meta, meta.Root, "action-root", schemaPath{}, 0, false)
@@ -189,7 +189,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 				}
 				actionSchemaSetPosition(result, n.Line, n.Column)
 				n, evaluated = result, true
-			} else if d.kind == actionSchemaString || exprsyntax.ParseAssignedExpression(value.Value) != nil {
+			} else if d.kind == actionSchemaString || syntax.ParseAssignedExpression(value.Value) != nil {
 				return // The runner validates the evaluated value's type at runtime.
 			}
 		} else if !actionLiteralExpression(value.Value) {
@@ -245,7 +245,7 @@ func (rule *schemaChecker) checkActionSchemaMappingValue(meta *Metadata, node *c
 			if expr := yamlExprString(key); !evaluated && expr != nil && strings.Contains(expr.Value, "${{") && !actionLiteralExpression(expr.Value) {
 				if _, allowed := actionMetadataAvailability[path]; !allowed {
 					rule.actionSchemaError(meta, key, location, CodeExpressionForbidden, "expressions are not allowed in keys")
-				} else if exprsyntax.IsMappingInsertion(expr.Value) {
+				} else if syntax.IsMappingInsertion(expr.Value) {
 					// The template reader treats insert as a mapping directive,
 					// whose value is another mapping or a mapping expression.
 					rule.checkActionSchemaMappingValue(meta, value, definitionName, location, depth+1, evaluated, seen)
@@ -336,7 +336,7 @@ func actionRunsPropertyChecked(meta *Metadata, key string) bool {
 }
 
 func actionLiteralExpression(s string) bool {
-	return exprsyntax.LiteralExpressionValue(s) != nil
+	return syntax.LiteralExpressionValue(s) != nil
 }
 
 // ExpressionField records a scalar expression found during manifest validation.
@@ -382,8 +382,8 @@ func (rule *schemaChecker) expressionFindings(value *ExprString, field, location
 	return read.Problems
 }
 
-func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *sourcepos.Position, code ProblemCode, format string, args ...any) {
-	d := MetadataProblem{Path: meta.Path(), Start: sourcepos.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
+func (rule *schemaChecker) metadataErrorfAt(meta *Metadata, line, column int, end *source.Position, code ProblemCode, format string, args ...any) {
+	d := MetadataProblem{Path: meta.Path(), Start: source.Position{Line: line, Column: column}, Code: code, Message: fmt.Sprintf(format, args...)}
 	if end != nil {
 		d.End = *end
 	}

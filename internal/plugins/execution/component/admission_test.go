@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 )
 
@@ -29,7 +29,7 @@ func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
 			})
 			first := make(chan error, 1)
 			go func() {
-				_, err := plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Options: json.RawMessage("log")})
+				_, err := plugin.CheckDocument(t.Context(), inputs.AnalyzerInput{Options: json.RawMessage("log")})
 				first <- err
 			}()
 			defer func() {
@@ -47,7 +47,7 @@ func TestQueuedCallHonorsCancellationAndTimeout(t *testing.T) {
 			defer cancel()
 			second := make(chan error, 1)
 			go func() {
-				_, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Options: json.RawMessage("ok")})
+				_, err := plugin.CheckDocument(ctx, inputs.AnalyzerInput{Options: json.RawMessage("ok")})
 				second <- err
 			}()
 			if cancelQueued {

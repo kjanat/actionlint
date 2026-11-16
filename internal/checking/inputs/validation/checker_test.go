@@ -4,17 +4,17 @@ import (
 	"context"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type pointerAnalyzer struct{}
 
-func (*pointerAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "pointer"}
+func (*pointerAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "pointer"}
 }
 
-func (*pointerAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (*pointerAnalyzer) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 
@@ -23,7 +23,7 @@ func TestIsNil(t *testing.T) {
 	var typed *pointerAnalyzer
 	for _, tc := range []struct {
 		name  string
-		value checkinputs.Checker
+		value inputs.Checker
 		want  bool
 	}{
 		{"nil interface", nil, true},

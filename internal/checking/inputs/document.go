@@ -3,7 +3,7 @@ package inputs
 import (
 	"encoding/json"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 // DocumentRequest contains only captured document data and explicitly requested
@@ -21,9 +21,9 @@ type DocumentRequest struct {
 // DocumentDependency explicitly maps a shared dependency into the process wire
 // contract; the host never serializes analyzer.Input or its resource grants.
 type DocumentDependency struct {
-	Reference sourcepos.Reference `json:"reference"`
-	Uses      string              `json:"uses"`
-	Kind      string              `json:"kind"`
-	Start     sourcepos.Position  `json:"start"`
-	End       sourcepos.Position  `json:"end"`
+	Reference source.Reference `json:"reference"`
+	Uses      string           `json:"uses"`
+	Kind      string           `json:"kind"`
+	Start     source.Position  `json:"start"`
+	End       source.Position  `json:"end"`
 }

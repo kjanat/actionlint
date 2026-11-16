@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -16,7 +16,7 @@ func TestErrorErrorAt(t *testing.T) {
 	t.Parallel()
 	m := "message"
 	k := "kind"
-	err := At(&sourcepos.Position{Line: 1, Column: 2}, k, m)
+	err := At(&source.Position{Line: 1, Column: 2}, k, m)
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
@@ -38,7 +38,7 @@ func TestErrorErrorfAt(t *testing.T) {
 	t.Parallel()
 	m := "this is message"
 	k := "kind"
-	err := Errorf(&sourcepos.Position{Line: 1, Column: 2}, k, "%s is %s", "this", "message")
+	err := Errorf(&source.Position{Line: 1, Column: 2}, k, "%s is %s", "this", "message")
 	if err.Message != m {
 		t.Errorf("wanted %q but got %q", m, err.Message)
 	}
@@ -84,7 +84,7 @@ func TestErrorSortErrorsByPosition(t *testing.T) {
 			t.Parallel()
 			errs := make([]*Finding, 0, len(tc))
 			for _, p := range tc {
-				errs = append(errs, &Finding{Start: sourcepos.Position{Line: p.line, Column: p.col}})
+				errs = append(errs, &Finding{Start: source.Position{Line: p.line, Column: p.col}})
 			}
 
 			slices.SortFunc(errs, Compare)
@@ -107,19 +107,19 @@ func TestErrorSortErrorsByFile(t *testing.T) {
 	t.Parallel()
 	errs := []*Finding{
 		{
-			Path: "path/to/C.txt", Start: sourcepos.Position{
+			Path: "path/to/C.txt", Start: source.Position{
 				Line:   1,
 				Column: 2,
 			},
 		},
 		{
-			Path: "path/to/A.txt", Start: sourcepos.Position{
+			Path: "path/to/A.txt", Start: source.Position{
 				Line:   2,
 				Column: 4,
 			},
 		},
 		{
-			Path: "path/to/B.txt", Start: sourcepos.Position{
+			Path: "path/to/B.txt", Start: source.Position{
 				Line:   3,
 				Column: 6,
 			},
@@ -152,7 +152,7 @@ func TestErrorSortErrorsByMessage(t *testing.T) {
 	errs := []*Finding{}
 	for _, m := range msgs {
 		errs = append(errs, &Finding{
-			Path: "path/to/file.yaml", Start: sourcepos.Position{
+			Path: "path/to/file.yaml", Start: source.Position{
 				Line:   1,
 				Column: 1,
 			}, Message: m,
@@ -174,7 +174,7 @@ func TestErrorSortErrorsByMessage(t *testing.T) {
 func TestErrorErrorToString(t *testing.T) {
 	t.Parallel()
 	err := &Finding{
-		Message: "this is message", Start: sourcepos.Position{
+		Message: "this is message", Start: source.Position{
 			Line:   1,
 			Column: 2,
 		}, Rule: "test",

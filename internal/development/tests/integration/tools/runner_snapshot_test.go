@@ -6,27 +6,27 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 type snapshotScriptBackend struct{ calls int }
 
-func (b *snapshotScriptBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *snapshotScriptBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	b.calls++
-	return []checkinputs.ScriptDiagnostic{{Code: "PS001", Message: "PowerShell diagnostic", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}}, nil
+	return []inputs.ScriptDiagnostic{{Code: "PS001", Message: "PowerShell diagnostic", Location: inputs.ScriptPosition{Row: 1, Column: 1}}}, nil
 }
 
 func TestRunnerSnapshotScriptRouting(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, workflowDefaults, jobSettings, stepShell, selection string
-		freshness                                                 runner.Freshness
+		freshness                                                 runnerapi.Freshness
 		powershell, shellcheck, runnerFindings, shellFindings     int
 	}{
 		{name: "custom Windows runner", powershell: 1},
@@ -37,8 +37,8 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 		{name: "workflow override", workflowDefaults: "defaults:\n  run:\n    shell: bash\n", shellcheck: 1},
 		{name: "container override", jobSettings: "    container: alpine:3\n", shellcheck: 1},
 		{name: "shell validation uses supplied OS", stepShell: "        shell: sh\n", shellcheck: 1, shellFindings: 1},
-		{name: "stale", freshness: runner.Stale},
-		{name: "explicit shell with stale evidence", freshness: runner.Stale, stepShell: "        shell: pwsh\n", powershell: 1},
+		{name: "stale", freshness: runnerapi.Stale},
+		{name: "explicit shell with stale evidence", freshness: runnerapi.Stale, stepShell: "        shell: pwsh\n", powershell: 1},
 		{name: "unknown runner", selection: "absent", runnerFindings: 1},
 		{name: "unknown runner explicit shell", selection: "absent", stepShell: "        shell: bash\n", shellcheck: 1, runnerFindings: 1},
 	} {
@@ -57,13 +57,13 @@ func TestRunnerSnapshotScriptRouting(t *testing.T) {
 			registrations = append(registrations, registration)
 			freshness := tc.freshness
 			if freshness == "" {
-				freshness = runner.Fresh
+				freshness = runnerapi.Fresh
 			}
 			selection := tc.selection
 			if selection == "" {
 				selection = "desktop-pool"
 			}
-			options := checking.Options{Tools: registrations, Runners: runner.Options{Provider: "snapshot", Scope: "repo", Snapshot: runner.Snapshot{
+			options := checking.Options{Tools: registrations, Runners: runnerapi.Options{Provider: "snapshot", Scope: "repo", Snapshot: runnerapi.Snapshot{
 				Scope: "repo", Freshness: freshness, Complete: true,
 				Content: `{"runners":[{"name":"desktop","labels":["desktop-pool"],"group":"build","os":"windows","default_shell":"pwsh"}]}`,
 			}}}

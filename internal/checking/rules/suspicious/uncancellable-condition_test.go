@@ -9,9 +9,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/suspicious"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -50,7 +50,7 @@ func TestUncancellableCondition(t *testing.T) {
 			if tc.stepIf != "" {
 				source += "        if: " + tc.stepIf + "\n"
 			}
-			ast, errs := workflowparser.ParseWorkflow([]byte(source))
+			ast, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -96,7 +96,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 			if strings.HasPrefix(scalar, "&gate") {
 				content = strings.Replace(content, "steps: [{run: echo ok}]", "steps: [{run: echo ok, if: *gate}]", 1)
 			}
-			ast, errs := workflowparser.ParseWorkflow([]byte(content))
+			ast, errs := parser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -111,7 +111,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 					t.Fatalf("unexpected fix: %+v", fix)
 				}
 				edit := fix.Edits[0]
-				offset := func(pos sourcepos.Position) int {
+				offset := func(pos source.Position) int {
 					lines := strings.SplitAfter(content, "\n")
 					prefix := strings.Join(lines[:pos.Line-1], "")
 					return len(prefix) + len(string([]rune(lines[pos.Line-1])[:pos.Column-1]))
@@ -123,7 +123,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 				if strings.Contains(content, "&gate") && !strings.Contains(fixed, "&gate") {
 					t.Fatalf("lost anchor: %s", fixed)
 				}
-				updated, parseErrs := workflowparser.ParseWorkflow([]byte(fixed))
+				updated, parseErrs := parser.ParseWorkflow([]byte(fixed))
 				if len(parseErrs) != 0 {
 					t.Fatalf("invalid fix %s: %v", fixed, parseErrs)
 				}
@@ -166,7 +166,7 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 				content += "    if: " + tc.jobIf + "\n"
 			}
 			content += "    steps:\n      - uses: actions/checkout@v6\n        if: always()\n"
-			ast, errs := workflowparser.ParseWorkflow([]byte(content))
+			ast, errs := parser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

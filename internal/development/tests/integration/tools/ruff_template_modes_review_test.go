@@ -11,7 +11,7 @@ import (
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
@@ -55,7 +55,7 @@ jobs:
 					t.Fatal(err)
 				}
 				var codes []string
-				var ruff []diagmodel.Diagnostic
+				var ruff []results.Diagnostic
 				interpolations := 0
 				for _, diagnostic := range result.Diagnostics {
 					switch diagnostic.Rule {

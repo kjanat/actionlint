@@ -1,8 +1,8 @@
 package component
 
 import (
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"github.com/kjanat/wacogo"
 	wp "github.com/kjanat/wacogo/wasmparser"
 )
@@ -31,13 +31,13 @@ type runnerProtocol interface {
 	interfaceName() string
 	// expectedType is the canonical component type the export must match.
 	expectedType() *wp.ComponentType
-	lowerRequest(request runner.Request) (wacogo.Val, error)
+	lowerRequest(request runnerapi.Request) (wacogo.Val, error)
 	// liftHosting reads a candidate's hosting, which only some versions
 	// carry.
-	liftHosting(candidate *wacogo.ValRecord) (runner.Hosting, error)
+	liftHosting(candidate *wacogo.ValRecord) (runnerapi.Hosting, error)
 	// liftSupport reads and validates the support catalogue of an outcome,
 	// which only some versions carry.
-	liftSupport(outcome *wacogo.ValRecord, request runner.Request) (runner.SupportCatalog, error)
+	liftSupport(outcome *wacogo.ValRecord, request runnerapi.Request) (runnerapi.SupportCatalog, error)
 }
 
 // runnerProtocols are the runner-provider versions this host accepts.
@@ -48,16 +48,16 @@ type runnerProtocol02 struct{}
 
 func (runnerProtocol02) interfaceName() string           { return RunnerInterface }
 func (runnerProtocol02) expectedType() *wp.ComponentType { return expectedRunnerInterface() }
-func (runnerProtocol02) lowerRequest(request runner.Request) (wacogo.Val, error) {
+func (runnerProtocol02) lowerRequest(request runnerapi.Request) (wacogo.Val, error) {
 	return lowerRunnerRequest(request)
 }
 
-func (runnerProtocol02) liftHosting(*wacogo.ValRecord) (runner.Hosting, error) {
-	return runner.UnknownHosting, nil
+func (runnerProtocol02) liftHosting(*wacogo.ValRecord) (runnerapi.Hosting, error) {
+	return runnerapi.UnknownHosting, nil
 }
 
-func (runnerProtocol02) liftSupport(*wacogo.ValRecord, runner.Request) (runner.SupportCatalog, error) {
-	return runner.SupportCatalog{}, nil
+func (runnerProtocol02) liftSupport(*wacogo.ValRecord, runnerapi.Request) (runnerapi.SupportCatalog, error) {
+	return runnerapi.SupportCatalog{}, nil
 }
 
 // runnerProtocol03 is runner-provider 0.3.0: dated service requests,
@@ -66,7 +66,7 @@ type runnerProtocol03 struct{}
 
 func (runnerProtocol03) interfaceName() string           { return Runner03Interface }
 func (runnerProtocol03) expectedType() *wp.ComponentType { return expectedRunner03Interface() }
-func (runnerProtocol03) lowerRequest(request runner.Request) (wacogo.Val, error) {
+func (runnerProtocol03) lowerRequest(request runnerapi.Request) (wacogo.Val, error) {
 	common, err := lowerRunnerRequest(request)
 	if err != nil {
 		return nil, err
@@ -74,11 +74,11 @@ func (runnerProtocol03) lowerRequest(request runner.Request) (wacogo.Val, error)
 	return lowerRunner03Request(request, common)
 }
 
-func (runnerProtocol03) liftHosting(candidate *wacogo.ValRecord) (runner.Hosting, error) {
+func (runnerProtocol03) liftHosting(candidate *wacogo.ValRecord) (runnerapi.Hosting, error) {
 	return liftRunnerHosting(candidate.Field("hosting"))
 }
 
-func (runnerProtocol03) liftSupport(outcome *wacogo.ValRecord, request runner.Request) (runner.SupportCatalog, error) {
+func (runnerProtocol03) liftSupport(outcome *wacogo.ValRecord, request runnerapi.Request) (runnerapi.SupportCatalog, error) {
 	return liftValidatedRunnerSupport(outcome.Field("support"), request.Scope)
 }
 
@@ -117,17 +117,17 @@ type scriptEngineProtocol interface {
 	templateEffects() *templateEffectsProtocol
 	// liftCapabilities reads the capabilities of an exported descriptor
 	// into d, for versions that declare them.
-	liftCapabilities(descriptor wacogo.Val, d *checkinputs.ScriptEngineDescriptor) error
+	liftCapabilities(descriptor wacogo.Val, d *inputs.ScriptEngineDescriptor) error
 	// readStaticCapabilities takes the capabilities of static metadata
 	// into d, for versions that declare them.
-	readStaticCapabilities(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error
+	readStaticCapabilities(declared staticScriptCapabilities, d *inputs.ScriptEngineDescriptor) error
 	// lowerRequest builds the check request and the filesystem grant the
 	// call mounts.
-	lowerRequest(request checkinputs.ScriptRequest, options string, d *checkinputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant)
-	liftDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error)
+	lowerRequest(request inputs.ScriptRequest, options string, d *inputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant)
+	liftDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error)
 	// checkDiagnostic validates the version-specific parts of a lifted
 	// diagnostic against d and grant.
-	checkDiagnostic(finding *checkinputs.ScriptDiagnostic, d *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error
+	checkDiagnostic(finding *inputs.ScriptDiagnostic, d *inputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []inputs.ScriptPosition) error
 }
 
 // scriptEngineProtocols are the script-engine versions this host accepts.
@@ -155,24 +155,24 @@ func (scriptEngineProtocol02) expectedType() *wp.ComponentType {
 
 func (scriptEngineProtocol02) templateEffects() *templateEffectsProtocol { return templateEffects02 }
 
-func (scriptEngineProtocol02) liftCapabilities(wacogo.Val, *checkinputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol02) liftCapabilities(wacogo.Val, *inputs.ScriptEngineDescriptor) error {
 	return nil
 }
 
-func (scriptEngineProtocol02) readStaticCapabilities(staticScriptCapabilities, *checkinputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol02) readStaticCapabilities(staticScriptCapabilities, *inputs.ScriptEngineDescriptor) error {
 	return nil
 }
 
-func (scriptEngineProtocol02) lowerRequest(request checkinputs.ScriptRequest, options string, _ *checkinputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
+func (scriptEngineProtocol02) lowerRequest(request inputs.ScriptRequest, options string, _ *inputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
 	return wacogo.NewValRecord(field("source", wacogo.ValString(request.Source)),
 		field("filename", wacogo.ValString(request.Filename)), field("config", wacogo.ValString(options))), scriptGrant{}
 }
 
-func (scriptEngineProtocol02) liftDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
+func (scriptEngineProtocol02) liftDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
 	return liftScriptDiagnostic(value)
 }
 
-func (scriptEngineProtocol02) checkDiagnostic(*checkinputs.ScriptDiagnostic, *checkinputs.ScriptEngineDescriptor, scriptGrant, []int, []checkinputs.ScriptPosition) error {
+func (scriptEngineProtocol02) checkDiagnostic(*inputs.ScriptDiagnostic, *inputs.ScriptEngineDescriptor, scriptGrant, []int, []inputs.ScriptPosition) error {
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (scriptEngineProtocol03) expectedType() *wp.ComponentType {
 
 func (scriptEngineProtocol03) templateEffects() *templateEffectsProtocol { return templateEffects03 }
 
-func (scriptEngineProtocol03) liftCapabilities(descriptor wacogo.Val, d *checkinputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol03) liftCapabilities(descriptor wacogo.Val, d *inputs.ScriptEngineDescriptor) error {
 	r, err := liftRecord(descriptor, "script descriptor")
 	if err != nil {
 		return err
@@ -195,19 +195,19 @@ func (scriptEngineProtocol03) liftCapabilities(descriptor wacogo.Val, d *checkin
 	return liftScriptCapabilities(r.Field("capabilities"), d)
 }
 
-func (scriptEngineProtocol03) readStaticCapabilities(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error {
+func (scriptEngineProtocol03) readStaticCapabilities(declared staticScriptCapabilities, d *inputs.ScriptEngineDescriptor) error {
 	return readStaticScriptCapabilities03(declared, d)
 }
 
-func (scriptEngineProtocol03) lowerRequest(request checkinputs.ScriptRequest, options string, d *checkinputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
+func (scriptEngineProtocol03) lowerRequest(request inputs.ScriptRequest, options string, d *inputs.ScriptEngineDescriptor) (wacogo.Val, scriptGrant) {
 	grant := grantScriptResources(request, d)
 	return lowerScriptRequest03(request, options, grant), grant
 }
 
-func (scriptEngineProtocol03) liftDiagnostic(value wacogo.Val) (checkinputs.ScriptDiagnostic, error) {
+func (scriptEngineProtocol03) liftDiagnostic(value wacogo.Val) (inputs.ScriptDiagnostic, error) {
 	return liftScriptDiagnostic03(value)
 }
 
-func (scriptEngineProtocol03) checkDiagnostic(finding *checkinputs.ScriptDiagnostic, d *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error {
+func (scriptEngineProtocol03) checkDiagnostic(finding *inputs.ScriptDiagnostic, d *inputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []inputs.ScriptPosition) error {
 	return checkScriptDiagnostic03(finding, d, grant, lines, starts)
 }

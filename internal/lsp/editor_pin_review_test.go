@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -44,7 +44,7 @@ func TestEditorEngineRequiresRemotePinBeforeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
+	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "print(missing)", Filename: "step.py"})
 	if err != nil || len(findings) != 1 || findings[0].Code != "F821" {
 		t.Fatalf("pinned engine: %+v, %v", findings, err)
 	}

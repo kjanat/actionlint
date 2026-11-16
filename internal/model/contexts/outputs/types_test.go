@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func property(t *testing.T, object exprtypes.ObjectType, path ...string) exprtypes.Type {
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo consumer}]
 `
-	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
+	parsed, errs := parser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

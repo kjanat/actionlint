@@ -3,7 +3,7 @@ package parsing
 import (
 	"testing"
 
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func TestCompositeAliasReferencesFollowStepOwners(t *testing.T) {
@@ -18,7 +18,7 @@ func TestCompositeAliasReferencesFollowStepOwners(t *testing.T) {
 	if len(steps) != 2 {
 		t.Fatalf("steps = %d, want 2", len(steps))
 	}
-	refs := workflowfacts.Index("outer/action.yml", content, workflow, true)
+	refs := facts.Index("outer/action.yml", content, workflow, true)
 	first, second := refs.Steps[steps[0]], refs.Steps[steps[1]]
 	if first.Node == "" || second.Node == "" || first.Node == second.Node {
 		t.Fatalf("aliased calls lost structural ownership: first=%+v second=%+v", first, second)

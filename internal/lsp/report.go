@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/results"

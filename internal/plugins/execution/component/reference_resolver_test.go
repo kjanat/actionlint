@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
 )
@@ -53,9 +53,9 @@ func (s *resolverRepositorySession) Finish(context.Context) (json.RawMessage, er
 	return json.RawMessage(`{"source":"host"}`), s.finishErr
 }
 
-func knownRepositoryID(tb testing.TB, value uint64) repofacts.ID {
+func knownRepositoryID(tb testing.TB, value uint64) repository.ID {
 	tb.Helper()
-	id, err := repofacts.KnownID(value)
+	id, err := repository.KnownID(value)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestReferenceResolverRepositoryScope(t *testing.T) {
 			return err
 		}},
 		{"unexpected identity", func(ctx context.Context, objects *repositoryObjects) error {
-			objects.request.ExpectedRepositoryID = repofacts.ID{}
+			objects.request.ExpectedRepositoryID = repository.ID{}
 			_, err := objects.open(ctx, "owner/repo", repositorybind.SomeU64(7))
 			return err
 		}},
@@ -213,7 +213,7 @@ func TestReferenceResolverValidatesObservedContent(t *testing.T) {
 			}
 			for _, change := range []func(*references.ResolutionRecord){
 				func(result *references.ResolutionRecord) { result.RepositoryID = knownRepositoryID(t, 8) },
-				func(result *references.ResolutionRecord) { result.RepositoryID = repofacts.ID{} },
+				func(result *references.ResolutionRecord) { result.RepositoryID = repository.ID{} },
 				func(result *references.ResolutionRecord) { result.Repository = "other/repo" },
 				func(result *references.ResolutionRecord) { result.ObservedAt = "2026-11-10T00:00:01Z" },
 				func(result *references.ResolutionRecord) { result.SelectedRef = "refs/heads/missing" },
@@ -482,15 +482,15 @@ func TestBundledReferenceResolverCallsScopedRepositoryHost(t *testing.T) {
 	})
 	for _, tc := range []struct {
 		name     string
-		expected repofacts.ID
+		expected repository.ID
 	}{
-		{"absent host and expected repository IDs", repofacts.ID{}},
+		{"absent host and expected repository IDs", repository.ID{}},
 		{"absent host repository ID with an expected ID", knownRepositoryID(t, 7)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, access, session := newResolverRepositoryTest(t)
-			session.identity.ID = repofacts.ID{}
+			session.identity.ID = repository.ID{}
 			request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: tc.expected}
 			result, err := plugin.Resolve(references.WithRepositoryAccess(t.Context(), access), request)
 			if err != nil {
@@ -554,7 +554,7 @@ func TestLiftReferenceResolutionRepositoryID(t *testing.T) {
 
 func TestLowerReferenceRequestRepositoryID(t *testing.T) {
 	t.Parallel()
-	for _, expected := range []repofacts.ID{{}, knownRepositoryID(t, 42)} {
+	for _, expected := range []repository.ID{{}, knownRepositoryID(t, 42)} {
 		value, err := lowerReferenceRequest(references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: expected})
 		if err != nil {
 			t.Fatal(err)

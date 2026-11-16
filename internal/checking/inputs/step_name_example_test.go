@@ -6,27 +6,27 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // stepNameAnalyzer checks a document without depending on the traversal host.
 type stepNameAnalyzer struct{}
 
-func (stepNameAnalyzer) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Source}}
+func (stepNameAnalyzer) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "step-name", Description: "Checks every step has a name", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (stepNameAnalyzer) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" {
 		return nil, nil
 	}
-	workflow, _ := workflowparser.ParseWorkflow([]byte(input.Content))
+	workflow, _ := parser.ParseWorkflow([]byte(input.Content))
 	if workflow == nil {
 		return nil, nil
 	}
@@ -62,7 +62,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []inputs.Registration{{Checker: stepNameAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		panic(err)

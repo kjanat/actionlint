@@ -6,8 +6,8 @@ package shell
 import (
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 // ID names this profile in tool provider manifests.
@@ -58,16 +58,16 @@ func LanguageDialect(language string) string {
 }
 
 // TargetArguments uses runner OS alternatives, independently of the host OS.
-func TargetArguments(environments []scriptmodel.EnvironmentNames) commands.ArgumentPlatform {
+func TargetArguments(environments []scripts.EnvironmentNames) commands.ArgumentPlatform {
 	result := commands.UnknownArguments
 	for _, environment := range environments {
 		var current commands.ArgumentPlatform
 		switch environment.OperatingSystem() {
-		case runner.Linux, runner.MacOS:
+		case runnerapi.Linux, runnerapi.MacOS:
 			current = commands.UnixArguments
-		case runner.Windows:
+		case runnerapi.Windows:
 			current = commands.WindowsArguments
-		case runner.UnknownOS:
+		case runnerapi.UnknownOS:
 			return commands.UnknownArguments
 		default:
 			return commands.UnknownArguments

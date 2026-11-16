@@ -1,7 +1,7 @@
 package facts
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -29,6 +29,6 @@ const (
 // SourceComment is one physical YAML comment, including '#'. Start points to '#'.
 type SourceComment struct {
 	Text      string
-	Start     sourcepos.Position
+	Start     source.Position
 	Placement CommentPlacement
 }

@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -43,7 +43,7 @@ jobs:
         with: {key: test, path: cache}
 `
 					want := mode == "none" || mode == "read" && action == "actions/cache/save" || mode == "write-only" && action == "actions/cache/restore"
-					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
+					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*finding.Finding) {
 						t.Helper()
 
 						if !want {
@@ -127,7 +127,7 @@ permissions: {}
 			if tc.leaf != "" {
 				files["leaf.yaml"] = tc.leaf
 			}
-			checkCacheOperationCalls(t, files, tc.config, func(t *testing.T, diagnostics []*findingmodel.Finding) {
+			checkCacheOperationCalls(t, files, tc.config, func(t *testing.T, diagnostics []*finding.Finding) {
 				t.Helper()
 
 				if tc.kind == "" {
@@ -286,7 +286,7 @@ permissions: {}
 				project := workspace.Identity(root)
 				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
-				check := func(diagnostics []*findingmodel.Finding, entry string) {
+				check := func(diagnostics []*finding.Finding, entry string) {
 					t.Helper()
 					wantOperation := (entry == "" || entry == tc.owner) && suppressed != tc.owner
 					wantUnused := suppressed != "" && suppressed != tc.owner && (entry == "" || entry == suppressed)
@@ -374,7 +374,7 @@ jobs:
 					} else if suppressed && !violates {
 						wantRule = "unused-suppression"
 					}
-					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*findingmodel.Finding) {
+					checkCacheOperationCalls(t, map[string]string{"caller.yaml": caller, "callee.yaml": callee}, "", func(t *testing.T, diagnostics []*finding.Finding) {
 						t.Helper()
 
 						if wantRule == "" {
@@ -395,7 +395,7 @@ jobs:
 
 // Force both ways of filling the shared cache before linting the caller. The
 // metadata itself must be identical, and per-caller policy results stay uncached.
-func checkCacheOperationCalls(t *testing.T, sources map[string]string, config string, check func(*testing.T, []*findingmodel.Finding)) {
+func checkCacheOperationCalls(t *testing.T, sources map[string]string, config string, check func(*testing.T, []*finding.Finding)) {
 	t.Helper()
 	if caller := sources["caller.yaml"]; !strings.Contains(caller, "permissions:") {
 		sources["caller.yaml"] = strings.TrimRight(caller, "\n") + "\npermissions: {}\n"
@@ -421,7 +421,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 		if astFirst {
 			for name, source := range sources {
-				w, errs := workflowparser.ParseWorkflow([]byte(source))
+				w, errs := parser.ParseWorkflow([]byte(source))
 				if w == nil || len(errs) != 0 {
 					continue
 				}

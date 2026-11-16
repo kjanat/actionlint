@@ -3,12 +3,12 @@ package installation_test
 import (
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
 
@@ -18,7 +18,7 @@ func TestAliasRegistryRelocationPreservesPublisher(t *testing.T) {
 		t.Run(map[int]string{11: "same publisher", 99: "changed publisher"}[repositoryID], func(t *testing.T) {
 			t.Parallel()
 			registry := fixtureregistry.NewDefaultPluginRegistry(t, "shellcheck", "ruff")
-			project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
+			project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
 			if err != nil {
 				t.Fatal(err)
 			}

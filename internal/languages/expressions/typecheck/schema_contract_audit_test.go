@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
 )
@@ -52,13 +52,13 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 					t.Fatal("missing from generated workflow key inventory")
 				}
 				for context := range contextspec.BuiltinGlobalVariableTypes {
-					checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+					checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
 					checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
-					expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("toJSON(" + context + ")}}"))
+					expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer("toJSON(" + context + ")}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+					_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 					if (len(errs) == 0) != slices.Contains(contexts, context) {
 						t.Fatalf("context %s: %v", context, errs)
 					}
@@ -97,13 +97,13 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 	} {
 		t.Run(tc.key+"/"+tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
+			checker := typecheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
-			_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+			_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 			if (len(errs) == 0) != tc.valid {
 				t.Fatalf("valid=%v, diagnostics=%v", tc.valid, errs)
 			}
@@ -132,7 +132,7 @@ func TestSchemaAuditExpressionDepth(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			_, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%v, error=%v", tc.valid, err)
 			}

@@ -8,24 +8,24 @@ import (
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type typedExpr struct {
 	ty         exprtypes.Type
-	semantics  exprlang.ExpressionCheckResult
+	semantics  typecheck.ExpressionCheckResult
 	pos        source.Position
 	refinement expressionRefinement
 }
@@ -72,7 +72,7 @@ type ReferenceNames struct {
 
 // Options selects expression diagnostics without repository configuration.
 type Options struct {
-	Semantics                 exprlang.Options
+	Semantics                 typecheck.Options
 	UnsoundTernary            bool
 	SuspiciousCoercion        bool
 	JoinLiteral               bool
@@ -86,7 +86,7 @@ type Options struct {
 
 // Dependencies supplies runner facts and action/workflow definitions for expression inference.
 type Dependencies struct {
-	Runners *runner.Knowledge
+	Runners *runners.Knowledge
 	// Action returns declared inputs, outputs and runtime for either reference origin.
 	// An absent definition means these declarations are unknown.
 	Action   func(string) (actionmeta.Definition, error)
@@ -113,8 +113,8 @@ type report struct {
 	fixes  []results.Fix
 }
 
-func (r report) finding() *findingmodel.Finding {
-	finding := findingmodel.At(&r.start, r.rule, r.message)
+func (r report) finding() *finding.Finding {
+	finding := finding.At(&r.start, r.rule, r.message)
 	finding.Code = r.code
 	finding.Severity = r.severity
 	for _, fix := range r.fixes {
@@ -129,7 +129,7 @@ func (r report) finding() *findingmodel.Finding {
 
 // Findings returns diagnostics accumulated during workflow expression checking.
 // The result is detached from the checker.
-func (rule *Checker) Findings() []*findingmodel.Finding { return rule.FindingsSince(0) }
+func (rule *Checker) Findings() []*finding.Finding { return rule.FindingsSince(0) }
 
 // FindingCount returns the number of diagnostics accumulated so far. Pass it to
 // FindingsSince to read only the diagnostics reported after this point.
@@ -137,11 +137,11 @@ func (rule *Checker) FindingCount() int { return len(rule.errs) }
 
 // FindingsSince returns diagnostics reported after mark, a prior FindingCount.
 // The result is detached from the checker.
-func (rule *Checker) FindingsSince(mark int) []*findingmodel.Finding {
+func (rule *Checker) FindingsSince(mark int) []*finding.Finding {
 	if mark >= len(rule.errs) {
 		return nil
 	}
-	findings := make([]*findingmodel.Finding, 0, len(rule.errs)-mark)
+	findings := make([]*finding.Finding, 0, len(rule.errs)-mark)
 	for _, r := range rule.errs[mark:] {
 		findings = append(findings, r.finding())
 	}

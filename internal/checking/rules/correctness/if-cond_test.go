@@ -3,12 +3,12 @@ package correctness
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func TestConditionDiagnostics(t *testing.T) {
 	t.Parallel()
-	start := sourcepos.Position{Line: 3, Column: 9}
+	start := source.Position{Line: 3, Column: 9}
 	for _, test := range []struct {
 		value, message string
 	}{

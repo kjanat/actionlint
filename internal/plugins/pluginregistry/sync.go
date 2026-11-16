@@ -3,7 +3,7 @@ package pluginregistry
 import (
 	"context"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -16,7 +16,7 @@ func Sync(ctx context.Context, selected ResolvedPlugins, acquisition pluginacqui
 		return err
 	}
 	for _, pin := range selected.Plugins {
-		if pluginartifact.IsOCI(pin.Source()) {
+		if artifacts.IsOCI(pin.Source()) {
 			if err := oci.PullLayers(ctx, pin.Source(), options); err != nil {
 				return err
 			}

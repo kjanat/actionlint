@@ -27,7 +27,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -84,11 +84,11 @@ func Actionlint(src []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	renderer, err := render.New(render.FormatText, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(output.FormatText, "", false, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := renderer.Render(&out, render.FromAnalysis(*result)); err != nil {
+	if err := renderer.Render(&out, output.FromAnalysis(*result)); err != nil {
 		return nil, err
 	}
 	if len(result.Diagnostics) == 0 {

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"syscall"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
@@ -68,7 +68,7 @@ func closeSourceAuthorities(authorities []sourceAuthority) error {
 	return failure
 }
 
-func sourceAuthorities(script scriptexecution.Unit, settings integrationconfig.Settings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
+func sourceAuthorities(script scripts.Unit, settings integrationconfig.Settings, paths configuration.PathContext, workspace, directory string) ([]sourceAuthority, error) {
 	if script.Config() == nil {
 		return nil, errors.New("plugin source access is not authorized by host configuration")
 	}
@@ -152,7 +152,7 @@ func sourceAuthorities(script scriptexecution.Unit, settings integrationconfig.S
 	return authorities, nil
 }
 
-func (r documentRunner) sourceFiles(ctx context.Context, script scriptexecution.Unit, resources []checkinputs.ToolResourceRequest) (result *pluginSourceFiles, failure error) {
+func (r documentRunner) sourceFiles(ctx context.Context, script scripts.Unit, resources []inputs.ToolResourceRequest) (result *pluginSourceFiles, failure error) {
 	files := &pluginSourceFiles{}
 	budget := &inputfiles.SnapshotBudget{}
 	if len(resources) == 0 {
@@ -248,13 +248,13 @@ func (r documentRunner) sourceFiles(ctx context.Context, script scriptexecution.
 	}
 	directoryIndex := 0
 	for _, resource := range resources {
-		if resource.Kind == checkinputs.ToolWorkspace {
+		if resource.Kind == inputs.ToolWorkspace {
 			if err := add(workspace, "/workspace"); err != nil {
 				return nil, errors.Join(err, files.close())
 			}
 			continue
 		}
-		if resource.Kind != checkinputs.ToolDirectory {
+		if resource.Kind != inputs.ToolDirectory {
 			return nil, errors.Join(errors.New("unknown source resource kind"), files.close())
 		}
 		source := resource.Path
@@ -283,23 +283,23 @@ func (r documentRunner) sourceFiles(ctx context.Context, script scriptexecution.
 	return files, nil
 }
 
-func (f *pluginSourceFiles) configure(input *checkinputs.AnalyzerInput) {
+func (f *pluginSourceFiles) configure(input *inputs.AnalyzerInput) {
 	if len(f.mounts) == 0 {
 		return
 	}
 	for _, mount := range f.mounts {
-		input.SourceRoots = append(input.SourceRoots, checkinputs.SourceRoot{Host: filepath.ToSlash(mount.host), Guest: mount.guest})
+		input.SourceRoots = append(input.SourceRoots, inputs.SourceRoot{Host: filepath.ToSlash(mount.host), Guest: mount.guest})
 		if mount.alias != mount.host {
-			input.SourceRoots = append(input.SourceRoots, checkinputs.SourceRoot{Host: filepath.ToSlash(mount.alias), Guest: mount.guest})
+			input.SourceRoots = append(input.SourceRoots, inputs.SourceRoot{Host: filepath.ToSlash(mount.alias), Guest: mount.guest})
 		}
 	}
-	slices.SortStableFunc(input.SourceRoots, func(a, b checkinputs.SourceRoot) int {
+	slices.SortStableFunc(input.SourceRoots, func(a, b inputs.SourceRoot) int {
 		return cmp.Compare(len(b.Host), len(a.Host))
 	})
 	for _, mount := range f.mounts {
-		input.Files = append(input.Files, checkinputs.FileSystem{Path: mount.guest, FS: mount.files})
+		input.Files = append(input.Files, inputs.FileSystem{Path: mount.guest, FS: mount.files})
 	}
-	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
+	for _, scripts := range [][]inputs.Script{input.Scripts, input.Invoked} {
 		for i := range scripts {
 			if scripts[i].Runtime != nil {
 				runtime := *scripts[i].Runtime
@@ -318,7 +318,7 @@ func (f *pluginSourceFiles) close() error {
 	return failure
 }
 
-func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, script scriptexecution.Unit, index int) (contract.ToolFinding, error) {
+func (f *pluginSourceFiles) finding(name string, finding results.Diagnostic, script scripts.Unit, index int) (contract.ToolFinding, error) {
 	result := contract.ToolFinding{Diagnostic: finding, Script: index, Source: results.DiagnosticSource{Content: script.Content}}
 	if finding.Path == script.Path {
 		return result, nil

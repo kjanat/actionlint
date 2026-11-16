@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -44,7 +44,7 @@ jobs:
     cache-mode: ` + jobMode + `
     uses: $/leaf.yaml
 `
-				workflow, diagnostics := workflowparser.ParseWorkflow([]byte(source))
+				workflow, diagnostics := parser.ParseWorkflow([]byte(source))
 				if len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
 				}
@@ -54,7 +54,7 @@ jobs:
 				}
 				project := workspace.Identity(root)
 				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
-				fileCache := workflowinputs.NewCache(project.RootDir(), nil)
+				fileCache := workflows.NewCache(project.RootDir(), nil)
 				fileCache.SetSources(t.Context(), store, root)
 				fromFile, err := fileCache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 				if err != nil {
@@ -64,7 +64,7 @@ jobs:
 				if !ok {
 					t.Fatal("missing workflow_call event")
 				}
-				astCache := workflowinputs.NewCache(project.RootDir(), nil)
+				astCache := workflows.NewCache(project.RootDir(), nil)
 				astCache.SetSources(t.Context(), store, root)
 				path := filepath.Join(root, "callee.yaml")
 				snapshot, err := snapshots.Document(path, []byte(source), parsing.Workflow([]byte(source)))

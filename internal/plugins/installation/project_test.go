@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -22,7 +22,7 @@ func fixtureAcquisition(r *fixtureregistry.PluginRegistry) pluginacquisition.Set
 func TestPluginProjectPreservesConcurrentConfigEdit(t *testing.T) {
 	t.Parallel()
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestPluginProjectUsesEquivalentRegistryCasingOffline(t *testing.T) {
 
 func TestPluginProjectRejectsBusyConfiguration(t *testing.T) {
 	t.Parallel()
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, repositoryfixture.Directory(t), "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestPluginProjectReplacesRemovedPackageWithSamePluginID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), fixtureAcquisition(registry), repositoryfixture.Directory(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	registry.Publish(t, "v1.0.0")
 	acquisition := pluginacquisition.Settings{UserCacheDir: t.TempDir(), Connections: registry.Connections()}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	original := project.Releases.Plugins[0]
 	registry.AddArtifact(t, "v2.0.0", "plugin.component.wasm", []byte{0, 97, 115, 109, 13, 0, 1, 0})
 	registry.Publish(t, "v1.0.0", "v2.0.0")
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestPluginProjectUpdatesTransportOnlyExplicitly(t *testing.T) {
 	if len(project.Releases.Plugins) != 1 || !project.Releases.Plugins[0].SameRelease(original) {
 		t.Fatal("failed update changed the live selection")
 	}
-	project, err = plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err = installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestProviderPointerResolutionsMatchValues(t *testing.T) {
@@ -29,7 +29,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			workflow := runnerWorkflow(t, "queue")
-			prepare := func(resolution runnerapi.Resolution) *runnermodel.Knowledge {
+			prepare := func(resolution runnerapi.Resolution) *runners.Knowledge {
 				p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 					return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 				}}
@@ -49,7 +49,7 @@ func TestProviderPointerResolutionsMatchValues(t *testing.T) {
 
 func TestProviderPointerResolutionValidation(t *testing.T) {
 	t.Parallel()
-	for _, resolution := range []runnerapi.Resolution{(*runnerapi.Resolved)(nil), (*runnerapi.NoMatch)(nil), (*runnerapi.Unknown)(nil), (*runnerapi.NotApplicable)(nil), &runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "wrong source", Position: sourcepos.Position{Line: 99, Column: 1}}}}} {
+	for _, resolution := range []runnerapi.Resolution{(*runnerapi.Resolved)(nil), (*runnerapi.NoMatch)(nil), (*runnerapi.Unknown)(nil), (*runnerapi.NotApplicable)(nil), &runnerapi.NoMatch{Rejections: []runnerapi.Rejection{{Reason: "wrong source", Position: source.Position{Line: 99, Column: 1}}}}} {
 		p := &testProvider{resolve: func(r runnerapi.Request) ([]runnerapi.Answer, error) {
 			return []runnerapi.Answer{{Resolution: resolution, DatasetStatus: runnerapi.DatasetStatus{DatasetID: "v1", Scope: r.Scope, Freshness: runnerapi.Fresh, Complete: true}}}, nil
 		}}
@@ -91,7 +91,7 @@ func TestProviderPointerResolvedCannotCompletePartialMatrix(t *testing.T) {
 
 func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
 	t.Parallel()
-	var builtin *runnermodel.Knowledge
+	var builtin *runners.Knowledge
 	for _, tc := range []struct {
 		selector string
 		os       runnerapi.OS
@@ -122,7 +122,7 @@ func TestBuiltinMacOSCaseRequiresHostedImage(t *testing.T) {
 			if candidate.OS != tc.os || candidate.CaseSensitivity != tc.caseMode || k.Job(job).PathsKnown != known || builtin.Job(job).PathsKnown != known {
 				t.Fatalf("case guarantee incorrect: candidate=%+v knowledge=%+v direct=%+v", candidate, k.Job(job), builtin.Job(job))
 			}
-			if tc.os == runnerapi.MacOS && (candidate.DefaultShell != "bash" || k.Job(job).Platform != runnermodel.MacOrLinux) {
+			if tc.os == runnerapi.MacOS && (candidate.DefaultShell != "bash" || k.Job(job).Platform != runners.MacOrLinux) {
 				t.Fatalf("unknown filesystem case lost OS/shell: %+v", candidate)
 			}
 		})

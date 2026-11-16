@@ -22,12 +22,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	gocmp "github.com/google/go-cmp/cmp"
@@ -71,7 +71,7 @@ type parityReport struct {
 	Rule        string             `json:"rule"`
 	Code        string             `json:"code,omitempty"`
 	Path        string             `json:"path"`
-	Start       sourcepos.Position `json:"start"`
+	Start       source.Position    `json:"start"`
 	Content     string             `json:"content,omitempty"`
 	RawScript   bool               `json:"raw_script,omitempty"`
 	Unavailable *parityUnavailable `json:"unavailable,omitempty"`
@@ -93,9 +93,9 @@ type paritySuppression struct {
 // parityCapture is a report.CapturedSource without its content, which the
 // revision identifies.
 type parityCapture struct {
-	Revision             sourcepos.Revision    `json:"revision"`
-	Coordinates          sourcepos.Coordinates `json:"coordinates"`
-	CoordinatesAvailable bool                  `json:"coordinates_available,omitempty"`
+	Revision             source.Revision    `json:"revision"`
+	Coordinates          source.Coordinates `json:"coordinates"`
+	CoordinatesAvailable bool               `json:"coordinates_available,omitempty"`
 }
 
 // contentHash identifies content in a snapshot; empty content has none.
@@ -187,7 +187,7 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 // manifest's severities table, as the manifest route does.
 func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics {
 	t.Helper()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,7 +499,7 @@ func TestProviderParityCases(t *testing.T) {
 			run := func(registrations []contract.Registration, recorder *parityRecorder) parityDiagnostics {
 				// Each route runs in its own repository.
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
-				root = inputfiles.PhysicalPath(root)
+				root = files.PhysicalPath(root)
 				config := "tools: {shellcheck: true, ruff: true}\n"
 				if tc.config != "" {
 					config = tc.config

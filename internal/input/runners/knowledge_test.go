@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -120,7 +120,7 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(workflow.Views["test"])
-			if job.Platform != runnermodel.Windows || job.Shell != "pwsh" || !job.PathsKnown || !job.CaseInsensitive || len(job.Rejections) != 0 {
+			if job.Platform != runners.Windows || job.Shell != "pwsh" || !job.PathsKnown || !job.CaseInsensitive || len(job.Rejections) != 0 {
 				t.Fatalf("configured Windows label lost execution facts: %#v", job)
 			}
 		})
@@ -145,7 +145,7 @@ func TestBuiltinCustomWindowsLabelKnowledge(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(workflow.Views["test"])
-			if job.Platform != runnermodel.Any || job.Shell != "" || job.PathsKnown || len(job.Rejections) != tc.findings {
+			if job.Platform != runners.Any || job.Shell != "" || job.PathsKnown || len(job.Rejections) != tc.findings {
 				t.Fatalf("unproven or contradictory label inferred execution facts: %#v", job)
 			}
 		})
@@ -193,7 +193,7 @@ func TestProviderKnowledgeUncertainty(t *testing.T) {
 			if job.Shell != tc.wantShell || len(job.Rejections) != tc.wantRejections {
 				t.Fatalf("knowledge = %#v", job)
 			}
-			if tc.wantShell == "" && job.Platform != runnermodel.Any {
+			if tc.wantShell == "" && job.Platform != runners.Any {
 				t.Fatalf("uncertain answer inferred platform: %v", job.Platform)
 			}
 		})
@@ -253,7 +253,7 @@ func TestBuiltinKnowledgeWithoutHostSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := k.Job(w.Views["test"])
-	if !job.PathsKnown || job.Platform != runnermodel.MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].DatasetStatus.Freshness != runnerapi.Fresh {
+	if !job.PathsKnown || job.Platform != runners.MacOrLinux || job.Shell != "bash" || len(job.Answers) != 1 || job.Answers[0].DatasetStatus.Freshness != runnerapi.Fresh {
 		t.Fatalf("absent host snapshot weakened bundled catalogue: %#v", job)
 	}
 }
@@ -379,7 +379,7 @@ func TestPreparedRunnerGroupUncertainty(t *testing.T) {
 			if job.Shell != tc.shell || len(job.Rejections) != tc.findings {
 				t.Fatalf("group knowledge = %#v", job)
 			}
-			if tc.shell == "" && job.Platform != runnermodel.Any {
+			if tc.shell == "" && job.Platform != runners.Any {
 				t.Fatalf("unresolved group inferred platform: %v", job.Platform)
 			}
 		})

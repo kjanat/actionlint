@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 )
 
@@ -35,7 +35,7 @@ func TestSuppressionEdit(t *testing.T) {
 				if !ok {
 					t.Fatal("no suppression edit")
 				}
-				first, last, err := sourceposition.Range(content, sourcemodel.YAML, edit.Start, edit.End)
+				first, last, err := sourceposition.Range(content, source.YAML, edit.Start, edit.End)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // FromAction projects decoded action metadata into a report outline.
@@ -56,7 +56,7 @@ func actionInputOutlines(node *codec.Node) []ActionInputOutline {
 		fields := actionOutlineFields(node.Content[i+1])
 		input := ActionInputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
-			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(workflowparser.PosAt(key)),
+			Default: actionmeta.Scalar(fields["default"]), Start: outlinePosition(parser.PosAt(key)),
 		}
 		if required := fields["required"]; required != nil {
 			session, cursor, err := codec.Open(required)
@@ -84,7 +84,7 @@ func actionOutputOutlines(node *codec.Node) []ActionOutputOutline {
 		fields := actionOutlineFields(node.Content[i+1])
 		outputs = append(outputs, ActionOutputOutline{
 			ID: actionmeta.Key(key), Description: actionOutlineString(fields["description"]),
-			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(workflowparser.PosAt(key)),
+			Value: actionmeta.Scalar(fields["value"]), Start: outlinePosition(parser.PosAt(key)),
 		})
 	}
 	return outputs
@@ -133,7 +133,7 @@ func actionStepOutlines(node *codec.Node) []Step {
 		fields := actionOutlineFields(node)
 		step := Step{
 			ID: actionOutlineString(fields["id"]), Name: actionOutlineString(fields["name"]),
-			Start: outlinePosition(workflowparser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
+			Start: outlinePosition(parser.PosAt(node)), Kind: "unknown", Uses: actionOutlineString(fields["uses"]),
 		}
 		_, hasRun := fields["run"]
 		_, hasUses := fields["uses"]

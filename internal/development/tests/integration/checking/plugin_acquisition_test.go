@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
@@ -23,7 +23,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 
@@ -53,7 +53,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 			t.Fatalf("project private source acquired: %v", err)
 		}
 	}
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

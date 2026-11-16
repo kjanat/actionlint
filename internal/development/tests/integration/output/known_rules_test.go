@@ -7,18 +7,18 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func TestErrorPrintAllKinds(t *testing.T) {
 	t.Parallel()
-	f, err := render.NewFormatter("{{range $ = allKinds}}{{$.Name}}: {{$.Description}}\n{{end}}", buildinfo.Version, checking.ListRules())
+	f, err := output.NewFormatter("{{range $ = allKinds}}{{$.Name}}: {{$.Description}}\n{{end}}", buildinfo.Version, checking.ListRules())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f.RegisterRule(render.Rule{Name: "rule1", Description: "description for rule1"})
-	f.RegisterRule(render.Rule{Name: "rule2", Description: "description for rule2"})
+	f.RegisterRule(output.Rule{Name: "rule1", Description: "description for rule1"})
+	f.RegisterRule(output.Rule{Name: "rule2", Description: "description for rule2"})
 
 	var b bytes.Buffer
 	if err := f.Print(&b, nil); err != nil {

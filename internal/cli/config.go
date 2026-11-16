@@ -7,16 +7,16 @@ import (
 	"os"
 	"path/filepath"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyConfigInitRequest) error {
@@ -26,7 +26,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	}
 
 	if req.ConfigPath != "" {
-		reader := configsource.New(ctx, nil, streams.Acquisition.Connections)
+		reader := source.New(ctx, nil, streams.Acquisition.Connections)
 		if _, err := checking.ConfigurationRules().ReadContext(ctx, req.ConfigPath, reader.ReadFile, nil); err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 		return err
 	}
 	if options.Template != "" {
-		if _, err := render.NewFormatter(options.Template, buildinfo.Version, nil); err != nil {
+		if _, err := output.NewFormatter(options.Template, buildinfo.Version, nil); err != nil {
 			return err
 		}
 	}
@@ -60,7 +60,7 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 	if err != nil {
 		return err
 	}
-	path, err := plugininstall.InitializeConfiguration(ctx, checking.ConfigurationRules(), acquisition, discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
+	path, err := installation.InitializeConfiguration(ctx, checking.ConfigurationRules(), acquisition, discovery.RepositoryRoot(cwd), buildinfo.Version(), format)
 	if err != nil {
 		return err
 	}

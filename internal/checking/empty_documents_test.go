@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestAnalysisEmptyDocuments(t *testing.T) {
@@ -14,7 +14,7 @@ func TestAnalysisEmptyDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, result := range []resultreport.CheckResult{commandstatus.AnalysisResult(result.Analysis), commandstatus.AnalysisResult((&analysisResult{}).Analysis), commandstatus.NewCheckResult(3)} {
+	for _, result := range []report.CheckResult{exitcode.AnalysisResult(result.Analysis), exitcode.AnalysisResult((&analysisResult{}).Analysis), exitcode.NewCheckResult(3)} {
 		data, err := json.Marshal(result)
 		if err != nil {
 			t.Fatal(err)

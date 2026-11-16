@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
 func virtualActionPaths(t *testing.T) (string, string, string) {
@@ -40,7 +40,7 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 				if reversed {
 					paths = []string{alias, physical}
 				}
-				documents := actionDocuments{byPath: map[string]documentmodel.Action{}}
+				documents := actionDocuments{byPath: map[string]outline.Action{}}
 				_, _, captures := newCapturedSnapshots(t, filepath.Dir(physical))
 				add := func(path string) {
 					captured, err := captures.Capture(path, nil, source.YAML)
@@ -48,7 +48,7 @@ func TestActionOutlinePathIsIndependentOfPublicationOrder(t *testing.T) {
 						t.Error(err)
 						return
 					}
-					documents.add(captured.Revision().Document(), documentmodel.Action{Path: path, Name: "virtual"})
+					documents.add(captured.Revision().Document(), outline.Action{Path: path, Name: "virtual"})
 				}
 				var workers sync.WaitGroup
 				for _, path := range paths {
@@ -91,7 +91,7 @@ func TestVirtualActionOutlinesDeduplicateParentAliases(t *testing.T) {
 	if len(result.Documents) != 2 {
 		t.Fatalf("one virtual manifest produced duplicate outlines through parent aliases: %+v", result.Documents)
 	}
-	outline, ok := result.Documents[1].(documentmodel.Action)
+	outline, ok := result.Documents[1].(outline.Action)
 	if !ok || outline.Name != "virtual" || outline.ParseStatus != "complete" || outline.DocumentPath() != filepath.Join("alias", "virtual", "action.yml") {
 		t.Fatalf("virtual action outline missing: %+v", result.Documents)
 	}
@@ -124,9 +124,9 @@ func TestSharedActionOutlinesAreCompleteAfterBatch(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			outlines := map[string]documentmodel.Action{}
+			outlines := map[string]outline.Action{}
 			for _, document := range result.Documents {
-				if action, ok := document.(documentmodel.Action); ok {
+				if action, ok := document.(outline.Action); ok {
 					if _, duplicate := outlines[action.DocumentPath()]; duplicate {
 						t.Fatalf("duplicate action outline: %s", action.DocumentPath())
 					}

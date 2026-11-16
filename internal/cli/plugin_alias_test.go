@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )
@@ -34,7 +34,7 @@ func TestRegistryAliasCommandScope(t *testing.T) {
 		testReference(t, "check", "latest", pluginreference.DefaultRegistry),
 		testReference(t, "check", "v1.0.0", fixtureregistry.FixtureRegistryURL),
 	}
-	project := &plugininstall.Project{Releases: pluginregistry.ResolvedPlugins{
+	project := &installation.Project{Releases: pluginregistry.ResolvedPlugins{
 		Plugins: []pluginregistry.Pin{
 			{Name: "github.com/first/plugin", Alias: "check", Registry: pluginreference.DefaultRegistry},
 			{Name: "github.com/second/plugin", Alias: "check", Registry: fixtureregistry.FixtureRegistryURL},

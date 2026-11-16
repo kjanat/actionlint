@@ -3,9 +3,9 @@ package typecheck_test
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestConstantPredicateAmbiguousNumbersStayUnknown(t *testing.T) {
@@ -18,7 +18,7 @@ func TestConstantPredicateAmbiguousNumbersStayUnknown(t *testing.T) {
 	} {
 		t.Run(expression, func(t *testing.T) {
 			t.Parallel()
-			value, known := expreval.ConditionConstantValue(exprsyntax.ParseAssignedExpression("${{ " + expression + " }}"))
+			value, known := evaluate.ConditionConstantValue(syntax.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
 				t.Fatalf("unexpected constant value %v", value)
 			}

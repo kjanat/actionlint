@@ -8,9 +8,9 @@ package python
 import (
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 )
@@ -24,8 +24,8 @@ type ExpressionEnd func(string) (int, bool)
 
 // TemplateEnd is the ExpressionEnd of the workflow expression parser.
 func TemplateEnd(src string) (int, bool) {
-	lexer := exprsyntax.NewLexer(src)
-	_, err := exprsyntax.NewParser().ParseExpression(lexer)
+	lexer := syntax.NewLexer(src)
+	_, err := syntax.NewParser().ParseExpression(lexer)
 	return lexer.Offset(), err == nil
 }
 
@@ -39,7 +39,7 @@ func Sanitize(src string, end ExpressionEnd) (string, bool, error) {
 // Mask sanitizes src like Sanitize and returns masks that filter findings caused
 // by the replacement values.
 func Mask(src string, end ExpressionEnd) (string, *Masks, bool, error) {
-	masks := &Masks{identifiers: make(map[checkinputs.ScriptPosition]int), parentheses: make(map[checkinputs.ScriptPosition]checkinputs.ScriptPosition), quoted: make(map[checkinputs.ScriptPosition]string)}
+	masks := &Masks{identifiers: make(map[inputs.ScriptPosition]int), parentheses: make(map[inputs.ScriptPosition]inputs.ScriptPosition), quoted: make(map[inputs.ScriptPosition]string)}
 	source, valid, err := sanitize(src, end, masks)
 	return source, masks, valid, err
 }
@@ -57,7 +57,7 @@ func Script(text string) (preparation.Prepared, error) {
 	}
 	prepared := preparation.Prepared{Source: source, AcceptDiagnostic: masks.Accept}
 	if strings.Contains(text, "${{") {
-		prepared.TemplateContract = checkinputs.TemplateEffectsContract
+		prepared.TemplateContract = inputs.TemplateEffectsContract
 	}
 	return prepared, nil
 }

@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -67,11 +67,11 @@ type AnalyzerInput struct {
 	// SelectedScripts limits materialized text to these occurrences. Nil selects
 	// every graph script; an empty non-nil slice selects none.
 	SelectedScripts []invocation.ID
-	Mappings        []workflowfacts.Mapping
-	Dependencies    []workflowfacts.Dependency
+	Mappings        []facts.Mapping
+	Dependencies    []facts.Dependency
 	// ResolvedDependencies contains successful, validated resolver observations.
 	// Absence does not establish that an unresolved dependency is unavailable.
-	ResolvedDependencies []workflowfacts.ResolvedDependency
+	ResolvedDependencies []facts.ResolvedDependency
 	// Files grants read-only filesystems for this call. Nil grants no file access.
 	// Mount paths are absolute guest paths; filesystem directories must implement
 	// descriptor-relative read operations when used by a component host.
@@ -100,9 +100,9 @@ type ActionInput struct {
 // Occurrence identifies the execution in AnalyzerInput.CallGraph. Runtime is supplied
 // with the Execution input.
 type Script struct {
-	scriptmodel.Declaration
+	scripts.Declaration
 	Occurrence   invocation.Script
-	Runtime      *scriptmodel.Execution
-	Environment  []scriptmodel.EnvironmentNames
+	Runtime      *scripts.Execution
+	Environment  []scripts.EnvironmentNames
 	Interpreters *commands.Registry `clone:"shared"`
 }

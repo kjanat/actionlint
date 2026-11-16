@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -20,7 +20,7 @@ import (
 
 type inputReplacementBackend struct {
 	mu       sync.Mutex
-	requests []checkinputs.ScriptRequest
+	requests []inputs.ScriptRequest
 }
 
 func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
@@ -51,8 +51,8 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 				}
 			}
 			engine := &inputReplacementBackend{}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
-				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
+			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: engine, Descriptor: inputs.ScriptEngineDescriptor{
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []inputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
 			if err != nil {
@@ -70,14 +70,14 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 	}
 }
 
-func (b *inputReplacementBackend) Check(_ context.Context, request checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (b *inputReplacementBackend) Check(_ context.Context, request inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.requests = append(b.requests, request)
 	return nil, nil
 }
 
-func (*inputReplacementBackend) TemplateContract() string { return checkinputs.TemplateEffectsContract }
+func (*inputReplacementBackend) TemplateContract() string { return inputs.TemplateEffectsContract }
 
 func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 	t.Parallel()
@@ -91,9 +91,9 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			backend := &inputReplacementBackend{}
-			site := checkinputs.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
-			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
-				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{site}, TemplateContract: checkinputs.TemplateEffectsContract,
+			site := inputs.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
+			plugins := pluginexec.Loaded{ScriptEngines: []pluginexec.ScriptEngineRegistration{{Backend: backend, Descriptor: inputs.ScriptEngineDescriptor{
+				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []inputs.ScriptInput{site}, TemplateContract: inputs.TemplateEffectsContract,
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{tc.registration}})
 			if err != nil {

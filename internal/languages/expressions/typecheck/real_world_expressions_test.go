@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestExprSemanticsCheckRealWorld(t *testing.T) {
@@ -24,15 +24,15 @@ func TestExprSemanticsCheckRealWorld(t *testing.T) {
 	s := bufio.NewScanner(f)
 	for s.Scan() {
 		expr := s.Text()
-		l := exprsyntax.NewLexer(expr + "}}")
-		p := exprsyntax.NewParser()
+		l := syntax.NewLexer(expr + "}}")
+		p := syntax.NewParser()
 		root, err := p.ParseExpression(l)
 		if err != nil {
 			t.Errorf("%q caused parse error: %v", expr, err)
 			continue
 		}
-		c := NewChecker(contextspec.DefaultExpressionScope(), nil)
-		c.Check(expreval.EvaluateSubexpressions(root))
+		c := NewChecker(contexts.DefaultExpressionScope(), nil)
+		c.Check(evaluate.EvaluateSubexpressions(root))
 	}
 	if err := s.Err(); err != nil {
 		t.Fatal(err)
@@ -58,13 +58,13 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("Lex", func(b *testing.B) {
 		for range b.N {
 			for _, expr := range exprs {
-				l := exprsyntax.NewLexer(expr)
+				l := syntax.NewLexer(expr)
 				for {
 					t := l.Next()
 					if err := l.Err(); err != nil {
 						b.Fatal(err)
 					}
-					if t.Kind == exprsyntax.TokenKindEnd {
+					if t.Kind == syntax.TokenKindEnd {
 						break
 					}
 				}
@@ -75,7 +75,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("LexParse", func(b *testing.B) {
 		for range b.N {
 			for _, expr := range exprs {
-				if _, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expr)); err != nil {
+				if _, err := syntax.NewParser().ParseExpression(syntax.NewLexer(expr)); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -85,19 +85,19 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("LexParseSema", func(b *testing.B) {
 		for range b.N {
 			for _, expr := range exprs {
-				root, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expr + "}}"))
+				root, err := syntax.NewParser().ParseExpression(syntax.NewLexer(expr + "}}"))
 				if err != nil {
 					b.Fatalf("%q caused parse error: %v", expr, err)
 				}
-				NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(root))
+				NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(root))
 			}
 		}
 	})
 
-	trees := []exprsyntax.Node{}
+	trees := []syntax.Node{}
 	for range b.N {
 		for _, expr := range exprs {
-			t, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expr))
+			t, err := syntax.NewParser().ParseExpression(syntax.NewLexer(expr))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -108,7 +108,7 @@ func BenchmarkExprRealWorld(b *testing.B) {
 	b.Run("Typecheck", func(b *testing.B) {
 		for range b.N {
 			for _, t := range trees {
-				NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(t))
+				NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(t))
 			}
 		}
 	})

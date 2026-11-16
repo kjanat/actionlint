@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // ReachableEvents excludes events only when the condition is provably false
@@ -14,7 +14,7 @@ func ReachableEvents(events []string, condition string) []string {
 	if condition == "" {
 		return slices.Clone(events)
 	}
-	expression, err, _ := exprsyntax.ParseConditionExpression(condition)
+	expression, err, _ := syntax.ParseConditionExpression(condition)
 	if err != nil || expression == nil {
 		return slices.Clone(events)
 	}

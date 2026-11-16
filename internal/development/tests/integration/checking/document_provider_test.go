@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -30,7 +30,7 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 	if err != nil {
 		os.Exit(2)
 	}
-	var request checkinputs.DocumentRequest
+	var request inputs.DocumentRequest
 	if err := json.Unmarshal(data, &request); err != nil {
 		os.Exit(2)
 	}
@@ -38,9 +38,9 @@ func TestDocumentPluginProcessHelper(t *testing.T) {
 		os.Exit(3)
 	}
 	response := struct {
-		OK          bool                           `json:"ok"`
-		Diagnostics []checkinputs.ScriptDiagnostic `json:"diagnostics"`
-	}{true, []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: "DOC1", Message: "captured document", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 3}, Fixes: []checkinputs.ScriptFix{{Description: "replace token", Replacements: []checkinputs.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 3, Text: "ON"}}}}}}}
+		OK          bool                      `json:"ok"`
+		Diagnostics []inputs.ScriptDiagnostic `json:"diagnostics"`
+	}{true, []inputs.ScriptDiagnostic{{Filename: request.Filename, Code: "DOC1", Message: "captured document", Location: inputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 3}, Fixes: []inputs.ScriptFix{{Description: "replace token", Replacements: []inputs.ScriptReplacement{{Row: 1, Column: 1, EndRow: 1, EndColumn: 3, Text: "ON"}}}}}}}
 	if err := json.NewEncoder(os.Stdout).Encode(response); err != nil {
 		os.Exit(2)
 	}
@@ -70,8 +70,8 @@ func documentPluginSources(t *testing.T, manifest manifests.Manifest) pluginsele
 	}
 	sum := sha256.Sum256(data)
 	location := "https://plugins.example.invalid/document.json#sha256=" + hex.EncodeToString(sum[:])
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Kind: pluginartifact.ProviderManifest, Source: location}, Bytes: data}
-	return pluginselection.Sources{Paths: []string{location}, Artifacts: map[string]*pluginartifact.Artifact{location: artifact}}
+	artifact := &artifacts.Artifact{Info: artifacts.ArtifactProvenance{Kind: artifacts.ProviderManifest, Source: location}, Bytes: data}
+	return pluginselection.Sources{Paths: []string{location}, Artifacts: map[string]*artifacts.Artifact{location: artifact}}
 }
 
 func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
@@ -86,7 +86,7 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(finding results.PublishedDiagnostic) bool { return finding.Rule != "document-fixture" })
-	if len(findings) != 1 || findings[0].Start != (sourcepos.Position{Line: 1, Column: 1}) || findings[0].Message != "captured document" {
+	if len(findings) != 1 || findings[0].Start != (source.Position{Line: 1, Column: 1}) || findings[0].Message != "captured document" {
 		t.Fatal("document provider did not run through analyzer admission", findings)
 	}
 	if len(findings[0].Fixes) != 1 || findings[0].Fixes[0].Edits[0].Start != findings[0].Start || len(findings[0].Fixes[0].Revisions) != 1 {

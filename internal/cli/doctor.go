@@ -10,7 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"

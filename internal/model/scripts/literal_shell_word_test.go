@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -36,7 +36,7 @@ func TestLiteralShellWordQuotes(t *testing.T) {
 			if !ok {
 				t.Fatalf("not a call: %T", file.Stmts[0].Cmd)
 			}
-			got, known := scriptmodel.LiteralShellWord(call.Args[0].Parts)
+			got, known := scripts.LiteralShellWord(call.Args[0].Parts)
 			if got != tc.want || known != tc.known {
 				t.Fatalf("got %q, %v; want %q, %v", got, known, tc.want, tc.known)
 			}

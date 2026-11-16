@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeContextDirectorySeparators(t *testing.T) {
@@ -63,7 +63,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				warned := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+				warned := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata && d.Code == "SC2086"
 				})
 				if warned == tc.known {

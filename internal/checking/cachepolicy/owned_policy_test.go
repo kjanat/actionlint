@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo second}]
 `
-	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
+	decoded, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
@@ -82,7 +82,7 @@ func (m fixedMetadata) LookupForCall(string) (*calls.Metadata, error) {
 func TestReusableMetadataGrantBoundary(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\ncache-mode: read\njobs:\n  caller:\n    uses: ./.github/workflows/child.yml\n"
-	parsed, findings := workflowparser.ParseWorkflow([]byte(source))
+	parsed, findings := parser.ParseWorkflow([]byte(source))
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}

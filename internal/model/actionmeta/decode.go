@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // Decode populates action metadata from an owned YAML node graph.
@@ -88,7 +88,7 @@ func (d manifestDecoder) metadata(root codec.Entered, out *Metadata) error {
 		&out.Runs.Main, &out.Runs.Pre, &out.Runs.Post, &out.Runs.PreIf, &out.Runs.PostIf,
 		&out.Runs.Image, &out.Runs.Entrypoint, &out.Runs.PreEntrypoint, &out.Runs.PostEntrypoint,
 	} {
-		if literal := exprsyntax.LiteralExpressionValue(*value); literal != nil {
+		if literal := syntax.LiteralExpressionValue(*value); literal != nil {
 			*value = *literal
 		}
 	}
@@ -306,7 +306,7 @@ func (d manifestDecoder) steps(root codec.Entered) (actionCompositeSteps, error)
 		return nil, nil
 	}
 	if n.Kind != codec.SequenceNode {
-		return nil, d.session.Wrap(n, fmt.Errorf("yaml: steps must be sequence node but %s node was found at line:%d, col:%d", workflowparser.NodeKindName(n.Kind), n.Line, n.Column))
+		return nil, d.session.Wrap(n, fmt.Errorf("yaml: steps must be sequence node but %s node was found at line:%d, col:%d", parser.NodeKindName(n.Kind), n.Line, n.Column))
 	}
 	steps := make(actionCompositeSteps, 0, len(n.Content))
 	for item := range root.Items() {
@@ -349,7 +349,7 @@ func (d manifestDecoder) step(root codec.Entered) (*Step, error) {
 			case "id":
 				s.ID = yamlActionExprString(vn)
 				if s.ID != nil {
-					if lit := exprsyntax.LiteralExpressionValue(s.ID.Value); lit != nil {
+					if lit := syntax.LiteralExpressionValue(s.ID.Value); lit != nil {
 						s.ID.Value = *lit
 					}
 				}

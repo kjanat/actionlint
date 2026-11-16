@@ -5,11 +5,11 @@ import (
 	"math/big"
 	"testing"
 
-	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
-	evaluation "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	jsonlang "actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/json"
 )
 
 // Newtonsoft.Json parses hexadecimal and octal through Convert.ToInt64(text,
@@ -48,23 +48,23 @@ func TestFromJSONIntegerBoundariesAgainstRunner(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			input := "fromJSON('" + tc.source + "')"
-			value, err := jsonlang.FromJSONValue(tc.source)
-			node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
+			value, err := json.FromJSONValue(tc.source)
+			node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
-			folded, known := evaluation.ConditionConstantValue(node)
-			result := evaluation.Evaluate(node, nil)
-			want := runnerreference.Expectation{Value: tc.want}
+			folded, known := evaluate.ConditionConstantValue(node)
+			result := evaluate.Evaluate(node, nil)
+			want := expressions.Expectation{Value: tc.want}
 			if tc.invalid {
 				if err == nil || known || result.State != exprvalues.EvaluationInvalid {
 					t.Fatalf("accepted overflowing integer: parsed=%v error=%v folded=%v known=%t evaluation=%+v", value, err, folded, known, result)
 				}
-				want = runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "Newtonsoft.Json.JsonReaderException"}
+				want = expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "Newtonsoft.Json.JsonReaderException"}
 			} else if err != nil || value != tc.want || !known || folded != tc.want || result.State != exprvalues.EvaluationKnown || result.Value != tc.want {
 				t.Fatalf("parsed=%v error=%v folded=%v known=%t evaluation=%+v, want %v", value, err, folded, known, result, tc.want)
 			}
-			runnerreference.CheckOutcomeWithJSONMode(t, input, nil, runnerreference.LooseJSON, want)
+			expressions.CheckOutcomeWithJSONMode(t, input, nil, expressions.LooseJSON, want)
 		})
 	}
 }
@@ -90,13 +90,13 @@ func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
 			}
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
-				value, err := jsonlang.FromJSONValue(source)
+				value, err := json.FromJSONValue(source)
 				if err != nil || value != want {
 					t.Fatalf("parsed=%v error=%v, want %v", value, err, want)
 				}
 				input := "fromJSON('" + source + "')"
-				node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
-				result := evaluation.Evaluate(node, nil)
+				node := syntax.ParseAssignedExpression("${{ " + input + " }}")
+				result := evaluate.Evaluate(node, nil)
 				if result.State != exprvalues.EvaluationKnown || result.Value != want {
 					t.Fatalf("evaluation=%+v, want %v", result, want)
 				}
@@ -106,9 +106,9 @@ func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
 					if negative {
 						literal = "-Infinity"
 					}
-					runnerreference.CheckOutcomeWithJSONMode(t, input+" == fromJSON('"+literal+"')", nil, runnerreference.LooseJSON, runnerreference.Expectation{Value: true})
+					expressions.CheckOutcomeWithJSONMode(t, input+" == fromJSON('"+literal+"')", nil, expressions.LooseJSON, expressions.Expectation{Value: true})
 				} else {
-					runnerreference.CheckOutcomeWithJSONMode(t, input, nil, runnerreference.LooseJSON, runnerreference.Expectation{Value: want})
+					expressions.CheckOutcomeWithJSONMode(t, input, nil, expressions.LooseJSON, expressions.Expectation{Value: want})
 				}
 			})
 		}
@@ -117,6 +117,6 @@ func TestFromJSONLargeIntegerFloatBoundariesAgainstRunner(t *testing.T) {
 
 func TestFromJSONNonDecimalIntegerStrictModeAgainstRunner(t *testing.T) {
 	t.Parallel()
-	runnerreference.CheckOutcomeWithJSONMode(t, "fromJSON('0xffffffffffffffff')", nil, runnerreference.StrictJSON,
-		runnerreference.Expectation{Failure: runnerreference.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
+	expressions.CheckOutcomeWithJSONMode(t, "fromJSON('0xffffffffffffffff')", nil, expressions.StrictJSON,
+		expressions.Expectation{Failure: expressions.RuntimeFailure, ExceptionType: "System.Text.Json.JsonException"})
 }

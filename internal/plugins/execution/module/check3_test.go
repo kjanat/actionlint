@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -14,29 +14,29 @@ import (
 // capabilities and returns fixes and reported sources.
 func TestCheck3Negotiation(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, filepath.Join("testdata", "wat", "check-v3.wasm"), corewasm.Options{})
+	engine := loadEngine(t, filepath.Join("testdata", "wat", "check-v3.wasm"), module.Options{})
 	if engine.CheckVersion() != 3 {
 		t.Fatalf("negotiated check %d, want 3", engine.CheckVersion())
 	}
 	d := engine.ScriptDescriptor()
-	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []checkinputs.ToolResourceKind{checkinputs.ToolDirectory}) {
+	if !d.Fixes || !d.ReportedSources || !slices.Equal(d.Resources, []inputs.ToolResourceKind{inputs.ToolDirectory}) {
 		t.Fatalf("descriptor capabilities = %+v", d)
 	}
-	diagnostics, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "a\rbbbb\nccccc\n", Filename: "s.sh", Excluded: []string{"T9"}, Directory: t.TempDir()})
+	diagnostics, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "a\rbbbb\nccccc\n", Filename: "s.sh", Excluded: []string{"T9"}, Directory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The snippet's lone CR is a guest row; host rows are LF rows, and fix
 	// replacements convert with their diagnostic.
-	want := []checkinputs.ScriptDiagnostic{
+	want := []inputs.ScriptDiagnostic{
 		{
 			Filename: "s.sh", Code: "T1", Message: "fix me", Severity: "style",
-			Location: checkinputs.ScriptPosition{Row: 1, Column: 3}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 6},
-			Fixes: []checkinputs.ScriptFix{{Description: "replace", Replacements: []checkinputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 3, EndColumn: 6, Text: "y"}}}},
+			Location: inputs.ScriptPosition{Row: 1, Column: 3}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 6},
+			Fixes: []inputs.ScriptFix{{Description: "replace", Replacements: []inputs.ScriptReplacement{{Row: 1, EndRow: 1, Column: 3, EndColumn: 6, Text: "y"}}}},
 		},
 		{
 			Filename: "lib.sh", Code: "T2", Message: "sourced", Severity: "info", Source: "lib.sh",
-			Location: checkinputs.ScriptPosition{Row: 3, Column: 2}, EndLocation: checkinputs.ScriptPosition{Row: 3, Column: 5},
+			Location: inputs.ScriptPosition{Row: 3, Column: 2}, EndLocation: inputs.ScriptPosition{Row: 3, Column: 5},
 		},
 	}
 	if diff := cmp.Diff(want, diagnostics); diff != "" {
@@ -48,7 +48,7 @@ func TestCheck3Negotiation(t *testing.T) {
 // capabilities do not apply to it.
 func TestCheck1EngineDeclaresNoCheck3Capabilities(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
+	engine := loadEngine(t, enginePath("echo"), module.Options{})
 	if engine.CheckVersion() != 1 {
 		t.Fatalf("negotiated check %d, want 1", engine.CheckVersion())
 	}

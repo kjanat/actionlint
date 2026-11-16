@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
@@ -25,8 +25,8 @@ func TestApplyRejectsTwoAliasesForOneFile(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	plan := edits.Plan{Changes: []edits.Change{
-		{Path: path, Before: before, After: "first", Revision: sourcepos.ContentDigest([]byte(before))},
-		{Path: alias, Before: before, After: "second", Revision: sourcepos.ContentDigest([]byte(before))},
+		{Path: path, Before: before, After: "first", Revision: source.ContentDigest([]byte(before))},
+		{Path: alias, Before: before, After: "second", Revision: source.ContentDigest([]byte(before))},
 	}}
 	written, err := ApplyEdits(t.Context(), plan, files.New(t.Context(), nil, nil))
 	if err == nil || !strings.Contains(err.Error(), "multiple fix plans") || len(written) != 0 {
@@ -49,7 +49,7 @@ func TestPlanAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := results.Diagnostic{Fixes: []results.Fix{{Applicability: results.FixSafe, Revisions: map[string]string{path: sourcepos.ContentDigest([]byte(before))}, Edits: []results.Edit{{Path: path, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
+	d := results.Diagnostic{Fixes: []results.Fix{{Applicability: results.FixSafe, Revisions: map[string]string{path: source.ContentDigest([]byte(before))}, Edits: []results.Edit{{Path: path, Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 2, Column: 1}, Replacement: "z\n"}}}}}
 	reader := files.New(t.Context(), nil, nil)
 	plan, err := edits.Build(t.Context(), []results.Diagnostic{d}, reader, false)
 	if err != nil {
@@ -88,8 +88,8 @@ func TestApplyPreflightsAllFiles(t *testing.T) {
 		}
 	}
 	plan := edits.Plan{Changes: []edits.Change{
-		{Path: a, Before: "before", After: "after", Revision: sourcepos.ContentDigest([]byte("before"))},
-		{Path: b, Before: "stale", After: "after", Revision: sourcepos.ContentDigest([]byte("stale"))},
+		{Path: a, Before: "before", After: "after", Revision: source.ContentDigest([]byte("before"))},
+		{Path: b, Before: "stale", After: "after", Revision: source.ContentDigest([]byte("stale"))},
 	}}
 	if _, err := ApplyEdits(t.Context(), plan, files.New(t.Context(), nil, nil)); err == nil {
 		t.Fatal("accepted stale second file")

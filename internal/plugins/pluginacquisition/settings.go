@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 )
 
@@ -46,8 +46,8 @@ func (s Settings) RegistryCacheDir() (string, error) {
 
 // ArtifactOptions caches artifacts in the user cache directory and pulls
 // oci:// sources.
-func (s Settings) ArtifactOptions() pluginartifact.Options {
-	options := pluginartifact.Options{PullOCI: oci.Pull, Connections: s.Connections}
+func (s Settings) ArtifactOptions() artifacts.Options {
+	options := artifacts.Options{PullOCI: oci.Pull, Connections: s.Connections}
 	if directory, err := s.ArtifactCacheDir(); err == nil {
 		options.CacheDir = directory
 	}

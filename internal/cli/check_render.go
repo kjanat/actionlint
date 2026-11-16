@@ -7,16 +7,16 @@ import (
 	"os"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"github.com/mattn/go-colorable"
 )
 
 type resultRenderer struct {
-	format   render.Format
-	renderer *render.Renderer
+	format   output.Format
+	renderer *output.Renderer
 }
 
-func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, legacy bool, renderers []resultRenderer, result render.RenderedReport) error {
+func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, legacy bool, renderers []resultRenderer, result output.RenderedReport) error {
 	for _, output := range renderers {
 		if err := renderCheckFormat(ctx, out, r, output.format, legacy, output.renderer, result); err != nil {
 			return err
@@ -25,23 +25,23 @@ func renderCheckResult(ctx context.Context, out io.Writer, r renderOptions, lega
 	return nil
 }
 
-func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, format render.Format, legacy bool, renderer *render.Renderer, result render.RenderedReport) error {
+func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, format output.Format, legacy bool, renderer *output.Renderer, result output.RenderedReport) error {
 	jsonColor := r.Color
 	r.resolveGitHubActionsColor(out, format)
 	jsonDestination := out
 	file, terminal := terminalFile(out)
-	links := format == render.FormatPretty && r.Hyperlinks.enabled(terminal, os.Getenv)
+	links := format == output.FormatPretty && r.Hyperlinks.enabled(terminal, os.Getenv)
 	renderer.SetHyperlinks(links)
 	if terminal && links {
 		restore := enableTerminalVT(file)
 		defer restore()
 	}
-	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (format == render.FormatJSON || format == render.FormatSARIF)
+	prettyJSON := (terminal || r.PrettyJSONExplicit) && r.PrettyJSON && r.Template == "" && (format == output.FormatJSON || format == output.FormatSARIF)
 	colored := renderColor(r.Color, terminal, os.Getenv)
 	renderer.SetColor(colored)
 	translate := colored
 	if legacy {
-		translate = r.Color != render.ColorNever
+		translate = r.Color != output.ColorNever
 	}
 	if file, ok := out.(*os.File); ok && translate && !links {
 		out = colorable.NewColorable(file)
@@ -68,7 +68,7 @@ func renderCheckFormat(ctx context.Context, out io.Writer, r renderOptions, form
 func newResultRenderers(options renderOptions) ([]resultRenderer, error) {
 	formats := options.Formats
 	if len(formats) == 0 {
-		formats = []render.Format{""}
+		formats = []output.Format{""}
 	}
 	renderers := make([]resultRenderer, 0, len(formats))
 	for _, format := range formats {
@@ -81,8 +81,8 @@ func newResultRenderers(options renderOptions) ([]resultRenderer, error) {
 	return renderers, nil
 }
 
-func newResultRenderer(options renderOptions, format render.Format) (*render.Renderer, error) {
-	renderer, err := render.New(format, options.Template, options.Oneline, buildinfo.Version, nil)
+func newResultRenderer(options renderOptions, format output.Format) (*output.Renderer, error) {
+	renderer, err := output.New(format, options.Template, options.Oneline, buildinfo.Version, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -94,13 +94,13 @@ func newResultRenderer(options renderOptions, format render.Format) (*render.Ren
 	return renderer, nil
 }
 
-func renderColor(mode render.Color, terminal bool, getenv func(string) string) bool {
+func renderColor(mode output.Color, terminal bool, getenv func(string) string) bool {
 	switch mode {
-	case render.ColorAlways:
+	case output.ColorAlways:
 		return true
-	case render.ColorNever:
+	case output.ColorNever:
 		return false
-	case render.ColorAuto:
+	case output.ColorAuto:
 	}
 	return terminal && getenv("NO_COLOR") == "" && getenv("TERM") != "dumb"
 }

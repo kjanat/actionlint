@@ -15,8 +15,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"golang.org/x/sys/execabs"
 )
@@ -147,7 +147,7 @@ func testFindAllWorkflowsInDir(subdir string) (string, []string, error) {
 	return dir, fs, nil
 }
 
-func checkErrors(t *testing.T, outfile string, errs []diagmodel.Diagnostic) {
+func checkErrors(t *testing.T, outfile string, errs []results.Diagnostic) {
 	t.Helper()
 	t.Logf("Checking %d errors with %q", len(errs), outfile)
 	for i, err := range errs {
@@ -169,8 +169,8 @@ func checkErrors(t *testing.T, outfile string, errs []diagmodel.Diagnostic) {
 		}
 	}
 
-	slices.SortFunc(errs, func(a, b diagmodel.Diagnostic) int {
-		return findingmodel.Compare(findingmodel.FromDiagnostic(a), findingmodel.FromDiagnostic(b))
+	slices.SortFunc(errs, func(a, b results.Diagnostic) int {
+		return finding.Compare(finding.FromDiagnostic(a), finding.FromDiagnostic(b))
 	})
 
 	if len(errs) != len(expected) {
@@ -339,6 +339,6 @@ func TestProjectWorkflowFixtures(t *testing.T) {
 	}
 }
 
-func formatDiagnostic(d diagmodel.Diagnostic) string {
+func formatDiagnostic(d results.Diagnostic) string {
 	return fmt.Sprintf("%s:%d:%d: %s [%s]", d.Path, d.Start.Line, d.Start.Column, d.Message, d.Rule)
 }

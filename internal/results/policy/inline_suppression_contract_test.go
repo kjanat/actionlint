@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
+	"actionlint.kjanat.dev/v2/internal/results/policy"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -102,7 +102,7 @@ func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 
 func TestInlineSuppressionRegistry(t *testing.T) {
 	t.Parallel()
-	for _, name := range (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).SuppressionRules() {
+	for _, name := range (policy.Processor{RuleSet: checking.ConfigurationRules()}).SuppressionRules() {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
@@ -160,7 +160,7 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		{Rule: "forbidden-suppression", Start: sourcepos.Position{Line: 11}},
 	}
 	got := fixtureInline(t, []byte("workflow"), findings, policy, "plugin-rule")
-	want := &diagmodel.SuppressionOrigin{First: 4, Last: 4}
+	want := &results.SuppressionOrigin{First: 4, Last: 4}
 	if len(got) != len(findings) || got[0].Source.Suppression == nil || *got[0].Source.Suppression != *want {
 		t.Fatalf("allowed rule target missing: %+v", got)
 	}
@@ -173,10 +173,10 @@ func TestSuppressionTargetTracksAllowedRulesAndOrigins(t *testing.T) {
 		}
 	}
 
-	foreign := &findingmodel.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcepos.Position{Line: 2}, Source: diagmodel.DiagnosticSource{Content: []byte("echo hi")}}
-	origin := &findingmodel.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcepos.Position{Line: 2}, Source: diagmodel.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &diagmodel.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
+	foreign := &findingmodel.Finding{Rule: "shellcheck", Path: "action.yml", Message: "direct", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}}
+	origin := &findingmodel.Finding{Rule: "shellcheck", Path: "script.sh", Message: "sourced", Start: sourcepos.Position{Line: 2}, Source: results.DiagnosticSource{Content: []byte("echo hi")}, SuppressionOrigin: &results.SuppressionOrigin{Path: "action.yml", First: 12, Last: 14}}
 	got = fixtureForeign(t, "action.yml", []byte("run: echo hi"), []*findingmodel.Finding{foreign, origin}, nil)
-	if len(got) != 2 || got[0].Source.Suppression == nil || *got[0].Source.Suppression != (diagmodel.SuppressionOrigin{Path: "action.yml", First: 2, Last: 2}) || got[1].Source.Suppression == nil || *got[1].Source.Suppression != *origin.SuppressionOrigin {
+	if len(got) != 2 || got[0].Source.Suppression == nil || *got[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", First: 2, Last: 2}) || got[1].Source.Suppression == nil || *got[1].Source.Suppression != *origin.SuppressionOrigin {
 		t.Fatalf("foreign targets lost declaration scope: %+v", got)
 	}
 }

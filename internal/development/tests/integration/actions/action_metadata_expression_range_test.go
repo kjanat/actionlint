@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
@@ -56,7 +56,7 @@ func TestMetadataExpressionRangesAndOccurrences(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var decoded []diagmodel.Diagnostic
+			var decoded []results.Diagnostic
 			if err := json.Unmarshal(encoded, &decoded); err != nil || len(decoded) != 2 || decoded[1].End != result.Diagnostics[1].End {
 				t.Fatalf("JSON lost ranges: %s, %v", encoded, err)
 			}

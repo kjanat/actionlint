@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"slices"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 )
 
 // WithScriptInputs routes run steps through the registration and action inputs
 // through the supplied engine.
-func WithScriptInputs(registration contract.Registration, descriptor checkinputs.ScriptEngineDescriptor, backend checkinputs.ScriptBackend) (contract.Registration, error) {
+func WithScriptInputs(registration contract.Registration, descriptor inputs.ScriptEngineDescriptor, backend inputs.ScriptBackend) (contract.Registration, error) {
 	// This registration already binds the selected backend and its complete catalogue.
 	registration.ConfiguredBackend = nil
 	descriptor.Rule = registration.Descriptor
@@ -49,7 +49,7 @@ func WithScriptInputs(registration contract.Registration, descriptor checkinputs
 
 type inputRouting struct{ native, input contract.Runner }
 
-func (r inputRouting) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r inputRouting) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	native, nativeErr := r.native.Analyze(ctx, batch)
 	input, inputErr := r.input.Analyze(ctx, batch)
 	return slices.Concat(native, input), errors.Join(nativeErr, inputErr)
@@ -57,7 +57,7 @@ func (r inputRouting) Analyze(ctx context.Context, batch scriptexecution.Batch) 
 
 type routingEmpty struct{}
 
-func (routingEmpty) Analyze(context.Context, scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (routingEmpty) Analyze(context.Context, scripts.Batch) ([]contract.ToolFinding, error) {
 	return nil, nil
 }
 
@@ -66,8 +66,8 @@ type selectedRuns struct {
 	shells map[string]struct{}
 }
 
-func (r selectedRuns) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
-	selected, indices := selectScripts(batch, func(script scriptexecution.Unit) bool {
+func (r selectedRuns) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
+	selected, indices := selectScripts(batch, func(script scripts.Unit) bool {
 		if script.Input != nil {
 			return false
 		}
@@ -78,8 +78,8 @@ func (r selectedRuns) Analyze(ctx context.Context, batch scriptexecution.Batch) 
 	return restoreIndices(findings, indices), err
 }
 
-func selectScripts(batch scriptexecution.Batch, accept func(scriptexecution.Unit) bool) (scriptexecution.Batch, []int) {
-	selected := scriptexecution.Batch{Scopes: batch.Scopes, CallGraph: batch.CallGraph}
+func selectScripts(batch scripts.Batch, accept func(scripts.Unit) bool) (scripts.Batch, []int) {
+	selected := scripts.Batch{Scopes: batch.Scopes, CallGraph: batch.CallGraph}
 	var indices []int
 	for i, script := range batch.Scripts {
 		if accept(script) {
@@ -107,7 +107,7 @@ func Configure(registration contract.Registration) contract.Registration {
 	}
 	registration.ConfiguredBackend = nil
 	if replace := registration.WithAnalyzer; replace != nil {
-		registration.WithAnalyzer = func(guest checkinputs.Checker) (contract.Registration, error) {
+		registration.WithAnalyzer = func(guest inputs.Checker) (contract.Registration, error) {
 			replacement, err := replace(guest)
 			if err != nil {
 				return contract.Registration{}, err
@@ -120,14 +120,14 @@ func Configure(registration contract.Registration) contract.Registration {
 
 // WithConfiguredEngine discovers routes through the same invocation-owned loader
 // used by the native adapter, including each composite's effective configuration.
-func WithConfiguredEngine(registration contract.Registration, load func(contract.Context) (checkinputs.ScriptBackend, error)) contract.Registration {
+func WithConfiguredEngine(registration contract.Registration, load func(contract.Context) (inputs.ScriptBackend, error)) contract.Registration {
 	original := registration
-	registration.InputSelectors = func(c contract.Context) ([]checkinputs.ScriptInput, error) {
+	registration.InputSelectors = func(c contract.Context) ([]inputs.ScriptInput, error) {
 		engine, err := load(c)
 		if err != nil {
 			return nil, err
 		}
-		if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
+		if described, ok := engine.(inputs.DescribedScriptBackend); ok {
 			descriptor := described.ScriptDescriptor()
 			if descriptor.Engine != registration.Name {
 				return nil, fmt.Errorf("configured script engine %q does not match tool %q", descriptor.Engine, registration.Name)
@@ -150,10 +150,10 @@ type configuredRouting struct {
 	native       contract.Runner
 	registration contract.Registration
 	context      contract.Context
-	load         func(contract.Context) (checkinputs.ScriptBackend, error)
+	load         func(contract.Context) (inputs.ScriptBackend, error)
 }
 
-func (r configuredRouting) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r configuredRouting) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	var out []contract.ToolFinding
 	var failures error
 	groups := map[*configuration.Config]bool{}
@@ -181,7 +181,7 @@ func (r configuredRouting) Analyze(ctx context.Context, batch scriptexecution.Ba
 			failures = errors.Join(failures, err)
 			continue
 		}
-		described, ok := engine.(checkinputs.DescribedScriptBackend)
+		described, ok := engine.(inputs.DescribedScriptBackend)
 		if !ok {
 			nativeScripts[cfg] = nil
 			continue
@@ -217,13 +217,13 @@ func (r configuredRouting) Analyze(ctx context.Context, batch scriptexecution.Ba
 			failures = errors.Join(failures, err)
 			continue
 		}
-		selected, indices := selectScripts(batch, func(script scriptexecution.Unit) bool { return script.Config() == cfg })
+		selected, indices := selectScripts(batch, func(script scripts.Unit) bool { return script.Config() == cfg })
 		findings, err := input.Analyze(ctx, selected)
 		out = append(out, restoreIndices(findings, indices)...)
 		failures = errors.Join(failures, err)
 	}
 	// Native adapters validate scope-level configuration even without run snippets.
-	selected, indices := selectScripts(batch, func(script scriptexecution.Unit) bool {
+	selected, indices := selectScripts(batch, func(script scripts.Unit) bool {
 		if script.Input != nil {
 			return false
 		}

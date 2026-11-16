@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
@@ -38,13 +38,13 @@ func TestCloseExpressionNames(t *testing.T) {
 	} {
 		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
-			_, errors := checker.Check(expreval.EvaluateSubexpressions(node))
+			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+			checker.SetAvailability(contexts.WorkflowExpressionScope(tc.key))
+			_, errors := checker.Check(evaluate.EvaluateSubexpressions(node))
 			if len(errors) != 1 {
 				t.Fatalf("expected one undefined-name finding, got %v", errors)
 			}
@@ -63,7 +63,7 @@ func TestCloseExpressionNames(t *testing.T) {
 func TestAmbiguousExpressionNames(t *testing.T) {
 	t.Parallel()
 	for _, function := range []bool{false, true} {
-		checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+		checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 		input := "githab.ref"
 		if function {
 			checker.funcs = maps.Clone(checker.funcs)
@@ -73,11 +73,11 @@ func TestAmbiguousExpressionNames(t *testing.T) {
 			checker.vars["githob"] = exprtypes.NewEmptyStrictObjectType().Type()
 			checker.SetContextAvailability([]string{"github", "githob"})
 		}
-		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
+		node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, errors := checker.Check(expreval.EvaluateSubexpressions(node))
+		_, errors := checker.Check(evaluate.EvaluateSubexpressions(node))
 		if len(errors) != 1 || strings.Contains(errors[0].Message, "did you mean") {
 			t.Fatalf("ambiguous name must not choose a winner: %v", errors)
 		}

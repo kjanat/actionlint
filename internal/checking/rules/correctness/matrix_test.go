@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestMatrixCheckUsesIndependentJobCallbacks(t *testing.T) {
@@ -28,7 +28,7 @@ jobs:
       matrix: {item: [1], exclude: [{item: '1'}]}
     steps: [{run: echo ok}]
 `
-	parsed, errors := workflowparser.ParseWorkflow([]byte(source))
+	parsed, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

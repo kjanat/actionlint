@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
@@ -88,7 +88,7 @@ func (r *checksVisitor) collect(input []reporting.StepFinding, job string) {
 			finding.Rule = descriptor.Name
 		}
 		if d.Step.Present() {
-			finding.Owner = &findingmodel.Owner{Job: job, Step: sourcepos.NilUnlessPresent(d.Step.Position())}
+			finding.Owner = &findingmodel.Owner{Job: job, Step: source.NilUnlessPresent(d.Step.Position())}
 			origin := d.Step.Origin(job)
 			finding.IgnoreOrigin = &findingmodel.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
 			if origin.HasPosition {

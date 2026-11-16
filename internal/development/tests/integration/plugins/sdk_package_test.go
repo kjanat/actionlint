@@ -13,10 +13,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -135,23 +135,23 @@ export default defineDocumentProvider({
 	content := "on: push\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/action@v1\n"
 	path := filepath.Join(runtimeDirectory, "workflow.yml")
 	sum := sha256.Sum256([]byte(content))
-	revision, err := sourcepos.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := source.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependency := workflowfacts.Dependency{Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 6, Column: 30}}
-	input := checkinputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: sourcepos.YAML, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}, Dependencies: []workflowfacts.Dependency{dependency}}
+	dependency := facts.Dependency{Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "dependency", Address: "/jobs/lint/steps/0/uses"}, Uses: "owner/action@v1", Kind: "action", Start: source.Position{Line: 6, Column: 15}, End: source.Position{Line: 6, Column: 30}}
+	input := inputs.AnalyzerInput{Path: path, Directory: runtimeDirectory, Content: content, Kind: "workflow", Options: json.RawMessage(`{"mode":"standalone"}`), Revision: revision, Coordinates: source.YAML, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}, Dependencies: []facts.Dependency{dependency}}
 	findings, err := checker.CheckDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal("standalone callback execution", findings, err)
 	}
 	var observed struct {
-		Source       string                           `json:"source"`
-		Kind         string                           `json:"kind"`
-		Config       json.RawMessage                  `json:"config"`
-		Dependencies []checkinputs.DocumentDependency `json:"dependencies"`
-		Path         string                           `json:"path"`
-		ChildVersion string                           `json:"childVersion"`
+		Source       string                      `json:"source"`
+		Kind         string                      `json:"kind"`
+		Config       json.RawMessage             `json:"config"`
+		Dependencies []inputs.DocumentDependency `json:"dependencies"`
+		Path         string                      `json:"path"`
+		ChildVersion string                      `json:"childVersion"`
 	}
 	if err := json.Unmarshal([]byte(findings[0].Message), &observed); err != nil {
 		t.Fatal(err)

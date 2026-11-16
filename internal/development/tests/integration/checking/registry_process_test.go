@@ -17,7 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -62,7 +62,7 @@ func TestRegistryProcessProviderInstallAndConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.WriteText(t, configPath, "plugins: []\n")
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, configPath)
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, configPath)
 	if err != nil {
 		t.Fatal(err)
 	}

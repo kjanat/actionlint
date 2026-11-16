@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 )
 
 type suppliedScope struct {
@@ -22,14 +22,14 @@ type suppliedScope struct {
 	overloads    map[string][]*exprfunctions.FuncSignature
 }
 
-func (scope suppliedScope) NarrowContext(exprsyntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+func (scope suppliedScope) NarrowContext(syntax.Node, bool, func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	return nil, true
 }
 
 type branchScope struct{ suppliedScope }
 
-func (scope branchScope) NarrowContext(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
-	if exprsyntax.DisplayReference(guard) != "flag" {
+func (scope branchScope) NarrowContext(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+	if syntax.DisplayReference(guard) != "flag" {
 		return nil, true
 	}
 	if _, found := lookup("subject"); !found {
@@ -51,11 +51,11 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 	}}
 	checker := NewChecker(scope, nil)
 	for _, input := range []string{"flag && subject.number > 0", "flag || subject.text != ''", "flag && (subject.number > 0 || subject.number == 0)"} {
-		node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
+		node := syntax.ParseAssignedExpression("${{ " + input + " }}")
 		if node == nil {
 			t.Fatal("expression did not parse")
 		}
-		if result := checker.CheckResult(expreval.EvaluateSubexpressions(node)); !result.Valid || result.Type.Kind() != exprtypes.KindBool {
+		if result := checker.CheckResult(evaluate.EvaluateSubexpressions(node)); !result.Valid || result.Type.Kind() != exprtypes.KindBool {
 			t.Fatalf("%s: model refinement was not applied: %+v", input, result)
 		}
 		current, found := checker.ContextType("subject")
@@ -63,7 +63,7 @@ func TestBranchRefinementUsesSuppliedModel(t *testing.T) {
 			t.Fatalf("branch refinement escaped its branch: %s", current)
 		}
 	}
-	if result := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ subject.number }}"))); result.Valid {
+	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ subject.number }}"))); result.Valid {
 		t.Fatal("branch-only property became globally available")
 	}
 }
@@ -101,21 +101,21 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 	scope.overloads["shape"][0].Params = []exprtypes.Type{exprtypes.StringType()}
 	scope.overloads["echo"][0].Params[0] = exprtypes.BoolType()
 	for _, input := range []string{"counter", "shape()", "echo('value')"} {
-		node := exprsyntax.ParseAssignedExpression("${{ " + input + " }}")
-		result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+		node := syntax.ParseAssignedExpression("${{ " + input + " }}")
+		result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 		if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 			t.Fatalf("%s: %+v, want caller-supplied numeric type", input, result)
 		}
 	}
-	typo := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ shap() }}")))
+	typo := checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ shap() }}")))
 	if len(typo.Findings) != 1 || !strings.Contains(typo.Findings[0].Message, `did you mean "shape"?`) {
 		t.Fatalf("scope function missing from name suggestions: %+v", typo)
 	}
-	result := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ always() }}")))
+	result := checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ always() }}")))
 	if result.Valid || len(result.Findings) != 1 || !strings.Contains(result.Findings[0].Message, "caller-selected location") || strings.Contains(result.Findings[0].Message, "changed location") {
 		t.Fatalf("function restriction changed with the caller's map: %+v", result)
 	}
-	result = checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ github }}")))
+	result = checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ github }}")))
 	if result.Valid {
 		t.Fatal("checker invented a GitHub context absent from its supplied scope")
 	}
@@ -123,18 +123,18 @@ func TestCallerScopeIsIndependentOfWorkflowMetadata(t *testing.T) {
 
 func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 	t.Parallel()
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	checker.SetContextType("matrix", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"target": exprtypes.NumberType()}).Type())
-	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.if"))
-	call := exprsyntax.ParseAssignedExpression("${{ success('build') }}")
-	if result := checker.CheckResult(expreval.EvaluateSubexpressions(call)); !result.Valid {
+	checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.if"))
+	call := syntax.ParseAssignedExpression("${{ success('build') }}")
+	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(call)); !result.Valid {
 		t.Fatalf("job overload rejected job argument: %+v", result)
 	}
-	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
-	if result := checker.CheckResult(expreval.EvaluateSubexpressions(call)); result.Valid {
+	checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(call)); result.Valid {
 		t.Fatal("job-only overload leaked into step availability")
 	}
-	result := checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ matrix.target }}")))
+	result := checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ matrix.target }}")))
 	if !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("availability replacement changed inferred matrix type: %+v", result)
 	}
@@ -142,7 +142,7 @@ func TestAvailabilityChangesPreserveInferredContextTypes(t *testing.T) {
 
 func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
 	t.Parallel()
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	checker.SetContextType("CuStOm", exprtypes.NumberType())
 	if value, found := checker.ContextType("CUSTOM"); !found || value.Kind() != exprtypes.KindNumber {
 		t.Fatalf("context binding=(%s,%t), want numeric type", value, found)
@@ -150,13 +150,13 @@ func TestContextTypeUpdatesDoNotGrantAvailability(t *testing.T) {
 	if _, found := checker.ContextType("missing"); found {
 		t.Fatal("missing context was reported as declared")
 	}
-	expression := exprsyntax.ParseAssignedExpression("${{ custom }}")
-	result := checker.CheckResult(expreval.EvaluateSubexpressions(expression))
+	expression := syntax.ParseAssignedExpression("${{ custom }}")
+	result := checker.CheckResult(evaluate.EvaluateSubexpressions(expression))
 	if result.Valid || len(result.Findings) != 1 || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("binding granted availability or lost its declared type: %+v", result)
 	}
 	checker.SetContextAvailability([]string{"custom"})
-	if result := checker.CheckResult(expreval.EvaluateSubexpressions(expression)); !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
+	if result := checker.CheckResult(evaluate.EvaluateSubexpressions(expression)); !result.Valid || result.Type.Kind() != exprtypes.KindNumber {
 		t.Fatalf("explicitly enabled context was rejected: %+v", result)
 	}
 }
@@ -174,17 +174,17 @@ func TestWorkflowFunctionScopesAgainstRunner(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			checker := NewChecker(contextspec.WorkflowExpressionScope(tc.key), nil)
-			expression := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			checker := NewChecker(contexts.WorkflowExpressionScope(tc.key), nil)
+			expression := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expression == nil {
 				t.Fatal("expression did not parse")
 			}
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(expression))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(expression))
 			if result.Valid != tc.valid {
 				t.Fatalf("valid=%t findings=%v, want %t", result.Valid, result.Findings, tc.valid)
 			}
 			workflow := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n%s\n", tc.condition)
-			runnerreference.CheckWorkflow(t, workflow, tc.valid)
+			expressions.CheckWorkflow(t, workflow, tc.valid)
 		})
 	}
 }

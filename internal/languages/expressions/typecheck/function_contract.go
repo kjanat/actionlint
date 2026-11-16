@@ -5,15 +5,15 @@ import (
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-func (sema *Checker) logicalRightDemand(node *exprsyntax.LogicalOpNode) exprfunctions.ArgumentDemand {
+func (sema *Checker) logicalRightDemand(node *syntax.LogicalOpNode) exprfunctions.ArgumentDemand {
 	value, found := sema.constants.Result(node.Left)
 	if !found || value.State != exprvalues.EvaluationKnown {
 		return exprfunctions.DemandConditional
 	}
-	if exprvalues.ExpressionTruthy(value.Value) == (node.Kind == exprsyntax.LogicalOpNodeKindOr) {
+	if exprvalues.ExpressionTruthy(value.Value) == (node.Kind == syntax.LogicalOpNodeKindOr) {
 		return exprfunctions.DemandSkipped
 	}
 	return exprfunctions.DemandRequired

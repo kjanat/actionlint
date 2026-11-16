@@ -3,14 +3,14 @@ package correctness
 import (
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func TestEnvironmentNameDiagnostics(t *testing.T) {
 	t.Parallel()
-	position := func(line int) sourcepos.Position { return sourcepos.Position{Line: line, Column: 7} }
+	position := func(line int) source.Position { return source.Position{Line: line, Column: 7} }
 	origin := func(line int) value.Origin { return value.Origin{Span: value.Span{Start: position(line)}} }
 	findings := environmentNameDiagnostics([]mapping.Declaration{
 		{Name: "GOOD_NAME", State: mapping.KnownKey, Origin: origin(1)},

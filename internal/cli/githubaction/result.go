@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"os"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func (a *action) persistResult(code int, failure error) error {
@@ -20,16 +20,16 @@ func (a *action) persistResult(code int, failure error) error {
 	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
 
-func (a *action) checkResult(code int, failure error) resultreport.CheckResult {
+func (a *action) checkResult(code int, failure error) report.CheckResult {
 	if a.result != nil && failure == nil {
 		code = a.result.code
 	}
-	completion := commandstatus.NewCheckResult(code)
+	completion := exitcode.NewCheckResult(code)
 	r := completion
 	if a.result != nil {
 		r = a.result.report
 		r.Status, r.Completed, r.ExitCode = completion.Status, completion.Completed, completion.ExitCode
-		if a.result.code >= commandstatus.ExitInvalidCommandOption {
+		if a.result.code >= exitcode.ExitInvalidCommandOption {
 			r.Error = a.result.stderr
 		}
 	}

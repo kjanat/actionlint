@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 )
@@ -21,7 +21,7 @@ func TestSelectorFailurePreservesRegisteredFacts(t *testing.T) {
 			f := newInvocationFixture(t, t.Context(), "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo first}, {uses: actions/github-script@v7, with: {script: console.log(1)}}, {run: echo later}]}}\n", nil, nil)
 			f.options.CollectScripts = collect
 			failure := errors.New("selector configuration failed")
-			f.options.ScriptInputsForScope = func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+			f.options.ScriptInputsForScope = func(*rulebinding.Scope) ([]inputs.ScriptInput, error) {
 				return nil, failure
 			}
 			result, err := Workflow(f.options, f.root)
@@ -100,7 +100,7 @@ func TestNestedBudgetStopRetainsConcurrentCancellation(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: cancellation\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: cancellation\nruns: {using: composite, steps: [{shell: bash, run: echo initial}, {uses: actions/github-script@v7, with: {script: console.log(1)}}]}\n",
 	}, &budget)
-	f.options.ScriptInputsForScope = func(*rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+	f.options.ScriptInputsForScope = func(*rulebinding.Scope) ([]inputs.ScriptInput, error) {
 		cancel()
 		return nil, nil
 	}

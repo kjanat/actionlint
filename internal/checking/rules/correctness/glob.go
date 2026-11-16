@@ -6,11 +6,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/glob"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflownames "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 	workflowvalues "actionlint.kjanat.dev/v2/internal/model/workflows/values"
 )
@@ -58,13 +58,13 @@ func (rule *globCheck) checkWorkflowNameGlobs(names []*definition.String) {
 			continue
 		}
 		value, evaluated := name.Value, false
-		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
+		if literal := syntax.LiteralExpressionValue(value); literal != nil {
 			value, evaluated = *literal, true
 		} else if name.ContainsExpression() {
 			allValid = false
 			continue
 		}
-		if workflownames.ValidPattern(value) {
+		if namemodel.ValidPattern(value) {
 			positive = positive || !strings.HasPrefix(value, "!")
 			continue
 		}
@@ -109,7 +109,7 @@ func GlobJob(n workflows.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *globCheck) checkKnownRefGlob(value any, pos *sourcepos.Position) {
+func (rule *globCheck) checkKnownRefGlob(value any, pos *source.Position) {
 	pattern, known := definition.WorkflowScalarString(value)
 	if !known || pattern == "" {
 		return
@@ -150,7 +150,7 @@ func (rule *globCheck) checkFilePathGlobs(filter *definition.WebhookEventFilter)
 	}
 }
 
-func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *sourcepos.Position, quoted bool) {
+func (rule *globCheck) globErrors(errs []glob.InvalidGlobPatternError, pos *source.Position, quoted bool) {
 	for i := range errs {
 		err := &errs[i]
 		p := *pos

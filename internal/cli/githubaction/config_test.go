@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"github.com/kjanat/go-yaml/v4"
@@ -73,7 +73,7 @@ func TestQuotedIgnoreHintPreservesDiagnostics(t *testing.T) {
 		{`'different message'`, false},
 		{`'('`, false},
 	} {
-		errs := []results1.PublishedDiagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
+		errs := []results.PublishedDiagnostic{{Message: `label "ubuntu-24.04-custom" is unknown.`}}
 		hints := quotedIgnoreHints([]string{tc.pattern}, errs)
 		if (len(hints) == 1) != tc.want {
 			t.Errorf("%q: hints=%v", tc.pattern, hints)

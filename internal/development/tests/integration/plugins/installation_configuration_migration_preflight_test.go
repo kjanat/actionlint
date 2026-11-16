@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -33,7 +33,7 @@ func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
-	err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, first, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
+	err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, first, input, installation.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
@@ -60,7 +60,7 @@ func TestAutomaticMigrationAllowsMultipleRepositoriesWithoutPlugins(t *testing.T
 		filepath.Join(first, ".github", "workflows", "first.yml"),
 		filepath.Join(second, ".github", "workflows", "second.yml"),
 	}}
-	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, first, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, first, input, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
 	selected, err := (pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}).Select(t.Context(), first, input)
@@ -94,7 +94,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	current := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, current, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, current, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestAutomaticMigrationPreflightsCurrentPluginRepository(t *testing.T) {
 		filepath.Join(current, ".github", "workflows", "current.yml"),
 		filepath.Join(legacy, ".github", "workflows", "legacy.yml"),
 	}}
-	err = configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, current, input, plugininstall.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
+	err = configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, current, input, installation.DefaultPluginOptions{RuleSet: checking.ConfigurationRules()})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want multi-repository plugin error", err)
 	}
@@ -137,7 +137,7 @@ func TestAutomaticMigrationRejectsPluginDefaultsWithUnmanagedInput(t *testing.T)
 		filepath.Join(root, ".github", "workflows", "repo.yml"),
 		workflow,
 	}}
-	err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, root, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
+	err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, root, input, installation.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()})
 	if err == nil || !strings.Contains(err.Error(), "inputs span repositories with plugin configuration") {
 		t.Fatalf("migration error = %v, want unmanaged-input plugin error", err)
 	}
@@ -162,7 +162,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 		filepath.Join(root, ".github", "workflows", "root.yml"),
 		filepath.Join(alias, ".github", "workflows", "alias.yml"),
 	}}
-	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, root, input, plugininstall.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
+	if err := configmigration.MigrateSelection(t.Context(), pluginselection.Selection{Acquisition: acquisition, RuleSet: checking.ConfigurationRules()}, root, input, installation.DefaultPluginOptions{Tools: []string{"shellcheck", "ruff"}, RuleSet: checking.ConfigurationRules()}); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "actionlint.yaml")

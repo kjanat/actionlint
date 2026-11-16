@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"github.com/kjanat/wazero/api"
 )
 
@@ -13,20 +13,20 @@ func TestCheckValidatesDiagnosticRanges(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name       string
-		start, end checkinputs.ScriptPosition
+		start, end inputs.ScriptPosition
 		valid      bool
 	}{
-		{"missing start", checkinputs.ScriptPosition{}, checkinputs.ScriptPosition{}, false},
-		{"zero start column", checkinputs.ScriptPosition{Row: 1}, checkinputs.ScriptPosition{}, false},
-		{"negative start", checkinputs.ScriptPosition{Row: -1, Column: 1}, checkinputs.ScriptPosition{}, false},
-		{"omitted end", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{}, true},
-		{"partial end row", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: 2}, false},
-		{"partial end column", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Column: 3}, false},
-		{"negative end", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: -1, Column: 1}, false},
-		{"earlier row", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: 1, Column: 9}, false},
-		{"earlier column", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: 2, Column: 2}, false},
-		{"equal", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: 2, Column: 3}, true},
-		{"later row", checkinputs.ScriptPosition{Row: 2, Column: 3}, checkinputs.ScriptPosition{Row: 3, Column: 1}, true},
+		{"missing start", inputs.ScriptPosition{}, inputs.ScriptPosition{}, false},
+		{"zero start column", inputs.ScriptPosition{Row: 1}, inputs.ScriptPosition{}, false},
+		{"negative start", inputs.ScriptPosition{Row: -1, Column: 1}, inputs.ScriptPosition{}, false},
+		{"omitted end", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{}, true},
+		{"partial end row", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Row: 2}, false},
+		{"partial end column", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Column: 3}, false},
+		{"negative end", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Row: -1, Column: 1}, false},
+		{"earlier row", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Row: 1, Column: 9}, false},
+		{"earlier column", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Row: 2, Column: 2}, false},
+		{"equal", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Row: 2, Column: 3}, true},
+		{"later row", inputs.ScriptPosition{Row: 2, Column: 3}, inputs.ScriptPosition{Row: 3, Column: 1}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -35,9 +35,9 @@ func TestCheckValidatesDiagnosticRanges(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			good := checkinputs.ScriptDiagnostic{Code: "GOOD", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}}
-			candidate := checkinputs.ScriptDiagnostic{Code: "CANDIDATE", Location: test.start, EndLocation: test.end}
-			payload, err := json.Marshal(response{OK: true, Diagnostics: []checkinputs.ScriptDiagnostic{good, candidate, good}})
+			good := inputs.ScriptDiagnostic{Code: "GOOD", Location: inputs.ScriptPosition{Row: 1, Column: 1}}
+			candidate := inputs.ScriptDiagnostic{Code: "CANDIDATE", Location: test.start, EndLocation: test.end}
+			payload, err := json.Marshal(response{OK: true, Diagnostics: []inputs.ScriptDiagnostic{good, candidate, good}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -51,7 +51,7 @@ func TestCheckValidatesDiagnosticRanges(t *testing.T) {
 			}
 			read := false
 			engine.idle = []api.Module{responseModule{Module: module, pointer: pointer, length: uint32(len(payload)), read: &read}}
-			findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "fixture"})
+			findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "fixture"})
 			if test.valid {
 				if err != nil || len(findings) != 3 || !reflect.DeepEqual(findings[1], candidate) {
 					t.Fatalf("valid range: findings=%+v err=%v", findings, err)

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
 func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
@@ -26,7 +26,7 @@ func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
 	if err := os.WriteFile(path, encoded.Bytes(), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	engine, err := LoadModuleEngine(t.Context(), path, Options{Artifact: pluginartifact.Options{MaxBytes: 4096}})
+	engine, err := LoadModuleEngine(t.Context(), path, Options{Artifact: artifacts.Options{MaxBytes: 4096}})
 	if engine != nil {
 		_ = engine.Close(t.Context())
 	}
@@ -37,7 +37,7 @@ func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
 
 func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 	t.Parallel()
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Source: "in-memory"}}
+	artifact := &artifacts.Artifact{Info: artifacts.ArtifactProvenance{Source: "in-memory"}}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("in-memory artifact bypassed memory option validation: %v", err)
 	}
@@ -45,13 +45,13 @@ func TestLoadArtifactRejectsInvalidMemoryLimit(t *testing.T) {
 
 func TestLoadArtifactRejectsUnsupportedMetadataBeforeCompilation(t *testing.T) {
 	t.Parallel()
-	name := []byte(pluginartifact.MetadataSection)
+	name := []byte(artifacts.MetadataSection)
 	payload := append(binary.AppendUvarint(nil, uint64(len(name))), name...)
 	payload = append(payload, []byte(`{"metadata_version":2,"abi_version":1}`)...)
 	data := append([]byte("\x00asm\x01\x00\x00\x00"), 0)
 	data = binary.AppendUvarint(data, uint64(len(payload)))
 	data = append(data, payload...)
-	artifact := &pluginartifact.Artifact{Info: pluginartifact.ArtifactProvenance{Source: "in-memory"}, Bytes: data}
+	artifact := &artifacts.Artifact{Info: artifacts.ArtifactProvenance{Source: "in-memory"}, Bytes: data}
 	if _, err := LoadArtifact(t.Context(), artifact, Options{}); err == nil || !strings.Contains(err.Error(), "custom metadata reports unsupported document version") {
 		t.Fatalf("unsupported discovery metadata reached compilation: %v", err)
 	}

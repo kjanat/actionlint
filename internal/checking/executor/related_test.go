@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -21,7 +21,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 	for _, mixed := range []string{"valid", "revision only", "coordinates only", "invalid coordinates"} {
 		t.Run(mixed, func(t *testing.T) {
 			t.Parallel()
-			input := checkinputs.AnalyzerInput{Path: "ci.yml", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: revision.Document(), Revision: revision.Digest()}}
+			input := inputs.AnalyzerInput{Path: "ci.yml", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: revision.Document(), Revision: revision.Digest()}}
 			switch mixed {
 			case "revision only":
 				input.Coordinates = ""
@@ -31,7 +31,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 				input.Coordinates = "invalid"
 			}
 			locations := []results.Related{{Path: "ci.yml"}, {Path: "./ci.yml"}, {Path: "foreign.yml"}}
-			registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "related-probe"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+			registration := inputs.Registration{Checker: testAnalyzer{descriptor: inputs.Descriptor{Descriptor: rule.Descriptor{Name: "related-probe"}}, run: func(_ context.Context, supplied inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 				if supplied.Revision != input.Revision || supplied.Coordinates != input.Coordinates {
 					t.Fatal("request evidence projection changed")
 				}
@@ -39,7 +39,7 @@ func TestRelatedRequestGrantUsesOnlySuppliedEvidence(t *testing.T) {
 				supplied.Coordinates = ""
 				return []results.Diagnostic{{Message: "primary", Related: locations}}, nil
 			}}}
-			findings, err := Run(t.Context(), input, []checkinputs.Registration{registration})
+			findings, err := Run(t.Context(), input, []inputs.Registration{registration})
 			want := 3
 			if mixed == "valid" {
 				want = 2

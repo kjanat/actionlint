@@ -11,19 +11,19 @@ import (
 	"strings"
 	"testing"
 
-	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestAnalysisWorkflowOutlines(t *testing.T) {
@@ -75,7 +75,7 @@ jobs:
 	if !reflect.DeepEqual(deploy.Needs, []string{"ZBuild"}) || deploy.Uses != "./.github/workflows/deploy.yml" || deploy.Steps == nil || len(deploy.Steps) != 0 {
 		t.Fatalf("reusable call lost: %+v", deploy)
 	}
-	if !reflect.DeepEqual(deploy.Reference(), callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
+	if !reflect.DeepEqual(deploy.Reference(), references.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"}) {
 		t.Fatalf("local workflow call is not a self-repository reference: %#v", deploy.Reference())
 	}
 	if partial.DocumentPath() != "partial.yml" || partial.ParseStatus != "partial" || len(partial.Jobs) != 2 || partial.Jobs[0].Steps[1].Kind != "unknown" {
@@ -90,11 +90,11 @@ jobs:
 	}
 	var output bytes.Buffer
 	presentation := render.FromAnalysis(*analysis)
-	presentation.CheckResult = commandstatus.AnalysisResult(*analysis)
+	presentation.CheckResult = exitcode.AnalysisResult(*analysis)
 	if err := renderer.Render(&output, presentation); err != nil {
 		t.Fatal(err)
 	}
-	var report resultreport.CheckResult
+	var report report.CheckResult
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -149,19 +149,19 @@ permissions: {}
 	if len(analysis.Documents) != 3 {
 		t.Fatalf("wanted workflow and two read manifests: %+v", analysis.Documents)
 	}
-	action, ok := analysis.Documents[1].(documentmodel.Action)
+	action, ok := analysis.Documents[1].(outline.Action)
 	if !ok || action.DocumentPath() != "action.yml" || action.ParseStatus != "complete" {
 		t.Fatalf("wrong action document: %+v", analysis.Documents[1])
 	}
-	broken, ok := analysis.Documents[2].(documentmodel.Action)
+	broken, ok := analysis.Documents[2].(outline.Action)
 	if !ok || broken.ParseStatus != "failed" {
 		t.Fatalf("missing failed parse document: %+v", analysis.Documents[2])
 	}
-	data, err := json.Marshal(commandstatus.AnalysisResult(*analysis))
+	data, err := json.Marshal(exitcode.AnalysisResult(*analysis))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +210,7 @@ permissions: {}
 			if len(analysis.Documents) != 2 {
 				t.Fatalf("missing action inventory: %+v", analysis.Documents)
 			}
-			action, ok := analysis.Documents[1].(documentmodel.Action)
+			action, ok := analysis.Documents[1].(outline.Action)
 			if !ok || action.ParseStatus != "complete" {
 				t.Fatalf("analysis validation changed decoding status: %+v", analysis.Documents[1])
 			}
@@ -230,9 +230,9 @@ permissions: {}
 	}
 }
 
-func requireWorkflowOutline(t *testing.T, document documentmodel.Outline) documentmodel.Workflow {
+func requireWorkflowOutline(t *testing.T, document outline.Outline) outline.Workflow {
 	t.Helper()
-	workflow, ok := document.(documentmodel.Workflow)
+	workflow, ok := document.(outline.Workflow)
 	if !ok {
 		t.Fatalf("expected workflow, got %T", document)
 	}
@@ -327,9 +327,9 @@ permissions: {}
 			got := make([]string, 0, len(analysis.Documents))
 			for _, document := range analysis.Documents {
 				switch document := document.(type) {
-				case documentmodel.Workflow:
+				case outline.Workflow:
 					got = append(got, document.DocumentPath()+":"+document.ParseStatus)
-				case documentmodel.Action:
+				case outline.Action:
 					got = append(got, document.DocumentPath()+":"+document.ParseStatus)
 				default:
 					t.Fatalf("unexpected document %T", document)

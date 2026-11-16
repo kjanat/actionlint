@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/kjanat/wacogo"
 )
@@ -28,16 +28,16 @@ func (p *Plugin) loadAnalyzer(ctx context.Context) error {
 }
 
 // Descriptor returns the identity the plugin declared when it was loaded.
-func (p *Plugin) Descriptor() checkinputs.Descriptor {
+func (p *Plugin) Descriptor() inputs.Descriptor {
 	if p.analyzerDescriptor == nil {
-		return checkinputs.Descriptor{}
+		return inputs.Descriptor{}
 	}
 	return p.analyzerDescriptor.Detached()
 }
 
 // CheckDocument runs the plugin on one document in a fresh instance. A trap, an
 // exit, an exceeded limit or a refused call is returned as an error.
-func (p *Plugin) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (p *Plugin) CheckDocument(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if !p.HasAnalyzer() {
 		return nil, errors.New("component does not implement the analyzer role")
 	}
@@ -69,14 +69,14 @@ func (p *Plugin) CheckDocument(ctx context.Context, input checkinputs.AnalyzerIn
 	return valid, nil
 }
 
-func (p *Plugin) describe(ctx context.Context) (checkinputs.Descriptor, error) {
+func (p *Plugin) describe(ctx context.Context) (inputs.Descriptor, error) {
 	value, err := p.callAnalyzer(ctx, "describe")
 	if err != nil {
-		return checkinputs.Descriptor{}, err
+		return inputs.Descriptor{}, err
 	}
 	descriptor, err := liftDescriptor(value)
 	if err != nil {
-		return checkinputs.Descriptor{}, p.failure(ctx, err)
+		return inputs.Descriptor{}, p.failure(ctx, err)
 	}
 	return descriptor, nil
 }

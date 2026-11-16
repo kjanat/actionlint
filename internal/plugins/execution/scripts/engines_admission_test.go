@@ -11,12 +11,12 @@ import (
 	"sync"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 )
 
 type admissionEngine struct{ closed bool }
 
-func (*admissionEngine) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (*admissionEngine) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	return nil, nil
 }
 
@@ -31,7 +31,7 @@ func TestScriptEnginesBoundsConcurrentDistinctAdmissions(t *testing.T) {
 	t.Parallel()
 	var loaded []*admissionEngine
 	var loadedMu sync.Mutex
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		backend := &admissionEngine{}
 		loadedMu.Lock()
 		loaded = append(loaded, backend)
@@ -81,7 +81,7 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("invalid module")
 	loads := 0
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads++
 		return nil, failure
 	})
@@ -102,7 +102,7 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 func TestScriptEnginesRejectsNilSuccessfulLoad(t *testing.T) {
 	t.Parallel()
 	loads := 0
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads++
 		return nil, nil
 	})
@@ -123,7 +123,7 @@ func TestScriptEnginesRejectsNilSuccessfulLoad(t *testing.T) {
 func TestScriptEnginesCannotReopenAfterClose(t *testing.T) {
 	t.Parallel()
 	loads := 0
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads++
 		return &admissionEngine{}, nil
 	})
@@ -141,7 +141,7 @@ func TestScriptEnginesCannotReopenAfterClose(t *testing.T) {
 func TestScriptEnginesSharesAdmissionBudgetAcrossSuccessAndFailure(t *testing.T) {
 	t.Parallel()
 	loads := 0
-	engines := NewScriptEngines(func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(_ context.Context, path string) (inputs.ScriptBackend, error) {
 		loads++
 		if strings.HasPrefix(path, "invalid") {
 			return nil, errors.New("invalid module")
@@ -176,7 +176,7 @@ func TestScriptEnginesSymlinkAliasesCannotBypassAdmissionLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	loads := 0
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads++
 		return &admissionEngine{}, nil
 	})

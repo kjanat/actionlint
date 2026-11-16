@@ -5,10 +5,10 @@ package inputs
 import (
 	slices "slices"
 
-	commands "actionlint.kjanat.dev/v2/internal/model/commands"
+	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	scripts "actionlint.kjanat.dev/v2/internal/model/scripts"
-	facts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func copyOwnedAnalyzerInput(in AnalyzerInput) AnalyzerInput {

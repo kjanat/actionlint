@@ -6,7 +6,7 @@ import (
 	maps "maps"
 	slices "slices"
 
-	source "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 )
 
 func copyOwnedDiagnostic(in Diagnostic) Diagnostic {

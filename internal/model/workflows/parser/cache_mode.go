@@ -1,7 +1,7 @@
 package parser
 
 import (
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -14,7 +14,7 @@ func CacheModeFromYAML(n *codec.Node) *definition.CacheMode {
 	m := &definition.CacheMode{Pos: PosAt(n)}
 	if n.Kind == codec.ScalarNode && n.Tag == definition.YamlTagStr {
 		value := n.Value
-		if literal := exprsyntax.LiteralExpressionValue(value); literal != nil {
+		if literal := syntax.LiteralExpressionValue(value); literal != nil {
 			value = *literal
 		}
 		switch value {

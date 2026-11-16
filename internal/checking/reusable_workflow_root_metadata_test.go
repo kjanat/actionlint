@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -67,7 +67,7 @@ permissions: {}
 					t.Fatal(err)
 				}
 			}
-			workflow, diagnostics := workflowparser.ParseWorkflow(callee)
+			workflow, diagnostics := parser.ParseWorkflow(callee)
 			if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 3 || !strings.Contains(diagnostics[0].Message, `key "cache-mode" is duplicated`) {
 				t.Fatalf("expected the duplicate root declaration diagnostic, got %v", diagnostics)
 			}
@@ -78,7 +78,7 @@ permissions: {}
 			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 			var previousMetadata *calls.Metadata
-			var previousDiagnostics []*findingmodel.Finding
+			var previousDiagnostics []*finding.Finding
 			for _, fromAST := range []bool{false, true} {
 				cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 				if fromAST {
@@ -111,7 +111,7 @@ permissions: {}
 					}
 					if fromAST {
 						// Each analysis owns its configuration bindings.
-						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{}), cmpopts.IgnoreFields(findingmodel.Finding{}, "Binding")); diff != "" {
+						if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(finding.Finding{}), cmpopts.IgnoreFields(finding.Finding{}, "Binding")); diff != "" {
 							t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 						}
 					}
@@ -191,7 +191,7 @@ permissions: {}
 						t.Fatal(err)
 					}
 				}
-				workflow, diagnostics := workflowparser.ParseWorkflow(callee)
+				workflow, diagnostics := parser.ParseWorkflow(callee)
 				if len(diagnostics) != 1 || diagnostics[0].Kind != "syntax-check" || diagnostics[0].Line != 2 || !strings.Contains(diagnostics[0].Message, entry.message) {
 					t.Fatalf("expected only the invalid root key diagnostic, got %v", diagnostics)
 				}
@@ -202,7 +202,7 @@ permissions: {}
 				request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: ""}})}
 
 				var previousMetadata *calls.Metadata
-				var previousDiagnostics []*findingmodel.Finding
+				var previousDiagnostics []*finding.Finding
 				for _, fromAST := range []bool{false, true} {
 					cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 					if fromAST {
@@ -225,7 +225,7 @@ permissions: {}
 						}
 						if fromAST {
 							// Each analysis owns its configuration bindings.
-							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(findingmodel.Finding{}), cmpopts.IgnoreFields(findingmodel.Finding{}, "Binding")); diff != "" {
+							if diff := cmp.Diff(previousDiagnostics, errs, cmp.AllowUnexported(finding.Finding{}), cmpopts.IgnoreFields(finding.Finding{}, "Binding")); diff != "" {
 								t.Fatalf("caller diagnostics differ by cache population order: %s", diff)
 							}
 						}
@@ -245,7 +245,7 @@ permissions: {}
 					if err != nil {
 						t.Fatal(err)
 					}
-					var syntax []*findingmodel.Finding
+					var syntax []*finding.Finding
 					for _, diagnostic := range errs {
 						if diagnostic.Rule == "syntax-check" {
 							syntax = append(syntax, diagnostic)

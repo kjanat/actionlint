@@ -7,20 +7,20 @@ import (
 	"strings"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func checkoutManifestProvider(t *testing.T) actions.Provider {
 	t.Helper()
 	const commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	identity, err := actions.NewIdentity("github.com", "actions/checkout", repofacts.ID{}, commit, "")
+	identity, err := actions.NewIdentity("github.com", "actions/checkout", repository.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func capturedDependencyOverrideFixture(t *testing.T, root, dependency string, cf
 		WorkingDir: root,
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			rule := workflowvisit.NewBase("expression-reference", "dependency finding")
-			finding := findingmodel.At(&source.Position{Line: 1, Column: 1}, rule.Name(), "dependency finding")
+			finding := finding.At(&source.Position{Line: 1, Column: 1}, rule.Name(), "dependency finding")
 			finding.Path, finding.Source.Content = path, dependencySource.Bytes()
 			finding.Reference = &reference
 			finding.Source.RawScript = coordinates == source.RawLF

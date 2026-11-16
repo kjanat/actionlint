@@ -9,14 +9,14 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 // Run isolates each analyzer's input and joins all started work.
 // Findings and errors follow registration order.
-func Run(ctx context.Context, input checkinputs.AnalyzerInput, registrations []checkinputs.Registration) ([]results.Diagnostic, error) {
+func Run(ctx context.Context, input inputs.AnalyzerInput, registrations []inputs.Registration) ([]results.Diagnostic, error) {
 	if err := input.ValidateInvocations(); err != nil {
 		return nil, err
 	}
@@ -44,16 +44,16 @@ type PreparedRegistration struct {
 }
 
 type preparedRegistration struct {
-	analyzer        checkinputs.Checker
-	prepare         func(context.Context, checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error)
-	descriptor      checkinputs.Descriptor
+	analyzer        inputs.Checker
+	prepare         func(context.Context, inputs.AnalyzerInput) (inputs.AnalyzerInput, error)
+	descriptor      inputs.Descriptor
 	options         []byte
 	availableInputs []rule.InputKind
 	rawErrors       bool
 }
 
 // Prepare validates a registration once for an exact set of available input kinds.
-func Prepare(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
+func Prepare(registration inputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
 	if validation.IsNil(registration.Checker) {
 		return PreparedRegistration{}, errors.New("nil analyzer registration")
 	}
@@ -83,7 +83,7 @@ func Prepare(registration checkinputs.Registration, available []rule.InputKind) 
 // PrepareForwarding admits a transparent adapter's implementation through the
 // same executor. Runtime errors use their existing text so an enclosing
 // invocation can add its own analyzer context exactly once.
-func PrepareForwarding(registration checkinputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
+func PrepareForwarding(registration inputs.Registration, available []rule.InputKind) (PreparedRegistration, error) {
 	prepared, err := Prepare(registration, available)
 	if err != nil {
 		return PreparedRegistration{}, err
@@ -117,7 +117,7 @@ func validateAvailableInputs(available []rule.InputKind) ([]rule.InputKind, erro
 
 // RunOne isolates one invocation of a prepared registration, preserving partial
 // findings and cancellation. Input kinds must match the set validated by Prepare.
-func RunOne(ctx context.Context, input checkinputs.AnalyzerInput, registration PreparedRegistration) ([]results.Diagnostic, error) {
+func RunOne(ctx context.Context, input inputs.AnalyzerInput, registration PreparedRegistration) ([]results.Diagnostic, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

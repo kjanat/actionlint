@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 )
 
 func TestShellcheckConfigValidation(t *testing.T) {

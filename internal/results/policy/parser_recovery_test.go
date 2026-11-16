@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
@@ -193,11 +193,11 @@ jobs: [`,
 	}
 }
 
-func parseSuppressionSource(source []byte) (*definition.Workflow, []*findingmodel.Finding) {
-	workflow, diagnostics := workflowparser.ParseWorkflow(source)
-	findings := make([]*findingmodel.Finding, 0, len(diagnostics))
+func parseSuppressionSource(source []byte) (*definition.Workflow, []*finding.Finding) {
+	workflow, diagnostics := parser.ParseWorkflow(source)
+	findings := make([]*finding.Finding, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
-		findings = append(findings, findingmodel.FromDiagnostic(correctness.SyntaxCheckDiagnostic(diagnostic, source)))
+		findings = append(findings, finding.FromDiagnostic(correctness.SyntaxCheckDiagnostic(diagnostic, source)))
 	}
 	return workflow, findings
 }

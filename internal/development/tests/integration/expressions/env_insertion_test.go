@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestEnvironmentMappingInsertions(t *testing.T) {
@@ -129,7 +129,7 @@ permissions: {}
 	if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
 		t.Fatalf("valid mapping alias rejected: %v", errs)
 	}
-	_, errs := workflowparser.ParseWorkflow([]byte(`on: push
+	_, errs := parser.ParseWorkflow([]byte(`on: push
 env: &recursive
   ${{ insert }}: *recursive
 jobs:

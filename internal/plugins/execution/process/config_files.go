@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -20,7 +20,7 @@ import (
 // This is where native tools such as ShellCheck look: Windows keeps per-user
 // files in the configuration directory, not the home directory. It returns
 // an absolute path, or "" when the search finds nothing.
-func ConfigFile(reader *inputfiles.Reader, files manifests.ConfigFiles, path, start string) (string, error) {
+func ConfigFile(reader *files.Reader, files manifests.ConfigFiles, path, start string) (string, error) {
 	if path != "" {
 		return configFile(reader, files.Names, path)
 	}
@@ -117,7 +117,7 @@ func configInDirectory(names []string, directory string) (string, error) {
 
 // configFile selects path, or the first of names inside a directory path,
 // records it as read and returns it absolute.
-func configFile(reader *inputfiles.Reader, names []string, path string) (string, error) {
+func configFile(reader *files.Reader, names []string, path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err

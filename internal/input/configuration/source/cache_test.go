@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 type configCacheTransport struct{ requests *atomic.Int32 }

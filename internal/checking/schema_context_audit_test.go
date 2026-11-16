@@ -8,10 +8,10 @@ import (
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -189,7 +189,7 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflows.Workflow,
 		t.Fatal("source snapshot has no workflow")
 	}
 	rules := ConfigurationRules()
-	for _, descriptor := range ruleexec.Registrations(rules) {
+	for _, descriptor := range registration.Registrations(rules) {
 		if descriptor.Name == "expression" {
 			return workflow, descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
 		}

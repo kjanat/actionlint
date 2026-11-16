@@ -7,11 +7,11 @@ import (
 	"testing"
 	"unicode"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"github.com/google/go-cmp/cmp"
@@ -34,13 +34,13 @@ func TestExprContextPropertySuggestions(t *testing.T) {
 	} {
 		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
 			t.Parallel()
-			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 			checker.SetAvailability(contextspec.WorkflowExpressionScope(tc.key))
-			_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+			_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 			var messages []string
 			for _, err := range errs {
 				messages = append(messages, err.Message)
@@ -67,17 +67,17 @@ func TestExprContextSuggestionsPreserveUserProperties(t *testing.T) {
 				checker.vars[receiver] = exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"declared": exprtypes.BoolType()}).Type()
 				checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.run"))
 				checker.availableContexts = append(checker.availableContexts, receiver)
-				expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(receiver + "." + property + "}}"))
+				expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer(receiver + "." + property + "}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+				_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 				want := fmt.Sprintf("property %q is not defined in %s", property, receiver)
 				if len(errs) != 1 || errs[0].Message != want {
 					t.Fatalf("got %v, want %q", errs, want)
 				}
 				checker.vars[receiver] = exprtypes.NewStrictObjectType(map[string]exprtypes.Type{property: exprtypes.StringType()}).Type()
-				ty, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+				ty, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 				if len(errs) != 0 || ty.String() != "string" {
 					t.Fatalf("declared property: type=%s errors=%v", ty.String(), errs)
 				}
@@ -109,11 +109,11 @@ func TestExprDeclaredInputSuggestions(t *testing.T) {
 			if tc.key == "" {
 				checker.SetContextAvailability([]string{"github"})
 			}
-			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
+			expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+			_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 			if tc.suggestion == "" {
 				if len(errs) != 0 {
 					t.Fatalf("unexpected diagnostics: %v", errs)
@@ -149,14 +149,14 @@ func TestExprBareFunctionNames(t *testing.T) {
 		} {
 			t.Run(key+"/"+tc.input, func(t *testing.T) {
 				t.Parallel()
-				expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+				expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.input + "}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 				contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"always": exprtypes.BoolType()}))
 				checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
-				_, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+				_, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 				if tc.want == "" {
 					if len(errs) != 0 {
 						t.Fatalf("unexpected diagnostics: %v", errs)
@@ -174,7 +174,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 	}
 	t.Run("variable takes precedence over function", func(t *testing.T) {
 		t.Parallel()
-		expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("always}}"))
+		expr, err := syntax.NewParser().ParseExpression(syntax.NewLexer("always}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -182,7 +182,7 @@ func TestExprBareFunctionNames(t *testing.T) {
 		checker.vars = maps.Clone(checker.vars)
 		checker.vars["always"] = exprtypes.BoolType()
 		checker.SetContextAvailability([]string{"always"})
-		ty, errs := checker.Check(expreval.EvaluateSubexpressions(expr))
+		ty, errs := checker.Check(evaluate.EvaluateSubexpressions(expr))
 		if len(errs) != 0 || !cmp.Equal(ty, exprtypes.BoolType()) {
 			t.Fatalf("got %v, %v; want bool without diagnostics", ty, errs)
 		}
@@ -1146,8 +1146,8 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			p := exprsyntax.NewParser()
-			e, err := p.ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			p := syntax.NewParser()
+			e, err := p.ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal("Parse error:", tc.input)
 			}
@@ -1184,7 +1184,7 @@ func TestExprSemanticsCheckOK(t *testing.T) {
 			} else {
 				c.SetFunctionAvailability(contextspec.FunctionAvailability(allSPFuncs))
 			}
-			ty, errs := c.Check(expreval.EvaluateSubexpressions(e))
+			ty, errs := c.Check(evaluate.EvaluateSubexpressions(e))
 			if len(errs) > 0 {
 				t.Fatal("semantics check failed:", errs)
 			}
@@ -1714,8 +1714,8 @@ func TestExprSemanticsCheckError(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			p := exprsyntax.NewParser()
-			e, err := p.ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			p := syntax.NewParser()
+			e, err := p.ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal("Parse error:", tc.input)
 			}
@@ -1748,7 +1748,7 @@ func TestExprSemanticsCheckError(t *testing.T) {
 				c.SetFunctionAvailability(contextspec.FunctionAvailability(allSP))
 			}
 
-			_, errs := c.Check(expreval.EvaluateSubexpressions(e))
+			_, errs := c.Check(evaluate.EvaluateSubexpressions(e))
 			if len(errs) != len(tc.expected) {
 				t.Fatalf("semantics check should report %d errors but got %d errors: %v", len(tc.expected), len(errs), errs)
 			}
@@ -1783,11 +1783,11 @@ func TestExprCompareOperandsCheck(t *testing.T) {
 						names = append(names, name)
 					}
 					c.SetContextAvailability(names)
-					node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
+					node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
-					ty, findings := c.Check(expreval.EvaluateSubexpressions(node))
+					ty, findings := c.Check(evaluate.EvaluateSubexpressions(node))
 					if ty.Kind() != exprtypes.KindBool || len(findings) != 0 {
 						t.Fatalf("type=%s findings=%v", ty, findings)
 					}
@@ -2220,8 +2220,8 @@ func TestExprIsConstant(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			p := exprsyntax.NewParser()
-			e, err := p.ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
+			p := syntax.NewParser()
+			e, err := p.ParseExpression(syntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatalf("Parse error for input %q: %s", tc.input, err)
 			}

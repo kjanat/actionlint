@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestParseReference(t *testing.T) {
@@ -47,9 +47,9 @@ func TestParseReference(t *testing.T) {
 	}
 }
 
-func knownRepositoryID(t *testing.T, value uint64) repofacts.ID {
+func knownRepositoryID(t *testing.T, value uint64) repository.ID {
 	t.Helper()
-	id, err := repofacts.KnownID(value)
+	id, err := repository.KnownID(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestHeadSelectionKeepsSyntheticLookupKey(t *testing.T) {
 func TestIdentityWithoutRepositoryID(t *testing.T) {
 	t.Parallel()
 	commit := strings.Repeat("d", 40)
-	identity, err := actions.NewIdentity("github.com", "example/action", repofacts.ID{}, commit, "")
+	identity, err := actions.NewIdentity("github.com", "example/action", repository.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,10 +130,10 @@ func TestIdentityWithoutRepositoryID(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		id   repofacts.ID
+		id   repository.ID
 		want string
 	}{
-		{repofacts.ID{}, `{"reference":"example/action@v1","state":"available","host":"github.com","repository":"example/action","commit":"` + commit + `","observed_at":"observation","manifest":"action.yml","selected_object":"` + commit + `","selected_ref":"refs/tags/v1"}`},
+		{repository.ID{}, `{"reference":"example/action@v1","state":"available","host":"github.com","repository":"example/action","commit":"` + commit + `","observed_at":"observation","manifest":"action.yml","selected_object":"` + commit + `","selected_ref":"refs/tags/v1"}`},
 		{knownRepositoryID(t, 42), `{"reference":"example/action@v1","state":"available","host":"github.com","repository":"example/action","repository_id":42,"commit":"` + commit + `","observed_at":"observation","manifest":"action.yml","selected_object":"` + commit + `","selected_ref":"refs/tags/v1"}`},
 	} {
 		identity, err := actions.NewIdentity("github.com", "example/action", test.id, commit, "")

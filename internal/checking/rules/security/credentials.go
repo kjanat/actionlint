@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -87,19 +87,19 @@ func (rule *credentialsCheck) checkContainer(where string, n *definition.Contain
 	}
 }
 
-func (rule *credentialsCheck) checkContainerValue(where string, value any, pos *sourcepos.Position) {
+func (rule *credentialsCheck) checkContainerValue(where string, value any, pos *source.Position) {
 	if container, ok := value.(map[string]any); ok {
 		rule.checkCredentialsValue(where, schema.Property(container, "credentials"), pos)
 	}
 }
 
-func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos *sourcepos.Position) {
+func (rule *credentialsCheck) checkCredentialsValue(where string, value any, pos *source.Position) {
 	if credentials, ok := value.(map[string]any); ok {
 		rule.checkPasswordValue(where, schema.Property(credentials, "password"), pos)
 	}
 }
 
-func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *sourcepos.Position) {
+func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *source.Position) {
 	// Known strings are data, including expression delimiters inside JSON.
 	// Invalid value types are reported by expression validation.
 	switch value := value.(type) {
@@ -114,6 +114,6 @@ func (rule *credentialsCheck) checkPasswordValue(where string, value any, pos *s
 	rule.reportPassword(where, pos)
 }
 
-func (rule *credentialsCheck) reportPassword(where string, pos *sourcepos.Position) {
+func (rule *credentialsCheck) reportPassword(where string, pos *source.Position) {
 	rule.Errorf(pos, "\"password\" section in %s should be specified via secrets. do not put password value directly", where)
 }

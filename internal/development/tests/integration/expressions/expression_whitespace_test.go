@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ` + tc.value + "\n" + "\npermissions: {}\n")
-			workflow, syntaxErrors := workflowparser.ParseWorkflow(source)
+			workflow, syntaxErrors := parser.ParseWorkflow(source)
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
 			}

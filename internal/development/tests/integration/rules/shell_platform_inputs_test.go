@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestShellPlatformsDoNotDependOnTraversalOrder(t *testing.T) {

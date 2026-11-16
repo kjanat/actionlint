@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli"
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/windows"
 )
@@ -47,7 +47,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	if code := command.Main([]string{"actionlint", "check", "--json", "--no-tool=shellcheck", "--no-tool=ruff", "ci.yml"}); code != 1 {
 		t.Fatalf("CLI status %d: %s", code, &stderr)
 	}
-	var cliResult resultreport.CheckResult
+	var cliResult report.CheckResult
 	if err := json.Unmarshal(stdout.Bytes(), &cliResult); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestCLIAndActionShortWorkspaceIdentity(t *testing.T) {
 	if code := Main(func(key string) string { return env[key] }, &stdout, pluginacquisition.Settings{}); code != 0 {
 		t.Fatalf("Action status %d: %s", code, &stdout)
 	}
-	var actionResult resultreport.CheckResult
+	var actionResult report.CheckResult
 	if err := json.Unmarshal([]byte(read(t, resultPath)), &actionResult); err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ package mask
 import (
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // ID selects workflow-expression replacement in provider manifests for any
@@ -54,7 +54,7 @@ func Expressions(text string) string {
 // end returns the byte length of the template body that src starts with,
 // including its closing `}}`.
 func end(src string) (int, bool) {
-	if _, offset, err := exprsyntax.LexExpression(src); err == nil {
+	if _, offset, err := syntax.LexExpression(src); err == nil {
 		return offset, true
 	}
 	if index := strings.Index(src, "}}"); index >= 0 {

@@ -5,17 +5,17 @@ import (
 	"strings"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // UnusedFormatArguments reports arguments absent from a known format template.
 // Invalid placeholders are evaluation failures, reported separately by the language checker.
-func UnusedFormatArguments(root exprsyntax.Node, calls exprlang.CheckedCalls) []*exprlang.Error {
-	var findings []*exprlang.Error
-	exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
-		call, ok := node.(*exprsyntax.FuncCallNode)
+func UnusedFormatArguments(root syntax.Node, calls typecheck.CheckedCalls) []*typecheck.Error {
+	var findings []*typecheck.Error
+	syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
+		call, ok := node.(*syntax.FuncCallNode)
 		if entering || !ok || !strings.EqualFold(call.Callee, "format") {
 			return
 		}
@@ -35,7 +35,7 @@ func UnusedFormatArguments(root exprsyntax.Node, calls exprlang.CheckedCalls) []
 				continue
 			}
 			token := call.Token()
-			findings = append(findings, &exprlang.Error{Rule: "expression-call", Code: "format-placeholder", Message: fmt.Sprintf("format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", format, index), Offset: token.Offset, EndOffset: token.Offset + len(token.Value), Line: token.Line, Column: token.Column, Advisory: true})
+			findings = append(findings, &typecheck.Error{Rule: "expression-call", Code: "format-placeholder", Message: fmt.Sprintf("format string %q does not contain placeholder {%d}. remove argument which is unused in the format string", format, index), Offset: token.Offset, EndOffset: token.Offset + len(token.Value), Line: token.Line, Column: token.Column, Advisory: true})
 		}
 	})
 	return findings

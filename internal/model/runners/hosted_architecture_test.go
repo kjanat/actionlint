@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestHostedArchitectureCatalog(t *testing.T) {

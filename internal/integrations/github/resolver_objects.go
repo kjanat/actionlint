@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type resolverRepository struct {
@@ -55,7 +55,7 @@ func (g *GitHub) Open(ctx context.Context, request references.Request) (referenc
 	if err != nil {
 		return nil, err
 	}
-	id, err := repofacts.KnownID(repo.ID)
+	id, err := repository.KnownID(repo.ID)
 	if err != nil || !strings.EqualFold(repo.Name, request.Repository) || id.Conflicts(request.ExpectedRepositoryID) || repo.DefaultBranch == "" {
 		return nil, errors.New("GitHub repository identity or default branch is invalid")
 	}

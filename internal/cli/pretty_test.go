@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func TestPrettyCheckCommand(t *testing.T) {
@@ -57,7 +57,7 @@ func TestPrettyOptions(t *testing.T) {
 			if tc.bad {
 				return
 			}
-			if len(app.inv.Render.Formats) != 1 || app.inv.Render.Formats[0] != render.FormatPretty {
+			if len(app.inv.Render.Formats) != 1 || app.inv.Render.Formats[0] != output.FormatPretty {
 				t.Fatal("format not propagated")
 			}
 			if _, err := newResultRenderers(app.inv.Render); err != nil {

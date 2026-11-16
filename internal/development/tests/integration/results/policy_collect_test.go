@@ -11,15 +11,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 )
 
 func TestAnalysisDiagnosticIdentity(t *testing.T) {
 	t.Parallel()
-	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 5}, Source: diagmodel.DiagnosticSource{Content: []byte("echo $VALUE\n")}}
+	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 5}, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}}
 	var files []policy.Batch
 	for _, change := range []func(*findingmodel.Finding){
 		func(*findingmodel.Finding) {},
@@ -43,9 +43,9 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	t.Parallel()
-	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 2}, SuppressionOrigin: &diagmodel.SuppressionOrigin{First: 2, Last: 3}}
+	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 2}, SuppressionOrigin: &results.SuppressionOrigin{First: 2, Last: 3}}
 	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*findingmodel.Finding{finding}}}).Diagnostics
-	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (diagmodel.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
+	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
 		t.Fatalf("same-source target not resolved: %+v", reported)
 	}
 	finding.Path = "action.yml"
@@ -57,7 +57,7 @@ func TestCollectProjectsSuppressionTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	reported = published.Diagnostics
-	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (diagmodel.SuppressionOrigin{Path: "action.yml", First: 2, Last: 3}) {
+	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (results.SuppressionOrigin{Path: "action.yml", First: 2, Last: 3}) {
 		t.Fatalf("foreign target not projected: %+v", reported)
 	}
 }
@@ -79,7 +79,7 @@ func TestMetadataParseDedupUsesCapturedIdentityAfterSymlinkRetarget(t *testing.T
 		t.Fatal(err)
 	}
 	store, fixture := capturefixture.NewCapturedSources(t, root)
-	captured, err := fixture.Capture(alias, content, sourcepos.YAML)
+	captured, err := fixture.Capture(alias, content, source.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,25 +111,25 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 		name        string
 		content     []byte
 		failed      bool
-		reportedEnd sourcepos.Position
+		reportedEnd source.Position
 	}{
 		{name: "unverified reread", content: []byte("echo $VALUE\n")},
 		{name: "failed reread", content: []byte{}, failed: true},
-		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: sourcepos.Position{Line: 1, Column: 12}},
+		{name: "tool range retained", content: []byte("changed longer token\n"), reportedEnd: source.Position{Line: 1, Column: 12}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			finding := &findingmodel.Finding{
-				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: sourcepos.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
-				Reference: &sourcepos.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []diagmodel.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
-				Source: diagmodel.DiagnosticSource{Content: tc.content, RawScript: true, Unavailable: diagmodel.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed)},
+				Path: "reported.sh", Rule: "shellcheck", Message: "reported", Start: source.Position{Line: 1, Column: 6}, End: tc.reportedEnd,
+				Reference: &source.Reference{Document: "must-not-survive", Revision: strings.Repeat("a", 64)}, Fixes: []results.Fix{{Revisions: map[string]string{"reported.sh": strings.Repeat("b", 64)}}},
+				Source: results.DiagnosticSource{Content: tc.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable("shellcheck", "reported.sh", tc.failed)},
 			}
 			diagnostics := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow text")}, Findings: []*findingmodel.Finding{finding}}}).Diagnostics
 			if len(diagnostics) != 1 || diagnostics[0].Reference != nil || len(diagnostics[0].Fixes) != 0 {
 				t.Fatalf("unavailable source gained revision evidence: %+v", diagnostics)
 			}
 			wantEnd := tc.reportedEnd
-			if wantEnd == (sourcepos.Position{}) {
+			if wantEnd == (source.Position{}) {
 				wantEnd = finding.Start
 			}
 			if diagnostics[0].End != wantEnd || tc.failed && diagnostics[0].Snippet != "" {
@@ -150,14 +150,14 @@ func TestUnavailableReportedSourceNeverFabricatesRevisionOrFix(t *testing.T) {
 
 func TestAnalysisDiagnosticMetadataIdentity(t *testing.T) {
 	t.Parallel()
-	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 1, Column: 1}}
+	base := findingmodel.Finding{Path: "action.yml", Rule: "shellcheck", Message: "finding", Start: source.Position{Line: 1, Column: 1}}
 	var files []policy.Batch
 	for _, change := range []func(*findingmodel.Finding){
 		func(*findingmodel.Finding) {},
 		func(e *findingmodel.Finding) { e.Code = "SC2086" },
 		func(e *findingmodel.Finding) { e.Severity = "warning" },
 		func(e *findingmodel.Finding) {
-			e.Fixes = []diagmodel.Fix{{Description: "quote", Edits: []diagmodel.Edit{{Path: "action.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
+			e.Fixes = []results.Fix{{Description: "quote", Edits: []results.Edit{{Path: "action.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "quoted"}}}}
 		},
 	} {
 		finding := base
@@ -177,8 +177,8 @@ func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 	t.Parallel()
 	script := []byte("echo $A\necho $B\n")
 	findings := []*findingmodel.Finding{
-		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: sourcepos.Position{Line: 1, Column: 6}, Source: diagmodel.DiagnosticSource{Content: script}},
-		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: sourcepos.Position{Line: 2, Column: 6}, Source: diagmodel.DiagnosticSource{Content: script}},
+		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: source.Position{Line: 1, Column: 6}, Source: results.DiagnosticSource{Content: script}},
+		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: source.Position{Line: 2, Column: 6}, Source: results.DiagnosticSource{Content: script}},
 	}
 	reported := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow")}, Findings: findings}}).Diagnostics
 	if len(reported) != 2 {

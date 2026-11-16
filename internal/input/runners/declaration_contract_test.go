@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {
@@ -29,7 +29,7 @@ func TestPreparedDeclarationRejectionsPreserveExcludedSpelling(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(w.Views["test"])
-			if len(job.Rejections) != tc.want || job.Platform != runnermodel.Any || job.Shell != "" || !reflect.DeepEqual(job.Rejections, runnermodel.LabelRejections(w.Views["test"], runnermodel.KnownLabels(nil))) {
+			if len(job.Rejections) != tc.want || job.Platform != runners.Any || job.Shell != "" || !reflect.DeepEqual(job.Rejections, runners.LabelRejections(w.Views["test"], runners.KnownLabels(nil))) {
 				t.Fatalf("declaration diagnostics diverged or supplied execution certainty: %+v", job)
 			}
 			for _, finding := range job.Rejections {
@@ -107,7 +107,7 @@ func TestBuiltinLabelRejectionsRespectSnapshotEvidence(t *testing.T) {
 				t.Fatal(err)
 			}
 			job := knowledge.Job(w.Views["test"])
-			if len(job.Rejections) != tc.want || job.PathsKnown || job.Platform != runnermodel.Any || job.Shell != "" {
+			if len(job.Rejections) != tc.want || job.PathsKnown || job.Platform != runners.Any || job.Shell != "" {
 				t.Fatalf("snapshot evidence changed label certainty policy: %+v", job)
 			}
 			if tc.want == 2 && (!strings.Contains(job.Rejections[0].Reason, `label "ubuntu-lates" is unknown`) || !strings.Contains(job.Rejections[1].Reason, "conflicts with label")) {

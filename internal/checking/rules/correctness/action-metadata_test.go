@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestActionValidationPropagatesMetadataInterruption(t *testing.T) {
@@ -69,7 +69,7 @@ func TestMetadataIdentityUsesCapturedCanonicalDocumentAfterRetarget(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	finding := &findingmodel.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
+	finding := &finding.Finding{Message: "manifest " + strconv.Quote(metadata.Path()) + " in " + strconv.Quote(metadata.Dir())}
 	document := snapshot.Reference().Document
 	before := metadataFindingKey(metadata, document, finding)
 	if err := store.Close(t.Context()); err != nil {
@@ -179,7 +179,7 @@ func TestMetadataValidationTemplatesDetached(t *testing.T) {
 	}
 	// Annotation is the only write path into recorded findings; it must not
 	// reach the cached templates the next visit replays.
-	rule.AnnotateSince(0, func(finding *findingmodel.Finding) {
+	rule.AnnotateSince(0, func(finding *finding.Finding) {
 		finding.Message = "mutated caller"
 		if finding.IgnoreOrigin != nil {
 			finding.IgnoreOrigin.Job = "mutated caller"

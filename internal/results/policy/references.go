@@ -4,12 +4,12 @@ import (
 	"slices"
 	"strings"
 
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // InferReferences enriches completed findings from source indexes supplied by the caller.
-func InferReferences(all []*findingmodel.Finding, path string, references map[string]workflowfacts.SourceIndex, entryAliases ...string) {
+func InferReferences(all []*finding.Finding, path string, references map[string]facts.SourceIndex, entryAliases ...string) {
 	for _, finding := range all {
 		if finding.Source.Unavailable.Present() {
 			finding.Reference, finding.Fixes = nil, nil

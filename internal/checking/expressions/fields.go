@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
@@ -364,8 +364,8 @@ func (rule *Checker) checkIfCondition(str *definition.String, workflowKey string
 
 	restore := rule.scopeExpressionSource(str.Value, scalarPosition(str))
 	defer restore()
-	expr, err, offset := exprsyntax.ParseConditionExpression(str.Value)
-	if exprsyntax.ConditionSource(str.Value) != str.Value && offset == 0 {
+	expr, err, offset := syntax.ParseConditionExpression(str.Value)
+	if syntax.ConditionSource(str.Value) != str.Value && offset == 0 {
 		rule.expressionSource = nil
 	}
 	rule.expressionOffset = offset

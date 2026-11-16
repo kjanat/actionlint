@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -23,7 +23,7 @@ type ProviderFiles struct {
 }
 
 // Materialize loads transform programs and prepares the executable selected for this host.
-func (p ProviderFiles) Materialize(ctx context.Context, options pluginartifact.Options) (ProviderFiles, error) {
+func (p ProviderFiles) Materialize(ctx context.Context, options artifacts.Options) (ProviderFiles, error) {
 	layer := func(digest string) ([]byte, error) {
 		return oci.Layer(ctx, p.Source, strings.TrimPrefix(digest, "sha256:"), options)
 	}
@@ -36,16 +36,16 @@ func (p ProviderFiles) Materialize(ctx context.Context, options pluginartifact.O
 	if len(p.Manifest.Artifacts) == 0 {
 		return p, nil
 	}
-	platform := pluginartifact.HostPlatform()
+	platform := artifacts.HostPlatform()
 	index := slices.IndexFunc(p.Manifest.Artifacts, func(a manifests.Artifact) bool { return a.Platform == platform })
 	if index < 0 {
 		return ProviderFiles{}, fmt.Errorf("tool provider %s has no executable for %s", name, platform)
 	}
 	executable := p.Manifest.Artifacts[index]
 	digest := strings.TrimPrefix(executable.Digest, "sha256:")
-	store := pluginartifact.Store{Dir: options.CacheDir}
+	store := artifacts.Store{Dir: options.CacheDir}
 	p.Executable, err = store.Materialize(ctx, digest, executable.Filename, artifactMaxBytes)
-	if errors.Is(err, os.ErrNotExist) || errors.Is(err, pluginartifact.ErrCorrupt) {
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, artifacts.ErrCorrupt) {
 		// Fetch a missing or half-written executable, then copy it again.
 		if _, err = layer(executable.Digest); err == nil {
 			p.Executable, err = store.Materialize(ctx, digest, executable.Filename, artifactMaxBytes)

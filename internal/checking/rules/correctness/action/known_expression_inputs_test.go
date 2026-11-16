@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -32,7 +32,7 @@ func TestKnownExpressionActionInputs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(`on: push
+			workflow, parseErrors := parser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

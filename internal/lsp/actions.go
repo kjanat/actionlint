@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	sourceedits "actionlint.kjanat.dev/v2/internal/results/edits"
+	"actionlint.kjanat.dev/v2/internal/results/edits"
 )
 
 func codeActions(ctx context.Context, path string, selection sourceRange, findings []results.Diagnostic, sources, documents map[string]Document) []any {
@@ -32,7 +32,7 @@ func codeActions(ctx context.Context, path string, selection sourceRange, findin
 			if slices.ContainsFunc(offered, func(previous results.Fix) bool { return reflect.DeepEqual(previous, f) }) {
 				continue
 			}
-			_, validationErr := sourceedits.Build(ctx, []results.Diagnostic{{Fixes: []results.Fix{f}}}, files.New(ctx, func(p string) ([]byte, error) {
+			_, validationErr := edits.Build(ctx, []results.Diagnostic{{Fixes: []results.Fix{f}}}, files.New(ctx, func(p string) ([]byte, error) {
 				doc, ok := documents[p]
 				if !ok {
 					return nil, errors.New("document is not open")

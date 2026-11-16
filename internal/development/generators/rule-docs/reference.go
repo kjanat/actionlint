@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
 

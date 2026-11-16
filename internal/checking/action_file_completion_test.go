@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/git"
 )
 
 func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
@@ -42,7 +42,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", "local"}} {
-					if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+					if output, err := git.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
 						t.Fatalf("prepare repository index: %v: %s", err, output)
 					}
 				}

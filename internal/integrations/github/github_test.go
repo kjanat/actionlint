@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type transport func(*http.Request) (*http.Response, error)
@@ -21,9 +21,9 @@ const actionSource = "name: test\ndescription: test\nruns: {using: composite, st
 
 var sha = strings.Repeat("a", 40)
 
-func knownRepositoryID(t *testing.T, value uint64) repofacts.ID {
+func knownRepositoryID(t *testing.T, value uint64) repository.ID {
 	t.Helper()
-	id, err := repofacts.KnownID(value)
+	id, err := repository.KnownID(value)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 

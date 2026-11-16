@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -39,7 +39,7 @@ type failingRenderWriter struct{}
 func (failingRenderWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 func TestRendererWriteErrors(t *testing.T) {
 	t.Parallel()
-	analysis := report.Analysis{FileCount: 1, Diagnostics: []results.PublishedDiagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}}}}
+	analysis := report.Analysis{FileCount: 1, Diagnostics: []results.PublishedDiagnostic{{Path: "input.yml", Rule: "expression-reference", Message: "unknown variable", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}}}}
 	for _, format := range []Format{FormatText, FormatOneline, FormatGCC, FormatJSON, FormatJSONL, FormatSARIF, FormatGitHub} {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
@@ -48,7 +48,7 @@ func TestRendererWriteErrors(t *testing.T) {
 				t.Fatal(err)
 			}
 			presentation := FromAnalysis(analysis)
-			presentation.CheckResult = commandstatus.AnalysisResult(analysis)
+			presentation.CheckResult = exitcode.AnalysisResult(analysis)
 			err = renderer.Render(failingRenderWriter{}, presentation)
 			text := format == FormatText || format == FormatOneline
 			if (err == nil) != text {

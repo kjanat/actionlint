@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
@@ -96,7 +96,7 @@ func TestWorkflowRunEmptyPatternValidation(t *testing.T) {
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 permissions: {}
 `
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if workflow == nil || reference != "" && len(errs) != 0 {
 				t.Fatalf("parse: %v", errs)
 			}

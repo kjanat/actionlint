@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestMissingPermissions(t *testing.T) {
@@ -46,7 +46,7 @@ func TestMissingPermissions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := tc.trigger + tc.permissions + "jobs:\n" + tc.jobs
-			ast, errs := workflowparser.ParseWorkflow([]byte(source))
+			ast, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

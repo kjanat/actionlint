@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type recordedLint struct {
@@ -26,13 +26,13 @@ func (r *recordedLint) run(req *lintRequest) *lintResult {
 }
 
 func knownFiles(outcome *lintOutcome, count int) *lintResult {
-	report := commandstatus.NewCheckResult(outcome.code)
+	report := exitcode.NewCheckResult(outcome.code)
 	report.FileCount = new(count)
 	return &lintResult{lintOutcome: outcome, report: report}
 }
 
 func unknownFiles(outcome *lintOutcome) *lintResult {
-	return &lintResult{lintOutcome: outcome, report: commandstatus.NewCheckResult(outcome.code)}
+	return &lintResult{lintOutcome: outcome, report: exitcode.NewCheckResult(outcome.code)}
 }
 
 type actionRun struct {
@@ -106,8 +106,8 @@ func problemResult(t *testing.T, format outputFormat) *lintResult {
 		}
 	}
 	return &lintResult{
-		lintOutcome: &lintOutcome{rendered, "", commandstatus.ExitSuccessProblemFound},
-		report:      resultreport.FromAnalysis(*analysis),
+		lintOutcome: &lintOutcome{rendered, "", exitcode.ExitSuccessProblemFound},
+		report:      report.FromAnalysis(*analysis),
 	}
 }
 
@@ -117,7 +117,7 @@ func TestActionReportsSuccess(t *testing.T) {
 		".git":                         "",
 		".github/workflows/readme.txt": "not a workflow",
 	})
-	run, recorder := runAction(t, workspace, knownFiles(&lintOutcome{"", "", commandstatus.ExitSuccessNoProblem}, 0),
+	run, recorder := runAction(t, workspace, knownFiles(&lintOutcome{"", "", exitcode.ExitSuccessNoProblem}, 0),
 		"", "json", "", "", ".", "", "true")
 
 	if run.code != 0 {
@@ -192,7 +192,7 @@ func TestActionKeepsProblemsNonFatal(t *testing.T) {
 func TestActionReportsFailure(t *testing.T) {
 	t.Parallel()
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "could not read \"w.yaml\"\n", commandstatus.ExitFailure}, 1),
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "could not read \"w.yaml\"\n", exitcode.ExitFailure}, 1),
 		"w.yaml", "json", "", "", ".", "", "false")
 
 	if run.code != 3 {
@@ -213,7 +213,7 @@ func TestActionReportsFailure(t *testing.T) {
 func TestActionReportsUnknownWorkflowFileCount(t *testing.T) {
 	t.Parallel()
 	workspace := resolved(t, t.TempDir())
-	run, _ := runAction(t, workspace, unknownFiles(&lintOutcome{"", "no project\n", commandstatus.ExitFailure}),
+	run, _ := runAction(t, workspace, unknownFiles(&lintOutcome{"", "no project\n", exitcode.ExitFailure}),
 		"", "json", "", "", ".", "", "true")
 
 	want := fmt.Sprintf(
@@ -234,11 +234,11 @@ func TestActionReportsStatusBeforeResultPersistenceFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(workspace, "blocked"), []byte("not a directory"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "", commandstatus.ExitSuccessNoProblem}, 0),
+	run, _ := runAction(t, workspace, knownFiles(&lintOutcome{"", "", exitcode.ExitSuccessNoProblem}, 0),
 		"", "json", "", "", ".", "blocked/results.json", "true")
 
-	if run.code != commandstatus.ExitFailure {
-		t.Errorf("wanted exit code %d but got %d", commandstatus.ExitFailure, run.code)
+	if run.code != exitcode.ExitFailure {
+		t.Errorf("wanted exit code %d but got %d", exitcode.ExitFailure, run.code)
 	}
 	want := fmt.Sprintf(
 		"actionlint %s: 0 problems in 0 workflow files (requested tools: ruff, shellcheck)\n",
@@ -348,7 +348,7 @@ func TestActionPassesInputsToLinter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, recorder := runActionWithInputs(t, workspace, knownFiles(&lintOutcome{"", "", commandstatus.ExitSuccessNoProblem}, 3), map[string]string{"INPUT_DISABLE-TOOLS": "ruff\nshellcheck"},
+	_, recorder := runActionWithInputs(t, workspace, knownFiles(&lintOutcome{"", "", exitcode.ExitSuccessNoProblem}, 3), map[string]string{"INPUT_DISABLE-TOOLS": "ruff\nshellcheck"},
 		"w.yaml\n\nw.yaml", "sarif", "first\nsecond", "conf.yaml", "sub", "", "true")
 
 	req := recorder.req
@@ -380,7 +380,7 @@ func TestActionFallsBackToProcessDirectory(t *testing.T) {
 	t.Chdir(workspace)
 
 	var out strings.Builder
-	recorder := &recordedLint{result: knownFiles(&lintOutcome{"", "", commandstatus.ExitSuccessNoProblem}, 0)}
+	recorder := &recordedLint{result: knownFiles(&lintOutcome{"", "", exitcode.ExitSuccessNoProblem}, 0)}
 	a := &action{
 		args:    args("", "json", "", "", ".", "", "true"),
 		stdout:  &out,
@@ -416,7 +416,7 @@ func TestActionTimesOut(t *testing.T) {
 		lint: func(req *lintRequest) *lintResult {
 			defer close(finished)
 			<-req.ctx.Done()
-			return knownFiles(&lintOutcome{"", "", commandstatus.ExitSuccessNoProblem}, 0)
+			return knownFiles(&lintOutcome{"", "", exitcode.ExitSuccessNoProblem}, 0)
 		},
 		newID:   fixedID("DELIM"),
 		timeout: 10 * time.Millisecond,

@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
@@ -102,16 +102,16 @@ func TestActionInputCatalogueMergesStaticAndPerConfigSites(t *testing.T) {
 	rootConfig, childConfig := &configuration.Config{}, &configuration.Config{}
 	f.options.Bindings = testBindings(rootConfig)
 	f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return childConfig, nil })
-	f.options.ScriptInputs = []checkinputs.ScriptInput{{Action: "owner/shared", Input: "script", Language: "javascript"}}
+	f.options.ScriptInputs = []inputs.ScriptInput{{Action: "owner/shared", Input: "script", Language: "javascript"}}
 	loads := map[*configuration.Config]int{}
-	f.options.ScriptInputsForScope = func(scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+	f.options.ScriptInputsForScope = func(scope *rulebinding.Scope) ([]inputs.ScriptInput, error) {
 		config := scope.Composite()
 		loads[config]++
 		name := "owner/root"
 		if config == childConfig {
 			name = "owner/child"
 		}
-		return []checkinputs.ScriptInput{{Action: name, Input: "script", Language: "javascript"}}, nil
+		return []inputs.ScriptInput{{Action: name, Input: "script", Language: "javascript"}}, nil
 	}
 	result, err := Workflow(f.options, f.root)
 	if err != nil {
@@ -140,7 +140,7 @@ func TestActionInputCatalogueUsesDeclaringConfigAndRestoresEntry(t *testing.T) {
 			f.options.CollectScripts = collect
 			f.options.BindSource = testSourceBindings(func(string) (*configuration.Config, error) { return childConfig, nil })
 			var seen []*configuration.Config
-			f.options.ScriptInputsForScope = func(scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+			f.options.ScriptInputsForScope = func(scope *rulebinding.Scope) ([]inputs.ScriptInput, error) {
 				config := scope.Composite()
 				seen = append(seen, config)
 				return nil, nil

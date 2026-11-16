@@ -5,12 +5,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	sourceposition "actionlint.kjanat.dev/v2/internal/input/source/position"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -43,12 +43,12 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 		if directive.Reason != "" {
 			replacement += " -- " + directive.Reason
 		}
-		edit := results.Edit{Start: directive.Position, End: sourcepos.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
+		edit := results.Edit{Start: directive.Position, End: source.Position{Line: directive.Position.Line, Column: utf8.RuneCountInString(text) + 1}, Replacement: replacement}
 		return validateEdit(content, edit, line, rule, allowed, invalid, 0, names)
 	}
 	target := line
 	if root, err := codec.ParseYAML(content); err == nil {
-		parser := workflowparser.NewSourceParser(content)
+		parser := parser.NewSourceParser(content)
 		parser.IndexScalarSources(root)
 		var visit func(*codec.Node)
 		visit = func(node *codec.Node) {
@@ -71,7 +71,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 		}
 	}
 	indent := text[:len(text)-len(strings.TrimLeft(text, " \t"))]
-	point := sourcepos.Position{Line: target, Column: 1}
+	point := source.Position{Line: target, Column: 1}
 	edit := results.Edit{Start: point, End: point, Replacement: indent + "# actionlint-ignore-next-line " + rule + ending}
 	return validateEdit(content, edit, line, rule, allowed, invalid, 1, names)
 }
@@ -79,7 +79,7 @@ func Edit(content []byte, line int, rule string, allowed []string, names rule.Na
 // Validate through the suppression parser itself, including malformed YAML
 // recovery. An edit must suppress its target without hiding grammar errors.
 func validateEdit(content []byte, edit results.Edit, line int, rule string, allowed []string, previous []results.Diagnostic, shift int, names rule.Names) (results.Edit, bool) {
-	first, last, err := sourceposition.Range(content, sourcepos.YAML, edit.Start, edit.End)
+	first, last, err := sourceposition.Range(content, source.YAML, edit.Start, edit.End)
 	if err != nil {
 		return results.Edit{}, false
 	}

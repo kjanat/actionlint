@@ -12,7 +12,7 @@ import (
 
 	render "actionlint.kjanat.dev/v2/internal/output"
 
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
@@ -34,27 +34,27 @@ type action struct {
 	acquisition pluginacquisition.Settings
 }
 
-var results = map[int]string{
-	commandstatus.ExitSuccessNoProblem:     "success",
-	commandstatus.ExitSuccessProblemFound:  "problems-found",
-	commandstatus.ExitInvalidCommandOption: "invalid-options",
-	commandstatus.ExitFailure:              "failure",
+var resultNamesByExitCode = map[int]string{
+	exitcode.ExitSuccessNoProblem:     "success",
+	exitcode.ExitSuccessProblemFound:  "problems-found",
+	exitcode.ExitInvalidCommandOption: "invalid-options",
+	exitcode.ExitFailure:              "failure",
 }
 
 func (a *action) run() int {
 	code, err := a.execute()
 	if err != nil {
-		code = commandstatus.ExitFailure
+		code = exitcode.ExitFailure
 		if _, ok := errors.AsType[*inputError](err); ok {
 			_, _ = fmt.Fprintf(a.stdout, "::error title=Invalid action input::%s\n", commandEscape(err.Error()))
-			code = commandstatus.ExitInvalidCommandOption
+			code = exitcode.ExitInvalidCommandOption
 		} else {
 			_, _ = fmt.Fprintf(a.stdout, "::error title=actionlint action failed::%s\n", commandEscape(err.Error()))
 		}
 	}
 	if persistErr := a.persistResult(code, err); persistErr != nil {
 		_, _ = fmt.Fprintf(a.stdout, "::error title=Could not save actionlint results::%s\n", commandEscape(persistErr.Error()))
-		return commandstatus.ExitFailure
+		return exitcode.ExitFailure
 	}
 	return code
 }
@@ -105,7 +105,7 @@ func (a *action) execute() (int, error) {
 			return 0, err
 		}
 		rendered = output.String()
-		if outcome.code == commandstatus.ExitSuccessNoProblem || outcome.code == commandstatus.ExitSuccessProblemFound {
+		if outcome.code == exitcode.ExitSuccessNoProblem || outcome.code == exitcode.ExitSuccessProblemFound {
 			count = strconv.Itoa(len(lint.report.Diagnostics))
 		}
 	} else {
@@ -113,7 +113,7 @@ func (a *action) execute() (int, error) {
 	}
 	lint.lintOutcome = outcome
 	a.emitStatus(outcome.code, count, lint.selectedFileCount(), lint.report.FileCount != nil, req)
-	result, ok := results[outcome.code]
+	result, ok := resultNamesByExitCode[outcome.code]
 	if !ok {
 		result = "failure"
 	}
@@ -124,7 +124,7 @@ func (a *action) execute() (int, error) {
 	err = a.appendOutputs([]namedOutput{
 		{"exit-code", strconv.Itoa(outcome.code)},
 		{"result", result},
-		{"problems-found", strconv.FormatBool(outcome.code == commandstatus.ExitSuccessProblemFound)},
+		{"problems-found", strconv.FormatBool(outcome.code == exitcode.ExitSuccessProblemFound)},
 		{"problem-count", count},
 		{"output", rendered},
 		{"output-file", written},
@@ -132,15 +132,15 @@ func (a *action) execute() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if outcome.code >= commandstatus.ExitInvalidCommandOption && (in.format == formatJSON || in.format == formatJSONLines) {
+	if outcome.code >= exitcode.ExitInvalidCommandOption && (in.format == formatJSON || in.format == formatJSONLines) {
 		a.emit(outcome.stderr, outcome.code, in.format)
 	} else {
 		a.emit(rendered, outcome.code, in.format)
 	}
 	a.emitConfiguration(lint, req.workingDir)
 
-	if outcome.code == commandstatus.ExitSuccessProblemFound && !in.failOnError {
-		return commandstatus.ExitSuccessNoProblem, nil
+	if outcome.code == exitcode.ExitSuccessProblemFound && !in.failOnError {
+		return exitcode.ExitSuccessNoProblem, nil
 	}
 	return outcome.code, nil
 }

@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
@@ -26,7 +26,7 @@ type Document struct {
 	Workflow *definition.Workflow
 	// Metadata is the decoded action manifest; nil for workflow documents.
 	Metadata     *actionmeta.Metadata
-	SyntaxErrors []*workflowparser.SyntaxError
+	SyntaxErrors []*parser.SyntaxError
 	// Facts supplies declaration projections: the workflow itself, or the
 	// projection of an action's steps. Action projections are never workflow
 	// traversal inputs. It is nil when decoding recovered no semantic input.
@@ -56,7 +56,7 @@ func (p Provenance) bind(identity string) *workflows.Bound {
 
 func Workflow(content []byte) Document {
 	owned := bytes.Clone(content)
-	w, issues := workflowparser.ParseWorkflow(owned)
+	w, issues := parser.ParseWorkflow(owned)
 	return Document{
 		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
 		Provenance: Provenance{parsed: true, text: string(owned), workflow: w},
@@ -73,7 +73,7 @@ func Action(sourcePath string, content []byte) Document {
 		provenance = actionFacts(metadata)
 	}
 	if err != nil {
-		document.SyntaxErrors = workflowparser.HandleYAMLUnmarshalError(err)
+		document.SyntaxErrors = parser.HandleYAMLUnmarshalError(err)
 		for _, issue := range document.SyntaxErrors {
 			issue.Line, issue.Column = max(1, issue.Line), max(1, issue.Column)
 		}
@@ -118,7 +118,7 @@ func (d Document) ParseStatus() string {
 func (d Document) CanAnalyze() bool { return d.Facts != nil }
 
 func actionFacts(metadata *actionmeta.Metadata) *definition.Workflow {
-	parser := workflowparser.NewSourceParser(metadata.Source)
+	parser := parser.NewSourceParser(metadata.Source)
 	parser.IndexScalarSources(metadata.Root)
 	job := &definition.Job{}
 	for _, step := range metadata.Runs.Steps {

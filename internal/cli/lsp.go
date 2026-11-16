@@ -6,7 +6,7 @@ import (
 	"os"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	lsp "actionlint.kjanat.dev/v2/internal/lsp"
+	"actionlint.kjanat.dev/v2/internal/lsp"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"

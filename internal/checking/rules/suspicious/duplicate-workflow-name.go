@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
@@ -87,7 +87,7 @@ func prepareDuplicateWorkflowName(c define.RuleInputs) (define.InputPreparation,
 	}
 	self := c.DocumentPath()
 	c.WorkflowNameInventory = inventory.ExcludingLiteral(func(path string) bool {
-		return workflownames.SamePath(path, self)
+		return names.SamePath(path, self)
 	})
 	return define.PreparedInputs{RuleInputs: c}, nil
 }

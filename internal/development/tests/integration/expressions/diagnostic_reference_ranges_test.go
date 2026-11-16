@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
@@ -124,7 +124,7 @@ func TestCompositeDeprecatedCommands(t *testing.T) {
 	}
 }
 
-func assertDiagnosticOffsetRange(t *testing.T, src string, d diagmodel.Diagnostic, start, end int) {
+func assertDiagnosticOffsetRange(t *testing.T, src string, d results.Diagnostic, start, end int) {
 	t.Helper()
 	position := func(offset int) (int, int) {
 		return strings.Count(src[:offset], "\n") + 1, utf8.RuneCountInString(src[strings.LastIndexByte(src[:offset], '\n')+1:offset]) + 1
@@ -150,7 +150,7 @@ func TestDeprecatedCommandMappedOccurrences(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var findings []diagmodel.Diagnostic
+		var findings []results.Diagnostic
 		for _, d := range result.Diagnostics {
 			if d.Rule == "deprecated-commands" {
 				findings = append(findings, d.Diagnostic)

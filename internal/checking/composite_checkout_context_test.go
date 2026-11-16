@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeCheckoutEnvironmentPlacement(t *testing.T) {
@@ -118,7 +118,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				var findings []diagmodel.Diagnostic
+				var findings []results.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
 						findings = append(findings, d.Diagnostic)

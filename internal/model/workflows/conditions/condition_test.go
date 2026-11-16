@@ -3,7 +3,7 @@ package conditions
 import (
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
@@ -142,7 +142,7 @@ func TestConditionNeverRuns(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expression := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			expression := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expression == nil {
 				t.Fatal("invalid test expression")
 			}

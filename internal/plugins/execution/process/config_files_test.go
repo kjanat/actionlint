@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -30,7 +30,7 @@ func TestConfigFile(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	var recorded []string
-	reader := inputfiles.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })
+	reader := files.New(t.Context(), nil, func(path string) { recorded = append(recorded, path) })
 	files := manifests.ConfigFiles{Names: []string{".shellcheckrc", "shellcheckrc"}, Search: []manifests.ConfigSearch{manifests.ConfigSearchUpward, manifests.ConfigSearchHome}}
 
 	found, err := ConfigFile(reader, files, "", nested)

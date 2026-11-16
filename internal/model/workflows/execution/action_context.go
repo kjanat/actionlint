@@ -7,7 +7,7 @@ import (
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -15,7 +15,7 @@ import (
 var ErrInvalidActionCall = errors.New("execution: invalid action call")
 
 // CallFacts projects caller effects from the owned syntax view.
-func CallFacts(view workflows.Step, platform runnerlang.Platform) (invocation.Facts, error) {
+func CallFacts(view workflows.Step, platform runners.Platform) (invocation.Facts, error) {
 	if !view.Present() {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}

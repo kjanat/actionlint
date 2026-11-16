@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	reference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 )
 
 func TestDecodePartialNullAndEmptyMetadata(t *testing.T) {
@@ -125,7 +125,7 @@ inputs:
 	if problems := Validate(metadata).Problems; len(problems) != 0 {
 		t.Fatalf("valid extension metadata was rejected: %+v", problems)
 	}
-	reference.CheckAction(t, source, true)
+	expressions.CheckAction(t, source, true)
 }
 
 func TestDecodePartialOutputIgnoresRecursiveAliasPayload(t *testing.T) {

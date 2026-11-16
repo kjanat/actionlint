@@ -6,7 +6,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -18,10 +18,10 @@ func sanitize(src string, expressionEnd ExpressionEnd, placeholders *Masks) (str
 	original := norm.NFKC.String(src)
 	if placeholders != nil {
 		placeholders.sourceLines = strings.Split(src, "\n")
-		placeholders.percentConversions = make(map[checkinputs.ScriptPosition]bool)
+		placeholders.percentConversions = make(map[inputs.ScriptPosition]bool)
 	}
 	nextName := uint64(0)
-	position := checkinputs.ScriptPosition{Row: 1, Column: 1}
+	position := inputs.ScriptPosition{Row: 1, Column: 1}
 	for {
 		start := strings.Index(src, "${{")
 		if start < 0 {
@@ -174,7 +174,7 @@ func templateDebugFieldSuffix(suffix string) bool {
 	return rest != "" && strings.ContainsRune("}!:", rune(rest[0]))
 }
 
-func advancePosition(position *checkinputs.ScriptPosition, text string) {
+func advancePosition(position *inputs.ScriptPosition, text string) {
 	for _, r := range text {
 		if r == '\n' {
 			position.Row++

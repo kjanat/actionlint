@@ -10,12 +10,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
@@ -44,7 +44,7 @@ func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
     types: [completed]
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

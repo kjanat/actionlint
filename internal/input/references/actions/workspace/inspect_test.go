@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	actionmeta "actionlint.kjanat.dev/v2/internal/model/actionmeta"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
 
 func TestValidationUsesCapturedExecutionFileAvailability(t *testing.T) {
@@ -63,7 +63,7 @@ func TestExecutionFileSharedByEntrypointsIsReadOnce(t *testing.T) {
 	t.Parallel()
 	meta := &actionmeta.Metadata{Directory: t.TempDir(), Runs: actionmeta.Runs{Using: "node24", Main: "shared.js", Pre: "shared.js", Post: "shared.js"}}
 	reads := 0
-	reader := inputfiles.New(t.Context(), func(string) ([]byte, error) { reads++; return nil, nil }, nil)
+	reader := files.New(t.Context(), func(string) ([]byte, error) { reads++; return nil, nil }, nil)
 	facts, err := workspace.InspectReferencedFiles(t.Context(), meta, reader)
 	if err != nil || reads != 1 || facts.Lookup("shared.js") != actionmeta.FilePresent {
 		t.Fatalf("entrypoint acquisition repeated or lost: reads=%d error=%v", reads, err)

@@ -1,13 +1,13 @@
 package expressions
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
 
@@ -48,13 +48,13 @@ func (rule *Checker) checkMatrixExpression(expr *definition.String) exprtypes.Ob
 	return schema.MatrixType(ty)
 }
 
-func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrixcheck.Resolution) exprtypes.ObjectType {
+func (rule *Checker) checkMatrix(m *definition.Matrix, resolution matrix.Resolution) exprtypes.ObjectType {
 	if m == nil {
 		return exprtypes.NewEmptyStrictObjectType()
 	}
 	// inferred holds the element type of each row declaration. A missing
 	// position reads as any, which means nothing was inferred.
-	inferred := map[sourcepos.Position]exprtypes.Type{}
+	inferred := map[source.Position]exprtypes.Type{}
 	if m.Expression != nil {
 		rule.checkMatrixExpression(m.Expression)
 	} else {
@@ -182,7 +182,7 @@ func (rule *Checker) checkMatrixCombinationExpression(s *definition.String, sect
 // an empty array literal.
 func (rule *Checker) checkMatrixSequenceItem(value definition.RawYAMLValue) (ty exprtypes.Type, ok bool) {
 	ty = rule.checkRawYAMLValue(value)
-	if scalar, ok := value.(*definition.RawYAMLString); ok && exprsyntax.ParseAssignedExpression(scalar.Value) != nil {
+	if scalar, ok := value.(*definition.RawYAMLString); ok && syntax.ParseAssignedExpression(scalar.Value) != nil {
 		if array, ok := ty.Array(); ok {
 			if literal, known := expressionLiteral(scalar.Value); known {
 				if values, ok := literal.([]any); ok && len(values) == 0 {

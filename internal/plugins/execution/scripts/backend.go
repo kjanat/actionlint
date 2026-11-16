@@ -15,12 +15,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
+	"actionlint.kjanat.dev/v2/internal/checking/executor"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
@@ -47,12 +47,12 @@ type engineOptions struct {
 	enabled func(contract.Context) bool
 	// prepare replaces expression masking and plugin options for every
 	// selected script.
-	prepare func(context.Context, scriptexecution.Unit) (preparation.Prepared, error)
+	prepare func(context.Context, scripts.Unit) (preparation.Prepared, error)
 	// batch replaces prepare with a preparation bound to one batch, which
 	// may reject the settings of its scopes once. With it, run scripts
 	// reach the preparation even when no shell selects them; the profile
 	// skips the ones it does not prepare.
-	batch func(context.Context, scriptexecution.Batch) (func(context.Context, scriptexecution.Unit) (preparation.Prepared, error), error)
+	batch func(context.Context, scripts.Batch) (func(context.Context, scripts.Unit) (preparation.Prepared, error), error)
 	// filename is the virtual name of run snippets; its extension also names
 	// action-input snippets. Empty keeps "actionlint-script".
 	filename string
@@ -159,7 +159,7 @@ type check struct {
 	index    int
 	prepared preparation.Prepared
 	request  checkinputs.ScriptRequest
-	scope    *scriptexecution.Scope
+	scope    *scripts.Scope
 }
 
 // outcome is the backend's answer to one check. Copies, set when the check
@@ -175,7 +175,7 @@ type outcome struct {
 
 // Analyze prepares the selected scripts, checks them, concurrently when the
 // backend allows, and maps the diagnostics back in script order.
-func (r runner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r runner) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	checks, failures := r.prepare(ctx, batch)
 	if err := ctx.Err(); err != nil {
 		return nil, errors.Join(failures, err)
@@ -191,7 +191,7 @@ func (r runner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]con
 }
 
 // prepare selects, prepares and validates the scripts this tool checks.
-func (r runner) prepare(ctx context.Context, batch scriptexecution.Batch) ([]check, error) {
+func (r runner) prepare(ctx context.Context, batch scripts.Batch) ([]check, error) {
 	var checks []check
 	var failures error
 	_, reporting := r.backend.(processRunner)
@@ -252,7 +252,7 @@ func (r runner) prepare(ctx context.Context, batch scriptexecution.Batch) ([]che
 			failures = errors.Join(failures, fmt.Errorf("tool %s requires template contract %q; backend declares %q", r.descriptor.Name, prepared.TemplateContract, r.templateContract))
 			continue
 		}
-		if err := checkexecutor.ValidateOptions(r.descriptor.OptionsSchema, options); err != nil {
+		if err := executor.ValidateOptions(r.descriptor.OptionsSchema, options); err != nil {
 			failures = errors.Join(failures, fmt.Errorf("tool %s options: %w", r.descriptor.Name, err))
 			continue
 		}
@@ -314,7 +314,7 @@ func (r runner) check(ctx context.Context, checks []check) []outcome {
 }
 
 // findings maps one check's diagnostics to findings in the workflow.
-func (r runner) findings(c check, script scriptexecution.Unit, result outcome) ([]contract.ToolFinding, error) {
+func (r runner) findings(c check, script scripts.Unit, result outcome) ([]contract.ToolFinding, error) {
 	var out []contract.ToolFinding
 	var failures error
 	if len(result.sources) != 0 {
@@ -369,7 +369,7 @@ func (r runner) findings(c check, script scriptexecution.Unit, result outcome) (
 // generated startup line is dropped unless its severity is error. An
 // unmapped start falls back to the script key; an unmapped or reversed end is
 // dropped.
-func (r runner) scriptFinding(c check, script scriptexecution.Unit, d checkinputs.ScriptDiagnostic) (*contract.ToolFinding, error) {
+func (r runner) scriptFinding(c check, script scripts.Unit, d checkinputs.ScriptDiagnostic) (*contract.ToolFinding, error) {
 	row, endRow := d.Location.Row, d.EndLocation.Row
 	hasEnd := d.EndLocation != (checkinputs.ScriptPosition{})
 	if lines := c.prepared.LineMap; lines != nil {
@@ -395,7 +395,7 @@ func (r runner) scriptFinding(c check, script scriptexecution.Unit, d checkinput
 	if !ok {
 		start, hasEnd = script.Key(), false
 	}
-	var end sourcepos.Position
+	var end source.Position
 	if hasEnd {
 		position, endOK := script.Source().EndPos(endRow, d.EndLocation.Column)
 		if endOK && (position.Line > start.Line || position.Line == start.Line && position.Column >= start.Column) {
@@ -448,7 +448,7 @@ func (r runner) debug(format string, args ...any) {
 }
 
 // filename is the virtual snippet name of a request.
-func (r runner) filename(script scriptexecution.Unit) string {
+func (r runner) filename(script scripts.Unit) string {
 	if script.Input != nil {
 		return inputFilename(script.Input.Site, strings.TrimPrefix(path.Ext(r.options.filename), "."))
 	}
@@ -475,7 +475,7 @@ func inputFilename(site checkinputs.ScriptInput, extension string) string {
 	return "actionlint-input/" + site.Language + "/" + site.Action + "/" + site.Input + "." + extension
 }
 
-func scriptShell(script scriptexecution.Unit) string {
+func scriptShell(script scripts.Unit) string {
 	shell, implicit := script.RuntimeShell()
 	if shell == "" && script.Shell != nil {
 		shell = *script.Shell

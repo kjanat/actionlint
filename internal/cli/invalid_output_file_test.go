@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestInvalidOutputFileThroughCLI(t *testing.T) {
@@ -42,7 +42,7 @@ runs:
 	if status != 1 {
 		t.Fatalf("status=%d, output=%s, stderr=%s", status, output.String(), log.String())
 	}
-	var report resultreport.CheckResult
+	var report report.CheckResult
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}

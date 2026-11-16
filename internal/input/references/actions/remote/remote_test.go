@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type provider func(context.Context, actions.Reference) (actions.Manifest, error)
@@ -23,16 +23,16 @@ func manifest(t *testing.T, repo, commit, directory, ref, source string) actions
 	return manifestWithID(t, knownRepositoryID(t, 42), repo, commit, directory, ref, source)
 }
 
-func knownRepositoryID(t *testing.T, value uint64) repofacts.ID {
+func knownRepositoryID(t *testing.T, value uint64) repository.ID {
 	t.Helper()
-	id, err := repofacts.KnownID(value)
+	id, err := repository.KnownID(value)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return id
 }
 
-func manifestWithID(t *testing.T, id repofacts.ID, repo, commit, directory, ref, source string) actions.Manifest {
+func manifestWithID(t *testing.T, id repository.ID, repo, commit, directory, ref, source string) actions.Manifest {
 	t.Helper()
 	identity, err := actions.NewIdentity("github.com", repo, id, commit, directory)
 	if err != nil {
@@ -173,8 +173,8 @@ func TestRepositoryIDsAreComparedOnlyWhenBothAreKnown(t *testing.T) {
 	commit := strings.Repeat("a", 40)
 	for _, test := range []struct {
 		name     string
-		first    repofacts.ID
-		second   repofacts.ID
+		first    repository.ID
+		second   repository.ID
 		repo     string
 		rejected bool
 	}{

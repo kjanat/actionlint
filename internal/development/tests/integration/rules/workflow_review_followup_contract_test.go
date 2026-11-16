@@ -9,12 +9,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
@@ -24,7 +24,7 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 		if strings.HasPrefix(pattern, "${{") {
 			reference = pattern
 		}
-		workflow, errs := workflowparser.ParseWorkflow([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
+		workflow, errs := parser.ParseWorkflow([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `))
 		if workflow == nil || len(errs) != 0 {

@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -26,7 +26,7 @@ type parsedSource struct {
 	mu      sync.Mutex
 	indexed bool
 	scalars map[source.Position]*codec.Node
-	parser  *workflowparser.Parser
+	parser  *parser.Parser
 }
 
 func newProvenance(text string) Provenance {
@@ -73,7 +73,7 @@ func (s *parsedSource) index() {
 	if err != nil {
 		return
 	}
-	s.parser = workflowparser.NewSourceParser([]byte(s.text))
+	s.parser = parser.NewSourceParser([]byte(s.text))
 	s.parser.IndexScalarSources(root)
 	var visit func(*codec.Node)
 	visit = func(node *codec.Node) {

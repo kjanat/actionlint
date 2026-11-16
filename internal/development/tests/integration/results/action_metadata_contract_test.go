@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -38,7 +38,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	known, err := repofacts.KnownID(42)
+	known, err := repository.KnownID(42)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,11 +46,11 @@ func TestActionMetadataReportContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	problem := actionmeta.MetadataProblem{Code: actionmeta.CodeInvalidFieldType, Message: "metadata unavailable", Path: "action.yml", Start: sourcepos.Position{}, End: sourcepos.Position{}}
+	problem := actionmeta.MetadataProblem{Code: actionmeta.CodeInvalidFieldType, Message: "metadata unavailable", Path: "action.yml", Start: source.Position{}, End: source.Position{}}
 	reports := []actions.MetadataReport{
 		(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.MissingMetadata(availability.Offline())}).Report(),
 	}
-	for _, id := range []repofacts.ID{known, {}} {
+	for _, id := range []repository.ID{known, {}} {
 		identity, err := actions.NewIdentity("github.com", "owner/repository", id, "0123456789abcdef0123456789abcdef01234567", "")
 		if err != nil {
 			t.Fatal(err)

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 )
 
 func TestCustomMetadataMustMatchRuntime(t *testing.T) {
@@ -19,15 +19,15 @@ func TestCustomMetadataMustMatchRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Fixtures use the runtime export for metadata discovery.
-	engine := loadEngine(t, enginePath("echo"), corewasm.Options{})
+	engine := loadEngine(t, enginePath("echo"), module.Options{})
 	metadata := engine.Metadata()
 	metadata.Engine.Name = "spoofed"
 	declared, err := json.Marshal(metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload := binary.AppendUvarint(nil, uint64(len(pluginartifact.MetadataSection)))
-	payload = append(payload, pluginartifact.MetadataSection...)
+	payload := binary.AppendUvarint(nil, uint64(len(artifacts.MetadataSection)))
+	payload = append(payload, artifacts.MetadataSection...)
 	payload = append(payload, declared...)
 	section := binary.AppendUvarint([]byte{0}, uint64(len(payload)))
 	section = append(section, payload...)
@@ -35,7 +35,7 @@ func TestCustomMetadataMustMatchRuntime(t *testing.T) {
 	if err := os.WriteFile(path, append(raw, section...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := corewasm.LoadModuleEngine(t.Context(), path, corewasm.Options{})
+	loaded, err := module.LoadModuleEngine(t.Context(), path, module.Options{})
 	if loaded != nil {
 		_ = loaded.Close(t.Context())
 		t.Fatal("spoofed metadata loaded")

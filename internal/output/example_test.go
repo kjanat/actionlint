@@ -3,30 +3,30 @@ package output_test
 import (
 	"os"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	render "actionlint.kjanat.dev/v2/internal/output"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func ExampleFormatter() {
 	// Errors returned from Linter methods
-	errs := []diagmodel.Diagnostic{
+	errs := []results.Diagnostic{
 		{
 			Message: "error message 1",
 			Path:    "foo.yaml",
-			Start:   sourcepos.Position{Line: 1, Column: 4},
+			Start:   source.Position{Line: 1, Column: 4},
 			Rule:    "rule1",
 		},
 		{
 			Message: "error message 2",
 			Path:    "foo.yaml",
-			Start:   sourcepos.Position{Line: 3, Column: 1},
+			Start:   source.Position{Line: 3, Column: 1},
 			Rule:    "rule2",
 		},
 	}
 
 	// Create ErrorFormatter instance with template
-	f, err := render.NewFormatter(`{{range $ := .}}{{$.Filepath}}:{{$.Line}}:{{$.Column}}: {{$.Message}}\n{{end}}`, func() string { return "example" }, nil)
+	f, err := output.NewFormatter(`{{range $ := .}}{{$.Filepath}}:{{$.Line}}:{{$.Column}}: {{$.Message}}\n{{end}}`, func() string { return "example" }, nil)
 	if err != nil {
 		// Some error happened while creating the formatter (e.g. syntax error)
 		panic(err)
@@ -42,9 +42,9 @@ jobs:
 `
 
 	// Prints all errors to stdout following the template
-	var fields []*render.TemplateFields
+	var fields []*output.TemplateFields
 	for _, d := range errs {
-		fields = append(fields, render.TemplateFieldsOf(diagmodel.Publish(d, diagmodel.DiagnosticSource{Content: []byte(src)})))
+		fields = append(fields, output.TemplateFieldsOf(results.Publish(d, results.DiagnosticSource{Content: []byte(src)})))
 	}
 	if err := f.Print(os.Stdout, fields); err != nil {
 		panic(err)

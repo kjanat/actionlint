@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
-	pythonprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/python"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/python"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -22,7 +22,7 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, profile := range []string{mask.ID, pythonprofile.ID} {
+	for _, profile := range []string{mask.ID, python.ID} {
 		t.Run(profile, func(t *testing.T) {
 			t.Parallel()
 			manifest := manifests.Manifest{
@@ -30,7 +30,7 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 				ConfigSchema:         json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`),
 				PreparationTransform: &manifests.Transform{Language: manifests.LanguageJQ, Inline: `{source_prefix:"# generated\n",startup:"first\nsecond",config:{threshold:.settings.options.limit},variables:{mode:.language},excluded:["X1"]}`},
 			}
-			script := scriptexecution.Unit{Run: runBody("print(1)\n", nil), Shell: new("python"), Scope: &scriptexecution.Scope{Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}}
+			script := scripts.Unit{Run: runBody("print(1)\n", nil), Shell: new("python"), Scope: &scripts.Scope{Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}}
 			prepared, err := newPreparation(manifest, routeEngine, nil).input(t.Context(), script)
 			if err != nil {
 				t.Fatal(err)
@@ -53,8 +53,8 @@ func TestSourcePreparationMapsGeneratedRowsForEveryProfile(t *testing.T) {
 
 func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	t.Parallel()
-	script := scriptexecution.Unit{Run: runBody("__all__ = ['${{ inputs.name }}']\nprint(real_name)\n", nil)}
-	prepared, err := pythonprofile.Script(script.Text())
+	script := scripts.Unit{Run: runBody("__all__ = ['${{ inputs.name }}']\nprint(real_name)\n", nil)}
+	prepared, err := python.Script(script.Text())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestSourcePreparationComposesPythonMaskFilter(t *testing.T) {
 	}
 	lines := strings.Split(prepared.Source, "\n")
 	column := 1
-	finding := checkinputs.ScriptDiagnostic{Location: checkinputs.ScriptPosition{Row: 4, Column: column}, EndLocation: checkinputs.ScriptPosition{Row: 4, Column: len(lines[3]) + 1}, TemplateEffect: checkinputs.TemplateEffectExportedName}
+	finding := inputs.ScriptDiagnostic{Location: inputs.ScriptPosition{Row: 4, Column: column}, EndLocation: inputs.ScriptPosition{Row: 4, Column: len(lines[3]) + 1}, TemplateEffect: inputs.TemplateEffectExportedName}
 	if prepared.AcceptDiagnostic(finding) {
 		t.Fatal("generated Python identifier was reported after row insertion")
 	}

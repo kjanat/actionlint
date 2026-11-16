@@ -13,22 +13,22 @@ import (
 	"unicode"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
 // Index shares immutable inventories across concurrent workflow checks.
 type Index struct {
-	load   func(string) (namemodel.Declared, error)
+	load   func(string) (names.Declared, error)
 	reader *files.Reader
 	// paths includes in-memory source files which may not exist on disk yet.
 	paths []string
 	mu    sync.Mutex
-	cache map[string]func() (namemodel.Inventory, error)
+	cache map[string]func() (names.Inventory, error)
 }
 
 // NewIndex inventories workflow names under each root through reader, adding
 // the source paths, which may exist only in memory. load reads one workflow's name.
-func NewIndex(paths []string, reader *files.Reader, load func(string) (namemodel.Declared, error)) *Index {
+func NewIndex(paths []string, reader *files.Reader, load func(string) (names.Declared, error)) *Index {
 	return &Index{load: load, reader: reader, paths: slices.Clone(paths)}
 }
 
@@ -172,10 +172,10 @@ func filenameKey(path string) string {
 
 // ForRoot includes only workflow files directly under .github/workflows.
 // Input-selection filters must not remove potential workflow_run producers.
-func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
+func (i *Index) ForRoot(root string) (names.Inventory, error) {
 	i.mu.Lock()
 	if i.cache == nil {
-		i.cache = map[string]func() (namemodel.Inventory, error){}
+		i.cache = map[string]func() (names.Inventory, error){}
 	}
 	key := filepath.Clean(root)
 	load, exists := i.cache[key]
@@ -188,9 +188,9 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 		}
 	}
 	if !exists {
-		load = sync.OnceValues(func() (namemodel.Inventory, error) {
+		load = sync.OnceValues(func() (names.Inventory, error) {
 			var values []string
-			var literals []namemodel.NamedWorkflow
+			var literals []names.NamedWorkflow
 			complete := true
 			dir := filepath.Join(root, ".github", "workflows")
 			entries, err := i.reader.ReadDir(dir)
@@ -214,7 +214,7 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 				declared, err := i.load(path)
 				if err != nil {
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-						return namemodel.NewInventory(values, false).WithLiteralNames(literals), err
+						return names.NewInventory(values, false).WithLiteralNames(literals), err
 					}
 					complete = false
 					continue
@@ -224,7 +224,7 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 					continue
 				}
 				if literal, ok := declared.Literal(); ok {
-					literals = append(literals, namemodel.NamedWorkflow{Path: path, Name: literal})
+					literals = append(literals, names.NamedWorkflow{Path: path, Name: literal})
 				}
 				name, explicit := declared.Explicit()
 				if !explicit {
@@ -239,7 +239,7 @@ func (i *Index) ForRoot(root string) (namemodel.Inventory, error) {
 				}
 				values = append(values, name)
 			}
-			return namemodel.NewInventory(values, complete).WithLiteralNames(literals), nil
+			return names.NewInventory(values, complete).WithLiteralNames(literals), nil
 		})
 		i.cache[key] = load
 	}

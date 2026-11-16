@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // Bundled provider rules use the semantic categories declared by their manifests.
 func TestProviderRulesComeFromManifests(t *testing.T) {
 	t.Parallel()
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		t.Fatal(err)
 	}

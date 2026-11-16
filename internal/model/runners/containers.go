@@ -3,13 +3,13 @@ package runners
 import (
 	"strings"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
@@ -118,11 +118,11 @@ func (target ContainerTarget) LookupExpressionVariable(name string) (any, bool) 
 
 // Evaluate uses only established execution facts, including a complete matrix row.
 func (target ContainerTarget) Evaluate(text string) value.Value {
-	node := exprsyntax.ParseAssignedExpression(text)
+	node := syntax.ParseAssignedExpression(text)
 	if node == nil {
 		return value.Template(text, value.Origin{})
 	}
-	if result, known := expreval.ExpressionValueWithLookup(node, target.LookupExpressionVariable); known {
+	if result, known := evaluate.ExpressionValueWithLookup(node, target.LookupExpressionVariable); known {
 		return value.FromJSON(result, value.Origin{FromExpression: true})
 	}
 	return value.DynamicValue(text, value.KindUnknown, value.Origin{FromExpression: true})

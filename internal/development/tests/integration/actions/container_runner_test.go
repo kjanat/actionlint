@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 func TestContainerRunnerNestedComposites(t *testing.T) {
@@ -67,7 +67,7 @@ func TestContainerRunnerRemoteDockerMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, sha, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, sha, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"slices"
 
-	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/executor"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 )
 
@@ -20,7 +20,7 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		return options, err
 	}
 	options.Tools = slices.Clone(options.Tools)
-	remaining := make([]checkinputs.Registration, 0, len(options.Analyzers))
+	remaining := make([]inputs.Registration, 0, len(options.Analyzers))
 	seen := make(map[string]bool, len(occupiedTools))
 	for _, name := range occupiedTools {
 		seen[name] = true
@@ -34,14 +34,14 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 		}
 	}
 	for _, registration := range options.Analyzers {
-		integrator, ok := registration.Checker.(checkinputs.ToolIntegrator)
+		integrator, ok := registration.Checker.(inputs.ToolIntegrator)
 		if !ok || integrator.ToolIntegration() == nil {
 			remaining = append(remaining, registration)
 			continue
 		}
 		descriptor := integrator.ToolIntegration()
 		if len(registration.Options) != 0 {
-			if err := checkexecutor.ValidateOptions(registration.Checker.Descriptor().OptionsSchema, registration.Options); err != nil {
+			if err := executor.ValidateOptions(registration.Checker.Descriptor().OptionsSchema, registration.Options); err != nil {
 				return options, fmt.Errorf("analyzer %q options: %w", descriptor.Tool, err)
 			}
 		}
@@ -79,29 +79,29 @@ func ConfigureToolIntegrations(options Options, occupiedTools ...string) (Option
 
 // boundToolAnalyzer keeps caller options opaque until guest negotiation.
 type boundToolAnalyzer struct {
-	checkinputs.Checker
-	integrator checkinputs.ToolIntegrator
+	inputs.Checker
+	integrator inputs.ToolIntegrator
 	options    json.RawMessage
 }
 
-func (b boundToolAnalyzer) ToolIntegration() *checkinputs.ToolIntegration {
+func (b boundToolAnalyzer) ToolIntegration() *inputs.ToolIntegration {
 	return b.integrator.ToolIntegration()
 }
 
-func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*checkinputs.ToolNegotiation, error) {
+func (b boundToolAnalyzer) NegotiateTool(ctx context.Context, config, configured json.RawMessage) (*inputs.ToolNegotiation, error) {
 	effective := configured
 	if len(b.options) != 0 {
 		effective = b.options
 	}
 	if len(effective) != 0 {
-		if err := checkexecutor.ValidateOptions(b.Checker.Descriptor().OptionsSchema, effective); err != nil {
+		if err := executor.ValidateOptions(b.Checker.Descriptor().OptionsSchema, effective); err != nil {
 			return nil, fmt.Errorf("analyzer %q options: %w", b.Checker.Descriptor().Name, err)
 		}
 	}
 	return b.integrator.NegotiateTool(ctx, config, slices.Clone(effective))
 }
 
-func validateAnalyzerRegistrations(registrations []checkinputs.Registration) error {
+func validateAnalyzerRegistrations(registrations []inputs.Registration) error {
 	for _, registration := range registrations {
 		if validation.IsNil(registration.Checker) {
 			return errors.New("nil analyzer registration")

@@ -3,15 +3,15 @@ package typecheck
 import (
 	"testing"
 
-	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"github.com/google/go-cmp/cmp"
@@ -90,14 +90,14 @@ func TestGitHubReferenceValues(t *testing.T) {
 			if ty.Kind() != tc.kind {
 				t.Fatalf("type = %s, want %s", ty, tc.kind)
 			}
-			got, known := expreval.ConditionConstantValue(node)
+			got, known := evaluate.ConditionConstantValue(node)
 			if !known {
 				t.Fatal("documented constant was not evaluated")
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatalf("value mismatch (-want +got):\n%s", diff)
 			}
-			runnerreference.CheckValue(t, tc.input, nil, tc.want)
+			expressions.CheckValue(t, tc.input, nil, tc.want)
 		})
 	}
 }
@@ -121,11 +121,11 @@ func TestGitHubReferenceCoercions(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			node, ty := checkGitHubReference(t, tc.input, tc.kinds...)
-			got, known := expreval.ConditionConstantValue(node)
+			got, known := evaluate.ConditionConstantValue(node)
 			if ty.Kind() != tc.kind || !known || got != tc.want {
 				t.Fatalf("type=%s value=%v known=%t, want type=%s value=%t", ty, got, known, tc.kind, tc.want)
 			}
-			runnerreference.CheckValue(t, tc.input, nil, tc.want)
+			expressions.CheckValue(t, tc.input, nil, tc.want)
 		})
 	}
 }
@@ -152,13 +152,13 @@ func TestGitHubReferenceTruthiness(t *testing.T) {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
 			node, _ := checkGitHubReference(t, tc.input)
-			got, known := expreval.ConditionConstantValue(node)
+			got, known := evaluate.ConditionConstantValue(node)
 			if !known || exprvalues.ExpressionTruthy(got) != tc.want {
 				t.Fatalf("value=%v known=%t, want truthy=%t", got, known, tc.want)
 			}
 		})
 	}
-	if _, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(`"double quoted"}}`)); err == nil {
+	if _, err := syntax.NewParser().ParseExpression(syntax.NewLexer(`"double quoted"}}`)); err == nil {
 		t.Fatal("double-quoted expression string was accepted")
 	}
 }
@@ -183,18 +183,18 @@ func TestGitHubReferenceContextScenarios(t *testing.T) {
 		t.Run(tc.input+"/"+tc.value, func(t *testing.T) {
 			t.Parallel()
 			node, _ := checkGitHubReference(t, tc.input)
-			if got, known := expreval.ConditionConstantValue(node); known {
+			if got, known := evaluate.ConditionConstantValue(node); known {
 				t.Fatalf("invented context value: %v", got)
 			}
 			context := map[string]any{"github": map[string]any{tc.property: tc.value}}
-			got, known := expreval.ExpressionValue(node, func(name string) (any, bool) {
+			got, known := evaluate.ExpressionValue(node, func(name string) (any, bool) {
 				v, ok := context[name]
 				return v, ok
 			})
 			if !known || got != tc.want {
 				t.Fatalf("value=%v known=%t, want %v", got, known, tc.want)
 			}
-			runnerreference.CheckValue(t, tc.input, context, tc.want)
+			expressions.CheckValue(t, tc.input, context, tc.want)
 		})
 	}
 }
@@ -232,7 +232,7 @@ func TestGitHubReferenceRuntimeExpressions(t *testing.T) {
 			if ty.Kind() != tc.kind {
 				t.Fatalf("type = %s, want %s", ty, tc.kind)
 			}
-			if got, known := expreval.ConditionConstantValue(node); known {
+			if got, known := evaluate.ConditionConstantValue(node); known {
 				t.Fatalf("invented runtime result: %v", got)
 			}
 		})
@@ -259,20 +259,20 @@ func TestGitHubReferenceObjectFilters(t *testing.T) {
 	}
 }
 
-func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...findingKind) (exprsyntax.Node, exprtypes.Type) {
+func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...findingKind) (syntax.Node, exprtypes.Type) {
 	t.Helper()
-	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
+	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(input + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	checker.SetAvailability(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	checker.SetAvailability(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"))
 	checker.SetContextType("steps", exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 		"demo": exprtypes.NewStrictObjectType(map[string]exprtypes.Type{
 			"conclusion": exprtypes.StringType(), "outputs": exprtypes.NewMapObjectType(exprtypes.StringType()).Type(),
 		}).Type(),
 	}).Type())
-	ty, diagnostics := checker.Check(expreval.EvaluateSubexpressions(node))
+	ty, diagnostics := checker.Check(evaluate.EvaluateSubexpressions(node))
 	if len(diagnostics) != len(wantDiagnostics) {
 		t.Fatalf("diagnostics=%v, want %v", diagnostics, wantDiagnostics)
 	}

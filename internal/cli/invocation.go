@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 // invocation holds parser state until it is converted to an operation-specific request.
@@ -89,11 +89,11 @@ type renderOptions struct {
 	PrettyJSON         bool
 	PrettyJSONExplicit bool
 	Hyperlinks         hyperlinkMode
-	Formats            []render.Format
+	Formats            []output.Format
 	Template           string
 	TemplateFile       string
 	OutputFile         string
-	Color              render.Color
+	Color              output.Color
 	Width              int
 	Oneline            bool
 	Quiet              bool
@@ -194,9 +194,9 @@ func (a *commandApp) prepareInvocation() error {
 		return commandargs.UsageError{Cause: errors.New("--diagnostic-width must be between 40 and 400")}
 	}
 	for _, mode := range o.output {
-		if render.ValidFormat(mode) {
+		if output.ValidFormat(mode) {
 			i.Render.Oneline = false
-			format := render.Format(mode)
+			format := output.Format(mode)
 			if !slices.Contains(i.Render.Formats, format) {
 				i.Render.Formats = append(i.Render.Formats, format)
 			}

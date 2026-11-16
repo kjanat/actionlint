@@ -3,9 +3,9 @@ package conditions_test
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	workflowvalue "actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
@@ -23,7 +23,7 @@ func TestConstantFormatUncertainArguments(t *testing.T) {
 	} {
 		t.Run(expression, func(t *testing.T) {
 			t.Parallel()
-			value, known := expreval.ConditionConstantValue(exprsyntax.ParseAssignedExpression("${{ " + expression + " }}"))
+			value, known := evaluate.ConditionConstantValue(syntax.ParseAssignedExpression("${{ " + expression + " }}"))
 			if known {
 				t.Fatalf("unexpected constant value %v", value)
 			}
@@ -44,8 +44,8 @@ func TestConstantFormatCompositeArguments(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
-			if got, known := expreval.ConditionConstantValue(node); !known || got != tc.want {
+			node := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			if got, known := evaluate.ConditionConstantValue(node); !known || got != tc.want {
 				t.Fatalf("got %v/%v, want %s", got, known, tc.want)
 			}
 			if enabled, known := workflowconditions.Condition(workflowvalue.Condition("${{ "+tc.expression+" }}", workflowvalue.Origin{})); !known || !enabled {

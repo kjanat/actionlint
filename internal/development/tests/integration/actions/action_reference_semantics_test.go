@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestSelfRepositoryReferenceSuffix(t *testing.T) {
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ` + spec + "\n" + "\npermissions: {}\n"
-			check := func(errs []diagmodel.Diagnostic) {
+			check := func(errs []results.Diagnostic) {
 				if invalid {
 					if len(errs) != 1 || !strings.Contains(errs[0].Message, "do not support an '@ref' suffix") {
 						t.Fatal(errs)
@@ -44,7 +44,7 @@ runs:
 				t.Fatal(err)
 			}
 			findings := actioncheck.Check(meta, &sourcepos.Position{Line: 1, Column: 1}, actionmeta.ReferencedFiles{})
-			var diagnostics []diagmodel.Diagnostic
+			var diagnostics []results.Diagnostic
 			for _, finding := range findings {
 				diagnostics = append(diagnostics, finding.Diagnostic)
 			}

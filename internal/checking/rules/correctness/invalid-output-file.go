@@ -7,9 +7,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -38,7 +38,7 @@ var InvalidOutputFileRule = &define.Rule{
 }
 
 // checkInvalidOutputFile checks output files whose contents can be determined from the script.
-func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func checkInvalidOutputFile(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {
@@ -47,11 +47,11 @@ func checkInvalidOutputFile(ctx context.Context, input checkinputs.AnalyzerInput
 		if script.Runtime == nil || !script.Runtime.ShellKnown {
 			continue
 		}
-		file, known := scriptmodel.KnownOutputFile(script.Text, script.Runtime.Shell)
+		file, known := scripts.KnownOutputFile(script.Text, script.Runtime.Shell)
 		if !known {
 			continue
 		}
-		problem := scriptmodel.NamedFileCommandError(file.Text)
+		problem := scripts.NamedFileCommandError(file.Text)
 		if problem == "" {
 			continue
 		}

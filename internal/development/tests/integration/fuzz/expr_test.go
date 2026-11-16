@@ -4,13 +4,13 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
 
 func FuzzExprParse(f *testing.F) {
@@ -23,14 +23,14 @@ func FuzzExprParse(f *testing.F) {
 			return
 		}
 
-		l := exprsyntax.NewLexer(string(data))
-		p := exprsyntax.NewParser()
+		l := syntax.NewLexer(string(data))
+		p := syntax.NewParser()
 		e, err := p.ParseExpression(l)
 		if err != nil {
 			return
 		}
 
-		c := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
-		c.Check(expreval.EvaluateSubexpressions(e))
+		c := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
+		c.Check(evaluate.EvaluateSubexpressions(e))
 	})
 }

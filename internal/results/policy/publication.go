@@ -6,10 +6,10 @@ import (
 	"maps"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -19,18 +19,18 @@ type Batch struct {
 	Processor          Processor
 	Policy             Policy
 	Project, InputPath string
-	Source             sourcepos.Revision
+	Source             source.Revision
 	Action             bool
-	Findings           []*findingmodel.Finding
+	Findings           []*finding.Finding
 	Sources            map[string][]byte
-	References         map[string]workflowfacts.SourceIndex
+	References         map[string]facts.SourceIndex
 	EntryAliases       []string
 }
 
 // Publication contains the retained findings in batch order and their public projections.
 type Publication struct {
 	Diagnostics      []results.PublishedDiagnostic
-	Findings         [][]*findingmodel.Finding
+	Findings         [][]*finding.Finding
 	IncompleteChecks []report.IncompleteCheck
 }
 
@@ -45,10 +45,10 @@ type evaluatedBatch struct{ Batch }
 func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication, error) {
 	incomplete = slices.Clone(incomplete)
 	files := make([]evaluatedBatch, len(batches))
-	authority := make(map[*findingmodel.Finding]obligation)
+	authority := make(map[*finding.Finding]obligation)
 	usage := suppressionUses{}
 	sourceCopies := sourceCopies{}
-	records := findingmodel.NewCopier()
+	records := finding.NewCopier()
 	failedSources := make(map[checkRevision]bool)
 	for _, check := range incomplete {
 		if check.Rule == "" {
@@ -56,7 +56,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 		}
 	}
 	markIncomplete := func(batch Batch) {
-		observe := func(ref sourcepos.Reference) {
+		observe := func(ref source.Reference) {
 			key := checkRevision{ref.Document, ref.Revision}
 			if ref.Document != "" && ref.Revision != "" && !failedSources[key] {
 				failedSources[key] = true
@@ -64,7 +64,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 			}
 		}
 		if batch.Source.Valid() {
-			observe(sourcepos.Reference{Document: batch.Source.Document(), Revision: batch.Source.Digest()})
+			observe(source.Reference{Document: batch.Source.Document(), Revision: batch.Source.Digest()})
 		}
 		for _, path := range slices.Sorted(maps.Keys(batch.References)) {
 			observe(batch.References[path].Document)
@@ -81,7 +81,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 			}
 			continue
 		}
-		input := make([]*findingmodel.Finding, len(batch.Findings))
+		input := make([]*finding.Finding, len(batch.Findings))
 		for j, finding := range batch.Findings {
 			input[j] = records.Clone(finding)
 		}
@@ -89,7 +89,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 		if p.Content != nil {
 			p.Content = sourceCopies.of(p.Content)
 		}
-		p.usedSuppression = func(path string, position sourcepos.Position, rule string) {
+		p.usedSuppression = func(path string, position source.Position, rule string) {
 			if index, ok := batch.References[path]; ok {
 				usage.observe(index.Document, position, rule)
 			}
@@ -115,7 +115,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 	}
 	usage.discardUnproven(files, incomplete)
 	addUnusedSuppressionFixes(files)
-	result := Publication{Diagnostics: retain(files, authority), Findings: make([][]*findingmodel.Finding, len(files)), IncompleteChecks: incomplete}
+	result := Publication{Diagnostics: retain(files, authority), Findings: make([][]*finding.Finding, len(files)), IncompleteChecks: incomplete}
 	for i, file := range files {
 		result.Findings[i] = file.Findings
 	}

@@ -14,17 +14,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	networkpolicy "actionlint.kjanat.dev/v2/internal/integrations/network"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
@@ -33,7 +33,7 @@ type Loaded struct {
 	Processes     *hostprocess.ProcessPool
 	Components    []*component.Plugin
 	ScriptEngines []ScriptEngineRegistration
-	Modules       []*corewasm.Engine
+	Modules       []*module.Engine
 	deferred      []*deferredScriptEngine
 	// Providers contains process tool manifests read from local paths or OCI sources.
 	Providers []SelectedProvider
@@ -54,8 +54,8 @@ type SelectedProvider struct {
 	Repository bool
 }
 type ScriptEngineRegistration struct {
-	Backend    checkinputs.ScriptBackend
-	Descriptor checkinputs.ScriptEngineDescriptor
+	Backend    inputs.ScriptBackend
+	Descriptor inputs.ScriptEngineDescriptor
 }
 
 func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved rule.Names, log io.Writer, debug bool) (*Loaded, error) {
@@ -104,7 +104,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			loaded.Providers = append(loaded.Providers, SelectedProvider{Files: process.ProviderFiles{Manifest: manifest, Programs: programs}, Repository: sources.Configured})
 			continue
 		}
-		if err := pluginartifact.RequireRemotePin(path); err != nil {
+		if err := artifacts.RequireRemotePin(path); err != nil {
 			return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 		}
 		artifact := sources.Artifacts[path]
@@ -116,7 +116,7 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 				options.Offline, options.WarmCache = true, false
 				resolveCtx, _ = networkpolicy.WithSession(ctx, options)
 			}
-			artifact, err = pluginartifact.Resolve(resolveCtx, path, sources.ArtifactOptions(path))
+			artifact, err = artifacts.Resolve(resolveCtx, path, sources.ArtifactOptions(path))
 			if err != nil {
 				if sources.DisableTools && networkpolicy.OnlyOffline(err) {
 					continue
@@ -125,10 +125,10 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			}
 		}
 		path = artifact.Info.Source
-		if sources.DisableTools && (artifact.Info.Kind == pluginartifact.Core || artifact.Info.Kind == pluginartifact.ProviderManifest) {
+		if sources.DisableTools && (artifact.Info.Kind == artifacts.Core || artifact.Info.Kind == artifacts.ProviderManifest) {
 			continue
 		}
-		if artifact.Info.Kind == pluginartifact.ProviderManifest {
+		if artifact.Info.Kind == artifacts.ProviderManifest {
 			manifest, err := process.ReadProviderArtifact(artifact)
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
@@ -155,8 +155,8 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 			}
 			loaded.ToolIDs = append(loaded.ToolIDs, ids...)
 		}
-		if artifact.Info.Kind == pluginartifact.Core {
-			engine, err := corewasm.LoadArtifact(ctx, artifact, corewasm.Options{CacheDir: sources.Acquisition.CompiledModuleCacheDir()})
+		if artifact.Info.Kind == artifacts.Core {
+			engine, err := module.LoadArtifact(ctx, artifact, module.Options{CacheDir: sources.Acquisition.CompiledModuleCacheDir()})
 			if err != nil {
 				return nil, &LoadError{errors.Join(err, loaded.Close(context.WithoutCancel(ctx)))}
 			}
@@ -187,8 +187,8 @@ func LoadPlugins(ctx context.Context, sources pluginselection.Sources, reserved 
 	return loaded, nil
 }
 
-func (l *Loaded) Registrations() []checkinputs.Registration {
-	registrations := make([]checkinputs.Registration, 0, len(l.Components))
+func (l *Loaded) Registrations() []inputs.Registration {
+	registrations := make([]inputs.Registration, 0, len(l.Components))
 	if l.DisableTools {
 		return registrations
 	}
@@ -196,16 +196,16 @@ func (l *Loaded) Registrations() []checkinputs.Registration {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		registrations = append(registrations, checkinputs.Registration{Checker: plugin})
+		registrations = append(registrations, inputs.Registration{Checker: plugin})
 	}
 	return registrations
 }
 
-func (l *Loaded) RunnerProviders() []runner.Registration {
-	var registrations []runner.Registration
+func (l *Loaded) RunnerProviders() []runnerapi.Registration {
+	var registrations []runnerapi.Registration
 	for _, plugin := range l.Components {
 		if plugin.HasRunnerProvider() {
-			registrations = append(registrations, runner.Registration{Provider: plugin, ImplementationID: plugin.ArtifactDigest()})
+			registrations = append(registrations, runnerapi.Registration{Provider: plugin, ImplementationID: plugin.ArtifactDigest()})
 		}
 	}
 	return registrations

@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 
@@ -33,13 +33,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	actionprovider "actionlint.kjanat.dev/v2/internal/input/references/actions"
 
-	sourcemodel "actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -48,22 +48,22 @@ import (
 
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"golang.org/x/sync/errgroup"
@@ -111,10 +111,10 @@ type analysisResult struct {
 type analyzedFile struct {
 	captured    capture.CapturedDocument
 	source      sourceUnit
-	errors      []*findingmodel.Finding
+	errors      []*finding.Finding
 	publication *policy.Batch
 	rules       []rule.Descriptor
-	outline     documentmodel.Outline
+	outline     outline.Outline
 }
 
 type inputFiles struct{ workspace.InputFiles }
@@ -248,8 +248,8 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	inputs := &inputFiles{}
 	lifetime, cancel := context.WithCancel(ctx)
 	defer cancel()
-	reader := inputfiles.New(lifetime, request.ReadFile, inputs.add)
-	contentReader := inputfiles.New(lifetime, request.ReadFile, nil)
+	reader := files.New(lifetime, request.ReadFile, inputs.add)
+	contentReader := files.New(lifetime, request.ReadFile, nil)
 	allSources := slices.Clone(request.Sources)
 	overlays := make([]capture.Overlay, 0, len(allSources)+len(request.SourceOverlays))
 	for _, overlay := range request.SourceOverlays {
@@ -260,7 +260,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if path != "<stdin>" {
 			path = filepath.Clean(path)
 		}
-		overlays = append(overlays, capture.Overlay{Path: path, Content: overlay.Content, Coordinates: sourcemodel.YAML})
+		overlays = append(overlays, capture.Overlay{Path: path, Content: overlay.Content, Coordinates: sourcepos.YAML})
 	}
 	sourcePaths := make([]string, len(allSources))
 	for index := range allSources {
@@ -275,7 +275,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		unit.InputPath = path
 		sourcePaths[index] = path
 		if !request.DiskSources {
-			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcemodel.YAML})
+			overlays = append(overlays, capture.Overlay{Path: path, Content: unit.Content, Coordinates: sourcepos.YAML})
 		}
 	}
 	// The capture reader reuses selected file contents from allSources.
@@ -357,7 +357,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	logger := analysisLogger{log, level}
 	if load := request.LoadScriptEngine; load != nil {
 		request.LoadScriptEngine = func(ctx context.Context, path string) (checkinputs.ScriptBackend, error) {
-			reference, local, err := pluginartifact.NormalizeSource(path, request.WorkingDir)
+			reference, local, err := artifacts.NormalizeSource(path, request.WorkingDir)
 			if err != nil {
 				return nil, err
 			}
@@ -366,7 +366,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		}
 	}
 	session := &analysisSession{
-		remoteActions: make(map[references.MirrorAccess]*actionremote.Service),
+		remoteActions: make(map[references.MirrorAccess]*remote.Service),
 		environment:   request.ExecutionEnvironment,
 		analyzers:     request.Analyzers, ctx: lifetime, ruleRegistrations: ruleRegistrations, rules: rules,
 		captures: captures, snapshots: snapshots, reader: reader,
@@ -375,7 +375,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		ignoreSelectors: request.IgnoreSelectors,
 	}
 
-	documents := &actionDocuments{byPath: map[string]documentmodel.Action{}}
+	documents := &actionDocuments{byPath: map[string]outline.Action{}}
 	session.actionDocuments = documents
 	proc := request.Processes
 	actions := workspaceactions.NewFactory(session.debugWriter())
@@ -411,13 +411,13 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		session.repositories[root] = facts
 	}
 	session.gitModes = &gitModes{}
-	result = &analysisResult{Diagnostics: []diagmodel.PublishedDiagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
-	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
-		captured, err := captures.Read(lifetime, path, sourcemodel.YAML)
+	result = &analysisResult{Diagnostics: []results.PublishedDiagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
+	session.workflowNames = names.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
+		captured, err := captures.Read(lifetime, path, sourcepos.YAML)
 		if err != nil {
 			return namemodel.Unknown(), err
 		}
-		workflow, errs := workflowparser.ParseWorkflow(captured.Bytes())
+		workflow, errs := parser.ParseWorkflow(captured.Bytes())
 		if workflow == nil || len(errs) > 0 {
 			return namemodel.Unknown(), nil
 		}
@@ -440,7 +440,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			}); ok {
 				workflowProvider = configurable.WithWorkflowMetadataMirrors(mirrors, source.Config.MetadataMirrorExclusions())
 			}
-			session.remoteActions[mirrors] = actionremote.New(actionProvider)
+			session.remoteActions[mirrors] = remote.New(actionProvider)
 			remoteWorkflows[mirrors] = workflowinputs.NewRemote(workflowProvider)
 		}
 		key := workflowCacheKey{root, mirrors}
@@ -459,10 +459,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 					documents.addError(err)
 					return
 				}
-				documents.add(captured.Revision().Document(), documentmodel.FromAction(path, meta, parseErr))
+				documents.add(captured.Revision().Document(), outline.FromAction(path, meta, parseErr))
 				if parseErr != nil || meta == nil {
 					revision := captured.Revision()
-					session.checkCompletion.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
+					session.checkCompletion.markIncomplete(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()})
 				}
 			},
 		})
@@ -482,7 +482,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		group.Go(func() error {
 			file := &result.files[i]
 			file.source = source
-			captured, err := captures.Read(lifetime, source.InputPath, sourcemodel.YAML)
+			captured, err := captures.Read(lifetime, source.InputPath, sourcepos.YAML)
 			if err == nil {
 				file.captured = captured
 				file.source.Content = captured.Bytes()
@@ -490,7 +490,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			}
 			if err != nil {
 				if revision := file.captured.Revision(); revision.Valid() {
-					session.checkCompletion.markIncomplete(sourcemodel.Reference{Document: revision.Document(), Revision: revision.Digest()})
+					session.checkCompletion.markIncomplete(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()})
 				}
 				entryErrors[i] = &sourceAnalysisError{path: source.Path, err: err, batch: len(request.Sources) > 1}
 			}
@@ -536,7 +536,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	result.IncompleteChecks = session.checkCompletion.incompleteChecks()
 	err = result.revalidateCaptures(captures, rows, filepath.FromSlash(canonicalWorkingDir), err)
-	slices.SortFunc(session.runnerReports, func(a, b runner.Report) int {
+	slices.SortFunc(session.runnerReports, func(a, b runnerapi.Report) int {
 		if order := strings.Compare(a.Path, b.Path); order != 0 {
 			return order
 		}
@@ -553,13 +553,13 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	for i := range result.Rules {
 		result.Rules[i] = session.rules.WithDefaults(result.Rules[i])
 	}
-	result.Documents = make(documentmodel.Outlines, 0, len(result.files))
+	result.Documents = make(outline.Outlines, 0, len(result.files))
 	explicitActions := make(map[string]bool)
 	for _, file := range result.files {
 		if file.outline != nil {
 			result.Documents = append(result.Documents, file.outline)
 		}
-		if _, action := file.outline.(documentmodel.Action); action {
+		if _, action := file.outline.(outline.Action); action {
 			explicitActions[file.captured.Revision().Document()] = true
 		}
 	}
@@ -590,7 +590,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 
 type actionDocuments struct {
 	mu       sync.Mutex
-	byPath   map[string]documentmodel.Action
+	byPath   map[string]outline.Action
 	requests map[string]struct{}
 	// remote holds the remote action manifests composition parsed, by
 	// captured document identity, so complete need not parse them again.
@@ -599,7 +599,7 @@ type actionDocuments struct {
 }
 
 type actionDocument struct {
-	documentmodel.Action
+	outline.Action
 	identity string
 }
 
@@ -641,11 +641,11 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 		d.mu.Lock()
 		_, requested := d.requests[address]
 		d.mu.Unlock()
-		if !requested && (!sourcemodel.RemoteAddress(address) || !isActionInput(address)) {
+		if !requested && (!sourcepos.RemoteAddress(address) || !isActionInput(address)) {
 			continue
 		}
 		snapshot, state, err := captures.Lookup(address)
-		if err != nil || state != capture.Captured || snapshot.Coordinates() != sourcemodel.YAML {
+		if err != nil || state != capture.Captured || snapshot.Coordinates() != sourcepos.YAML {
 			continue
 		}
 		identity := snapshot.Revision().Document()
@@ -661,12 +661,12 @@ func (d *actionDocuments) complete(captures *capture.Store, consumed []string) e
 			// parsing it, so its sealed bytes are parsed here once.
 			document = parsing.Action(address, snapshot.Bytes())
 		}
-		d.add(identity, documentmodel.FromAction(address, document.Metadata, document.ParseError))
+		d.add(identity, outline.FromAction(address, document.Metadata, document.ParseError))
 	}
 	return nil
 }
 
-func (d *actionDocuments) add(identity string, document documentmodel.Action) {
+func (d *actionDocuments) add(identity string, document outline.Action) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if previous, exists := d.byPath[identity]; !exists || document.DocumentPath() < previous.DocumentPath() {
@@ -711,7 +711,7 @@ func (r *analysisResult) publishDiagnostics() error {
 		}
 		batch.Project = projectRoot(file.source.Project)
 		batch.InputPath, batch.Source = file.source.InputPath, file.captured.Revision()
-		_, batch.Action = file.outline.(documentmodel.Action)
+		_, batch.Action = file.outline.(outline.Action)
 		batch.Findings = file.errors
 		batches[i] = batch
 	}
@@ -719,7 +719,7 @@ func (r *analysisResult) publishDiagnostics() error {
 	r.Diagnostics = published.Diagnostics
 	r.IncompleteChecks = published.IncompleteChecks
 	if r.Diagnostics == nil {
-		r.Diagnostics = []diagmodel.PublishedDiagnostic{}
+		r.Diagnostics = []results.PublishedDiagnostic{}
 	}
 	for i, findings := range published.Findings {
 		r.files[i].errors = findings
@@ -837,7 +837,7 @@ func (r *analysisResult) revalidateCaptures(captures *capture.Store, rows []capt
 	if withheld != 0 {
 		prior = errors.Join(prior, &admissionRejectedError{count: withheld})
 	}
-	return diagmodel.ConsolidateRejectedRelated(prior, withheldRelated)
+	return results.ConsolidateRejectedRelated(prior, withheldRelated)
 }
 
 type sourceAnalysisError struct {

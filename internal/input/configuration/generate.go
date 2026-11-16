@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"github.com/kjanat/go-yaml/v4"
@@ -103,8 +103,8 @@ func (ruleSet RuleSet) DefaultDocument(version string, format FileFormat) ([]byt
 			return nil, fmt.Errorf("generate rule override example: %w", err)
 		}
 	}
-	levels := make([]string, 0, len(lintconfig.Levels()))
-	for _, level := range lintconfig.Levels() {
+	levels := make([]string, 0, len(rules.Levels()))
+	for _, level := range rules.Levels() {
 		levels = append(levels, string(level))
 	}
 	replacer := strings.NewReplacer(

@@ -10,11 +10,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Repository checks a repository action reference against available metadata.
-func Repository(exec *definition.ExecAction, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*findingmodel.Finding {
+func Repository(exec *definition.ExecAction, metadata actionmeta.Definition, context actionmeta.LifecycleContext) []*finding.Finding {
 	if exec == nil || exec.Uses == nil {
 		return nil
 	}
@@ -24,7 +24,7 @@ func Repository(exec *definition.ExecAction, metadata actionmeta.Definition, con
 }
 
 // Docker checks the URI and optional tag of a Docker action reference.
-func Docker(exec *definition.ExecAction) []*findingmodel.Finding {
+func Docker(exec *definition.ExecAction) []*finding.Finding {
 	if exec == nil || exec.Uses == nil || references.FormOf(exec.Uses.Value) != references.FormContainer {
 		return nil
 	}
@@ -32,12 +32,12 @@ func Docker(exec *definition.ExecAction) []*findingmodel.Finding {
 }
 
 // DockerReference validates a Docker reference from its canonical source value.
-func DockerReference(spec string, pos *source.Position) []*findingmodel.Finding {
+func DockerReference(spec string, pos *source.Position) []*finding.Finding {
 	return DockerReferenceValue(spec, source.ZeroIfNil(pos), pos != nil)
 }
 
 // DockerReferenceValue validates a Docker reference from an owned scalar value and position.
-func DockerReferenceValue(spec string, pos source.Position, hasPosition bool) []*findingmodel.Finding {
+func DockerReferenceValue(spec string, pos source.Position, hasPosition bool) []*finding.Finding {
 	if references.FormOf(spec) != references.FormContainer {
 		return nil
 	}
@@ -47,12 +47,12 @@ func DockerReferenceValue(spec string, pos source.Position, hasPosition bool) []
 }
 
 // RepositoryReference validates repository reference syntax without consulting metadata.
-func RepositoryReference(spec string, pos *source.Position) []*findingmodel.Finding {
+func RepositoryReference(spec string, pos *source.Position) []*finding.Finding {
 	return RepositoryReferenceValue(spec, source.ZeroIfNil(pos), pos != nil)
 }
 
 // RepositoryReferenceValue validates reference syntax from an owned scalar value and position.
-func RepositoryReferenceValue(spec string, pos source.Position, hasPosition bool) []*findingmodel.Finding {
+func RepositoryReferenceValue(spec string, pos source.Position, hasPosition bool) []*finding.Finding {
 	rule := validator{}
 	rule.checkRepositoryReference(spec, source.NilUnlessPresent(pos, hasPosition))
 	return rule.errs
@@ -74,7 +74,7 @@ func InvalidActionReference(spec string, pos source.Position, hasPosition bool) 
 }
 
 // InvalidReference reports an invalid action reference at its original declaration.
-func InvalidReference(pos *source.Position, spec, why string) *findingmodel.Finding {
+func InvalidReference(pos *source.Position, spec, why string) *finding.Finding {
 	rule := validator{}
 	rule.invalidActionFormat(pos, spec, why)
 	return rule.errs[0]

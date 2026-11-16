@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
-	pythonprofile "actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/python"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/python"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -18,8 +18,8 @@ func TestConfigurationTransformsReachEachOptionsOnlyProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := scriptexecution.Unit{Run: runBody("pass\n", nil), Scope: &scriptexecution.Scope{Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}}
-	for _, profile := range []string{mask.ID, pythonprofile.ID} {
+	script := scripts.Unit{Run: runBody("pass\n", nil), Scope: &scripts.Scope{Config: &configuration.Config{Tools: configuration.ToolsConfig{"example": {Config: settings}}}}}
+	for _, profile := range []string{mask.ID, python.ID} {
 		t.Run(profile, func(t *testing.T) {
 			t.Parallel()
 			manifest := manifests.Manifest{

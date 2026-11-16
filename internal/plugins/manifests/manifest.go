@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
@@ -177,7 +177,7 @@ type Selectors struct {
 	// selection to the preparation profile.
 	Shells []string `json:"shells,omitempty"`
 	// Inputs routes action inputs that carry source code.
-	Inputs []checkinputs.ScriptInput `json:"inputs,omitempty"`
+	Inputs []inputs.ScriptInput `json:"inputs,omitempty"`
 	// Filename is the virtual snippet name the tool expects, such as
 	// "actionlint.py".
 	Filename string `json:"filename,omitempty"`
@@ -282,8 +282,8 @@ type ProcessSpec struct {
 	Output       Output          `json:"output"`
 	// TemplateEffects maps diagnostic codes to template effects. It is honoured
 	// only when the probed version equals Version.TemplateEffects.
-	TemplateEffects map[string]checkinputs.ScriptTemplateEffect `json:"template_effects,omitempty"`
-	UserArgs        *UserArgs                                   `json:"user_args,omitempty"`
+	TemplateEffects map[string]inputs.ScriptTemplateEffect `json:"template_effects,omitempty"`
+	UserArgs        *UserArgs                              `json:"user_args,omitempty"`
 	// Concurrency defaults to ConcurrencyPool.
 	Concurrency Concurrency `json:"concurrency,omitempty"`
 }

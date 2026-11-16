@@ -3,13 +3,13 @@ package typecheck
 import (
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
@@ -28,13 +28,13 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			root := exprsyntax.ParseAssignedExpression("${{ " + tc.source + " }}")
-			checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-			contextspec.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(root))
+			root := syntax.ParseAssignedExpression("${{ " + tc.source + " }}")
+			checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+			contexts.MergeInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(root))
 			found := false
-			exprsyntax.Visit(root, func(node, _ exprsyntax.Node, entering bool) {
-				call, ok := node.(*exprsyntax.FuncCallNode)
+			syntax.Visit(root, func(node, _ syntax.Node, entering bool) {
+				call, ok := node.(*syntax.FuncCallNode)
 				if !entering || !ok || call.Callee != "startsWith" {
 					return
 				}
@@ -56,13 +56,13 @@ func TestCheckedCallsDescribeNestedDemandAndRejectedSignatures(t *testing.T) {
 
 func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
 	t.Parallel()
-	root := exprsyntax.ParseAssignedExpression(`${{ contains(fromJSON('[{"items":["original"]}]'), 'x') }}`)
-	call, ok := root.(*exprsyntax.FuncCallNode)
+	root := syntax.ParseAssignedExpression(`${{ contains(fromJSON('[{"items":["original"]}]'), 'x') }}`)
+	call, ok := root.(*syntax.FuncCallNode)
 	if !ok {
 		t.Fatal("fixture is not a call")
 	}
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
-	first := checker.CheckResult(expreval.EvaluateSubexpressions(root))
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
+	first := checker.CheckResult(evaluate.EvaluateSubexpressions(root))
 	if !first.Valid || first.Call == nil {
 		t.Fatalf("invalid fixture: %+v", first)
 	}
@@ -91,7 +91,7 @@ func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
 	change(first.Call.Arguments[0].SourceValue.Value)
 	first.Call.DeclaredReturns[0] = exprtypes.StringType()
 	facts.DeclaredReturns[0] = exprtypes.NumberType()
-	checker.CheckResult(expreval.EvaluateSubexpressions(exprsyntax.ParseAssignedExpression("${{ always() }}")))
+	checker.CheckResult(evaluate.EvaluateSubexpressions(syntax.ParseAssignedExpression("${{ always() }}")))
 	again, known := first.Calls.CallOf(call)
 	if !known || again.DeclaredReturns[0].Kind() != exprtypes.KindBool {
 		t.Fatalf("call snapshot changed: %+v", again)
@@ -102,7 +102,7 @@ func TestCheckedCallsDetachValuesAndSurviveCheckerReuse(t *testing.T) {
 			t.Fatalf("aliased runtime value: %v", got)
 		}
 	}
-	other := exprsyntax.ParseAssignedExpression("${{ contains('x', 'x') }}").(*exprsyntax.FuncCallNode)
+	other := syntax.ParseAssignedExpression("${{ contains('x', 'x') }}").(*syntax.FuncCallNode)
 	if _, known := first.Calls.CallOf(other); known {
 		t.Fatal("unchecked call acquired facts")
 	}

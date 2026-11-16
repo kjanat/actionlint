@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestCacheSecurityCallbacksDoNotRequireWorkflowVisits(t *testing.T) {
@@ -18,7 +18,7 @@ jobs:
   a_second:
     uses: example/repo/.github/workflows/build.yml@v1
 `
-	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
+	decoded, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

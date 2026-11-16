@@ -4,7 +4,7 @@ import (
 	"context"
 	"slices"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -14,8 +14,8 @@ import (
 // shell is known and which the shell would execute. Findings carry the source
 // range scan reports; a script without a mappable range yields no finding.
 func scanRuntimeScripts(
-	ctx context.Context, input checkinputs.AnalyzerInput,
-	scan func(script checkinputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)),
+	ctx context.Context, input inputs.AnalyzerInput,
+	scan func(script inputs.Script, invocation commands.Invocation, report func(scripts.ScriptRange, string)),
 ) ([]results.Diagnostic, error) {
 	var diagnostics []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {

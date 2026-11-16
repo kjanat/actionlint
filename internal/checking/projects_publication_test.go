@@ -8,7 +8,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/git"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -50,7 +50,7 @@ func TestCheckProjectsPreservesIncompleteChecksAcrossRepositories(t *testing.T) 
 			t.Fatal(err)
 		}
 		for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", ".github"}} {
-			if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+			if output, err := git.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
 				t.Fatalf("prepare repository: %v: %s", err, output)
 			}
 		}

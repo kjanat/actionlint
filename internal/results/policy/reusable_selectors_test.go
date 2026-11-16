@@ -6,9 +6,9 @@ import (
 	"slices"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/results"
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -44,7 +44,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		finding := &findingmodel.Finding{Rule: "expression-reference", Start: sourcepos.Position{Line: 10, Column: 20}}
+		finding := &findingmodel.Finding{Rule: "expression-reference", Start: source.Position{Line: 10, Column: 20}}
 		got := fixtureConfigured(t, "ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg)
 		var kinds []string
 		for _, e := range got {
@@ -60,11 +60,11 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign := &findingmodel.Finding{Rule: "expression-reference", Start: sourcepos.Position{Line: 10, Column: 20}, Path: "action.yml", Source: diagmodel.DiagnosticSource{Content: []byte("foreign")}}
+	foreign := &findingmodel.Finding{Rule: "expression-reference", Start: source.Position{Line: 10, Column: 20}, Path: "action.yml", Source: results.DiagnosticSource{Content: []byte("foreign")}}
 	if got := fixtureConfigured(t, "ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{foreign}, cfg); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign finding: %#v", got)
 	}
-	foreign.SuppressionOrigin = &diagmodel.SuppressionOrigin{Path: "other.yml", First: 10, Last: 10}
+	foreign.SuppressionOrigin = &results.SuppressionOrigin{Path: "other.yml", First: 10, Last: 10}
 	if got := fixtureConfigured(t, "ci.yml", "", []byte(reusableIgnoreSource), []*findingmodel.Finding{foreign}, cfg); len(got) != 1 {
 		t.Fatalf("caller suppressed foreign origin: %#v", got)
 	}
@@ -90,7 +90,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &findingmodel.Finding{Rule: "shellcheck", Start: sourcepos.Position{Line: 1, Column: 6}, Path: script, Source: diagmodel.DiagnosticSource{Content: []byte("echo $VALUE\n")}, SuppressionOrigin: &diagmodel.SuppressionOrigin{First: 10, Last: 10}}
+			finding := &findingmodel.Finding{Rule: "shellcheck", Start: source.Position{Line: 1, Column: 6}, Path: script, Source: results.DiagnosticSource{Content: []byte("echo $VALUE\n")}, SuppressionOrigin: &results.SuppressionOrigin{First: 10, Last: 10}}
 			got := fixtureConfigured(t, workflow, root, []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg)
 			if len(got) != tc.want {
 				t.Fatalf("got %d findings, want %d", len(got), tc.want)
@@ -124,7 +124,7 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finding := &findingmodel.Finding{Rule: "expression-reference", Start: sourcepos.Position{Line: 10, Column: 20}}
+			finding := &findingmodel.Finding{Rule: "expression-reference", Start: source.Position{Line: 10, Column: 20}}
 			got := fixtureConfigured(t, filepath.Join(root, ".github", "workflows", "ci.yml"), root, []byte(reusableIgnoreSource), []*findingmodel.Finding{finding}, cfg)
 			if (len(got) == 0) != tc.suppressed {
 				t.Fatalf("got %#v", got)

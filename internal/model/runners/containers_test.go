@@ -3,7 +3,7 @@ package runners
 import (
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestContainerTargetExcludesOnlyProvedFalseConditions(t *testing.T) {

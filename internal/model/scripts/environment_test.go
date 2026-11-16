@@ -4,17 +4,17 @@ import (
 	"slices"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
 
 func TestDeclaredEnvironmentPreservesSourceOrderAndCase(t *testing.T) {
 	t.Parallel()
 	declarations := mapping.Resolve(&mapping.DeclaredMapping{Values: map[string]mapping.DeclaredEntry{
-		"foo": {Name: value.YAMLScalar("foo", "!!str", value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 2, Column: 3}}})},
-		"FOO": {Name: value.YAMLScalar("FOO", "!!str", value.Origin{Span: value.Span{Start: sourcepos.Position{Line: 3, Column: 3}}})},
+		"foo": {Name: value.YAMLScalar("foo", "!!str", value.Origin{Span: value.Span{Start: source.Position{Line: 2, Column: 3}}})},
+		"FOO": {Name: value.YAMLScalar("FOO", "!!str", value.Origin{Span: value.Span{Start: source.Position{Line: 3, Column: 3}}})},
 	}})
 	layer := DeclaredEnvironment(EnvironmentStep, declarations)
 	if layer.UnknownNames || !slices.Equal(layer.Names, []string{"foo", "FOO"}) {

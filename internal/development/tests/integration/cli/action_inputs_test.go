@@ -7,12 +7,12 @@ import (
 	"slices"
 	"testing"
 
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/git"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 
 	"actionlint.kjanat.dev/v2/internal/results/outline"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestCommandSymlinkSourcePaths(t *testing.T) {
@@ -34,7 +34,7 @@ func TestCommandSymlinkSourcePaths(t *testing.T) {
 	}
 	want := []string{filepath.Join("link", "action.yml"), filepath.Join("link", "workflow.yml")}
 	got := testRunCommand("", "check", "--json", "--summary", "--no-config", want[0], want[1])
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil || got.Status != 1 {
 		t.Fatalf("check: %+v, %v", got, err)
 	}
@@ -55,7 +55,7 @@ func TestCommandSymlinkSourcePaths(t *testing.T) {
 		t.Fatalf("document paths = %q, want %q", paths, want)
 	}
 	var summary struct {
-		Summary resultreport.CheckSummary `json:"summary"`
+		Summary report.CheckSummary `json:"summary"`
 	}
 	if err := json.Unmarshal([]byte(got.Stderr), &summary); err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestCommandActionInputs(t *testing.T) {
 				args = append([]string{"check"}, args...)
 			}
 			got := testRunCommand(manifest, args...)
-			var report resultreport.CheckResult
+			var report report.CheckResult
 			if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 				t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 			}
@@ -116,7 +116,7 @@ func TestCommandActionInputs(t *testing.T) {
 
 func TestCommandDefaultActionDiscovery(t *testing.T) {
 	t.Chdir(t.TempDir())
-	if out, err := gitclient.Command(t.Context(), "git", ".", "init", "--quiet").CombinedOutput(); err != nil {
+	if out, err := git.Command(t.Context(), "git", ".", "init", "--quiet").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	const manifest = "name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - run: echo ${{ secrets.TOKEN }}\n      shell: bash\n"
@@ -129,7 +129,7 @@ func TestCommandDefaultActionDiscovery(t *testing.T) {
 			args = append([]string{"check"}, args...)
 		}
 		got := testRunCommand("", args...)
-		var report resultreport.CheckResult
+		var report report.CheckResult
 		if err := json.Unmarshal([]byte(got.Stdout), &report); err != nil {
 			t.Fatalf("args=%v: invalid JSON: %v; output=%+v", args, err, got)
 		}

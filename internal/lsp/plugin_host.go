@@ -13,9 +13,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
 // An editor session owns compiled plugins, never document or analysis state.
@@ -63,7 +63,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 		return nil, errors.Join(err, plugins.Close(context.WithoutCancel(ctx)))
 	}
 	engines := &editorEngines{
-		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]checkinputs.ScriptBackend),
+		gate: make(chan struct{}, 1), loaded: make(map[editorEngineIdentity]inputs.ScriptBackend),
 		customLoad: options.LoadScriptEngine, log: log, debug: options.Debug, acquisition: sources.Acquisition,
 	}
 	options.LoadScriptEngine = engines.load
@@ -97,14 +97,14 @@ type editorEngineIdentity struct {
 
 type editorEngines struct {
 	gate        chan struct{}
-	loaded      map[editorEngineIdentity]checkinputs.ScriptBackend
-	customLoad  func(context.Context, string) (checkinputs.ScriptBackend, error)
+	loaded      map[editorEngineIdentity]inputs.ScriptBackend
+	customLoad  func(context.Context, string) (inputs.ScriptBackend, error)
 	log         io.Writer
 	debug       bool
 	acquisition pluginacquisition.Settings
 }
 
-func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.ScriptBackend, error) {
+func (s *editorEngines) load(ctx context.Context, source string) (inputs.ScriptBackend, error) {
 	select {
 	case s.gate <- struct{}{}:
 		defer func() { <-s.gate }()
@@ -119,15 +119,15 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 	if backend, ok := s.loaded[identity]; ok {
 		return borrowEditorEngine(backend), nil
 	}
-	var backend checkinputs.ScriptBackend
+	var backend inputs.ScriptBackend
 	var err error
 	if s.customLoad != nil {
 		backend, err = s.customLoad(ctx, source)
 	} else {
-		if err := pluginartifact.RequireRemotePin(source); err != nil {
+		if err := artifacts.RequireRemotePin(source); err != nil {
 			return nil, err
 		}
-		artifact, resolveErr := pluginartifact.Resolve(ctx, source, s.acquisition.ArtifactOptions())
+		artifact, resolveErr := artifacts.Resolve(ctx, source, s.acquisition.ArtifactOptions())
 		if resolveErr != nil {
 			return nil, resolveErr
 		}
@@ -165,28 +165,28 @@ func (s *editorEngines) close(ctx context.Context) error {
 
 // Hide Close so per-analysis cleanup cannot close a session-owned engine.
 type (
-	borrowedEditorEngine  struct{ checkinputs.ScriptBackend }
+	borrowedEditorEngine  struct{ inputs.ScriptBackend }
 	describedEditorEngine struct {
-		checkinputs.DescribedScriptBackend
+		inputs.DescribedScriptBackend
 	}
 	validatingDescribedEditorEngine struct {
-		checkinputs.DescribedScriptBackend
-		checkinputs.ScriptConfigValidator
+		inputs.DescribedScriptBackend
+		inputs.ScriptConfigValidator
 	}
 	validatingEditorEngine struct {
-		checkinputs.ScriptBackend
-		checkinputs.ScriptConfigValidator
+		inputs.ScriptBackend
+		inputs.ScriptConfigValidator
 	}
 )
 
-func borrowEditorEngine(backend checkinputs.ScriptBackend) checkinputs.ScriptBackend {
-	if described, ok := backend.(checkinputs.DescribedScriptBackend); ok {
-		if validator, ok := backend.(checkinputs.ScriptConfigValidator); ok {
+func borrowEditorEngine(backend inputs.ScriptBackend) inputs.ScriptBackend {
+	if described, ok := backend.(inputs.DescribedScriptBackend); ok {
+		if validator, ok := backend.(inputs.ScriptConfigValidator); ok {
 			return validatingDescribedEditorEngine{DescribedScriptBackend: described, ScriptConfigValidator: validator}
 		}
 		return describedEditorEngine{DescribedScriptBackend: described}
 	}
-	if validator, ok := backend.(checkinputs.ScriptConfigValidator); ok {
+	if validator, ok := backend.(inputs.ScriptConfigValidator); ok {
 		return validatingEditorEngine{ScriptBackend: backend, ScriptConfigValidator: validator}
 	}
 	return borrowedEditorEngine{ScriptBackend: backend}

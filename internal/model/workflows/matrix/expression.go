@@ -1,9 +1,9 @@
 package matrix
 
 import (
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )
@@ -12,11 +12,11 @@ import (
 // Other contexts and unsupported operations remain dynamic. Missing properties
 // of the complete matrix object have the runner's null value.
 func (c Combination) Evaluate(text string) value.Value {
-	expression := exprsyntax.ParseAssignedExpression(text)
+	expression := syntax.ParseAssignedExpression(text)
 	if expression == nil {
 		return value.Template(text, value.Origin{})
 	}
-	result, known := expreval.ExpressionValue(expression, c.LookupExpressionVariable)
+	result, known := evaluate.ExpressionValue(expression, c.LookupExpressionVariable)
 	if !known {
 		return value.DynamicValue(text, value.KindUnknown, value.Origin{FromExpression: true})
 	}

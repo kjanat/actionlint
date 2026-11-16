@@ -9,20 +9,20 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	permission "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 	"github.com/google/go-cmp/cmp"
 )
@@ -39,7 +39,7 @@ jobs:
     steps:
       - run: echo
 `)
-	w, errs := workflowparser.ParseWorkflow(b)
+	w, errs := parser.ParseWorkflow(b)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -50,12 +50,12 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
 
-	run := func(t *testing.T, cache *workflowinputs.Cache) []string {
+	run := func(t *testing.T, cache *workflows.Cache) []string {
 		t.Helper()
 		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
 			t.Fatal(err)
 		}
-		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repofacts.Snapshot{})
+		r := workflowCallVisitor(t, declarations.Workflow(&definition.Workflow{}), cache, repository.Snapshot{})
 		if err := r.VisitWorkflowPre(declarations.Workflow(&definition.Workflow{})); err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +84,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowparser.ParseWorkflow(src)
+	w, errs := parser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("callee was not parsed:", errs)
 	}
@@ -125,9 +125,9 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 
 func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 	t.Parallel()
-	scopes := make([]string, 0, len(permission.Scopes()))
+	scopes := make([]string, 0, len(permissions.Scopes()))
 	writeAll := calls.PermissionScopeLevels{}
-	for s, vs := range permission.Scopes() {
+	for s, vs := range permissions.Scopes() {
 		scopes = append(scopes, s)
 		if slices.Contains(vs, "write") {
 			writeAll[s] = calls.PermissionLevelWrite
@@ -320,7 +320,7 @@ func TestRuleWorkflowCallCheckPermissions(t *testing.T) {
 			cache.Store("./callee.yaml", &calls.Metadata{JobPermissions: tc.callee})
 
 			w := &definition.Workflow{Permissions: testParseWorkflowPermissions(t, tc.workflowPerms)}
-			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repofacts.Snapshot{}))
+			r := workflowCallVisitor(t, declarations.Workflow(w), cache, configuration.RepositoryFacts(tc.cfg, repository.Snapshot{}))
 			if err := r.VisitWorkflowPre(declarations.Workflow(w)); err != nil {
 				t.Fatal(err)
 			}

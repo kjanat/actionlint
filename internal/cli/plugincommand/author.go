@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"strings"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
@@ -50,7 +50,7 @@ type authoringFixture struct {
 	ExpectSource      *string                      `json:"expect_source,omitempty"`
 	ExpectPreparation *preparation.SourcePlan      `json:"expect_preparation,omitempty"`
 	Name              string                       `json:"name"`
-	Request           checkinputs.ScriptRequest    `json:"request"`
+	Request           inputs.ScriptRequest         `json:"request"`
 	Stdout            *string                      `json:"stdout,omitempty"`
 	Variables         map[string]string            `json:"variables,omitempty"`
 	ExitCode          *int                         `json:"exit_code,omitempty"`

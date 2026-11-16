@@ -9,17 +9,17 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowexecution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Unit snapshots invocation context before analyzers run.
@@ -33,19 +33,19 @@ type Unit struct {
 	Shell       *string
 	Path        string
 	Content     []byte
-	Origin      *findingmodel.IgnoreOrigin
-	Owner       *findingmodel.Owner
+	Origin      *finding.IgnoreOrigin
+	Owner       *finding.Owner
 	Scope       *Scope
 	// Execution is nil when the analysis did not resolve the run's shell and
 	// working directory.
-	Execution    *scriptmodel.Execution
-	Environment  []scriptmodel.EnvironmentNames
+	Execution    *scripts.Execution
+	Environment  []scripts.EnvironmentNames
 	Interpreters *commands.Registry
 }
 
 // ActionInput is a typed, mapped action argument, never a shell run command.
 type ActionInput struct {
-	Site  checkinputs.ScriptInput
+	Site  inputs.ScriptInput
 	Value *definition.ActionArgument
 }
 
@@ -124,9 +124,9 @@ func (u Unit) WorkingDirectory() (string, bool) {
 type ScriptRequest struct {
 	Occurrence   invocation.ID
 	DefaultShell *string
-	Input        *checkinputs.ScriptInput
-	Execution    *scriptmodel.Execution
-	Environment  []scriptmodel.EnvironmentNames
+	Input        *inputs.ScriptInput
+	Execution    *scripts.Execution
+	Environment  []scripts.EnvironmentNames
 	Interpreters *commands.Registry
 }
 
@@ -141,7 +141,7 @@ type Collection struct {
 // whether it contains scripts, so configuration failures are still observable.
 type Scope struct {
 	Bindings *rulebinding.Scope
-	Paths    workflowexecution.Paths
+	Paths    execution.Paths
 	Reader   *files.Reader // records the filesystem reads tools make in this scope
 	// Config is a host-owned prepared value. Internal consumers treat it as read-only;
 	// ForTool detaches selected settings before a tool reads them.
@@ -206,7 +206,7 @@ func validateScope(scope *Scope, graph invocation.Graph) error {
 		return fmt.Errorf("%w: foreign invocation context", ErrInvalidBatch)
 	}
 	paths := scope.Paths
-	workflowexecution.ActionOrigin(&paths, scope.Context, scope.Deployment.ActionPath())
+	execution.ActionOrigin(&paths, scope.Context, scope.Deployment.ActionPath())
 	if paths.ActionPath != scope.Paths.ActionPath || paths.ActionRunnerPath != scope.Paths.ActionRunnerPath || paths.ActionIndependent != scope.Paths.ActionIndependent {
 		return fmt.Errorf("%w: action paths disagree with invocation context", ErrInvalidBatch)
 	}
@@ -270,5 +270,5 @@ func (batch Batch) ForTool(name string) (Batch, error) {
 }
 
 type Analyzer interface {
-	AnalyzeScripts(context.Context, Batch) ([]*findingmodel.Finding, error)
+	AnalyzeScripts(context.Context, Batch) ([]*finding.Finding, error)
 }

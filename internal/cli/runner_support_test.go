@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 const arm32Workflow = "on: push\npermissions: {}\njobs:\n  test:\n    runs-on: [self-hosted, linux, ARM]\n    steps: [{run: echo ok}]\n"
@@ -41,7 +41,7 @@ func TestRunnerSupportSeverityAndFiltering(t *testing.T) {
 		if status := command.MainContext(t.Context(), args); status > 1 {
 			t.Fatalf("%s: check failed with status %d: %s\n%s", tc.name, status, &log, &output)
 		}
-		var report resultreport.CheckResult
+		var report report.CheckResult
 		if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 			t.Fatal(err)
 		}

@@ -8,7 +8,7 @@ import (
 	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestRuleMatrixScalarValues(t *testing.T) {
@@ -63,7 +63,7 @@ jobs:
     steps:
       - run: echo test
 `
-			w, parseErrors := workflowparser.ParseWorkflow([]byte(src))
+			w, parseErrors := parser.ParseWorkflow([]byte(src))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
@@ -111,7 +111,7 @@ func TestMatrixDiagnosticValueDisplay(t *testing.T) {
 func TestUnknownMatrixAxisDiagnosticUsesKeyOrigin(t *testing.T) {
 	t.Parallel()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        arch: [arm]\n        exclude:\n          - missing:\n              nested: [null, {z: value}]\n    steps: [{run: echo ok}]\n"
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
@@ -143,7 +143,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 		`exclude: "${{ fromJSON('[{\"missing\":{\"nested\":null}}]') }}"`,
 		`exclude: ["${{ fromJSON('{\"missing\":{\"nested\":null}}') }}"]`,
 	} {
-		workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        " + declaration + "\n    steps: [{run: echo ok}]\n"))
+		workflow, errors := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        os: [ubuntu]\n        " + declaration + "\n    steps: [{run: echo ok}]\n"))
 		if len(errors) != 0 {
 			t.Fatal(errors)
 		}
@@ -164,7 +164,7 @@ func TestExpressionProducedMatrixKeyUsesAvailableOrigin(t *testing.T) {
 
 func TestNestedMatrixMismatchDiagnosticKeepsValues(t *testing.T) {
 	t.Parallel()
-	workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        item: [{z: [null, {b: old, a: true}], a: 1}]\n        exclude: [{item: {z: [null, {b: new, a: true}]}}]\n    steps: [{run: echo ok}]\n"))
+	workflow, errors := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        item: [{z: [null, {b: old, a: true}], a: 1}]\n        exclude: [{item: {z: [null, {b: new, a: true}]}}]\n    steps: [{run: echo ok}]\n"))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

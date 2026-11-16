@@ -3,15 +3,15 @@ package contexts
 import (
 	"strings"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
 
 // NarrowEventTypes selects event payload variants that can reach the branch.
 // Missing context data or unknown guards cannot eliminate a possible variant.
-func NarrowEventTypes(guard exprsyntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
+func NarrowEventTypes(guard syntax.Node, truth bool, lookup func(string) (exprtypes.Type, bool)) (map[string]exprtypes.Type, bool) {
 	current, _ := lookup("github")
 	github, ok := current.Object()
 	if !ok {
@@ -45,44 +45,44 @@ func NarrowEventTypes(guard exprsyntax.Node, truth bool, lookup func(string) (ex
 	return map[string]exprtypes.Type{"github": github.With("event", exprtypes.NewEventType(selected).Type()).Type()}, true
 }
 
-func eventGuardValue(node exprsyntax.Node, variant exprtypes.EventVariant) (bool, bool) {
+func eventGuardValue(node syntax.Node, variant exprtypes.EventVariant) (bool, bool) {
 	switch n := node.(type) {
-	case *exprsyntax.NotOpNode:
+	case *syntax.NotOpNode:
 		value, known := eventGuardValue(n.Operand, variant)
 		return !value, known
-	case *exprsyntax.LogicalOpNode:
+	case *syntax.LogicalOpNode:
 		left, lk := eventGuardValue(n.Left, variant)
 		right, rk := eventGuardValue(n.Right, variant)
 		switch n.Kind {
-		case exprsyntax.LogicalOpNodeKindAnd:
+		case syntax.LogicalOpNodeKindAnd:
 			if lk && !left || rk && !right {
 				return false, true
 			}
 			return left && right, lk && rk
-		case exprsyntax.LogicalOpNodeKindOr:
+		case syntax.LogicalOpNodeKindOr:
 			if lk && left || rk && right {
 				return true, true
 			}
 			return left || right, lk && rk
-		case exprsyntax.LogicalOpNodeKindInvalid:
+		case syntax.LogicalOpNodeKindInvalid:
 			// An invalid operator yields no guard.
 		}
-	case *exprsyntax.CompareOpNode:
-		if n.Kind != exprsyntax.CompareOpNodeKindEq && n.Kind != exprsyntax.CompareOpNodeKindNotEq {
+	case *syntax.CompareOpNode:
+		if n.Kind != syntax.CompareOpNodeKindEq && n.Kind != syntax.CompareOpNodeKindNotEq {
 			return false, false
 		}
 		ref, operand := n.Left, n.Right
-		constant, known := expreval.ConditionConstantValue(operand)
+		constant, known := evaluate.ConditionConstantValue(operand)
 		if !known {
 			ref, operand = operand, ref
-			constant, known = expreval.ConditionConstantValue(operand)
+			constant, known = evaluate.ConditionConstantValue(operand)
 		}
 		text, ok := constant.(string)
 		if !known || !ok {
 			return false, false
 		}
 		var value string
-		switch strings.ToLower(exprsyntax.DisplayReference(ref)) {
+		switch strings.ToLower(syntax.DisplayReference(ref)) {
 		case "github.event_name":
 			value = variant.Event
 			if value == "" {

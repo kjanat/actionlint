@@ -12,14 +12,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
+func applyDiagnosticFix(t *testing.T, input string, fix results.Fix) string {
 	t.Helper()
-	offset := func(pos sourcepos.Position) int {
+	offset := func(pos source.Position) int {
 		start := 0
 		for line := 1; line < pos.Line; line++ {
 			i := strings.IndexByte(input[start:], '\n')
@@ -29,7 +29,7 @@ func applyDiagnosticFix(t *testing.T, input string, fix diagmodel.Fix) string {
 			start += i + 1
 		}
 		line, _, _ := strings.Cut(input[start:], "\n")
-		i, ok := sourcepos.ByteOffsetAtColumn(line, pos.Column)
+		i, ok := source.ByteOffsetAtColumn(line, pos.Column)
 		if !ok {
 			t.Fatalf("edit column outside source: %+v", pos)
 		}
@@ -75,7 +75,7 @@ func TestShellcheckStructuredDiagnostic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var decoded diagmodel.Diagnostic
+	var decoded results.Diagnostic
 	if err := json.Unmarshal(encoded, &decoded); err != nil || decoded.Code != diagnostic.Code || len(decoded.Fixes) != 1 {
 		t.Fatalf("structured JSON: %s, %v", encoded, err)
 	}

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // ResolutionSession acquires dependency targets and validates repository identity
@@ -25,13 +25,13 @@ func NewResolutionSession(provider Resolver) *ResolutionSession {
 
 // ResolveDependencies returns successful observations before any failure.
 // Unsupported reference forms do not initiate provider requests.
-func (session *ResolutionSession) ResolveDependencies(ctx context.Context, dependencies []workflowfacts.Dependency) ([]workflowfacts.ResolvedDependency, error) {
-	var resolved []workflowfacts.ResolvedDependency
+func (session *ResolutionSession) ResolveDependencies(ctx context.Context, dependencies []facts.Dependency) ([]facts.ResolvedDependency, error) {
+	var resolved []facts.ResolvedDependency
 	for _, dependency := range dependencies {
 		if err := ctx.Err(); err != nil {
 			return resolved, err
 		}
-		target, ok := callrefs.ParseRepositoryUses(dependency.Uses)
+		target, ok := references.ParseRepositoryUses(dependency.Uses)
 		if !ok {
 			continue
 		}
@@ -40,7 +40,7 @@ func (session *ResolutionSession) ResolveDependencies(ctx context.Context, depen
 		if err != nil {
 			return resolved, fmt.Errorf("resolve %s: %w", dependency.Uses, err)
 		}
-		resolved = append(resolved, workflowfacts.ResolvedDependency{
+		resolved = append(resolved, facts.ResolvedDependency{
 			Dependency: dependency, Ref: request.Ref,
 			RepositoryID: result.RepositoryID, Commit: result.Commit, Tree: result.Tree, ObservedAt: result.ObservedAt,
 		})

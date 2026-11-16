@@ -3,7 +3,7 @@ package scripts
 import (
 	"errors"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -27,7 +27,7 @@ func Module(name, requested string, explicit *process.CommandOptions, cfg *confi
 }
 
 // LoadConfiguredModule resolves a configured WebAssembly module through the invocation loader.
-func LoadConfiguredModule(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, load func(string) (checkinputs.ScriptBackend, error)) (checkinputs.ScriptBackend, error) {
+func LoadConfiguredModule(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, load func(string) (inputs.ScriptBackend, error)) (inputs.ScriptBackend, error) {
 	module := Module(name, requested, explicit, cfg)
 	if module == nil {
 		return nil, nil

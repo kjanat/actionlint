@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowconditions "actionlint.kjanat.dev/v2/internal/model/workflows/conditions"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -39,7 +39,7 @@ type ActionMetadataDocumentLookup interface {
 // and environment traversal state belongs to each resolver frame.
 type Resolver struct {
 	repositorySource     func(string) (RepositoryDocument, error)
-	runners              *runnerlang.Knowledge
+	runners              *runners.Knowledge
 	base                 *Cache
 	prepared             preparedAction
 	mu                   sync.RWMutex
@@ -49,7 +49,7 @@ type Resolver struct {
 	branch               *compositeBranch
 	retired              bool
 	checkout             execution.CheckoutPlacement
-	platform             runnerlang.Platform
+	platform             runners.Platform
 	caseInsensitive      bool
 	checkoutEnvUnknown   bool
 	persistentEnvUnknown bool
@@ -98,7 +98,7 @@ func NewResolver(cache *Cache, mappings map[string]string) *Resolver {
 
 // SetRunners installs the workflow's runner knowledge before the resolver is
 // used; composite children inherit it.
-func (c *Resolver) SetRunners(runners *runnerlang.Knowledge) { c.runners = runners }
+func (c *Resolver) SetRunners(runners *runners.Knowledge) { c.runners = runners }
 
 func (c *Resolver) documentOwner() *resolverDocuments {
 	c.mu.Lock()
@@ -232,7 +232,7 @@ func (c *Resolver) ApplyCheckout(paths execution.Paths) execution.Paths {
 }
 
 // Platform returns the runner platform inferred for this workflow job.
-func (c *Resolver) Platform() runnerlang.Platform { return c.platform }
+func (c *Resolver) Platform() runners.Platform { return c.platform }
 
 // InvalidateCheckout discards assumptions after opaque or concurrent execution.
 func (c *Resolver) InvalidateCheckout() {

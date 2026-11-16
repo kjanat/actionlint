@@ -3,19 +3,19 @@ package shell
 import (
 	"strings"
 
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 // EnvironmentStartup imports names with known spelling in every alternative.
 // Its boolean reports whether the alternatives specify every name and its
 // shell lookup behavior.
-func EnvironmentStartup(startup string, alternatives []scriptmodel.EnvironmentNames) (string, bool) {
+func EnvironmentStartup(startup string, alternatives []scripts.EnvironmentNames) (string, bool) {
 	if len(alternatives) == 0 {
 		return startup, false
 	}
 	uncertain := false
 	for _, environment := range alternatives {
-		uncertain = uncertain || environment.UnknownNames() || environment.LookupComparison() == scriptmodel.NameUnknown
+		uncertain = uncertain || environment.UnknownNames() || environment.LookupComparison() == scripts.NameUnknown
 		for _, name := range environment.Names() {
 			uncertain = uncertain || !name.CaseKnown
 		}
@@ -27,7 +27,7 @@ func EnvironmentStartup(startup string, alternatives []scriptmodel.EnvironmentNa
 		}
 		available := true
 		for _, environment := range alternatives[1:] {
-			available = available && environment.Lookup(variable.Name) == scriptmodel.EnvironmentDeclared
+			available = available && environment.Lookup(variable.Name) == scripts.EnvironmentDeclared
 		}
 		if available {
 			names = append(names, variable.Name)

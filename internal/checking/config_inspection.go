@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
@@ -18,14 +18,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
 func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
-	ctx = configsource.WithReadCache(ctx)
+	ctx = source.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
@@ -70,7 +70,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	reader := configsource.New(ctx, nil, acquisition.Connections)
+	reader := source.New(ctx, nil, acquisition.Connections)
 	policy, err := configuration.LoadNetworkPolicy(ctx, acquisition.Connections)
 	if err != nil {
 		return inspection, err
@@ -106,14 +106,14 @@ func InstalledProviders(ctx context.Context, selection configuration.Selection, 
 		}
 		artifact := sources.Artifacts[path]
 		if artifact == nil {
-			if err := pluginartifact.RequireRemotePin(path); err != nil {
+			if err := artifacts.RequireRemotePin(path); err != nil {
 				return nil, err
 			}
-			if artifact, err = pluginartifact.Resolve(ctx, path, sources.ArtifactOptions(path)); err != nil {
+			if artifact, err = artifacts.Resolve(ctx, path, sources.ArtifactOptions(path)); err != nil {
 				return nil, err
 			}
 		}
-		if artifact.Info.Kind != pluginartifact.ProviderManifest {
+		if artifact.Info.Kind != artifacts.ProviderManifest {
 			continue
 		}
 		if err := process.ValidateProviderArtifact(ctx, artifact, sources.ArtifactOptions(path)); err != nil {

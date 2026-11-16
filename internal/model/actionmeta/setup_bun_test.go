@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	reference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 )
 
 func TestSetupBunMetadata(t *testing.T) {
@@ -25,5 +25,5 @@ func TestSetupBunMetadata(t *testing.T) {
 	if definition.Using() != "node24" {
 		t.Fatalf("runtime = %q, want node24", definition.Using())
 	}
-	reference.CheckAction(t, string(source), true)
+	expressions.CheckAction(t, string(source), true)
 }

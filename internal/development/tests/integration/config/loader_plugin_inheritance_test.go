@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestPluginSelectionNormalizesEachInheritedConfig(t *testing.T) {

@@ -8,28 +8,28 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkexecutor "actionlint.kjanat.dev/v2/internal/checking/executor"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/executor"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 type FactAnalyzer struct {
-	Analyzer         checkinputs.Checker
+	Analyzer         inputs.Checker
 	Options          json.RawMessage
 	IncludeExecution bool
 }
 
 type describedFactChecker struct {
-	checkinputs.Checker
-	descriptor checkinputs.Descriptor
+	inputs.Checker
+	descriptor inputs.Descriptor
 }
 
-func (c describedFactChecker) Descriptor() checkinputs.Descriptor { return c.descriptor }
+func (c describedFactChecker) Descriptor() inputs.Descriptor { return c.descriptor }
 
-func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*findingmodel.Finding, error) {
+func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]*finding.Finding, error) {
 	if !batch.Valid() {
 		return nil, ErrInvalidBatch
 	}
@@ -42,7 +42,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	}
 	descriptor := adapter.Analyzer.Descriptor()
 	checker := describedFactChecker{Checker: adapter.Analyzer, descriptor: descriptor}
-	prepared := make(map[bindingmodel.ID]checkexecutor.PreparedRegistration)
+	prepared := make(map[bindingmodel.ID]executor.PreparedRegistration)
 	for _, scope := range batch.Scopes {
 		var identity bindingmodel.ID
 		options := adapter.Options
@@ -58,7 +58,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if _, exists := prepared[identity]; exists {
 			continue
 		}
-		registration, err := checkexecutor.Prepare(checkinputs.Registration{Checker: checker, Options: options}, available)
+		registration, err := executor.Prepare(inputs.Registration{Checker: checker, Options: options}, available)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +68,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		return nil, err
 	}
 	graph := batch.CallGraph
-	var findings []*findingmodel.Finding
+	var findings []*finding.Finding
 	var failures []error
 	for index, unit := range batch.Scripts {
 		if err := ctx.Err(); err != nil {
@@ -83,25 +83,25 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 			failures = append(failures, fmt.Errorf("%w: script fact %d is unavailable", ErrInvalidBatch, index))
 			break
 		}
-		input := checkinputs.AnalyzerInput{
+		input := inputs.AnalyzerInput{
 			Revision: unit.Revision, Coordinates: unit.Coordinates,
 			Reference: graph.Entry().Reference, CallGraph: graph, Path: unit.Path,
 			AvailableInputs: available,
 			SelectedScripts: []invocation.ID{script.Occurrence.ID},
 		}
 		if script.Occurrence.Owner == graph.RootID() {
-			input.Scripts = []checkinputs.Script{script}
+			input.Scripts = []inputs.Script{script}
 		} else {
-			input.Invoked = []checkinputs.Script{script}
+			input.Invoked = []inputs.Script{script}
 		}
 		var identity bindingmodel.ID
 		if scope := unit.Scope.Bindings; scope != nil {
 			identity = scope.Rule(descriptor.Name).ID()
 		}
 		selected := prepared[identity]
-		diagnostics, err := checkexecutor.RunOne(ctx, input, selected)
+		diagnostics, err := executor.RunOne(ctx, input, selected)
 		for _, d := range diagnostics {
-			finding := findingmodel.FromDiagnostic(d)
+			finding := finding.FromDiagnostic(d)
 			if unit.Scope.Bindings != nil {
 				finding.Binding = unit.Scope.Bindings.Rule(finding.Rule).ID()
 			}

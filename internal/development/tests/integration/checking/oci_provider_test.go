@@ -20,8 +20,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -57,7 +57,7 @@ func publishOCIProvider(t *testing.T) ociProvider {
 	manifest, err := json.Marshal(map[string]any{
 		"schema_version": 1, "id": "example.com/oci-tool", "version": "1.0.0", "role": "script", "scope": "source", "transport": "process",
 		"rule":         map[string]any{"name": "oci-tool", "description": "A tool from an OCI registry", "category": "correctness", "subcategory": "shell", "maturity": "stable", "provider": "oci-tool"},
-		"artifacts":    []map[string]any{{"platform": pluginartifact.HostPlatform(), "digest": "sha256:" + hex.EncodeToString(sum[:]), "filename": "oci-tool", "size": len(binary)}},
+		"artifacts":    []map[string]any{{"platform": artifacts.HostPlatform(), "digest": "sha256:" + hex.EncodeToString(sum[:]), "filename": "oci-tool", "size": len(binary)}},
 		"preparation":  "kjanat:actionlint/expression-mask@0.1.0",
 		"selectors":    map[string]any{"shells": []string{"bash"}, "filename": "actionlint.sh"},
 		"capabilities": map[string]any{"fixes": false, "reported_sources": false, "message_template": "oci: {code}: {message}"},
@@ -72,8 +72,8 @@ func publishOCIProvider(t *testing.T) ociProvider {
 	if err != nil {
 		t.Fatal(err)
 	}
-	layers := []ocitest.Descriptor{registry.Blob(pluginartifact.MediaTypeProviderManifest, manifest), transform, executable}
-	index := registry.Index(t, map[string]ocitest.Descriptor{pluginartifact.HostPlatform(): registry.Manifest(t, layers...)})
+	layers := []ocitest.Descriptor{registry.Blob(artifacts.MediaTypeProviderManifest, manifest), transform, executable}
+	index := registry.Index(t, map[string]ocitest.Descriptor{artifacts.HostPlatform(): registry.Manifest(t, layers...)})
 	return ociProvider{registry: registry, reference: registry.Reference(index), executable: executable}
 }
 
@@ -211,11 +211,11 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant, err := pluginartifact.ExplicitSource(pkg.reference)
+	grant, err := artifacts.ExplicitSource(pkg.reference)
 	if err != nil {
 		t.Fatal(err)
 	}
-	project := plugininstall.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
+	project := installation.Project{Manifest: &configplugins.File{References: []pluginreference.Reference{ref}}, StatusOptions: pluginregistry.StatusOptions{Network: grant, Acquisition: acquisition}}
 	if err := project.SyncDirect(t.Context()); err != nil {
 		t.Fatal(err)
 	}

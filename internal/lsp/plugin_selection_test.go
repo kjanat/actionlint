@@ -12,7 +12,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
@@ -121,7 +121,7 @@ func TestPluginSelectionScopes(t *testing.T) {
 	if err := os.Symlink(other, filepath.Join(third, ".github")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, third, ""); err == nil {
+	if _, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), pluginacquisition.Settings{}, third, ""); err == nil {
 		t.Fatal("installation followed .github into another repository")
 	}
 	if _, err := (pluginselection.Selection{RuleSet: checking.ConfigurationRules()}).Resolve(t.Context(), third, input); err == nil {
@@ -147,7 +147,7 @@ func TestManagedPluginEditorSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := repositoryfixture.Directory(t)
-	project, err := plugininstall.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
+	project, err := installation.OpenProject(t.Context(), checking.ConfigurationRules(), acquisition, root, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // Bound is one decoded document bound to a registry's document identity. Over
@@ -20,14 +20,14 @@ type Bound struct {
 	text       string
 	using      string
 	workflow   *definition.Workflow
-	references workflowfacts.References
+	references facts.References
 	steps      map[source.Reference]*definition.Step
 }
 
 // Bind indexes workflow under identity. action selects action-manifest step
 // addresses; using is the action's runs.using value, empty for workflows.
 func Bind(identity, text string, workflow *definition.Workflow, action bool, using string) *Bound {
-	refs := workflowfacts.Index(identity, []byte(text), workflow, action)
+	refs := facts.Index(identity, []byte(text), workflow, action)
 	bound := &Bound{text: text, using: using, workflow: workflow, references: refs, steps: map[source.Reference]*definition.Step{}}
 	for step, ref := range refs.Steps {
 		bound.steps[ref] = step
@@ -57,9 +57,9 @@ func (b *Bound) OwnsJob(job Job) bool         { return job.Present() && b == job
 
 // SourceIndex returns detached source identities and positions. A nil Bound
 // returns the zero index.
-func (b *Bound) SourceIndex() workflowfacts.SourceIndex {
+func (b *Bound) SourceIndex() facts.SourceIndex {
 	if b == nil {
-		return workflowfacts.SourceIndex{}
+		return facts.SourceIndex{}
 	}
 	return b.references.SourceIndex()
 }

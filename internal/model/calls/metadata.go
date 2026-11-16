@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 // ParseMetadata reads a reusable workflow's on.workflow_call declarations and
@@ -30,10 +30,10 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	if doc.Kind == 0 {
 		return nil, errors.New("\"on:\" is not found")
 	}
-	if err := workflowparser.AdmitYAMLAliases(doc); err != nil {
+	if err := parser.AdmitYAMLAliases(doc); err != nil {
 		return nil, err
 	}
-	workflow, findings, workflowCallFindings := workflowparser.ParseReusableWorkflow(src)
+	workflow, findings, workflowCallFindings := parser.ParseReusableWorkflow(src)
 	if workflow == nil {
 		if len(findings) == 0 {
 			return nil, errors.New("workflow could not be parsed")
@@ -59,14 +59,14 @@ func hasDefault(input *definition.WorkflowCallEventInput) bool {
 	return input.Default != nil && input.Default.SourceScalar.Tag != definition.YamlTagNull
 }
 
-func findingError(finding *workflowparser.SyntaxError) error {
+func findingError(finding *parser.SyntaxError) error {
 	return fmt.Errorf("line:%d, column:%d: %s", finding.Line, finding.Column, finding.Message)
 }
 
 func checkMetadataAliases(doc *codec.Node) error {
 	var aliasErr error
-	workflowparser.ValidateYAMLAliases(doc, func(n *codec.Node, kind workflowparser.YamlAliasDiagnostic, message string) {
-		if kind != workflowparser.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
+	parser.ValidateYAMLAliases(doc, func(n *codec.Node, kind parser.YamlAliasDiagnostic, message string) {
+		if kind != parser.YamlAliasDiagnosticUnusedAnchor && aliasErr == nil {
 			aliasErr = fmt.Errorf("line:%d, column:%d: %s", n.Line, n.Column, message)
 		}
 	})

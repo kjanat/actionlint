@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRunnerProviderCLI(t *testing.T) {
@@ -22,11 +22,11 @@ func TestRunnerProviderCLI(t *testing.T) {
 	}
 	t.Chdir(t.TempDir())
 	envelope := struct {
-		Content   json.RawMessage  `json:"content"`
-		Scope     string           `json:"scope"`
-		Freshness runner.Freshness `json:"freshness"`
-		Complete  bool             `json:"complete"`
-	}{Content: catalogue, Scope: "fixture", Freshness: runner.Fresh, Complete: true}
+		Content   json.RawMessage     `json:"content"`
+		Scope     string              `json:"scope"`
+		Freshness runnerapi.Freshness `json:"freshness"`
+		Complete  bool                `json:"complete"`
+	}{Content: catalogue, Scope: "fixture", Freshness: runnerapi.Fresh, Complete: true}
 	data, err := json.Marshal(envelope)
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestRunnerSnapshotContent(t *testing.T) {
 				t.Fatal(err)
 			}
 			options, err := (checkInvocation{RunnerSnapshot: file}).runners()
-			want := runner.Snapshot{Content: tc.want, Scope: "org/repo", ObtainedAt: "2026-10-23T00:00:00Z", Freshness: runner.Fresh, Complete: true}
+			want := runnerapi.Snapshot{Content: tc.want, Scope: "org/repo", ObtainedAt: "2026-10-23T00:00:00Z", Freshness: runnerapi.Fresh, Complete: true}
 			if err != nil || options.Snapshot != want {
 				t.Fatalf("snapshot=%+v error=%v; want %+v", options.Snapshot, err, want)
 			}

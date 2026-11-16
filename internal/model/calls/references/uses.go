@@ -4,7 +4,7 @@ package references
 import (
 	"strings"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // SplitAction splits a `{owner}/{repo}@{ref}` or `{owner}/{repo}/{path}@{ref}` specification into its owner, repository and ref.
@@ -112,7 +112,7 @@ func WorkflowRef(u string) (string, bool) {
 
 func CacheAction(uses string) string {
 	name, ref, ok := strings.Cut(uses, "@")
-	if !ok || ref == "" || exprsyntax.ContainsExpression(uses) {
+	if !ok || ref == "" || syntax.ContainsExpression(uses) {
 		return ""
 	}
 	owner, rest, ok := strings.Cut(name, "/")

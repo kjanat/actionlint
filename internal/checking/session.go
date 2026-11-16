@@ -16,7 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/interpreters"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/inputs/validation"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -24,18 +24,18 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	scriptengines "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -49,7 +49,7 @@ type Options struct {
 	RemoteActions actions.Provider
 	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
 	// them when it also implements workflows.Provider.
-	RemoteWorkflows workflowinputs.Provider
+	RemoteWorkflows workflows.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
 	Tools      []contract.Registration
@@ -70,14 +70,14 @@ type Options struct {
 	SkipProjectConfig bool
 	// NoIgnore disables Git ignore rules and configured file filters.
 	NoIgnore  bool
-	Analyzers []checkinputs.Registration
+	Analyzers []inputs.Registration
 	ReadFile  func(string) ([]byte, error)
 	// SourceOverlays supplies all editor buffers, independently of selected
 	// entries. They become explicit YAML captures before analysis begins.
 	SourceOverlays               []SourceOverlay
 	OnConfigLoaded               func(configreport.Report)
 	OnFilesSelected              func([]string)
-	LoadScriptEngine             func(context.Context, string) (checkinputs.ScriptBackend, error)
+	LoadScriptEngine             func(context.Context, string) (inputs.ScriptBackend, error)
 	Presets                      configuration.Presets
 	IgnorePatterns               []string
 	IgnoreSelectors              policy.IgnoreSelectors
@@ -140,9 +140,9 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	}
 	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
-		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
+		options.Analyzers = append(slices.Clone(options.Analyzers), inputs.Registration{
 			Checker: security.NewResolvedReferenceCheck(),
-			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
+			Prepare: func(ctx context.Context, input inputs.AnalyzerInput) (inputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
 				return input, err
@@ -176,9 +176,9 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 				byAlias[path] = index
 			}
 		}
-		backing := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
+		backing := source.New(ctx, options.ReadFile, options.ConfigConnections)
 		selectionReader = func(path string) ([]byte, error) {
-			if configsource.IsRemoteAddress(path) {
+			if source.IsRemoteAddress(path) {
 				return backing.ReadFile(path)
 			}
 			alias := path
@@ -204,7 +204,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	if processes == nil {
 		processes = process.NewProcessPool(ctx, runtime.NumCPU())
 	}
-	engines := scriptengines.NewScriptEngines(options.LoadScriptEngine)
+	engines := scripts.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
 	request := analysisRequest{ExecutionEnvironment: options.ExecutionEnvironment, Processes: processes, Analyzers: options.Analyzers, ReadFile: options.ReadFile, Tools: options.Tools, RulePresets: options.Presets, LogWriter: log, AllowConfigProcesses: options.AllowConfigProcesses}
 	request.SourceOverlays = overlays
@@ -212,7 +212,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	request.RemoteActions = options.RemoteActions
 	request.RemoteWorkflows = options.RemoteWorkflows
 	if request.RemoteWorkflows == nil {
-		request.RemoteWorkflows, _ = options.RemoteActions.(workflowinputs.Provider)
+		request.RemoteWorkflows, _ = options.RemoteActions.(workflows.Provider)
 	}
 	request.Repository = options.Repository
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository

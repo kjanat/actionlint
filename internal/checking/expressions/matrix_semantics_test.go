@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 func TestMatrixCombinationInsertionValidation(t *testing.T) {
@@ -39,7 +39,7 @@ func TestMatrixCombinationInsertionValidation(t *testing.T) {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
 				matrix := "item: [one], " + section + ": [" + strconv.Quote("${{ "+tc.expression+" }}") + "]"
-				workflow, errs := workflowparser.ParseWorkflow([]byte(`on: push
+				workflow, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
 					t.Fatal(errs)
 				}
 				rule := newTestChecker()
-				rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+				rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixmodel.Resolve(workflow.Jobs["test"].Strategy))
 				if errs := rule.Findings(); len(errs) != tc.wantErrors {
 					t.Fatalf("want %d errors, got %v", tc.wantErrors, errs)
 				}
@@ -72,7 +72,7 @@ func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
 		t.Run(section, func(t *testing.T) {
 			t.Parallel()
 			source := fmt.Sprintf("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        axis: [one]\n        \"${{ case(true, '%s', missing) }}\": [{axis: one}]\n    steps: [{run: echo ok}]\n", section)
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -87,7 +87,7 @@ func TestResolvedReservedMatrixKeyKeepsExpressionSource(t *testing.T) {
 				t.Fatalf("reserved key source lost: %#v", matrix)
 			}
 			rule := newTestChecker()
-			rule.checkMatrix(ownedMatrixFixture(matrix), matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+			rule.checkMatrix(ownedMatrixFixture(matrix), matrixmodel.Resolve(workflow.Jobs["test"].Strategy))
 			if len(rule.Findings()) != 1 || !strings.Contains(rule.Findings()[0].Message, `undefined variable "missing"`) {
 				t.Fatalf("want source-key expression diagnostic, got %v", rule.Findings())
 			}
@@ -110,7 +110,7 @@ func TestMatrixSequenceInsertion(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.ParseWorkflow([]byte(`on: push
+			workflow, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -123,7 +123,7 @@ jobs:
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixmodel.Resolve(workflow.Jobs["test"].Strategy))
 			if len(rule.Findings()) != 0 {
 				t.Fatal(rule.Findings())
 			}

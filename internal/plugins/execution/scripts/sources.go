@@ -10,11 +10,11 @@ import (
 	"strings"
 	"syscall"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -78,7 +78,7 @@ func (r runner) checkGranted(ctx context.Context, c check) outcome {
 // scope, so neither the path nor a symlink below it leaves the workspace.
 // Reads through the grant are recorded with the scope's reader. A missing
 // directory gets no grant; one outside the workspace fails the check.
-func directoryGrant(ctx context.Context, scope *scriptexecution.Scope, directory string) (*inputfiles.BoundedFS, error) {
+func directoryGrant(ctx context.Context, scope *scripts.Scope, directory string) (*inputfiles.BoundedFS, error) {
 	if scope == nil || scope.Paths.Workspace == "" && scope.Paths.Analysis == "" {
 		return nil, errors.New("directory access requires a workspace root")
 	}
@@ -121,7 +121,7 @@ func directoryGrant(ctx context.Context, scope *scriptexecution.Scope, directory
 }
 
 // reader is the script scope's recording reader, or nil.
-func reader(script scriptexecution.Unit) *inputfiles.Reader {
+func reader(script scripts.Unit) *inputfiles.Reader {
 	if script.Scope == nil {
 		return nil
 	}
@@ -130,7 +130,7 @@ func reader(script scriptexecution.Unit) *inputfiles.Reader {
 
 // recordSources records the files an engine read so watchers re-run the
 // check when they change.
-func (r runner) recordSources(script scriptexecution.Unit, paths []string, directory string) error {
+func (r runner) recordSources(script scripts.Unit, paths []string, directory string) error {
 	if err := RecordSources(reader(script), paths, directory); err != nil {
 		return fmt.Errorf("tool %s %w", r.descriptor.Name, err)
 	}
@@ -174,7 +174,7 @@ func RecordSources(files *inputfiles.Reader, paths []string, directory string) e
 // comments of the script still apply. A check with copies takes the display
 // copy from them; otherwise the copy is reread by path, as a native process
 // read the file by path itself.
-func (r runner) reportedFinding(index int, script scriptexecution.Unit, d checkinputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) contract.ToolFinding {
+func (r runner) reportedFinding(index int, script scripts.Unit, d inputs.ScriptDiagnostic, result outcome, files map[string]reportedFile) contract.ToolFinding {
 	directory := result.directory
 	path := sourcePath(d.Source, directory)
 	reported := sourceInventoryPath(sourceName(d.Source, directory), directory)
@@ -207,9 +207,9 @@ func (r runner) reportedFinding(index int, script scriptexecution.Unit, d checki
 	}
 	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
 	finding.Message = r.message(d, d.Location.Row, d.Location.Column)
-	finding.Start = sourcepos.Position{Line: d.Location.Row, Column: d.Location.Column}
+	finding.Start = source.Position{Line: d.Location.Row, Column: d.Location.Column}
 	if d.EndLocation.Row >= d.Location.Row && d.EndLocation.Column > 0 {
-		finding.End = sourcepos.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
+		finding.End = source.Position{Line: d.EndLocation.Row, Column: d.EndLocation.Column}
 	}
 	if key := script.Key(); key != nil {
 		origin := &results.SuppressionOrigin{Path: script.Path, First: key.Line, Last: key.Line}

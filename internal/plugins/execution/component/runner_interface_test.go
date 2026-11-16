@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
@@ -68,8 +68,8 @@ func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	var declared struct {
-		ID         string            `json:"id"`
-		Descriptor runner.Descriptor `json:"descriptor"`
+		ID         string               `json:"id"`
+		Descriptor runnerapi.Descriptor `json:"descriptor"`
 	}
 	if err := json.Unmarshal(metadata, &declared); err != nil {
 		t.Fatal(err)
@@ -78,21 +78,21 @@ func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
 	if declared.ID != "example/buildkite-runners" || declared.ID == actual.Name || declared.Descriptor.Name != actual.Name || declared.Descriptor.Version != actual.Version {
 		t.Fatalf("package and provider identities were conflated: metadata=%+v runtime=%+v", declared, actual)
 	}
-	request := runner.Request{
+	request := runnerapi.Request{
 		Target: "buildkite", Scope: "org/repo",
-		Snapshot:  runner.Snapshot{Scope: "org/repo", Freshness: runner.Fresh, Complete: true, Content: `{"queues":[{"name":"windows-queue","labels":["windows"],"os":"windows","architecture":"x64","shell":"pwsh"}]}`},
-		Selectors: []runner.Selector{{Labels: []runner.Constraint{{Value: runner.Literal("windows"), Position: sourcepos.Position{Line: 4, Column: 15}}}}},
+		Snapshot:  runnerapi.Snapshot{Scope: "org/repo", Freshness: runnerapi.Fresh, Complete: true, Content: `{"queues":[{"name":"windows-queue","labels":["windows"],"os":"windows","architecture":"x64","shell":"pwsh"}]}`},
+		Selectors: []runnerapi.Selector{{Labels: []runnerapi.Constraint{{Value: runnerapi.Literal("windows"), Position: source.Position{Line: 4, Column: 15}}}}},
 	}
 	response, err := plugin.ResolveRunners(t.Context(), request)
 	answers := response.Answers
 	if err != nil || len(answers) != 1 {
 		t.Fatalf("answers=%+v error=%v", answers, err)
 	}
-	resolved, ok := answers[0].Resolution.(runner.Resolved)
-	if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != runner.Windows || resolved.Candidates[0].DefaultShell != "pwsh" {
+	resolved, ok := answers[0].Resolution.(runnerapi.Resolved)
+	if !ok || len(resolved.Candidates) != 1 || resolved.Candidates[0].OS != runnerapi.Windows || resolved.Candidates[0].DefaultShell != "pwsh" {
 		t.Fatalf("queue platform was not supplied through the runner interface: %+v", answers)
 	}
-	if plugin.runner != (runnerProtocol02{}) || resolved.Candidates[0].Hosting != runner.UnknownHosting || len(response.Support.Policies) != 0 || response.Support.DatasetStatus.DatasetID != "" {
+	if plugin.runner != (runnerProtocol02{}) || resolved.Candidates[0].Hosting != runnerapi.UnknownHosting || len(response.Support.Policies) != 0 || response.Support.DatasetStatus.DatasetID != "" {
 		t.Fatalf("legacy provider invented support facts: %+v", response)
 	}
 	request.Snapshot.Scope = "other/repo"
@@ -101,7 +101,7 @@ func TestPackagedRunnerUsesItsOwnDescriptorAndSnapshotScope(t *testing.T) {
 	if err != nil || len(answers) != 1 {
 		t.Fatalf("answers=%+v error=%v", answers, err)
 	}
-	if _, unknown := answers[0].Resolution.(runner.Unknown); !unknown || answers[0].DatasetStatus.Complete || answers[0].DatasetStatus.Freshness != runner.Missing {
+	if _, unknown := answers[0].Resolution.(runnerapi.Unknown); !unknown || answers[0].DatasetStatus.Complete || answers[0].DatasetStatus.Freshness != runnerapi.Missing {
 		t.Fatalf("foreign snapshot claimed complete runner knowledge: %+v", answers)
 	}
 }

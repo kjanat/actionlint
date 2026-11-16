@@ -7,7 +7,7 @@ import (
 
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )

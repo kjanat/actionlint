@@ -8,10 +8,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
-	bind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 )
 
-const InvocationContextInterface = bind.InterfaceName
+const InvocationContextInterface = invocationcontext.InterfaceName
 
 // MaxInvocationPageSize bounds one calls or scripts page returned to a guest.
 const MaxInvocationPageSize = 256
@@ -23,23 +23,23 @@ type (
 
 // Generated bindings reserve Go errors for transport traps. Query failures
 // belong to the WIT result, so these adapters never return a Go error.
-func (invocationContext) Describe(ctx context.Context) (bind.ResultSummaryString, error) {
+func (invocationContext) Describe(ctx context.Context) (invocationcontext.ResultSummaryString, error) {
 	return describeInvocation(ctx), nil
 }
 
-func (invocationContext) Calls(ctx context.Context, offset, limit uint32) (bind.ResultListCallString, error) {
+func (invocationContext) Calls(ctx context.Context, offset, limit uint32) (invocationcontext.ResultListCallString, error) {
 	return invocationCalls(ctx, offset, limit), nil
 }
 
-func (invocationContext) Scripts(ctx context.Context, offset, limit uint32) (bind.ResultListScriptOccurrenceString, error) {
+func (invocationContext) Scripts(ctx context.Context, offset, limit uint32) (invocationcontext.ResultListScriptOccurrenceString, error) {
 	return invocationScripts(ctx, offset, limit), nil
 }
 
-func (invocationContext) CallByID(ctx context.Context, id string) (bind.ResultOptionCallString, error) {
+func (invocationContext) CallByID(ctx context.Context, id string) (invocationcontext.ResultOptionCallString, error) {
 	return invocationCallByID(ctx, id), nil
 }
 
-func (invocationContext) ScriptByID(ctx context.Context, id string) (bind.ResultOptionScriptOccurrenceString, error) {
+func (invocationContext) ScriptByID(ctx context.Context, id string) (invocationcontext.ResultOptionScriptOccurrenceString, error) {
 	return invocationScriptByID(ctx, id), nil
 }
 
@@ -60,32 +60,32 @@ func invocationGraph(ctx context.Context) (invocation.Graph, error) {
 	return graph, nil
 }
 
-func describeInvocation(ctx context.Context) bind.ResultSummaryString {
+func describeInvocation(ctx context.Context) invocationcontext.ResultSummaryString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultSummaryStringErr{Value: err.Error()}
+		return invocationcontext.ResultSummaryStringErr{Value: err.Error()}
 	}
 	entry, budget := graph.Entry(), graph.Budget()
-	kind := bind.EntryKindWorkflow
+	kind := invocationcontext.EntryKindWorkflow
 	if entry.Kind == invocation.EntryAction {
-		kind = bind.EntryKindAction
+		kind = invocationcontext.EntryKindAction
 	}
-	value := bind.Summary{
-		Entry:  bind.Entry{ID: string(graph.RootID()), Kind: kind, Reference: invocationReference(entry.Reference)},
-		Budget: bind.Budget{MaxDepth: uint32(budget.MaxDepth), MaxCalls: uint32(budget.MaxCalls), MaxScripts: uint32(budget.MaxScripts)},
+	value := invocationcontext.Summary{
+		Entry:  invocationcontext.Entry{ID: string(graph.RootID()), Kind: kind, Reference: invocationReference(entry.Reference)},
+		Budget: invocationcontext.Budget{MaxDepth: uint32(budget.MaxDepth), MaxCalls: uint32(budget.MaxCalls), MaxScripts: uint32(budget.MaxScripts)},
 		Calls:  uint32(graph.CallCount()), Scripts: uint32(graph.ScriptCount()), Complete: !graph.Incomplete(),
 	}
 	if stop, present := graph.Stop(); present {
-		limit := bind.StopLimitTotal
+		limit := invocationcontext.StopLimitTotal
 		if stop.Limit == invocation.LimitScripts {
-			limit = bind.StopLimitScripts
+			limit = invocationcontext.StopLimitScripts
 		}
-		value.Stop = bind.SomeStop(bind.Stop{Parent: string(stop.Parent), Site: invocationReference(stop.Site), Limit: limit, Max: uint32(stop.Max)})
+		value.Stop = invocationcontext.SomeStop(invocationcontext.Stop{Parent: string(stop.Parent), Site: invocationReference(stop.Site), Limit: limit, Max: uint32(stop.Max)})
 	}
 	if interrupted, present := graph.EntryInterruption(); present {
-		value.EntryInterruption = bind.SomeInterruption(invocationInterruption(interrupted))
+		value.EntryInterruption = invocationcontext.SomeInterruption(invocationInterruption(interrupted))
 	}
-	return bind.ResultSummaryStringOk{Value: value}
+	return invocationcontext.ResultSummaryStringOk{Value: value}
 }
 
 // invocationPage validates guest page bounds and returns the page end.
@@ -96,74 +96,74 @@ func invocationPage(offset, limit uint32, length int) (int, bool) {
 	return int(offset) + min(int(limit), length-int(offset)), true
 }
 
-func invocationCalls(ctx context.Context, offset, limit uint32) bind.ResultListCallString {
+func invocationCalls(ctx context.Context, offset, limit uint32) invocationcontext.ResultListCallString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultListCallStringErr{Value: err.Error()}
+		return invocationcontext.ResultListCallStringErr{Value: err.Error()}
 	}
 	end, ok := invocationPage(offset, limit, graph.CallCount())
 	if !ok {
-		return bind.ResultListCallStringErr{Value: "invalid invocation page bounds"}
+		return invocationcontext.ResultListCallStringErr{Value: "invalid invocation page bounds"}
 	}
 	calls := graph.CallRange(int(offset), end)
-	values := make([]bind.Call, 0, len(calls))
+	values := make([]invocationcontext.Call, 0, len(calls))
 	for _, call := range calls {
 		value, err := invocationCall(graph, call)
 		if err != nil {
-			return bind.ResultListCallStringErr{Value: err.Error()}
+			return invocationcontext.ResultListCallStringErr{Value: err.Error()}
 		}
 		values = append(values, value)
 	}
-	return bind.ResultListCallStringOk{Value: values}
+	return invocationcontext.ResultListCallStringOk{Value: values}
 }
 
-func invocationScripts(ctx context.Context, offset, limit uint32) bind.ResultListScriptOccurrenceString {
+func invocationScripts(ctx context.Context, offset, limit uint32) invocationcontext.ResultListScriptOccurrenceString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultListScriptOccurrenceStringErr{Value: err.Error()}
+		return invocationcontext.ResultListScriptOccurrenceStringErr{Value: err.Error()}
 	}
 	end, ok := invocationPage(offset, limit, graph.ScriptCount())
 	if !ok {
-		return bind.ResultListScriptOccurrenceStringErr{Value: "invalid invocation page bounds"}
+		return invocationcontext.ResultListScriptOccurrenceStringErr{Value: "invalid invocation page bounds"}
 	}
 	scripts := graph.ScriptRange(int(offset), end)
-	values := make([]bind.ScriptOccurrence, 0, len(scripts))
+	values := make([]invocationcontext.ScriptOccurrence, 0, len(scripts))
 	for _, script := range scripts {
 		values = append(values, invocationScript(graph, script))
 	}
-	return bind.ResultListScriptOccurrenceStringOk{Value: values}
+	return invocationcontext.ResultListScriptOccurrenceStringOk{Value: values}
 }
 
-func invocationCallByID(ctx context.Context, id string) bind.ResultOptionCallString {
+func invocationCallByID(ctx context.Context, id string) invocationcontext.ResultOptionCallString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultOptionCallStringErr{Value: err.Error()}
+		return invocationcontext.ResultOptionCallStringErr{Value: err.Error()}
 	}
 	call, found := graph.Call(invocation.ID(id))
 	if !found {
-		return bind.ResultOptionCallStringOk{Value: bind.NoneCall()}
+		return invocationcontext.ResultOptionCallStringOk{Value: invocationcontext.NoneCall()}
 	}
 	value, err := invocationCall(graph, call)
 	if err != nil {
-		return bind.ResultOptionCallStringErr{Value: err.Error()}
+		return invocationcontext.ResultOptionCallStringErr{Value: err.Error()}
 	}
-	return bind.ResultOptionCallStringOk{Value: bind.SomeCall(value)}
+	return invocationcontext.ResultOptionCallStringOk{Value: invocationcontext.SomeCall(value)}
 }
 
-func invocationScriptByID(ctx context.Context, id string) bind.ResultOptionScriptOccurrenceString {
+func invocationScriptByID(ctx context.Context, id string) invocationcontext.ResultOptionScriptOccurrenceString {
 	graph, err := invocationGraph(ctx)
 	if err != nil {
-		return bind.ResultOptionScriptOccurrenceStringErr{Value: err.Error()}
+		return invocationcontext.ResultOptionScriptOccurrenceStringErr{Value: err.Error()}
 	}
 	script, found := graph.Script(invocation.ID(id))
 	if !found {
-		return bind.ResultOptionScriptOccurrenceStringOk{Value: bind.NoneScriptOccurrence()}
+		return invocationcontext.ResultOptionScriptOccurrenceStringOk{Value: invocationcontext.NoneScriptOccurrence()}
 	}
-	return bind.ResultOptionScriptOccurrenceStringOk{Value: bind.SomeScriptOccurrence(invocationScript(graph, script))}
+	return invocationcontext.ResultOptionScriptOccurrenceStringOk{Value: invocationcontext.SomeScriptOccurrence(invocationScript(graph, script))}
 }
 
-func invocationReference(ref source.Reference) bind.SourceReference {
-	return bind.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address}
+func invocationReference(ref source.Reference) invocationcontext.SourceReference {
+	return invocationcontext.SourceReference{Document: ref.Document, Revision: ref.Revision, Node: ref.Node, Address: ref.Address}
 }
 
 // invocationAncestry lists the IDs from the entry through owner inclusive.
@@ -176,92 +176,92 @@ func invocationAncestry(graph invocation.Graph, owner invocation.ID) []string {
 	return values
 }
 
-func invocationScript(graph invocation.Graph, script invocation.Script) bind.ScriptOccurrence {
-	kind := bind.ScriptKindRun
+func invocationScript(graph invocation.Graph, script invocation.Script) invocationcontext.ScriptOccurrence {
+	kind := invocationcontext.ScriptKindRun
 	if script.Kind == invocation.ScriptActionInput {
-		kind = bind.ScriptKindActionInput
+		kind = invocationcontext.ScriptKindActionInput
 	}
 	depth, _ := graph.Depth(script.Owner)
-	return bind.ScriptOccurrence{
+	return invocationcontext.ScriptOccurrence{
 		ID: string(script.ID), Owner: string(script.Owner), Ancestry: invocationAncestry(graph, script.Owner),
 		Depth: uint32(depth), Declaration: invocationReference(script.Declaration), Kind: kind, Input: script.Input,
 	}
 }
 
-func invocationInterruption(outcome invocation.Outcome) bind.Interruption {
-	reason := bind.InterruptionReasonCanceled
+func invocationInterruption(outcome invocation.Outcome) invocationcontext.Interruption {
+	reason := invocationcontext.InterruptionReasonCanceled
 	if outcome.Reason() == invocation.ReasonOperational {
-		reason = bind.InterruptionReasonOperationalFailure
+		reason = invocationcontext.InterruptionReasonOperationalFailure
 	}
-	return bind.Interruption{Reason: reason, Detail: outcome.Detail()}
+	return invocationcontext.Interruption{Reason: reason, Detail: outcome.Detail()}
 }
 
 var (
-	unavailableReasons = map[invocation.Reason]bind.UnavailableReason{
-		invocation.ReasonNonLocal: bind.UnavailableReasonNonLocal, invocation.ReasonNotFetched: bind.UnavailableReasonNotFetched,
-		invocation.ReasonLookupDisabled: bind.UnavailableReasonLookupDisabled, invocation.ReasonPlacementUncertain: bind.UnavailableReasonPlacementUncertain,
+	unavailableReasons = map[invocation.Reason]invocationcontext.UnavailableReason{
+		invocation.ReasonNonLocal: invocationcontext.UnavailableReasonNonLocal, invocation.ReasonNotFetched: invocationcontext.UnavailableReasonNotFetched,
+		invocation.ReasonLookupDisabled: invocationcontext.UnavailableReasonLookupDisabled, invocation.ReasonPlacementUncertain: invocationcontext.UnavailableReasonPlacementUncertain,
 	}
-	unresolvedReasons = map[invocation.Reason]bind.UnresolvedReason{
-		invocation.ReasonInvalidCall: bind.UnresolvedReasonInvalidCall, invocation.ReasonMissingManifest: bind.UnresolvedReasonMissingManifest,
-		invocation.ReasonReadFailed: bind.UnresolvedReasonReadFailed, invocation.ReasonParseFailed: bind.UnresolvedReasonParseFailed, invocation.ReasonMappingFailed: bind.UnresolvedReasonMappingFailed,
+	unresolvedReasons = map[invocation.Reason]invocationcontext.UnresolvedReason{
+		invocation.ReasonInvalidCall: invocationcontext.UnresolvedReasonInvalidCall, invocation.ReasonMissingManifest: invocationcontext.UnresolvedReasonMissingManifest,
+		invocation.ReasonReadFailed: invocationcontext.UnresolvedReasonReadFailed, invocation.ReasonParseFailed: invocationcontext.UnresolvedReasonParseFailed, invocation.ReasonMappingFailed: invocationcontext.UnresolvedReasonMappingFailed,
 	}
 )
 
-func invocationCall(graph invocation.Graph, call invocation.Call) (bind.Call, error) {
+func invocationCall(graph invocation.Graph, call invocation.Call) (invocationcontext.Call, error) {
 	facts, _ := call.Facts()
 	if call.Depth() < 0 || uint64(call.Depth()) > math.MaxUint32 || facts.Step.Line < 0 || facts.Step.Column < 0 || uint64(facts.Step.Line) > math.MaxUint32 || uint64(facts.Step.Column) > math.MaxUint32 {
-		return bind.Call{}, fmt.Errorf("call %s position exceeds WIT coordinate range", call.ID())
+		return invocationcontext.Call{}, fmt.Errorf("call %s position exceeds WIT coordinate range", call.ID())
 	}
-	value := bind.Call{
+	value := invocationcontext.Call{
 		ID: string(call.ID()), Parent: string(call.Parent()), Ancestry: invocationAncestry(graph, call.Parent()), Depth: uint32(call.Depth()),
 		Site: invocationReference(call.Site()),
 	}
 	if facts.Step.Line != 0 {
-		value.Step = bind.SomePosition(bind.Position{Line: uint32(facts.Step.Line), Column: uint32(facts.Step.Column)})
+		value.Step = invocationcontext.SomePosition(invocationcontext.Position{Line: uint32(facts.Step.Line), Column: uint32(facts.Step.Column)})
 	}
 	if facts.HasUses {
-		value.Uses = bind.SomeString(facts.Uses)
+		value.Uses = invocationcontext.SomeString(facts.Uses)
 	}
 	switch facts.Condition {
 	case invocation.ConditionEnabled:
-		value.Condition = bind.ConditionEnabled
+		value.Condition = invocationcontext.ConditionEnabled
 	case invocation.ConditionSkipped:
-		value.Condition = bind.ConditionSkipped
+		value.Condition = invocationcontext.ConditionSkipped
 	case invocation.ConditionRuntimeDependent:
-		value.Condition = bind.ConditionRuntimeDependent
+		value.Condition = invocationcontext.ConditionRuntimeDependent
 	case invocation.ConditionInvalid:
 	}
 	outcome := call.Outcome
 	target, hasTarget := outcome.Target()
 	switch outcome.Kind() {
 	case invocation.OutcomeExpanded:
-		value.Outcome = bind.OutcomeExpanded{Value: invocationReference(target)}
+		value.Outcome = invocationcontext.OutcomeExpanded{Value: invocationReference(target)}
 	case invocation.OutcomeOpaque:
-		reason := bind.OpaqueReasonDockerfileOnly
+		reason := invocationcontext.OpaqueReasonDockerfileOnly
 		if outcome.Reason() == invocation.ReasonNonComposite {
-			reason = bind.OpaqueReasonNonComposite
+			reason = invocationcontext.OpaqueReasonNonComposite
 		}
-		value.Outcome = bind.OutcomeOpaque{Value: bind.Opaque{Reason: reason, Detail: outcome.Detail()}}
+		value.Outcome = invocationcontext.OutcomeOpaque{Value: invocationcontext.Opaque{Reason: reason, Detail: outcome.Detail()}}
 	case invocation.OutcomeUnavailable:
-		value.Outcome = bind.OutcomeUnavailable{Value: bind.Unavailable{Reason: unavailableReasons[outcome.Reason()], Detail: outcome.Detail()}}
+		value.Outcome = invocationcontext.OutcomeUnavailable{Value: invocationcontext.Unavailable{Reason: unavailableReasons[outcome.Reason()], Detail: outcome.Detail()}}
 	case invocation.OutcomeUnresolved:
-		value.Outcome = bind.OutcomeUnresolved{Value: bind.Unresolved{Reason: unresolvedReasons[outcome.Reason()], Detail: outcome.Detail()}}
+		value.Outcome = invocationcontext.OutcomeUnresolved{Value: invocationcontext.Unresolved{Reason: unresolvedReasons[outcome.Reason()], Detail: outcome.Detail()}}
 	case invocation.OutcomeDynamic:
-		value.Outcome = bind.OutcomeDynamic{Value: outcome.Detail()}
+		value.Outcome = invocationcontext.OutcomeDynamic{Value: outcome.Detail()}
 	case invocation.OutcomeCycle:
 		cycle, _ := outcome.Cycle()
-		value.Outcome = bind.OutcomeCycle{Value: bind.Cycle{Target: invocationReference(target), Active: invocationReference(cycle.Active), Owner: string(cycle.Owner), Closing: string(cycle.Closing)}}
+		value.Outcome = invocationcontext.OutcomeCycle{Value: invocationcontext.Cycle{Target: invocationReference(target), Active: invocationReference(cycle.Active), Owner: string(cycle.Owner), Closing: string(cycle.Closing)}}
 	case invocation.OutcomeDepthLimit:
 		_, maximum, _ := outcome.Limit()
-		value.Outcome = bind.OutcomeDepthLimited{Value: uint32(maximum)}
+		value.Outcome = invocationcontext.OutcomeDepthLimited{Value: uint32(maximum)}
 	case invocation.OutcomeInterrupted:
-		interrupted := bind.Interrupted{Interruption: invocationInterruption(outcome)}
+		interrupted := invocationcontext.Interrupted{Interruption: invocationInterruption(outcome)}
 		if hasTarget {
-			interrupted.Target = bind.SomeSourceReference(invocationReference(target))
+			interrupted.Target = invocationcontext.SomeSourceReference(invocationReference(target))
 		}
-		value.Outcome = bind.OutcomeInterrupted{Value: interrupted}
+		value.Outcome = invocationcontext.OutcomeInterrupted{Value: interrupted}
 	case invocation.OutcomeInvalid:
-		return bind.Call{}, fmt.Errorf("invalid call outcome %s", outcome.Kind())
+		return invocationcontext.Call{}, fmt.Errorf("invalid call outcome %s", outcome.Kind())
 	}
 	return value, nil
 }

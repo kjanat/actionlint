@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	registry "actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
 )
 
-type ruffEchoBackend struct{ *corewasm.Engine }
+type ruffEchoBackend struct{ *module.Engine }
 
-func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b ruffEchoBackend) ScriptDescriptor() inputs.ScriptEngineDescriptor {
 	descriptor := b.Engine.ScriptDescriptor()
 	descriptor.Engine = "ruff"
 	descriptor.Rule.Name = "ruff"
@@ -23,7 +23,7 @@ func (b ruffEchoBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
 
 func TestScriptEngineBackendChecksPythonSteps(t *testing.T) {
 	t.Parallel()
-	engine, err := corewasm.LoadModuleEngine(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
+	engine, err := module.LoadModuleEngine(t.Context(), filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), module.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

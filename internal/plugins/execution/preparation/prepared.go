@@ -7,7 +7,7 @@ package preparation
 import (
 	"encoding/json"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 )
 
 // Prepared is a script ready for a tool. A nil LineMap leaves rows unchanged.
@@ -22,7 +22,7 @@ type Prepared struct {
 	LineMap func(int) Line
 	// AcceptDiagnostic filters findings caused by generated script text.
 	// A nil function accepts every finding.
-	AcceptDiagnostic func(checkinputs.ScriptDiagnostic) bool
+	AcceptDiagnostic func(inputs.ScriptDiagnostic) bool
 	// Vars supplies values for placeholders in the tool command.
 	Vars map[string]string
 	// Excluded lists diagnostic codes the tool should skip for this script.

@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"path/filepath"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/selection"
 	bindingmodel "actionlint.kjanat.dev/v2/internal/model/binding"
 
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/suppression"
 )
 
 // filterConfigured applies resolved ignore selectors to the same logical invocation.
-func (processor Processor) filterConfigured(path, root string, source []byte, findings []*findingmodel.Finding, cfg *configuration.Config, foreign bool, level func(string) configuration.Level, additional ...string) []*findingmodel.Finding {
+func (processor Processor) filterConfigured(path, root string, source []byte, findings []*finding.Finding, cfg *configuration.Config, foreign bool, level func(string) configuration.Level, additional ...string) []*finding.Finding {
 	if cfg == nil || len(cfg.Ignores) == 0 || len(findings) == 0 {
 		return findings
 	}
-	contexts := suppression.Contexts(source, exprsyntax.LiteralExpressionValue)
-	filtered := make([]*findingmodel.Finding, 0, len(findings))
+	contexts := suppression.Contexts(source, syntax.LiteralExpressionValue)
+	filtered := make([]*finding.Finding, 0, len(findings))
 	for _, finding := range findings {
 		reportedPath := path
 		if finding.Path != "" {

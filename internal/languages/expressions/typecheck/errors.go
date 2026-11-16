@@ -3,7 +3,7 @@ package typecheck
 import (
 	"fmt"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // Error is a syntax or semantic finding in an expression. Rule and Code identify
@@ -54,7 +54,7 @@ func detachErrors(errs []*Error) []*Error {
 	return out
 }
 
-func errorAtToken(kind findingKind, t exprsyntax.Token, msg string) *Error {
+func errorAtToken(kind findingKind, t syntax.Token, msg string) *Error {
 	return &Error{
 		Message: msg,
 		Rule:    kind.rule, Code: kind.code,

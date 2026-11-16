@@ -8,14 +8,14 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
@@ -31,16 +31,16 @@ type RuleInputs struct {
 	Debug                         io.Writer
 	Rules                         configuration.RuleSet
 	SourceSnapshot                parsing.SourceSnapshot
-	Runners                       *runnerlang.Knowledge
+	Runners                       *runners.Knowledge
 	Context                       context.Context
 	Path, WorkingDir, ProjectRoot string
 	Config                        *configuration.Config
 	Repository                    repository.Snapshot
-	Actions                       *workspaceactions.Resolver
-	RemoteActions                 *actionremote.ResolvedActions
-	WorkflowSources               *workflowinputs.Cache
-	Workflows                     *workflowinputs.ResolvedWorkflows
-	WorkflowNames                 *workflownames.Index
+	Actions                       *workspace.Resolver
+	RemoteActions                 *remote.ResolvedActions
+	WorkflowSources               *workflows.Cache
+	Workflows                     *workflows.ResolvedWorkflows
+	WorkflowNames                 *names.Index
 	WorkflowNameInventory         namemodel.Inventory
 	Reader                        *files.Reader
 	Index                         func(context.Context, string) *execution.IndexSnapshot
@@ -62,7 +62,7 @@ func (c RuleInputs) InProjectWorkflows() bool {
 	if c.ProjectRoot == "" || c.WorkflowNames == nil {
 		return false
 	}
-	return workflownames.SamePath(filepath.Dir(c.DocumentPath()), filepath.Join(c.projectRoot(), ".github", "workflows"))
+	return names.SamePath(filepath.Dir(c.DocumentPath()), filepath.Join(c.projectRoot(), ".github", "workflows"))
 }
 
 // ProjectWorkflowNames returns the inventory of the project's workflow names.

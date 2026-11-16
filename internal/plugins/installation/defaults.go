@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -37,7 +37,7 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 		return slices.Clone(cfg.Plugins), nil
 	}
 	refs := []pluginreference.Reference{}
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 // replaces a bundled tool reporting findings in files its scripts source,
 // that the isolated plugin stops following those files.
 func SourceFollowingNotes(refs []pluginreference.Reference) ([]string, error) {
-	manifests, err := pluginmanifests.Bundled()
+	manifests, err := manifests.Bundled()
 	if err != nil {
 		return nil, err
 	}

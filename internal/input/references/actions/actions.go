@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // Reference identifies the requested action, before a mutable ref is resolved.
@@ -58,10 +58,10 @@ func (r Reference) Ref() string        { return r.ref }
 // This identifies fetched content; it does not describe how a ref selected it.
 type Identity struct {
 	host, repository, commit, directory string
-	repositoryID                        repofacts.ID
+	repositoryID                        repository.ID
 }
 
-func NewIdentity(host, repository string, repositoryID repofacts.ID, commit, directory string) (Identity, error) {
+func NewIdentity(host, repository string, repositoryID repository.ID, commit, directory string) (Identity, error) {
 	location := repository
 	if directory != "" {
 		location += "/" + directory
@@ -82,11 +82,11 @@ func NewIdentity(host, repository string, repositoryID repofacts.ID, commit, dir
 	return Identity{host: reference.host, repository: reference.repository, repositoryID: repositoryID, commit: strings.ToLower(commit), directory: reference.directory}, nil
 }
 
-func (i Identity) Host() string               { return i.host }
-func (i Identity) Repository() string         { return i.repository }
-func (i Identity) RepositoryID() repofacts.ID { return i.repositoryID }
-func (i Identity) Commit() string             { return i.commit }
-func (i Identity) Directory() string          { return i.directory }
+func (i Identity) Host() string                { return i.host }
+func (i Identity) Repository() string          { return i.repository }
+func (i Identity) RepositoryID() repository.ID { return i.repositoryID }
+func (i Identity) Commit() string              { return i.commit }
+func (i Identity) Directory() string           { return i.directory }
 
 // Route records whether selection used a raw object ID or an exact lookup key.
 type Route struct {

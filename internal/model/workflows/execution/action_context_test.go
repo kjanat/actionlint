@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
@@ -89,7 +89,7 @@ func TestMetadataCallPositionsReachInvocationOwner(t *testing.T) {
 					continue
 				}
 				position, present := step.Position()
-				facts, err := CallFacts(step, runnerlang.MacOrLinux)
+				facts, err := CallFacts(step, runners.MacOrLinux)
 				if err != nil || !present || facts.Step.Line < 1 || facts.Step.Column < 1 || facts.Step.Line != position.Line || facts.Step.Column != position.Column {
 					t.Fatalf("metadata call position: %+v error=%v", facts.Step, err)
 				}
@@ -109,7 +109,7 @@ func TestActionContextSnapshotsCallerEffects(t *testing.T) {
 		{&definition.String{Value: "github.event.repository.name"}, invocation.ConditionRuntimeDependent},
 	} {
 		call := &definition.Step{Pos: &source.Position{Line: 4, Column: 3}, If: tc.condition, Exec: &definition.ExecAction{Uses: &definition.String{Value: "$/action"}}}
-		context, err := testCallContext(t, call, runnerlang.MacOrLinux)
+		context, err := testCallContext(t, call, runners.MacOrLinux)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -165,7 +165,7 @@ func TestCallFactsPreserveUnicodeSourceColumns(t *testing.T) {
 	workflow, _ := snapshot.WorkflowView()
 	job, _ := workflow.Job("é")
 	view := slices.Collect(job.Steps())[0]
-	facts, err := CallFacts(view, runnerlang.MacOrLinux)
+	facts, err := CallFacts(view, runners.MacOrLinux)
 	prefix, _, found := strings.Cut(line, "{uses")
 	if !found {
 		t.Fatal("fixture has no call mapping")
@@ -213,7 +213,7 @@ func testEntryContext(t *testing.T) invocation.Context {
 	return builder.RootContext()
 }
 
-func testCallContext(t *testing.T, step *definition.Step, platform runnerlang.Platform) (invocation.Context, error) {
+func testCallContext(t *testing.T, step *definition.Step, platform runners.Platform) (invocation.Context, error) {
 	t.Helper()
 	action, ok := step.Exec.(*definition.ExecAction)
 	if !ok {

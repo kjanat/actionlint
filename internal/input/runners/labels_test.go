@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 )
 
 func TestRuleRunnerLabelCheckLabels(t *testing.T) {
@@ -402,7 +402,7 @@ func TestRuleRunnerLabelCheckLabels(t *testing.T) {
 			}
 			source += "    runs-on: " + quoted(tc.labels) + "\n    steps:\n      - run: echo ok\n"
 			fixture := runnerSource(t, source)
-			errs := runnermodel.LabelRejections(fixture.Views["test"], runnermodel.KnownLabels(tc.known))
+			errs := runners.LabelRejections(fixture.Views["test"], runners.KnownLabels(tc.known))
 			prepared, err := Prepare(t.Context(), fixture.Snapshot, tc.known, runnerapi.Options{}, "scope")
 			if err != nil {
 				t.Fatal(err)

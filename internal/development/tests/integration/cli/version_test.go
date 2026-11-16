@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 )
 
 func TestVersionShorthand(t *testing.T) {
@@ -32,7 +32,7 @@ func TestCommandVersionNamesTheModule(t *testing.T) {
 	var output bytes.Buffer
 	cmd := cli.Command{Stdin: os.Stdin, Stdout: &output, Stderr: &output}
 
-	if status := cmd.Main([]string{"actionlint", "-version"}); status != commandstatus.ExitSuccessNoProblem {
+	if status := cmd.Main([]string{"actionlint", "-version"}); status != exitcode.ExitSuccessNoProblem {
 		t.Fatal("exit status should be 0 but got", status)
 	}
 

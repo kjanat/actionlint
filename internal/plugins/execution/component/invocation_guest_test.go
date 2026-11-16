@@ -12,8 +12,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"github.com/kjanat/wacogo"
 )
 
@@ -33,10 +33,10 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 		}
 	})
 	occurrence, _ := graph.Script(scripts[0])
-	input := checkinputs.AnalyzerInput{
+	input := inputs.AnalyzerInput{
 		Reference: graph.Entry().Reference, AvailableInputs: []rule.InputKind{rule.Source, rule.Scripts, rule.Invocations},
 		CallGraph: graph, SelectedScripts: []invocation.ID{occurrence.ID}, Options: json.RawMessage("invocation-graph"),
-		Invoked: []checkinputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: sourcepos.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
+		Invoked: []inputs.Script{{Reference: occurrence.Declaration, Text: "echo chosen", Start: source.Position{Line: 1, Column: 1}, Occurrence: occurrence}},
 	}
 	if findings, err := guest.CheckDocument(t.Context(), input); err != nil || len(findings) != 0 {
 		t.Fatalf("guest graph traversal: findings=%v error=%v", findings, err)
@@ -62,7 +62,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 		t.Fatal("some(empty) selection changed at guest boundary")
 	}
 	logs = nil
-	if _, err := guest.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Options: input.Options}); err == nil || !strings.Contains(err.Error(), "invocation graph is unavailable") {
+	if _, err := guest.CheckDocument(t.Context(), inputs.AnalyzerInput{Options: input.Options}); err == nil || !strings.Contains(err.Error(), "invocation graph is unavailable") {
 		t.Fatalf("graph leaked into following call: %v", err)
 	}
 	if len(logs) != 0 {
@@ -73,7 +73,7 @@ func TestGuestReadsPagedGraphWithSelectedText(t *testing.T) {
 func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
 	t.Parallel()
 	for _, selected := range [][]invocation.ID{nil, {}, {"chosen"}} {
-		value := lowerInput(checkinputs.AnalyzerInput{SelectedScripts: selected})
+		value := lowerInput(inputs.AnalyzerInput{SelectedScripts: selected})
 		option, ok := value.Field("selected-scripts").(*wacogo.ValOption)
 		if !ok || option.IsNone() != (selected == nil) {
 			t.Fatalf("selection changed: %v", selected)
@@ -85,8 +85,8 @@ func TestLowerInputPreservesSelectionAndActionInput(t *testing.T) {
 			}
 		}
 	}
-	input := checkinputs.ActionInput{Occurrence: invocation.Script{ID: "chosen"}, Site: checkinputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}}
-	value := lowerInput(checkinputs.AnalyzerInput{ActionInputs: []checkinputs.ActionInput{input}})
+	input := inputs.ActionInput{Occurrence: invocation.Script{ID: "chosen"}, Site: inputs.ScriptInput{Action: "actions/github-script", Input: "script", Language: "javascript"}}
+	value := lowerInput(inputs.AnalyzerInput{ActionInputs: []inputs.ActionInput{input}})
 	list, err := liftList(value.Field("action-inputs"), "action inputs")
 	if err != nil || list.Len() != 1 {
 		t.Fatalf("action input omitted: %v", err)

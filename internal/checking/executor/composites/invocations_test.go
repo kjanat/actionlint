@@ -18,7 +18,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -32,7 +32,7 @@ type invocationFixture struct {
 	original        *definition.Workflow
 	registry        *parsing.SourceSnapshots
 	snapshots       *capturedSnapshots
-	cache           *workspaceactions.Cache
+	cache           *workspace.Cache
 	parsed          []string
 	afterParse      func(string)
 	mutateMeta      func(*actionmeta.Metadata)
@@ -49,7 +49,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		t.Fatal(document.SyntaxErrors)
 	}
 	registry, store, snapshots := newCapturedSnapshots(t, directory)
-	f := &invocationFixture{original: document.Workflow, registry: registry, snapshots: snapshots, cache: workspaceactions.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
+	f := &invocationFixture{original: document.Workflow, registry: registry, snapshots: snapshots, cache: workspace.NewCache(ctx, directory, nil), mutableMetadata: map[string]*actionmeta.Metadata{}}
 	var err error
 	f.root, err = f.snapshots.Document(files.PhysicalPath(path), content, document)
 	if err != nil {
@@ -63,7 +63,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 		}
 		explicit[captured.Revision().Document()] = struct{}{}
 	}
-	f.cache.Configure(workspaceactions.Options{Captures: store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.CapturedDocument, path string, metadata *actionmeta.Metadata, _ error) {
+	f.cache.Configure(workspace.Options{Captures: store, Context: ctx, WorkingDir: directory, ExplicitDocuments: explicit, OnDocument: func(_ capture.CapturedDocument, path string, metadata *actionmeta.Metadata, _ error) {
 		f.parsed = append(f.parsed, path)
 		f.mutableMetadata[path] = metadata
 		if f.mutateMeta != nil {
@@ -73,7 +73,7 @@ func newInvocationFixture(t *testing.T, ctx context.Context, workflow string, ac
 			f.afterParse(path)
 		}
 	}})
-	resolver := workspaceactions.NewResolver(f.cache, nil)
+	resolver := workspace.NewResolver(f.cache, nil)
 	f.options = Options{Bindings: testBindings(nil), Context: ctx, SourceSnapshots: registry, Captures: store, Actions: resolver, Budget: budget, CollectScripts: true, Paths: execution.Paths{Workspace: directory, Analysis: directory}, Rules: []workflowvisit.Rule{correctness.NewRuleAction(ctx, correctness.ActionRule.Base(), resolver.Prepared(), nil)}}
 	return f
 }

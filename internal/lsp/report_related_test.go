@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/results"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/lsp"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -21,22 +21,22 @@ func TestEditorRelatedRequiresCapturedRevisionModelAndRange(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			path, relatedPath := filepath.Join(root, "workflow.yml"), filepath.Join(root, "related.yml")
-			main := reportfixture.CapturedSource(t, path, []byte("main\n"), sourcepos.YAML)
-			target := reportfixture.CapturedSource(t, relatedPath, []byte("😀related\n"), sourcepos.YAML)
-			related := results.Related{Revision: target.Revision, Coordinates: target.Coordinates, Path: "related.yml", Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 9}}
+			main := reportfixture.CapturedSource(t, path, []byte("main\n"), source.YAML)
+			target := reportfixture.CapturedSource(t, relatedPath, []byte("😀related\n"), source.YAML)
+			related := results.Related{Revision: target.Revision, Coordinates: target.Coordinates, Path: "related.yml", Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 1, Column: 9}}
 			switch name {
 			case "different revision":
-				related.Revision = reportfixture.CapturedSource(t, relatedPath, []byte("other bytes"), sourcepos.YAML).Revision
+				related.Revision = reportfixture.CapturedSource(t, relatedPath, []byte("other bytes"), source.YAML).Revision
 			case "different model":
-				related.Coordinates = sourcepos.RawLF
+				related.Coordinates = source.RawLF
 			case "outside source":
 				related.End.Column = 99
 			case "unbound":
-				related.Revision, related.Coordinates = sourcepos.Revision{}, ""
+				related.Revision, related.Coordinates = source.Revision{}, ""
 			case "zero end":
-				related.End = sourcepos.Position{}
+				related.End = source.Position{}
 			}
-			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: "workflow.yml", Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: main.Revision.Document(), Revision: main.Revision.Digest()}, Related: []results.Related{related}, Source: results.DiagnosticSource{Content: main.Content}}}, CapturedSources: map[string]report.CapturedSource{path: main, relatedPath: target}}
+			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: "workflow.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Reference: &source.Reference{Document: main.Revision.Document(), Revision: main.Revision.Digest()}, Related: []results.Related{related}, Source: results.DiagnosticSource{Content: main.Content}}}, CapturedSources: map[string]report.CapturedSource{path: main, relatedPath: target}}
 			analysis, err := lsp.FromReport(result, root, map[string]lsp.Document{path: {Text: string(main.Content)}})
 			if len(analysis.Diagnostics) != 1 {
 				t.Fatalf("related rejection lost primary diagnostic: %+v %v", analysis, err)

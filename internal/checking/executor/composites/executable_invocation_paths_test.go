@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -72,7 +72,7 @@ func TestExecutableInvocationPreservesJobPaths(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inside}]}\n",
 	}, nil)
-	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runnerlang.MacOrLinux}
+	want := execution.Paths{Workspace: f.options.Paths.Workspace, Analysis: "job-working-directory", Platform: runners.MacOrLinux}
 	p := &executablePathsProbe{executableRule: newExecutableRule(t, correctness.ExecutableContext{
 		ProjectRoot: want.Workspace, WorkingDir: want.Analysis,
 	}), t: t, want: want}

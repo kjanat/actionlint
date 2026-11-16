@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestPermissiveJSONCalls(t *testing.T) {
@@ -26,7 +26,7 @@ func TestPermissiveJSONCalls(t *testing.T) {
 		{`broken`, 0},
 	} {
 		expression := "fromJSON('" + strings.ReplaceAll(tc.input, "'", "''") + "')"
-		node := exprsyntax.ParseAssignedExpression("${{ " + expression + " }}")
+		node := syntax.ParseAssignedExpression("${{ " + expression + " }}")
 		findings := PermissiveJSONCalls(node)
 		if len(findings) != tc.count {
 			t.Fatalf("%s: got %+v, want %d", expression, findings, tc.count)
@@ -47,7 +47,7 @@ func TestPermissiveJSONCalls(t *testing.T) {
 		{`FrOmJsOn(format('[{0},]', 1))`, 1},
 		{`fromJSON(toJSON(fromJSON('[1,]')))`, 1},
 	} {
-		node := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+		node := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 		if findings := PermissiveJSONCalls(node); len(findings) != tc.count {
 			t.Fatalf("%s: got %+v, want %d", tc.expression, findings, tc.count)
 		}

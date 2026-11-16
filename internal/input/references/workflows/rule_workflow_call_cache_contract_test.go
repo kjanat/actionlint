@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -39,7 +39,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowparser.ParseWorkflow(src)
+	w, errs := parser.ParseWorkflow(src)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, "cache-mode") {
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}

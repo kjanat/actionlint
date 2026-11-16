@@ -6,12 +6,12 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	exprcheck "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -35,7 +35,7 @@ func checkCondition(value *definition.String) []reporting.StepFinding {
 	if value == nil {
 		return nil
 	}
-	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcepos.ZeroIfNil(value.Pos)))
+	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, source.ZeroIfNil(value.Pos)))
 }
 
 func checkJobConditions(job workflows.Job) []reporting.StepFinding {
@@ -51,8 +51,8 @@ func checkStepCondition(step workflows.Step) []reporting.StepFinding {
 }
 
 // conditionDiagnostics reports explicit if: conditions that are constant or have text around ${{ }}.
-func conditionDiagnostics(value string, start sourcepos.Position) []results.Diagnostic {
-	expr, err, _ := exprsyntax.ParseConditionExpression(value)
+func conditionDiagnostics(value string, start source.Position) []results.Diagnostic {
+	expr, err, _ := syntax.ParseConditionExpression(value)
 	if err != nil {
 		return nil
 	}
@@ -62,15 +62,15 @@ func conditionDiagnostics(value string, start sourcepos.Position) []results.Diag
 	if expr == nil {
 		return report(fmt.Sprintf("if: condition %q is always evaluated to true because extra characters are around ${{ }}", value))
 	}
-	checker := exprcheck.NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker := typecheck.NewChecker(contexts.DefaultExpressionScope(), nil)
 	if !checker.IsConstant(expr) {
 		return nil
 	}
-	if _, errs := checker.Check(expreval.EvaluateSubexpressions(expr)); len(errs) != 0 {
+	if _, errs := checker.Check(evaluate.EvaluateSubexpressions(expr)); len(errs) != 0 {
 		return nil
 	}
-	if constant, known := expreval.ConditionConstantValue(expr); known {
-		text := strings.TrimSpace(exprsyntax.ConditionSource(value))
+	if constant, known := evaluate.ConditionConstantValue(expr); known {
+		text := strings.TrimSpace(syntax.ConditionSource(value))
 		if strings.HasPrefix(text, "${{") {
 			text = strings.TrimSpace(text[3 : len(text)-2])
 		}

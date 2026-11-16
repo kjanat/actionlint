@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -112,7 +112,7 @@ jobs:
           - if: ${{ github.ref == 'refs/heads/main' }}
             run: echo runtime
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -169,7 +169,7 @@ jobs:
           blank:
           empty: ""
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -225,7 +225,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -264,7 +264,7 @@ jobs:
       - id: ${{ '${{ runtime }}' }}
         run: echo ok
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -304,7 +304,7 @@ jobs:
       - uses: actions/checkout@v4
         with: ${{ fromJSON('{"script":"echo derived"}') }}
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -355,7 +355,7 @@ jobs:
     steps:
       - run: echo ok
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -384,7 +384,7 @@ func TestRunnerSelectionPublishesSemanticShape(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  build:\n    runs-on: " + test.runsOn + "\n    steps:\n      - run: echo ok\n"
-			workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errors := parser.ParseWorkflow([]byte(source))
 			if len(errors) != 0 {
 				t.Fatalf("parse source: %v", errors)
 			}

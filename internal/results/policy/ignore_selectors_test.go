@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestIgnoreSelectors(t *testing.T) {
@@ -42,7 +42,7 @@ func TestIgnoreSelectors(t *testing.T) {
 			}
 			registry := rulebinding.NewRegistry(rules)
 			scope := registry.Prepare(nil, nil, nil)
-			input := []*findingmodel.Finding{{Rule: tc.name, Code: tc.code, Message: "some message"}}
+			input := []*finding.Finding{{Rule: tc.name, Code: tc.code, Message: "some message"}}
 			input[0].Binding = scope.Rule(tc.name).ID()
 			published, err := Publish([]Batch{{Processor: Processor{RuleSet: rules}, Policy: Policy{Path: "workflow.yml", IgnoreSelectors: selectors, Scope: scope, Bindings: registry.Seal()}, Findings: input}}, nil)
 			findings := published.Findings[0]

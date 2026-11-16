@@ -9,8 +9,8 @@ import (
 	"slices"
 	"sync"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -32,7 +32,7 @@ type Selection struct {
 	// skipped, with a warning, when it cannot run.
 	Process *hostprocess.CommandOptions
 	// Backend replaces the process with a snippet engine.
-	Backend checkinputs.ScriptBackend
+	Backend inputs.ScriptBackend
 	// Runner replaces the process with an in-process function that has no
 	// filesystem, such as an embedding program's ShellCheck build.
 	Runner func(args []string, stdin string) ([]byte, error)
@@ -119,7 +119,7 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 	if _, err := shellCatalogue(m.Rule, m.Selectors.Shells); err != nil {
 		return contract.Registration{}, err
 	}
-	if err := checkinputs.ValidateScriptInputs(m.Selectors.Inputs); err != nil {
+	if err := inputs.ValidateScriptInputs(m.Selectors.Inputs); err != nil {
 		return contract.Registration{}, err
 	}
 	if _, generic := newPreparation(m, routeProcess, p.Programs).(genericPreparation); generic && len(m.Selectors.Shells)+len(m.Selectors.Inputs) == 0 {
@@ -163,14 +163,14 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 			}
 			return nil
 		},
-		ConfiguredBackend: func(c contract.Context) (checkinputs.ScriptBackend, error) {
+		ConfiguredBackend: func(c contract.Context) (inputs.ScriptBackend, error) {
 			if sel.Backend != nil {
 				return sel.Backend, nil
 			}
 			return LoadConfiguredModule(name, sel.Command, sel.Process, c.Config, engineLoader(c))
 		},
 	}
-	registration.WithBackend = func(backend checkinputs.ScriptBackend) (contract.Registration, error) {
+	registration.WithBackend = func(backend inputs.ScriptBackend) (contract.Registration, error) {
 		if !sel.selected(name) {
 			return registration, nil
 		}
@@ -197,11 +197,11 @@ func register(p Provider, sel selection) (contract.Registration, error) {
 
 // engineLoader loads repository-selected WebAssembly engines through the
 // invocation's loader.
-func engineLoader(c contract.Context) func(string) (checkinputs.ScriptBackend, error) {
+func engineLoader(c contract.Context) func(string) (inputs.ScriptBackend, error) {
 	if c.LoadEngine == nil {
 		return nil
 	}
-	return func(path string) (checkinputs.ScriptBackend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
+	return func(path string) (inputs.ScriptBackend, error) { return c.LoadEngine(c.Processes.Ctx, path) }
 }
 
 // transports builds the runner each configuration selects, sharing a
@@ -332,27 +332,27 @@ func (t *transports) process(key string, command *hostprocess.Command, via route
 	if err != nil {
 		return "", err
 	}
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, ScriptInputs: m.Selectors.Inputs, TemplateContract: m.Capabilities.TemplateContract}
+	descriptor := inputs.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, ScriptInputs: m.Selectors.Inputs, TemplateContract: m.Capabilities.TemplateContract}
 	return t.register(key, descriptor, backend, via)
 }
 
 // engine builds the runner of a snippet engine, which declares its own
 // template contract.
-func (t *transports) engine(key string, engine checkinputs.ScriptBackend) (string, error) {
+func (t *transports) engine(key string, engine inputs.ScriptBackend) (string, error) {
 	if _, ok := t.built[key]; ok {
 		return key, nil
 	}
 	m := t.provider.Manifest
-	descriptor := checkinputs.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, TemplateContract: templateContract(engine)}
+	descriptor := inputs.ScriptEngineDescriptor{Rule: m.Rule, Shells: m.Selectors.Shells, TemplateContract: templateContract(engine)}
 	// The manifest bounds what findings carry; the engine states the
 	// resources it needs for each check.
-	if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
+	if described, ok := engine.(inputs.DescribedScriptBackend); ok {
 		descriptor.Resources = described.ScriptDescriptor().Resources
 	}
 	return t.register(key, descriptor, engine, routeEngine)
 }
 
-func (t *transports) register(key string, descriptor checkinputs.ScriptEngineDescriptor, engine checkinputs.ScriptBackend, via route) (string, error) {
+func (t *transports) register(key string, descriptor inputs.ScriptEngineDescriptor, engine inputs.ScriptBackend, via route) (string, error) {
 	m := t.provider.Manifest
 	options := engineOptions{
 		enabled:  t.registration.Enabled,
@@ -375,11 +375,11 @@ func (t *transports) register(key string, descriptor checkinputs.ScriptEngineDes
 // templateContract is the template-effects contract an engine declares: the
 // result of its TemplateContract method, as embedding programs' backends
 // declare it, or the contract in its script descriptor.
-func templateContract(engine checkinputs.ScriptBackend) string {
+func templateContract(engine inputs.ScriptBackend) string {
 	if declared, ok := engine.(interface{ TemplateContract() string }); ok {
 		return declared.TemplateContract()
 	}
-	if described, ok := engine.(checkinputs.DescribedScriptBackend); ok {
+	if described, ok := engine.(inputs.DescribedScriptBackend); ok {
 		return described.ScriptDescriptor().TemplateContract
 	}
 	return ""
@@ -390,7 +390,7 @@ func templateContract(engine checkinputs.ScriptBackend) string {
 // built is skipped.
 type transportRouting struct{ transports *transports }
 
-func (r transportRouting) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r transportRouting) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	t := r.transports
 	var failures error
 	failed := map[*configuration.Config]bool{}
@@ -411,12 +411,12 @@ func (r transportRouting) Analyze(ctx context.Context, batch scriptexecution.Bat
 		return key
 	}
 	var order []string
-	groups := map[string]*scriptexecution.Batch{}
+	groups := map[string]*scripts.Batch{}
 	indices := map[string][]int{}
-	group := func(key string) *scriptexecution.Batch {
+	group := func(key string) *scripts.Batch {
 		if groups[key] == nil {
 			order = append(order, key)
-			groups[key] = &scriptexecution.Batch{CallGraph: batch.CallGraph}
+			groups[key] = &scripts.Batch{CallGraph: batch.CallGraph}
 		}
 		return groups[key]
 	}

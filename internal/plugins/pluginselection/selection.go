@@ -19,7 +19,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"

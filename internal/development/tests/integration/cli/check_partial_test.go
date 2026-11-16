@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
@@ -143,7 +143,7 @@ func TestCheckJSONEmptyPartialFindings(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("analysis failure discarded parsed outline: %+v", result.Documents)
 			}
-			workflow, ok := result.Documents[0].(documentmodel.Workflow)
+			workflow, ok := result.Documents[0].(outline.Workflow)
 			if !ok || workflow.DocumentPath() != "failing.yml" || workflow.ParseStatus != "complete" || len(workflow.Jobs) != 1 {
 				t.Fatalf("analysis failure corrupted workflow document: %+v", result.Documents)
 			}
@@ -181,7 +181,7 @@ func TestCheckJSONRuffFailureKeepsOutline(t *testing.T) {
 			if len(result.Documents) != 1 {
 				t.Fatalf("Ruff failure discarded parsed outline: %+v", result.Documents)
 			}
-			document, ok := result.Documents[0].(documentmodel.Workflow)
+			document, ok := result.Documents[0].(outline.Workflow)
 			if !ok || document.DocumentPath() != workingDirectoryPath(t, workflow) || document.ParseStatus != "complete" || len(document.Jobs) != 1 {
 				t.Fatalf("Ruff failure corrupted workflow document: %+v", result.Documents)
 			}

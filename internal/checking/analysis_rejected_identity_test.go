@@ -4,14 +4,14 @@ import (
 	"errors"
 	"testing"
 
-	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
@@ -27,21 +27,21 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := scriptexecution.NewBatch(graph, scriptexecution.Collection{Scopes: []*scriptexecution.Scope{{Context: builder.RootContext()}}})
+	batch, err := scripts.NewBatch(graph, scripts.Collection{Scopes: []*scripts.Scope{{Context: builder.RootContext()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	actual := entry
 	actual.Revision = "current"
-	input, err := composites.CheckInput(composites.Composition{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]workflowfacts.SourceIndex{"ci.yml": {Document: actual}})
-	if !errors.Is(err, scriptexecution.ErrInvalidBatch) {
+	input, err := composites.CheckInput(composites.Composition{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]facts.SourceIndex{"ci.yml": {Document: actual}})
+	if !errors.Is(err, scripts.ErrInvalidBatch) {
 		t.Fatalf("mismatched graph accepted: %v", err)
 	}
 	if input.Reference != actual || input.CallGraph.Valid() {
 		t.Fatal("rejected graph reached analyzer input")
 	}
 	var used []rule.Descriptor
-	findings, err := runDocumentAnalyzers(t.Context(), []checkinputs.Registration{{Checker: sourceOnlyProbe{content}}}, input, nil, &used)
+	findings, err := runDocumentAnalyzers(t.Context(), []inputs.Registration{{Checker: sourceOnlyProbe{content}}}, input, nil, &used)
 	if err != nil || len(findings) != 1 || findings[0].Path != "ci.yml" || findings[0].Message != "reported source finding" {
 		t.Fatalf("source-only fallback lost: %v %v", findings, err)
 	}

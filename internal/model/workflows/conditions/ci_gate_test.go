@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -42,7 +42,7 @@ func TestCIActionResultGate(t *testing.T) {
 	if !slices.Equal(gate.Needs, []string{"action", "action-slim"}) || len(gate.Steps) != 1 {
 		t.Fatalf("Action aggregate dependencies or assertion changed: %+v", gate)
 	}
-	expression := exprsyntax.ParseAssignedExpression(gate.If)
+	expression := syntax.ParseAssignedExpression(gate.If)
 	if expression == nil {
 		t.Fatalf("invalid aggregate condition: %q", gate.If)
 	}

@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	corewasm "actionlint.kjanat.dev/v2/internal/plugins/execution/module"
-	backendroute "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	scriptsbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 )
 
 // Build small guests directly so timeout tests need no external compiler.
@@ -45,10 +45,10 @@ func negotiationFixtureWithShells(t *testing.T, check, encoding, hang string, sh
 	if len(versions) > 0 {
 		version = versions[0]
 	}
-	metadata, err := json.Marshal(corewasm.Metadata{
+	metadata, err := json.Marshal(module.Metadata{
 		MetadataVersion: version,
-		ABIVersion:      1, Interfaces: map[string][]corewasm.Interface{"check": {{Version: 1, Export: check}}},
-		Capabilities: corewasm.Capabilities{PositionEncoding: encoding, ScriptShells: shells},
+		ABIVersion:      1, Interfaces: map[string][]module.Interface{"check": {{Version: 1, Export: check}}},
+		Capabilities: module.Capabilities{PositionEncoding: encoding, ScriptShells: shells},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +114,7 @@ func negotiationFixtureWithShells(t *testing.T, check, encoding, hang string, sh
 
 func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
+	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), module.Options{})
 	shells := engine.Metadata().Capabilities.ScriptShells
 	if len(shells) != 2 || shells[0] != "python" || shells[1] != "python" {
 		t.Fatalf("legacy shell selectors were not normalized: %q", shells)
@@ -123,15 +123,15 @@ func TestLegacyShellSelectorsAreNormalized(t *testing.T) {
 
 func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 	t.Parallel()
-	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), corewasm.Options{})
-	described := coreDescribedBackend{ScriptBackend: engine, descriptor: checkinputs.ScriptEngineDescriptor{
+	engine := loadEngine(t, negotiationFixtureWithShells(t, "check", "unicode", "", []string{"Python", "python.exe"}), module.Options{})
+	described := coreDescribedBackend{ScriptBackend: engine, descriptor: inputs.ScriptEngineDescriptor{
 		Engine: "ruff", Rule: rule.Descriptor{Name: "ruff"}, Shells: engine.Metadata().Capabilities.ScriptShells,
 	}}
 	nativeCalls := 0
-	registration := backendroute.WithConfiguredEngine(contract.Registration{
+	registration := scriptsbackend.WithConfiguredEngine(contract.Registration{
 		Name: "ruff",
 		Build: func(contract.Context) (contract.Runner, error) {
-			return coreBatchRunner(func(_ context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+			return coreBatchRunner(func(_ context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 				nativeCalls++
 				if len(batch.Scripts) != 2 || batch.Scripts[0].Text() != "print(1)" || batch.Scripts[1].Text() != "print(2)" {
 					t.Fatalf("legacy core shell selectors lost supported runs: %+v", batch.Scripts)
@@ -139,13 +139,13 @@ func TestLegacyShellSelectorsMatchConfiguredRoute(t *testing.T) {
 				return nil, nil
 			}), nil
 		},
-	}, func(contract.Context) (checkinputs.ScriptBackend, error) { return described, nil })
+	}, func(contract.Context) (inputs.ScriptBackend, error) { return described, nil })
 	runner, err := registration.Build(contract.Context{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	python, bash := "python", "bash"
-	_, err = runner.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{
+	_, err = runner.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{
 		{Run: runBody("print(1)"), Shell: &python},
 		{Run: runBody("print(2)"), Execution: &scriptmodel.Execution{Shell: `C:\Python\python.exe {0}`, ShellKnown: true}},
 		// Quoting does not change the runner's first-space executable split.
@@ -163,24 +163,24 @@ func runBody(text string) *definition.ExecRun {
 }
 
 type coreDescribedBackend struct {
-	checkinputs.ScriptBackend
-	descriptor checkinputs.ScriptEngineDescriptor
+	inputs.ScriptBackend
+	descriptor inputs.ScriptEngineDescriptor
 }
 
-func (b coreDescribedBackend) ScriptDescriptor() checkinputs.ScriptEngineDescriptor {
+func (b coreDescribedBackend) ScriptDescriptor() inputs.ScriptEngineDescriptor {
 	return b.descriptor
 }
 
-type coreBatchRunner func(context.Context, scriptexecution.Batch) ([]contract.ToolFinding, error)
+type coreBatchRunner func(context.Context, scripts.Batch) ([]contract.ToolFinding, error)
 
-func (r coreBatchRunner) Analyze(ctx context.Context, batch scriptexecution.Batch) ([]contract.ToolFinding, error) {
+func (r coreBatchRunner) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
 	return r(ctx, batch)
 }
 
 func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {
 	t.Parallel()
-	guest := loadEngine(t, negotiationFixture(t, "inspect", "unicode", ""), corewasm.Options{})
-	if findings, err := guest.Check(t.Context(), checkinputs.ScriptRequest{Source: "echo ok"}); err != nil || len(findings) != 0 {
+	guest := loadEngine(t, negotiationFixture(t, "inspect", "unicode", ""), module.Options{})
+	if findings, err := guest.Check(t.Context(), inputs.ScriptRequest{Source: "echo ok"}); err != nil || len(findings) != 0 {
 		t.Fatalf("findings=%v err=%v", findings, err)
 	}
 	if err := guest.ValidateConfig(t.Context(), nil); err != nil {
@@ -190,7 +190,7 @@ func TestNegotiatesAliasedCheckWithoutConfigValidation(t *testing.T) {
 
 func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
 	t.Parallel()
-	_, err := corewasm.LoadModuleEngine(t.Context(), negotiationFixture(t, "check", "utf16", ""), corewasm.Options{})
+	_, err := module.LoadModuleEngine(t.Context(), negotiationFixture(t, "check", "utf16", ""), module.Options{})
 	if err == nil || !strings.Contains(err.Error(), "unsupported position encoding") {
 		t.Fatalf("err=%v", err)
 	}
@@ -199,7 +199,7 @@ func TestRejectsUnsupportedPositionEncoding(t *testing.T) {
 func TestMetadataDocumentVersions(t *testing.T) {
 	t.Parallel()
 	for _, version := range []int{-1, 0, 1, 2} {
-		engine, err := corewasm.LoadModuleEngine(t.Context(), negotiationFixture(t, "check", "unicode", "", version), corewasm.Options{})
+		engine, err := module.LoadModuleEngine(t.Context(), negotiationFixture(t, "check", "unicode", "", version), module.Options{})
 		if version == 0 || version == 1 {
 			if err != nil {
 				t.Fatalf("version %d: %v", version, err)
@@ -215,7 +215,7 @@ func TestMetadataDocumentVersions(t *testing.T) {
 
 func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
 	t.Parallel()
-	if _, err := corewasm.LoadModuleEngine(t.Context(), "not-opened.wasm", corewasm.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
+	if _, err := module.LoadModuleEngine(t.Context(), "not-opened.wasm", module.Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }
@@ -227,7 +227,7 @@ func TestBootstrapGuestCallsHaveDeadline(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
-			_, err := corewasm.LoadModuleEngine(ctx, negotiationFixture(t, "check", "unicode", operation), corewasm.Options{Timeout: 20 * time.Millisecond})
+			_, err := module.LoadModuleEngine(ctx, negotiationFixture(t, "check", "unicode", operation), module.Options{Timeout: 20 * time.Millisecond})
 			if err == nil || !strings.Contains(err.Error(), "exceeded its time limit") {
 				t.Fatalf("err=%v", err)
 			}

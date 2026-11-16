@@ -12,7 +12,7 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/mattn/go-shellwords"
 )
@@ -114,7 +114,7 @@ func (a *commandApp) presentationEnvironment() error {
 				return commandargs.UsageError{Cause: fmt.Errorf("ACTIONLINT_COLOR: %w", err)}
 			}
 			if os.Getenv("NO_COLOR") != "" {
-				color = render.ColorNever
+				color = output.ColorNever
 			}
 			a.inv.Render.Color = color
 		}

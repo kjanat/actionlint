@@ -9,13 +9,13 @@ import (
 	cachemodel "actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/events"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 const cachePolicySteps = `    runs-on: ubuntu-latest
@@ -25,10 +25,10 @@ const cachePolicySteps = `    runs-on: ubuntu-latest
 
 func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	t.Helper()
-	parsed, syntaxErrors := workflowparser.ParseWorkflow([]byte(source))
+	parsed, syntaxErrors := parser.ParseWorkflow([]byte(source))
 	findings := make([]results.Diagnostic, 0, len(syntaxErrors))
 	for _, issue := range syntaxErrors {
-		finding := findingmodel.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: sourcepos.Position{Line: issue.Line, Column: issue.Column}}
+		finding := finding.Finding{Rule: issue.Kind, Code: string(issue.Code), Message: issue.Message, Start: sourcepos.Position{Line: issue.Line, Column: issue.Column}}
 		findings = append(findings, finding.Publish([]byte(source)).Diagnostic)
 	}
 	if parsed == nil {

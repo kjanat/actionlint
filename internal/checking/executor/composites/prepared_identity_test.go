@@ -17,10 +17,10 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -61,7 +61,7 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 		"outer/action.yml": "name: outer\ndescription: outer\nruns: {using: composite, steps: [{uses: $/inner, env: {Path: custom}}]}\n",
 		"inner/action.yml": "name: inner\ndescription: inner\nruns: {using: composite, steps: [{shell: bash, run: echo inner}]}\n",
 	}, nil)
-	if f.options.Actions.Platform() != runnerlang.Any {
+	if f.options.Actions.Platform() != runners.Any {
 		t.Fatal("standalone entry fabricated a runner")
 	}
 	lookup, _ := f.cache.LookupMetadata("$/outer")
@@ -74,7 +74,7 @@ func TestStandaloneNestedCallRetainsUnknownPlatform(t *testing.T) {
 		t.Fatal("standalone fixture lost nested call")
 	}
 	facts, exists := calls[0].Facts()
-	if !exists || !facts.LookupEnvironmentUnknown || !facts.CheckoutEnvironmentUnknown || f.options.Actions.Platform() != runnerlang.Any {
+	if !exists || !facts.LookupEnvironmentUnknown || !facts.CheckoutEnvironmentUnknown || f.options.Actions.Platform() != runners.Any {
 		t.Fatalf("unknown platform lost conservative call facts: %+v", facts)
 	}
 }
@@ -235,7 +235,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 					t.Fatal(err)
 				}
 				registry, _, declarations := newCapturedSnapshots(t, sourceFixtureBase(t))
-				options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
+				options := Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspace.NewResolver(nil, nil), SourceSnapshots: registry, CollectScripts: collect}
 				result, err := standaloneActionForTest(t, options, meta, declarations)
 				if err != nil {
 					t.Fatal(err)
@@ -275,7 +275,7 @@ func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	rule := &standaloneEntryFailure{Base: workflowvisit.NewBase("entry", ""), failure: failure}
 	options := Options{
 		Bindings: testBindings(nil),
-		Context:  t.Context(), Actions: workspaceactions.NewResolver(nil, nil), SourceSnapshots: registry,
+		Context:  t.Context(), Actions: workspace.NewResolver(nil, nil), SourceSnapshots: registry,
 		CollectScripts: true, Rules: []workflowvisit.Rule{rule},
 		Join: func() error { joined = true; return joinFailure },
 	}
@@ -380,7 +380,7 @@ func TestSharedCallDeclarationRetainsPlatformSpecificFacts(t *testing.T) {
 	linux, linuxPresent := declaration.Job("linux")
 	windows, windowsPresent := declaration.Job("windows")
 	if !available || !declared || !linuxPresent || !windowsPresent ||
-		f.options.Runners.Job(linux).Platform != runnerlang.MacOrLinux || f.options.Runners.Job(windows).Platform != runnerlang.Windows {
+		f.options.Runners.Job(linux).Platform != runners.MacOrLinux || f.options.Runners.Job(windows).Platform != runners.Windows {
 		t.Fatal("fixture did not resolve distinct runner platforms")
 	}
 	result, err := Workflow(f.options, f.root)

@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
 // applyConfiguredOutput uses the invoking directory's configuration for the
@@ -18,7 +18,7 @@ func (a *commandApp) applyConfiguredOutput() error {
 	if err != nil || path == "" {
 		return err
 	}
-	reader := configsource.New(a.ctx, nil, a.streams.Acquisition.Connections)
+	reader := source.New(a.ctx, nil, a.streams.Acquisition.Connections)
 	loaded, err := checking.ConfigurationRules().ReadBeforePluginsContext(a.ctx, path, reader.ReadFile)
 	if err != nil {
 		return err

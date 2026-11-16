@@ -16,19 +16,19 @@ import (
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -66,7 +66,7 @@ type lintOutcome struct {
 
 type lintResult struct {
 	*lintOutcome
-	report  resultreport.CheckResult
+	report  report.CheckResult
 	configs []configreport.Report
 }
 
@@ -118,7 +118,7 @@ func buildRequest(in *inputs, workspaceDir, workingDir string) *lintRequest {
 
 func runLinter(req *lintRequest) *lintResult {
 	var out, logs bytes.Buffer
-	result := &lintResult{report: commandstatus.NewCheckResult(commandstatus.ExitSuccessNoProblem)}
+	result := &lintResult{report: exitcode.NewCheckResult(exitcode.ExitSuccessNoProblem)}
 	result.report.Hints = append(result.report.Hints, req.hints...)
 	workspace := req.workspaceDir
 	if workspace == "" {
@@ -145,7 +145,7 @@ func runLinter(req *lintRequest) *lintResult {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	var analysis *resultreport.Analysis
+	var analysis *report.Analysis
 	var err error
 	inputNames := make(map[string]string, len(req.files))
 	input := inputmodel.Request{Kind: inputmodel.Repository, Directory: req.workingDir}
@@ -178,28 +178,28 @@ func runLinter(req *lintRequest) *lintResult {
 			analysis.Diagnostics[i].Diagnostic = diagnosticPaths(analysis.Diagnostics[i].Diagnostic, restorePath)
 		}
 		hints := result.report.Hints
-		result.report = resultreport.FromAnalysis(*analysis)
+		result.report = report.FromAnalysis(*analysis)
 		result.report.Hints = hints
 	}
 	if err != nil {
-		code := commandstatus.ExitFailure
+		code := exitcode.ExitFailure
 		if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
-			code = commandstatus.ExitInvalidCommandOption
+			code = exitcode.ExitInvalidCommandOption
 		}
 		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {
-			code = commandstatus.ExitInvalidCommandOption
+			code = exitcode.ExitInvalidCommandOption
 		}
 		result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", code}
 		return result
 	}
 	if req.format == formatSARIF || req.sarif {
 		var sarif bytes.Buffer
-		sarifRenderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
+		sarifRenderer, err := output.New(output.FormatSARIF, "", false, buildinfo.Version, nil)
 		if err == nil {
-			err = sarifRenderer.Render(&sarif, render.FromAnalysis(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
+			err = sarifRenderer.Render(&sarif, output.FromAnalysis(*workspaceReportAnalysis(analysis, req.workingDir, workspace)))
 		}
 		if err != nil {
-			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", commandstatus.ExitFailure}
+			result.lintOutcome = &lintOutcome{out.String(), err.Error() + "\n", exitcode.ExitFailure}
 			return result
 		}
 		result.report.SARIF = json.RawMessage(sarif.Bytes())
@@ -209,13 +209,13 @@ func runLinter(req *lintRequest) *lintResult {
 	} else if req.format != formatJSON && req.format != formatJSONLines {
 		rendered, err := renderAnalysis(req.format, analysis, req.workingDir, workspace)
 		if err != nil {
-			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", commandstatus.ExitFailure}
+			result.lintOutcome = &lintOutcome{"", err.Error() + "\n", exitcode.ExitFailure}
 			return result
 		}
 		out.WriteString(rendered)
 	}
-	code := commandstatus.AnalysisResult(*analysis).ExitCode
-	if code == commandstatus.ExitSuccessProblemFound {
+	code := exitcode.AnalysisResult(*analysis).ExitCode
+	if code == exitcode.ExitSuccessProblemFound {
 		result.report.Hints = append(result.report.Hints, quotedIgnoreHints(req.ignore, analysis.Diagnostics)...)
 	}
 	result.lintOutcome = &lintOutcome{out.String(), logs.String(), code}
@@ -224,7 +224,7 @@ func runLinter(req *lintRequest) *lintResult {
 
 // Rebase SARIF and GitHub reports without changing source metadata or the
 // analysis-relative paths used by persisted diagnostics and other formats.
-func workspaceReportAnalysis(analysis *resultreport.Analysis, workingDir, workspace string) *resultreport.Analysis {
+func workspaceReportAnalysis(analysis *report.Analysis, workingDir, workspace string) *report.Analysis {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {
@@ -236,7 +236,7 @@ func workspaceReportAnalysis(analysis *resultreport.Analysis, workingDir, worksp
 }
 
 // Rewrite every diagnostic path together, preserving revision-to-edit bindings.
-func diagnosticPaths(finding results1.Diagnostic, rewrite func(string) string) results1.Diagnostic {
+func diagnosticPaths(finding results.Diagnostic, rewrite func(string) string) results.Diagnostic {
 	finding.Path = rewrite(finding.Path)
 	finding.Related = slices.Clone(finding.Related)
 	for i := range finding.Related {
@@ -317,11 +317,11 @@ func (req *lintRequest) requestedTools() []string {
 func (a *action) runLint(req *lintRequest) *lintResult {
 	info, err := os.Stat(req.workingDir)
 	if err != nil {
-		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", commandstatus.ExitFailure}}
+		return &lintResult{lintOutcome: &lintOutcome{"", err.Error() + "\n", exitcode.ExitFailure}}
 	}
 	if !info.IsDir() {
 		msg := fmt.Sprintf("working directory %q is not a directory\n", req.workingDir)
-		return &lintResult{lintOutcome: &lintOutcome{"", msg, commandstatus.ExitFailure}}
+		return &lintResult{lintOutcome: &lintOutcome{"", msg, exitcode.ExitFailure}}
 	}
 
 	withTimeout := a.withTimeout
@@ -355,6 +355,6 @@ func (a *action) runLint(req *lintRequest) *lintResult {
 		result = &lintResult{}
 	}
 	msg := fmt.Sprintf("actionlint timed out after %d seconds\n", int(a.timeout.Seconds()))
-	result.lintOutcome = &lintOutcome{"", msg, commandstatus.ExitFailure}
+	result.lintOutcome = &lintOutcome{"", msg, exitcode.ExitFailure}
 	return result
 }

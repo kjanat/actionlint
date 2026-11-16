@@ -3,12 +3,12 @@ package typecheck
 import (
 	"testing"
 
-	runnerreference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 )
@@ -17,20 +17,20 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 	t.Parallel()
 	array := exprtypes.NewArrayType(exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"message": exprtypes.StringType()}).Type())
 	event := exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"commits": array.Type()})
-	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
+	checker := NewChecker(contexts.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"github"})
-	contextspec.SetEventPayloadType(checker, event)
-	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.commits.*.message}}"))
+	contexts.SetEventPayloadType(checker, event)
+	node, err := syntax.NewParser().ParseExpression(syntax.NewLexer("github.event.commits.*.message}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, errs := checker.Check(expreval.EvaluateSubexpressions(node)); len(errs) != 0 {
+	if _, errs := checker.Check(evaluate.EvaluateSubexpressions(node)); len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	if array.Deref() {
 		t.Fatal("filter mutated shared array type")
 	}
-	contextspec.SetDispatchInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
+	contexts.SetDispatchInputTypes(checker, exprtypes.NewStrictObjectType(map[string]exprtypes.Type{"flag": exprtypes.BoolType()}))
 	if _, ok := event.Property("inputs"); ok {
 		t.Fatal("dispatch update mutated shared event")
 	}
@@ -57,24 +57,24 @@ func TestDispatchInputContextTypesAgainstRunner(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			checker := NewChecker(contextspec.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
-			contextspec.SetDispatchInputTypes(checker, declared)
-			node := exprsyntax.ParseAssignedExpression("${{ " + tc.input + " }}")
+			checker := NewChecker(contexts.WorkflowExpressionScope("jobs.<job_id>.steps.if"), nil)
+			contexts.SetDispatchInputTypes(checker, declared)
+			node := syntax.ParseAssignedExpression("${{ " + tc.input + " }}")
 			if node == nil {
 				t.Fatal("expression did not parse")
 			}
-			result := checker.CheckResult(expreval.EvaluateSubexpressions(node))
+			result := checker.CheckResult(evaluate.EvaluateSubexpressions(node))
 			if !result.Valid || result.Type.Kind() != tc.kind {
 				t.Fatalf("result=%+v, want type %v", result, tc.kind)
 			}
-			if value, known := expreval.ConditionConstantValue(node); known {
+			if value, known := evaluate.ConditionConstantValue(node); known {
 				t.Fatalf("declared type invented runtime value %v", value)
 			}
-			value, known := expreval.ExpressionValue(node, func(name string) (any, bool) { value, found := variables[name]; return value, found })
+			value, known := evaluate.ExpressionValue(node, func(name string) (any, bool) { value, found := variables[name]; return value, found })
 			if !known || value != tc.want {
 				t.Fatalf("value=%v known=%t, want %v", value, known, tc.want)
 			}
-			runnerreference.CheckValue(t, tc.input, variables, tc.want)
+			expressions.CheckValue(t, tc.input, variables, tc.want)
 		})
 	}
 }

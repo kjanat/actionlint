@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configdocument "actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
@@ -39,7 +39,7 @@ func uncommentConfigExamples(document string) string {
 
 func TestDefaultConfigFormats(t *testing.T) {
 	t.Parallel()
-	document, err := configschema.Document(configschema.Schema, nil)
+	document, err := schema.Document(schema.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestDefaultConfigUsesRuleDeclarations(t *testing.T) {
 
 func TestDefaultConfigReferenceExamples(t *testing.T) {
 	t.Parallel()
-	document, err := configschema.Document(configschema.Schema, nil)
+	document, err := schema.Document(schema.Schema, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

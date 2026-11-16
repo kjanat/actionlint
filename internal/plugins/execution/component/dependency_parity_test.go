@@ -8,11 +8,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/wasm/dependencypins"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -24,7 +24,7 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 		t.Fatalf("requires=%v", got)
 	}
 	native := dependencypins.Checker{}
-	reference := sourcepos.Reference{Document: "document", Revision: "revision", Node: "node", Address: "jobs.build.steps[0]"}
+	reference := source.Reference{Document: "document", Revision: "revision", Node: "node", Address: "jobs.build.steps[0]"}
 	for _, tc := range []struct {
 		name, kind, uses string
 		want             bool
@@ -44,9 +44,9 @@ func TestDependencyAnalyzerNativeComponentParity(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Dependencies}, Dependencies: []workflowfacts.Dependency{{
+			input := inputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Dependencies}, Dependencies: []facts.Dependency{{
 				Reference: reference, Uses: tc.uses, Kind: tc.kind,
-				Start: sourcepos.Position{Line: 6, Column: 15}, End: sourcepos.Position{Line: 7, Column: 24},
+				Start: source.Position{Line: 6, Column: 15}, End: source.Position{Line: 7, Column: 24},
 			}}}
 			// A component must not reconstruct declarations from raw source text.
 			for _, content := range []string{"", "not YAML: [", "jobs: {}"} {
@@ -84,11 +84,11 @@ jobs:
     uses: owner/repo/.github/workflows/ci.yml@main
 permissions: {}
 `
-	check := func(a checkinputs.Checker) []results.Diagnostic {
+	check := func(a inputs.Checker) []results.Diagnostic {
 		t.Helper()
 		result, err := checking.Analyze(t.Context(),
 
-			checking.Options{Analyzers: []checkinputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
+			checking.Options{Analyzers: []inputs.Registration{{Checker: a}}}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}},
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -108,10 +108,10 @@ permissions: {}
 	}
 	for i, want := range []struct {
 		message, address string
-		start, end       sourcepos.Position
+		start, end       source.Position
 	}{
-		{"action must be pinned to a full commit hash", "steps[0]", sourcepos.Position{Line: 6, Column: 15}, sourcepos.Position{Line: 6, Column: 36}},
-		{"reusable workflow must be pinned to a full commit hash", `jobs["reuse"]`, sourcepos.Position{Line: 8, Column: 11}, sourcepos.Position{Line: 8, Column: 51}},
+		{"action must be pinned to a full commit hash", "steps[0]", source.Position{Line: 6, Column: 15}, source.Position{Line: 6, Column: 36}},
+		{"reusable workflow must be pinned to a full commit hash", `jobs["reuse"]`, source.Position{Line: 8, Column: 11}, source.Position{Line: 8, Column: 51}},
 	} {
 		finding := got[i]
 		if finding.Reference == nil || finding.Reference.Document == "" || finding.Reference.Revision == "" || finding.Reference.Node == "" || !strings.HasSuffix(finding.Reference.Address, want.address) {

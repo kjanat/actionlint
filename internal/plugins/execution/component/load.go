@@ -7,12 +7,12 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	repositorybind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
-	environmentbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/environments"
 	shellinputbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-script/shellscriptinputs"
 	hostbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/host"
-	invocationbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
+	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/invocationcontext"
 	annotationsbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourceannotations"
 	filesbind "actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint/sourcefiles"
 	"golang.org/x/sync/semaphore"
@@ -24,7 +24,7 @@ func LoadComponentPlugin(ctx context.Context, path string, options Options) (*Pl
 	if err != nil {
 		return nil, err
 	}
-	artifact, err := pluginartifact.Resolve(ctx, path, options.Artifact)
+	artifact, err := artifacts.Resolve(ctx, path, options.Artifact)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func LoadComponentPlugin(ctx context.Context, path string, options Options) (*Pl
 }
 
 // LoadArtifact loads a resolved snapshot without reading its source again.
-func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, options Options) (*Plugin, error) {
+func LoadArtifact(ctx context.Context, artifact *artifacts.Artifact, options Options) (*Plugin, error) {
 	limits, err := options.limits()
 	if err != nil {
 		return nil, err
@@ -40,13 +40,13 @@ func LoadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, option
 	return loadArtifact(ctx, artifact, limits, options)
 }
 
-func loadArtifact(ctx context.Context, artifact *pluginartifact.Artifact, limits Limits, options Options) (*Plugin, error) {
+func loadArtifact(ctx context.Context, artifact *artifacts.Artifact, limits Limits, options Options) (*Plugin, error) {
 	path, data := artifact.Info.Source, artifact.Bytes
-	kind, staticMetadata, err := pluginartifact.Sniff(data)
+	kind, staticMetadata, err := artifacts.Sniff(data)
 	if err != nil {
 		return nil, err
 	}
-	if kind != pluginartifact.Component {
+	if kind != artifacts.Component {
 		return nil, errors.New("plugin requires a WebAssembly component")
 	}
 	engine := sharedComponentCompilation.newEngine(ctx, limits)
@@ -90,7 +90,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		}
 	}
 	if required.environments {
-		p.environmentFactory, err = environmentbind.NewFactory(ctx, p.engine)
+		p.environmentFactory, err = environments.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func (p *Plugin) load(ctx context.Context, data, staticMetadata []byte) error {
 		return err
 	}
 	if required.invocations || required.sourceAnnotations {
-		p.invocationFactory, err = invocationbind.NewFactory(ctx, p.engine)
+		p.invocationFactory, err = invocationcontext.NewFactory(ctx, p.engine)
 		if err != nil {
 			return err
 		}

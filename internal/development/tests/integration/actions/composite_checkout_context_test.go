@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestCompositeConditionalCheckoutKeepsUnaffectedPaths(t *testing.T) {
@@ -56,7 +56,7 @@ runs:
 			if slices.Contains(result.Inputs, metadata) != tc.read {
 				t.Fatalf("metadata read=%v, want %v: %v", slices.Contains(result.Inputs, metadata), tc.read, result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 				return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 			})
 			if found != tc.read {
@@ -144,7 +144,7 @@ runs:
 				if destination == "source" && tc.name == "dynamic ref" {
 					wantMetadata = decoy
 				}
-				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+				found := slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == wantMetadata && d.Code == "SC2086"
 				})
 				if found != tc.read {

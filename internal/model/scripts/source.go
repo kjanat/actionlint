@@ -5,7 +5,7 @@ import (
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
 
 // FromRun extracts declared script text and shell with their original source mapping.
@@ -37,7 +37,7 @@ func fromSource(text *definition.String, source *definition.ScriptSource) Declar
 		if source.Value == declaration.Text {
 			declaration.Spans = slices.Clone(source.Spans)
 		}
-		declaration.Comments = workflowfacts.SourceComments(source.Comments)
+		declaration.Comments = facts.SourceComments(source.Comments)
 	}
 	return declaration
 }

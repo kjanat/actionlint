@@ -3,14 +3,14 @@ package workflows
 import (
 	"strconv"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
-func origin(pos *sourcepos.Position, expression bool) value.Origin {
+func origin(pos *source.Position, expression bool) value.Origin {
 	result := value.Origin{FromExpression: expression}
 	if pos != nil {
 		result.Span.Start = *pos

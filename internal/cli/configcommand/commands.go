@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"io"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
-	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
+	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"github.com/kjanat/go-yaml/v4"
 )
@@ -135,7 +135,7 @@ func (req MigrateOptions) Run(ctx context.Context, streams commandstreams.Stream
 	if path == "" {
 		return 0, errors.New("config migrate requires a selected config file; use --config PATH")
 	}
-	migration, err := configmigration.Prepare(ctx, path, plugininstall.DefaultPluginOptions{
+	migration, err := configmigration.Prepare(ctx, path, installation.DefaultPluginOptions{
 		RuleSet:     checking.ConfigurationRules(),
 		Tools:       registry.IDs(),
 		Warning:     func(message string) { _, _ = fmt.Fprintln(streams.Stderr, "warning: "+message) },

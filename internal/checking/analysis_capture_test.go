@@ -28,7 +28,7 @@ import (
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
 func TestSourceCaptureJoinCancelsAndRetriesBeforePublication(t *testing.T) {
@@ -240,8 +240,8 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 	}
 	retained := finding(good, "unrelated finding")
 	result := analysisResult{files: []analyzedFile{
-		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: documentmodel.Workflow{Path: badPath}},
-		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: documentmodel.Workflow{Path: goodPath}},
+		{captured: bad, errors: []*findingmodel.Finding{finding(bad, "old accepted entry")}, outline: outline.Workflow{Path: badPath}},
+		{captured: good, errors: []*findingmodel.Finding{finding(bad, "old accepted dependency"), retained}, outline: outline.Workflow{Path: goodPath}},
 	}}
 	_, err = store.Read(t.Context(), badPath, source.RawLF)
 	conflict, conflicted := errors.AsType[capture.ConflictError](err)
@@ -353,7 +353,7 @@ func TestPostSealOutlinesRequireConsumedManifestRequest(t *testing.T) {
 				t.Fatal(err)
 			}
 			capturefixture.CloseCaptures(t, store)
-			documents := &actionDocuments{byPath: make(map[string]documentmodel.Action)}
+			documents := &actionDocuments{byPath: make(map[string]outline.Action)}
 			if test.requested {
 				documents.request(address)
 			}
@@ -394,7 +394,7 @@ func TestPostSealOutlinesReuseParsedRemoteDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	capturefixture.CloseCaptures(t, store)
-	documents := &actionDocuments{byPath: make(map[string]documentmodel.Action)}
+	documents := &actionDocuments{byPath: make(map[string]outline.Action)}
 	documents.request(address)
 	captured, err := store.Read(t.Context(), address, source.YAML)
 	if err != nil {

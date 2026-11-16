@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"github.com/google/go-cmp/cmp"
@@ -181,7 +181,7 @@ jobs:
       - run: echo
 `
 
-			w, _ := workflowparser.ParseWorkflow([]byte(src))
+			w, _ := parser.ParseWorkflow([]byte(src))
 			if w == nil {
 				t.Fatal("workflow was not parsed")
 			}
@@ -210,7 +210,7 @@ permissions:
   Contents: read
   issues: Write
 `)
-	w, _ := workflowparser.ParseWorkflow(src)
+	w, _ := parser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed")
 	}

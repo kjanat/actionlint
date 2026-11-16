@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -19,7 +19,7 @@ import (
 // unchanged: a row preparation generated, or one whose expressions it
 // masked, makes the whole fix unavailable, as do indentation changes and
 // overlapping replacements. A fix may edit several rows.
-func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, fix checkinputs.ScriptFix) (results.Fix, bool) {
+func scriptFix(source *definition.ScriptSource, prepared preparation.Prepared, fix inputs.ScriptFix) (results.Fix, bool) {
 	if source == nil || !source.Literal || len(fix.Replacements) == 0 {
 		return results.Fix{}, false
 	}

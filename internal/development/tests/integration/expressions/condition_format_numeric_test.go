@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 
@@ -33,11 +33,11 @@ func TestConstantFormatNumericArguments(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr := exprsyntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
+			expr := syntax.ParseAssignedExpression("${{ " + tc.expression + " }}")
 			if expr == nil {
 				t.Fatal("invalid expression fixture")
 			}
-			constant, known := expreval.ConditionConstantValue(expr)
+			constant, known := evaluate.ConditionConstantValue(expr)
 			if !known || constant != tc.want {
 				t.Fatalf("value=%v known=%v, want %q", constant, known, tc.want)
 			}

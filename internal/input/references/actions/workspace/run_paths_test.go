@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -34,7 +34,7 @@ func TestCompositeActionPathCasing(t *testing.T) {
 			t.Parallel()
 			actions := &Resolver{caseInsensitive: true}
 			actions.restoreCheckout(execution.NewCheckoutPlacement(execution.Checkout{Directory: execution.Directory{Kind: execution.DirectoryKnown, Path: tc.checkout}, CaseInsensitive: true}, execution.CheckoutPlacement{}))
-			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runnerlang.Windows, Placements: actions.CheckoutState()}
+			paths := execution.Paths{Workspace: root, Analysis: root, Platform: runners.Windows, Placements: actions.CheckoutState()}
 			content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: " + tc.spec + "\n")
 			parsed := parsing.Workflow(content)
 			snapshots := newCapturedSnapshots(t, sourceFixtureBase(t))

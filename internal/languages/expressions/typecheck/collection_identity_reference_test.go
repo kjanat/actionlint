@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	reference "actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
+	"actionlint.kjanat.dev/v2/internal/development/tests/conformance/expressions"
 )
 
 func TestCollectionIdentityReference(t *testing.T) {
@@ -30,10 +30,10 @@ func TestCollectionIdentityReference(t *testing.T) {
 		{`fromJSON(env.OBJECT) != null`, true},
 		{`fromJSON(env.OBJECT).allowed == fromJSON(env.OBJECT).allowed`, true},
 	} {
-		for _, mode := range []reference.JSONMode{reference.StrictJSON, reference.LooseJSON} {
-			t.Run(tc.expression+"/strict="+strconv.FormatBool(mode == reference.StrictJSON), func(t *testing.T) {
+		for _, mode := range []expressions.JSONMode{expressions.StrictJSON, expressions.LooseJSON} {
+			t.Run(tc.expression+"/strict="+strconv.FormatBool(mode == expressions.StrictJSON), func(t *testing.T) {
 				t.Parallel()
-				reference.CheckOutcomeWithJSONMode(t, tc.expression, variables, mode, reference.Expectation{Value: tc.want})
+				expressions.CheckOutcomeWithJSONMode(t, tc.expression, variables, mode, expressions.Expectation{Value: tc.want})
 			})
 		}
 	}

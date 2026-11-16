@@ -11,12 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
@@ -26,17 +26,17 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	}
 	const workspace = `C:\workspace`
 	const file = `D:\shared\workflow.yml`
-	analysis := &resultreport.Analysis{Diagnostics: []results1.PublishedDiagnostic{{
+	analysis := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{
 		Rule: "shellcheck", Path: file, Message: "Quote variable",
-		Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 8},
-		Fixes: []results1.Fix{{Description: "Quote", Edits: []results1.Edit{{Path: file}}}},
+		Start: source.Position{Line: 1, Column: 6}, End: source.Position{Line: 1, Column: 8},
+		Fixes: []results.Fix{{Description: "Quote", Edits: []results.Edit{{Path: file}}}},
 	}}}
-	renderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
+	renderer, err := output.New(output.FormatSARIF, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var sarif bytes.Buffer
-	if err := renderer.Render(&sarif, render.FromAnalysis(*workspaceReportAnalysis(analysis, workspace, workspace))); err != nil {
+	if err := renderer.Render(&sarif, output.FromAnalysis(*workspaceReportAnalysis(analysis, workspace, workspace))); err != nil {
 		t.Fatal(err)
 	}
 	if got := sarif.String(); strings.Count(got, "file:///D:/shared/workflow.yml") != 2 || strings.Contains(got, "uriBaseId") {
@@ -99,7 +99,7 @@ permissions: {}
 				if code := Main(func(key string) string { return env[key] }, &output, pluginacquisition.Settings{}); code != 1 {
 					t.Fatalf("code %d; want findings: %s", code, output.String())
 				}
-				var result resultreport.CheckResult
+				var result report.CheckResult
 				if err := json.Unmarshal([]byte(read(t, resultPath)), &result); err != nil {
 					t.Fatal(err)
 				}
@@ -206,7 +206,7 @@ permissions: {}
 	if report := read(t, filepath.Join(workspace, "report.sarif")); strings.TrimSuffix(report, "\n") != selected {
 		t.Fatal("output-file differs from selected output")
 	}
-	var persisted resultreport.CheckResult
+	var persisted report.CheckResult
 	if err := json.Unmarshal([]byte(read(t, resultPath)), &persisted); err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ permissions: {}
 			if err != nil {
 				t.Fatal(err)
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(data, &result); err != nil {
 				t.Fatal(err)
 			}
@@ -340,7 +340,7 @@ func TestPersistedResultRecordsMissingInputFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestActionSARIFGeneratedOnlyWhenRequested(t *testing.T) {
 				t.Fatalf("code %d: %s", code, &stdout)
 			}
 			data := read(t, resultPath)
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal([]byte(data), &result); err != nil {
 				t.Fatal(err)
 			}

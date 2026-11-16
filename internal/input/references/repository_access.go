@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 type RepositoryIdentity struct {
 	Host       string
-	ID         repofacts.ID
+	ID         repository.ID
 	Name       string
 	ObservedAt string
 }

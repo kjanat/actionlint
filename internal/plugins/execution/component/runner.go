@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"github.com/kjanat/wacogo"
 )
 
 func (p *Plugin) HasRunnerProvider() bool { return p.runnerDescriptor != nil }
-func (p *Plugin) RunnerDescriptor() runner.Descriptor {
+func (p *Plugin) RunnerDescriptor() runnerapi.Descriptor {
 	if p.runnerDescriptor == nil {
-		return runner.Descriptor{}
+		return runnerapi.Descriptor{}
 	}
 	d := *p.runnerDescriptor
 	d.Targets = slices.Clone(d.Targets)
@@ -34,8 +34,8 @@ func (p *Plugin) loadRunner(ctx context.Context) error {
 	return nil
 }
 
-func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) (runner.Response, error) {
-	var response runner.Response
+func (p *Plugin) ResolveRunners(ctx context.Context, request runnerapi.Request) (runnerapi.Response, error) {
+	var response runnerapi.Response
 	if !p.HasRunnerProvider() {
 		return response, errors.New("component does not implement the runner-provider role")
 	}
@@ -66,7 +66,7 @@ func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) (ru
 	if err != nil {
 		return response, err
 	}
-	answers := make([]runner.Answer, 0, list.Len())
+	answers := make([]runnerapi.Answer, 0, list.Len())
 	for i := range list.Len() {
 		answer, err := liftRunnerAnswer(list.Get(i), p.runner)
 		if err != nil {
@@ -76,18 +76,18 @@ func (p *Plugin) ResolveRunners(ctx context.Context, request runner.Request) (ru
 	}
 	response.Support, err = p.runner.liftSupport(result, request)
 	if err != nil {
-		return runner.Response{}, err
+		return runnerapi.Response{}, err
 	}
 	response.Answers = answers
 	return response, nil
 }
 
-func liftRunnerDescriptor(value wacogo.Val) (runner.Descriptor, error) {
+func liftRunnerDescriptor(value wacogo.Val) (runnerapi.Descriptor, error) {
 	r, err := liftRecord(value, "runner descriptor")
 	if err != nil {
-		return runner.Descriptor{}, err
+		return runnerapi.Descriptor{}, err
 	}
-	var d runner.Descriptor
+	var d runnerapi.Descriptor
 	if d.Name, err = liftString(r, "name"); err != nil {
 		return d, err
 	}
@@ -122,21 +122,21 @@ func runnerEnum(names []string, name string) (wacogo.Val, error) {
 	return wacogo.NewValEnum(uint32(index)), nil
 }
 
-func lowerTerm(term runner.Term) (wacogo.Val, error) {
+func lowerTerm(term runnerapi.Term) (wacogo.Val, error) {
 	switch term := term.(type) {
-	case runner.Literal:
+	case runnerapi.Literal:
 		return wacogo.NewValVariant(uint32(slices.Index(runner_term, "literal")), wacogo.ValString(term)), nil
-	case runner.Expression:
+	case runnerapi.Expression:
 		return wacogo.NewValVariant(uint32(slices.Index(runner_term, "expression")), wacogo.ValString(term)), nil
 	default:
 		return nil, errors.New("invalid runner selector term")
 	}
 }
 
-func lowerRunnerRequest(request runner.Request) (wacogo.Val, error) {
+func lowerRunnerRequest(request runnerapi.Request) (wacogo.Val, error) {
 	freshness := request.Snapshot.Freshness
 	if freshness == "" {
-		freshness = runner.Missing
+		freshness = runnerapi.Missing
 	}
 	fresh, err := runnerEnum(runner_freshness, string(freshness))
 	if err != nil {
@@ -183,7 +183,7 @@ func liftBool(r *wacogo.ValRecord, name string) (bool, error) {
 	return bool(value), nil
 }
 
-func lowerConstraint(c runner.Constraint) (wacogo.Val, error) {
+func lowerConstraint(c runnerapi.Constraint) (wacogo.Val, error) {
 	value, err := lowerTerm(c.Value)
 	if err != nil {
 		return nil, err
@@ -191,12 +191,12 @@ func lowerConstraint(c runner.Constraint) (wacogo.Val, error) {
 	return wacogo.NewValRecord(field("value", value), field("position", lowerPosition(c.Position))), nil
 }
 
-func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runner.Answer, error) {
+func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runnerapi.Answer, error) {
 	r, err := liftRecord(value, "runner answer")
 	if err != nil {
-		return runner.Answer{}, err
+		return runnerapi.Answer{}, err
 	}
-	var answer runner.Answer
+	var answer runnerapi.Answer
 	answer.DatasetStatus, err = liftRunnerDataset(r.Field("dataset-status"))
 	if err != nil {
 		return answer, err
@@ -211,7 +211,7 @@ func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runner.Answer,
 		if err != nil {
 			return answer, err
 		}
-		var candidates []runner.Candidate
+		var candidates []runnerapi.Candidate
 		for i := range list.Len() {
 			c, err := liftRunnerCandidate(list.Get(i), protocol)
 			if err != nil {
@@ -219,13 +219,13 @@ func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runner.Answer,
 			}
 			candidates = append(candidates, c)
 		}
-		answer.Resolution = runner.Resolved{Candidates: candidates}
+		answer.Resolution = runnerapi.Resolved{Candidates: candidates}
 	case "no-match":
 		list, err := liftList(resolution.Val(), "runner rejections")
 		if err != nil {
 			return answer, err
 		}
-		var rejections []runner.Rejection
+		var rejections []runnerapi.Rejection
 		for i := range list.Len() {
 			r, err := liftRecord(list.Get(i), "runner rejection")
 			if err != nil {
@@ -239,36 +239,36 @@ func liftRunnerAnswer(value wacogo.Val, protocol runnerProtocol) (runner.Answer,
 			if err != nil {
 				return answer, err
 			}
-			rejections = append(rejections, runner.Rejection{Reason: reason, Position: pos})
+			rejections = append(rejections, runnerapi.Rejection{Reason: reason, Position: pos})
 		}
-		answer.Resolution = runner.NoMatch{Rejections: rejections}
+		answer.Resolution = runnerapi.NoMatch{Rejections: rejections}
 	case "unknown":
 		reason, ok := resolution.Val().(wacogo.ValString)
 		if !ok {
 			return answer, liftError{"runner reason", resolution.Val()}
 		}
-		answer.Resolution = runner.Unknown{Reason: string(reason)}
+		answer.Resolution = runnerapi.Unknown{Reason: string(reason)}
 	case "not-applicable":
-		answer.Resolution = runner.NotApplicable{}
+		answer.Resolution = runnerapi.NotApplicable{}
 	}
 	return answer, nil
 }
 
-func liftRunnerPosition(value wacogo.Val) (sourcepos.Position, error) {
+func liftRunnerPosition(value wacogo.Val) (source.Position, error) {
 	// Runner rejections may address the containing job. This sentinel is not
 	// valid for analyzer diagnostics; all other coordinates use their checks.
 	if record, ok := value.(*wacogo.ValRecord); ok && record.Field("line") == wacogo.ValU32(0) && record.Field("column") == wacogo.ValU32(0) {
-		return sourcepos.Position{}, nil
+		return source.Position{}, nil
 	}
 	return liftPosition(value)
 }
 
-func liftRunnerCandidate(value wacogo.Val, protocol runnerProtocol) (runner.Candidate, error) {
+func liftRunnerCandidate(value wacogo.Val, protocol runnerProtocol) (runnerapi.Candidate, error) {
 	r, err := liftRecord(value, "runner candidate")
 	if err != nil {
-		return runner.Candidate{}, err
+		return runnerapi.Candidate{}, err
 	}
-	var c runner.Candidate
+	var c runnerapi.Candidate
 	if c.Hosting, err = protocol.liftHosting(r); err != nil {
 		return c, err
 	}
@@ -281,12 +281,12 @@ func liftRunnerCandidate(value wacogo.Val, protocol runnerProtocol) (runner.Cand
 	if err != nil {
 		return c, err
 	}
-	c.OS = runner.OS(os)
+	c.OS = runnerapi.OS(os)
 	caseSensitivity, err := liftRunnerEnum(r.Field("case-sensitivity"), runner_case_sensitivity)
 	if err != nil {
 		return c, err
 	}
-	c.CaseSensitivity = runner.CaseSensitivity(caseSensitivity)
+	c.CaseSensitivity = runnerapi.CaseSensitivity(caseSensitivity)
 	for name, dest := range map[string]*bool{"sh-is-dash": &c.ShIsDash, "ephemeral": &c.Ephemeral} {
 		if *dest, err = liftBool(r, name); err != nil {
 			return c, err

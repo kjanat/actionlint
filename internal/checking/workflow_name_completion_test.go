@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/integrations/git"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 )
 
@@ -25,7 +25,7 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", ".github"}} {
-		if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+		if output, err := git.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
 			t.Fatalf("prepare repository index: %v: %s", err, output)
 		}
 	}
@@ -83,7 +83,7 @@ func TestIncompleteWorkflowNamesDoNotProveUnusedSuppression(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, args := range [][]string{{"init", "--quiet"}, {"add", "--", ".github"}} {
-				if output, err := gitclient.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
+				if output, err := git.Command(t.Context(), "git", root, args...).CombinedOutput(); err != nil {
 					t.Fatalf("prepare repository index: %v: %s", err, output)
 				}
 			}

@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-func quotedIgnoreHints(patterns []string, problems []results1.PublishedDiagnostic) []string {
+func quotedIgnoreHints(patterns []string, problems []results.PublishedDiagnostic) []string {
 	var hints []string
 	for i, pattern := range patterns {
 		if len(pattern) < 2 || (pattern[0] != '\'' && pattern[0] != '"') || pattern[len(pattern)-1] != pattern[0] {

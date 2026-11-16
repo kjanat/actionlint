@@ -4,27 +4,27 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestSuppressionUseAcrossInvocations(t *testing.T) {
 	t.Parallel()
-	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
-	position := sourcepos.Position{Line: 4, Column: 15}
+	ref := source.Reference{Document: "shared-action", Revision: "revision-one"}
+	position := source.Position{Line: 4, Column: 15}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
-	candidate := func(document, revision, rule string) *findingmodel.Finding {
-		return &findingmodel.Finding{
+	candidate := func(document, revision, rule string) *finding.Finding {
+		return &finding.Finding{
 			Rule: "unused-suppression", Start: position,
-			Reference: &sourcepos.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: rule,
+			Reference: &source.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: rule,
 		}
 	}
 	files := []evaluatedBatch{
-		{Findings: []*findingmodel.Finding{candidate("shared-action", "revision-one", "shellcheck")}},
-		{Findings: []*findingmodel.Finding{
+		{Findings: []*finding.Finding{candidate("shared-action", "revision-one", "shellcheck")}},
+		{Findings: []*finding.Finding{
 			candidate("shared-action", "revision-one", "expression-reference"),
 			candidate("other-action", "revision-one", "shellcheck"),
 			candidate("shared-action", "revision-two", "shellcheck"),
@@ -39,13 +39,13 @@ func TestSuppressionUseAcrossInvocations(t *testing.T) {
 func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 	t.Parallel()
 	const content = "run: echo ok # ignore shellcheck expression-reference -- keep reason\n"
-	position := sourcepos.Position{Line: 1, Column: strings.Index(content, "#") + 1}
-	ref := sourcepos.Reference{Document: "physical-action.yml", Revision: sourcepos.ContentDigest([]byte(content))}
+	position := source.Position{Line: 1, Column: strings.Index(content, "#") + 1}
+	ref := source.Reference{Document: "physical-action.yml", Revision: source.ContentDigest([]byte(content))}
 	var usage suppressionUses
 	usage.observe(ref, position, "shellcheck")
 	files := []evaluatedBatch{{Policy: Policy{Content: []byte(content), AdditionalRules: []string{"shellcheck", "expression-reference"}}}}
 	for _, name := range []string{"shellcheck", "expression-reference"} {
-		files[0].Findings = append(files[0].Findings, &findingmodel.Finding{
+		files[0].Findings = append(files[0].Findings, &finding.Finding{
 			Rule: "unused-suppression", Start: position, Reference: &ref, Path: "alias/action.yml", UnusedSuppressionRule: name,
 		})
 	}
@@ -62,17 +62,17 @@ func TestUnusedFixKeepsSelectorsUsedByOtherInvocations(t *testing.T) {
 
 func TestIncompleteSuppressionInvocationInvalidatesOnlyItsRevision(t *testing.T) {
 	t.Parallel()
-	ref := sourcepos.Reference{Document: "shared-action", Revision: "revision-one"}
+	ref := source.Reference{Document: "shared-action", Revision: "revision-one"}
 	var usage suppressionUses
 	checks := []report.IncompleteCheck{{Source: ref}}
-	candidate := func(document, revision string) *findingmodel.Finding {
-		return &findingmodel.Finding{
-			Rule: "unused-suppression", Reference: &sourcepos.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
+	candidate := func(document, revision string) *finding.Finding {
+		return &finding.Finding{
+			Rule: "unused-suppression", Reference: &source.Reference{Document: document, Revision: revision}, UnusedSuppressionRule: "shellcheck",
 		}
 	}
 	files := []evaluatedBatch{
-		{Findings: []*findingmodel.Finding{candidate("shared-action", "revision-one")}},
-		{Findings: []*findingmodel.Finding{
+		{Findings: []*finding.Finding{candidate("shared-action", "revision-one")}},
+		{Findings: []*finding.Finding{
 			candidate("shared-action", "revision-one"),
 			candidate("other-action", "revision-one"),
 			candidate("shared-action", "revision-two"),

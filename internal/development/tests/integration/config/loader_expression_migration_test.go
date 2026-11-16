@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 )
 
 func TestLegacyExpressionMigrationReportsIndependentSelectors(t *testing.T) {

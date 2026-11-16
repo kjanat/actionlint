@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -42,7 +42,7 @@ func TestRetiredProvisioningPreservesConfiguredWasmSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := runLinter(req)
-	if result.code != commandstatus.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 {
+	if result.code != exitcode.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 {
 		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 	}
 	for _, finding := range result.report.Diagnostics {
@@ -130,7 +130,7 @@ func TestActionRunsConfiguredWasmWithoutNativeProvisioning(t *testing.T) {
 			}
 			req.ctx = t.Context()
 			result := runLinter(req)
-			if result.code != commandstatus.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != tc.code {
+			if result.code != exitcode.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != tc.code {
 				t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 			}
 		})
@@ -190,7 +190,7 @@ func TestActionRunsConfiguredScriptComponent(t *testing.T) {
 	})
 	req := &lintRequest{ctx: t.Context(), workingDir: root, workspaceDir: root, format: formatJSON}
 	result := runLinter(req)
-	if result.code != commandstatus.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != "ECHO001" {
+	if result.code != exitcode.ExitSuccessProblemFound || len(result.report.Diagnostics) != 1 || result.report.Diagnostics[0].Code != "ECHO001" {
 		t.Fatalf("result=%+v diagnostics=%+v", result.lintOutcome, result.report.Diagnostics)
 	}
 	if result.report.Diagnostics[0].Start.Line != 6 || result.report.Diagnostics[0].Start.Column != 20 {

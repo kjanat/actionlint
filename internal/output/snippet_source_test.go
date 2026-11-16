@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +22,7 @@ func TestSuppliedSourceDeterminesSnippet(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			f := publishedFinding(results.Diagnostic{Start: sourcepos.Position{Line: tc.line, Column: 1}, End: sourcepos.Position{Line: tc.line, Column: 2}, Snippet: "captured"}, tc.source)
+			f := publishedFinding(results.Diagnostic{Start: source.Position{Line: tc.line, Column: 1}, End: source.Position{Line: tc.line, Column: 2}, Snippet: "captured"}, tc.source)
 			if got := TemplateFieldsOf(f).Snippet; got != tc.want {
 				t.Fatalf("snippet=%q, want %q", got, tc.want)
 			}

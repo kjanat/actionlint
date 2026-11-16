@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 type candidateReader func([]byte) (int, error)

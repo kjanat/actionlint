@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 
@@ -15,7 +15,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestWorkflowPermissionsDeclarationPosition(t *testing.T) {
@@ -40,7 +40,7 @@ on: push`} {
 				source := strings.ReplaceAll(tc.prefix+declaration+`
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `, "\n", ending)
-				workflow, findings := workflowparser.ParseWorkflow([]byte(source))
+				workflow, findings := parser.ParseWorkflow([]byte(source))
 				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (sourcepos.Position{Line: tc.line, Column: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}

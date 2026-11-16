@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 func TestMatrixExpandedInsertionChecks(t *testing.T) {
@@ -49,11 +49,11 @@ jobs:
     steps:
       - run: echo ok
 `
-			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(source))
+			workflow, parseErrors := parser.ParseWorkflow([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			findings := Check(matrixcheck.Resolve(workflow.Jobs["test"].Strategy), false)
+			findings := Check(matrix.Resolve(workflow.Jobs["test"].Strategy), false)
 			if tc.want == "" {
 				if len(findings) != 0 {
 					t.Fatalf("unexpected diagnostics: %v", findings)

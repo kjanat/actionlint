@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -22,7 +22,7 @@ func (p *failingMetadataParticipant) CheckStandaloneMetadata(*actionmeta.Metadat
 	return nil
 }
 
-func (p *failingMetadataParticipant) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
+func (p *failingMetadataParticipant) ForMetadata(*workspace.Resolver) workflowvisit.MetadataParticipant {
 	return &failingMetadataCallback{Base: workflowvisit.NewBase(p.Name(), ""), failure: p.failure}
 }
 
@@ -31,7 +31,7 @@ type failingMetadataCallback struct {
 	failure error
 }
 
-func (p *failingMetadataCallback) ForMetadata(*workspaceactions.Resolver) workflowvisit.MetadataParticipant {
+func (p *failingMetadataCallback) ForMetadata(*workspace.Resolver) workflowvisit.MetadataParticipant {
 	return p
 }
 

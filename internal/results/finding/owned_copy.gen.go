@@ -6,9 +6,9 @@ import (
 	maps "maps"
 	slices "slices"
 
-	source "actionlint.kjanat.dev/v2/internal/input/source"
-	lifecycle "actionlint.kjanat.dev/v2/internal/model/lifecycle"
-	results "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type ownedCopyBytesKey struct {

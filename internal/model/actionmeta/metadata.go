@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )
@@ -214,7 +214,7 @@ func (md *Metadata) Path() string {
 }
 
 func expectedMapping(where string, n *codec.Node) error {
-	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowparser.NodeKindName(n.Kind), n.Line, n.Column)
+	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, parser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
 // ParseActionMetadata decodes an action manifest.
@@ -228,7 +228,7 @@ func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 		err = Decode(root, metadata)
 		// Schema errors can leave useful declarations and unvisited step fields.
 		// Admission must still gate semantic recovery of those fields.
-		if admissionErr := workflowparser.AdmitYAMLAliases(root); admissionErr != nil {
+		if admissionErr := parser.AdmitYAMLAliases(root); admissionErr != nil {
 			if _, fatal := codec.FatalLoadError(err); fatal {
 				err = codec.NewAdmissionError(err)
 			} else {

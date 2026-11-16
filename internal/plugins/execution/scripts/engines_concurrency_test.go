@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 )
 
 type concurrentEngine struct {
@@ -18,7 +18,7 @@ type concurrentEngine struct {
 	onClose func(context.Context) error
 }
 
-func (*concurrentEngine) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
+func (*concurrentEngine) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
 	return nil, nil
 }
 
@@ -31,7 +31,7 @@ func (e *concurrentEngine) Close(ctx context.Context) error {
 }
 
 type concurrentLoadResult struct {
-	backend checkinputs.ScriptBackend
+	backend inputs.ScriptBackend
 	err     error
 }
 
@@ -69,7 +69,7 @@ func TestScriptEnginesLoadIndependentPathsConcurrently(t *testing.T) {
 	entered, blocked := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
-	engines := NewScriptEngines(func(_ context.Context, path string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(_ context.Context, path string) (inputs.ScriptBackend, error) {
 		if path == "slow.wasm" {
 			close(entered)
 			<-blocked
@@ -98,7 +98,7 @@ func TestScriptEnginesCanceledWaiterPreservesSharedLoad(t *testing.T) {
 	defer release()
 	backend := &concurrentEngine{}
 	var loads atomic.Int32
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads.Add(1)
 		close(entered)
 		<-blocked
@@ -134,7 +134,7 @@ func TestScriptEnginesCloseDiscardsLateLoad(t *testing.T) {
 	defer release()
 	cleanup := make(chan error, 1)
 	backend := &concurrentEngine{onClose: func(ctx context.Context) error { cleanup <- ctx.Err(); return nil }}
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		close(entered)
 		<-blocked
 		return backend, nil
@@ -175,7 +175,7 @@ func TestScriptEnginesLateLoadPreservesCleanupErrors(t *testing.T) {
 	defer release()
 	loadErr, closeErr := errors.New("load failed"), errors.New("cleanup failed")
 	backend := &concurrentEngine{onClose: func(context.Context) error { return closeErr }}
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		close(entered)
 		<-blocked
 		return backend, loadErr
@@ -202,7 +202,7 @@ func TestScriptEnginesConcurrentFailureIsCached(t *testing.T) {
 	defer release()
 	loadErr := errors.New("load failed")
 	var loads atomic.Int32
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads.Add(1)
 		close(entered)
 		<-blocked
@@ -230,7 +230,7 @@ func TestScriptEnginesClosesBackendReturnedWithLoadError(t *testing.T) {
 	loadErr := errors.New("load failed")
 	closeErr := errors.New("cleanup failed")
 	backend := &concurrentEngine{onClose: func(context.Context) error { return closeErr }}
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		return backend, loadErr
 	})
 	got, err := engines.LoadModuleBackend(t.Context(), "partial.wasm")
@@ -265,7 +265,7 @@ func TestScriptEnginesReservesPathDuringFailedBackendCleanup(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var loads atomic.Int32
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		loads.Add(1)
 		cancel()
 		return backend, loadErr
@@ -306,7 +306,7 @@ func TestScriptEnginesCloseCallbacksReleaseCacheLock(t *testing.T) {
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
 	backend := &concurrentEngine{onClose: func(context.Context) error { close(entered); <-blocked; return nil }}
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) { return backend, nil })
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) { return backend, nil })
 	if _, err := engines.LoadModuleBackend(t.Context(), "loaded.wasm"); err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestScriptEnginesCountsInflightAdmissions(t *testing.T) {
 	entered, blocked := make(chan struct{}, maxScriptEngines), make(chan struct{})
 	release := sync.OnceFunc(func() { close(blocked) })
 	defer release()
-	engines := NewScriptEngines(func(context.Context, string) (checkinputs.ScriptBackend, error) {
+	engines := NewScriptEngines(func(context.Context, string) (inputs.ScriptBackend, error) {
 		entered <- struct{}{}
 		<-blocked
 		return &concurrentEngine{}, nil

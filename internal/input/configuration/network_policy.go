@@ -14,8 +14,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -83,7 +83,7 @@ func LoadNetworkPolicy(ctx context.Context, connections acquisitionhttp.Connecti
 	if path := os.Getenv("ACTIONLINT_NETWORK_POLICY"); path != "" {
 		paths = append(paths, path)
 	}
-	return ReadNetworkPolicy(paths, configsource.New(ctx, nil, connections).ReadConfig)
+	return ReadNetworkPolicy(paths, source.New(ctx, nil, connections).ReadConfig)
 }
 
 func networkPolicyFiles() []string {

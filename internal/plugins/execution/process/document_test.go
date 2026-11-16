@@ -15,15 +15,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
-func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {
+func documentInput(t *testing.T, content string) inputs.AnalyzerInput {
 	t.Helper()
 	directory := t.TempDir()
 	path := filepath.Join(directory, "workflow.yml")
@@ -31,11 +31,11 @@ func documentInput(t *testing.T, content string) checkinputs.AnalyzerInput {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256([]byte(content))
-	revision, err := sourcepos.NewRevision(path, hex.EncodeToString(sum[:]))
+	revision, err := source.NewRevision(path, hex.EncodeToString(sum[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return checkinputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: sourcepos.YAML, Reference: sourcepos.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
+	return inputs.AnalyzerInput{Path: path, Directory: directory, Content: content, Kind: "workflow", Revision: revision, Coordinates: source.YAML, Reference: source.Reference{Document: path, Revision: revision.Digest(), Node: "root", Address: "/"}, AvailableInputs: []rule.InputKind{rule.Source, rule.Dependencies}}
 }
 
 func documentManifest(spec manifests.ProcessSpec) manifests.Manifest {
@@ -74,7 +74,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 			t.Parallel()
 			input := documentInput(t, "on: push\njobs:\n  one:\n    if: ${{ github.actor == 'raw' }}\n")
 			input.Options = json.RawMessage(`{"mode":"checked"}`)
-			input.Dependencies = []workflowfacts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: sourcepos.Position{Line: 2, Column: 1}, End: sourcepos.Position{Line: 2, Column: 5}}, {Reference: sourcepos.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
+			input.Dependencies = []facts.Dependency{{Reference: input.Reference, Uses: "owner/action@v1", Kind: "action", Start: source.Position{Line: 2, Column: 1}, End: source.Position{Line: 2, Column: 5}}, {Reference: source.Reference{Document: "foreign"}, Uses: "foreign/action@v1"}}
 			manifest := documentManifest(manifests.ProcessSpec{Args: []string{"--"}, Stdin: stdin, Output: echoOutput, Config: manifests.ConfigRendering{Render: manifests.RenderNone}})
 			manifest.Rule.RequiredInputs = []rule.InputKind{rule.Dependencies}
 			manifest.Capabilities.Resources = []manifests.Resource{manifests.ResourceDirectory}
@@ -96,7 +96,7 @@ func TestDocumentProcessOriginalSourceAndRequestFacts(t *testing.T) {
 				}
 				return
 			}
-			var request checkinputs.DocumentRequest
+			var request inputs.DocumentRequest
 			if err := json.Unmarshal([]byte(echo.Report.Stdin), &request); err != nil {
 				t.Fatal(err)
 			}
@@ -128,7 +128,7 @@ func TestDocumentProcessCoordinatesFixesAndForeignFiles(t *testing.T) {
 		t.Fatal(findings, err)
 	}
 	finding := findings[0]
-	if finding.Start != (sourcepos.Position{Line: 3, Column: 1}) || finding.End != (sourcepos.Position{Line: 3, Column: 4}) || finding.Path != input.Path || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[input.Path] != input.Revision.Digest() || finding.Fixes[0].Edits[0].Start != finding.Start {
+	if finding.Start != (source.Position{Line: 3, Column: 1}) || finding.End != (source.Position{Line: 3, Column: 4}) || finding.Path != input.Path || len(finding.Fixes) != 1 || finding.Fixes[0].Revisions[input.Path] != input.Revision.Digest() || finding.Fixes[0].Edits[0].Start != finding.Start {
 		t.Fatal("document coordinates/fix provenance lost", finding)
 	}
 	manifest.Capabilities.Fixes = false
@@ -161,7 +161,7 @@ func TestDocumentProcessSARIFAndJQ(t *testing.T) {
 				t.Fatal(err)
 			}
 			findings, err := checker.CheckDocument(t.Context(), input)
-			if err != nil || len(findings) != 1 || findings[0].Start != (sourcepos.Position{Line: 2, Column: 2}) {
+			if err != nil || len(findings) != 1 || findings[0].Start != (source.Position{Line: 2, Column: 2}) {
 				t.Fatal(findings, err)
 			}
 		})
@@ -265,12 +265,12 @@ func TestDocumentForeignFileAuthority(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	filename := filepath.Join(directory, "current.yml")
-	request := checkinputs.ScriptRequest{Filename: filename}
+	request := inputs.ScriptRequest{Filename: filename}
 	foreign := "file://remote.example" + filepath.ToSlash(filename)
 	if filepath.VolumeName(filename) != "" {
 		foreign = "file://remote.example/" + filepath.ToSlash(filename)
 	}
-	findings := documentFindings([]checkinputs.ScriptDiagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
+	findings := documentFindings([]inputs.ScriptDiagnostic{{Filename: foreign, Source: foreign}, {Filename: filename}}, request, directory)
 	if len(findings) != 1 || findings[0].Filename != filename {
 		t.Fatal("foreign file URI admitted as local capture", findings)
 	}

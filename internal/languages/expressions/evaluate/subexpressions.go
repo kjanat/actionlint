@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 )
@@ -14,18 +14,18 @@ import (
 // branches can have local failures without making their parent fail. Branches
 // proved unused are absent; unknown context values are not substituted.
 type SubexpressionResults struct {
-	root   exprsyntax.Node
-	byNode map[exprsyntax.Node]exprvalues.EvaluationResult
+	root   syntax.Node
+	byNode map[syntax.Node]exprvalues.EvaluationResult
 }
 
 // EvaluateSubexpressions records the root's demanded evaluation first. It then
 // inspects branches whose execution depends on unknown values, following the
 // shared function argument-demand contract. It does not evaluate skipped branches.
-func EvaluateSubexpressions(root exprsyntax.Node) SubexpressionResults {
-	results := make(map[exprsyntax.Node]exprvalues.EvaluationResult)
+func EvaluateSubexpressions(root syntax.Node) SubexpressionResults {
+	results := make(map[syntax.Node]exprvalues.EvaluationResult)
 	expressionResult(root, nil, nil, results)
-	skipped := make(map[exprsyntax.Node]bool)
-	exprsyntax.Visit(root, func(node, parent exprsyntax.Node, entering bool) {
+	skipped := make(map[syntax.Node]bool)
+	syntax.Visit(root, func(node, parent syntax.Node, entering bool) {
 		if !entering || parent == nil {
 			return
 		}
@@ -45,8 +45,8 @@ func EvaluateSubexpressions(root exprsyntax.Node) SubexpressionResults {
 	return SubexpressionResults{root: root, byNode: results}
 }
 
-func argumentSkipped(parent, node exprsyntax.Node, results map[exprsyntax.Node]exprvalues.EvaluationResult) bool {
-	call, ok := parent.(*exprsyntax.FuncCallNode)
+func argumentSkipped(parent, node syntax.Node, results map[syntax.Node]exprvalues.EvaluationResult) bool {
+	call, ok := parent.(*syntax.FuncCallNode)
 	if !ok {
 		return false
 	}
@@ -72,10 +72,10 @@ func argumentSkipped(parent, node exprsyntax.Node, results map[exprsyntax.Node]e
 
 // Result returns a detached value and whether this node has a recorded result. A missing
 // result means the branch was skipped or the node belongs to another tree.
-func (results SubexpressionResults) Result(node exprsyntax.Node) (exprvalues.EvaluationResult, bool) {
+func (results SubexpressionResults) Result(node syntax.Node) (exprvalues.EvaluationResult, bool) {
 	result, found := results.byNode[node]
 	return result.Clone(), found
 }
 
 // Expression returns the syntax tree used to compute these results.
-func (results SubexpressionResults) Expression() exprsyntax.Node { return results.root }
+func (results SubexpressionResults) Expression() syntax.Node { return results.root }

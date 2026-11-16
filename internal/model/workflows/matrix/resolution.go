@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
@@ -890,7 +890,7 @@ func expression(text *definition.String) value.Value {
 	return value.Template(text.Value, origin(text.Pos, true))
 }
 
-func origin(pos *sourcepos.Position, fromExpression bool) value.Origin {
+func origin(pos *source.Position, fromExpression bool) value.Origin {
 	o := value.Origin{FromExpression: fromExpression}
 	if pos != nil {
 		o.Span.Start = *pos
@@ -898,7 +898,7 @@ func origin(pos *sourcepos.Position, fromExpression bool) value.Origin {
 	return o
 }
 
-func rowPosition(row *definition.MatrixRow) *sourcepos.Position {
+func rowPosition(row *definition.MatrixRow) *source.Position {
 	if row.Expression != nil {
 		return row.Expression.Pos
 	}

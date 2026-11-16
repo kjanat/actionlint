@@ -7,21 +7,21 @@ import (
 
 	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
 
-type rangeReviewBackend struct{ end checkinputs.ScriptPosition }
+type rangeReviewBackend struct{ end inputs.ScriptPosition }
 
-func (b rangeReviewBackend) Check(context.Context, checkinputs.ScriptRequest) ([]checkinputs.ScriptDiagnostic, error) {
-	return []checkinputs.ScriptDiagnostic{
-		{Message: "valid", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 1, Column: 2}},
-		{Message: "reversed", Location: checkinputs.ScriptPosition{Row: 2, Column: 5}, EndLocation: b.end},
+func (b rangeReviewBackend) Check(context.Context, inputs.ScriptRequest) ([]inputs.ScriptDiagnostic, error) {
+	return []inputs.ScriptDiagnostic{
+		{Message: "valid", Location: inputs.ScriptPosition{Row: 1, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 1, Column: 2}},
+		{Message: "reversed", Location: inputs.ScriptPosition{Row: 2, Column: 5}, EndLocation: b.end},
 	}, nil
 }
 
@@ -50,7 +50,7 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 	ownedRun, _ := stepView.Run()
 	scriptRun := *run
 	scriptRun.Source = ownedRun.Source
-	for _, end := range []checkinputs.ScriptPosition{{Row: 2, Column: 3}, {Row: 1, Column: 7}} {
+	for _, end := range []inputs.ScriptPosition{{Row: 2, Column: 3}, {Row: 1, Column: 7}} {
 		registration, err := Register(rule.Descriptor{Name: "range-check"}, []string{"bash"}, rangeReviewBackend{end})
 		if err != nil {
 			t.Fatal(err)
@@ -59,9 +59,9 @@ func TestBackendDropsReversedEnds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		findings, err := checker.Analyze(t.Context(), scriptexecution.Batch{Scripts: []scriptexecution.Unit{{Run: &scriptRun, Path: "ci.yml", Content: content, Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}}})
+		findings, err := checker.Analyze(t.Context(), scripts.Batch{Scripts: []scripts.Unit{{Run: &scriptRun, Path: "ci.yml", Content: content, Execution: &scriptmodel.Execution{Shell: "bash", ShellKnown: true}}}})
 		if err != nil || len(findings) != 2 || findings[0].Message != "valid" || findings[1].Message != "reversed" ||
-			findings[1].Start != (sourcepos.Position{Line: 8, Column: 15}) || findings[1].End != (sourcepos.Position{}) {
+			findings[1].Start != (source.Position{Line: 8, Column: 15}) || findings[1].End != (source.Position{}) {
 			t.Fatalf("reversed end kept or finding lost: findings=%+v err=%v", findings, err)
 		}
 	}

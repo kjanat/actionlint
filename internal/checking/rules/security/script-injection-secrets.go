@@ -6,33 +6,33 @@ import (
 	"strings"
 
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
 	exprvalues "actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 // checkSecretInterpolations reports secret values used to generate script text.
 // Quotes in the script are not a boundary: interpolation precedes shell parsing.
 // Conditions and predicates are safe because they do not emit the secret value.
-func checkSecretInterpolations(expr exprsyntax.Node, semanticErrors []*exprlang.Error) []*exprlang.Error {
-	var findings []*exprlang.Error
-	var visit func(exprsyntax.Node)
-	visit = func(node exprsyntax.Node) {
+func checkSecretInterpolations(expr syntax.Node, semanticErrors []*typecheck.Error) []*typecheck.Error {
+	var findings []*typecheck.Error
+	var visit func(syntax.Node)
+	visit = func(node syntax.Node) {
 		if secretValue(node) {
-			name := exprsyntax.DisplayReference(node)
+			name := syntax.DisplayReference(node)
 			if name == "" {
 				name = "secrets"
 			}
-			span := exprsyntax.ExpressionSpan(node)
-			invalid := slices.ContainsFunc(semanticErrors, func(issue *exprlang.Error) bool {
+			span := syntax.ExpressionSpan(node)
+			invalid := slices.ContainsFunc(semanticErrors, func(issue *typecheck.Error) bool {
 				return issue.Offset < span.End && span.Start < issue.EndOffset
 			})
 			if !invalid {
-				findings = append(findings, &exprlang.Error{
+				findings = append(findings, &typecheck.Error{
 					Rule: "script-injection", Code: "secret-interpolation",
 					Message: fmt.Sprintf("secret %q is interpolated directly into script text; pass it through an environment variable and read that variable as data instead", name),
 					Offset:  span.Start, EndOffset: span.End, Line: span.Line, Column: span.Column,
@@ -41,24 +41,24 @@ func checkSecretInterpolations(expr exprsyntax.Node, semanticErrors []*exprlang.
 			return
 		}
 		switch n := node.(type) {
-		case *exprsyntax.LogicalOpNode:
-			if value, known := expreval.ConditionConstantValue(n.Left); known {
-				if exprvalues.ExpressionTruthy(value) != (n.Kind == exprsyntax.LogicalOpNodeKindOr) {
+		case *syntax.LogicalOpNode:
+			if value, known := evaluate.ConditionConstantValue(n.Left); known {
+				if exprvalues.ExpressionTruthy(value) != (n.Kind == syntax.LogicalOpNodeKindOr) {
 					visit(n.Right)
 				}
 				return
 			}
-			if n.Kind == exprsyntax.LogicalOpNodeKindOr {
+			if n.Kind == syntax.LogicalOpNodeKindOr {
 				visit(n.Left)
 			}
 			visit(n.Right)
-		case *exprsyntax.FuncCallNode:
+		case *syntax.FuncCallNode:
 			if exprfunctions.IsStringPredicate(n.Callee) || strings.EqualFold(n.Callee, "hashFiles") {
 				return
 			}
 			if strings.EqualFold(n.Callee, "case") && len(n.Args) >= 3 && len(n.Args)%2 == 1 {
 				for i := 0; i < len(n.Args)-1; i += 2 {
-					if value, known := expreval.ConditionConstantValue(n.Args[i]); known {
+					if value, known := evaluate.ConditionConstantValue(n.Args[i]); known {
 						if !exprvalues.ExpressionTruthy(value) {
 							continue
 						}
@@ -73,11 +73,11 @@ func checkSecretInterpolations(expr exprsyntax.Node, semanticErrors []*exprlang.
 			for _, arg := range n.Args {
 				visit(arg)
 			}
-		case *exprsyntax.ObjectDerefNode:
+		case *syntax.ObjectDerefNode:
 			visit(n.Receiver)
-		case *exprsyntax.ArrayDerefNode:
+		case *syntax.ArrayDerefNode:
 			visit(n.Receiver)
-		case *exprsyntax.IndexAccessNode:
+		case *syntax.IndexAccessNode:
 			// The index selects a value; its own contents are not serialized.
 			visit(n.Operand)
 		}
@@ -86,20 +86,20 @@ func checkSecretInterpolations(expr exprsyntax.Node, semanticErrors []*exprlang.
 	return findings
 }
 
-func secretValue(node exprsyntax.Node) bool {
+func secretValue(node syntax.Node) bool {
 	switch n := node.(type) {
-	case *exprsyntax.VariableNode:
+	case *syntax.VariableNode:
 		return n.Name == "secrets"
-	case *exprsyntax.ObjectDerefNode:
-		if root, ok := n.Receiver.(*exprsyntax.VariableNode); ok && strings.EqualFold(root.Name, "github") && strings.EqualFold(n.Property, "token") {
+	case *syntax.ObjectDerefNode:
+		if root, ok := n.Receiver.(*syntax.VariableNode); ok && strings.EqualFold(root.Name, "github") && strings.EqualFold(n.Property, "token") {
 			return true
 		}
 		return secretValue(n.Receiver)
-	case *exprsyntax.ArrayDerefNode:
+	case *syntax.ArrayDerefNode:
 		return secretValue(n.Receiver)
-	case *exprsyntax.IndexAccessNode:
-		if root, ok := n.Operand.(*exprsyntax.VariableNode); ok && strings.EqualFold(root.Name, "github") {
-			if value, known := expreval.ConditionConstantValue(n.Index); known {
+	case *syntax.IndexAccessNode:
+		if root, ok := n.Operand.(*syntax.VariableNode); ok && strings.EqualFold(root.Name, "github") {
+			if value, known := evaluate.ConditionConstantValue(n.Index); known {
 				if key, ok := value.(string); ok && strings.EqualFold(key, "token") {
 					return true
 				}

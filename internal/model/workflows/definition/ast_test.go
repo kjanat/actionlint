@@ -3,12 +3,12 @@ package definition_test
 import (
 	"testing"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestRawYAMLScalarEquals(t *testing.T) {
@@ -84,7 +84,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 7
 `
-	w, errors := workflowparser.ParseWorkflow([]byte(source))
+	w, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
@@ -179,7 +179,7 @@ func TestStringContainsExpression(t *testing.T) {
 			if have := s.ContainsExpression(); tc.want != have {
 				t.Fatalf("wanted %v but the method returned %v for input %q", tc.want, have, tc.input)
 			}
-			if have := exprsyntax.ContainsExpression(tc.input); tc.want != have {
+			if have := syntax.ContainsExpression(tc.input); tc.want != have {
 				t.Fatalf("wanted %v but the function returned %v for input %q", tc.want, have, tc.input)
 			}
 		})

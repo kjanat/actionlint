@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"strings"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"github.com/kjanat/wacogo"
 )
 
-func (p *Plugin) ToolIntegration() *checkinputs.ToolIntegration {
+func (p *Plugin) ToolIntegration() *inputs.ToolIntegration {
 	if p.toolIntegration == nil {
 		return nil
 	}
@@ -28,7 +28,7 @@ func (p *Plugin) loadToolIntegration(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	var descriptor checkinputs.ToolIntegration
+	var descriptor inputs.ToolIntegration
 	for name, dest := range map[string]*string{"tool": &descriptor.Tool, "contract": &descriptor.Contract, "configuration-schema": &descriptor.ConfigurationSchema} {
 		*dest, err = liftString(record, name)
 		if err != nil {
@@ -58,7 +58,7 @@ func (p *Plugin) loadToolIntegration(ctx context.Context) error {
 	return nil
 }
 
-func (p *Plugin) NegotiateTool(ctx context.Context, config, explicit json.RawMessage) (*checkinputs.ToolNegotiation, error) {
+func (p *Plugin) NegotiateTool(ctx context.Context, config, explicit json.RawMessage) (*inputs.ToolNegotiation, error) {
 	if p.toolIntegration == nil {
 		return nil, errors.New("component does not implement tool integration")
 	}
@@ -77,7 +77,7 @@ func (p *Plugin) NegotiateTool(ctx context.Context, config, explicit json.RawMes
 	return liftToolNegotiation(value)
 }
 
-func liftToolNegotiation(value wacogo.Val) (*checkinputs.ToolNegotiation, error) {
+func liftToolNegotiation(value wacogo.Val) (*inputs.ToolNegotiation, error) {
 	result, ok := value.(*wacogo.ValResult)
 	if !ok {
 		return nil, liftError{"tool negotiation", value}
@@ -87,7 +87,7 @@ func liftToolNegotiation(value wacogo.Val) (*checkinputs.ToolNegotiation, error)
 		if !ok {
 			return nil, liftError{"unsupported configuration", result.Err()}
 		}
-		return nil, &checkinputs.UnsupportedToolConfigurationError{Reason: string(reason)}
+		return nil, &inputs.UnsupportedToolConfigurationError{Reason: string(reason)}
 	}
 	record, err := liftRecord(result.Ok(), "tool negotiation")
 	if err != nil {
@@ -105,7 +105,7 @@ func liftToolNegotiation(value wacogo.Val) (*checkinputs.ToolNegotiation, error)
 	if err != nil {
 		return nil, err
 	}
-	negotiation := &checkinputs.ToolNegotiation{Options: json.RawMessage(options)}
+	negotiation := &inputs.ToolNegotiation{Options: json.RawMessage(options)}
 	for i := range list.Len() {
 		variant, ok := list.Get(i).(*wacogo.ValVariant)
 		if !ok {
@@ -113,13 +113,13 @@ func liftToolNegotiation(value wacogo.Val) (*checkinputs.ToolNegotiation, error)
 		}
 		switch variant.Discriminant() {
 		case 0:
-			negotiation.Resources = append(negotiation.Resources, checkinputs.ToolResourceRequest{Kind: checkinputs.ToolWorkspace})
+			negotiation.Resources = append(negotiation.Resources, inputs.ToolResourceRequest{Kind: inputs.ToolWorkspace})
 		case 1:
 			path, ok := variant.Val().(wacogo.ValString)
 			if !ok || path == "" {
 				return nil, liftError{"tool resource directory", variant.Val()}
 			}
-			negotiation.Resources = append(negotiation.Resources, checkinputs.ToolResourceRequest{Kind: checkinputs.ToolDirectory, Path: string(path)})
+			negotiation.Resources = append(negotiation.Resources, inputs.ToolResourceRequest{Kind: inputs.ToolDirectory, Path: string(path)})
 		default:
 			return nil, liftError{"tool resource", variant}
 		}

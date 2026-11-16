@@ -10,8 +10,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/references"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -40,9 +40,9 @@ var ActionRule = &define.Rule{
 type ruleAction struct {
 	workflowvisit.Base
 	reporting.Logger
-	cache      workspaceactions.ActionMetadataDocumentLookup
+	cache      workspace.ActionMetadataDocumentLookup
 	validation *actionMetadataValidation
-	remote     *actionremote.ResolvedActions
+	remote     *remote.ResolvedActions
 	context    context.Context
 	lifecycle  actionmeta.LifecycleContext
 }
@@ -57,7 +57,7 @@ func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *rule
 }
 
 // NewRuleAction checks references using local metadata and acquired remote definitions.
-func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspaceactions.ActionMetadataDocumentLookup, remote *actionremote.ResolvedActions) *ruleAction {
+func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspace.ActionMetadataDocumentLookup, remote *remote.ResolvedActions) *ruleAction {
 	return &ruleAction{
 		Base:  base,
 		Tag:   base.Name(),
@@ -139,12 +139,12 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return err
 	}
 	if err != nil {
-		if _, unresolved := errors.AsType[workspaceactions.UnresolvedError](err); unresolved {
+		if _, unresolved := errors.AsType[workspace.UnresolvedError](err); unresolved {
 			rule.Report(findingmodel.At(reporting.SourcePosition(action.Uses), "missing-local-action", err.Error()))
 		} else {
 			finding := findingmodel.At(reporting.SourcePosition(action.Uses), rule.Name(), err.Error())
 			finding.Code = string(actionmeta.CodeMetadataRead)
-			if parseError, ok := errors.AsType[*workspaceactions.ParseError](err); ok {
+			if parseError, ok := errors.AsType[*workspace.ParseError](err); ok {
 				finding.Code = string(actionmeta.CodeMetadataParse)
 				finding.MetadataParseSource = source.Capture().Revision()
 				if !finding.MetadataParseSource.Valid() {
@@ -169,7 +169,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 	return nil
 }
 
-func (rule *ruleAction) ForMetadata(actions *workspaceactions.Resolver) workflowvisit.MetadataParticipant {
+func (rule *ruleAction) ForMetadata(actions *workspace.Resolver) workflowvisit.MetadataParticipant {
 	child := NewRuleAction(rule.context, workflowvisit.NewBase(rule.Name(), rule.Description()), actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
 	child.validation = rule.validation
 	return child

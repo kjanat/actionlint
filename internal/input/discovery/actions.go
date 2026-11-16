@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
 	"golang.org/x/sys/execabs"
 	"golang.org/x/text/unicode/norm"
@@ -31,19 +31,19 @@ const (
 // boundaries. Directory names do not imply exclusions, except for Git metadata.
 // Inside a Git repository, git decides which manifests and directories its
 // ignore rules exclude, and tracked manifests in ignored directories stay discovered.
-func Actions(ctx context.Context, root string, reader *inputfiles.Reader) ([]string, error) {
+func Actions(ctx context.Context, root string, reader *files.Reader) ([]string, error) {
 	return discoverFiles(ctx, root, reader, isManifest, discoverActions)
 }
 
 // YAML discovers YAML inputs within an explicitly selected directory, applying
 // the same repository boundaries, ignore rules and directory skips as Actions.
-func YAML(ctx context.Context, root string, reader *inputfiles.Reader) ([]string, error) {
+func YAML(ctx context.Context, root string, reader *files.Reader) ([]string, error) {
 	return discoverFiles(ctx, root, reader, isYAML, discoverYAML)
 }
 
 // Workflows discovers YAML in a workflow directory, including symlinks to regular
 // files. It applies Git ignore rules without following directory symlinks.
-func Workflows(ctx context.Context, root string, reader *inputfiles.Reader) ([]string, error) {
+func Workflows(ctx context.Context, root string, reader *files.Reader) ([]string, error) {
 	return discoverFiles(ctx, root, reader, isYAML, discoverWorkflows)
 }
 
@@ -51,7 +51,7 @@ func isYAML(name string) bool {
 	return strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml")
 }
 
-func discoverFiles(ctx context.Context, root string, reader *inputfiles.Reader, selected func(string) bool, mode discoveryMode) ([]string, error) {
+func discoverFiles(ctx context.Context, root string, reader *files.Reader, selected func(string) bool, mode discoveryMode) ([]string, error) {
 	physical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve discovery root %q: %w", root, err)
@@ -87,7 +87,7 @@ type gitFilter struct {
 	precompose bool
 }
 
-func newGitFilter(ctx context.Context, root string, reader *inputfiles.Reader) (*gitFilter, error) {
+func newGitFilter(ctx context.Context, root string, reader *files.Reader) (*gitFilter, error) {
 	git, err := execabs.LookPath("git")
 	if err != nil {
 		return nil, fmt.Errorf("git is required to apply ignore rules inside a repository: %w", err)
@@ -297,7 +297,7 @@ func gitEnvironment() []string {
 	return append(env, "GIT_DISCOVERY_ACROSS_FILESYSTEM=1")
 }
 
-func walkFiles(ctx context.Context, root string, reader *inputfiles.Reader, filter *gitFilter, selected func(string) bool, mode discoveryMode) ([]string, error) {
+func walkFiles(ctx context.Context, root string, reader *files.Reader, filter *gitFilter, selected func(string) bool, mode discoveryMode) ([]string, error) {
 	var relatives []string
 	err := reader.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -29,7 +29,7 @@ func TestCacheModeSyntax(t *testing.T) {
 			t.Fatalf("kind=%v capabilities=%d valid=%t", tc.kind, capabilities, valid)
 		}
 	}
-	workflow, findings := workflowparser.ParseWorkflow([]byte("on: push\ncache-mode: read\njobs:\n  build:\n    cache-mode: write-only\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"))
+	workflow, findings := parser.ParseWorkflow([]byte("on: push\ncache-mode: read\njobs:\n  build:\n    cache-mode: write-only\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"))
 	if len(findings) != 0 || workflow == nil || workflow.CacheMode == nil || workflow.CacheMode.Kind != definition.CacheModeRead || workflow.Jobs["build"].CacheMode.Kind != definition.CacheModeWriteOnly {
 		t.Fatalf("workflow=%+v findings=%v", workflow, findings)
 	}

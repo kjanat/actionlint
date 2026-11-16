@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"actionlint.kjanat.dev/v2/internal/model/commands"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
-	integrationconfig "actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/configuration"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation/mask"
 )
@@ -16,14 +16,14 @@ var ErrNoSourceAccess = errors.New("a snippet engine does not provide external s
 // Run supplies interpreter facts and integration settings for one script.
 type Run struct {
 	Shell         Shell
-	Settings      *integrationconfig.Settings
+	Settings      *configuration.Settings
 	SourcePlanner *preparation.SourcePlanner
 	ConfigFile    string
 	Sources       bool
 	Engine        bool
 	Input         bool
 	Language      string
-	Environment   []scriptmodel.EnvironmentNames
+	Environment   []scripts.EnvironmentNames
 }
 
 // PrepareRun validates the invocation, applies an integration's preparation plan
@@ -37,7 +37,7 @@ func PrepareRun(ctx context.Context, r Run, text string) (preparation.Prepared, 
 		}
 		language, setup = r.Shell.Analysis()
 	}
-	settings := integrationconfig.Settings{}
+	settings := configuration.Settings{}
 	if r.Settings != nil {
 		settings = *r.Settings
 	}

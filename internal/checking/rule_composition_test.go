@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 type customRuleForTest struct {
@@ -77,7 +77,7 @@ permissions: {}
 		}
 
 		var b strings.Builder
-		render.PrettyPrint(&b, errs[0].Publish(nil))
+		output.PrettyPrint(&b, errs[0].Publish(nil))
 		have := b.String()
 		want := "test.yaml:7:9: only single step is allowed but got 2 steps [this-is-test]\n"
 		if have != want {

@@ -4,22 +4,22 @@ import (
 	"path/filepath"
 	"testing"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestDiagnosticRangeRejectsUnresolvableCoordinates(t *testing.T) {
 	t.Parallel()
-	for _, start := range []sourcepos.Position{{Line: 2, Column: 1}, {Line: 0, Column: 1}, {Line: 1, Column: 9}} {
-		if _, err := diagnosticRange([]byte("😀bad"), start, sourcepos.Position{}); err == nil {
+	for _, start := range []source.Position{{Line: 2, Column: 1}, {Line: 0, Column: 1}, {Line: 1, Column: 9}} {
+		if _, err := diagnosticRange([]byte("😀bad"), start, source.Position{}); err == nil {
 			t.Fatalf("fabricated a range for %v", start)
 		}
 	}
-	if _, err := diagnosticRange([]byte{0xff}, sourcepos.Position{Line: 1, Column: 1}, sourcepos.Position{}); err == nil {
+	if _, err := diagnosticRange([]byte{0xff}, source.Position{Line: 1, Column: 1}, source.Position{}); err == nil {
 		t.Fatal("invalid UTF-8 authorized coordinates")
 	}
-	start := sourcepos.Position{Line: 1, Column: 2}
-	for _, end := range []sourcepos.Position{{}, {Line: 1, Column: 1}} {
+	start := source.Position{Line: 1, Column: 2}
+	for _, end := range []source.Position{{}, {Line: 1, Column: 1}} {
 		rangeValue, err := diagnosticRange([]byte("😀bad"), start, end)
 		if err != nil || rangeValue.Start != (position{Line: 0, Character: 2}) || rangeValue.End != rangeValue.Start {
 			t.Fatalf("legitimate point was lost: %+v %v", rangeValue, err)
@@ -32,7 +32,7 @@ func TestCodeActionSelectionUsesCapturedClosedDependency(t *testing.T) {
 	root := t.TempDir()
 	dependency, target := filepath.Join(root, "dependency.yml"), filepath.Join(root, "workflow.yml")
 	content := "target"
-	finding := results.Diagnostic{Path: dependency, Start: sourcepos.Position{Line: 1, Column: 2}, End: sourcepos.Position{Line: 1, Column: 5}, Fixes: []results.Fix{{Description: "update open caller", Applicability: results.FixSafe, Revisions: map[string]string{target: sourcepos.ContentDigest([]byte(content))}, Edits: []results.Edit{{Path: target, Start: sourcepos.Position{Line: 1, Column: 1}, End: sourcepos.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
+	finding := results.Diagnostic{Path: dependency, Start: source.Position{Line: 1, Column: 2}, End: source.Position{Line: 1, Column: 5}, Fixes: []results.Fix{{Description: "update open caller", Applicability: results.FixSafe, Revisions: map[string]string{target: source.ContentDigest([]byte(content))}, Edits: []results.Edit{{Path: target, Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2}, Replacement: "T"}}}}}
 	sources := map[string]Document{dependency: {Text: "😀bad"}}
 	open := map[string]Document{target: {URI: FileURI(target), Version: 3, Text: content}}
 	actions := codeActions(t.Context(), dependency, sourceRange{Start: position{Character: 5}, End: position{Character: 5}}, []results.Diagnostic{finding}, sources, open)
@@ -49,8 +49,8 @@ func TestSuppressionActionsDeduplicateAndRejectStaleBuffers(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "workflow.yml")
 	const text = "run: echo ok\n"
 	doc := Document{URI: FileURI(path), Version: 8, Text: text}
-	point := sourcepos.Position{Line: 1, Column: 1}
-	fix := results.Fix{Description: "Suppress shellcheck for this declaration", Applicability: results.FixSuggested, Revisions: map[string]string{path: sourcepos.ContentDigest([]byte(text))}, Edits: []results.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
+	point := source.Position{Line: 1, Column: 1}
+	fix := results.Fix{Description: "Suppress shellcheck for this declaration", Applicability: results.FixSuggested, Revisions: map[string]string{path: source.ContentDigest([]byte(text))}, Edits: []results.Edit{{Path: path, Start: point, End: point, Replacement: "# actionlint-ignore-next-line shellcheck\n"}}}
 	findings := []results.Diagnostic{
 		{Path: path, Rule: "shellcheck", Code: "SC2086", Start: point, Fixes: []results.Fix{fix}},
 		{Path: path, Rule: "shellcheck", Code: "SC2154", Start: point, Fixes: []results.Fix{fix}},
@@ -74,12 +74,12 @@ func TestCodeActionsUseEachFindingsFixes(t *testing.T) {
 	documents := map[string]Document{path: doc}
 	var findings []results.Diagnostic
 	for i, applicability := range []results.Applicability{results.FixSuggested, results.FixSuggested, results.FixSafe} {
-		point := sourcepos.Position{Line: i + 1, Column: 1}
+		point := source.Position{Line: i + 1, Column: 1}
 		finding := results.Diagnostic{Path: path, Rule: "same-rule", Start: point}
 		if i != 0 {
 			finding.Fixes = []results.Fix{{
 				Description: "replace " + applicability.String(), Applicability: applicability,
-				Revisions: map[string]string{path: sourcepos.ContentDigest([]byte(text))},
+				Revisions: map[string]string{path: source.ContentDigest([]byte(text))},
 				Edits:     []results.Edit{{Path: path, Start: point, End: point, Replacement: "fixed "}},
 			}}
 		}

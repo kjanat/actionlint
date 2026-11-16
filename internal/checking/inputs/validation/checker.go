@@ -4,12 +4,12 @@ package validation
 import (
 	"reflect"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 )
 
 // IsNil detects both nil interfaces and typed nil checkers before
 // metadata or execution methods are called.
-func IsNil(value checkinputs.Checker) bool {
+func IsNil(value inputs.Checker) bool {
 	if value == nil {
 		return true
 	}

@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 
-	checking "actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	lintconfig "actionlint.kjanat.dev/v2/internal/input/configuration/rules"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
@@ -36,7 +36,7 @@ func enumValues[T ~string](values []T) []any {
 func levelSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
 		OneOf: []*jsonschema.Schema{
-			{Type: "string", Enum: enumValues(lintconfig.Levels())},
+			{Type: "string", Enum: enumValues(rules.Levels())},
 			{Type: "boolean"},
 			{Type: "null", Extras: map[string]any{"doNotSuggest": true}},
 		},
@@ -85,7 +85,7 @@ func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.
 		"group-level": {AnyOf: []*jsonschema.Schema{
 			definitionRef("level"), {Type: "string", Enum: []any{"all"}},
 		}},
-		"preset":         {Type: "string", Enum: enumValues(lintconfig.Presets()), Description: "Baseline rule selection: recommended, all stable rules, or none."},
+		"preset":         {Type: "string", Enum: enumValues(rules.Presets()), Description: "Baseline rule selection: recommended, all stable rules, or none."},
 		"plugin-setting": {OneOf: []*jsonschema.Schema{definitionRef("level"), setting}},
 		"rule-setting":   plain,
 		"backend":        backendSchema(reflectMapping),

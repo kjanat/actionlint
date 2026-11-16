@@ -10,8 +10,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
@@ -32,7 +32,7 @@ func (rule *Checker) scriptShell(step workflows.Step) string {
 				if rule.dependencies.Runners != nil {
 					knownShell = rule.dependencies.Runners.Job(job).Shell
 				}
-				runnerShell = scriptmodel.DefaultShell(workflows.Container(job.Container), knownShell)
+				runnerShell = scripts.DefaultShell(workflows.Container(job.Container), knownShell)
 			}
 		} else {
 			runnerShell = value.DynamicValue("", value.KindUnknown, value.Origin{})
@@ -104,7 +104,7 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 	masked := []byte(source)
 	type span struct {
 		first, last int
-		environment runner.ContextEnvironment
+		environment runners.ContextEnvironment
 	}
 	var expressions []span
 	for offset := 0; offset < len(source); {
@@ -119,7 +119,7 @@ func proveScriptArguments(source, shell string) scriptArgumentProofs {
 			return scriptArgumentProofs{}
 		}
 		last := first + 3 + lexer.Offset()
-		expressions = append(expressions, span{first, last, runner.ContextEnvironmentFor(exprsyntax.StaticReference(expression))})
+		expressions = append(expressions, span{first, last, runners.ContextEnvironmentFor(exprsyntax.StaticReference(expression))})
 		// Numeric masks preserve IO-number tokens before shell redirections.
 		for i := first; i < last; i++ {
 			if masked[i] != '\n' && masked[i] != '\r' {

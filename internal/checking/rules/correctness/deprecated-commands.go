@@ -6,8 +6,8 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -29,7 +29,7 @@ var DeprecatedCommandsRule = &define.Rule{
 // checkDeprecatedCommands reports deprecated workflow commands in declared and invoked scripts.
 // It maps each command to its declaring document. A command whose text
 // has no source position is reported at the script start without a range.
-func checkDeprecatedCommands(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func checkDeprecatedCommands(ctx context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range slices.Concat(input.Scripts, input.Invoked) {
 		if err := ctx.Err(); err != nil {
@@ -39,7 +39,7 @@ func checkDeprecatedCommands(ctx context.Context, input checkinputs.AnalyzerInpu
 			start, startOK := script.OffsetPosition(command.Start, false)
 			end, endOK := script.OffsetPosition(command.End, true)
 			if !startOK || !endOK {
-				start, end = script.Start, sourcepos.Position{}
+				start, end = script.Start, source.Position{}
 			}
 			findings = append(findings, results.Diagnostic{
 				Message: fmt.Sprintf("workflow command %q was deprecated. use `%s` instead: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions", command.Command, command.Replacement),

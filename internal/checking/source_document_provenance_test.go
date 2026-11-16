@@ -8,20 +8,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type actionSourceReferenceProbe struct{ path string }
 
-func (actionSourceReferenceProbe) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
+func (actionSourceReferenceProbe) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "action-source-reference", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (p actionSourceReferenceProbe) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
-	return []results.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: sourcepos.Position{Line: 1, Column: 1}}}, nil
+func (p actionSourceReferenceProbe) CheckDocument(context.Context, inputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	return []results.Diagnostic{{Rule: "action-source-reference", Message: "source reference", Path: p.path, Start: source.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
@@ -42,7 +42,7 @@ func TestFetchedActionFindingsReceiveCanonicalSourceReference(t *testing.T) {
 			workflowPath := writeFixture(t, root, "ci.yml", "on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 			result, err := checking.Check(t.Context(), checking.Options{
 				WorkingDir: root,
-				Analyzers:  []checkinputs.Registration{{Checker: actionSourceReferenceProbe{path: actionPath}}},
+				Analyzers:  []inputs.Registration{{Checker: actionSourceReferenceProbe{path: actionPath}}},
 			}, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflowPath}})
 			if err != nil {
 				t.Fatal(err)

@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 )
 
 func TestScriptEnvironmentScopesAndInvocationIsolation(t *testing.T) {
@@ -59,9 +59,9 @@ runs:
 				t.Error("inherited runner variables were treated as fully enumerated")
 			}
 			for _, name := range []string{"lowercase", "UPPERCASE", "miXedCase"} {
-				want := scriptmodel.EnvironmentDeclared
-				if environment.OperatingSystem() == runnerapi.Windows && environment.LookupComparison() == scriptmodel.NameSensitive {
-					want = scriptmodel.EnvironmentUncertain
+				want := scripts.EnvironmentDeclared
+				if environment.OperatingSystem() == runnerapi.Windows && environment.LookupComparison() == scripts.NameSensitive {
+					want = scripts.EnvironmentUncertain
 				}
 				if environment.Lookup(name) != want {
 					t.Errorf("script %q on %s lost %q", unit.Run.Run.Text(), environment.OperatingSystem(), name)
@@ -70,22 +70,22 @@ runs:
 			switch unit.Run.Run.Text() {
 			case "echo child":
 				for _, name := range []string{"job_name", "caller_name", "child_name"} {
-					if environment.Lookup(name) != scriptmodel.EnvironmentDeclared {
+					if environment.Lookup(name) != scripts.EnvironmentDeclared {
 						t.Errorf("composite lost %q: %+v", name, environment.Names())
 					}
 				}
 			case "echo sibling":
 				for _, name := range []string{"caller_name", "child_name"} {
-					if environment.Lookup(name) != scriptmodel.EnvironmentUncertain || slices.ContainsFunc(environment.Names(), func(variable scriptmodel.EnvironmentVariableName) bool { return variable.Name == name }) {
+					if environment.Lookup(name) != scripts.EnvironmentUncertain || slices.ContainsFunc(environment.Names(), func(variable scripts.EnvironmentVariableName) bool { return variable.Name == name }) {
 						t.Errorf("composite scope leaked %q to sibling", name)
 					}
 				}
 			case "echo bash":
-				if environment.OperatingSystem() != runnerapi.Windows || environment.LookupComparison() != scriptmodel.NameSensitive || environment.Lookup("LOWERCASE") != scriptmodel.EnvironmentUncertain {
+				if environment.OperatingSystem() != runnerapi.Windows || environment.LookupComparison() != scripts.NameSensitive || environment.Lookup("LOWERCASE") != scripts.EnvironmentUncertain {
 					t.Errorf("Windows runner merging must not make Bash lookup insensitive: %+v", environment)
 				}
 			case "Write-Output $env:LOWERCASE":
-				if environment.OperatingSystem() != runnerapi.Windows || environment.Lookup("LOWERCASE") != scriptmodel.EnvironmentDeclared {
+				if environment.OperatingSystem() != runnerapi.Windows || environment.Lookup("LOWERCASE") != scripts.EnvironmentDeclared {
 					t.Errorf("Windows PowerShell lookup should ignore casing: %+v", environment)
 				}
 			}

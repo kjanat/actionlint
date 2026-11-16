@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestDeclarationProjectionPreservesKeySourceAndOrigin(t *testing.T) {
@@ -35,13 +35,13 @@ jobs:
           "${{ insert }}":
             inserted: inserted input
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}
 	bound := Bind("declaration-source", source, workflow, false, "")
 	mappings, _ := bound.Declarations()
-	byScope := map[string]workflowfacts.Mapping{}
+	byScope := map[string]facts.Mapping{}
 	for _, mapping := range mappings {
 		byScope[mapping.Scope] = mapping
 	}

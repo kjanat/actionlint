@@ -12,9 +12,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
@@ -60,11 +60,11 @@ func Open(ctx context.Context, rules configuration.RuleSet, path string, connect
 // normalization mode. Inherited sources held by files are used without reading
 // them again, and files keeps the sources read here; files may be nil.
 func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode, files *document.Files) (*File, error) {
-	absolute, err := configsource.NormalizeAddress(path)
+	absolute, err := source.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
 	}
-	if configsource.IsRemoteAddress(absolute) {
+	if source.IsRemoteAddress(absolute) {
 		// Pass the declared URL spelling to caller-supplied readers.
 		absolute = path
 	} else {
@@ -148,7 +148,7 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 // pluginSourcePath returns the absolute filename of a local inherited source.
 // HTTPS addresses are returned unchanged.
 func pluginSourcePath(name string) (string, error) {
-	if configsource.IsRemoteAddress(name) {
+	if source.IsRemoteAddress(name) {
 		return name, nil
 	}
 	return filepath.Abs(name)
@@ -291,8 +291,8 @@ func ValidateLocalPath(path string) error {
 }
 
 func readPluginManifest(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
-	if configsource.IsRemoteAddress(path) {
-		return configsource.New(ctx, nil, connections).ReadConfig(path)
+	if source.IsRemoteAddress(path) {
+		return source.New(ctx, nil, connections).ReadConfig(path)
 	}
 	if err := ValidateLocalPath(path); err != nil {
 		return nil, err
@@ -302,8 +302,8 @@ func readPluginManifest(ctx context.Context, path string, connections acquisitio
 
 // ReadSource reads a local or remote configuration source within the file-size limit.
 func ReadSource(ctx context.Context, path string, connections acquisitionhttp.Connections) ([]byte, error) {
-	if configsource.IsRemoteAddress(path) {
-		return configsource.New(ctx, nil, connections).ReadConfig(path)
+	if source.IsRemoteAddress(path) {
+		return source.New(ctx, nil, connections).ReadConfig(path)
 	}
 	reader := files.New(ctx, nil, nil)
 	file, err := reader.Open(path)
@@ -356,7 +356,7 @@ func (m *File) read(ctx context.Context, path string) ([]byte, error) {
 			return readPluginManifest(ctx, path, acquisitionhttp.Connections{})
 		}
 	}
-	return configsource.New(ctx, func(name string) ([]byte, error) {
+	return source.New(ctx, func(name string) ([]byte, error) {
 		return read(ctx, name)
 	}, acquisitionhttp.Connections{}).ReadFile(path)
 }
@@ -369,7 +369,7 @@ func (m *File) OriginalBytes() []byte {
 // Save writes an explicit leaf-level list, including [] when removing the last
 // plugin.
 func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err error) {
-	if configsource.IsRemoteAddress(m.Path) {
+	if source.IsRemoteAddress(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
 	}
 	editor := m.parsed

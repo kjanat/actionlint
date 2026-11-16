@@ -15,9 +15,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
@@ -49,7 +49,7 @@ func TestNativeSourcedRereadRecordsReportedSymlinkAlias(t *testing.T) {
 	if !slices.Contains(result.Inputs, alias) || slices.Contains(result.Inputs, physical) {
 		t.Fatalf("native display reread replaced reported alias with physical path: %v", result.Inputs)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || !render.FromAnalysis(*result).Findings[0].Source.Unavailable.Present() {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].Reference != nil || !output.FromAnalysis(*result).Findings[0].Source.Unavailable.Present() {
 		t.Fatalf("native unavailable report did not reach rendering: %+v", result)
 	}
 }
@@ -116,7 +116,7 @@ permissions: {}
 				t.Fatalf("want relative diagnostic path %q, got %q", want, finding.Path)
 			}
 			assertShellcheckSourceFile(t, filepath.Join(root, finding.Path), path)
-			if finding.Start != (sourcepos.Position{Line: tc.line, Column: 6}) || finding.End != (sourcepos.Position{Line: tc.line, Column: 12}) {
+			if finding.Start != (source.Position{Line: tc.line, Column: 6}) || finding.End != (source.Position{Line: tc.line, Column: 12}) {
 				t.Fatalf("wrong sourced location: %+v", finding)
 			}
 			if finding.Code != "SC2086" || finding.Snippet != "echo $VALUE" || len(finding.Fixes) != 0 {
@@ -144,7 +144,7 @@ permissions: {}
 			if !tracked {
 				t.Fatalf("sourced diagnostic file missing from inputs: %v", result.Inputs)
 			}
-			legacy := render.TemplateFieldsOf(render.FromAnalysis(*result).Findings[0])
+			legacy := output.TemplateFieldsOf(output.FromAnalysis(*result).Findings[0])
 			if !strings.Contains(legacy.Snippet, "echo $VALUE") {
 				t.Fatalf("legacy snippet uses workflow text: %+v", legacy)
 			}

@@ -10,12 +10,12 @@ import (
 	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	ruleexec "actionlint.kjanat.dev/v2/internal/checking/executor/registration"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -67,7 +67,7 @@ jobs:
 					t.Fatal("workflow source snapshot unavailable")
 				}
 				declaration := matrixJob(t, snapshot, "test")
-				rejections := runnerlang.LabelRejections(declaration, runnerlang.KnownLabels(nil))
+				rejections := runners.LabelRejections(declaration, runners.KnownLabels(nil))
 				var errs []results.Diagnostic
 				for _, rejection := range rejections {
 					errs = append(errs, results.Diagnostic{Rule: "runner-label", Start: rejection.Position, Message: rejection.Reason})
@@ -97,7 +97,7 @@ jobs:
 				}
 				for _, production := range []workflowvisit.Rule{
 					productionRunnerRule(t, snapshot, knowledge),
-					define.NewChecksVisitor(checking.ConfigurationRules(), correctness.RunnerLabelRule.Name, correctness.RunnerLabelChecks(nil, runnerlang.KnownLabels(nil))),
+					define.NewChecksVisitor(checking.ConfigurationRules(), correctness.RunnerLabelRule.Name, correctness.RunnerLabelChecks(nil, runners.KnownLabels(nil))),
 				} {
 					if err := production.VisitJobPre(matrixJob(t, snapshot, "test")); err != nil {
 						t.Fatal(err)
@@ -135,10 +135,10 @@ jobs:
 	}
 }
 
-func productionRunnerRule(t *testing.T, snapshot parsing.SourceSnapshot, knowledge *runnerlang.Knowledge) workflowvisit.Rule {
+func productionRunnerRule(t *testing.T, snapshot parsing.SourceSnapshot, knowledge *runners.Knowledge) workflowvisit.Rule {
 	t.Helper()
 	rules := checking.ConfigurationRules()
-	for _, descriptor := range ruleexec.Registrations(rules) {
+	for _, descriptor := range registration.Registrations(rules) {
 		if descriptor.Name == "runner-label" {
 			return descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: knowledge})
 		}

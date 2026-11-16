@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 )
 
 const (
@@ -23,7 +23,7 @@ type Options struct {
 	// ReservedRules identifies names and aliases the caller reserves for native checks.
 	ReservedRules rule.Names
 	// Artifact configures URI resolution and verified download caching.
-	Artifact    pluginartifact.Options
+	Artifact    artifacts.Options
 	Timeout     time.Duration
 	MemoryPages uint32
 	// Log receives host log lines and the plugin's stdout and stderr lines.

@@ -4,7 +4,7 @@ import (
 	exprtypes "actionlint.kjanat.dev/v2/internal/languages/expressions/types"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	contextoutputs "actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
+	"actionlint.kjanat.dev/v2/internal/model/contexts/outputs"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
@@ -13,16 +13,16 @@ import (
 // Get type of `outputs.<output name>`
 func (rule *Checker) getActionOutputsType(spec *definition.String) exprtypes.ObjectType {
 	if spec == nil {
-		return contextoutputs.ActionType(actionmeta.Definition{})
+		return outputs.ActionType(actionmeta.Definition{})
 	}
 
 	metadata, err := rule.actionDefinition(spec.Value)
 	if err != nil {
 		// Action validation reports lookup failures; unknown outputs stay open here.
 		rule.debug("Could not infer action outputs: %v", err)
-		return contextoutputs.ActionType(actionmeta.Definition{})
+		return outputs.ActionType(actionmeta.Definition{})
 	}
-	return contextoutputs.ActionType(metadata)
+	return outputs.ActionType(metadata)
 }
 
 func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.Metadata {
@@ -41,12 +41,12 @@ func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.
 
 func (rule *Checker) calcNeedsType(job workflows.Job) exprtypes.ObjectType {
 	resolved := map[workflows.Job]*calls.Metadata{}
-	for _, dependency := range contextoutputs.DirectDependencies(rule.workflow, job) {
+	for _, dependency := range outputs.DirectDependencies(rule.workflow, job) {
 		if call := dependency.WorkflowCall; call != nil {
 			resolved[dependency] = rule.workflowCallMetadata(call)
 		}
 	}
-	return contextoutputs.NeedsType(rule.workflow, job, resolved)
+	return outputs.NeedsType(rule.workflow, job, resolved)
 }
 
 func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent, workflow workflows.Workflow) {
@@ -64,7 +64,7 @@ func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent
 			resolved[job] = rule.workflowCallMetadata(target)
 		}
 	}
-	jobs := contextoutputs.JobsType(workflow, resolved)
+	jobs := outputs.JobsType(workflow, resolved)
 	if jobs.Len() == 0 {
 		return
 	}

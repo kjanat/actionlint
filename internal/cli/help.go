@@ -11,7 +11,7 @@ import (
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/fatih/color"
 	"github.com/mattn/go-colorable"
@@ -46,11 +46,11 @@ func (a *commandApp) helpColor(c *cobra.Command, terminal bool) bool {
 	force := a.opts.color
 	if !a.anySet("color", "modern-color", "no-color") {
 		switch a.inv.Render.Color {
-		case render.ColorAlways:
+		case output.ColorAlways:
 			force = true
-		case render.ColorNever:
+		case output.ColorNever:
 			return false
-		case render.ColorAuto:
+		case output.ColorAuto:
 			// Fall back to terminal detection.
 		}
 	}

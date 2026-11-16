@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
 // MetadataState distinguishes usable, unavailable and invalid manifest evidence.
@@ -88,7 +88,7 @@ type MetadataReport struct {
 	Reason         availability.Reason          `json:"reason,omitempty"`
 	Host           string                       `json:"host,omitempty"`
 	Repository     string                       `json:"repository,omitempty"`
-	RepositoryID   repofacts.ID                 `json:"repository_id,omitzero"`
+	RepositoryID   repository.ID                `json:"repository_id,omitzero"`
 	Commit         string                       `json:"commit,omitempty"`
 	Directory      string                       `json:"directory,omitempty"`
 	ObservedAt     string                       `json:"observed_at,omitempty"`

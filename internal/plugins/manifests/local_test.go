@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	inputfiles "actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
 )
 
@@ -28,7 +28,7 @@ func TestReadLocal(t *testing.T) {
 		}
 		return filepath.Join(directory, "manifest.json")
 	}
-	reader := inputfiles.New(t.Context(), nil, nil)
+	reader := files.New(t.Context(), nil, nil)
 
 	manifest, programs, err := manifests.ReadLocal(reader, write(t, map[string]string{"manifest.json": withDigest, "output.jq": program, "other.jq": "."}))
 	if err != nil {
@@ -65,7 +65,7 @@ func TestReadLocalLoadsConfigurationTransforms(t *testing.T) {
 	if err := os.WriteFile(path, []byte(manifestJSON), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	reader := inputfiles.New(t.Context(), nil, nil)
+	reader := files.New(t.Context(), nil, nil)
 	if _, _, err := manifests.ReadLocal(reader, path); err == nil {
 		t.Fatal("missing configuration transform accepted")
 	}

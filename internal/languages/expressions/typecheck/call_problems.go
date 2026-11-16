@@ -2,10 +2,10 @@ package typecheck
 
 import (
 	exprfunctions "actionlint.kjanat.dev/v2/internal/languages/expressions/functions"
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
-func (sema *Checker) reportCallProblems(call *exprsyntax.FuncCallNode, problems []exprfunctions.CallProblemReport) {
+func (sema *Checker) reportCallProblems(call *syntax.FuncCallNode, problems []exprfunctions.CallProblemReport) {
 	for _, report := range problems {
 		if report.Demand == exprfunctions.DemandSkipped {
 			continue
@@ -21,7 +21,7 @@ func (sema *Checker) reportCallProblems(call *exprsyntax.FuncCallNode, problems 
 
 // callProblemFinding attaches diagnostic identity and source ranges without
 // changing checking state or evaluating the reported operation.
-func callProblemFinding(call *exprsyntax.FuncCallNode, problem exprfunctions.CallProblem) (*Error, FailurePhase) {
+func callProblemFinding(call *syntax.FuncCallNode, problem exprfunctions.CallProblem) (*Error, FailurePhase) {
 	switch problem := problem.(type) {
 	case exprfunctions.MissingFormatArgument:
 		return errorfAtCallee(formatPlaceholder, call, "format string %q contains placeholder {%d} but only %d arguments are given to format", problem.Template, problem.Index, problem.Count), FailureEvaluation

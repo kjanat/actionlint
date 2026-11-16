@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	execution "actionlint.kjanat.dev/v2/internal/model/workflows/execution"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 )

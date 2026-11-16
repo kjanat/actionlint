@@ -3,7 +3,7 @@ package parser_test
 import (
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 )
@@ -21,7 +21,7 @@ jobs:
       - uses: ${{ 'docker://alpine:3' }}
         with: {entrypoint: sh, args: -c}
 `)
-	w, errs := workflowparser.ParseWorkflow(source)
+	w, errs := parser.ParseWorkflow(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

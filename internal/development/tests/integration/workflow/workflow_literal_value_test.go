@@ -11,11 +11,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	sourceref "actionlint.kjanat.dev/v2/internal/input/source"
+	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/model/repository"
+	"actionlint.kjanat.dev/v2/internal/results"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -38,7 +38,7 @@ func TestWorkflowLiteralUsesDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repofacts.ID{}, commit, "")
+	identity, err := actions.NewIdentity(ref.Host(), ref.Repository(), repository.ID{}, commit, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ runs:
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var plain []diagmodel.Diagnostic
+			var plain []results.Diagnostic
 			for _, uses := range []string{tc.uses, "${{ '" + tc.uses + "' }}"} {
 				source := `on: push
 jobs:
@@ -121,7 +121,7 @@ jobs:
 				}
 				if uses == tc.uses {
 					plain = diagnostics
-				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourceref.Reference{}, "Revision"), cmpopts.IgnoreFields(diagmodel.Diagnostic{}, "End", "Snippet")); diff != "" {
+				} else if diff := cmp.Diff(plain, diagnostics, cmpopts.IgnoreFields(sourcepos.Reference{}, "Revision"), cmpopts.IgnoreFields(results.Diagnostic{}, "End", "Snippet")); diff != "" {
 					t.Fatal(diff)
 				}
 			}

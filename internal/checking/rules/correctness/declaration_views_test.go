@@ -12,13 +12,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 	t.Parallel()
 	const src = "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: same\n        run: echo first\n      - id: same\n        run: echo second\n"
-	ast, errs := workflowparser.ParseWorkflow([]byte(src))
+	ast, errs := parser.ParseWorkflow([]byte(src))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
@@ -44,7 +44,7 @@ func TestDeclarationsAreIndependentOfTraversalOrder(t *testing.T) {
 
 func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 	t.Parallel()
-	ast, errs := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
+	ast, errs := parser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    env:\n      FOO=BAR: first\n      FOO BAR: second\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
@@ -64,7 +64,7 @@ func TestEnvironmentNameFindingsUseKeyOrigins(t *testing.T) {
 
 func TestParallelJobsDoNotShareBackgroundSteps(t *testing.T) {
 	t.Parallel()
-	ast, errs := workflowparser.ParseWorkflow([]byte(`on: push
+	ast, errs := parser.ParseWorkflow([]byte(`on: push
 jobs:
   producer:
     runs-on: ubuntu-latest

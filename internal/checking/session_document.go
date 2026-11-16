@@ -17,21 +17,21 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
-	composites "actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	scriptexecution "actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scripts"
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workflownames "actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/names"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
@@ -39,12 +39,12 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
-	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 	resultpolicy "actionlint.kjanat.dev/v2/internal/results/policy"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 	"golang.org/x/sync/errgroup"
@@ -57,17 +57,17 @@ const concurrentMetadataLookups = 8
 type analysisSession struct {
 	checkCompletion checkCompletion
 	runnerReportsMu sync.Mutex
-	runnerReports   []runner.Report
+	runnerReports   []runnerapi.Report
 	environment     ExecutionEnvironment
 
 	ruleRegistrations    []configuration.RuleRegistration
 	rules                configuration.RuleSet
 	tools                []contract.Registration
-	analyzers            []checkinputs.Registration
-	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
+	analyzers            []inputs.Registration
+	loadScriptEngine     func(context.Context, string) (inputs.ScriptBackend, error)
 	allowConfigProcesses bool
-	workflowNames        *workflownames.Index
-	remoteActions        map[references.MirrorAccess]*actionremote.Service
+	workflowNames        *names.Index
+	remoteActions        map[references.MirrorAccess]*remote.Service
 	repositories         map[string]repository.Snapshot
 	analysisLogger
 	ctx             context.Context
@@ -85,8 +85,8 @@ type analysisSession struct {
 
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
-	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rule.Descriptor,
-) ([]*findingmodel.Finding, documentmodel.Outline, *resultpolicy.Batch, error) {
+	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflows.Cache, usedRules *[]rule.Descriptor,
+) ([]*finding.Finding, outline.Outline, *resultpolicy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
 	}
@@ -104,8 +104,8 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, usedRules *[]rule.Descriptor,
-) (findings []*findingmodel.Finding, outline documentmodel.Outline, publication *resultpolicy.Batch, resultErr error) {
+	actions *workspaceactions.Cache, workflows *workflows.Cache, usedRules *[]rule.Descriptor,
+) (findings []*finding.Finding, outline outline.Outline, publication *resultpolicy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
 	if project != nil {
@@ -184,7 +184,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 		}
 		all = append(all, composed.Findings...)
 	}
-	references := map[string]workflowfacts.SourceIndex{sourcePath: snapshot.Bound().SourceIndex()}
+	references := map[string]facts.SourceIndex{sourcePath: snapshot.Bound().SourceIndex()}
 	defer func() {
 		if resultErr != nil {
 			invocations := indexCheckInvocations(composed.Invocations)
@@ -271,7 +271,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflowinputs.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
+	actions *workspaceactions.Cache, workflows *workflows.Cache, registrations []inputs.Registration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -287,7 +287,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		defer skippedMu.Unlock()
 		invocations := indexCheckInvocations(result.Invocations)
 		for name := range skipped {
-			markUnavailable := func(ref sourcepos.Reference) {
+			markUnavailable := func(ref source.Reference) {
 				for _, context := range invocations.forSource(ref) {
 					s.checkCompletion.markUnavailableInvocation(ref, context, name, "tool was unavailable for this analysis")
 				}
@@ -295,7 +295,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 			markUnavailable(snapshot.Reference())
 			for _, document := range result.SourceDocuments {
 				revision := document.Capture().Revision()
-				markUnavailable(sourcepos.Reference{Document: revision.Document(), Revision: revision.Digest()})
+				markUnavailable(source.Reference{Document: revision.Document(), Revision: revision.Digest()})
 			}
 		}
 	}()
@@ -306,9 +306,9 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	resolvedActions := workspaceactions.NewResolver(actions, mappings)
 	host := s.repositories[projectRoot(project)]
 	facts := configuration.RepositoryFacts(cfg, host)
-	customLabels := runnerlang.LabelSet{}
+	customLabels := runners.LabelSet{}
 	if known, available := facts.RunnerLabels.Value(); available {
-		customLabels = runnerlang.KnownLabels(known.Values())
+		customLabels = runners.KnownLabels(known.Values())
 	}
 	runnerOptions := s.environment.Runners
 	if runnerOptions.Service == nil {
@@ -384,7 +384,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		},
 		Context: s.ctx, Actions: resolvedActions, Rules: selected.Rules, Scripts: selected.scripts,
 		Runners: runners,
-		ScriptInputsForScope: func(scope *rulebinding.Scope) ([]checkinputs.ScriptInput, error) {
+		ScriptInputsForScope: func(scope *rulebinding.Scope) ([]inputs.ScriptInput, error) {
 			return selected.inputSelectors(toolContext, scope)
 		},
 		Paths: execution.Paths{Workspace: root, Analysis: s.workingDir}, Reader: s.reader,
@@ -394,7 +394,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		ResolveExecution: selected.resolveExecution || requires[rule.Execution], Join: join, Debug: s.debugWriter(),
 	}
 	if action {
-		deployment, deploymentErr := scriptexecution.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
+		deployment, deploymentErr := scripts.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}

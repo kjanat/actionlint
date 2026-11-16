@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/spf13/pflag"
 )
@@ -27,8 +27,8 @@ func (a *commandApp) runnerFlags(f *pflag.FlagSet) {
 	}
 }
 
-func (c checkInvocation) runners() (runner.Options, error) {
-	options := runner.Options{Target: c.RunnerTarget, Provider: c.RunnerProvider, Scope: c.RunnerScope}
+func (c checkInvocation) runners() (runnerapi.Options, error) {
+	options := runnerapi.Options{Target: c.RunnerTarget, Provider: c.RunnerProvider, Scope: c.RunnerScope}
 	if c.RunnerService != "" || c.RunnerServiceVersion != "" {
 		service, err := services.ParseService(c.RunnerService, c.RunnerServiceVersion)
 		if err != nil {
@@ -44,7 +44,7 @@ func (c checkInvocation) runners() (runner.Options, error) {
 		asOf = c.RunnerAsOf
 	}
 	if asOf != "" {
-		date, err := runner.ParseDate(asOf)
+		date, err := runnerapi.ParseDate(asOf)
 		if err != nil {
 			return options, err
 		}
@@ -67,11 +67,11 @@ func (c checkInvocation) runners() (runner.Options, error) {
 		return options, fmt.Errorf("runner snapshot exceeds %d bytes", limit)
 	}
 	var snapshot struct {
-		Content    jsontext.Value   `json:"content"`
-		Scope      string           `json:"scope"`
-		ObtainedAt string           `json:"obtained_at"`
-		Freshness  runner.Freshness `json:"freshness"`
-		Complete   bool             `json:"complete"`
+		Content    jsontext.Value      `json:"content"`
+		Scope      string              `json:"scope"`
+		ObtainedAt string              `json:"obtained_at"`
+		Freshness  runnerapi.Freshness `json:"freshness"`
+		Complete   bool                `json:"complete"`
 	}
 	if err := jsonv2.Unmarshal(data, &snapshot, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return options, fmt.Errorf("runner snapshot: %w", err)
@@ -86,12 +86,12 @@ func (c checkInvocation) runners() (runner.Options, error) {
 	if kind == jsontext.KindNull {
 		content = ""
 	}
-	options.Snapshot = runner.Snapshot{
+	options.Snapshot = runnerapi.Snapshot{
 		Content: content, Scope: snapshot.Scope, ObtainedAt: snapshot.ObtainedAt,
 		Freshness: snapshot.Freshness, Complete: snapshot.Complete,
 	}
 	switch options.Snapshot.Freshness {
-	case runner.Fresh, runner.Stale, runner.Missing:
+	case runnerapi.Fresh, runnerapi.Stale, runnerapi.Missing:
 	default:
 		return options, errors.New("runner snapshot freshness must be fresh, stale or missing")
 	}

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 	"github.com/kjanat/wacogo"
@@ -15,7 +15,7 @@ import (
 // wireSpan is a lifted WIT span record.
 type wireSpan struct {
 	line, start, end      int
-	document, documentEnd sourcepos.Position
+	document, documentEnd source.Position
 }
 
 func liftWireSpan(t *testing.T, value wacogo.Val) wireSpan {
@@ -49,7 +49,7 @@ func liftWireSpan(t *testing.T, value wacogo.Val) wireSpan {
 
 // wirePosition maps a text (line, column) as plugins/protocol/wit/analyzer.wit
 // tells guests to read the span records.
-func wirePosition(spans []wireSpan, line, column int, exclusive bool) (sourcepos.Position, bool) {
+func wirePosition(spans []wireSpan, line, column int, exclusive bool) (source.Position, bool) {
 	for _, span := range spans {
 		if span.line != line {
 			continue
@@ -67,9 +67,9 @@ func wirePosition(spans []wireSpan, line, column int, exclusive bool) (sourcepos
 			}
 			return span.document, true
 		}
-		return sourcepos.Position{Line: span.document.Line, Column: span.document.Column + column - span.start}, true
+		return source.Position{Line: span.document.Line, Column: span.document.Column + column - span.start}, true
 	}
-	return sourcepos.Position{}, false
+	return source.Position{}, false
 }
 
 // TestLoweredScriptSpansMatchSourceLookup checks that every text position maps
@@ -97,7 +97,7 @@ func TestLoweredScriptSpansMatchSourceLookup(t *testing.T) {
 			if !ok || exec.Source == nil {
 				t.Fatal("run step lost its script source")
 			}
-			declaration := scriptmodel.FromRun(exec)
+			declaration := scripts.FromRun(exec)
 			if len(declaration.Spans) == 0 {
 				t.Fatal("declaration lost its source spans")
 			}
@@ -114,9 +114,9 @@ func TestLoweredScriptSpansMatchSourceLookup(t *testing.T) {
 							lookup = exec.Source.EndPos
 						}
 						want, wantOK := lookup(line, column)
-						for reader, mapped := range map[string]func() (sourcepos.Position, bool){
-							"declaration": func() (sourcepos.Position, bool) { return declaration.Position(line, column, exclusive) },
-							"wire":        func() (sourcepos.Position, bool) { return wirePosition(spans, line, column, exclusive) },
+						for reader, mapped := range map[string]func() (source.Position, bool){
+							"declaration": func() (source.Position, bool) { return declaration.Position(line, column, exclusive) },
+							"wire":        func() (source.Position, bool) { return wirePosition(spans, line, column, exclusive) },
 						} {
 							got, ok := mapped()
 							if ok != wantOK || ok && got != *want {

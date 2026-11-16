@@ -9,13 +9,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
 
 // checkShell validates builtin names and accepts custom shell templates.
-func checkShell(shell value.Value, platform runnerlang.Platform, registries ...*commands.Registry) []results.Diagnostic {
+func checkShell(shell value.Value, platform runners.Platform, registries ...*commands.Registry) []results.Diagnostic {
 	node, known := shell.ScalarString()
 	if !known {
 		return nil
@@ -26,10 +26,10 @@ func checkShell(shell value.Value, platform runnerlang.Platform, registries ...*
 		registry = registries[0]
 	}
 	arguments := commands.UnknownArguments
-	if platform == runnerlang.MacOrLinux {
+	if platform == runners.MacOrLinux {
 		arguments = commands.UnixArguments
 	}
-	if platform == runnerlang.Windows {
+	if platform == runners.Windows {
 		arguments = commands.WindowsArguments
 	}
 	invocation := registry.AnalyzeFor(node, false, arguments)
@@ -55,29 +55,29 @@ func checkShell(shell value.Value, platform runnerlang.Platform, registries ...*
 
 	onPlatform := ""
 	switch platform {
-	case runnerlang.Windows:
-		for _, p := range getAvailableShellNames(runnerlang.Any) {
+	case runners.Windows:
+		for _, p := range getAvailableShellNames(runners.Any) {
 			if name == p {
 				onPlatform = " on Windows" // only when the shell is unavailable on Windows
 			}
 		}
-	case runnerlang.MacOrLinux:
-		for _, p := range getAvailableShellNames(runnerlang.Any) {
+	case runners.MacOrLinux:
+		for _, p := range getAvailableShellNames(runners.Any) {
 			if name == p {
 				onPlatform = " on macOS or Linux" // only when the shell is unavailable on macOS or Linux
 			}
 		}
-	case runnerlang.Any:
+	case runners.Any:
 	}
 
 	position := shell.Origin().Span.Start
 	return []results.Diagnostic{{Start: position, Message: fmt.Sprintf("shell name %q is invalid%s. available names are %s", node, onPlatform, messages.SortedQuotes(available))}}
 }
 
-func getAvailableShellNames(kind runnerlang.Platform) []string {
+func getAvailableShellNames(kind runners.Platform) []string {
 	// https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
 	switch kind {
-	case runnerlang.Any:
+	case runners.Any:
 		return []string{
 			"bash",
 			"pwsh",
@@ -86,7 +86,7 @@ func getAvailableShellNames(kind runnerlang.Platform) []string {
 			"cmd",
 			"powershell",
 		}
-	case runnerlang.Windows:
+	case runners.Windows:
 		return []string{
 			"bash",
 			"pwsh",
@@ -94,7 +94,7 @@ func getAvailableShellNames(kind runnerlang.Platform) []string {
 			"cmd",
 			"powershell",
 		}
-	case runnerlang.MacOrLinux:
+	case runners.MacOrLinux:
 		return []string{
 			"bash",
 			"pwsh",

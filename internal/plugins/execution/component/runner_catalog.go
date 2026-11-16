@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/kjanat/wacogo"
 )
 
-func lowerRunner03Request(request runner.Request, common wacogo.Val) (wacogo.Val, error) {
+func lowerRunner03Request(request runnerapi.Request, common wacogo.Val) (wacogo.Val, error) {
 	if request.AsOf.IsZero() {
 		return nil, errors.New("runner support assessment requires a date")
 	}
@@ -28,34 +28,34 @@ func lowerRunner03Request(request runner.Request, common wacogo.Val) (wacogo.Val
 	), nil
 }
 
-func liftRunnerHosting(value wacogo.Val) (runner.Hosting, error) {
+func liftRunnerHosting(value wacogo.Val) (runnerapi.Hosting, error) {
 	name, err := liftRunnerEnum(value, runner_03_hosting)
 	if err != nil {
-		return runner.UnknownHosting, err
+		return runnerapi.UnknownHosting, err
 	}
 	if name == "unknown" {
-		return runner.UnknownHosting, nil
+		return runnerapi.UnknownHosting, nil
 	}
-	return runner.Hosting(name), nil
+	return runnerapi.Hosting(name), nil
 }
 
-func liftRunnerSupportState(value wacogo.Val) (runner.SupportState, error) {
+func liftRunnerSupportState(value wacogo.Val) (runnerapi.SupportState, error) {
 	name, err := liftRunnerEnum(value, runner_03_support_state)
 	if err != nil {
-		return runner.SupportUnknown, err
+		return runnerapi.SupportUnknown, err
 	}
 	if name == "unknown" {
-		return runner.SupportUnknown, nil
+		return runnerapi.SupportUnknown, nil
 	}
-	return runner.SupportState(name), nil
+	return runnerapi.SupportState(name), nil
 }
 
-func liftRunnerDataset(value wacogo.Val) (runner.DatasetStatus, error) {
+func liftRunnerDataset(value wacogo.Val) (runnerapi.DatasetStatus, error) {
 	r, err := liftRecord(value, "runner dataset status")
 	if err != nil {
-		return runner.DatasetStatus{}, err
+		return runnerapi.DatasetStatus{}, err
 	}
-	var status runner.DatasetStatus
+	var status runnerapi.DatasetStatus
 	for name, dest := range map[string]*string{"dataset-id": &status.DatasetID, "scope": &status.Scope, "obtained-at": &status.ObtainedAt} {
 		if *dest, err = liftString(r, name); err != nil {
 			return status, err
@@ -65,26 +65,26 @@ func liftRunnerDataset(value wacogo.Val) (runner.DatasetStatus, error) {
 	if err != nil {
 		return status, err
 	}
-	status.Freshness = runner.Freshness(freshness)
+	status.Freshness = runnerapi.Freshness(freshness)
 	status.Complete, err = liftBool(r, "complete")
 	return status, err
 }
 
 // liftValidatedRunnerSupport lifts a runner-provider 0.3.0 support
 // catalogue and validates it for scope.
-func liftValidatedRunnerSupport(value wacogo.Val, scope string) (runner.SupportCatalog, error) {
+func liftValidatedRunnerSupport(value wacogo.Val, scope string) (runnerapi.SupportCatalog, error) {
 	catalog, err := liftRunnerSupport(value)
 	if err != nil {
-		return runner.SupportCatalog{}, err
+		return runnerapi.SupportCatalog{}, err
 	}
-	if err := runner.ValidateSupportCatalog(catalog, scope); err != nil {
-		return runner.SupportCatalog{}, fmt.Errorf("runner support catalogue: %w", err)
+	if err := runnerapi.ValidateSupportCatalog(catalog, scope); err != nil {
+		return runnerapi.SupportCatalog{}, fmt.Errorf("runner support catalogue: %w", err)
 	}
 	return catalog, nil
 }
 
-func liftRunnerSupport(value wacogo.Val) (runner.SupportCatalog, error) {
-	var catalog runner.SupportCatalog
+func liftRunnerSupport(value wacogo.Val) (runnerapi.SupportCatalog, error) {
+	var catalog runnerapi.SupportCatalog
 	option, ok := value.(*wacogo.ValOption)
 	if !ok {
 		return catalog, liftError{"runner support catalogue", value}
@@ -114,8 +114,8 @@ func liftRunnerSupport(value wacogo.Val) (runner.SupportCatalog, error) {
 	return catalog, nil
 }
 
-func liftRunnerSupportPolicy(value wacogo.Val) (runner.SupportPolicy, error) {
-	var policy runner.SupportPolicy
+func liftRunnerSupportPolicy(value wacogo.Val) (runnerapi.SupportPolicy, error) {
+	var policy runnerapi.SupportPolicy
 	r, err := liftRecord(value, "runner support policy")
 	if err != nil {
 		return policy, err
@@ -129,7 +129,7 @@ func liftRunnerSupportPolicy(value wacogo.Val) (runner.SupportPolicy, error) {
 	if err != nil {
 		return policy, err
 	}
-	policy.Capability = runner.Capability(capability)
+	policy.Capability = runnerapi.Capability(capability)
 	service, err := liftRecord(r.Field("service"), "runner support service scope")
 	if err != nil {
 		return policy, err
@@ -168,7 +168,7 @@ func liftRunnerSupportPolicy(value wacogo.Val) (runner.SupportPolicy, error) {
 		if err != nil {
 			return policy, err
 		}
-		policy.OS = append(policy.OS, runner.OS(value))
+		policy.OS = append(policy.OS, runnerapi.OS(value))
 	}
 	architectures, err := liftList(r.Field("architectures"), "runner support architectures")
 	if err != nil {
@@ -199,8 +199,8 @@ func liftRunnerSupportPolicy(value wacogo.Val) (runner.SupportPolicy, error) {
 	return policy, nil
 }
 
-func liftRunnerSupportChange(value wacogo.Val) (runner.SupportChange, error) {
-	var change runner.SupportChange
+func liftRunnerSupportChange(value wacogo.Val) (runnerapi.SupportChange, error) {
+	var change runnerapi.SupportChange
 	r, err := liftRecord(value, "runner support change")
 	if err != nil {
 		return change, err
@@ -209,7 +209,7 @@ func liftRunnerSupportChange(value wacogo.Val) (runner.SupportChange, error) {
 	if err != nil {
 		return change, err
 	}
-	change.On, err = runner.ParseDate(date)
+	change.On, err = runnerapi.ParseDate(date)
 	if err != nil {
 		return change, err
 	}

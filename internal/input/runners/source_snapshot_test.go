@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	runnermodel "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
-	runnerapi "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -39,7 +39,7 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 		t.Fatal("canonical job disappeared")
 	}
 	fromRepeated := knowledge.Job(repeated)
-	if fromView.Platform != runnermodel.MacOrLinux || fromView.Shell != "bash" || !fromView.Ephemeral || !fromView.PathsKnown {
+	if fromView.Platform != runners.MacOrLinux || fromView.Shell != "bash" || !fromView.Ephemeral || !fromView.PathsKnown {
 		t.Fatalf("canonical runner facts = %+v", fromView)
 	}
 	if !reflect.DeepEqual(fromRepeated, fromView) {
@@ -60,10 +60,10 @@ func TestPreparedJobKnowledgeUsesCanonicalSnapshotHandle(t *testing.T) {
 	if !available {
 		t.Fatal("foreign canonical job is unavailable")
 	}
-	if got := knowledge.Job(foreignJob); !reflect.DeepEqual(got, runnermodel.JobKnowledge{}) {
+	if got := knowledge.Job(foreignJob); !reflect.DeepEqual(got, runners.JobKnowledge{}) {
 		t.Fatalf("foreign registry handle received prepared facts: %+v", got)
 	}
-	if got := knowledge.Job(workflows.Job{}); !reflect.DeepEqual(got, runnermodel.JobKnowledge{}) {
+	if got := knowledge.Job(workflows.Job{}); !reflect.DeepEqual(got, runners.JobKnowledge{}) {
 		t.Fatalf("zero handle received prepared facts: %+v", got)
 	}
 }

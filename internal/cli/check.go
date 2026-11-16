@@ -15,20 +15,20 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	render "actionlint.kjanat.dev/v2/internal/output"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func executeCheck(ctx context.Context, streams Command, inv checkRequest) (status int, err error) {
@@ -52,8 +52,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	defer func() { err = destination.finish(err) }()
 	out := destination.writer
-	if destination.file != nil && r.Color == render.ColorAuto {
-		r.Color = render.ColorNever
+	if destination.file != nil && r.Color == output.ColorAuto {
+		r.Color = output.ColorNever
 	}
 	log := streams.Stderr
 	if inv.JSON {
@@ -125,7 +125,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	inputs := append([]string{c.Config.Path, r.TemplateFile, c.RunnerSnapshot}, result.Inputs...)
 	for _, source := range c.Plugins {
-		_, local, err := pluginartifact.NormalizeSource(source, workingDir)
+		_, local, err := artifacts.NormalizeSource(source, workingDir)
 		if err != nil {
 			return 0, commandargs.UsageError{Cause: err}
 		}
@@ -180,7 +180,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 		if !c.ApplyFixes {
 			return 0, commandstreams.WriteJSON(out, plan)
 		}
-		written, applyErr := render.ApplyEdits(ctx, plan, reader)
+		written, applyErr := output.ApplyEdits(ctx, plan, reader)
 		if applyErr != nil {
 			return 0, fmt.Errorf("fix stopped after writing %d files: %w", len(written), applyErr)
 		}
@@ -189,8 +189,8 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, err
 		}
 	}
-	presentation := render.FromAnalysis(*result)
-	presentation.CheckResult = commandstatus.AnalysisResult(*result)
+	presentation := output.FromAnalysis(*result)
+	presentation.CheckResult = exitcode.AnalysisResult(*result)
 	if err := renderCheckResult(ctx, out, r, inv.Legacy, renderers, presentation); err != nil {
 		return 0, err
 	}
@@ -199,9 +199,9 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	status = presentation.ExitCode
 	if r.Summary && !r.Quiet {
-		summary := resultreport.NewCheckSummary(*result)
+		summary := report.NewCheckSummary(*result)
 		if inv.JSON {
-			err = commandstreams.WriteJSON(streams.Stderr, map[string]resultreport.CheckSummary{"summary": summary})
+			err = commandstreams.WriteJSON(streams.Stderr, map[string]report.CheckSummary{"summary": summary})
 		} else {
 			err = writeCheckSummary(streams.Stderr, inv.Render.Color, summary)
 		}
@@ -235,7 +235,7 @@ func writeCheckBuildIdentity(log io.Writer, c checkInvocation, r renderOptions) 
 
 // checkAnalysisError carries collected findings to the existing failure report.
 type checkAnalysisError struct {
-	result *resultreport.Analysis
+	result *report.Analysis
 	err    error
 }
 

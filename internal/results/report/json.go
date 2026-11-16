@@ -6,7 +6,7 @@ import (
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/results"
-	documentmodel "actionlint.kjanat.dev/v2/internal/results/outline"
+	"actionlint.kjanat.dev/v2/internal/results/outline"
 )
 
 // CheckResult is the versioned JSON document shared by CLI and Action checks.
@@ -21,7 +21,7 @@ type CheckResult struct {
 	ExitCode         int                    `json:"exit_code"`
 	FileCount        *int                   `json:"file_count"`
 	Diagnostics      []results.Diagnostic   `json:"diagnostics"`
-	Documents        documentmodel.Outlines `json:"documents"`
+	Documents        outline.Outlines       `json:"documents"`
 	Configs          []ResultConfig         `json:"configurations"`
 	Hints            []string               `json:"hints"`
 	SARIF            json.RawMessage        `json:"sarif,omitempty"`

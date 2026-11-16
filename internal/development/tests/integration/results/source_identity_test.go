@@ -8,19 +8,19 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-type identityCapture struct{ input checkinputs.AnalyzerInput }
+type identityCapture struct{ input inputs.AnalyzerInput }
 
-func (*identityCapture) Descriptor() checkinputs.Descriptor {
-	return checkinputs.Descriptor{Name: "identity-capture", Category: "correctness", Maturity: "stable", RequiredInputs: []rule.InputKind{rule.Source, rule.Scripts, rule.Mappings, rule.Dependencies}}
+func (*identityCapture) Descriptor() inputs.Descriptor {
+	return inputs.Descriptor{Name: "identity-capture", Category: "correctness", Maturity: "stable", RequiredInputs: []rule.InputKind{rule.Source, rule.Scripts, rule.Mappings, rule.Dependencies}}
 }
 
-func (c *identityCapture) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]diagmodel.Diagnostic, error) {
+func (c *identityCapture) CheckDocument(_ context.Context, input inputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	c.input = input
 	return nil, nil
 }
@@ -29,7 +29,7 @@ func TestFactsShareOwningStepIdentity(t *testing.T) {
 	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {ONE: x}\n        run: echo first\n      - id: two\n        env: {TWO: y}\n        run: echo second\n      - uses: owner/action@main\n        with: {value: x}\npermissions: {}\n")
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []inputs.Registration{{Checker: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestDiagnosticOwnersWithoutIgnoreConfiguration(t *testing.T) {
 	t.Parallel()
 	capture := &identityCapture{}
 	content := []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: one\n        env: {'BAD NAME': x}\n        run: echo first\n      - id: two\n        env: {'OTHER BAD': y}\n        run: echo second\npermissions: {}\n")
-	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
+	result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []inputs.Registration{{Checker: capture}}}, []workspace.InputFile{{Path: "workflow.yml", Content: content}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,19 +94,19 @@ func TestAliasedScriptsRetainOwningStepIdentity(t *testing.T) {
 				content = append(content, "permissions: {}\n"...)
 			}
 			capture := &identityCapture{}
-			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []checkinputs.Registration{{Checker: capture}}}, []workspace.InputFile{{Path: path, Content: content}})
+			result, err := checking.Analyze(t.Context(), checking.Options{WorkingDir: t.TempDir(), Analyzers: []inputs.Registration{{Checker: capture}}}, []workspace.InputFile{{Path: path, Content: content}})
 			if err != nil {
 				t.Fatalf("analyze: %v, %+v", err, result)
 			}
 			type manifestFinding struct {
 				message string
-				start   sourcepos.Position
+				start   source.Position
 			}
 			var expected []manifestFinding
 			if kind == "action" {
 				expected = []manifestFinding{
-					{`YAML anchors are not supported in action metadata; remove anchor "command"`, sourcepos.Position{Line: 9, Column: 12}},
-					{`YAML aliases are not supported in action metadata; replace alias "command"`, sourcepos.Position{Line: 13, Column: 12}},
+					{`YAML anchors are not supported in action metadata; remove anchor "command"`, source.Position{Line: 9, Column: 12}},
+					{`YAML aliases are not supported in action metadata; replace alias "command"`, source.Position{Line: 13, Column: 12}},
 				}
 			}
 			if len(result.Diagnostics) != len(expected) {

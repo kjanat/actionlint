@@ -13,9 +13,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/gitwire"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type actionMetadataTransport func(*http.Request) (*http.Response, error)
@@ -40,7 +40,7 @@ func TestActionMetadataCLIOnlineThenOfflineValidatesUnknownSHA(t *testing.T) {
 		if code != 1 {
 			t.Fatalf("%s status=%d stderr=%s output=%s", mode, code, log.String(), out.String())
 		}
-		var result resultreport.CheckResult
+		var result report.CheckResult
 		if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 			t.Fatal(err)
 		}
@@ -150,7 +150,7 @@ func TestActionMetadataCLIBundledResolverHandlesNamedRef(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("status=%d stderr=%s stdout=%s", code, &log, &out)
 	}
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}

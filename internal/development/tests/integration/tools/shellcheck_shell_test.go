@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 func TestShellcheckResolvedDiagnostics(t *testing.T) {
@@ -64,7 +64,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			var shellFindings []diagmodel.Diagnostic
+			var shellFindings []results.Diagnostic
 			for _, finding := range findings {
 				if finding.Rule == "shellcheck" {
 					shellFindings = append(shellFindings, finding)

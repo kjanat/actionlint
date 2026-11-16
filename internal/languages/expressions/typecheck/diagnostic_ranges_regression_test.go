@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	expreval "actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 
-	contextspec "actionlint.kjanat.dev/v2/internal/model/contexts"
+	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
-	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 )
 
 func TestGroupedCallDiagnosticSpans(t *testing.T) {
@@ -19,11 +19,11 @@ func TestGroupedCallDiagnosticSpans(t *testing.T) {
 			{"((contains('a')))" + suffix, "number of arguments", "contains"},
 			{"fromJSON('{\"a\":1}')['b']" + suffix, "property \"b\"", "fromJSON('{\"a\":1}')['b']"},
 		} {
-			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expr + "}}"))
+			node, err := syntax.NewParser().ParseExpression(syntax.NewLexer(tc.expr + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, findings := NewChecker(contextspec.DefaultExpressionScope(), nil).Check(expreval.EvaluateSubexpressions(node))
+			_, findings := NewChecker(contexts.DefaultExpressionScope(), nil).Check(evaluate.EvaluateSubexpressions(node))
 			found := false
 			for _, finding := range findings {
 				if strings.Contains(finding.Message, tc.fragment) {

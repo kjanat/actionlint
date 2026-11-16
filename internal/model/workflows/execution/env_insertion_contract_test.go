@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 
-	runnerlang "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
 
@@ -39,7 +39,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.ParseWorkflow([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
+			workflow, errs := parser.ParseWorkflow([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -48,7 +48,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 				t.Fatalf("directive parsed as an environment variable: %+v", env)
 			}
 			semantic := mapping.Resolve(definition.EnvMappingView(env))
-			if got := execution.CheckoutEnvironmentUnknown(semantic, runnerlang.MacOrLinux); got != tc.checkout {
+			if got := execution.CheckoutEnvironmentUnknown(semantic, runners.MacOrLinux); got != tc.checkout {
 				t.Errorf("checkout environment unknown: %v, want %v (complete=%v entries=%v)", got, tc.checkout, semantic.Complete(), mappingSummary(semantic))
 			}
 			if got := execution.ShellEnvironmentUnknown(semantic); got != tc.shell {

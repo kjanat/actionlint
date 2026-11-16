@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func runOfflineCommand(t *testing.T, acquisition pluginacquisition.Settings, input string, args ...string) (int, string, string) {
@@ -57,7 +57,7 @@ func TestCacheWarmThenOfflineConfigurationAndPlugin(t *testing.T) {
 	registry.ResetRequests()
 	registry.SetOffline(true)
 	status, out, log = runOfflineCommand(t, acquisition, "", append([]string{"check", "--offline"}, args...)...)
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("offline status=%d stdout=%s stderr=%s: %v", status, out, log, err)
 	}
@@ -117,7 +117,7 @@ func TestCacheWarmThenOfflineNamedAction(t *testing.T) {
 		t.Fatalf("warm saved references=%v err=%v stdout=%s stderr=%s requests=%v", refs, err, out, log, requests)
 	}
 	status, out, log = runOfflineCommand(t, acquisition, input, "check", "--offline", "--no-tool=shellcheck", "--no-tool=ruff", "--no-config", "--json", "--summary=false", "-")
-	var result resultreport.CheckResult
+	var result report.CheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("status=%d stdout=%s stderr=%s: %v", status, out, log, err)
 	}

@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRuntimeLifecycleEvidencePreservesValidationLocations(t *testing.T) {
 	exec := ownedActionFixture(&definition.ExecAction{Uses: &definition.String{Value: "example/script@v1", Pos: caller}})
 	for _, tc := range []struct {
 		name     string
-		findings []*findingmodel.Finding
+		findings []*finding.Finding
 		line     int
 	}{
 		{"standalone", actioncheck.StandaloneWithAdvisories(meta, actionmeta.ReferencedFiles{}, context), 4},

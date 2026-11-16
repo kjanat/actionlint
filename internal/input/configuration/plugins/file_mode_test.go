@@ -13,7 +13,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func TestPluginManifestFileMode(t *testing.T) {

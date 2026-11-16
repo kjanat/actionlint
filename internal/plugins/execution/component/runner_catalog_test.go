@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
+	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/kjanat/wacogo"
 )
@@ -34,19 +34,19 @@ func loadRunnerSupportFixture(t *testing.T) *Plugin {
 	return plugin
 }
 
-func runnerSupportRequest(t *testing.T, kind, version string) runner.Request {
+func runnerSupportRequest(t *testing.T, kind, version string) runnerapi.Request {
 	t.Helper()
 	service, err := services.ParseService(kind, version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	date, err := runner.ParseDate("2026-12-08")
+	date, err := runnerapi.ParseDate("2026-12-08")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return runner.Request{
+	return runnerapi.Request{
 		Target: "github", Scope: "org/repo", Service: service, AsOf: date,
-		Selectors: []runner.Selector{{Labels: []runner.Constraint{{Value: runner.Literal("arm")}}}},
+		Selectors: []runnerapi.Selector{{Labels: []runnerapi.Constraint{{Value: runnerapi.Literal("arm")}}}},
 	}
 }
 
@@ -66,26 +66,26 @@ func TestRunnerSupportComponentRoundTrip(t *testing.T) {
 			if len(response.Answers) != 1 {
 				t.Fatalf("answers = %+v", response.Answers)
 			}
-			resolved, ok := response.Answers[0].Resolution.(runner.Resolved)
+			resolved, ok := response.Answers[0].Resolution.(runnerapi.Resolved)
 			if !ok || len(resolved.Candidates) != 1 {
 				t.Fatalf("resolution = %+v", response.Answers[0].Resolution)
 			}
 			candidate := resolved.Candidates[0]
-			if candidate.Name != service.kind+":"+service.version+":2026-12-08" || candidate.Hosting != runner.SelfHosted || candidate.Architecture != "arm32" {
+			if candidate.Name != service.kind+":"+service.version+":2026-12-08" || candidate.Hosting != runnerapi.SelfHosted || candidate.Architecture != "arm32" {
 				t.Fatalf("service, version, date or candidate facts changed: %+v", candidate)
 			}
 			catalog := response.Support
-			if len(catalog.Policies) != 1 || !catalog.DatasetStatus.Complete || catalog.DatasetStatus.Freshness != runner.Fresh || catalog.DatasetStatus.Scope != request.Scope {
+			if len(catalog.Policies) != 1 || !catalog.DatasetStatus.Complete || catalog.DatasetStatus.Freshness != runnerapi.Fresh || catalog.DatasetStatus.Scope != request.Scope {
 				t.Fatalf("catalogue = %+v", catalog)
 			}
 			policy := catalog.Policies[0]
-			if policy.ID != "arm32-fixture" || policy.Description != "ARM32 support retirement" || policy.URL != "https://example.com/runner-support" || policy.Capability != runner.JobExecution || policy.Service.Kind != request.Service.Kind() || policy.Initial != runner.SupportUnknown {
+			if policy.ID != "arm32-fixture" || policy.Description != "ARM32 support retirement" || policy.URL != "https://example.com/runner-support" || policy.Capability != runnerapi.JobExecution || policy.Service.Kind != request.Service.Kind() || policy.Initial != runnerapi.SupportUnknown {
 				t.Fatalf("policy fields changed: %+v", policy)
 			}
-			if !reflect.DeepEqual(policy.Hosting, []runner.Hosting{runner.SelfHosted}) || !reflect.DeepEqual(policy.OS, []runner.OS{runner.Linux, runner.Windows}) || !reflect.DeepEqual(policy.Architectures, []string{"arm32"}) {
+			if !reflect.DeepEqual(policy.Hosting, []runnerapi.Hosting{runnerapi.SelfHosted}) || !reflect.DeepEqual(policy.OS, []runnerapi.OS{runnerapi.Linux, runnerapi.Windows}) || !reflect.DeepEqual(policy.Architectures, []string{"arm32"}) {
 				t.Fatalf("policy constraints changed: %+v", policy)
 			}
-			if len(policy.Changes) != 2 || policy.Changes[0].On.String() != "2026-11-12" || policy.Changes[0].State != runner.Deprecated || policy.Changes[1].On.String() != "2026-12-08" || policy.Changes[1].State != runner.Unsupported {
+			if len(policy.Changes) != 2 || policy.Changes[0].On.String() != "2026-11-12" || policy.Changes[0].State != runnerapi.Deprecated || policy.Changes[1].On.String() != "2026-12-08" || policy.Changes[1].State != runnerapi.Unsupported {
 				t.Fatalf("schedule changed: %+v", policy.Changes)
 			}
 			if service.kind == "ghes" && (policy.Service.MinVersion != "3.18" || policy.Service.BeforeVersion != "3.20") {
@@ -115,7 +115,7 @@ func TestRunnerSupportComponentRejectsMalformedCatalogues(t *testing.T) {
 	if err != nil || len(response.Answers) != 1 || response.Support.DatasetStatus.DatasetID != "" || len(response.Support.Policies) != 0 {
 		t.Fatalf("absent support changed inventory facts: %+v, error=%v", response, err)
 	}
-	request.AsOf = runner.Date{}
+	request.AsOf = runnerapi.Date{}
 	if _, err := plugin.ResolveRunners(t.Context(), request); err == nil {
 		t.Fatal("support provider accepted an absent assessment date")
 	}

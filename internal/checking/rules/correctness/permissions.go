@@ -7,11 +7,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	permissionmodel "actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/permissions"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/messages"
 )
@@ -35,10 +35,10 @@ func checkPermissionMapping(p *definition.Permissions) []reporting.StepFinding {
 	}
 	input := permissionDeclaration{}
 	if p.All != nil {
-		input.All = &permissionValue{Text: p.All.Value, Start: sourcepos.ZeroIfNil(p.All.Pos)}
+		input.All = &permissionValue{Text: p.All.Value, Start: source.ZeroIfNil(p.All.Pos)}
 	}
 	for _, scope := range p.Scopes {
-		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: sourcepos.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: sourcepos.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
+		input.Scopes = append(input.Scopes, permissionScope{Name: permissionValue{Text: scope.Name.Text(), Start: source.ZeroIfNil(reporting.SourcePosition(scope.Name))}, Level: permissionValue{Text: scope.Value.Text(), Start: source.ZeroIfNil(reporting.SourcePosition(scope.Value))}})
 	}
 	return reporting.FromDiagnostics(permissionDiagnostics(input))
 }
@@ -53,7 +53,7 @@ func checkJobPermissions(job workflows.Job) []reporting.StepFinding {
 
 type permissionValue struct {
 	Text  string
-	Start sourcepos.Position
+	Start source.Position
 }
 type (
 	permissionScope       struct{ Name, Level permissionValue }
@@ -65,9 +65,9 @@ type (
 
 // permissionDiagnostics validates explicit permission declarations against the known scopes and levels.
 func permissionDiagnostics(input permissionDeclaration) []results.Diagnostic {
-	scopes := permissionmodel.Scopes()
+	scopes := permissions.Scopes()
 	var findings []results.Diagnostic
-	report := func(start sourcepos.Position, message string) {
+	report := func(start source.Position, message string) {
 		findings = append(findings, results.Diagnostic{Start: start, Message: message})
 	}
 	if all := input.All; all != nil {

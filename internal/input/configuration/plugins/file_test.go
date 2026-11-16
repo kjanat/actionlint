@@ -17,7 +17,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 
-	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )
 
 func manifestTestReference(t *testing.T, name string) pluginreference.Reference {

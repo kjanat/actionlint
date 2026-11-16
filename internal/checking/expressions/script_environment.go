@@ -6,13 +6,13 @@ import (
 
 	"mvdan.cc/sh/v3/syntax"
 
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
 type scriptEnvironmentReplacement struct {
 	end         int
-	environment runner.ContextEnvironment
+	environment runners.ContextEnvironment
 }
 
 func escapedScriptDollar(script string, offset int) bool {

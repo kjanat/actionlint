@@ -7,18 +7,18 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowvisit "actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/lookup"
-	actionremote "actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
-	exprlang "actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
-	runner "actionlint.kjanat.dev/v2/internal/model/runners"
+	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
 // Rule is the single definition of the expression rule.
@@ -47,7 +47,7 @@ type ruleExpression struct {
 	frames            []expressionInvocation
 	findings          workflowvisit.Findings
 	ctx               context.Context
-	remote            *actionremote.ResolvedActions
+	remote            *remote.ResolvedActions
 }
 
 type expressionInvocation struct {
@@ -132,7 +132,7 @@ func (r *ruleExpression) VisitJobPost(view workflows.Job) error {
 }
 
 // NewExpressionRule connects expression checking to the supplied dependency lookups and runner facts.
-func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspaceactions.ActionMetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runner.Knowledge, remote *actionremote.ResolvedActions) *ruleExpression {
+func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCache workspace.ActionMetadataLookup, workflowCache *workflowinputs.ResolvedWorkflows, runners *runners.Knowledge, remote *remote.ResolvedActions) *ruleExpression {
 	r := &ruleExpression{Tag: base.Name(), name: base.Name(), description: base.Description(), ctx: ctx, remote: remote}
 	r.Checker = New(Dependencies{
 		Runners:  runners,
@@ -143,15 +143,15 @@ func NewExpressionRule(ctx context.Context, base workflowvisit.Base, actionsCach
 	return r
 }
 
-func (r *ruleExpression) Name() string                  { return r.name }
-func (r *ruleExpression) Description() string           { return r.description }
-func (r *ruleExpression) Errs() []*findingmodel.Finding { return r.findings.Errs() }
+func (r *ruleExpression) Name() string             { return r.name }
+func (r *ruleExpression) Description() string      { return r.description }
+func (r *ruleExpression) Errs() []*finding.Finding { return r.findings.Errs() }
 
 // FindingCount counts the findings collected by the rule. It shadows the
 // embedded checker's count, which covers only the current invocation.
 func (r *ruleExpression) FindingCount() int { return r.findings.FindingCount() }
 
-func (r *ruleExpression) AnnotateSince(mark int, annotate func(*findingmodel.Finding)) {
+func (r *ruleExpression) AnnotateSince(mark int, annotate func(*finding.Finding)) {
 	r.findings.AnnotateSince(mark, annotate)
 }
 
@@ -183,7 +183,7 @@ func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repositor
 		return selected.RuleSet().DiagnosticLevel(selected, name)
 	}
 	return Options{
-		Semantics:                 exprlang.Options{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)},
+		Semantics:                 typecheck.Options{Variables: configuration.VariableNames(facts), Secrets: configuration.SecretNames(facts)},
 		SuspiciousCoercion:        level("coercion") != "off",
 		CaseInsensitiveConditions: level("case-insensitive-conditions") != "off",
 		StringConditions:          level("string-conditions") != "off",

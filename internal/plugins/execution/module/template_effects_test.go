@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
+	"actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"github.com/kjanat/wazero/api"
 )
 
@@ -17,8 +17,8 @@ func TestTemplateEffectNegotiation(t *testing.T) {
 		valid          bool
 	}{
 		{"legacy", "", 1, true},
-		{"typed", checkinputs.TemplateEffectsContract, 2, true},
-		{"missing version", checkinputs.TemplateEffectsContract, 1, false},
+		{"typed", inputs.TemplateEffectsContract, 2, true},
+		{"missing version", inputs.TemplateEffectsContract, 1, false},
 		{"unknown contract", "example:effects@9.0.0", 2, false},
 		{"missing contract", "", 2, false},
 	} {
@@ -46,15 +46,15 @@ func TestTemplateEffectNegotiation(t *testing.T) {
 func TestPartialOutcomeRejectsUnknownTemplateEffects(t *testing.T) {
 	t.Parallel()
 	engine := pooledEngine(t)
-	engine.metadata.TemplateContract = checkinputs.TemplateEffectsContract
+	engine.metadata.TemplateContract = inputs.TemplateEffectsContract
 	module, err := engine.instantiate(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	good := checkinputs.ScriptDiagnostic{Code: "ANY", Message: "arbitrary wording", Location: checkinputs.ScriptPosition{Row: 1, Column: 1}, TemplateEffect: checkinputs.TemplateEffectExportedName}
+	good := inputs.ScriptDiagnostic{Code: "ANY", Message: "arbitrary wording", Location: inputs.ScriptPosition{Row: 1, Column: 1}, TemplateEffect: inputs.TemplateEffectExportedName}
 	bad := good
 	bad.TemplateEffect = "future-effect"
-	payload, err := json.Marshal(response{OK: false, Diagnostics: []checkinputs.ScriptDiagnostic{good, bad}, Errors: []string{"partial"}})
+	payload, err := json.Marshal(response{OK: false, Diagnostics: []inputs.ScriptDiagnostic{good, bad}, Errors: []string{"partial"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestPartialOutcomeRejectsUnknownTemplateEffects(t *testing.T) {
 	}
 	read := false
 	engine.idle = []api.Module{responseModule{Module: module, pointer: pointer, length: uint32(len(payload)), read: &read}}
-	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "fixture"})
+	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "fixture"})
 	if err == nil || len(findings) != 1 || !reflect.DeepEqual(findings[0], good) {
 		t.Fatalf("findings=%+v error=%v", findings, err)
 	}
@@ -81,7 +81,7 @@ func TestCoreCoordinatesUseDecodedSourceRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := json.Marshal(response{OK: true, Diagnostics: []checkinputs.ScriptDiagnostic{{Code: "ANY", Location: checkinputs.ScriptPosition{Row: 2, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: 2, Column: 3}}}})
+	payload, err := json.Marshal(response{OK: true, Diagnostics: []inputs.ScriptDiagnostic{{Code: "ANY", Location: inputs.ScriptPosition{Row: 2, Column: 1}, EndLocation: inputs.ScriptPosition{Row: 2, Column: 3}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,8 +95,8 @@ func TestCoreCoordinatesUseDecodedSourceRows(t *testing.T) {
 	}
 	read := false
 	engine.idle = []api.Module{responseModule{Module: module, pointer: pointer, length: uint32(len(payload)), read: &read}}
-	findings, err := engine.Check(t.Context(), checkinputs.ScriptRequest{Source: "é\rxy"})
-	if err != nil || len(findings) != 1 || findings[0].Location != (checkinputs.ScriptPosition{Row: 1, Column: 3}) || findings[0].EndLocation != (checkinputs.ScriptPosition{Row: 1, Column: 5}) {
+	findings, err := engine.Check(t.Context(), inputs.ScriptRequest{Source: "é\rxy"})
+	if err != nil || len(findings) != 1 || findings[0].Location != (inputs.ScriptPosition{Row: 1, Column: 3}) || findings[0].EndLocation != (inputs.ScriptPosition{Row: 1, Column: 5}) {
 		t.Fatalf("findings=%+v err=%v", findings, err)
 	}
 }

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -49,7 +49,7 @@ func MissingPermissions(workflow workflows.Workflow, locations []configuration.P
 	if requireWorkflow && workflow.Permissions == nil {
 		pos := workflow.Pos
 		if pos == nil {
-			pos = &sourcepos.Position{Line: 1, Column: 1}
+			pos = &source.Position{Line: 1, Column: 1}
 		}
 		findings.Errorf(pos, "workflow-level \"permissions\" is required; declare the token permissions your jobs need, or use \"permissions: {}\" to grant none")
 	}

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestCLIIgnoreSelectors(t *testing.T) {
@@ -49,7 +49,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 			if status != wantStatus {
 				t.Fatalf("status=%d want=%d stderr=%s stdout=%s", status, wantStatus, log.String(), out.String())
 			}
-			var result resultreport.CheckResult
+			var result report.CheckResult
 			if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +62,7 @@ func TestCLIIgnoreSelectors(t *testing.T) {
 				t.Fatalf("rules=%v want=%v diagnostics=%+v", got, tc.want, result.Diagnostics)
 			}
 			var summary struct {
-				Summary resultreport.CheckSummary `json:"summary"`
+				Summary report.CheckSummary `json:"summary"`
 			}
 			if err := json.Unmarshal(log.Bytes(), &summary); err != nil {
 				t.Fatalf("summary: %v: %s", err, log.String())

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	callrefs "actionlint.kjanat.dev/v2/internal/model/calls/references"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
 func TestOutlineLocalReferenceScope(t *testing.T) {
@@ -22,24 +22,24 @@ jobs:
       - uses: ./.github/actions/setup
       - uses: $/.github/actions/setup
 `
-	workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errs := parser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
 	outline := FromWorkflow("ci.yml", workflow, false)
-	got := map[string]callrefs.UsesReference{}
+	got := map[string]references.UsesReference{}
 	for _, job := range outline.Jobs {
 		got[job.ID] = job.Reference()
 		for _, step := range job.Steps {
 			got[step.Uses] = step.Reference()
 		}
 	}
-	want := map[string]callrefs.UsesReference{
-		"local":                   callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
-		"self":                    callrefs.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+	want := map[string]references.UsesReference{
+		"local":                   references.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
+		"self":                    references.SelfRepositoryReference{Path: ".github/workflows/deploy.yml"},
 		"build":                   nil,
-		"./.github/actions/setup": callrefs.WorkspaceReference{Path: ".github/actions/setup"},
-		"$/.github/actions/setup": callrefs.SelfRepositoryReference{Path: ".github/actions/setup"},
+		"./.github/actions/setup": references.WorkspaceReference{Path: ".github/actions/setup"},
+		"$/.github/actions/setup": references.SelfRepositoryReference{Path: ".github/actions/setup"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("references by scope:\ngot  %#v\nwant %#v", got, want)
@@ -56,7 +56,7 @@ jobs:
     steps:
       - run: echo hi
 `
-	workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errs := parser.ParseWorkflow([]byte(source))
 	if len(errs) == 0 || workflow.Jobs["call"].WorkflowCall != nil {
 		t.Fatal("fixture must contain rejected workflow call")
 	}
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - ` + tc.step + "\n"
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) == 0 {
 				t.Fatal("fixture must contain conflicting execution keys")
 			}
@@ -116,7 +116,7 @@ jobs:
       - wait: child
       - cancel: child
 `
-	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
+	workflow, errors := parser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("unexpected parse errors: %v", errors)
 	}

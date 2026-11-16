@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	matrixcheck "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
+	matrixmodel "actionlint.kjanat.dev/v2/internal/model/workflows/matrix"
 )
 
 func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
@@ -21,12 +21,12 @@ func TestUnknownMatrixKeysPreserveKnownTypes(t *testing.T) {
 				matrix = "{'${{ insert }}': " + matrix + "}"
 			}
 			source := "on: push\njobs:\n  test:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix: " + matrix + "\n    steps: [{run: echo ok}]\n"
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
-			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixcheck.Resolve(workflow.Jobs["test"].Strategy))
+			ty := rule.checkMatrix(ownedMatrixFixture(workflow.Jobs["test"].Strategy.Matrix), matrixmodel.Resolve(workflow.Jobs["test"].Strategy))
 			if !ty.IsLoose() || ty.Len() != 1 {
 				t.Fatalf("want open object with only the known axis, got %v", ty)
 			}
@@ -43,13 +43,13 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 		t.Run(key, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + fmt.Sprintf("{'${{ insert }}': {%q: [ubuntu-latest]}}", key) + "\n    steps: [{run: echo ok}]\n"
-			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
+			workflow, errs := parser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			rule := newTestChecker()
 			for _, job := range workflow.Jobs {
-				ty := rule.checkMatrix(ownedMatrixFixture(job.Strategy.Matrix), matrixcheck.Resolve(job.Strategy))
+				ty := rule.checkMatrix(ownedMatrixFixture(job.Strategy.Matrix), matrixmodel.Resolve(job.Strategy))
 				if _, ok := ty.Property("os"); !ty.IsStrict() || ty.Len() != 1 || !ok {
 					t.Fatalf("known key lost or object loosened: %v", ty)
 				}
@@ -62,7 +62,7 @@ func TestKnownMatrixKeysStayStrict(t *testing.T) {
 		Value: `${{ fromJSON('{"${{ vars.AXIS }}":["ubuntu-latest"]}') }}`,
 		Pos:   &source.Position{Line: 1, Column: 1},
 	}}}
-	resolution := matrixcheck.Resolve(strategy)
+	resolution := matrixmodel.Resolve(strategy)
 	if combinations, complete := resolution.Combinations(8); !complete || len(combinations) != 1 {
 		t.Fatal("literal matrix rejected")
 	}
