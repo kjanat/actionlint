@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -57,7 +58,7 @@ func RuntimeLifecycleChecks(context actionmeta.LifecycleContext) define.Checks {
 				return nil
 			}
 			return []reporting.StepFinding{{
-				Code: string(evidence.Kind), Severity: "warning",
+				Code: string(evidence.Kind), Severity: severity.Warning,
 				Message: message, Start: position, Step: step, DocumentationURL: evidence.Source,
 				LifecycleEvidence: &evidence,
 			}}

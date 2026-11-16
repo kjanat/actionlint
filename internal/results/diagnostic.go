@@ -1,7 +1,10 @@
 // Package results defines findings and proposed source edits.
 package results
 
-import "actionlint.kjanat.dev/v2/internal/input/sourcetext"
+import (
+	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
+)
 
 // Diagnostic is the structured CLI representation, separate from legacy template fields.
 type Diagnostic struct {
@@ -18,7 +21,7 @@ type Diagnostic struct {
 	// Code identifies a diagnostic kind within Rule, for native and external checks.
 	// Severity records its effective level. Empty values mean metadata was not supplied.
 	Code     string              `json:"code,omitempty"`
-	Severity string              `json:"severity,omitempty"`
+	Severity severity.Severity   `json:"severity,omitempty"`
 	Message  string              `json:"message"`
 	Path     string              `json:"path"`
 	Start    sourcetext.Position `json:"start"`
@@ -41,12 +44,12 @@ type LifecycleReport struct {
 
 // LifecyclePolicyReport describes a policy that matched a lifecycle event.
 type LifecyclePolicyReport struct {
-	ID          string `json:"id"`
-	Description string `json:"description"`
-	Origin      string `json:"origin"`
-	Severity    string `json:"severity"`
-	StartsOn    string `json:"starts_on"`
-	Enforced    bool   `json:"enforced"`
+	ID          string            `json:"id"`
+	Description string            `json:"description"`
+	Origin      string            `json:"origin"`
+	Severity    severity.Severity `json:"severity"`
+	StartsOn    string            `json:"starts_on"`
+	Enforced    bool              `json:"enforced"`
 }
 
 // Fix is one complete suggested change. Apply all edits together.

@@ -5,6 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -38,13 +39,13 @@ func TestDependencyFindingsAndExitStatus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings := []*finding.Finding{{Path: tc.path, Rule: tc.rule, Code: tc.code, Severity: tc.severity}}
+			findings := []*finding.Finding{{Path: tc.path, Rule: tc.rule, Code: tc.code, Severity: severity.Severity(tc.severity)}}
 			p := preparePolicy(rules, cfg, policy.Policy{Path: tc.entry}, nil, findings)
 			got, err := publishFindings(policy.Processor{RuleSet: rules}, p, findings, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(got) != 1 || got[0].NonBlocking != tc.nonBlocking || got[0].Severity != tc.severity {
+			if len(got) != 1 || got[0].NonBlocking != tc.nonBlocking || string(got[0].Severity) != tc.severity {
 				t.Fatalf("want non_blocking=%v and severity=%s, got %+v", tc.nonBlocking, tc.severity, got)
 			}
 			result := exitcode.AnalysisResult(report.Analysis{Diagnostics: []results.PublishedDiagnostic{got[0].Publish(nil)}})

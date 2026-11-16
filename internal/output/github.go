@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -48,12 +49,13 @@ func EscapeGitHubCommandData(text string) string { return githubCommandData.Repl
 
 // GitHubAnnotationCommand returns the workflow command that annotates a
 // finding of the given severity: notice, warning or error.
-func GitHubAnnotationCommand(severity string) string {
-	switch severity {
-	case "warning":
+func GitHubAnnotationCommand(level severity.Severity) string {
+	switch level.Effective() {
+	case severity.Warning:
 		return "warning"
-	case "info", "note":
+	case severity.Info:
 		return "notice"
+	case severity.Error:
 	}
 	return "error"
 }

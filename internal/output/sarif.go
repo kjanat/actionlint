@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -134,11 +135,11 @@ func sarifSourceLocation(path string, start, end sourcetext.Position) *sarifPhys
 	return location
 }
 
-func sarifSeverityLevel(severity string) string {
-	switch severity {
-	case "warning":
+func sarifSeverityLevel(level severity.Severity) string {
+	switch level.Effective() {
+	case severity.Warning:
 		return "warning"
-	case "info":
+	case severity.Info:
 		return "note"
 	default:
 		return "error"

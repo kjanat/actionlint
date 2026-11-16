@@ -25,6 +25,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/contexts"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, checkUntrusted bool, workflowKey string) ([]typedExpr, bool) {
@@ -94,7 +95,7 @@ func (rule *Checker) exprError(err *typecheck.Error, base sourcetext.Position) {
 	rule.exprFinding(err, base, "")
 }
 
-func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position, severity string) {
+func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position, level severity.Severity) {
 	if rule.compositeScript && !compositeFinding(err.Rule, err.Code) {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
@@ -102,7 +103,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position,
 	if kind == "" {
 		kind = "expression"
 	}
-	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: documentPosition(base, err.Position)}
+	r := report{rule: kind, code: err.Code, severity: level, message: err.Message, start: documentPosition(base, err.Position)}
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		r.start = *mapped
 		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
@@ -201,7 +202,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.
 		errs = append(errs, security.ScriptInjection(expr, result.Findings)...)
 	}
 	for _, finding := range correctness.PermissiveJSONCalls(expr) {
-		rule.exprFinding(finding, base, "info")
+		rule.exprFinding(finding, base, severity.Info)
 	}
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *typecheck.Error) bool { return err.Rule == "script-injection" }))
 	// Serialized scalars still require a data-argument position. A closed

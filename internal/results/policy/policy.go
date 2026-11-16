@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -131,7 +132,7 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 		}
 		findings = slices.DeleteFunc(findings, func(e *finding.Finding) bool {
 			descriptor, _ := processor.RuleSet.FindRule(e.Rule)
-			executionFailure := descriptor.ExecutionFailure && (e.Severity == "" || e.Severity == "error")
+			executionFailure := descriptor.ExecutionFailure && e.Severity.Effective() == severity.Error
 			e.NonBlocking = sourcetext.RemoteAddress(e.Path) && e.Path != p.Path &&
 				!processor.RuleSet.DependencyFindingFails(cfg, e.Rule, e.Code, executionFailure)
 			prepared, _ := p.Bindings.Lookup(e.Binding)
@@ -139,15 +140,11 @@ func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSo
 			if e.LifecycleEvidence != nil && e.Lifecycle != nil && level != "off" {
 				return false
 			}
-			switch level {
-			case "off":
+			if level == "off" {
 				return true
-			case "warn":
-				e.Severity = "warning"
-			case "info":
-				e.Severity = "info"
-			case "error":
-				e.Severity = "error"
+			}
+			if selected, ok := level.Severity(); ok {
+				e.Severity = selected
 			}
 			return false
 		})

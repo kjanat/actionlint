@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -138,7 +139,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 	for _, tc := range []struct {
 		config string
 		strict bool
-		want   string
+		want   severity.Severity
 	}{
 		{"{}", false, "info"},
 		{"{}", true, "error"},
@@ -158,7 +159,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := ""
+		var got severity.Severity
 		for _, item := range findings {
 			if item.Rule == "unused-suppression" {
 				got = item.Publish(nil).Severity

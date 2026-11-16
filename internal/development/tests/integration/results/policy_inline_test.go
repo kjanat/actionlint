@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -18,9 +19,9 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 	for _, rule := range checking.ConfigurationRules().RuleInfos() {
 		t.Run(rule.Name, func(t *testing.T) {
 			t.Parallel()
-			for _, severity := range []string{"error", "warning", "info"} {
+			for _, level := range []severity.Severity{severity.Error, severity.Warning, severity.Info} {
 				source := []byte("name: demo # actionlint:ignore " + rule.Name + " -- reviewed\n")
-				findings := []*finding.Finding{{Start: sourcetext.Position{Line: 1, Column: 1}, Rule: rule.Name, Severity: severity}}
+				findings := []*finding.Finding{{Start: sourcetext.Position{Line: 1, Column: 1}, Rule: rule.Name, Severity: level}}
 				disabled := "disable: [unused-suppression], "
 				if rule.Name == "unused-suppression" {
 					disabled = ""

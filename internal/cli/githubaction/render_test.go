@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -104,7 +105,7 @@ func TestRenderAnalysisNativeCodeAndSeverity(t *testing.T) {
 	finding := &analysis.Diagnostics[0]
 	finding.Rule, finding.Code, finding.Message = "ruff", "F821", "Undefined name"
 	for _, tc := range []struct{ severity, command string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
-		finding.Severity = tc.severity
+		finding.Severity = severity.Severity(tc.severity)
 		got, err := renderAnalysis(formatGitHub, analysis, ".", ".")
 		if err != nil || !strings.HasPrefix(got, "::"+tc.command+" file=") || !strings.Contains(got, "title=actionlint (ruff/F821)::Undefined name") {
 			t.Fatalf("severity=%q lost code or annotation level: %q (%v)", tc.severity, got, err)

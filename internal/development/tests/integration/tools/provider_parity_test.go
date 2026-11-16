@@ -195,8 +195,7 @@ func hostSeverities(t *testing.T, snapshot parityDiagnostics) parityDiagnostics 
 	for i, finding := range snapshot.Findings {
 		for _, manifest := range manifests {
 			if manifest.Rule.Name == finding.Rule {
-				severity, _ := manifest.Capabilities.HostSeverity(finding.Severity)
-				snapshot.Findings[i].Severity = string(severity)
+				snapshot.Findings[i].Severity, _ = manifest.Capabilities.HostSeverity(string(finding.Severity))
 			}
 		}
 	}

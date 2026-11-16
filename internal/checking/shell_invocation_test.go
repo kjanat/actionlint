@@ -50,7 +50,7 @@ func TestShellInvocationValidationThroughSession(t *testing.T) {
 					continue
 				}
 				count++
-				if diagnostic.Code != tc.code || diagnostic.Severity != tc.severity {
+				if diagnostic.Code != tc.code || string(diagnostic.Severity) != tc.severity {
 					t.Fatalf("diagnostic: %+v", diagnostic)
 				}
 				if diagnostic.Start.Line != 6 {

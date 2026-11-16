@@ -20,6 +20,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
@@ -106,7 +107,7 @@ func (rule *Checker) Configure(options Options) { rule.options = options }
 // by the checker and copied when published to consumers.
 type report struct {
 	rule, code, message string
-	severity            string
+	severity            severity.Severity
 	start, end          sourcetext.Position
 	// hasEnd records whether the expression mapped an inclusive end position.
 	hasEnd bool

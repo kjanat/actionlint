@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 type Subject string
@@ -25,26 +26,6 @@ const (
 	SupportStarts   EventKind = "support-starts"
 	RuntimeReplaced EventKind = "runtime-replaced"
 )
-
-type Severity string
-
-const (
-	Info    Severity = "info"
-	Warning Severity = "warning"
-	Error   Severity = "error"
-)
-
-func (s Severity) Rank() int {
-	switch s {
-	case Info:
-		return 1
-	case Warning:
-		return 2
-	case Error:
-		return 3
-	}
-	return 0
-}
 
 type Evidence struct {
 	Subject                    Subject
@@ -71,7 +52,7 @@ func OnEffective() Start       { return Start{effective: true} }
 
 type Notification struct {
 	Starts   Start
-	Severity Severity
+	Severity severity.Severity
 }
 type Policy struct {
 	id, description, origin string
@@ -126,12 +107,12 @@ func (p Policy) MatchesSubject(s Subject) bool { return slices.Contains(p.match.
 
 type Decision struct {
 	PolicyID, Description, Origin string
-	Severity                      Severity
+	Severity                      severity.Severity
 	StartsOn                      Date
 }
 type Assessment struct {
 	Matched  bool
-	Severity Severity
+	Severity severity.Severity
 	Active   []Decision
 }
 

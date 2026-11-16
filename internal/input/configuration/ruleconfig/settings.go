@@ -14,6 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 )
 
 // Level controls one diagnostic, independently of its category or maturity.
@@ -70,6 +71,20 @@ func (l Level) EncodeConfig() (any, error) {
 
 func (l Level) Valid() bool {
 	return slices.Contains(Levels(), l)
+}
+
+// Severity returns the finding severity that the info, warn and error levels
+// select. Other levels select no severity and report false.
+func (l Level) Severity() (severity.Severity, bool) {
+	switch l {
+	case "info":
+		return severity.Info, true
+	case "warn":
+		return severity.Warning, true
+	case "error":
+		return severity.Error, true
+	}
+	return "", false
 }
 
 // Preset selects a baseline. All intentionally excludes nursery rules.

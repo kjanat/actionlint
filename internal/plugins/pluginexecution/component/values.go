@@ -11,6 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -409,10 +410,20 @@ func liftDiagnostic(v wacogo.Val) (results.Diagnostic, error) {
 		d.Related = append(d.Related, location...)
 	}
 
-	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "severity": &d.Severity, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
+	for name, target := range map[string]*string{"rule": &d.Rule, "code": &d.Code, "message": &d.Message, "path": &d.Path, "explanation": &d.Explanation, "help": &d.Help, "documentation-url": &d.DocumentationURL} {
 		if *target, err = liftString(record, name); err != nil {
 			return results.Diagnostic{}, err
 		}
+	}
+	level, err := liftString(record, "severity")
+	if err != nil {
+		return results.Diagnostic{}, err
+	}
+	// Host spellings are normalized here. Other text is a tool severity that
+	// the managed tool runner maps through its manifest's severity table.
+	d.Severity = severity.Severity(level)
+	if parsed, known := severity.Parse(level); known {
+		d.Severity = parsed
 	}
 	if d.Start, err = liftPosition(record.Field("start")); err != nil {
 		return results.Diagnostic{}, err

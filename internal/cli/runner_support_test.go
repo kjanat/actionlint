@@ -51,7 +51,7 @@ func TestRunnerSupportSeverityAndFiltering(t *testing.T) {
 				continue
 			}
 			found++
-			if diagnostic.Severity != tc.severity || diagnostic.Start.Line != 5 {
+			if string(diagnostic.Severity) != tc.severity || diagnostic.Start.Line != 5 {
 				t.Errorf("expected severity %q on runs-on line 5, got %+v", tc.severity, diagnostic)
 			}
 		}

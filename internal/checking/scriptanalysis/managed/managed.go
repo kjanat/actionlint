@@ -24,6 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/preparation/shell"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
 )
 
@@ -321,7 +322,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 				err = errors.Join(err, mapErr)
 				continue
 			}
-			mapped.Severity = r.severity(mapped.Severity)
+			mapped.Severity = r.severity(string(mapped.Severity))
 			findings = append(findings, mapped)
 		}
 		failure = errors.Join(failure, err, files.close())
@@ -371,12 +372,12 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 
 // severity maps a guest severity through the manifest's table, as the
 // provider's own transport does.
-func (r documentRunner) severity(severity string) string {
-	mapped, listed := r.capabilities.HostSeverity(severity)
+func (r documentRunner) severity(tool string) severity.Severity {
+	mapped, listed := r.capabilities.HostSeverity(tool)
 	if !listed && r.context.Debug != nil {
-		r.context.Debug("%s: mapped unlisted severity %q to %s", r.name, severity, mapped)
+		r.context.Debug("%s: mapped unlisted severity %q to %s", r.name, tool, mapped)
 	}
-	return string(mapped)
+	return mapped
 }
 
 func (r documentRunner) validateDocumentBatch(batch scriptanalysis.Batch) error {

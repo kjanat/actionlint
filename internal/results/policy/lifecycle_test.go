@@ -8,6 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -79,7 +80,7 @@ func lifecycleApply(t *testing.T, cfg *configuration.Config, f *finding.Finding,
 
 func lifecycleRequired(t *testing.T) []lifecycle.Policy {
 	t.Helper()
-	p, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: lifecycle.Warning}}, "trusted.yml")
+	p, err := lifecycle.NewPolicy("required", "Required migration", lifecycle.Match{Subjects: []lifecycle.Subject{lifecycle.Runners}, Events: []lifecycle.EventKind{lifecycle.SupportEnds}}, []lifecycle.Notification{{Starts: lifecycle.Before(180), Severity: severity.Warning}}, "trusted.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +120,7 @@ func TestLifecycleOptionalWindowsAndRuleLevels(t *testing.T) {
 				}
 				return
 			}
-			if len(got) != 1 || got[0].Severity != tc.want {
+			if len(got) != 1 || string(got[0].Severity) != tc.want {
 				t.Fatalf("got %+v; want %s", got, tc.want)
 			}
 		})

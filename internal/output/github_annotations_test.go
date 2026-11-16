@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/model/severity"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -27,7 +28,7 @@ func TestGitHubAnnotationLevels(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ severity, annotation string }{{"", "error"}, {"error", "error"}, {"warning", "warning"}, {"info", "notice"}} {
 		var out bytes.Buffer
-		if err := output.WriteGitHub(&out, []results.Diagnostic{{Severity: tc.severity, Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}}}); err != nil {
+		if err := output.WriteGitHub(&out, []results.Diagnostic{{Severity: severity.Severity(tc.severity), Start: sourcetext.Position{Line: 1, Column: 1}, End: sourcetext.Position{Line: 1, Column: 2}}}); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.HasPrefix(out.String(), "::"+tc.annotation+" ") {

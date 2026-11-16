@@ -68,7 +68,7 @@ func TestFmtCompositeUnusedSuppression(t *testing.T) {
 			if strict {
 				severity = "error"
 			}
-			if finding.Severity != severity || !strings.HasSuffix(finding.Path, "action.yml") || finding.Reference == nil {
+			if string(finding.Severity) != severity || !strings.HasSuffix(finding.Path, "action.yml") || finding.Reference == nil {
 				t.Fatalf("strict=%v unused suppression lost severity or source identity: %+v", strict, finding)
 			}
 		}

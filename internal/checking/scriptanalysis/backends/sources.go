@@ -205,7 +205,7 @@ func (r runner) reportedFinding(index int, script scriptanalysis.Unit, d scripte
 		Script: index,
 		Source: results.DiagnosticSource{Content: file.content, RawScript: true, Unavailable: results.ReportedSourceUnavailable(r.descriptor.Name, sourceName(d.Source, directory), file.readFailed)},
 	}
-	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, string(r.severity(d.Severity)), d.URL
+	finding.Rule, finding.Path, finding.Code, finding.Severity, finding.DocumentationURL = r.descriptor.Name, path, d.Code, r.severity(d.Severity), d.URL
 	finding.Message = r.message(d, d.Location.Line, d.Location.Column)
 	finding.Start = sourcetext.Position{Line: d.Location.Line, Column: d.Location.Column}
 	if d.EndLocation.Line >= d.Location.Line && d.EndLocation.Column > 0 {
