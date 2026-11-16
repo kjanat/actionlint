@@ -61,7 +61,7 @@ jobs:
 					switch diagnostic.Rule {
 					case "ruff":
 						codes = append(codes, diagnostic.Code)
-						ruff = append(ruff, diagnostic)
+						ruff = append(ruff, diagnostic.Diagnostic)
 					case "script-interpolation":
 						if diagnostic.Code != "unknown-script-value" {
 							t.Fatal(diagnostic)

@@ -144,7 +144,7 @@ permissions: {}
 			if !tracked {
 				t.Fatalf("sourced diagnostic file missing from inputs: %v", result.Inputs)
 			}
-			legacy := render.FromAnalysis(*result).Findings[0].TemplateFields()
+			legacy := render.TemplateFieldsOf(render.FromAnalysis(*result).Findings[0])
 			if !strings.Contains(legacy.Snippet, "echo $VALUE") {
 				t.Fatalf("legacy snippet uses workflow text: %+v", legacy)
 			}

@@ -17,7 +17,7 @@ func TestWorkspaceReportRebasesRelatedLocationsAndFixRevisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	analysis := &report.Analysis{Diagnostics: []results1.Diagnostic{{
+	analysis := &report.Analysis{Diagnostics: []results1.PublishedDiagnostic{{
 		Path:    "ci.yml",
 		Related: []results1.Related{{Path: "other.yml", Message: "related declaration", Revision: revision, Coordinates: source.YAML}},
 		Fixes:   []results1.Fix{{Revisions: map[string]string{"other.yml": "revision"}, Edits: []results1.Edit{{Path: "other.yml"}}}},

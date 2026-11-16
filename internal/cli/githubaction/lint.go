@@ -175,7 +175,7 @@ func runLinter(req *lintRequest) *lintResult {
 			}
 		}
 		for i := range analysis.Diagnostics {
-			analysis.Diagnostics[i] = diagnosticPaths(analysis.Diagnostics[i], restorePath)
+			analysis.Diagnostics[i].Diagnostic = diagnosticPaths(analysis.Diagnostics[i].Diagnostic, restorePath)
 		}
 		hints := result.report.Hints
 		result.report = resultreport.FromAnalysis(*analysis)
@@ -228,7 +228,7 @@ func workspaceReportAnalysis(analysis *resultreport.Analysis, workingDir, worksp
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {
-		result.Diagnostics[i] = diagnosticPaths(result.Diagnostics[i], func(path string) string {
+		result.Diagnostics[i].Diagnostic = diagnosticPaths(result.Diagnostics[i].Diagnostic, func(path string) string {
 			return reportPath(workingDir, workspace, path)
 		})
 	}

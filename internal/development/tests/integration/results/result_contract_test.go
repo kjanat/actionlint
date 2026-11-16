@@ -160,7 +160,7 @@ runs:
 			for _, blocking := range tc.blocking {
 				finding := diagnostic
 				finding.NonBlocking = !blocking
-				analysis.Diagnostics = append(analysis.Diagnostics, finding)
+				analysis.Diagnostics = append(analysis.Diagnostics, diagmodel.PublishedDiagnostic{Diagnostic: finding})
 			}
 			result := commandstatus.AnalysisResult(analysis)
 			data, err := json.Marshal(result)

@@ -231,7 +231,7 @@ func TestShellcheckSourceWorkingDirectory(t *testing.T) {
 			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
-					findings = append(findings, diagnostic)
+					findings = append(findings, diagnostic.Diagnostic)
 				}
 			}
 			if tc.unknown {
@@ -318,7 +318,7 @@ func TestShellcheckRunnerWorkingDirectory(t *testing.T) {
 			var findings []diagmodel.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "shellcheck" {
-					findings = append(findings, diagnostic)
+					findings = append(findings, diagnostic.Diagnostic)
 				}
 			}
 			if tc.unknown {
@@ -371,7 +371,7 @@ jobs:
 			if err != nil {
 				t.Fatal(err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "shellcheck" && d.Code == "SC2086"
 			})
 			if found != tc.wantFinding {

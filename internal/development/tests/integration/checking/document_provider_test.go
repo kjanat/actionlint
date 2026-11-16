@@ -85,7 +85,7 @@ func TestRegistryDocumentProviderRoutingAndConsent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(finding results.Diagnostic) bool { return finding.Rule != "document-fixture" })
+	findings := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(finding results.PublishedDiagnostic) bool { return finding.Rule != "document-fixture" })
 	if len(findings) != 1 || findings[0].Start != (sourcepos.Position{Line: 1, Column: 1}) || findings[0].Message != "captured document" {
 		t.Fatal("document provider did not run through analyzer admission", findings)
 	}

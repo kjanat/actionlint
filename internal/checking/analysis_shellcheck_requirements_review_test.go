@@ -112,7 +112,7 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {proce
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(backend.requests) != 1 || !slices.ContainsFunc(result.Diagnostics, func(d results.Diagnostic) bool {
+	if len(backend.requests) != 1 || !slices.ContainsFunc(result.Diagnostics, func(d results.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && d.Code == "SC9999" && filepath.Clean(d.Path) == filepath.Join("shell-action", "action.yml")
 	}) {
 		t.Fatalf("workflow must use Wasm and composite the provisioned process: requests=%+v diagnostics=%+v", backend.requests, result.Diagnostics)

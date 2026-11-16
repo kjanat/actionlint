@@ -179,8 +179,10 @@ func TestEditorSuppressionTargetsCapturedOrigin(t *testing.T) {
 	for _, available := range []bool{true, false} {
 		captured := reportfixture.CapturedSource(t, workflow, yaml, sourcepos.YAML)
 		result := &report.Analysis{
-			Diagnostics:     []results.Diagnostic{{Path: script, Rule: "plugin-check", Start: sourcepos.Position{Line: 1, Column: 1}}},
-			Sources:         []results.DiagnosticSource{{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, First: 1, Last: 2}}},
+			Diagnostics: []results.PublishedDiagnostic{{
+				Path: script, Rule: "plugin-check", Start: sourcepos.Position{Line: 1, Column: 1},
+				Source: results.DiagnosticSource{Content: raw, RawScript: true, Suppression: &results.SuppressionOrigin{Path: workflow, First: 1, Last: 2}},
+			}},
 			CapturedSources: map[string]report.CapturedSource{script: reportfixture.CapturedSource(t, script, raw, sourcepos.YAML)},
 			Rules:           []rule.Descriptor{{Name: "plugin-check"}},
 		}

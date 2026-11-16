@@ -59,7 +59,7 @@ runs:
 		t.Fatalf("workflow callback changed its immutable declaration or did not run: %d", mutator.visits)
 	}
 	findings := func(result *analysisResult) []diagmodel.Diagnostic {
-		return slices.DeleteFunc(slices.Clone(result.Diagnostics), func(diagnostic diagmodel.Diagnostic) bool {
+		return slices.DeleteFunc(diagmodel.Diagnostics(result.Diagnostics), func(diagnostic diagmodel.Diagnostic) bool {
 			return diagnostic.Rule != "executable-bit"
 		})
 	}

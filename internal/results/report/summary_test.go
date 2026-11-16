@@ -9,7 +9,7 @@ import (
 
 func TestCheckSummaryGroupsCodesWithinRules(t *testing.T) {
 	t.Parallel()
-	summary := NewCheckSummary(Analysis{FileCount: 4, Diagnostics: []results.Diagnostic{
+	summary := NewCheckSummary(Analysis{FileCount: 4, Diagnostics: []results.PublishedDiagnostic{
 		{Path: "b.yml", Rule: "action", Code: "missing-file"},
 		{Path: "a.yml", Rule: "action", Code: "runtime-deprecated"},
 		{Path: "b.yml", Rule: "action", Code: "missing-file"},

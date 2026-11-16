@@ -75,8 +75,8 @@ func TestCheckProjectsPreservesIncompleteChecksAcrossRepositories(t *testing.T) 
 			t.Errorf("missing incomplete workflow-name check for %s: %+v", path, result.IncompleteChecks)
 		}
 	}
-	if result.FileCount != 2 || len(result.Sources) != len(result.Diagnostics) {
-		t.Fatalf("invalid merged report: files=%d findings=%d sources=%d", result.FileCount, len(result.Diagnostics), len(result.Sources))
+	if result.FileCount != 2 {
+		t.Fatalf("invalid merged report: files=%d findings=%d", result.FileCount, len(result.Diagnostics))
 	}
 	inputs := map[string]bool{}
 	for _, path := range result.Inputs {

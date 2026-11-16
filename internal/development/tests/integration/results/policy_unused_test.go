@@ -161,7 +161,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		got := ""
 		for _, finding := range findings {
 			if finding.Rule == "unused-suppression" {
-				got = finding.Canonical(nil).Severity
+				got = finding.Publish(nil).Severity
 			}
 		}
 		if got != tc.want {

@@ -23,7 +23,7 @@ const (
 // with its failure code and attach any partial analysis data separately.
 func AnalysisResult(analysis report.Analysis) report.CheckResult {
 	code := ExitSuccessNoProblem
-	if slices.ContainsFunc(analysis.Diagnostics, func(d results.Diagnostic) bool { return !d.NonBlocking }) {
+	if slices.ContainsFunc(analysis.Diagnostics, func(d results.PublishedDiagnostic) bool { return !d.NonBlocking }) {
 		code = ExitSuccessProblemFound
 	}
 	r := report.FromAnalysis(analysis)

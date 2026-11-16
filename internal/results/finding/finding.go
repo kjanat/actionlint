@@ -76,16 +76,6 @@ func (e *Finding) Foreign(source []byte) bool {
 	return source != nil && e.Source.Content != nil
 }
 
-// sourceFor returns the text the finding's positions refer to: Source.Content
-// when the finding is Foreign, otherwise source. Canonical only reads the
-// snippet line from it.
-func (e *Finding) sourceFor(source []byte) []byte {
-	if e.Foreign(source) {
-		return e.Source.Content
-	}
-	return source
-}
-
 // Compare orders findings by displayed location, message, extent and severity.
 func Compare(lhs, rhs *Finding) int {
 	if c := strings.Compare(lhs.Path, rhs.Path); c != 0 {

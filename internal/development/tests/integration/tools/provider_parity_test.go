@@ -224,13 +224,11 @@ func toolFindings(t *testing.T, result *report.Analysis, err error, recorder *pa
 		out.Error = err.Error()
 	}
 	if result != nil {
-		for i, d := range result.Diagnostics {
+		for _, d := range result.Diagnostics {
 			if d.Rule == "shellcheck" || d.Rule == "ruff" {
-				out.Findings = append(out.Findings, d)
-				if i < len(result.Sources) {
-					evidence := result.Sources[i]
-					out.Sources = append(out.Sources, paritySource{Content: contentHash(evidence.Content), RawScript: evidence.RawScript, Unavailable: evidence.Unavailable.Present()})
-				}
+				out.Findings = append(out.Findings, d.Diagnostic)
+				evidence := d.Source
+				out.Sources = append(out.Sources, paritySource{Content: contentHash(evidence.Content), RawScript: evidence.RawScript, Unavailable: evidence.Unavailable.Present()})
 			}
 		}
 		for alias, captured := range result.CapturedSources {

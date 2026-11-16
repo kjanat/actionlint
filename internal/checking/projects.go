@@ -80,7 +80,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 		}
 		return result, err
 	}
-	combined := &report.Analysis{Inputs: found.Inputs, Diagnostics: []results.Diagnostic{}}
+	combined := &report.Analysis{Inputs: found.Inputs, Diagnostics: []results.PublishedDiagnostic{}}
 	var failures []error
 	for _, batch := range batches {
 		if err := ctx.Err(); err != nil {

@@ -8,11 +8,13 @@ import (
 	"unicode"
 
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/results"
+
 	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 )
 
-func (f RenderedFinding) printPretty(out io.Writer, width int, hyperlinks, colored bool, configPath string) error {
+func printPretty(out io.Writer, f results.PublishedDiagnostic, width int, hyperlinks, colored bool, configPath string) error {
 	var b strings.Builder
 	d := f.Diagnostic
 	severity := d.Severity
@@ -39,10 +41,10 @@ func (f RenderedFinding) printPretty(out io.Writer, width int, hyperlinks, color
 		writeWrapped(&b, "  = ", "This dependency finding does not affect the exit code. Use lint.dependencies to make it count.", width, nil, hyperlinks)
 	}
 	writePrettyLocation(&b, "  --> ", d.Path, d.Start, width, hyperlinks)
-	if line, ok := f.line(); ok && d.Start.Line > 0 {
+	if f.Excerpt.Kind != results.ExcerptAbsent {
 		gutter := fmt.Sprintf("%d | ", d.Start.Line)
 		space := strings.Repeat(" ", len(gutter)-2)
-		line, start, length := f.prettySource(line, width-len(gutter))
+		line, start, length := prettySource(f, width-len(gutter))
 		fmt.Fprintf(&b, "%s|\n%s%s\n", space, gutter, line)
 		if start >= 0 {
 			fmt.Fprintf(&b, "%s| %s%s\n", space, strings.Repeat(" ", start), style.Sprint(strings.Repeat("^", length)))
@@ -201,12 +203,14 @@ func writeWrapped(b *strings.Builder, prefix, text string, width int, style *col
 	}
 }
 
-func (f RenderedFinding) prettySource(line string, width int) (string, int, int) {
+// prettySource expands the excerpt line for display within width cells and
+// returns it with the cell offset and length of the indicated range.
+func prettySource(f results.PublishedDiagnostic, width int) (string, int, int) {
 	var expanded strings.Builder
 	start, end, cells := -1, -1, 0
-	last := f.end(line)
+	line, last := f.Excerpt.Line, f.Excerpt.EndColumn
 	for i, r := range []rune(line) {
-		if i+1 == f.Diagnostic.Start.Column {
+		if i+1 == f.Start.Column {
 			start = cells
 		}
 		if r == '\t' {
@@ -224,7 +228,7 @@ func (f RenderedFinding) prettySource(line string, width int) (string, int, int)
 			end = cells
 		}
 	}
-	if f.Diagnostic.Start.Column == len([]rune(line))+1 {
+	if f.Start.Column == len([]rune(line))+1 {
 		start = cells
 	}
 	if end < start {

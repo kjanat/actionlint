@@ -28,7 +28,7 @@ func TestStructuredRenderRanges(t *testing.T) {
 			t.Parallel()
 			source := []byte("abcde\nfghij\n")
 			finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad range", Start: sourcepos.Position{Line: 1, Column: 2}, End: tc.end}
-			result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []diagmodel.DiagnosticSource{{Content: source}}}
+			result := report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{Content: source})}}
 
 			legacy, err := New("", "{{range .}}{{.Line}}:{{.Column}}-{{.EndColumn}}{{end}}", false, testVersion, nil)
 			if err != nil {
@@ -86,9 +86,9 @@ func TestStructuredRenderRanges(t *testing.T) {
 func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 	t.Parallel()
 	diagnostic := diagmodel.Diagnostic{Path: "reported.sh", Rule: "shellcheck", Message: "unavailable", Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 6}}
-	analysis := report.Analysis{Diagnostics: []diagmodel.Diagnostic{diagnostic}, Sources: []diagmodel.DiagnosticSource{{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: diagmodel.ReportedSourceUnavailable("tool", "reported.sh", false)}}}
-	result := FromAnalysis(analysis)
-	fields := result.Findings[0].TemplateFields()
+	source := diagmodel.DiagnosticSource{Content: []byte("echo long_unverified_token\n"), RawScript: true, Unavailable: diagmodel.ReportedSourceUnavailable("tool", "reported.sh", false)}
+	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(diagnostic, source)}})
+	fields := TemplateFieldsOf(result.Findings[0])
 	if fields.EndColumn != diagnostic.Start.Column || fields.Snippet != "echo long_unverified_token\n     ^" {
 		t.Fatalf("template inferred an unverified token extent: %+v", fields)
 	}
@@ -108,8 +108,8 @@ func TestUnavailablePointNeverInfersRereadTokenExtent(t *testing.T) {
 			t.Fatalf("unavailable point inferred text extent: %q", output.String())
 		}
 	}
-	analysis.Diagnostics[0].End.Column = 10
-	fields = FromAnalysis(analysis).Findings[0].TemplateFields()
+	diagnostic.End.Column = 10
+	fields = TemplateFieldsOf(diagmodel.Publish(diagnostic, source))
 	if fields.EndColumn != 9 || !strings.HasSuffix(fields.Snippet, "     ^~~~") {
 		t.Fatalf("reported extent was lost: %+v", fields)
 	}
@@ -119,7 +119,7 @@ func TestExplicitTextFormatDisablesOneline(t *testing.T) {
 	t.Parallel()
 	source := []byte("on: push\n")
 	finding := diagmodel.Diagnostic{Path: "input.yml", Rule: "expression", Message: "bad text", Start: sourcepos.Position{Line: 1, Column: 1}}
-	result := report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}, Sources: []diagmodel.DiagnosticSource{{Content: source}}}
+	result := report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{Content: source})}}
 
 	textRenderer, err := New(FormatText, "", true, testVersion, nil)
 	if err != nil {
@@ -155,13 +155,13 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	for _, format := range []Format{"", FormatOneline} {
 		t.Run(string(format), func(t *testing.T) {
 			t.Parallel()
-			result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
 			renderer, err := New(format, "", true, testVersion, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
+			var result RenderedReport
 			for _, source := range [][]byte{nil, []byte("on: push\n")} {
-				result.Findings[0].Source.Content = source
+				result = FromAnalysis(report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{Content: source})}})
 				var out bytes.Buffer
 				if err := renderer.Render(&out, result); err != nil {
 					t.Fatal(err)
@@ -170,7 +170,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 					t.Fatalf("one-line output included captured source: %q", out.String())
 				}
 			}
-			if result.Findings[0].TemplateFields().Snippet == "" {
+			if TemplateFieldsOf(result.Findings[0]).Snippet == "" {
 				t.Fatal("rendering discarded the original finding's snippet")
 			}
 		})
@@ -179,7 +179,7 @@ func TestOnelineOmitsCapturedSnippet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.Diagnostic{finding}})
+	result := FromAnalysis(report.Analysis{Diagnostics: []diagmodel.PublishedDiagnostic{diagmodel.Publish(finding, diagmodel.DiagnosticSource{})}})
 	var out bytes.Buffer
 	if err := template.Render(&out, result); err != nil {
 		t.Fatal(err)

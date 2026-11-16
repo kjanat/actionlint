@@ -63,7 +63,7 @@ jobs:
 				if err != nil {
 					t.Fatal(err)
 				}
-				warned := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+				warned := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 					return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata && d.Code == "SC2086"
 				})
 				if warned == tc.known {

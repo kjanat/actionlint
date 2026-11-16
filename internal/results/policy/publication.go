@@ -29,8 +29,7 @@ type Batch struct {
 
 // Publication contains the retained findings in batch order and their public projections.
 type Publication struct {
-	Diagnostics      []results.Diagnostic
-	Sources          []results.DiagnosticSource
+	Diagnostics      []results.PublishedDiagnostic
 	Findings         [][]*findingmodel.Finding
 	IncompleteChecks []report.IncompleteCheck
 }
@@ -116,8 +115,7 @@ func Publish(batches []Batch, incomplete []report.IncompleteCheck) (Publication,
 	}
 	usage.discardUnproven(files, incomplete)
 	addUnusedSuppressionFixes(files)
-	diagnostics, sources := retain(files, authority)
-	result := Publication{Diagnostics: diagnostics, Sources: sources, Findings: make([][]*findingmodel.Finding, len(files)), IncompleteChecks: incomplete}
+	result := Publication{Diagnostics: retain(files, authority), Findings: make([][]*findingmodel.Finding, len(files)), IncompleteChecks: incomplete}
 	for i, file := range files {
 		result.Findings[i] = file.Findings
 	}

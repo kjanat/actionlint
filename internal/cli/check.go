@@ -25,6 +25,7 @@ import (
 	render "actionlint.kjanat.dev/v2/internal/output"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
@@ -172,7 +173,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 			return 0, commandargs.UsageError{Cause: errors.New("fix requires files; stdin is read-only")}
 		}
 		reader := fixTargetReader(ctx, result.Inputs)
-		plan, planErr := edits.Build(ctx, result.Diagnostics, reader, c.IncludeSuggestedFixes)
+		plan, planErr := edits.Build(ctx, results.Diagnostics(result.Diagnostics), reader, c.IncludeSuggestedFixes)
 		if planErr != nil {
 			return 0, planErr
 		}

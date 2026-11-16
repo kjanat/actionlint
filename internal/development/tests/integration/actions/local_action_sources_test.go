@@ -69,13 +69,13 @@ runs:
 `)
 	result := testutil.Composite(t, root, "- uses: ./generated\n  id: generated\n  with:\n    unexpected: value\n- run: echo '${{ steps.generated.outputs.unknown }}'", checking.Options{})
 	for _, want := range []struct{ rule, message string }{{"action", "token"}, {"action", "unexpected"}, {"expression-reference", "unknown"}} {
-		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 			return d.Rule == want.rule && strings.Contains(d.Message, want.message)
 		}) {
 			t.Fatalf("missing %s/%s: %+v", want.rule, want.message, result.Diagnostics)
 		}
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 		return d.Rule == "action" && filepath.ToSlash(d.Path) == "source/action.yml" && d.Start.Line == 13
 	}) {
 		t.Fatalf("lost source diagnostic: %+v", result.Diagnostics)
@@ -135,7 +135,7 @@ func TestMissingLocalActionRuntimeCheckout(t *testing.T) {
 			t.Parallel()
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			result := testutil.Composite(t, root, tc.checkout+"\n- uses: ./private-action", checking.Options{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "missing-local-action" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "missing-local-action" })
 			if found != tc.missing {
 				t.Fatalf("missing=%t, expected=%t: %+v", found, tc.missing, result.Diagnostics)
 			}
@@ -199,11 +199,11 @@ func TestInsertedCheckoutLocation(t *testing.T) {
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
 			result := testutil.Composite(t, root, "- uses: actions/checkout@v6\n  with: "+tc.with+"\n- uses: ./vendor/missing\n- run: ./vendor/bad.sh", checking.Options{})
 			for _, rule := range []string{"missing-local-action", "executable-bit"} {
-				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule })
+				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == rule })
 				// The unknown local action invalidates executable state; test that rule independently.
 				if rule == "executable-bit" {
 					script := testutil.Composite(t, root, "- uses: actions/checkout@v6\n  with: "+tc.with+"\n- run: ./vendor/bad.sh\n  shell: bash\n  working-directory: .", checking.Options{})
-					found = slices.ContainsFunc(script.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule })
+					found = slices.ContainsFunc(script.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == rule })
 				}
 				if found != tc.known {
 					t.Fatalf("%s finding=%v, want=%v: %+v", rule, found, tc.known, result.Diagnostics)
@@ -233,7 +233,7 @@ func TestConstantEnvironmentInsertionCheckout(t *testing.T) {
 				{"executable-bit", "- run: ./bad.sh\n  shell: bash\n  working-directory: ."},
 			} {
 				result := testutil.Composite(t, root, checkout+tcRule.step, checking.Options{})
-				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == tcRule.rule })
+				found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == tcRule.rule })
 				if found != tc.known {
 					t.Fatalf("%s finding=%v, want=%v: %+v", tcRule.rule, found, tc.known, result.Diagnostics)
 				}

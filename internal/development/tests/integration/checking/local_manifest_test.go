@@ -70,7 +70,7 @@ func TestLocalManifestRunsBinaryWithJQ(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d results.Diagnostic) bool { return d.Rule != "local-tool" })
+	findings := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d results.PublishedDiagnostic) bool { return d.Rule != "local-tool" })
 	if len(findings) != 1 {
 		t.Fatalf("findings: %+v", result.Diagnostics)
 	}

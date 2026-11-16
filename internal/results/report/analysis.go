@@ -16,14 +16,13 @@ import (
 
 // Analysis is the completed or partial result of an analysis session. It contains
 // values only: no live rules, parser nodes, process handles, or rendering policy.
-// Sources aligns with Diagnostics and contains the analyzed text for each finding.
+// Each published diagnostic carries the analyzed text it was reported for.
 type Analysis struct {
-	IncompleteChecks []IncompleteCheck          `merge:"append"`
-	ActionMetadata   []actions.Coverage         `merge:"append"`
-	RunnerResults    []runner.Report            `merge:"append"`
-	FileCount        int                        `merge:"sum"`
-	Diagnostics      []results.Diagnostic       `merge:"append"`
-	Sources          []results.DiagnosticSource `merge:"append"`
+	IncompleteChecks []IncompleteCheck             `merge:"append"`
+	ActionMetadata   []actions.Coverage            `merge:"append"`
+	RunnerResults    []runner.Report               `merge:"append"`
+	FileCount        int                           `merge:"sum"`
+	Diagnostics      []results.PublishedDiagnostic `merge:"append"`
 	// CapturedSources projects only admitted rows after capture teardown joins.
 	// Keys are captured aliases; values and byte slices belong to this result.
 	CapturedSources map[string]CapturedSource `merge:"captured"`

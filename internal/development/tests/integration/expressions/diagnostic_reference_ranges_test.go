@@ -37,7 +37,7 @@ func TestWorkflowIndexedReferenceDiagnosticRanges(t *testing.T) {
 			for _, d := range result.Diagnostics {
 				if strings.HasPrefix(d.Message, "property ") {
 					found = true
-					assertDiagnosticOffsetRange(t, src, d, start, end)
+					assertDiagnosticOffsetRange(t, src, d.Diagnostic, start, end)
 				}
 			}
 			if !found {
@@ -61,7 +61,7 @@ func TestFunctionDiagnosticRangeIgnoresResultAccess(t *testing.T) {
 			for _, d := range result.Diagnostics {
 				if strings.Contains(d.Message, "format string") || strings.Contains(d.Message, "undefined function") || strings.Contains(d.Message, "number of arguments") {
 					found = true
-					assertDiagnosticOffsetRange(t, src, d, start, start+strings.IndexByte(call, '('))
+					assertDiagnosticOffsetRange(t, src, d.Diagnostic, start, start+strings.IndexByte(call, '('))
 				}
 			}
 			if !found {
@@ -110,7 +110,7 @@ func TestCompositeDeprecatedCommands(t *testing.T) {
 				if count == 1 {
 					start += len("set-output") + strings.Index(body[start+len("set-output"):], "set-output")
 				}
-				assertDiagnosticOffsetRange(t, body, d, start, start+len("set-output"))
+				assertDiagnosticOffsetRange(t, body, d.Diagnostic, start, start+len("set-output"))
 				count++
 			}
 			want := 2
@@ -153,7 +153,7 @@ func TestDeprecatedCommandMappedOccurrences(t *testing.T) {
 		var findings []diagmodel.Diagnostic
 		for _, d := range result.Diagnostics {
 			if d.Rule == "deprecated-commands" {
-				findings = append(findings, d)
+				findings = append(findings, d.Diagnostic)
 			}
 		}
 		if len(findings) != 2 {

@@ -35,7 +35,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 		if err != nil || result == nil || result.FileCount != 1 {
 			t.Fatalf("relative working directory dropped workflow: %+v, %v", result, err)
 		}
-		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
 			t.Fatalf("relative working directory missed override: %+v", result.Diagnostics)
 		}
 		if !slices.Contains(result.Inputs, workflow) {
@@ -99,7 +99,7 @@ func TestExternalOverridePlanMatchesExecution(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ShellCheck execution failed, plan=%+v, error=%v", needed, err)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" })
 			if found != tc.enabled {
 				t.Fatalf("ShellCheck execution disagrees with plan: %+v", result.Diagnostics)
 			}

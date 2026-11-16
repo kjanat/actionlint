@@ -81,7 +81,7 @@ const ociProviderInput = "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\
 
 func ociFindings(t *testing.T, result *report.Analysis) []results.Diagnostic {
 	t.Helper()
-	return slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d results.Diagnostic) bool { return d.Rule != "oci-tool" })
+	return slices.DeleteFunc(results.Diagnostics(result.Diagnostics), func(d results.Diagnostic) bool { return d.Rule != "oci-tool" })
 }
 
 // A provider pulled from an OCI registry runs its stored executable through

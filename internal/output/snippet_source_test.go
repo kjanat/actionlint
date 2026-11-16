@@ -22,12 +22,12 @@ func TestSuppliedSourceDeterminesSnippet(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			f := RenderedFindingOf(results.Diagnostic{Start: sourcepos.Position{Line: tc.line, Column: 1}, End: sourcepos.Position{Line: tc.line, Column: 2}, Snippet: "captured"}, tc.source)
-			if got := f.TemplateFields().Snippet; got != tc.want {
+			f := publishedFinding(results.Diagnostic{Start: sourcepos.Position{Line: tc.line, Column: 1}, End: sourcepos.Position{Line: tc.line, Column: 2}, Snippet: "captured"}, tc.source)
+			if got := TemplateFieldsOf(f).Snippet; got != tc.want {
 				t.Fatalf("snippet=%q, want %q", got, tc.want)
 			}
 			var out strings.Builder
-			f.PrettyPrint(&out)
+			PrettyPrint(&out, f)
 			if tc.source != nil && strings.Contains(out.String(), "captured") {
 				t.Fatalf("rendered stale snippet: %q", out.String())
 			}

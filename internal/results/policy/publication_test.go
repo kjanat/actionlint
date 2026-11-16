@@ -56,14 +56,14 @@ func TestPublicationOwnsEntryBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Sources) != 1 {
+	if len(result.Diagnostics) != 1 {
 		t.Fatalf("missing source: %+v", result)
 	}
 	content[0] = 'X'
-	if string(result.Sources[0].Content) != "entry token\n" {
+	if string(result.Diagnostics[0].Source.Content) != "entry token\n" {
 		t.Fatal("publication retained caller-owned entry bytes")
 	}
-	result.Sources[0].Content[1] = 'Y'
+	result.Diagnostics[0].Source.Content[1] = 'Y'
 	if content[1] != 'n' {
 		t.Fatal("published source mutation escaped to the caller")
 	}
@@ -98,20 +98,20 @@ func TestPublicationSharesOwnedForeignSourceAcrossOneHundredFindings(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Sources) != len(input) {
-		t.Fatalf("retained %d findings, want %d", len(result.Sources), len(input))
+	if len(result.Diagnostics) != len(input) {
+		t.Fatalf("retained %d findings, want %d", len(result.Diagnostics), len(input))
 	}
-	first := &result.Sources[0].Content[0]
+	first := &result.Diagnostics[0].Source.Content[0]
 	if first == &content[0] {
 		t.Fatal("publication shares caller-owned bytes")
 	}
-	for _, reported := range result.Sources {
-		if len(reported.Content) != 65536 || &reported.Content[0] != first {
+	for _, reported := range result.Diagnostics {
+		if len(reported.Source.Content) != 65536 || &reported.Source.Content[0] != first {
 			t.Fatal("shared source was copied separately for each finding")
 		}
 	}
 	content[0] = 'X'
-	if result.Sources[0].Content[0] != 'e' {
+	if result.Diagnostics[0].Source.Content[0] != 'e' {
 		t.Fatal("caller mutation changed the published source")
 	}
 }

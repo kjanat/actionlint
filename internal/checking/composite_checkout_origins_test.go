@@ -142,7 +142,7 @@ jobs:
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested action not inspected: %v", result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata
 			})
 			if found != tc.want {
@@ -196,7 +196,7 @@ jobs:
 			if slices.Contains(result.Inputs, metadata) != (runner == "windows-latest" || runner == "macos-latest") {
 				t.Fatalf("wrong checkout metadata selection: %v", result.Inputs)
 			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 			}) {
 				t.Fatalf("Windows checkout prefix lost source resolution: %+v", result.Diagnostics)
@@ -245,7 +245,7 @@ jobs:
 				if !slices.Contains(result.Inputs, metadata) {
 					t.Fatalf("canonical metadata not inspected: %v", result.Inputs)
 				}
-				if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+				if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 					return d.Rule == "action" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, "shell")
 				}) {
 					t.Fatalf("missing composite diagnostic: %+v", result.Diagnostics)
@@ -310,7 +310,7 @@ jobs:
 				var findings []diagmodel.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata {
-						findings = append(findings, d)
+						findings = append(findings, d.Diagnostic)
 					}
 				}
 				if len(findings) != 1 || findings[0].Start.Line != 12 || findings[0].Code != "SC2086" {

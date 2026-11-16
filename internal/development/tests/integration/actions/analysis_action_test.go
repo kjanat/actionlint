@@ -86,7 +86,7 @@ func TestStandaloneActionMetadata(t *testing.T) {
 				}
 				return
 			}
-			matches := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d diagmodel.Diagnostic) bool { return !strings.Contains(d.Message, tc.message) })
+			matches := slices.DeleteFunc(slices.Clone(result.Diagnostics), func(d diagmodel.PublishedDiagnostic) bool { return !strings.Contains(d.Message, tc.message) })
 			if len(matches) != 1 || matches[0].Start.Line != tc.line || matches[0].Path != "action.yml" {
 				t.Fatalf("want %q at action.yml:%d; got %+v (all: %+v)", tc.message, tc.line, matches, result.Diagnostics)
 			}
@@ -229,7 +229,7 @@ func TestStandaloneActionScriptTools(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == tool && d.Start.Line == 6 && d.Path == "action.yml"
 			}) {
 				t.Fatalf("missing %s at action.yml:6: %+v", tool, result.Diagnostics)
