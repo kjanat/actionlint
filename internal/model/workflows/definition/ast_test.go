@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
@@ -91,7 +92,7 @@ jobs:
 	if job.If.Value != "success()" {
 		t.Fatalf("condition = %q; want existing null normalization", job.If.Value)
 	}
-	if got := job.If.SourceScalar; !got.HasSource || got.Kind != workflowlang.SourceScalarScalar || got.Tag != workflowlang.YamlTagNull || got.Value != "null" || got.Pos.Line != 5 {
+	if got := job.If.SourceScalar; !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != workflowlang.YamlTagNull || got.Value != "null" || got.Pos.Line != 5 {
 		t.Fatalf("condition source = %#v; want original YAML null", got)
 	}
 	if _, present := job.Env.Vars["missing"]; present {
@@ -99,7 +100,7 @@ jobs:
 	}
 	for name, wantTag := range map[string]string{"literal-null": workflowlang.YamlTagNull, "blank": workflowlang.YamlTagNull, "empty": workflowlang.YamlTagStr} {
 		got := job.Env.Vars[name].Value.SourceScalar
-		if !got.HasSource || got.Kind != workflowlang.SourceScalarScalar || got.Tag != wantTag || name == "blank" && got.Value != "" {
+		if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != wantTag || name == "blank" && got.Value != "" {
 			t.Errorf("environment %s source = %#v; want scalar tag %s", name, got, wantTag)
 		}
 	}
@@ -107,7 +108,7 @@ jobs:
 	action := step.Exec.(*workflowlang.ExecAction)
 	for name, wantTag := range map[string]string{"literal-null": workflowlang.YamlTagNull, "blank": workflowlang.YamlTagNull, "empty": workflowlang.YamlTagStr} {
 		got := action.Inputs[name].Value.SourceScalar
-		if !got.HasSource || got.Kind != workflowlang.SourceScalarScalar || got.Tag != wantTag || name == "blank" && got.Value != "" {
+		if !got.HasSource || got.Kind != codec.ScalarNode || got.Tag != wantTag || name == "blank" && got.Value != "" {
 			t.Errorf("action input %s source = %#v; want scalar tag %s", name, got, wantTag)
 		}
 	}

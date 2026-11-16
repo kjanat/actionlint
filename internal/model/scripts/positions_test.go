@@ -40,3 +40,29 @@ func TestDeclarationPosition(t *testing.T) {
 		}
 	}
 }
+
+func TestDeclarationOffsetPosition(t *testing.T) {
+	t.Parallel()
+	script := scriptmodel.Declaration{Text: "echo é\nx\n", Spans: []scriptmodel.Span{
+		{Line: 1, Start: 1, End: 7, Document: sourcepos.Position{Line: 3, Column: 9}},
+		{Line: 2, Start: 1, End: 2, Document: sourcepos.Position{Line: 4, Column: 9}},
+	}}
+	for _, tc := range []struct {
+		offset    int
+		exclusive bool
+		want      sourcepos.Position
+		ok        bool
+	}{
+		{0, false, sourcepos.Position{Line: 3, Column: 9}, true},
+		{5, false, sourcepos.Position{Line: 3, Column: 14}, true},
+		{7, true, sourcepos.Position{Line: 3, Column: 15}, true},
+		{8, false, sourcepos.Position{Line: 4, Column: 9}, true},
+		{9, true, sourcepos.Position{Line: 4, Column: 10}, true},
+		{10, false, sourcepos.Position{}, false},
+	} {
+		got, ok := script.OffsetPosition(tc.offset, tc.exclusive)
+		if ok != tc.ok || got != tc.want {
+			t.Errorf("OffsetPosition(%d, %v) = %+v, %v; want %+v, %v", tc.offset, tc.exclusive, got, ok, tc.want, tc.ok)
+		}
+	}
+}

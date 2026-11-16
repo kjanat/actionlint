@@ -3,7 +3,7 @@ package actions
 import (
 	"slices"
 
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 )
@@ -17,16 +17,6 @@ const (
 	MetadataInvalid     MetadataState = "invalid"
 )
 
-// ManifestProblem locates a problem in the selected manifest.
-// Selection identifies the bytes that were inspected.
-type ManifestProblem struct {
-	Code    string             `json:"code,omitempty"`
-	Message string             `json:"message"`
-	Path    string             `json:"path"`
-	Start   sourcepos.Position `json:"start"`
-	End     sourcepos.Position `json:"end"`
-}
-
 // MetadataAvailability retains why metadata-dependent checks could or could not
 // run. Its zero value is unavailable/not-fetched; unavailable is never invalid.
 type MetadataAvailability struct {
@@ -34,7 +24,7 @@ type MetadataAvailability struct {
 	selection Selection
 	filename  string
 	missing   availability.Unavailability
-	problems  []ManifestProblem
+	problems  []actionmeta.MetadataProblem
 }
 
 func AvailableMetadata(manifest Manifest) MetadataAvailability {
@@ -44,7 +34,7 @@ func AvailableMetadata(manifest Manifest) MetadataAvailability {
 	return MetadataAvailability{state: MetadataAvailable, selection: manifest.Selection(), filename: manifest.Filename()}
 }
 
-func InvalidMetadata(manifest Manifest, problems []ManifestProblem) MetadataAvailability {
+func InvalidMetadata(manifest Manifest, problems []actionmeta.MetadataProblem) MetadataAvailability {
 	if !manifest.Available() || len(problems) == 0 {
 		return MissingMetadata(availability.Failed())
 	}
@@ -68,8 +58,11 @@ func (m MetadataAvailability) Reason() availability.Reason {
 	}
 	return m.missing.Reason()
 }
-func (m MetadataAvailability) Selection() Selection        { return m.selection }
-func (m MetadataAvailability) Problems() []ManifestProblem { return slices.Clone(m.problems) }
+func (m MetadataAvailability) Selection() Selection { return m.selection }
+func (m MetadataAvailability) Problems() []actionmeta.MetadataProblem {
+	return slices.Clone(m.problems)
+}
+
 func (m MetadataAvailability) ManifestPath() string {
 	if m.filename == "" {
 		return ""
@@ -90,19 +83,19 @@ type Coverage struct {
 // MetadataReport is the detached JSON/API projection of one coverage outcome.
 // When metadata is unavailable, Reason explains why and selection fields are empty.
 type MetadataReport struct {
-	Reference      string              `json:"reference"`
-	State          MetadataState       `json:"state"`
-	Reason         availability.Reason `json:"reason,omitempty"`
-	Host           string              `json:"host,omitempty"`
-	Repository     string              `json:"repository,omitempty"`
-	RepositoryID   repofacts.ID        `json:"repository_id,omitzero"`
-	Commit         string              `json:"commit,omitempty"`
-	Directory      string              `json:"directory,omitempty"`
-	ObservedAt     string              `json:"observed_at,omitempty"`
-	Manifest       string              `json:"manifest,omitempty"`
-	SelectedObject string              `json:"selected_object,omitempty"`
-	SelectedRef    string              `json:"selected_ref,omitempty"`
-	Problems       []ManifestProblem   `json:"problems,omitempty"`
+	Reference      string                       `json:"reference"`
+	State          MetadataState                `json:"state"`
+	Reason         availability.Reason          `json:"reason,omitempty"`
+	Host           string                       `json:"host,omitempty"`
+	Repository     string                       `json:"repository,omitempty"`
+	RepositoryID   repofacts.ID                 `json:"repository_id,omitzero"`
+	Commit         string                       `json:"commit,omitempty"`
+	Directory      string                       `json:"directory,omitempty"`
+	ObservedAt     string                       `json:"observed_at,omitempty"`
+	Manifest       string                       `json:"manifest,omitempty"`
+	SelectedObject string                       `json:"selected_object,omitempty"`
+	SelectedRef    string                       `json:"selected_ref,omitempty"`
+	Problems       []actionmeta.MetadataProblem `json:"problems,omitempty"`
 }
 
 func (c Coverage) Report() MetadataReport {

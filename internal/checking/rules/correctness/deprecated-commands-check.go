@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
-	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
@@ -31,8 +29,8 @@ func (DeprecatedCommandsChecker) CheckDocument(ctx context.Context, input checki
 			return findings, err
 		}
 		for _, command := range DeprecatedCommands(script.Text) {
-			start, startOK := script.Position(scriptTextPosition(script.Text, command.Start, false))
-			end, endOK := script.Position(scriptTextPosition(script.Text, command.End, true))
+			start, startOK := script.OffsetPosition(command.Start, false)
+			end, endOK := script.OffsetPosition(command.End, true)
 			if !startOK || !endOK {
 				start, end = script.Start, sourcepos.Position{}
 			}
@@ -46,11 +44,4 @@ func (DeprecatedCommandsChecker) CheckDocument(ctx context.Context, input checki
 		}
 	}
 	return findings, nil
-}
-
-func scriptTextPosition(text string, offset int, exclusive bool) (int, int, bool) {
-	prefix := text[:offset]
-	line := strings.Count(prefix, "\n") + 1
-	column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
-	return line, column, exclusive
 }

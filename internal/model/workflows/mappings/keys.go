@@ -2,6 +2,8 @@ package mappings
 
 import "actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
+// KeyState distinguishes a statically known mapping key from one whose name
+// depends on runtime values and from one that can never name a key.
 type KeyState uint8
 
 const (
@@ -9,6 +11,18 @@ const (
 	KnownKey
 	InvalidKey
 )
+
+// String returns the key state's name in the plugin contract.
+func (s KeyState) String() string {
+	switch s {
+	case KnownKey:
+		return "known"
+	case InvalidKey:
+		return "invalid"
+	default:
+		return "unknown"
+	}
+}
 
 // ResolveKey applies workflow mapping key coercion without reparsing evaluated data.
 func ResolveKey(source value.Value) (string, KeyState) {

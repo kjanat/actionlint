@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
-	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	rule "actionlint.kjanat.dev/v2/internal/checking/rules"
@@ -60,8 +58,8 @@ func (InvalidOutputFileChecker) CheckDocument(ctx context.Context, input checkin
 		if problem == "" {
 			continue
 		}
-		start, startOK := script.Position(outputFilePosition(script.Text, file.Start, false))
-		end, endOK := script.Position(outputFilePosition(script.Text, file.End, true))
+		start, startOK := script.OffsetPosition(file.Start, false)
+		end, endOK := script.OffsetPosition(file.End, true)
 		if !startOK || !endOK {
 			continue
 		}
@@ -75,9 +73,4 @@ func (InvalidOutputFileChecker) CheckDocument(ctx context.Context, input checkin
 		})
 	}
 	return diagnostics, nil
-}
-
-func outputFilePosition(text string, offset int, exclusive bool) (int, int, bool) {
-	prefix := text[:offset]
-	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1, exclusive
 }

@@ -162,7 +162,7 @@ func TestInvalidMetadataPreservesDiagnosticCodes(t *testing.T) {
 			t.Fatal(err)
 		}
 		problems := result.Availability().Problems()
-		if len(problems) != 1 || problems[0].Code != tc.code {
+		if len(problems) != 1 || string(problems[0].Code) != tc.code {
 			t.Fatalf("manifest problem codes: %+v, want %s", problems, tc.code)
 		}
 	}

@@ -111,7 +111,7 @@ func (rule *ruleAction) VisitStep(n workflowdecl.Step) error {
 	if inspection.Availability().State() == actions.MetadataInvalid {
 		for _, problem := range inspection.Availability().Problems() {
 			finding := findingmodel.Errorf(reporting.SourcePosition(e.Uses), "action", "remote action %q has invalid metadata at %s:%d:%d: %s", spec, problem.Path, problem.Start.Line, problem.Start.Column, problem.Message)
-			finding.Code = problem.Code
+			finding.Code = string(problem.Code)
 			if finding.Code == "" {
 				finding.Code = string(actionmeta.CodeMetadataParse)
 			}

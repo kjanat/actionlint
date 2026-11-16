@@ -86,16 +86,8 @@ func (d *declarationSet) dependency(value *workflowlang.String, kind string, ref
 func (d *declarationSet) mapping(scope string, owner sourcepos.Reference, values mapping.Mapping) {
 	record := workflowfacts.Mapping{Scope: scope, Reference: owner, Complete: values.Complete()}
 	for declaration := range values.Declarations() {
-		state := workflowfacts.UnknownKey
-		switch declaration.State {
-		case mapping.KnownKey:
-			state = workflowfacts.KnownKey
-		case mapping.InvalidKey:
-			state = workflowfacts.InvalidKey
-		case mapping.UnknownKey:
-		}
 		record.Entries = append(record.Entries, workflowfacts.Entry{
-			Name: declaration.Name, State: state, Source: declaration.Source,
+			Name: declaration.Name, State: declaration.State, Source: declaration.Source,
 			Evaluated: declaration.Evaluated, Start: declaration.Origin.Span.Start,
 		})
 	}
