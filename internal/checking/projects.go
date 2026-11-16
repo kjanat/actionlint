@@ -18,7 +18,7 @@ import (
 // CheckProjects discovers inputs once, then loads each repository's plugins in
 // its own analysis session. Reports share output destinations, never runtimes or
 // configuration. Explicit --config/--plugin selections still apply to every batch.
-func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.Selection) (*Result, error) {
+func CheckProjects(ctx context.Context, options Options, input inputmodel.Request, selection pluginselection.Selection) (*report.Analysis, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 			selection.DefaultTools = nil
 		}
 	}
-	check := func(input inputmodel.Request) (*Result, error) {
+	check := func(input inputmodel.Request) (*report.Analysis, error) {
 		selection, options := selection, options
 		// Plugin selection reads configuration from disk. The session shares
 		// those files only when it would read the same bytes.
@@ -80,7 +80,7 @@ func CheckProjects(ctx context.Context, options Options, input inputmodel.Reques
 		}
 		return result, err
 	}
-	combined := &Result{Inputs: found.Inputs, Diagnostics: []results.Diagnostic{}}
+	combined := &report.Analysis{Inputs: found.Inputs, Diagnostics: []results.Diagnostic{}}
 	var failures []error
 	for _, batch := range batches {
 		if err := ctx.Err(); err != nil {

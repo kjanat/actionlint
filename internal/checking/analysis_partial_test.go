@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -85,7 +86,7 @@ permissions: {}
 				if failingFirst {
 					slices.Reverse(sources)
 				}
-				var result *checking.Result
+				var result *report.Analysis
 				var analysisErr error
 				if adapter == "sources" {
 					result, analysisErr = checking.Analyze(t.Context(), checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: options("shellcheck")}})}, sources)

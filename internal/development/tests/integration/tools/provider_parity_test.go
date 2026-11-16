@@ -28,6 +28,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 	gocmp "github.com/google/go-cmp/cmp"
 )
 
@@ -215,7 +216,7 @@ func compareParity(t *testing.T, want, got parityDiagnostics) {
 // toolFindings selects a result's tool findings, their source evidence, the
 // runners' findings and the captured sources in a stable order and replaces
 // the machine's directories, named by roots, with placeholders.
-func toolFindings(t *testing.T, result *checking.Result, err error, recorder *parityRecorder, roots map[string]string) parityDiagnostics {
+func toolFindings(t *testing.T, result *report.Analysis, err error, recorder *parityRecorder, roots map[string]string) parityDiagnostics {
 	t.Helper()
 	var out parityDiagnostics
 	if err != nil {

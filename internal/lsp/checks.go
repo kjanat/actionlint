@@ -12,6 +12,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 // LanguageServer shares application selection, configuration and plugin loading
@@ -46,7 +47,7 @@ func (s *editorPluginHost) analyze(ctx context.Context, documents map[string]Doc
 }
 
 func analyzeDocuments(ctx context.Context, options checking.Options, documents map[string]Document) (Analysis, error) {
-	return analyzeEditorDocuments(ctx, options, documents, func(ctx context.Context, options checking.Options, sources []workspace.InputFile) (*checking.Result, error) {
+	return analyzeEditorDocuments(ctx, options, documents, func(ctx context.Context, options checking.Options, sources []workspace.InputFile) (*report.Analysis, error) {
 		paths := make([]string, 0, len(sources))
 		for _, source := range sources {
 			paths = append(paths, source.Path)
@@ -62,7 +63,7 @@ func AnalyzeEditorDocuments(ctx context.Context, options checking.Options, docum
 	return analyzeEditorDocuments(ctx, options, documents, checking.Analyze)
 }
 
-func analyzeEditorDocuments(ctx context.Context, options checking.Options, documents map[string]Document, check func(context.Context, checking.Options, []workspace.InputFile) (*checking.Result, error)) (Analysis, error) {
+func analyzeEditorDocuments(ctx context.Context, options checking.Options, documents map[string]Document, check func(context.Context, checking.Options, []workspace.InputFile) (*report.Analysis, error)) (Analysis, error) {
 	directory, err := filepath.Abs(options.WorkingDir)
 	if err != nil {
 		return Analysis{}, err

@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
-func analysisForRender(t *testing.T, prefix string) *checking.Result {
+func analysisForRender(t *testing.T, prefix string) *report.Analysis {
 	t.Helper()
 	source := prefix + `on: push
 jobs:
@@ -23,7 +24,7 @@ permissions: {}
 	return analysisForRenderSource(t, source)
 }
 
-func analysisForRenderSource(t *testing.T, source string) *checking.Result {
+func analysisForRenderSource(t *testing.T, source string) *report.Analysis {
 	t.Helper()
 	config, err := checking.ConfigurationRules().Parse([]byte("repository: {runners: []}\n"))
 	if err != nil {
@@ -189,7 +190,7 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 
 func TestRenderAnalysisEmptyAndUnknownFormat(t *testing.T) {
 	t.Parallel()
-	analysis := &checking.Result{}
+	analysis := &report.Analysis{}
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
 		if err != nil || got != "" {

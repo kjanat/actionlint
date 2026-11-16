@@ -153,7 +153,7 @@ func TestEditorAdapterHonorsAlignedCoordinateEvidence(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, "workflow.yml")
 			captured := reportfixture.CapturedSource(t, path, test.content, test.model)
-			result := &checking.Result{Diagnostics: []results.Diagnostic{{Path: path, Rule: "evidence", Start: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []results.DiagnosticSource{{Content: test.content, RawScript: test.raw, Unavailable: reportedSourceIf(test.unavailable)}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &report.Analysis{Diagnostics: []results.Diagnostic{{Path: path, Rule: "evidence", Start: sourcepos.Position{Line: 1, Column: 2}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []results.DiagnosticSource{{Content: test.content, RawScript: test.raw, Unavailable: reportedSourceIf(test.unavailable)}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			analysis, err := FromReport(result, root, map[string]Document{path: {Text: string(test.content)}})
 			if test.admitted {
 				if err != nil || len(analysis.Diagnostics) != 1 {

@@ -17,6 +17,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	pluginexec "actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type countedPluginBackend struct{ calls atomic.Int32 }
@@ -181,7 +182,7 @@ func TestManagedDocumentPluginRetainsConfiguredInputRoutes(t *testing.T) {
 				}}
 				sources := pluginselection.Sources{Paths: []string{plugin}}
 				input := inputmodel.Request{Kind: inputmodel.Files, Paths: []string{filepath.Join(root, "workflow.yml")}}
-				var result *checking.Result
+				var result *report.Analysis
 				var err error
 				if entrypoint == "editor" {
 					session, openErr := newEditorSources(t.Context(), options, sources)

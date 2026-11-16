@@ -11,6 +11,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
@@ -196,7 +197,7 @@ func Main(m *testing.M) {
 }
 
 // Diagnostics projects completed report values without exposing traversal state.
-func Diagnostics(result *checking.Result, err error) ([]results.Diagnostic, error) {
+func Diagnostics(result *report.Analysis, err error) ([]results.Diagnostic, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +228,7 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 }
 
 // Composite writes a caller fixture and checks it through application input selection.
-func Composite(t *testing.T, root, steps string, options checking.Options) *checking.Result {
+func Composite(t *testing.T, root, steps string, options checking.Options) *report.Analysis {
 	t.Helper()
 	workflow := fixturefiles.Write(t, root, ".github/workflows/composite.yml", `on: push
 jobs:

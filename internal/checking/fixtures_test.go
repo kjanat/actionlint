@@ -14,6 +14,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	gitclient "actionlint.kjanat.dev/v2/internal/integrations/git"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/support/tempdir"
@@ -142,7 +143,7 @@ func assertShellcheckSourceFile(t *testing.T, got, want string) {
 	}
 }
 
-func compositeAnalysis(t *testing.T, root, steps string, options checking.Options) *checking.Result {
+func compositeAnalysis(t *testing.T, root, steps string, options checking.Options) *report.Analysis {
 	t.Helper()
 	workflow := writeFixture(t, root, workflowFixturePath(t, "composite"), `on: push
 jobs:

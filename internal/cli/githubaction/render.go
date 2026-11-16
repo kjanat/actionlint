@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
 	render "actionlint.kjanat.dev/v2/internal/output"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func commandEscape(value string) string {
@@ -37,7 +37,7 @@ const actionMarkdown = `{{range .}}### {{.Filepath}}:{{.Line}}:{{.Column}} ({{.K
 const actionGitHub = `{{range .}}::{{if eq .Severity "info"}}notice{{else if eq .Severity "warning"}}warning{{else}}error{{end}} file={{escapeProperty .Filepath}},line={{.Line}},col={{.Column}},endColumn={{.EndColumn}},title=actionlint ({{escapeProperty .Kind}}{{if and .Code (ne .Code .Kind)}}/{{escapeProperty .Code}}{{end}})::{{escapeData .Message}}{{if .Snippet}}%0A%0A{{escapeData .Snippet}}{{end}}
 {{end}}`
 
-func renderAnalysis(format outputFormat, analysis *checking.Result, workingDir, workspaceDir string) (string, error) {
+func renderAnalysis(format outputFormat, analysis *report.Analysis, workingDir, workspaceDir string) (string, error) {
 	var template string
 	switch format {
 	case formatDefault:

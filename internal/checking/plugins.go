@@ -15,6 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
@@ -26,7 +27,7 @@ import (
 )
 
 // CheckWithPluginPaths loads plugins from paths, checks the input and closes the plugins.
-func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition pluginacquisition.Settings) (result *Result, err error) {
+func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel.Request, paths []string, acquisition pluginacquisition.Settings) (result *report.Analysis, err error) {
 	sources, err := pluginselection.SourcesFromArguments(paths, acquisition)
 	if err != nil {
 		return nil, err
@@ -35,7 +36,7 @@ func CheckWithPluginPaths(ctx context.Context, options Options, input inputmodel
 }
 
 // CheckWithPlugins loads the selected plugins and checks the input.
-func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources pluginselection.Sources) (result *Result, err error) {
+func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Request, sources pluginselection.Sources) (result *report.Analysis, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

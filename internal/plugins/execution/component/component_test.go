@@ -12,6 +12,7 @@ import (
 	"time"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -56,7 +57,7 @@ func writeRepository(t *testing.T, files map[string]string) string {
 	return root
 }
 
-func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *checking.Result {
+func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *report.Analysis {
 	t.Helper()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{

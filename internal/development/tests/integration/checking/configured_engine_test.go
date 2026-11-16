@@ -20,6 +20,7 @@ import (
 	workspace "actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	scriptbackend "actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 type configuredBackend struct {
@@ -90,7 +91,7 @@ func configuredEngineFixture(t *testing.T) (string, []string, *configuration.Loa
 	return root, paths, cfg
 }
 
-func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *configuration.LoadedFile, options checking.Options) (*checking.Result, error) {
+func runConfiguredAnalysis(t *testing.T, mode, root string, paths []string, cfg *configuration.LoadedFile, options checking.Options) (*report.Analysis, error) {
 	t.Helper()
 	if options.Tools == nil {
 		options.Tools = registry.Registrations(configuredEngineSelections())

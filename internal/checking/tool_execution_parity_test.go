@@ -12,6 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestRelativeWorkingDirectorySelectionAndOverrides(t *testing.T) {
@@ -29,7 +30,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 	if err != nil {
 		t.Fatal(err)
 	}
-	check := func(result *checking.Result, err error) {
+	check := func(result *report.Analysis, err error) {
 		t.Helper()
 		if err != nil || result == nil || result.FileCount != 1 {
 			t.Fatalf("relative working directory dropped workflow: %+v, %v", result, err)

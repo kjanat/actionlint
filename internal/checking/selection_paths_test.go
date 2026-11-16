@@ -11,6 +11,7 @@ import (
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	diagmodel "actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -176,7 +177,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 				t.Fatal(err)
 			}
 			path := filepath.Join(roots[1], ".github", "workflows", "ci.yml")
-			check := func(result *checking.Result, err error) {
+			check := func(result *report.Analysis, err error) {
 				t.Helper()
 				if err != nil || result == nil || result.FileCount != 1 || !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "if-cond" && d.Severity == "warning" }) {
 					t.Fatalf("filtered=%t: alias selection/override lost: %+v, %v", filtered, result, err)

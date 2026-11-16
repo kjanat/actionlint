@@ -16,13 +16,12 @@ import (
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
-
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	results1 "actionlint.kjanat.dev/v2/internal/results"
 	resultreport "actionlint.kjanat.dev/v2/internal/results/report"
 
+	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
+	results1 "actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -146,7 +145,7 @@ func runLinter(req *lintRequest) *lintResult {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	var analysis *checking.Result
+	var analysis *resultreport.Analysis
 	var err error
 	inputNames := make(map[string]string, len(req.files))
 	input := inputmodel.Request{Kind: inputmodel.Repository, Directory: req.workingDir}
@@ -225,7 +224,7 @@ func runLinter(req *lintRequest) *lintResult {
 
 // Rebase SARIF and GitHub reports without changing source metadata or the
 // analysis-relative paths used by persisted diagnostics and other formats.
-func workspaceReportAnalysis(analysis *checking.Result, workingDir, workspace string) *checking.Result {
+func workspaceReportAnalysis(analysis *resultreport.Analysis, workingDir, workspace string) *resultreport.Analysis {
 	result := *analysis
 	result.Diagnostics = slices.Clone(analysis.Diagnostics)
 	for i := range result.Diagnostics {

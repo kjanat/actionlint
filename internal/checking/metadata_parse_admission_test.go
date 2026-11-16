@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	rulemeta "actionlint.kjanat.dev/v2/internal/checking/rules"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
 
@@ -64,7 +65,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			}
 			unit := sourceUnit{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}]}}\npermissions: {}\n")}
 			probe := metadataAdmissionAnalyzer{}
-			var result *Result
+			var result *report.Analysis
 			var err, conflict error
 			if !quarantined {
 				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: probe}}}, []sourceUnit{unit})

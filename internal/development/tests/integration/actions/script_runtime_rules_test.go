@@ -12,6 +12,7 @@ import (
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/results"
+	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
 func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
@@ -34,7 +35,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 				root, _ := testutil.ExecutableFixture(t, "shellcheck", "ruff")
 				configPath := fixturefiles.Write(t, root, ".github/actionlint.yaml", "lint: {rules: {preset: none, suspicious: {"+tc.name+": on}}}\n")
 				action := fmt.Sprintf("name: Script regression\ndescription: Check runner script behavior\nruns:\n  using: composite\n  steps:\n    - shell: %s\n      run: |\n        %s\n", tc.shell, tc.script)
-				var result *checking.Result
+				var result *report.Analysis
 				if called {
 					fixturefiles.Write(t, root, "inner/action.yml", action)
 					result = testutil.Composite(t, root, "- uses: ./inner", checking.Options{ConfigFile: configPath})
