@@ -35,7 +35,7 @@ runs:
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
-					findings = append(findings, d)
+					findings = append(findings, d.Diagnostic)
 				}
 			}
 			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != metadata || findings[0].Start != (sourcepos.Position{Line: 8, Column: 14}) || findings[0].Code != "SC2086" {
@@ -92,7 +92,7 @@ runs:
 			var findings []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Rule == "shellcheck" {
-					findings = append(findings, d)
+					findings = append(findings, d.Diagnostic)
 				}
 			}
 			if len(findings) != 1 || filepath.Join(root, findings[0].Path) != inner || findings[0].Code != "SC2086" {
@@ -136,7 +136,9 @@ runs:
 `)
 	result := testutil.Composite(t, root, "- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
 	for _, rule := range []string{"shellcheck"} {
-		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule && filepath.Join(root, d.Path) == metadata }) {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
+			return d.Rule == rule && filepath.Join(root, d.Path) == metadata
+		}) {
 			t.Errorf("missing %s syntax finding: %+v", rule, result.Diagnostics)
 		}
 	}
@@ -268,13 +270,13 @@ runs:
 			result := testutil.Composite(t, root, `- uses: actions/checkout@v6
 - uses: ./local
   if: `+tc.outer, checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-			finding := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			finding := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == inner
 			})
 			if finding != tc.finding {
 				t.Errorf("conditional finding=%v, want %v: %+v", finding, tc.finding, result.Diagnostics)
 			}
-			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner && d.Code == "SC2086"
 			}) {
 				t.Fatalf("conditional nested script lost static checks: %+v", result.Diagnostics)
@@ -301,7 +303,7 @@ runs:
 `} {
 		fixturefiles.Write(t, root, ".github/actionlint.yaml", config)
 		result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-		if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
+		if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 			t.Fatalf("config ignored: %+v", result.Diagnostics)
 		}
 	}
@@ -323,7 +325,7 @@ runs:
     - shell: bash
 `+directory+"      run: . ./lib.sh\n")
 		result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-		found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+		found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 			return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == file
 		})
 		if found != (directory != "") {
@@ -360,12 +362,12 @@ runs:
       run: . ./lib.sh
 `)
 	result := testutil.Composite(t, root, "- uses: ./outer", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == inner
 	}) {
 		t.Fatalf("missing sourced-file finding in nested action: %+v", result.Diagnostics)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == outer
 	}) {
 		t.Fatalf("nested action_path leaked into caller: %+v", result.Diagnostics)
@@ -391,7 +393,7 @@ runs:
 `} {
 		inner := fixturefiles.Write(t, root, "inner/action.yml", content)
 		result := testutil.Composite(t, root, "- uses: ./outer\n- uses: ./inner", checking.Options{})
-		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 			return d.Rule == "action" && (filepath.Join(root, d.Path) == outer && strings.Contains(d.Message, "could not parse") || filepath.Join(root, d.Path) == inner && strings.Contains(d.Message, "shell"))
 		}) {
 			t.Fatalf("nested metadata error lost: %+v", result.Diagnostics)
@@ -511,7 +513,7 @@ runs:
   steps:
     `+strings.ReplaceAll(tc.actionSteps, "\n", "\n    ")+"\n")
 			result := testutil.Composite(t, root, tc.workflowSteps, checking.Options{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}
@@ -568,7 +570,7 @@ runs:
 - shell: bash
   working-directory: .
   run: ./bad.sh`, checking.Options{})
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			want := setting == "false" || setting == "${{ false }}"
 			if found != want {
 				t.Fatalf("outgoing certainty = %v, want %v: %+v", found, want, result.Diagnostics)
@@ -606,7 +608,7 @@ runs:
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("checkout metadata not resolved: %v", result.Inputs)
 			}
-			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata
 			}) {
 				t.Fatalf("missing composite script finding: %+v", result.Diagnostics)
@@ -638,7 +640,7 @@ runs:
 - uses: `+spec+`
   id: local
 - run: echo '${{ steps.local.outputs.missing }}'`, checking.Options{})
-			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+			if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 				return d.Rule == "expression-reference" && strings.Contains(d.Message, `property "missing" is not defined`)
 			}) {
 				t.Fatalf("action outputs were not resolved: %+v", result.Diagnostics)
@@ -705,7 +707,7 @@ runs:
 	fixturefiles.Write(t, root, "lib.sh", "if then\n")
 	fixturefiles.Write(t, root, "relocated/lib.sh", "echo wrong file\n")
 	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 		return d.Rule == "shellcheck" && filepath.Join(root, d.Path) == metadata
 	}) {
 		t.Fatalf("relocated checkout source was not checked: %+v", result.Diagnostics)
@@ -826,7 +828,7 @@ runs:
 `)
 	fixturefiles.Write(t, root, "lib.sh", "if then\n")
 	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command}})})
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("unknown checkout sourced local decoy: %+v", result.Diagnostics)
 	}
 }

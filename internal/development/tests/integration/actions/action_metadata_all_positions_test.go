@@ -71,7 +71,7 @@ func TestMetadataExpressionDiagnosticPositions(t *testing.T) {
 			var matched []diagmodel.Diagnostic
 			for _, d := range result.Diagnostics {
 				if strings.Contains(d.Message, tc.message) {
-					matched = append(matched, d)
+					matched = append(matched, d.Diagnostic)
 				}
 			}
 			if len(matched) != 1 {

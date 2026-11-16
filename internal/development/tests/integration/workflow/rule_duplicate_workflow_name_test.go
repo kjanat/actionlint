@@ -57,7 +57,7 @@ func analyzeWorkflowDirectory(t *testing.T, root, config string, paths ...string
 	if err != nil {
 		t.Fatal(err)
 	}
-	return result.Diagnostics
+	return results.Diagnostics(result.Diagnostics)
 }
 
 // The shape of kjanat/shellcheck-rs at 646b1a6: two workflows are named
@@ -163,7 +163,7 @@ func TestDuplicateWorkflowNameInMemorySources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(duplicateWorkflowNameFindings(t, root, result.Diagnostics)) != tc.want {
+		if len(duplicateWorkflowNameFindings(t, root, results.Diagnostics(result.Diagnostics))) != tc.want {
 			t.Fatalf("content %q: %+v", tc.content, result.Diagnostics)
 		}
 	}

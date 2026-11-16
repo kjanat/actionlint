@@ -25,7 +25,7 @@ func TestCanonicalSharesNoStorageWithTheFinding(t *testing.T) {
 		}},
 	}
 
-	d := f.Canonical([]byte("on: push\n"))
+	d := f.Publish([]byte("on: push\n")).Diagnostic
 	d.Reference.Document = "changed"
 	d.Related[0].Message = "changed"
 	d.Lifecycle.Policies[0].ID = "changed"
@@ -67,8 +67,8 @@ func TestForeignSelectsTheFindingsOwnSource(t *testing.T) {
 		if got := f.Foreign(tc.snap); got != tc.foreign {
 			t.Errorf("%s: Foreign = %v, want %v", tc.name, got, tc.foreign)
 		}
-		if got := string(f.sourceFor(tc.snap)); got != tc.want {
-			t.Errorf("%s: sourceFor = %q, want %q", tc.name, got, tc.want)
+		if got := string(f.Publish(tc.snap).Source.Content); got != tc.want {
+			t.Errorf("%s: published source = %q, want %q", tc.name, got, tc.want)
 		}
 	}
 }

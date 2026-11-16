@@ -96,7 +96,7 @@ permissions: {}
 		var findings []results.Diagnostic
 		for _, finding := range result.Diagnostics {
 			if finding.Rule == "pinned-actions" {
-				findings = append(findings, finding)
+				findings = append(findings, finding.Diagnostic)
 			}
 		}
 		return findings

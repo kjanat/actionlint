@@ -83,7 +83,7 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 		t.Fatalf("JSON lost the new producer's lifecycle report: %s", encoded.Bytes())
 	}
 	encoded.Reset()
-	if err := output.WriteSARIF(&encoded, "test", nil, analysis.Diagnostics); err != nil {
+	if err := output.WriteSARIF(&encoded, "test", nil, results.Diagnostics(analysis.Diagnostics)); err != nil {
 		t.Fatal(err)
 	}
 	var sarif struct {

@@ -11,13 +11,10 @@ import (
 )
 
 // Merge combines completed or partial analyses in order. It rejects conflicting
-// captures and rule metadata and keeps each diagnostic aligned with its source.
+// captures and rule metadata.
 func Merge(parts ...Analysis) (Analysis, error) {
 	var combined Analysis
 	for _, part := range parts {
-		if len(part.Diagnostics) != len(part.Sources) {
-			return Analysis{}, fmt.Errorf("analysis has %d diagnostics and %d source records", len(part.Diagnostics), len(part.Sources))
-		}
 		for path, captured := range part.CapturedSources {
 			if previous, exists := combined.CapturedSources[path]; exists &&
 				(previous.Revision != captured.Revision || previous.Coordinates != captured.Coordinates || previous.CoordinatesAvailable != captured.CoordinatesAvailable || !bytes.Equal(previous.Content, captured.Content)) {

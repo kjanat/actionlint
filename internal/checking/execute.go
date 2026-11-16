@@ -411,7 +411,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		session.repositories[root] = facts
 	}
 	session.gitModes = &gitModes{}
-	result = &analysisResult{Diagnostics: []diagmodel.Diagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
+	result = &analysisResult{Diagnostics: []diagmodel.PublishedDiagnostic{}, FileCount: len(request.Sources), files: make([]analyzedFile, len(request.Sources))}
 	session.workflowNames = workflownames.NewIndex(sourcePaths, reader, func(path string) (namemodel.Declared, error) {
 		captured, err := captures.Read(lifetime, path, sourcemodel.YAML)
 		if err != nil {
@@ -716,10 +716,10 @@ func (r *analysisResult) publishDiagnostics() error {
 		batches[i] = batch
 	}
 	published, err := policy.Publish(batches, r.IncompleteChecks)
-	r.Diagnostics, r.Sources = published.Diagnostics, published.Sources
+	r.Diagnostics = published.Diagnostics
 	r.IncompleteChecks = published.IncompleteChecks
 	if r.Diagnostics == nil {
-		r.Diagnostics = []diagmodel.Diagnostic{}
+		r.Diagnostics = []diagmodel.PublishedDiagnostic{}
 	}
 	for i, findings := range published.Findings {
 		r.files[i].errors = findings

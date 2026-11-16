@@ -38,7 +38,7 @@ permissions: {}
 		t.Fatalf("cancellation lost partial result or cause: %v, %v", result, err)
 	}
 	for _, rule := range []string{"expression-reference", "shellcheck"} {
-		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == rule && d.Path == "cancelled.yml" }) {
+		if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == rule && d.Path == "cancelled.yml" }) {
 			t.Errorf("cancellation lost completed %s finding: %v", rule, result.Diagnostics)
 		}
 	}

@@ -171,7 +171,7 @@ func TestEditorUnavailableAndRawMismatchLogWithoutPublishingRanges(t *testing.T)
 				text, raw = string([]byte{0xff}), false
 			}
 			captured := reportfixture.CapturedSource(t, path, []byte(text), model)
-			result := &report.Analysis{Diagnostics: []results.Diagnostic{{Path: path, Start: sourcepos.Position{Line: 2, Column: 1}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}}}, Sources: []results.DiagnosticSource{{Content: []byte(text), RawScript: raw, Unavailable: reportedSourceIf(unavailable)}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
+			result := &report.Analysis{Diagnostics: []results.PublishedDiagnostic{{Path: path, Start: sourcepos.Position{Line: 2, Column: 1}, Reference: &sourcepos.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()}, Source: results.DiagnosticSource{Content: []byte(text), RawScript: raw, Unavailable: reportedSourceIf(unavailable)}}}, CapturedSources: map[string]report.CapturedSource{path: captured}}
 			publication, logs := firstEditorPublication(t, func(_ context.Context, documents map[string]Document) (Analysis, error) {
 				return FromReport(result, root, documents)
 			}, FileURI(path), text)

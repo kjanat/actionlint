@@ -1,31 +1,17 @@
 package finding
 
 import (
-	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-// Canonical resolves source extents and fix paths into the public diagnostic
-// contract. The result shares no storage with the finding: its Reference,
-// Related and Fixes, including each fix's Revisions and Edits, are copies.
-func (e *Finding) Canonical(source []byte) results.Diagnostic {
-	source = e.sourceFor(source)
-	end := e.End
-	unavailable := e.Source.Unavailable.Present()
-	snippet, _ := sourcemap.DiagnosticLine(source, e.Start.Line, e.Source.RawScript)
-	if end == (sourcepos.Position{}) {
-		end = sourcepos.Position{Line: e.Start.Line, Column: e.Start.Column + 1}
-		switch {
-		case unavailable:
-			end = e.Start
-		case snippet != "":
-			end.Column = sourcepos.InclusiveEnd(snippet, e.Start.Column, 0) + 1
-		}
-	}
+// canonical resolves fix paths into the public diagnostic contract. The result
+// shares no storage with the finding: its Reference, Related and Fixes,
+// including each fix's Revisions and Edits, are copies. results.Publish
+// resolves its End and Snippet from the source it is published with.
+func (e *Finding) canonical() results.Diagnostic {
 	d := e.Diagnostic.Clone()
 	switch {
-	case unavailable:
+	case e.Source.Unavailable.Present():
 		d.Reference, d.Fixes = nil, nil
 	case len(d.Fixes) == 0:
 		d.Fixes = nil
@@ -41,11 +27,19 @@ func (e *Finding) Canonical(source []byte) results.Diagnostic {
 			}
 		}
 	}
-	if snippet == "" {
-		snippet = e.Snippet
-	}
-	d.End, d.Snippet = end, snippet
 	return d
+}
+
+// Publish publishes the canonical diagnostic with the text its positions refer
+// to: the finding's own Source when it is Foreign to snapshot, otherwise
+// snapshot. The published source carries no suppression target.
+func (e *Finding) Publish(snapshot []byte) results.PublishedDiagnostic {
+	source := e.Source
+	source.Suppression = nil
+	if !e.Foreign(snapshot) {
+		source.Content = snapshot
+	}
+	return results.Publish(e.canonical(), source)
 }
 
 // FromDiagnostic attaches analysis provenance without translating the results.

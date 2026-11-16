@@ -37,10 +37,10 @@ func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Diagnostics) != 3 || len(result.Sources) != 3 {
-		t.Fatalf("distinct diagnostics or sources lost: %+v", result)
+	if len(result.Diagnostics) != 3 {
+		t.Fatalf("distinct diagnostics lost: %+v", result)
 	}
-	for i, d := range result.Diagnostics {
+	for _, d := range result.Diagnostics {
 		if d.Help != base.Help || d.Explanation != base.Explanation || d.DocumentationURL != base.DocumentationURL || len(d.Related) != 1 || d.Related[0].Revision.Document() != d.Reference.Document || d.Related[0].Revision.Digest() != d.Reference.Revision || d.Related[0].Coordinates != sourcepos.YAML || len(d.Fixes) != 1 || d.Fixes[0].Applicability != results.FixSafe {
 			t.Fatalf("metadata lost: %+v", d)
 		}
@@ -50,7 +50,7 @@ func TestCanonicalDiagnosticMetadataSurvivesPolicy(t *testing.T) {
 		if !reflect.DeepEqual(unbound, base.Related[0]) {
 			t.Fatal("related metadata changed while binding")
 		}
-		if string(result.Sources[i].Content) != content {
+		if string(d.Source.Content) != content {
 			t.Fatal("source snapshot lost")
 		}
 	}

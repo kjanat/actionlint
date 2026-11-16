@@ -77,7 +77,7 @@ permissions: {}
 		}
 
 		var b strings.Builder
-		render.RenderedFindingOf(errs[0].Diagnostic, nil).PrettyPrint(&b)
+		render.PrettyPrint(&b, errs[0].Publish(nil))
 		have := b.String()
 		want := "test.yaml:7:9: only single step is allowed but got 2 steps [this-is-test]\n"
 		if have != want {

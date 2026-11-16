@@ -160,7 +160,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool {
 		return d.Rule == "executable-bit" && filepath.Join(root, d.Path) == metadata && strings.Contains(d.Message, `script "scripts/bad.sh"`)
 	}) {
 		t.Fatalf("nested action lost macOS path matching: %+v", result.Diagnostics)
@@ -215,7 +215,7 @@ runs:
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested metadata checks lost: %v", result.Inputs)
 			}
-			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "executable-bit" })
+			found := slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "executable-bit" })
 			if found != tc.want {
 				t.Fatalf("executable-bit = %v, want %v: %+v", found, tc.want, result.Diagnostics)
 			}
@@ -271,7 +271,7 @@ jobs:
 			if !slices.Contains(result.Inputs, metadata) {
 				t.Fatalf("nested metadata not analyzed: %v", result.Inputs)
 			}
-			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
+			if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 				t.Fatalf("Windows composite source not resolved: %+v", result.Diagnostics)
 			}
 		})
@@ -313,7 +313,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.Diagnostic) bool { return d.Rule == "shellcheck" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(d diagmodel.PublishedDiagnostic) bool { return d.Rule == "shellcheck" }) {
 		t.Fatalf("previous job checkout leaked into caller: %+v", result.Diagnostics)
 	}
 }

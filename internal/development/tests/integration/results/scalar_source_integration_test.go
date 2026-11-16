@@ -74,7 +74,7 @@ func TestPhysicalYAMLLineRendering(t *testing.T) {
 				}
 				var rendered bytes.Buffer
 				failure := &findingmodel.Finding{Start: finding.Start, Message: finding.Message, Rule: finding.Rule, Path: "ci.yml"}
-				render.RenderedFindingOf(failure.Diagnostic, []byte(src)).PrettyPrint(&rendered)
+				render.PrettyPrint(&rendered, failure.Publish([]byte(src)))
 				if !strings.Contains(rendered.String(), "${{ unknown }}") {
 					t.Errorf("physical YAML source line missing from text output: %q", rendered.String())
 				}

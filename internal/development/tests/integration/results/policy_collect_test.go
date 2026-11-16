@@ -44,9 +44,9 @@ func TestAnalysisDiagnosticIdentity(t *testing.T) {
 func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	t.Parallel()
 	finding := &findingmodel.Finding{Rule: "shellcheck", Message: "finding", Start: sourcepos.Position{Line: 2}, SuppressionOrigin: &diagmodel.SuppressionOrigin{First: 2, Last: 3}}
-	sources := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*findingmodel.Finding{finding}}}).Sources
-	if len(sources) != 1 || sources[0].Suppression == nil || *sources[0].Suppression != (diagmodel.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
-		t.Fatalf("same-source target not resolved: %+v", sources)
+	reported := publishBatches(t, []policy.Batch{{InputPath: "workflow.yml", Policy: policy.Policy{Content: []byte("name: test\nrun: echo hi\n")}, Findings: []*findingmodel.Finding{finding}}}).Diagnostics
+	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (diagmodel.SuppressionOrigin{Path: "workflow.yml", First: 2, Last: 3}) {
+		t.Fatalf("same-source target not resolved: %+v", reported)
 	}
 	finding.Path = "action.yml"
 	finding.Source.Content = []byte("name: action\nrun: echo hi\n")
@@ -56,9 +56,9 @@ func TestCollectProjectsSuppressionTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources = published.Sources
-	if len(sources) != 1 || sources[0].Suppression == nil || *sources[0].Suppression != (diagmodel.SuppressionOrigin{Path: "action.yml", First: 2, Last: 3}) {
-		t.Fatalf("foreign target not projected: %+v", sources)
+	reported = published.Diagnostics
+	if len(reported) != 1 || reported[0].Source.Suppression == nil || *reported[0].Source.Suppression != (diagmodel.SuppressionOrigin{Path: "action.yml", First: 2, Last: 3}) {
+		t.Fatalf("foreign target not projected: %+v", reported)
 	}
 }
 
@@ -180,17 +180,17 @@ func TestCollectCopiesEachForeignSourceOnce(t *testing.T) {
 		{Path: "action.yml", Rule: "shellcheck", Message: "a", Start: sourcepos.Position{Line: 1, Column: 6}, Source: diagmodel.DiagnosticSource{Content: script}},
 		{Path: "action.yml", Rule: "shellcheck", Message: "b", Start: sourcepos.Position{Line: 2, Column: 6}, Source: diagmodel.DiagnosticSource{Content: script}},
 	}
-	sources := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow")}, Findings: findings}}).Sources
-	if len(sources) != 2 {
-		t.Fatalf("sources = %d, want 2", len(sources))
+	reported := publishBatches(t, []policy.Batch{{Policy: policy.Policy{Content: []byte("workflow")}, Findings: findings}}).Diagnostics
+	if len(reported) != 2 {
+		t.Fatalf("sources = %d, want 2", len(reported))
 	}
-	if &sources[0].Content[0] != &sources[1].Content[0] {
+	if &reported[0].Source.Content[0] != &reported[1].Source.Content[0] {
 		t.Error("findings in the same file got separate copies")
 	}
-	if &sources[0].Content[0] == &script[0] {
+	if &reported[0].Source.Content[0] == &script[0] {
 		t.Error("reported source shares storage with the finding")
 	}
-	if string(sources[0].Content) != string(script) {
-		t.Errorf("content = %q, want %q", sources[0].Content, script)
+	if string(reported[0].Source.Content) != string(script) {
+		t.Errorf("content = %q, want %q", reported[0].Source.Content, script)
 	}
 }

@@ -213,7 +213,7 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	if toolCalls.Load() != 2 {
 		t.Fatalf("script tools did not analyze both composite invocations: %d", toolCalls.Load())
 	}
-	if !slices.ContainsFunc(result.Diagnostics, func(finding results.Diagnostic) bool {
+	if !slices.ContainsFunc(result.Diagnostics, func(finding results.PublishedDiagnostic) bool {
 		return finding.Rule == "action" && filepath.ToSlash(finding.Path) == "local/action.yml" && strings.Contains(finding.Message, `uses context "missing"`)
 	}) {
 		t.Fatalf("default metadata context check was bypassed: %+v", result.Diagnostics)

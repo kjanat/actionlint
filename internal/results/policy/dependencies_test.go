@@ -47,7 +47,7 @@ func TestDependencyFindingsAndExitStatus(t *testing.T) {
 			if len(got) != 1 || got[0].NonBlocking != tc.nonBlocking || got[0].Severity != tc.severity {
 				t.Fatalf("want non_blocking=%v and severity=%s, got %+v", tc.nonBlocking, tc.severity, got)
 			}
-			result := exitcode.AnalysisResult(report.Analysis{Diagnostics: []results.Diagnostic{got[0].Canonical(nil)}})
+			result := exitcode.AnalysisResult(report.Analysis{Diagnostics: []results.PublishedDiagnostic{got[0].Publish(nil)}})
 			want := 1
 			if tc.nonBlocking {
 				want = 0
@@ -79,9 +79,9 @@ func TestDuplicateDependencyFindingUsesStricterCaller(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		diagnostics, sources := published.Diagnostics, published.Sources
-		if len(diagnostics) != 1 || len(sources) != 1 || diagnostics[0].NonBlocking || published.Findings[0][0].NonBlocking {
-			t.Fatalf("first non-blocking=%v: got %+v and %d sources, want one blocking finding", firstNonBlocking, diagnostics, len(sources))
+		diagnostics := published.Diagnostics
+		if len(diagnostics) != 1 || diagnostics[0].NonBlocking || published.Findings[0][0].NonBlocking {
+			t.Fatalf("first non-blocking=%v: got %+v, want one blocking finding", firstNonBlocking, diagnostics)
 		}
 	}
 }
@@ -113,9 +113,9 @@ func TestDuplicateDependencyMetadataUsesStricterCaller(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		diagnostics, sources := published.Diagnostics, published.Sources
-		if len(diagnostics) != 1 || len(sources) != 1 || diagnostics[0].NonBlocking || published.Findings[0][0].NonBlocking {
-			t.Fatalf("first non-blocking=%v: got %+v and %d sources, want one blocking metadata finding", firstNonBlocking, diagnostics, len(sources))
+		diagnostics := published.Diagnostics
+		if len(diagnostics) != 1 || diagnostics[0].NonBlocking || published.Findings[0][0].NonBlocking {
+			t.Fatalf("first non-blocking=%v: got %+v, want one blocking metadata finding", firstNonBlocking, diagnostics)
 		}
 	}
 }

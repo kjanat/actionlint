@@ -24,7 +24,7 @@ func TestCanonicalSnippetLineEndings(t *testing.T) {
 			source := []byte("\ufefftoken" + ending.text + "tail")
 			for _, raw := range []bool{false, true} {
 				finding := &Finding{Start: sourcepos.Position{Line: 1}, Source: results.DiagnosticSource{RawScript: raw}}
-				got := finding.Canonical(source).Snippet
+				got := finding.Publish(source).Snippet
 				want := "token"
 				if raw {
 					want = "\ufefftoken" + ending.text + "tail"

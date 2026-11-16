@@ -58,7 +58,7 @@ func TestDisabledToolIsNotResolved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(result.Diagnostics, func(finding results.Diagnostic) bool { return finding.Rule == "no-sudo" }) {
+	if slices.ContainsFunc(result.Diagnostics, func(finding results.PublishedDiagnostic) bool { return finding.Rule == "no-sudo" }) {
 		t.Fatalf("disabled plugin analyzed the script: %+v", result.Diagnostics)
 	}
 	if requests := registry.Requests(); slices.Contains(requests, pin.URL) {
@@ -118,7 +118,7 @@ func TestNamedPluginToolIsAccepted(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !slices.ContainsFunc(result.Diagnostics, func(finding results.Diagnostic) bool { return finding.Rule == "no-sudo" }) {
+			if !slices.ContainsFunc(result.Diagnostics, func(finding results.PublishedDiagnostic) bool { return finding.Rule == "no-sudo" }) {
 				t.Fatalf("named plugin did not run: %+v", result.Diagnostics)
 			}
 		})

@@ -53,7 +53,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 				var found []results.Diagnostic
 				for _, d := range result.Diagnostics {
 					if d.Rule == tc.name {
-						found = append(found, d)
+						found = append(found, d.Diagnostic)
 					}
 				}
 				if len(found) != tc.want {

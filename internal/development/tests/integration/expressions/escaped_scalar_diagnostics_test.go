@@ -41,7 +41,7 @@ func TestEscapedLineBreakEOFDiagnostics(t *testing.T) {
 						t.Fatalf("expected one EOF diagnostic: %+v", result.Diagnostics)
 					}
 					eof := strings.LastIndex(src, `"`)
-					assertDiagnosticOffsetRange(t, src, result.Diagnostics[0], eof, eof)
+					assertDiagnosticOffsetRange(t, src, result.Diagnostics[0].Diagnostic, eof, eof)
 				})
 			}
 		}

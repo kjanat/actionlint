@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
+	results1 "actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
 	commandstatus "actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -60,7 +61,9 @@ jobs:
     steps: [{run: 'echo ok'}]
 permissions: {}
 `)
-			analysis.Diagnostics[0].End = tc.end
+			moved := analysis.Diagnostics[0].Diagnostic
+			moved.End = tc.end
+			analysis.Diagnostics[0] = results1.Publish(moved, analysis.Diagnostics[0].Source)
 			for _, format := range []outputFormat{formatDefault, formatGitHub, formatMarkdown} {
 				got, err := renderAnalysis(format, analysis, ".", ".")
 				if err != nil {
@@ -178,8 +181,9 @@ func TestRenderAnalysisWideLinesAndAbsentSource(t *testing.T) {
 	if err != nil || !strings.Contains(got, "\n     |\n1234 |     runs-on:") {
 		t.Fatalf("wide line number gutter: %q, %v", got, err)
 	}
-	analysis.Diagnostics[0].Start.Line = 2000
-	analysis.Diagnostics[0].End.Line = 2000
+	moved := analysis.Diagnostics[0].Diagnostic
+	moved.Start.Line, moved.End.Line = 2000, 2000
+	analysis.Diagnostics[0] = results1.Publish(moved, analysis.Diagnostics[0].Source)
 	for _, format := range []outputFormat{formatDefault, formatOneline, formatGitHub, formatMarkdown} {
 		got, err := renderAnalysis(format, analysis, ".", ".")
 		if err != nil || strings.Contains(got, "runs-on:") || strings.Contains(got, "^") {

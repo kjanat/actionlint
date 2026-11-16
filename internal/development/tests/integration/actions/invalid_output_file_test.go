@@ -49,7 +49,7 @@ runs:
 			var matches []results.Diagnostic
 			for _, diagnostic := range result.Diagnostics {
 				if diagnostic.Rule == "invalid-output-file" {
-					matches = append(matches, diagnostic)
+					matches = append(matches, diagnostic.Diagnostic)
 				}
 			}
 			if len(matches) != 1 || matches[0].Start.Line != 8 || matches[0].Start.Column != 21 || !strings.HasSuffix(filepath.ToSlash(matches[0].Path), "action.yml") {

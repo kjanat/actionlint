@@ -17,16 +17,14 @@ func TestEditorDiagnosticsOwnTheirReportData(t *testing.T) {
 	path := filepath.Join(root, "workflow.yml")
 	captured := reportfixture.CapturedSource(t, path, []byte("on: push\n"), source.YAML)
 	input := &report.Analysis{
-		Diagnostics: []results.Diagnostic{{
+		Diagnostics: []results.PublishedDiagnostic{{
 			Rule: "example", Path: "workflow.yml", Start: source.Position{Line: 1, Column: 1}, End: source.Position{Line: 1, Column: 2},
 			Reference: &source.Reference{Document: captured.Revision.Document(), Revision: captured.Revision.Digest()},
 			Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original", Origin: "required.toml", Enforced: true}}},
 			Fixes: []results.Fix{{
 				Description: "Example edit", Revisions: map[string]string{"workflow.yml": captured.Revision.Digest()},
 				Edits: []results.Edit{{Path: "workflow.yml", Replacement: "replacement"}},
-			}},
-		}},
-		Sources:         []results.DiagnosticSource{{Content: captured.Content}},
+			}}, Source: results.DiagnosticSource{Content: captured.Content}}},
 		CapturedSources: map[string]report.CapturedSource{path: captured},
 	}
 	analysis, err := lsp.FromReport(input, root, nil)

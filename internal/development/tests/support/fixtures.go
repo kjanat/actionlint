@@ -201,7 +201,7 @@ func Diagnostics(result *report.Analysis, err error) ([]results.Diagnostic, erro
 	if err != nil {
 		return nil, err
 	}
-	return result.Diagnostics, nil
+	return results.Diagnostics(result.Diagnostics), nil
 }
 
 // WorkflowDiagnostics checks a fixture with an explicit in-memory configuration.
@@ -224,7 +224,7 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 	if err != nil {
 		t.Fatal(err)
 	}
-	return result.Diagnostics
+	return results.Diagnostics(result.Diagnostics)
 }
 
 // Composite writes a caller fixture and checks it through application input selection.
