@@ -24,7 +24,7 @@ func (a invocationSourceAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "shellcheck"}
 }
 
-func (a invocationSourceAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a invocationSourceAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	a.t.Helper()
 	if err := input.ValidateInvocations(); err != nil {
 		a.t.Fatal(err)
@@ -111,12 +111,12 @@ func TestSharedSourceRetainsEachDeploymentDisplayPath(t *testing.T) {
 		}
 		byCall[call.Site()] = want[i]
 	}
-	for name, adapter := range map[string]func(*testing.T) scriptanalysis.Analyzer{
-		"fact": func(t *testing.T) scriptanalysis.Analyzer {
+	for name, adapter := range map[string]func(*testing.T) scriptanalysis.BatchAnalyzer{
+		"fact": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 			t.Helper()
 			return scriptanalysis.FactAnalyzer{Analyzer: invocationSourceAnalyzer{t: t, paths: byCall}}
 		},
-		"native": func(t *testing.T) scriptanalysis.Analyzer {
+		"native": func(t *testing.T) scriptanalysis.BatchAnalyzer {
 			t.Helper()
 			return contract.Tool{Runner: deploymentAliasTool{t: t, paths: want, content: content}}
 		},

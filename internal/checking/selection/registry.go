@@ -22,7 +22,7 @@ import (
 type CheckSelection struct {
 	Unavailable []UnavailableCheck
 	Rules       []workflowvisit.Rule
-	Scripts     []checkinputs.Checker
+	Scripts     []checkinputs.Analyzer
 	ScriptInfo  []rule.Descriptor
 }
 

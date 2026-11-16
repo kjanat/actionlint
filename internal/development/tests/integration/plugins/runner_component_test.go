@@ -104,7 +104,7 @@ func (*runtimeObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "runtime-observer", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Execution}}
 }
 
-func (o *runtimeObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (o *runtimeObserver) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	o.scripts = append(o.scripts, input.Scripts...)
 	return nil, nil
 }
@@ -126,7 +126,7 @@ func TestRunnerProviderSharedExecutionFacts(t *testing.T) {
 			observer := &runtimeObserver{}
 			result, err := checking.Analyze(t.Context(), checking.Options{
 				Runners:   runnerapi.Options{Target: "buildkite", Scope: "fixture", Snapshot: tc.snapshot, Providers: []runnerapi.Registration{{Provider: p, ImplementationID: p.ArtifactDigest()}}},
-				Analyzers: []checkinputs.Registration{{Checker: observer}},
+				Analyzers: []checkinputs.Registration{{Analyzer: observer}},
 			}, []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs:\n  build:\n    runs-on: buildkite-windows\n    steps:\n      - " + tc.shell + "run: echo hello\n")}})
 			if err != nil {
 				t.Fatal(err)
@@ -160,7 +160,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: observer}}}, []workspace.InputFile{{
+		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: observer}}}, []workspace.InputFile{{
 			Path:    "workflow.yml",
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: " + label + "\n    steps:\n      - run: Write-Host 'hello'\n"),
 			Config:  cfg,

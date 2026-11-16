@@ -142,7 +142,7 @@ type Registration struct {
 	// failures before construction. Nil means no preparation is needed.
 	Prepare func(RuleInputs) (InputPreparation, error)
 	Build   func(RuleInputs) workflowvisit.Rule
-	Script  checkinputs.Checker
+	Script  checkinputs.Analyzer
 	Enabled func(RuleInputs) bool
 }
 
@@ -175,7 +175,7 @@ func (c scriptChecker) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Declaration: c.declaration.Clone()}
 }
 
-func (c scriptChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (c scriptChecker) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	diagnostics, err := c.check(ctx, input)
 	for i := range diagnostics {
 		if diagnostics[i].Rule == "" {

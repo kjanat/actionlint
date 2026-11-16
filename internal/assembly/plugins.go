@@ -224,7 +224,7 @@ func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options ch
 			if err != nil {
 				return options, &pluginexecution.LoadError{Err: err}
 			}
-			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: checker})
+			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Analyzer: checker})
 			continue
 		}
 		selection := backends.ToolSelection{Command: name}

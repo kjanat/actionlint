@@ -8,8 +8,8 @@ import (
 func RuleNames(registrations []checkinputs.Registration) []string {
 	var names []string
 	for _, registration := range registrations {
-		if !checkinputs.IsNilChecker(registration.Checker) {
-			names = append(names, registration.Checker.Descriptor().Name)
+		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}
 	return names
@@ -18,10 +18,10 @@ func RuleNames(registrations []checkinputs.Registration) []string {
 func RequiredFacts(registrations []checkinputs.Registration) map[rule.InputKind]bool {
 	facts := map[rule.InputKind]bool{}
 	for _, registration := range registrations {
-		if checkinputs.IsNilChecker(registration.Checker) {
+		if checkinputs.IsNilAnalyzer(registration.Analyzer) {
 			continue
 		}
-		for _, fact := range registration.Checker.Descriptor().RequiredInputs {
+		for _, fact := range registration.Analyzer.Descriptor().RequiredInputs {
 			facts[fact] = true
 		}
 	}

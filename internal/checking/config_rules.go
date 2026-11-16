@@ -20,10 +20,10 @@ func ConfigurationRules() configuration.RuleSet { return configurationRules() }
 func ConfigurationRegistrations(checkers []checkinputs.Registration, providers []contract.Registration) []configuration.RuleRegistration {
 	var registrations []configuration.RuleRegistration
 	for _, checker := range checkers {
-		if checkinputs.IsNilChecker(checker.Checker) {
+		if checkinputs.IsNilAnalyzer(checker.Analyzer) {
 			continue
 		}
-		registrations = append(registrations, configuration.RuleRegistration{Declaration: checker.Checker.Descriptor().Clone(), Options: slices.Clone(checker.Options)})
+		registrations = append(registrations, configuration.RuleRegistration{Declaration: checker.Analyzer.Descriptor().Clone(), Options: slices.Clone(checker.Options)})
 	}
 	for _, provider := range providers {
 		_, builtin := FindRule(provider.Name)

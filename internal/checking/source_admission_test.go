@@ -26,14 +26,14 @@ func (unrelatedPathAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "unrelated-path-probe", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (a unrelatedPathAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a unrelatedPathAnalyzer) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return []results.Diagnostic{{Path: a.path, Message: "foreign observation", Start: sourcetext.Position{Line: 1, Column: 1}}, {Message: "entry observation", Start: sourcetext.Position{Line: 1, Column: 1}}}, nil
 }
 
 func TestAnalyzerForeignPathWithoutSourceCannotClaimEntryIdentity(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
+	result, err := Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: unrelatedPathAnalyzer{path: filepath.Join(root, "unrelated.sh")}}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(commandGoodWorkflow)}})
 	rejection, ok := errors.AsType[*admissionRejectedError](err)
 	if !ok || rejection.Count() != 1 || result == nil || len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "entry observation" || result.Diagnostics[0].Reference == nil {
 		t.Fatalf("foreign path borrowed entry identity or entry finding was lost: result=%+v error=%v", result, err)

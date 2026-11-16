@@ -136,8 +136,8 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var definitions []commands.Definition
 	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilChecker(registration.Checker) {
-			definitions = append(definitions, registration.Checker.Descriptor().InvocationDefinitions...)
+		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+			definitions = append(definitions, registration.Analyzer.Descriptor().InvocationDefinitions...)
 		}
 	}
 	for _, registration := range options.Tools {
@@ -166,7 +166,7 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	if options.Resolver != nil && options.SuggestCommitPins {
 		resolutions := references.NewResolutionSession(options.Resolver)
 		options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{
-			Checker: security.NewResolvedReferenceCheck(),
+			Analyzer: security.NewResolvedReferenceCheck(),
 			Prepare: func(ctx context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 				resolved, err := resolutions.ResolveDependencies(ctx, input.Dependencies)
 				input.ResolvedDependencies = resolved
@@ -281,8 +281,8 @@ func Check(ctx context.Context, options Options, input checkrequest.Request) (re
 	}
 	var names []string
 	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilChecker(registration.Checker) {
-			names = append(names, registration.Checker.Descriptor().Name)
+		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}
 	for _, registration := range options.Tools {

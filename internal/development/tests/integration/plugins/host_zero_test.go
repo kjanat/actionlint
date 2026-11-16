@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	_ checkinputs.Checker           = (*component.Plugin)(nil)
+	_ checkinputs.Analyzer          = (*component.Plugin)(nil)
 	_ runnerapi.Provider            = (*component.Plugin)(nil)
 	_ scriptengine.DescribedBackend = (*component.Plugin)(nil)
 	_ scriptengine.ConfigValidator  = (*component.Plugin)(nil)

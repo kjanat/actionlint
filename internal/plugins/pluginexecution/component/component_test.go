@@ -58,11 +58,11 @@ func writeRepository(t *testing.T, files map[string]string) string {
 	return root
 }
 
-func analyzeRepository(t *testing.T, root string, plugin checkinputs.Checker) *report.Analysis {
+func analyzeRepository(t *testing.T, root string, plugin checkinputs.Analyzer) *report.Analysis {
 	t.Helper()
 	workflow := filepath.Join(root, ".github", "workflows", "ci.yml")
 	result, err := checking.Check(t.Context(), checking.Options{
-		WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: plugin}}, SkipProjectConfig: true,
+		WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: plugin}}, SkipProjectConfig: true,
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{workflow}},
 	)
 	if err != nil {
@@ -118,7 +118,7 @@ func TestStandaloneActionHonorsPluginConfiguration(t *testing.T) {
 		"actionlint.yaml": "lint:\n  rules:\n    security:\n      pipe-to-shell: off\n",
 	})
 	result, err := checking.Check(t.Context(), checking.Options{
-		WorkingDir: root, ConfigFile: filepath.Join(root, "actionlint.yaml"), Analyzers: []checkinputs.Registration{{Checker: plugin}},
+		WorkingDir: root, ConfigFile: filepath.Join(root, "actionlint.yaml"), Analyzers: []checkinputs.Registration{{Analyzer: plugin}},
 	}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{filepath.Join(root, "action.yml")}})
 	if err != nil {
 		t.Fatal(err)
@@ -195,7 +195,7 @@ func TestLoadRefusesIncompatibleComponents(t *testing.T) {
 
 func misbehave(t *testing.T, plugin *component.Plugin, options string) ([]results.Diagnostic, error) {
 	t.Helper()
-	return plugin.CheckDocument(t.Context(), checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage(options)})
+	return plugin.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage(options)})
 }
 
 func TestFailuresAreReportedAndIsolated(t *testing.T) {
@@ -255,12 +255,12 @@ func TestCancelledContextStopsAnalysis(t *testing.T) {
 		cancel()
 	}()
 	start := time.Now()
-	_, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage("hang")})
+	_, err := plugin.AnalyzeDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml", Options: json.RawMessage("hang")})
 	if err == nil || !errors.Is(err, context.Canceled) || time.Since(start) > 5*time.Second {
 		t.Fatalf("err=%v after %s", err, time.Since(start))
 	}
 	cancel()
-	if _, err := plugin.CheckDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
+	if _, err := plugin.AnalyzeDocument(ctx, checkinputs.AnalyzerInput{Path: "ci.yml"}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err=%v", err)
 	}
 }
@@ -406,7 +406,7 @@ func TestPartialOutcomePreservesFindings(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: plugin, Options: json.RawMessage(`"partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: plugin, Options: json.RawMessage(`"partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
 	)
 	if err == nil || !strings.Contains(err.Error(), "analysis incomplete on purpose") {
 		t.Fatalf("application error=%v", err)
@@ -445,7 +445,7 @@ func TestPartialOutcomeRetainsValidRulesAndAllErrors(t *testing.T) {
 	}
 	result, err := checking.Analyze(t.Context(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: plugin, Options: json.RawMessage(`"rule-identities-partial"`)}}}, []workspace.InputFile{{Path: "ci.yml", Content: []byte(pipeWorkflow)}},
 	)
 	checkError(err)
 	if result == nil || len(result.Diagnostics) != len(wantMessages) {

@@ -56,7 +56,7 @@ type Registration struct {
 	// PrepareInput shares adapter configuration with advertised action-input routes.
 	PrepareInput func(context.Context, scriptanalysis.Unit) (preparation.Prepared, error)
 	// WithAnalyzer adapts a document analyzer to this tool's configuration and policy.
-	WithAnalyzer func(checkinputs.Checker) (Registration, error)
+	WithAnalyzer func(checkinputs.Analyzer) (Registration, error)
 }
 
 // Runner analyzes the batch prepared for one tool. ToolFinding.Script indexes

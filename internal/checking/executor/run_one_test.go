@@ -36,7 +36,7 @@ func TestRunOneOwnsIsolationDefaultsAndPartialError(t *testing.T) {
 		SourceRoots: []checkinputs.SourceRoot{{Host: "/host", Guest: "/original"}},
 		Scripts:     []checkinputs.Script{{Text: "echo ok", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "# original"}}, Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}},
 	}
-	registration := checkinputs.Registration{Options: options, Checker: testAnalyzer{
+	registration := checkinputs.Registration{Options: options, Analyzer: testAnalyzer{
 		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "single", Explanation: "explain", Help: "help", DocumentationURL: "https://example.invalid/rule"}},
 		run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			if string(supplied.Options) != string(options) {
@@ -81,7 +81,7 @@ func TestRunOneDetachesAnalyzerDiagnostics(t *testing.T) {
 		Lifecycle: &results.LifecycleReport{Policies: []results.LifecyclePolicyReport{{ID: "original"}}},
 		Fixes:     []results.Fix{{Revisions: map[string]string{"file": "original"}, Edits: []results.Edit{{Replacement: "original"}}}},
 	}}
-	registration := checkinputs.Registration{Checker: testAnalyzer{
+	registration := checkinputs.Registration{Analyzer: testAnalyzer{
 		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "example"}},
 		run:        func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) { return retained, nil },
 	}}
@@ -103,7 +103,7 @@ func TestForwardedAnalyzerUsesSharedAdmission(t *testing.T) {
 	failure := errors.New("runtime failure")
 	input := checkinputs.AnalyzerInput{Path: "workflow.yml", AvailableInputs: []rule.InputKind{rule.Scripts}, Scripts: []checkinputs.Script{{Text: "original"}}}
 	calls := 0
-	prepared, err := PrepareForwarding(checkinputs.Registration{Checker: testAnalyzer{
+	prepared, err := PrepareForwarding(checkinputs.Registration{Analyzer: testAnalyzer{
 		descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "forwarded", RequiredInputs: []rule.InputKind{rule.Scripts}}},
 		run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 			calls++
@@ -131,7 +131,7 @@ func TestRunInputValidationSurvivesNoRegistrations(t *testing.T) {
 		t.Fatalf("empty registration list skipped input validation: %v", err)
 	}
 	calls := 0
-	registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	registration := checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		calls++
 		return nil, nil
 	}}}
@@ -155,7 +155,7 @@ func (a cancelingDescriptorAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "canceled-before-analysis"}
 }
 
-func (a cancelingDescriptorAnalyzer) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a cancelingDescriptorAnalyzer) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	*a.calls++
 	return nil, nil
 }
@@ -165,7 +165,7 @@ func TestRunOneDoesNotStartAnalysisAfterPreparationCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	calls := 0
-	registration := checkinputs.Registration{Checker: cancelingDescriptorAnalyzer{cancel: cancel, calls: &calls}}
+	registration := checkinputs.Registration{Analyzer: cancelingDescriptorAnalyzer{cancel: cancel, calls: &calls}}
 	if _, err := RunOne(ctx, checkinputs.AnalyzerInput{}, prepareOne(t, registration, nil)); !errors.Is(err, context.Canceled) || calls != 0 {
 		t.Fatalf("canceled preparation started analyzer: calls=%d error=%v", calls, err)
 	}
@@ -189,15 +189,15 @@ func TestPrepareValidatesRegistration(t *testing.T) {
 		want         string
 	}{
 		{name: "nil analyzer", want: "nil analyzer registration"},
-		{name: "typed nil analyzer", registration: checkinputs.Registration{Checker: (*testAnalyzer)(nil)}, want: "nil analyzer registration"},
-		{name: "empty name", registration: checkinputs.Registration{Checker: testAnalyzer{}}, want: "name must not be empty"},
-		{name: "unsupported requirement", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "future", RequiredInputs: []rule.InputKind{"future"}}}}}, want: `requires unsupported input kind "future"`},
-		{name: "unavailable requirement", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "source", RequiredInputs: []rule.InputKind{rule.Source}}}}}, want: `requires unavailable input kind "source"`},
-		{name: "invalid options", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options"}}}, Options: json.RawMessage("{")}, want: `analyzer "options" options:`},
-		{name: "schema mismatch", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options", OptionsSchema: json.RawMessage(`{"required":["mode"]}`)}}}, Options: json.RawMessage(`{}`)}, want: `analyzer "options" options:`},
-		{name: "invalid schema", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options", OptionsSchema: json.RawMessage("{")}}}}, want: `analyzer "options" options:`},
-		{name: "unsupported available", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "facts"}}}}, available: []rule.InputKind{"future"}, want: "unsupported available input kind"},
-		{name: "duplicate available", registration: checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "facts"}}}}, available: []rule.InputKind{rule.Source, rule.Source}, want: "duplicate available input kind"},
+		{name: "typed nil analyzer", registration: checkinputs.Registration{Analyzer: (*testAnalyzer)(nil)}, want: "nil analyzer registration"},
+		{name: "empty name", registration: checkinputs.Registration{Analyzer: testAnalyzer{}}, want: "name must not be empty"},
+		{name: "unsupported requirement", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "future", RequiredInputs: []rule.InputKind{"future"}}}}}, want: `requires unsupported input kind "future"`},
+		{name: "unavailable requirement", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "source", RequiredInputs: []rule.InputKind{rule.Source}}}}}, want: `requires unavailable input kind "source"`},
+		{name: "invalid options", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options"}}}, Options: json.RawMessage("{")}, want: `analyzer "options" options:`},
+		{name: "schema mismatch", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options", OptionsSchema: json.RawMessage(`{"required":["mode"]}`)}}}, Options: json.RawMessage(`{}`)}, want: `analyzer "options" options:`},
+		{name: "invalid schema", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "options", OptionsSchema: json.RawMessage("{")}}}}, want: `analyzer "options" options:`},
+		{name: "unsupported available", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "facts"}}}}, available: []rule.InputKind{"future"}, want: "unsupported available input kind"},
+		{name: "duplicate available", registration: checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "facts"}}}}, available: []rule.InputKind{rule.Source, rule.Source}, want: "duplicate available input kind"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -221,7 +221,7 @@ func TestRunRejectsUnsupportedAndDuplicateAvailableFactsPerRegistration(t *testi
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var calls atomic.Int32
-			registration := checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+			registration := checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "never"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 				calls.Add(1)
 				return nil, nil
 			}}}
@@ -244,7 +244,7 @@ func (a *descriptorCountingAnalyzer) Descriptor() checkinputs.Descriptor {
 	return a.descriptor
 }
 
-func (a *descriptorCountingAnalyzer) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a *descriptorCountingAnalyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return a.run(ctx, input)
 }
 
@@ -261,7 +261,7 @@ func TestPreparedRegistrationOwnsMetadataAndRequiresExactFacts(t *testing.T) {
 		input.Options[0] = '!'
 		return []results.Diagnostic{{Message: "ok"}}, nil
 	}}
-	prepared := prepareOne(t, checkinputs.Registration{Checker: a, Options: options}, available)
+	prepared := prepareOne(t, checkinputs.Registration{Analyzer: a, Options: options}, available)
 	options[0] = '!'
 	available[0] = rule.Execution
 	a.descriptor.Name = "changed"
@@ -303,7 +303,7 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 		Invoked:      []checkinputs.Script{{Reference: occurrences[0].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "original"}}, Occurrence: occurrences[0], Runtime: &scripts.Execution{Shell: scripts.Shell{Name: "bash"}}}},
 		ActionInputs: []checkinputs.ActionInput{{Reference: occurrences[1].Declaration, Text: "original", Spans: []sourcemap.Span{{End: 8}}, Comments: []facts.SourceComment{{Text: "original"}}, Occurrence: occurrences[1], Site: checkinputs.ScriptInput{Action: "owner/action", Input: "script", Language: "javascript"}}},
 	}
-	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "mutator"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	prepared := prepareOne(t, checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "mutator"}}, run: func(_ context.Context, supplied checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		supplied.SelectedScripts[0] = "changed"
 		supplied.Invoked[0].Text = "changed"
 		supplied.Invoked[0].Occurrence.Owner = "changed"
@@ -331,7 +331,7 @@ func TestRunOneClonesInvocationAndActionInputFacts(t *testing.T) {
 func TestRunOneClonesSharedReturnedFindings(t *testing.T) {
 	t.Parallel()
 	shared := []results.Diagnostic{{Message: "cached"}}
-	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "shared", Explanation: "why", Help: "help", DocumentationURL: "https://example.invalid"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) { return shared, nil }}}, nil)
+	prepared := prepareOne(t, checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "shared", Explanation: "why", Help: "help", DocumentationURL: "https://example.invalid"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) { return shared, nil }}}, nil)
 	var group sync.WaitGroup
 	start := make(chan struct{})
 	for i := range 16 {
@@ -358,7 +358,7 @@ func TestRunOneRetainsCancellationAndPartialFindings(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "canceling"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+			prepared := prepareOne(t, checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "canceling"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 				cancel()
 				return []results.Diagnostic{{Message: "partial"}}, analyzerErr
 			}}}, nil)
@@ -372,7 +372,7 @@ func TestRunOneRetainsCancellationAndPartialFindings(t *testing.T) {
 
 func TestRunOneLeavesAnalyzerPanicsToCaller(t *testing.T) {
 	t.Parallel()
-	prepared := prepareOne(t, checkinputs.Registration{Checker: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "panicking"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+	prepared := prepareOne(t, checkinputs.Registration{Analyzer: testAnalyzer{descriptor: checkinputs.Descriptor{Descriptor: rule.Descriptor{Name: "panicking"}}, run: func(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 		panic("analyzer bug")
 	}}}, nil)
 	defer func() {

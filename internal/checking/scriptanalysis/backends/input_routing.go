@@ -108,7 +108,7 @@ func Configure(registration contract.Registration) contract.Registration {
 	}
 	registration.ConfiguredBackend = nil
 	if replace := registration.WithAnalyzer; replace != nil {
-		registration.WithAnalyzer = func(guest checkinputs.Checker) (contract.Registration, error) {
+		registration.WithAnalyzer = func(guest checkinputs.Analyzer) (contract.Registration, error) {
 			replacement, err := replace(guest)
 			if err != nil {
 				return contract.Registration{}, err

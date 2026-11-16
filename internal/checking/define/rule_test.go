@@ -101,7 +101,7 @@ func TestRegistrationAttachesRuleNameToScriptFindings(t *testing.T) {
 	if registration.Build != nil || registration.Script == nil {
 		t.Fatalf("script rule registered as %+v", registration)
 	}
-	got, err := registration.Script.CheckDocument(t.Context(), checkinputs.AnalyzerInput{})
+	got, err := registration.Script.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,7 +19,7 @@ func (sudoAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "no-sudo", Category: "conventions", RequiredInputs: []rule.InputKind{rule.Scripts}}
 }
 
-func (sudoAnalyzer) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (sudoAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, script := range input.Scripts {
 		if strings.Contains(script.Text, "sudo ") {
@@ -41,7 +41,7 @@ permissions: {}
 `)
 	result, err := checking.Analyze(context.Background(),
 
-		checking.Options{Analyzers: []checkinputs.Registration{{Checker: sudoAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
+		checking.Options{Analyzers: []checkinputs.Registration{{Analyzer: sudoAnalyzer{}}}}, []workspace.InputFile{{Path: "workflow.yml", Content: source}},
 	)
 	if err != nil {
 		fmt.Println("incomplete:", err)

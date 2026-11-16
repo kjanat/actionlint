@@ -20,7 +20,7 @@ func TestUnavailableRolesRejectCallsWithoutRuntime(t *testing.T) {
 		!reflect.DeepEqual(p.ScriptDescriptor(), scriptengine.Descriptor{}) {
 		t.Fatal("absent role did not return an empty descriptor")
 	}
-	if _, err := p.CheckDocument(t.Context(), checkinputs.AnalyzerInput{}); err == nil {
+	if _, err := p.AnalyzeDocument(t.Context(), checkinputs.AnalyzerInput{}); err == nil {
 		t.Fatal("unavailable analyzer accepted a call")
 	}
 	if _, err := p.ResolveRunners(t.Context(), runnerapi.Request{}); err == nil {

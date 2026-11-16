@@ -32,8 +32,8 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (worksp
 	var names []string
 	registrations := ConfigurationRegistrations(options.Analyzers, options.Tools)
 	for _, registration := range options.Analyzers {
-		if !checkinputs.IsNilChecker(registration.Checker) {
-			names = append(names, registration.Checker.Descriptor().Name)
+		if !checkinputs.IsNilAnalyzer(registration.Analyzer) {
+			names = append(names, registration.Analyzer.Descriptor().Name)
 		}
 	}
 	for _, registration := range options.Tools {

@@ -92,7 +92,7 @@ console.log(JSON.stringify({ok:true,diagnostics:[{filename:request.filename,code
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := checker.CheckDocument(t.Context(), input)
+	findings, err := checker.AnalyzeDocument(t.Context(), input)
 	if err != nil || len(findings) != 1 {
 		t.Fatal(findings, err)
 	}
@@ -158,7 +158,7 @@ func TestInlineProgramFailureAndCancellationCleanup(t *testing.T) {
 					}
 				}()
 			}
-			if _, err := checker.CheckDocument(ctx, input); err == nil {
+			if _, err := checker.AnalyzeDocument(ctx, input); err == nil {
 				t.Fatal("failed program returned success")
 			}
 			if mode == "cancellation" {

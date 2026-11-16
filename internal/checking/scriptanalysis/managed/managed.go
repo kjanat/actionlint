@@ -32,7 +32,7 @@ func Bind(base contract.Registration, p backends.Provider) contract.Registration
 	if p.Manifest.Integration == nil || p.Manifest.Preparation != shell.ID {
 		return base
 	}
-	base.WithAnalyzer = func(guest checkinputs.Checker) (contract.Registration, error) {
+	base.WithAnalyzer = func(guest checkinputs.Analyzer) (contract.Registration, error) {
 		return withAnalyzer(base, p, guest)
 	}
 	return base
@@ -53,7 +53,7 @@ func defaultSelection(sel backends.ToolSelection, name string) bool {
 
 // withAnalyzer selects a document analyzer or the provider's transport per
 // document, accounting for settings in overrides and composite actions.
-func withAnalyzer(base contract.Registration, p backends.Provider, guest checkinputs.Checker) (contract.Registration, error) {
+func withAnalyzer(base contract.Registration, p backends.Provider, guest checkinputs.Analyzer) (contract.Registration, error) {
 	m := p.Manifest
 	name := m.Rule.Name
 	integrator, ok := guest.(checkinputs.ToolIntegrator)
@@ -232,7 +232,7 @@ func (r documentRoute) negotiate(ctx context.Context, guest checkinputs.ToolInte
 
 type documentRunner struct {
 	documentRoute
-	guest      checkinputs.Checker
+	guest      checkinputs.Analyzer
 	integrator checkinputs.ToolIntegrator
 	context    contract.Context
 	native     func(*configuration.Config) (contract.Runner, error)
@@ -297,7 +297,7 @@ func (r documentRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch)
 			continue
 		}
 		files.configure(&input)
-		result, err := executor.Run(ctx, input, []checkinputs.Registration{{Checker: r.guest, Options: input.Options}})
+		result, err := executor.Run(ctx, input, []checkinputs.Registration{{Analyzer: r.guest, Options: input.Options}})
 		for _, finding := range result {
 			mapped, mapErr := files.finding(r.name, finding, script, i)
 			if mapErr != nil {

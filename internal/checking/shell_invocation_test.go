@@ -22,7 +22,7 @@ func (interpreterProvider) Descriptor() checkinputs.Descriptor {
 	}}
 }
 
-func (interpreterProvider) CheckDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (interpreterProvider) AnalyzeDocument(context.Context, checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return nil, nil
 }
 
@@ -40,7 +40,7 @@ func TestShellInvocationValidationThroughSession(t *testing.T) {
 		t.Run(tc.shell, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + tc.shell + "\n        run: echo hi\n"
-			result, err := checking.Check(t.Context(), checking.Options{SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Checker: interpreterProvider{}}}}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(source), Name: "workflow.yml"})
+			result, err := checking.Check(t.Context(), checking.Options{SkipProjectConfig: true, Analyzers: []checkinputs.Registration{{Analyzer: interpreterProvider{}}}}, checkrequest.Request{Kind: checkrequest.Stdin, Reader: strings.NewReader(source), Name: "workflow.yml"})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -41,16 +41,16 @@ type DocumentRequest struct {
 	Dependencies []facts.Dependency `json:"dependencies,omitempty"`
 }
 
-// DocumentChecker runs the same process transport against captured documents.
+// DocumentAnalyzer runs the same process transport against captured documents.
 // It never admits a finding or edit in a different, uncaptured file.
-type DocumentChecker struct {
+type DocumentAnalyzer struct {
 	backend    *Backend
 	descriptor checkinputs.Descriptor
 	documents  []string
 	directory  bool
 }
 
-func NewDocumentAnalyzer(manifest toolmanifest.Manifest, command *hostprocess.Command, options Options) (*DocumentChecker, error) {
+func NewDocumentAnalyzer(manifest toolmanifest.Manifest, command *hostprocess.Command, options Options) (*DocumentAnalyzer, error) {
 	if manifest.Role != toolmanifest.RoleDocument || manifest.Transport != toolmanifest.TransportProcess || manifest.Preparation != "generic" {
 		return nil, errors.New("document providers require process transport and generic preparation")
 	}
@@ -78,14 +78,14 @@ func NewDocumentAnalyzer(manifest toolmanifest.Manifest, command *hostprocess.Co
 	}
 	descriptor := manifest.Rule.Clone()
 	descriptor.RequiredInputs = requires
-	return &DocumentChecker{backend: backend, descriptor: checkinputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, toolmanifest.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, toolmanifest.ResourceWorkspace)}, nil
+	return &DocumentAnalyzer{backend: backend, descriptor: checkinputs.Descriptor{InvocationDefinitions: commands.CloneDefinitions(manifest.InvocationDefinitions), Descriptor: descriptor, Scope: scope, SupportsActions: len(manifest.Selectors.Documents) == 0 || slices.Contains(manifest.Selectors.Documents, "action")}, documents: slices.Clone(manifest.Selectors.Documents), directory: slices.Contains(manifest.Capabilities.Resources, toolmanifest.ResourceDirectory) || slices.Contains(manifest.Capabilities.Resources, toolmanifest.ResourceWorkspace)}, nil
 }
 
-func (d *DocumentChecker) Descriptor() checkinputs.Descriptor {
+func (d *DocumentAnalyzer) Descriptor() checkinputs.Descriptor {
 	return d.descriptor.Detached()
 }
 
-func (d *DocumentChecker) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (d *DocumentAnalyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if input.Kind != "workflow" && input.Kind != "action" {
 		return nil, fmt.Errorf("unsupported document kind %q", input.Kind)
 	}
@@ -197,7 +197,7 @@ func sameDocument(name, filename, directory string) bool {
 	return candidate == expected
 }
 
-func (d *DocumentChecker) finding(input checkinputs.AnalyzerInput, entry scriptengine.Diagnostic) (results.Diagnostic, error) {
+func (d *DocumentAnalyzer) finding(input checkinputs.AnalyzerInput, entry scriptengine.Diagnostic) (results.Diagnostic, error) {
 	if len(entry.Fixes) != 0 && !d.backend.capabilities.Fixes {
 		return results.Diagnostic{}, errors.New("document provider returned undeclared fixes")
 	}

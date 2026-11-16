@@ -48,7 +48,7 @@ func (*evidenceCompletionObserver) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "evidence-completion", Category: "correctness", RequiredInputs: []rule.InputKind{rule.Source}}
 }
 
-func (o *evidenceCompletionObserver) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (o *evidenceCompletionObserver) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	if strings.Contains(input.Content, "runs-on: "+o.label) {
 		o.once.Do(func() { close(o.release) })
 	}
@@ -72,7 +72,7 @@ func TestRunnerEvidenceOrderIgnoresCompletion(t *testing.T) {
 		settings := checking.Options{
 			WorkingDir: root,
 			Runners:    runnerapi.Options{Target: "order", Providers: []runnerapi.Registration{{Provider: &orderedEvidenceProvider{waitFor: slow, release: release}, ImplementationID: "same-provider"}}},
-			Analyzers:  []checkinputs.Registration{{Checker: observer}},
+			Analyzers:  []checkinputs.Registration{{Analyzer: observer}},
 		}
 		// a.yml waits until b.yml has been analyzed.
 		result, err := checking.Analyze(t.Context(), settings, []workspace.InputFile{source("b.yml", fast), source("a.yml", slow)})

@@ -189,10 +189,10 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	}
 	var extensions []rule.Descriptor
 	for _, analyzer := range request.Analyzers {
-		if checkinputs.IsNilChecker(analyzer.Checker) {
+		if checkinputs.IsNilAnalyzer(analyzer.Analyzer) {
 			return nil, errors.New("nil analyzer registration")
 		}
-		extensions = append(extensions, analyzer.Checker.Descriptor().Descriptor)
+		extensions = append(extensions, analyzer.Analyzer.Descriptor().Descriptor)
 	}
 	seenTools := map[string]bool{}
 	for _, tool := range request.Tools {

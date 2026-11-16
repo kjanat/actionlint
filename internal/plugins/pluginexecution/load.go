@@ -197,7 +197,7 @@ func (l *Loaded) Registrations() []checkinputs.Registration {
 		if !plugin.HasAnalyzer() {
 			continue
 		}
-		registrations = append(registrations, checkinputs.Registration{Checker: plugin})
+		registrations = append(registrations, checkinputs.Registration{Analyzer: plugin})
 	}
 	return registrations
 }

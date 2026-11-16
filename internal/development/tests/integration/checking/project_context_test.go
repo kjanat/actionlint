@@ -71,7 +71,7 @@ jobs:
 				sources = append(sources, workspace.InputFile{Path: "local/action.yml", Content: []byte(action)})
 			}
 			observer := &invocationAnalyzer{}
-			options := checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: observer}}}
+			options := checking.Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: observer}}}
 			if mode != "snapshots" {
 				options.ReadFile = func(path string) ([]byte, error) {
 					if filepath.Clean(path) == filepath.Join(root, "local", "action.yml") {
@@ -151,7 +151,7 @@ func TestRelativeConfigFileUsesAnalysisWorkingDirectory(t *testing.T) {
 					}
 				}
 				options := checking.Options{
-					WorkingDir: workingDir, Analyzers: []checkinputs.Registration{{Checker: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
+					WorkingDir: workingDir, Analyzers: []checkinputs.Registration{{Analyzer: namedFindingAnalyzer("observed")}}, ReadFile: func(path string) ([]byte, error) {
 						rel, err := filepath.Rel(root, path)
 						if err != nil || !filepath.IsAbs(path) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 							return nil, fmt.Errorf("read escaped analysis root: %s", path)

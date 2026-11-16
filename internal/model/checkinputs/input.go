@@ -23,20 +23,20 @@ type Descriptor struct {
 	InvocationDefinitions []commands.Definition
 }
 
-// Checker completes all work before returning. The host may call CheckDocument
+// Analyzer completes all work before returning. The host may call AnalyzeDocument
 // concurrently for different documents. Implementations must honor cancellation.
 // Findings may accompany an error when an analysis is incomplete.
-// Descriptor and CheckDocument must not panic; the host does not recover checker panics.
-type Checker interface {
+// Descriptor and AnalyzeDocument must not panic; the host does not recover analyzer panics.
+type Analyzer interface {
 	Descriptor() Descriptor
-	CheckDocument(context.Context, AnalyzerInput) ([]results.Diagnostic, error)
+	AnalyzeDocument(context.Context, AnalyzerInput) ([]results.Diagnostic, error)
 }
 
 // Registration supplies analyzer-specific configuration without exposing the
 // host's mutable configuration objects or rule registry.
 type Registration struct {
-	Checker Checker
-	Options json.RawMessage
+	Analyzer Analyzer
+	Options  json.RawMessage
 	// Prepare acquires additional facts before checking. On failure it returns
 	// the usable partial input, so completed observations can still yield findings.
 	Prepare func(context.Context, AnalyzerInput) (AnalyzerInput, error)

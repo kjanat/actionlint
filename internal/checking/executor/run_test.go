@@ -22,7 +22,7 @@ type testAnalyzer struct {
 }
 
 func (a testAnalyzer) Descriptor() checkinputs.Descriptor { return a.descriptor }
-func (a testAnalyzer) CheckDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (a testAnalyzer) AnalyzeDocument(ctx context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	return a.run(ctx, input)
 }
 
@@ -48,7 +48,7 @@ func TestRunIsolatesFactsAndRetainsPartialResults(t *testing.T) {
 		}
 		return []results.Diagnostic{{Message: "complete"}}, nil
 	}}
-	findings, err := Run(t.Context(), input, []checkinputs.Registration{{Checker: first}, {Checker: second}})
+	findings, err := Run(t.Context(), input, []checkinputs.Registration{{Analyzer: first}, {Analyzer: second}})
 	if !errors.Is(err, failure) || len(findings) != 2 {
 		t.Fatalf("findings=%v err=%v", findings, err)
 	}
@@ -67,7 +67,7 @@ func TestRunRequirementsAndCancellation(t *testing.T) {
 			t.Error("ran without required facts")
 			return nil, nil
 		}}
-		_, err := Run(t.Context(), checkinputs.AnalyzerInput{}, []checkinputs.Registration{{Checker: a}})
+		_, err := Run(t.Context(), checkinputs.AnalyzerInput{}, []checkinputs.Registration{{Analyzer: a}})
 		if err == nil || !strings.Contains(err.Error(), string(requirement)) {
 			t.Fatal(err)
 		}
@@ -94,7 +94,7 @@ func TestRunPreparesIsolatedFactsAndPreservesPartialFindings(t *testing.T) {
 		}
 		return []results.Diagnostic{{Message: "resolved first dependency"}}, nil
 	}}
-	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, supplied checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
+	registration := checkinputs.Registration{Analyzer: checker, Prepare: func(_ context.Context, supplied checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 		supplied.Dependencies[0].Uses = "prepared/repo@v1"
 		supplied.ResolvedDependencies[0].Commit = "resolved"
 		return supplied, failure
@@ -116,7 +116,7 @@ func TestRunCancellationDuringPreparationDoesNotStartChecker(t *testing.T) {
 		t.Fatal("checker started after preparation was canceled")
 		return nil, nil
 	}}
-	registration := checkinputs.Registration{Checker: checker, Prepare: func(_ context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
+	registration := checkinputs.Registration{Analyzer: checker, Prepare: func(_ context.Context, input checkinputs.AnalyzerInput) (checkinputs.AnalyzerInput, error) {
 		cancel()
 		return input, nil
 	}}
@@ -151,7 +151,7 @@ func TestRunIsolatesActionInputFacts(t *testing.T) {
 		}
 		return nil, nil
 	}}
-	if _, err := Run(t.Context(), input, []checkinputs.Registration{{Checker: first}, {Checker: second}}); err != nil {
+	if _, err := Run(t.Context(), input, []checkinputs.Registration{{Analyzer: first}, {Analyzer: second}}); err != nil {
 		t.Fatal(err)
 	}
 }

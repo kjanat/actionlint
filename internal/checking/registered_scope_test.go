@@ -10,13 +10,13 @@ import (
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
-type sourceScopedChecker struct{}
+type sourceScopedAnalyzer struct{}
 
-func (sourceScopedChecker) Descriptor() checkinputs.Descriptor {
+func (sourceScopedAnalyzer) Descriptor() checkinputs.Descriptor {
 	return checkinputs.Descriptor{Name: "source-check", Category: "correctness", Maturity: "stable", Recommended: true, Scope: rule.SourceConfiguration, SupportsActions: true, RequiredInputs: []rule.InputKind{rule.Scripts, rule.Invocations}}
 }
 
-func (sourceScopedChecker) CheckDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
+func (sourceScopedAnalyzer) AnalyzeDocument(_ context.Context, input checkinputs.AnalyzerInput) ([]results.Diagnostic, error) {
 	var findings []results.Diagnostic
 	for _, scripts := range [][]checkinputs.Script{input.Scripts, input.Invoked} {
 		for _, script := range scripts {
@@ -36,7 +36,7 @@ func TestRegisteredSourceScopeUsesActionConfiguration(t *testing.T) {
 	for _, path := range []string{action, workflow} {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
-			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: sourceScopedChecker{}}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
+			result, err := Check(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Analyzer: sourceScopedAnalyzer{}}}}, checkrequest.Request{Kind: checkrequest.Files, Paths: []string{path}})
 			if err != nil {
 				t.Fatal(err)
 			}

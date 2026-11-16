@@ -16,13 +16,13 @@ import (
 )
 
 type FactAnalyzer struct {
-	Analyzer         checkinputs.Checker
+	Analyzer         checkinputs.Analyzer
 	Options          json.RawMessage
 	IncludeExecution bool
 }
 
 type describedFactChecker struct {
-	checkinputs.Checker
+	checkinputs.Analyzer
 	descriptor checkinputs.Descriptor
 }
 
@@ -36,11 +36,11 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 	if adapter.IncludeExecution {
 		available = append(available, rule.Execution)
 	}
-	if checkinputs.IsNilChecker(adapter.Analyzer) {
+	if checkinputs.IsNilAnalyzer(adapter.Analyzer) {
 		return nil, errors.New("nil analyzer registration")
 	}
 	descriptor := adapter.Analyzer.Descriptor()
-	checker := describedFactChecker{Checker: adapter.Analyzer, descriptor: descriptor}
+	checker := describedFactChecker{Analyzer: adapter.Analyzer, descriptor: descriptor}
 	prepared := make(map[binding.ID]executor.PreparedRegistration)
 	for _, scope := range batch.Scopes {
 		var identity binding.ID
@@ -57,7 +57,7 @@ func (adapter FactAnalyzer) AnalyzeScripts(ctx context.Context, batch Batch) ([]
 		if _, exists := prepared[identity]; exists {
 			continue
 		}
-		registration, err := executor.Prepare(checkinputs.Registration{Checker: checker, Options: options}, available)
+		registration, err := executor.Prepare(checkinputs.Registration{Analyzer: checker, Options: options}, available)
 		if err != nil {
 			return nil, err
 		}
