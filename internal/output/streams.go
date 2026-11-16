@@ -1,5 +1,4 @@
-// Package commandio supplies command input and output without command parsing.
-package commandio
+package output
 
 import (
 	"encoding/json"
@@ -13,8 +12,9 @@ type Streams struct {
 	Stderr io.Writer
 }
 
-// WriteJSON uses a writer's JSON presentation when supplied, or encodes one JSON record.
-func WriteJSON(out io.Writer, value any) error {
+// WriteJSONRecord uses a writer's JSON presentation when supplied, or encodes
+// one JSON record.
+func WriteJSONRecord(out io.Writer, value any) error {
 	if writer, ok := out.(interface{ WriteJSON(any) error }); ok {
 		return writer.WriteJSON(value)
 	}

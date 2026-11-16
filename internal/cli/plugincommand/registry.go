@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -52,7 +52,7 @@ type RegistryRequest struct {
 }
 
 // Run executes the plugin registry operation.
-func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acquisition dependencycache.Acquisition) (int, error) {
+func (r RegistryRequest) Run(ctx context.Context, streams output.Streams, acquisition dependencycache.Acquisition) (int, error) {
 	name := ""
 	if len(r.Paths) > 0 {
 		name = r.Paths[0]
@@ -65,10 +65,10 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acq
 		return 0, r.discover(ctx, streams, registry, name, acquisition)
 	}
 	if r.Config.Disabled {
-		return 0, arguments.UsageError{Cause: errors.New("plugin management requires configuration; remove --no-config")}
+		return 0, exitcode.UsageError{Cause: errors.New("plugin management requires configuration; remove --no-config")}
 	}
 	if name == "" && (r.Options.Version != "" || r.Options.Registry != "") {
-		return 0, arguments.UsageError{Cause: errors.New("--version and --registry require a plugin name")}
+		return 0, exitcode.UsageError{Cause: errors.New("--version and --registry require a plugin name")}
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -90,7 +90,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acq
 	if explicitEndpoint != "" {
 		grant, err := artifacts.ExplicitSource(explicitEndpoint)
 		if err != nil {
-			return 0, arguments.UsageError{Cause: err}
+			return 0, exitcode.UsageError{Cause: err}
 		}
 		project.StatusOptions.Network = grant
 	}
@@ -136,7 +136,7 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acq
 		return 0, fmt.Errorf("unsupported plugin operation %q", r.Operation)
 	}
 	if r.JSON {
-		return 0, commandio.WriteJSON(streams.Stdout, struct {
+		return 0, output.WriteJSONRecord(streams.Stdout, struct {
 			pluginregistry.ResolvedPlugins
 			Direct []string `json:"direct,omitempty"`
 		}{selected, project.DirectSources()})
@@ -160,16 +160,16 @@ func (r RegistryRequest) Run(ctx context.Context, streams commandio.Streams, acq
 func RequestedPlugin(name string, options RegistryOptions, existing []pluginreference.Reference) (pluginreference.Reference, error) {
 	ref, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
-		return pluginreference.Reference{}, arguments.UsageError{Cause: err}
+		return pluginreference.Reference{}, exitcode.UsageError{Cause: err}
 	}
 	if ref.DirectSource() != "" {
 		if options.Version != "" || options.Registry != "" {
-			return pluginreference.Reference{}, arguments.UsageError{Cause: errors.New("direct plugin URLs cannot use --version or --registry; change the URL and SHA256 pin instead")}
+			return pluginreference.Reference{}, exitcode.UsageError{Cause: errors.New("direct plugin URLs cannot use --version or --registry; change the URL and SHA256 pin instead")}
 		}
 		return ref, nil
 	}
 	if strings.Contains(name, "@") && options.Version != "" && ref.Version() != options.Version {
-		return pluginreference.Reference{}, arguments.UsageError{Cause: errors.New("plugin @version conflicts with --version")}
+		return pluginreference.Reference{}, exitcode.UsageError{Cause: errors.New("plugin @version conflicts with --version")}
 	}
 	index, err := RequestedPluginIndex(ref, options.Registry, existing)
 	if err != nil {
@@ -193,7 +193,7 @@ func RequestedPlugin(name string, options RegistryOptions, existing []pluginrefe
 	}
 	ref, err = pluginreference.New(ref.Name(), version, registry)
 	if err != nil {
-		return pluginreference.Reference{}, arguments.UsageError{Cause: err}
+		return pluginreference.Reference{}, exitcode.UsageError{Cause: err}
 	}
 	return ref, nil
 }
@@ -211,13 +211,13 @@ func RequestedPluginIndex(ref pluginreference.Reference, registry string, existi
 			continue
 		}
 		if index >= 0 {
-			return -1, arguments.UsageError{Cause: fmt.Errorf("plugin %q is declared in multiple registries; select --registry", ref.Name())}
+			return -1, exitcode.UsageError{Cause: fmt.Errorf("plugin %q is declared in multiple registries; select --registry", ref.Name())}
 		}
 		index = i
 	}
 	if index < 0 && registry != "" && !ref.IsAlias() {
 		if count > 1 {
-			return -1, arguments.UsageError{Cause: fmt.Errorf("plugin %q is declared in multiple registries; select an existing --registry", ref.Name())}
+			return -1, exitcode.UsageError{Cause: fmt.Errorf("plugin %q is declared in multiple registries; select an existing --registry", ref.Name())}
 		}
 		index = named
 	}
@@ -291,7 +291,7 @@ func (r RegistryRequest) update(ctx context.Context, project *installation.Proje
 		if ref.DirectSource() == "" && (r.Options.Version != "" || strings.Contains(name, "@")) {
 			ref, err = pluginreference.New(ref.Name(), requested.Version(), ref.Registry())
 			if err != nil {
-				return arguments.UsageError{Cause: err}
+				return exitcode.UsageError{Cause: err}
 			}
 		}
 		refs[index] = ref
@@ -327,7 +327,7 @@ func removePlugin(ctx context.Context, project *installation.Project, name, regi
 func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []pluginreference.Reference, name, registry string) (int, error) {
 	requested, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
-		return -1, arguments.UsageError{Cause: err}
+		return -1, exitcode.UsageError{Cause: err}
 	}
 	index := -1
 	for i, ref := range refs {
@@ -378,10 +378,10 @@ func DeclaredPlugin(ctx context.Context, project *installation.Project, refs []p
 	return index, nil
 }
 
-func (r RegistryRequest) discover(ctx context.Context, streams commandio.Streams, registry, name string, acquisition dependencycache.Acquisition) error {
+func (r RegistryRequest) discover(ctx context.Context, streams output.Streams, registry, name string, acquisition dependencycache.Acquisition) error {
 	client, err := pluginregistry.New(registry, acquisition)
 	if err != nil {
-		return arguments.UsageError{Cause: err}
+		return exitcode.UsageError{Cause: err}
 	}
 	if r.Operation == Search {
 		plugins, err := client.Search(ctx, name)
@@ -389,7 +389,7 @@ func (r RegistryRequest) discover(ctx context.Context, streams commandio.Streams
 			return err
 		}
 		if r.JSON {
-			return commandio.WriteJSON(streams.Stdout, plugins)
+			return output.WriteJSONRecord(streams.Stdout, plugins)
 		}
 		for _, p := range plugins {
 			if _, err := fmt.Fprintf(streams.Stdout, "%s\t%s\t%s\n", p.Name, p.PluginID, strings.Join(p.Aliases, ", ")); err != nil {
@@ -403,14 +403,14 @@ func (r RegistryRequest) discover(ctx context.Context, streams commandio.Streams
 	}
 	ref, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
-		return arguments.UsageError{Cause: err}
+		return exitcode.UsageError{Cause: err}
 	}
 	versions, err := client.Versions(ctx, ref.Name())
 	if err != nil {
 		return err
 	}
 	if r.JSON {
-		return commandio.WriteJSON(streams.Stdout, versions)
+		return output.WriteJSONRecord(streams.Stdout, versions)
 	}
 	for _, v := range versions {
 		if _, err := fmt.Fprintln(streams.Stdout, v.Version); err != nil {

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/cli/configcommand"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
+	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
@@ -23,7 +23,7 @@ type commandRequest interface {
 
 // streamCommand is a command whose package runs it over command streams.
 type streamCommand interface {
-	Run(context.Context, commandio.Streams, dependencycache.Acquisition) (int, error)
+	Run(context.Context, output.Streams, dependencycache.Acquisition) (int, error)
 }
 
 // streamRequest runs a streamCommand with the streams and plugin acquisition of a Command.
@@ -70,7 +70,7 @@ func (r rulesRequest) run(ctx context.Context, streams Command) (int, error) {
 	rules, err := assembly.RulesWithPlugins(ctx, sources)
 	if err != nil {
 		if _, loadFailure := errors.AsType[*pluginexecution.LoadError](err); loadFailure && len(selection.Paths) > 0 {
-			return 0, arguments.UsageError{Cause: err}
+			return 0, exitcode.UsageError{Cause: err}
 		}
 		return 0, err
 	}

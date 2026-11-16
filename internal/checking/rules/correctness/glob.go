@@ -10,7 +10,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
-	"actionlint.kjanat.dev/v2/internal/model/workflows/knownvalues"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/schema"
 )
@@ -94,13 +93,13 @@ func GlobJob(n workflows.BoundJob) []reporting.StepFinding {
 		return rule.Findings
 	}
 	if expression := n.Snapshot.Expression; expression != nil {
-		if value, known := knownvalues.Constant(expression); known {
+		if value, known := expression.ConstantValue(); known {
 			if snapshot, ok := value.(map[string]any); ok {
 				rule.checkKnownRefGlob(schema.Property(snapshot, "version"), expression.Pos)
 			}
 		}
 	} else if version := n.Snapshot.Version; version != nil && version.ContainsExpression() {
-		if value, known := knownvalues.Constant(version); known {
+		if value, known := version.ConstantValue(); known {
 			rule.checkKnownRefGlob(value, version.Pos)
 		}
 	} else {

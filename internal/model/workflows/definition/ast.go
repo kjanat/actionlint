@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/languages/expressions/evaluate"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/exprtypes"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
@@ -153,6 +154,21 @@ func IsExprAssigned(s string) bool {
 // IsExpressionAssigned returns whether a single expression is assigned to the String.
 func (s *String) IsExpressionAssigned() bool {
 	return s != nil && IsExprAssigned(s.Value)
+}
+
+// ConstantValue evaluates an assigned expression when all its required inputs
+// are known. It reports false for an absent String, for text that is not one
+// assigned expression and for an expression whose value depends on runtime
+// contexts.
+func (s *String) ConstantValue() (any, bool) {
+	if s == nil {
+		return nil, false
+	}
+	expr := syntax.ParseAssignedExpression(s.Value)
+	if expr == nil {
+		return nil, false
+	}
+	return evaluate.ConditionConstantValue(expr)
 }
 
 // Bool represents a YAML boolean or expression and its source position.

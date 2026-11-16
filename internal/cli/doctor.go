@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
-	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
+	"actionlint.kjanat.dev/v2/internal/output"
 )
 
 type doctorTool struct {
@@ -93,7 +93,7 @@ func writeDoctor(ctx context.Context, out io.Writer, req doctorRequest, acquisit
 		report.Tools = append(report.Tools, tool)
 	}
 	if req.JSON {
-		err = commandio.WriteJSON(out, report)
+		err = output.WriteJSONRecord(out, report)
 	} else {
 		file, terminal := terminalFile(out)
 		links := req.Hyperlinks.enabled(terminal, os.Getenv)
@@ -143,7 +143,7 @@ func checkDoctorTools(manifests []toolmanifest.Manifest, named []string) error {
 	if len(unknown) == 0 {
 		return nil
 	}
-	return arguments.UsageError{Cause: assembly.NewUnknownToolError(unknown, known)}
+	return exitcode.UsageError{Cause: assembly.NewUnknownToolError(unknown, known)}
 }
 
 // probeDoctorVersion runs the manifest's version probe against command, as

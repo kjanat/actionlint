@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
@@ -65,7 +64,7 @@ func generateCommandConfig(ctx context.Context, out io.Writer, asJSON bool, hype
 		return err
 	}
 	if asJSON {
-		return commandio.WriteJSON(out, map[string]string{"path": path})
+		return output.WriteJSONRecord(out, map[string]string{"path": path})
 	}
 	// Resolve checkout aliases before comparing with plugin storage paths.
 	physicalCwd, err := filepath.EvalSymlinks(cwd)

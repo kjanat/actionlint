@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/cli/arguments"
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
@@ -36,7 +36,7 @@ func (c checkInvocation) checkingOptions(workingDir string, acquisition dependen
 	})
 	if err != nil {
 		if _, ok := errors.AsType[*assembly.MetadataError](err); ok {
-			return options, arguments.UsageError{Cause: err}
+			return options, exitcode.UsageError{Cause: err}
 		}
 		return options, err
 	}

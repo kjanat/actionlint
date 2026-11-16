@@ -9,14 +9,13 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/cli/arguments"
-	"actionlint.kjanat.dev/v2/internal/cli/commandio"
-
+	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/output"
 
 	"github.com/spf13/cobra"
 )
@@ -30,8 +29,8 @@ type Command struct {
 	Acquisition dependencycache.Acquisition
 }
 
-func (cmd *Command) commandStreams() commandio.Streams {
-	return commandio.Streams{Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr}
+func (cmd *Command) commandStreams() output.Streams {
+	return output.Streams{Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr}
 }
 
 // Main runs the CLI and returns its exit status. Args includes the executable
@@ -72,7 +71,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 		app.root.SetErr(io.Discard)
 		app.root.SetArgs(normalizeCommandArgs(app.root, args))
 		if err := app.root.ExecuteContext(ctx); err != nil {
-			return app.reportError(arguments.UsageError{Cause: err})
+			return app.reportError(exitcode.UsageError{Cause: err})
 		}
 		return app.status
 	}
@@ -111,7 +110,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 		app.prefixIgnore = slices.Clone(app.inv.Check.IgnoreRegex)
 		app.prefixIgnoreSelectors = slices.Clone(app.inv.Check.IgnoreSelectors)
 		if err := app.root.ExecuteContext(ctx); err != nil {
-			return app.reportError(arguments.UsageError{Cause: err})
+			return app.reportError(exitcode.UsageError{Cause: err})
 		}
 	} else {
 		app.inv.Legacy = true
@@ -173,7 +172,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 		}
 		var shell completionShell
 		if err := shell.Set(app.inv.Shell); err != nil {
-			return app.reportError(arguments.UsageError{Cause: err})
+			return app.reportError(exitcode.UsageError{Cause: err})
 		}
 		if err := writeCompletion(app.streams.Stdout, shell, app.root); err != nil {
 			return app.reportError(err)
