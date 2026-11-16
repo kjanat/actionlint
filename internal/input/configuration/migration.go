@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -34,11 +33,11 @@ type Migration struct {
 // MigrateDocument converts legacy syntax without reading or writing files.
 // Explicit migrated policy levels now survive presets and --strict.
 func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registrations ...rule.Descriptor) (Migration, error) {
-	parsed, err := document.Parse(path, content)
+	editor, err := document.NewEditor(path, content)
 	if err != nil {
 		return Migration{}, err
 	}
-	root := parsed.Value()
+	root := editor.Root().Value()
 	for _, warning := range configWarnings(root, nil) {
 		if strings.Contains(warning.Message, `"self-hosted-runner.`) || strings.Contains(warning.Message, `"paths[`) {
 			return Migration{}, fmt.Errorf("cannot migrate without dropping an unknown setting: %s", warning.Message)
@@ -65,35 +64,21 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 			result.Notes = append(result.Notes, descriptor.MigrationNote)
 		}
 	}
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".toml":
-		result.Content, err = migrateTOML(content, next)
-	case ".json", ".jsonc":
-		result.Content, err = document.Marshal(path, next)
-	default:
-		relocated := ruleSet.migrationInputs(root, parsed.Origins())
-		locations := map[string]document.Location{}
-		for pointer, origin := range relocated {
-			line, column := origin.KeyLine, origin.KeyColumn
-			if line == 0 {
-				line, column = origin.Line, origin.Column
-			}
-			locations[pointer] = document.Location{File: origin.File, Line: line, Column: column}
-		}
-		result.Content, err = document.RewriteYAML(content, next, locations)
+	if !editor.WritesNull() && hasUnknownRepositoryFacts(next) {
+		return Migration{}, errors.New("TOML cannot preserve unknown values or null resets; convert the selected config to YAML or JSON first")
 	}
+	relocated := ruleSet.migrationInputs(root, editor.Root().Origins())
+	result.Content, err = editor.Rewrite(next, migratedMembers, relocated)
 	if err != nil {
 		return Migration{}, err
 	}
-
-	if !bytes.HasSuffix(result.Content, []byte("\n")) {
-		result.Content = append(result.Content, '\n')
-	}
-	if !strings.EqualFold(filepath.Ext(path), ".toml") && bytes.Contains(content, []byte("\r\n")) {
-		result.Content = bytes.ReplaceAll(result.Content, []byte("\n"), []byte("\r\n"))
-	}
 	return result, nil
 }
+
+// migratedMembers are the top-level settings that migration may rewrite:
+// lint, repository and overrides receive moved settings, and the legacy
+// settings are removed.
+var migratedMembers = append([]string{"lint", "repository", "overrides"}, legacyKeys...)
 
 // legacyRuleControls reports whether root selects the rule by its name in its
 // category, a disable entry or an ignore. A rule whose name kept a narrower

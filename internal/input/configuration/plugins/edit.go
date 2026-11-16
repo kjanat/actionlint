@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"reflect"
 	"slices"
-	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
@@ -59,27 +57,22 @@ func pluginManifestSequence(refs []pluginreference.Reference) ([]any, error) {
 	return sequence, nil
 }
 
+// EditManifest returns original with its plugins setting replaced by refs.
+// It checks that the edit changes no other setting and declares exactly refs.
 func EditManifest(path string, original []byte, refs []pluginreference.Reference) ([]byte, error) {
-	before, err := document.Parse(path, original)
+	editor, err := document.NewEditor(path, original)
 	if err != nil {
 		return nil, err
 	}
-	if err = ValidateRoot(before.Value()); err != nil {
+	before := editor.Root().Value()
+	if err = ValidateRoot(before); err != nil {
 		return nil, err
 	}
 	sequence, err := pluginManifestSequence(refs)
 	if err != nil {
 		return nil, err
 	}
-	var edited []byte
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".json", ".jsonc":
-		edited, err = editJSONPlugins(original, sequence)
-	case ".toml":
-		edited, err = editTOMLPlugins(original, sequence)
-	default:
-		edited, err = editYAMLPlugins(original, sequence)
-	}
+	edited, err := editor.SetList("plugins", sequence, pluginTableFields)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +80,7 @@ func EditManifest(path string, original []byte, refs []pluginreference.Reference
 	if err != nil {
 		return nil, fmt.Errorf("cannot safely edit plugin config: %w", err)
 	}
-	if !reflect.DeepEqual(withoutManifestPlugins(before.Value()), withoutManifestPlugins(after.Value())) {
+	if !reflect.DeepEqual(withoutManifestPlugins(before), withoutManifestPlugins(after.Value())) {
 		return nil, errors.New("cannot edit plugins without changing other config settings")
 	}
 	actual, declared, err := References(after.Value())
@@ -115,11 +108,4 @@ func withoutManifestPlugins(value any) any {
 	next := maps.Clone(m)
 	delete(next, "plugins")
 	return next
-}
-
-func spliceManifest(original []byte, start, end int, replacement []byte) []byte {
-	var result []byte
-	result = append(result, original[:start]...)
-	result = append(result, replacement...)
-	return append(result, original[end:]...)
 }

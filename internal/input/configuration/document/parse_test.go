@@ -214,7 +214,7 @@ func TestRewriteYAMLPreservesMovedComments(t *testing.T) {
 	}
 	value := map[string]any{"new": json.Number("1"), "other": "keep"}
 	locations := map[string]Location{"/new": parsed.Origins()["/old"], "/other": parsed.Origins()["/other"]}
-	result, err := RewriteYAML(original, value, locations)
+	result, err := rewriteYAML(original, value, locations)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestRewriteYAMLRetainsAliasComments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := RewriteYAML(original, parsed.Value(), parsed.Origins())
+	result, err := rewriteYAML(original, parsed.Value(), parsed.Origins())
 	if err != nil {
 		t.Fatal(err)
 	}

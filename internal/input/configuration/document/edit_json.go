@@ -1,4 +1,4 @@
-package plugins
+package document
 
 import (
 	"bytes"
@@ -9,13 +9,19 @@ import (
 	"github.com/tidwall/jsonc"
 )
 
-func editJSONPlugins(original []byte, sequence []any) ([]byte, error) {
+// setJSONList replaces or appends the top-level member key of a JSON object.
+// Comments and trailing commas elsewhere are kept.
+func setJSONList(original []byte, member string, sequence []any) ([]byte, error) {
 	value, err := json.Marshal(sequence)
 	if err != nil {
 		return nil, err
 	}
 	if len(bytes.TrimSpace(original)) == 0 {
-		return append(append([]byte("{\n  \"plugins\": "), value...), []byte("\n}\n")...), nil
+		name, err := json.Marshal(member)
+		if err != nil {
+			return nil, err
+		}
+		return append(append(append(append([]byte("{\n  "), name...), ": "...), value...), []byte("\n}\n")...), nil
 	}
 	normalized := jsonc.ToJSON(original)
 	decoder := json.NewDecoder(bytes.NewReader(normalized))
@@ -39,15 +45,19 @@ func editJSONPlugins(original []byte, sequence []any) ([]byte, error) {
 			return nil, err
 		}
 		end = int(decoder.InputOffset())
-		if key == "plugins" {
-			return spliceManifest(original, start, int(decoder.InputOffset()), value), nil
+		if key == member {
+			return splice(original, start, int(decoder.InputOffset()), value), nil
 		}
 		count++
 	}
-	prefix := []byte("\n  \"plugins\": ")
+	name, err := json.Marshal(member)
+	if err != nil {
+		return nil, err
+	}
+	prefix := append(append([]byte("\n  "), name...), ": "...)
 	if count > 0 {
 		prefix = append([]byte{','}, prefix...)
 	}
 	replacement := append(append(prefix, value...), '\n')
-	return spliceManifest(original, end, end, replacement), nil
+	return splice(original, end, end, replacement), nil
 }
