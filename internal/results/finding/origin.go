@@ -1,7 +1,7 @@
 package finding
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 type Owner struct {

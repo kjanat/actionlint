@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // CaptureRemote records downloaded bytes without reading the URL or filesystem.

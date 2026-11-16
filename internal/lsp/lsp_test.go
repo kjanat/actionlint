@@ -8,11 +8,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func TestEditorAnalysisRetainsDependencySources(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 )
 
 func TestInvalidLocalActionSuppressionSourceCache(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 

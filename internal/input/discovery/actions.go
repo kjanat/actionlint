@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"golang.org/x/sys/execabs"
 	"golang.org/x/text/unicode/norm"

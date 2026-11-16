@@ -3,9 +3,9 @@ package remote
 import (
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // allowReviewedAdditionalInputs permits undeclared input names for an identified implementation.

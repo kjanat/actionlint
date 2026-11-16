@@ -13,9 +13,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 
 	"actionlint.kjanat.dev/v2/internal/assembly"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"

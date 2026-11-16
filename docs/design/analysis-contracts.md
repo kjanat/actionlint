@@ -6,7 +6,7 @@ The CLI and language server call the private checking code.
 
 ## Inputs and language behavior
 
-`internal/input/workspace` selects sources and configuration. `internal/input/sourcetext`
+`internal/input/workspace` selects sources and configuration. `internal/base/sourcetext`
 identifies the captured bytes and revision. A display path alone does not establish
 which source a finding or edit describes.
 

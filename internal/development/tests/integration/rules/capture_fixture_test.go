@@ -4,10 +4,10 @@ import (
 	"io"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/base/capture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext/capture"
 )
 
 func sourceFixtureBase(tb testing.TB) string {

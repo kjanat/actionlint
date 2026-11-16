@@ -61,7 +61,7 @@ analyze-types = true
 forbid        = [
   { pattern = '^os\.(Open|OpenFile|ReadDir|ReadFile|Readlink)$', msg = "read through files.Reader" },
   { pattern = '^(filepath\.(Walk|WalkDir)|fs\.(ReadFile|ReadDir|WalkDir))$', msg = "walk through files.Reader" },
-  { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/input/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
+  { pattern = '^files\.(Disk|ProbeDir)$', pkg = '^actionlint\.kjanat\.dev/v2/internal/base/files$', msg = "files.Disk and files.ProbeDir skip recording; read through files.Reader" },
   { pattern = '^invocation\.New(Root|Call|Script)ID$', pkg = '^actionlint\.kjanat\.dev/v2/internal/model/calls/invocation$', msg = "only the invocation owner registers occurrence IDs" },
 ]
 
@@ -133,7 +133,7 @@ text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/input/files/nameindex/index\.go$'
+path    = '^internal/input/nameindex/index\.go$'
 text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 )
 
 // Revision identifies the exact bytes captured for a canonical document.

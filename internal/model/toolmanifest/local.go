@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 )
 
 // Programs resolves a transform digest "sha256:<hex>" to its program.

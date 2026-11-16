@@ -6,10 +6,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 // Term distinguishes literal labels from unresolved expressions.

@@ -1,9 +1,9 @@
 package composites
 
 import (
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 )
 
 func testBindings(settings *configuration.Config) *rulebinding.Scope {

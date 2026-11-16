@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
 )
 
 func configCachePath(ctx context.Context, name string) string {

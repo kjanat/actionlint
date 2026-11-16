@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 )
 
 // NormalizeDigest accepts a SHA256 digest written as 64 hex digits in either

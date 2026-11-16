@@ -1,6 +1,6 @@
 package definition
 
-import "actionlint.kjanat.dev/v2/internal/input/sourcetext"
+import "actionlint.kjanat.dev/v2/internal/base/sourcetext"
 
 // CacheModeKind identifies the cache access granted to a workflow or job.
 type CacheModeKind uint8

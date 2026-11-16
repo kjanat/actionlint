@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 )
 
 func DocumentID(path string) string {

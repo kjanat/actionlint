@@ -10,7 +10,7 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 )
 
 func writeFixture(t *testing.T, root, name, content string) {

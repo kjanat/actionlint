@@ -12,7 +12,7 @@ import (
 	"sync"
 	"unicode"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 

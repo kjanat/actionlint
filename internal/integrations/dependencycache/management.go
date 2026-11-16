@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/files"
+	"actionlint.kjanat.dev/v2/internal/base/files"
 )
 
 type Entry struct {

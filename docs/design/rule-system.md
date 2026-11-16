@@ -138,7 +138,7 @@ check receives workflow defaults and checks each job independently. Permission
 inheritance uses `calls.EffectivePermissions`, which distinguishes absent,
 invalid and explicit declarations and copies repository default maps.
 
-`internal/input/files/nameindex` loads repository workflow names and records whether
+`internal/input/nameindex` loads repository workflow names and records whether
 every name was read. `internal/model/workflows/names` owns the immutable inventory
 and workflow-name filter grammar. The workflow-run-names rule produces findings
 under `internal/checking/rules/correctness`; the input loader

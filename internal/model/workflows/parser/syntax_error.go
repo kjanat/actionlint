@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // SyntaxError describes a syntax failure independently of lint rule state.

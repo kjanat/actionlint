@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
+	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 )
 
 // State describes already-discovered evidence; lookup never acquires evidence.
