@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 )
 

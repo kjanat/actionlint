@@ -12,8 +12,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -78,7 +78,7 @@ func TestEditorSessionRejectsRevocationRecordedAfterStartup(t *testing.T) {
 	registry.SetOffline(true)
 	requests := len(registry.Requests())
 	result, err = session.analyze(t.Context(), documents)
-	if _, ok := errors.AsType[*execution.LoadError](err); !ok || !strings.Contains(err.Error(), "revoked") {
+	if _, ok := errors.AsType[*pluginexecution.LoadError](err); !ok || !strings.Contains(err.Error(), "revoked") {
 		t.Fatalf("revocation became clean analysis: %+v %v", result, err)
 	}
 	if len(result.Diagnostics) != 0 || len(registry.Requests()) != requests {

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 type initializationJoinFunc func(context.Context) error
@@ -123,7 +123,7 @@ func TestAnalysisBlockedCaptureConstructorCancelsJoinsAndReturnsNoResult(t *test
 			synctest.Test(t, func(t *testing.T) {
 				type contextKey struct{}
 				parent, cancel := context.WithCancel(context.WithValue(t.Context(), contextKey{}, "caller value"))
-				pool := process.NewProcessPool(parent, 1)
+				pool := hostprocess.NewProcessPool(parent, 1)
 				t.Cleanup(pool.Wait)
 				started, joinStarted, release, finished := make(chan struct{}), make(chan struct{}), make(chan struct{}), make(chan struct{})
 				unblock := sync.OnceFunc(func() { close(release) })

@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 type configState struct {

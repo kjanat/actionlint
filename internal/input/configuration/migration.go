@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 )
@@ -250,7 +250,7 @@ func (ruleSet RuleSet) migrateLegacyNode(root any) (any, bool, error) {
 			}
 		}
 		if err != nil {
-			return nil, false, binding.At(key, err)
+			return nil, false, configdecode.At(key, err)
 		}
 		removeField(next, key)
 	}

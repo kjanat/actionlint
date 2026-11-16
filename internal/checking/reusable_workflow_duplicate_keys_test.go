@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"

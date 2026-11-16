@@ -14,8 +14,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
@@ -73,7 +73,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 	}
 	local := manifests.Manifest{Rule: rule.Descriptor{Name: "local-tool", Category: "conventions", Description: "Local tool", OptionsSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`)}, ConfigSchema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`)}
 	readSchema := func(name string) ([]byte, error) {
-		if name == schema.RootFile {
+		if name == configschema.RootFile {
 			return generated, nil
 		}
 		return os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(name)))
@@ -83,11 +83,11 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		url      string
 	}
 	makeConsumer := func(ms []manifests.Manifest) consumer {
-		providers := make([]schema.ToolProvider, 0, len(ms))
+		providers := make([]configschema.ToolProvider, 0, len(ms))
 		for _, m := range ms {
 			providers = append(providers, m.ConfigurationSchemaProvider())
 		}
-		b, err := schema.Document(readSchema, providers)
+		b, err := configschema.Document(readSchema, providers)
 		if err != nil {
 			t.Fatal(err)
 		}

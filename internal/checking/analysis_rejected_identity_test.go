@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -27,14 +27,14 @@ func TestSourceAnalyzerSurvivesRejectedInvocationIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	batch, err := scripts.NewBatch(graph, scripts.Collection{Scopes: []*scripts.Scope{{Context: builder.RootContext()}}})
+	batch, err := scriptanalysis.NewBatch(graph, scriptanalysis.Collection{Scopes: []*scriptanalysis.Scope{{Context: builder.RootContext()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	actual := entry
 	actual.Revision = "current"
 	input, err := composites.CheckInput(composites.Composition{Batch: batch}, "ci.yml", "ci.yml", []byte(content), parsed, map[string]facts.SourceIndex{"ci.yml": {Document: actual}})
-	if !errors.Is(err, scripts.ErrInvalidBatch) {
+	if !errors.Is(err, scriptanalysis.ErrInvalidBatch) {
 		t.Fatalf("mismatched graph accepted: %v", err)
 	}
 	if input.Reference != actual || input.CallGraph.Valid() {

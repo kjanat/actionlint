@@ -124,7 +124,7 @@ func TestRunnerServiceConfigurationAndFlagPrecedence(t *testing.T) {
 }
 
 func TestRunnerSupportComponentCLI(t *testing.T) {
-	artifact, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/runner-support-0.3.0.wasm")
+	artifact, err := filepath.Abs("internal/plugins/pluginexecution/component/testdata/plugins/runner-support-0.3.0.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

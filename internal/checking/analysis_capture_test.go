@@ -13,7 +13,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"

@@ -126,7 +126,7 @@ sources = [
   "internal/input/configuration/**/*.go",
   "internal/checking/**/*.go",
   "internal/model/bundledproviders/**",
-  "internal/plugins/execution/preparation/**/*.go",
+  "internal/plugins/pluginexecution/preparation/**/*.go",
   "schemas/**"
 ]
 outputs = ["actionlint.schema.json", "schemas/policy/network.schema.json"]
@@ -175,13 +175,13 @@ depends = [
 
 ["contract"]
 extends = "plugin-contract"
-outputs = ["internal/plugins/execution/component/*.gen.go"]
+outputs = ["internal/plugins/pluginexecution/component/*.gen.go"]
 run     = "go run -C internal/development/generators/plugin-contract ."
 
 ["bindings"]
 extends = "plugin-contract"
-outputs = ["internal/plugins/execution/component/*.gen.go", "internal/plugins/protocol/component/**/*.gen.go"]
-run     = "go generate ./internal/plugins/execution/component"
+outputs = ["internal/plugins/pluginexecution/component/*.gen.go", "internal/plugins/protocol/component/**/*.gen.go"]
+run     = "go generate ./internal/plugins/pluginexecution/component"
 
 ["generate"]
 depends = ["protocol:sdk", "protocol:go", "generate:go", "bindings"]
@@ -245,7 +245,7 @@ run     = [
 description = "Build Rust SDK consumer bindings and load consumer worlds through the Go host"
 depends     = ["protocol:sdk"]
 sources     = [
-  "internal/plugins/execution/component/**/*.go",
+  "internal/plugins/pluginexecution/component/**/*.go",
   "plugins/protocol/**",
   "plugins/sdk/rust/**",
   "rust-toolchain.toml",
@@ -256,12 +256,12 @@ env         = { ACTIONLINT_RUST_SDK_INTEGRATION = "1" }
 run         = [
   "cargo build --locked -j 1 --manifest-path plugins/sdk/rust/tests/script-engine-consumer/Cargo.toml --target-dir target/script-engine-consumer --target wasm32-unknown-unknown --lib",
   "cargo build --locked -j 1 --manifest-path plugins/sdk/rust/tests/script-engine-consumer/Cargo.toml --target-dir target/script-engine-consumer --target wasm32-unknown-unknown --lib --features v03",
-  "go test ./internal/plugins/execution/component -run '^TestRustSDKScriptWorlds$' -count=1 -p 1 -timeout 10m"
+  "go test ./internal/plugins/pluginexecution/component -run '^TestRustSDKScriptWorlds$' -count=1 -p 1 -timeout 10m"
 ]
 
 ["plugins:wat"]
-sources = ["internal/plugins/execution/{component,module}/testdata/wat/*.wat"]
-outputs = ["internal/plugins/execution/{component,module}/testdata/wat/*.wasm"]
+sources = ["internal/plugins/pluginexecution/{component,module}/testdata/wat/*.wat"]
+outputs = ["internal/plugins/pluginexecution/{component,module}/testdata/wat/*.wasm"]
 run     = '''
 {% for source in task_source_files() %}
 wasm-tools parse "{{ source }}" -o "{{ source | replace(from='.wat', to='.wasm') }}"
@@ -323,111 +323,111 @@ run_windows = "Copy-Item -LiteralPath '{{ usage.source }}' -Destination '{{ usag
 
 ["plugin:example:pipe-to-shell"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/pipe-to-shell.wasm"]
 vars    = { fixture = "pipe-to-shell", package = "actionlint-example-pipe-to-shell", artifact = "pipe_to_shell", packager = "package-pipe-to-shell" }
 
 ["plugin:fixture:managed-no-sudo"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/managed-no-sudo.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/managed-no-sudo.wasm"]
 vars    = { fixture = "managed-no-sudo", package = "actionlint-fixture-managed-no-sudo", artifact = "managed_no_sudo" }
 
 ["plugin:fixture:source-annotations"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/source-annotations.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/source-annotations.wasm"]
 vars    = { fixture = "source-annotations", package = "actionlint-fixture-source-annotations", artifact = "source_annotations_fixture" }
 
 ["plugin:example:source-annotations"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/source-annotations-example.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/source-annotations-example.wasm"]
 vars    = { fixture = "source-annotations-example", package = "actionlint-example-source-annotations", artifact = "source_annotations", packager = "package-source-annotations" }
 
 ["plugin:example:pinned-actions"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/pinned-actions.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/pinned-actions.wasm"]
 vars    = { fixture = "pinned-actions", package = "actionlint-example-pinned-actions", artifact = "pinned_actions", packager = "package-pinned-actions" }
 
 ["plugin:example:buildkite-runners"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/buildkite-runners.wasm"]
 vars    = { fixture = "buildkite-runners", package = "actionlint-example-buildkite-runners", artifact = "buildkite_runners", packager = "package-buildkite-runners" }
 
 ["plugin:fixture:runner-support-0.3.0"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/runner-support-0.3.0.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/runner-support-0.3.0.wasm"]
 vars    = { fixture = "runner-support-0.3.0", package = "actionlint-fixture-runner-support-0-3-0", artifact = "actionlint_fixture_runner_support_0_3_0" }
 
 ["plugin:fixture:script-engine"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/script-engine.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/script-engine.wasm"]
 vars    = { fixture = "script-engine", package = "actionlint-fixture-script-engine", artifact = "script_engine" }
 
 ["plugin:fixture:ruff-script-engine"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/ruff-script-engine.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/ruff-script-engine.wasm"]
 vars    = { fixture = "ruff-script-engine", package = "actionlint-fixture-script-engine", features = "ruff-fixture", target_dir = "target/plugin-fixtures/ruff-script-engine", artifact = "script_engine" }
 
 ["plugin:fixture:action-input"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/action-input.wasm"]
-vars    = { fixture = "action-input", package = "actionlint-fixture-script-engine", features = "action-input-fixture", target_dir = "target/plugin-fixtures/action-input", artifact = "script_engine", metadata = "internal/plugins/execution/component/testdata/sources/script-engine/action-input.metadata.json" }
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/action-input.wasm"]
+vars    = { fixture = "action-input", package = "actionlint-fixture-script-engine", features = "action-input-fixture", target_dir = "target/plugin-fixtures/action-input", artifact = "script_engine", metadata = "internal/plugins/pluginexecution/component/testdata/sources/script-engine/action-input.metadata.json" }
 
 ["plugin:fixture:ruff-action-input"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/ruff-action-input.wasm"]
-vars    = { fixture = "ruff-action-input", package = "actionlint-fixture-script-engine", features = "action-input-fixture,ruff-fixture", target_dir = "target/plugin-fixtures/ruff-action-input", artifact = "script_engine", metadata = "internal/plugins/execution/component/testdata/sources/script-engine/ruff-action-input.metadata.json" }
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/ruff-action-input.wasm"]
+vars    = { fixture = "ruff-action-input", package = "actionlint-fixture-script-engine", features = "action-input-fixture,ruff-fixture", target_dir = "target/plugin-fixtures/ruff-action-input", artifact = "script_engine", metadata = "internal/plugins/pluginexecution/component/testdata/sources/script-engine/ruff-action-input.metadata.json" }
 
 ["plugin:fixture:misbehave"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/misbehave.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/misbehave.wasm"]
 vars    = { fixture = "misbehave", package = "actionlint-plugin-misbehave" }
 
 ["plugin:fixture:script-engine-0.3.0"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/script-engine-0.3.0.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/script-engine-0.3.0.wasm"]
 vars    = { fixture = "script-engine-0.3.0", package = "actionlint-plugin-script-engine-0-3-0" }
 
 ["plugin:fixture:template-script-engine-0.3.0"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/template-script-engine-0.3.0.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/template-script-engine-0.3.0.wasm"]
 vars    = { fixture = "template-script-engine-0.3.0", package = "actionlint-plugin-template-script-engine-0-3-0" }
 
 ["plugin:fixture:oversized-descriptor-values"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/oversized-descriptor-values.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/oversized-descriptor-values.wasm"]
 vars    = { fixture = "oversized-descriptor-values", package = "actionlint-plugin-misbehave", profile = "release", features = "oversized-descriptor-values", target_dir = "target/plugin-fixtures/oversized-descriptor-values" }
 
 ["plugin:fixture:oversized-descriptor-bytes"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/oversized-descriptor-bytes.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/oversized-descriptor-bytes.wasm"]
 vars    = { fixture = "oversized-descriptor-bytes", package = "actionlint-plugin-misbehave", profile = "release", features = "oversized-descriptor-bytes", target_dir = "target/plugin-fixtures/oversized-descriptor-bytes" }
 
 ["plugin:fixture:echo"]
 extends = "rust-plugin"
-alias   = ["internal/plugins/execution/module/testdata/engines/echo.wasm"]
-vars    = { fixture = "echo", package = "actionlint-engine-echo", target = "wasm32-unknown-unknown", fixture_root = "internal/plugins/execution/module/testdata/engines" }
+alias   = ["internal/plugins/pluginexecution/module/testdata/engines/echo.wasm"]
+vars    = { fixture = "echo", package = "actionlint-engine-echo", target = "wasm32-unknown-unknown", fixture_root = "internal/plugins/pluginexecution/module/testdata/engines" }
 
 ["plugin:example:no-sudo"]
 extends = "script-plugin"
-alias   = ["internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"]
 vars    = { fixture = "no-sudo" }
 sources = ["plugins/protocol/wit/*.wit", "plugins/examples/no-sudo/*.{c,h,sh,in}", "plugins/examples/no-sudo/LICENSE"]
-outputs = ["plugins/examples/no-sudo/dist/*", "internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"]
+outputs = ["plugins/examples/no-sudo/dist/*", "internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"]
 run     = [
   "bash plugins/examples/no-sudo/build.sh",
   "bash plugins/examples/no-sudo/package.sh",
-  'mise run fixture:copy "{{ config_root }}/plugins/examples/no-sudo/dist/plugin.wasm" "{{ config_root }}/internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"'
+  'mise run fixture:copy "{{ config_root }}/plugins/examples/no-sudo/dist/plugin.wasm" "{{ config_root }}/internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"'
 ]
 
 ["test:example:no-sudo"]
 description = "Build and test the C component through actionlint's public CLI"
 depends     = ["plugin:example:no-sudo"]
-env         = { ACTIONLINT_TEST_BINARY = "{{ config_root }}/plugins/examples/no-sudo/test-bin/actionlint{{ vars.exe }}", ACTIONLINT_TEST_COMPONENT = "{{ config_root }}/internal/plugins/execution/component/testdata/plugins/no-sudo.wasm" }
+env         = { ACTIONLINT_TEST_BINARY = "{{ config_root }}/plugins/examples/no-sudo/test-bin/actionlint{{ vars.exe }}", ACTIONLINT_TEST_COMPONENT = "{{ config_root }}/internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm" }
 run         = ['go build -o "{{ env.ACTIONLINT_TEST_BINARY }}" ./cmd/actionlint', "go test ./plugins/examples/no-sudo/tests -count=1"]
 
 ["plugin:example:insecure-download"]
 extends = "script-plugin"
 sources = ["plugins/protocol/wit/**", "plugins/sdk/go/**", "plugins/examples/insecure-download/**"]
-alias   = ["internal/plugins/execution/component/testdata/plugins/insecure-download.wasm"]
+alias   = ["internal/plugins/pluginexecution/component/testdata/plugins/insecure-download.wasm"]
 vars    = { fixture = "insecure-download" }
 
 ["release:version"]

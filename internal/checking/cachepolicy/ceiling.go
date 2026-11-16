@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -35,7 +35,7 @@ func CheckCeiling(call *definition.WorkflowCall, granted *definition.CacheMode, 
 	if call == nil || call.Uses == nil || metadata == nil {
 		return nil
 	}
-	spec, local := references.LocalWorkflow(call.Uses.Value)
+	spec, local := callreferences.LocalWorkflow(call.Uses.Value)
 	if !local {
 		return nil
 	}

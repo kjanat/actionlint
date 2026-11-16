@@ -13,8 +13,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
@@ -113,7 +113,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		loaded, err := execution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
+		loaded, err := pluginexecution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
 		if err != nil {
 			t.Fatal(err)
 		}

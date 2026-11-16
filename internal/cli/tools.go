@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 )
 
@@ -195,7 +195,7 @@ func (c checkInvocation) resolveTools() (resolvedTools, error) {
 		case slices.Contains(resolved.disabled, id):
 			resolved.tools[id] = backends.Selection{}
 		case explicit:
-			resolved.tools[id] = backends.Selection{Command: command, Process: &process.CommandOptions{IgnoreConfig: true}}
+			resolved.tools[id] = backends.Selection{Command: command, Process: &hostprocess.CommandOptions{IgnoreConfig: true}}
 		default:
 			options, err := toolEnvironment(id)
 			if err != nil {
@@ -230,7 +230,7 @@ type resolvedTools struct {
 // last deprecated flag with an ignored value used for id. It also reports
 // whether that flag disabled the tool.
 func defaultSelection(id string, used []deprecatedToolFlag) (backends.Selection, bool) {
-	selection := backends.Selection{Command: id, Process: &process.CommandOptions{Optional: true}}
+	selection := backends.Selection{Command: id, Process: &hostprocess.CommandOptions{Optional: true}}
 	for _, flag := range slices.Backward(used) {
 		if flag.id != id {
 			continue
@@ -248,7 +248,7 @@ func defaultSelection(id string, used []deprecatedToolFlag) (backends.Selection,
 // variables of the tool id, where <ID> is id upper-cased with dashes
 // replaced by underscores. It returns nil options when none of the
 // variables is set.
-func toolEnvironment(id string) (*process.CommandOptions, error) {
+func toolEnvironment(id string) (*hostprocess.CommandOptions, error) {
 	prefix := "ACTIONLINT_TOOL_" + strings.ToUpper(strings.ReplaceAll(id, "-", "_"))
 	return externalToolEnvironment(func(suffix string) (string, string, bool) {
 		value, ok := os.LookupEnv(prefix + suffix)

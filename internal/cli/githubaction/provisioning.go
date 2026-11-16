@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 func provisioningRequest(env func(string) string, acquisition pluginacquisition.Settings) (*lintRequest, error) {
@@ -70,7 +70,7 @@ func PluginPlan(env func(string) string, stdout, stderr io.Writer, acquisition p
 	if _, ok := errors.AsType[*inputError](err); ok {
 		return exitcode.ExitInvalidCommandOption
 	}
-	if _, ok := errors.AsType[*report.OverlayError](err); ok {
+	if _, ok := errors.AsType[*configreport.OverlayError](err); ok {
 		return exitcode.ExitInvalidCommandOption
 	}
 	return exitcode.ExitFailure

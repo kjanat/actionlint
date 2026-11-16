@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -17,7 +17,7 @@ import (
 
 // visitStandaloneAction validates a manifest without a workflow caller or supplied
 // inputs. For composite actions, it also visits the action's steps.
-func visitStandaloneAction(meta *actionmeta.Metadata, deployment scripts.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
+func visitStandaloneAction(meta *actionmeta.Metadata, deployment scriptanalysis.Deployment, rules []workflowvisit.Rule, analysis *compositeAnalyzer) error {
 	snapshot := analysis.sourceSnapshot
 	if snapshot.Kind() != parsing.KindAction {
 		return errors.New("action source snapshot is unavailable")
@@ -28,12 +28,12 @@ func visitStandaloneAction(meta *actionmeta.Metadata, deployment scripts.Deploym
 	}
 	original, hasOriginal := meta.OriginalSource()
 	if !hasOriginal || original != string(snapshot.Content()) || meta.Path() != deployment.SourcePath() || meta.SourceMapped != (deployment.ActionPath() == "") {
-		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scripts.ErrInvalidBatch)
+		return fmt.Errorf("%w: action metadata provenance disagrees with source snapshot", scriptanalysis.ErrInvalidBatch)
 	}
 	if err := analysis.beginAction(deployment); err != nil {
 		return err
 	}
-	files, err := workspace.InspectReferencedFiles(analysis.ctx, meta, analysis.reader)
+	files, err := localactions.InspectReferencedFiles(analysis.ctx, meta, analysis.reader)
 	if err != nil {
 		return err
 	}

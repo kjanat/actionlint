@@ -362,8 +362,8 @@ jobs:
         run: |
           mise run --force protocol:go
           go run -C internal/development/generators/plugin-contract .
-          git diff --exit-code -- ':(glob)internal/plugins/execution/component/*.gen.go' ':(glob)internal/plugins/protocol/component/**/*.gen.go' plugins/sdk/rust/wit plugins/sdk/rust/json plugins/sdk/go/packaging/analyzer.wit plugins/sdk/go/bindings
-          untracked="$(git ls-files --others --exclude-standard -- internal/plugins/execution/component internal/plugins/protocol/component plugins/sdk/rust/wit plugins/sdk/rust/json plugins/sdk/go/packaging/analyzer.wit plugins/sdk/go/bindings)"
+          git diff --exit-code -- ':(glob)internal/plugins/pluginexecution/component/*.gen.go' ':(glob)internal/plugins/protocol/component/**/*.gen.go' plugins/sdk/rust/wit plugins/sdk/rust/json plugins/sdk/go/packaging/analyzer.wit plugins/sdk/go/bindings
+          untracked="$(git ls-files --others --exclude-standard -- internal/plugins/pluginexecution/component internal/plugins/protocol/component plugins/sdk/rust/wit plugins/sdk/rust/json plugins/sdk/go/packaging/analyzer.wit plugins/sdk/go/bindings)"
           test -z "${untracked}"
       - name: Verify the guest SDK package
         run: cargo package --locked -p actionlint-extension-api --all-features
@@ -373,14 +373,14 @@ jobs:
         run: mise run --force plugins
       - name: Load the Rust, C and TinyGo examples
         run: go run ./cmd/actionlint --no-config --no-tool shellcheck --no-tool ruff
-          --plugin internal/plugins/execution/component/testdata/plugins/pipe-to-shell.wasm
-          --plugin internal/plugins/execution/component/testdata/plugins/no-sudo.wasm
-          --plugin internal/plugins/execution/component/testdata/plugins/insecure-download.wasm
+          --plugin internal/plugins/pluginexecution/component/testdata/plugins/pipe-to-shell.wasm
+          --plugin internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm
+          --plugin internal/plugins/pluginexecution/component/testdata/plugins/insecure-download.wasm
           internal/development/tests/integration/workflow/testdata/ok/minimal.yaml
       - name: Test plugins including Wasmtime runner parity
         env: { ACTIONLINT_RUNNER_HOST: "${{ github.workspace }}/internal/development/tests/conformance/wasm/runner-host/target/debug/actionlint-runner-host" }
         run: test -x "${ACTIONLINT_RUNNER_HOST}";
-          go test -count=1 -v ./internal/plugins/execution/component ./internal/plugins/execution/module ./internal/development/tests/integration/plugins
+          go test -count=1 -v ./internal/plugins/pluginexecution/component ./internal/plugins/pluginexecution/module ./internal/development/tests/integration/plugins
       - name: Test Rust SDK consumers through the Go host
         run: mise run plugins-check-rust-sdk
       - run: go test -count=1 -run "Plugin|Engine|ModuleKind" ./internal/checking ./internal/lsp ./internal/development/tests/integration/checking ./internal/development/tests/integration/cli

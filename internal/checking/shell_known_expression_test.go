@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestKnownShellExternalLinters(t *testing.T) {
@@ -65,7 +65,7 @@ func TestKnownShellExternalLinters(t *testing.T) {
 			if tc.stepShell != "" {
 				source += "        shell: " + tc.stepShell + "\n"
 			}
-			session := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
+			session := checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Process: &hostprocess.CommandOptions{Executable: &exe, Arguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Stdin, Reader: bytes.NewReader([]byte(source)), Name: "test.yaml", NormalizePath: false})

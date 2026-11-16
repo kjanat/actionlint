@@ -17,8 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/preparation"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/preparation"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 

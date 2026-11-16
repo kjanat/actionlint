@@ -12,7 +12,7 @@ import (
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
@@ -24,7 +24,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/output"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/edits"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -112,7 +112,7 @@ func executeCheck(ctx context.Context, streams Command, inv checkRequest) (statu
 	}
 	result, err := checking.CheckProjects(ctx, options, input, c.pluginSelection(streams.Acquisition))
 	if err != nil {
-		if _, ok := errors.AsType[*execution.LoadError](err); ok && len(c.Plugins) != 0 {
+		if _, ok := errors.AsType[*pluginexecution.LoadError](err); ok && len(c.Plugins) != 0 {
 			return 0, arguments.UsageError{Cause: err}
 		}
 		if _, ok := errors.AsType[*checking.UnknownToolError](err); ok {

@@ -17,7 +17,7 @@ two calls to one action can have different inputs, reachable steps and findings.
 
 Expression syntax, types, values, function contracts, type checking and evaluation
 live in separate packages under `internal/languages/expressions`. JSON expression
-values use `internal/languages/json`. Parsing failure, unknown values, evaluation
+values use `internal/languages/runnerjson`. Parsing failure, unknown values, evaluation
 failure and rule findings are different outcomes. A function's declared return
 type does not disappear because one call fails during evaluation.
 
@@ -78,10 +78,10 @@ graph. Declared scripts belong to the checked source; invoked scripts identify
 the action sources that supplied them. An analysis directory is not a filesystem
 grant. Read-only filesystems are supplied separately for one call.
 
-`internal/checking/scripts` prepares and executes script-check batches.
-`internal/plugins/execution/preparation` owns masking, shell preparation, language
+`internal/checking/scriptanalysis` prepares and executes script-check batches.
+`internal/plugins/pluginexecution/preparation` owns masking, shell preparation, language
 settings and mappings to the original source. Preparation does not launch tools.
-`internal/integrations/process` owns process limits and completion.
+`internal/integrations/hostprocess` owns process limits and completion.
 
 Analyzer inputs, descriptors and returned diagnostics have owned copies at the
 extension boundary. Each tool callback receives its own configuration copy.
@@ -96,7 +96,7 @@ and its private checker inputs. `describe` returns metadata and input requiremen
 `analyze` returns diagnostics and an optional explanation of incomplete analysis.
 
 `internal/model/manifests` validates manifests. `internal/plugins/artifacts`
-resolves and verifies artifacts. `internal/plugins/execution` loads and invokes
+resolves and verifies artifacts. `internal/plugins/pluginexecution` loads and invokes
 components, core Wasm modules and native processes through their declared
 contracts. `internal/plugins/pluginregistry` resolves and verifies registry
 releases. `internal/plugins/installation` resolves and saves a project's plugin

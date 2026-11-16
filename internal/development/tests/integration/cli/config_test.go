@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 func TestConfigValidationWarnings(t *testing.T) {
@@ -28,7 +28,7 @@ func TestConfigValidationWarnings(t *testing.T) {
 	encoded := testRunCommand("", "config", "validate", "--config", config, "--json")
 	var result struct {
 		Valid    bool
-		Warnings []report.Warning
+		Warnings []configreport.Warning
 	}
 	if err := json.Unmarshal([]byte(encoded.Stdout), &result); err != nil || !result.Valid || len(result.Warnings) != 1 || encoded.Status != 0 {
 		t.Fatalf("%+v: %v", encoded, err)
@@ -57,21 +57,21 @@ config-variable: [TYPO]
 		t.Fatalf("wrong inherited warning location: %+v", got)
 	}
 	got = testRunCommand("", "config", "validate", "--config", leaf, "--json")
-	var result struct{ Warnings []report.Warning }
+	var result struct{ Warnings []configreport.Warning }
 	if err := json.Unmarshal([]byte(got.Stdout), &result); err != nil || got.Status != 0 || len(result.Warnings) != 1 || result.Warnings[0].File != base {
 		t.Fatalf("inherited warning JSON=%+v, %v", got, err)
 	}
 }
 
 func TestModernConfigCreationAndYAMLOrigins(t *testing.T) {
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	registry := fixtureregistry.NewDefaultPluginRegistryWithArtifact(t, wasm, "shellcheck", "ruff")
 	acquisition := registryAcquisition(registry)
 	// Config inspection loads both installed plugins, which need distinct rule names.
-	other, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/insecure-download.wasm")
+	other, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/insecure-download.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ repository:
 		t.Fatal(err)
 	}
 	got := testRunCommandWithAcquisition(acquisition, "", "config", "show", "--origin", "--json")
-	var inspection report.Inspection
+	var inspection configreport.Inspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}
@@ -138,7 +138,7 @@ lint:
 		t.Fatal(err)
 	}
 	got := testRunCommand("", "config", "show", "--json", "--origin")
-	var inspection report.Inspection
+	var inspection configreport.Inspection
 	if err := json.Unmarshal([]byte(got.Stdout), &inspection); err != nil || got.Status != 0 {
 		t.Fatalf("%+v (%v)", got, err)
 	}

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 // ValidateRuleNames binds structurally decoded suppression settings to the
@@ -24,7 +24,7 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 	config.Lint.Rules.ruleSet = ruleSet
 
 	if err := ruleSet.validateSettings(&config.Lint.Rules); err != nil {
-		return binding.At("lint", binding.At("rules", err))
+		return configdecode.At("lint", configdecode.At("rules", err))
 	}
 	for _, ignore := range config.Ignores {
 		if err := ruleSet.ValidateIgnore(ignore, additional...); err != nil {
@@ -38,7 +38,7 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 		for _, name := range policy.Rules() {
 			if !ruleSet.Suppressible(name, additional...) {
 				if index, found := policy.locations[name]; found {
-					return binding.At("rules", binding.At(strconv.Itoa(index), fmt.Errorf("unknown suppressible rule %q", name)))
+					return configdecode.At("rules", configdecode.At(strconv.Itoa(index), fmt.Errorf("unknown suppressible rule %q", name)))
 				}
 				return fmt.Errorf("unknown suppressible rule %q", name)
 			}
@@ -66,7 +66,7 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 		for i, selector := range lint.Dependencies.FailOnRules {
 			name, code, qualified := strings.Cut(selector, "/")
 			if !ruleSet.Suppressible(name, additional...) || qualified && (code == "" || strings.ContainsAny(code, "/ \t\r\n")) {
-				return binding.At("lint", binding.At("dependencies", binding.At("fail-on-rules", binding.At(strconv.Itoa(i), fmt.Errorf("invalid rule selector %q", selector)))))
+				return configdecode.At("lint", configdecode.At("dependencies", configdecode.At("fail-on-rules", configdecode.At(strconv.Itoa(i), fmt.Errorf("invalid rule selector %q", selector)))))
 			}
 		}
 		for _, name := range lint.Rules.Disable {

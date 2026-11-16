@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 )
@@ -92,7 +92,7 @@ const (
 
 func environmentNameKey(name string, comparison NameComparison) string {
 	if comparison == NameInsensitive {
-		return json.OrdinalIgnoreCaseKey(name)
+		return runnerjson.OrdinalIgnoreCaseKey(name)
 	}
 	return name
 }

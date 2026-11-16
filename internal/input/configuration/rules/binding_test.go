@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
@@ -10,11 +10,11 @@ func decodeTestConfig(source []byte, dst any) error {
 	if err != nil {
 		return err
 	}
-	return binding.Decode(parsed.Value(), dst)
+	return configdecode.Decode(parsed.Value(), dst)
 }
 
 func encodeTestConfig(value any) ([]byte, error) {
-	values, err := binding.Encode(value)
+	values, err := configdecode.Encode(value)
 	if err != nil {
 		return nil, err
 	}

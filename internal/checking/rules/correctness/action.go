@@ -6,14 +6,14 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -40,7 +40,7 @@ var ActionRule = &define.Rule{
 type ruleAction struct {
 	workflowvisit.Base
 	reporting.Logger
-	cache      workspace.ActionMetadataDocumentLookup
+	cache      localactions.ActionMetadataDocumentLookup
 	validation *actionMetadataValidation
 	remote     *remote.ResolvedActions
 	context    context.Context
@@ -57,7 +57,7 @@ func (rule *ruleAction) WithLifecycle(context actionmeta.LifecycleContext) *rule
 }
 
 // NewRuleAction checks references using local metadata and acquired remote definitions.
-func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache workspace.ActionMetadataDocumentLookup, remote *remote.ResolvedActions) *ruleAction {
+func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache localactions.ActionMetadataDocumentLookup, remote *remote.ResolvedActions) *ruleAction {
 	return &ruleAction{
 		Base:  base,
 		Tag:   base.Name(),
@@ -78,28 +78,28 @@ func (rule *ruleAction) VisitStep(n workflows.Step) error {
 	}
 
 	spec := e.Uses.Text()
-	if _, hosted := references.ParseRepositoryURL(spec); hosted {
+	if _, hosted := callreferences.ParseRepositoryURL(spec); hosted {
 		// vendor-lock-in owns URL-form references independently of metadata checks.
 		return nil
 	}
 
-	switch references.FormOf(spec) {
-	case references.FormWorkspace:
+	switch callreferences.FormOf(spec) {
+	case callreferences.FormWorkspace:
 		// Relative to repository root
 		return rule.checkLocalAction(spec, spec, e)
-	case references.FormSelfRepository:
+	case callreferences.FormSelfRepository:
 		// Relative to the repository and commit that contain the running workflow.
 		// Normalize it to the existing local path form so metadata and output validation still work.
-		local, ok := references.SelfRepositoryLocal(spec)
+		local, ok := callreferences.SelfRepositoryLocal(spec)
 		if !ok {
 			rule.Report(actioncheck.InvalidReference(reporting.SourcePosition(e.Uses), spec, "self-repository references do not support an '@ref' suffix"))
 			return nil
 		}
 		return rule.checkLocalAction(local, spec, e)
-	case references.FormContainer:
+	case callreferences.FormContainer:
 		rule.Report(actioncheck.Docker(e)...)
 		return nil
-	case references.FormRepository, references.FormBuiltin:
+	case callreferences.FormRepository, callreferences.FormBuiltin:
 	}
 
 	if findings := actioncheck.RepositoryReference(spec, reporting.SourcePosition(e.Uses)); len(findings) != 0 {
@@ -131,7 +131,7 @@ func (rule *ruleAction) VisitStep(n workflows.Step) error {
 // https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#example-using-action-in-the-same-repository-as-the-workflow
 // Agents: https://docs.github.com/api/article/body?pathname=/en/actions/reference/workflows-and-actions/workflow-syntax
 func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *definition.ExecAction) error {
-	if references.FormOf(displaySpec) == references.FormSelfRepository {
+	if callreferences.FormOf(displaySpec) == callreferences.FormSelfRepository {
 		localSpec = displaySpec
 	}
 	meta, _, source, err := rule.cache.FindMetadataDocument(localSpec)
@@ -139,12 +139,12 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 		return err
 	}
 	if err != nil {
-		if _, unresolved := errors.AsType[workspace.UnresolvedError](err); unresolved {
+		if _, unresolved := errors.AsType[localactions.UnresolvedError](err); unresolved {
 			rule.Report(findingmodel.At(reporting.SourcePosition(action.Uses), "missing-local-action", err.Error()))
 		} else {
 			finding := findingmodel.At(reporting.SourcePosition(action.Uses), rule.Name(), err.Error())
 			finding.Code = string(actionmeta.CodeMetadataRead)
-			if parseError, ok := errors.AsType[*workspace.ParseError](err); ok {
+			if parseError, ok := errors.AsType[*localactions.ParseError](err); ok {
 				finding.Code = string(actionmeta.CodeMetadataParse)
 				finding.MetadataParseSource = source.Capture().Revision()
 				if !finding.MetadataParseSource.Valid() {
@@ -169,7 +169,7 @@ func (rule *ruleAction) checkLocalAction(localSpec, displaySpec string, action *
 	return nil
 }
 
-func (rule *ruleAction) ForMetadata(actions *workspace.Resolver) workflowvisit.MetadataParticipant {
+func (rule *ruleAction) ForMetadata(actions *localactions.Resolver) workflowvisit.MetadataParticipant {
 	child := NewRuleAction(rule.context, workflowvisit.NewBase(rule.Name(), rule.Description()), actions.Prepared(), rule.remote).WithLifecycle(rule.lifecycle)
 	child.validation = rule.validation
 	return child

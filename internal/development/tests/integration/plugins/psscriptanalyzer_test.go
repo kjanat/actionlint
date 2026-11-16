@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 const psscriptanalyzerExample = "../../../../../plugins/examples/psscriptanalyzer"

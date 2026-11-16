@@ -21,10 +21,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -87,7 +87,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 					}
 					return nil
 				}
-				processes := process.NewProcessPool(t.Context(), 1)
+				processes := hostprocess.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
 				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []checkinputs.Registration{{Checker: probe}}, Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
@@ -160,8 +160,8 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := workspaceactions.NewCache(t.Context(), root, nil)
-			cache.Configure(workspaceactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
+			cache := localactions.NewCache(t.Context(), root, nil)
+			cache.Configure(localactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)
 			if !exists {

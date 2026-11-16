@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 )
 
 // RequiredPolicyError reports failure to load an explicitly required policy.
@@ -25,12 +25,12 @@ func prepareEnforcedLifecycle(ctx context.Context, options Options) (Options, er
 	}
 	paths := make([]string, 0, len(options.EnforcePolicies))
 	for _, path := range options.EnforcePolicies {
-		if strings.TrimSpace(path) != "" && !source.IsRemoteAddress(path) && (!strings.Contains(path, ":") || filepath.VolumeName(path) != "") && !filepath.IsAbs(path) && options.WorkingDir != "" {
+		if strings.TrimSpace(path) != "" && !configsource.IsRemoteAddress(path) && (!strings.Contains(path, ":") || filepath.VolumeName(path) != "") && !filepath.IsAbs(path) && options.WorkingDir != "" {
 			path = filepath.Join(options.WorkingDir, path)
 		}
 		paths = append(paths, path)
 	}
-	reader := source.New(ctx, options.ReadFile, options.ConfigConnections)
+	reader := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
 	loaded, err := configuration.ReadEnforcedLifecyclePolicies(paths, reader.ReadConfig)
 	if err != nil {
 		return options, &RequiredPolicyError{Err: err}

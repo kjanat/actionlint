@@ -5,8 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"github.com/invopop/jsonschema"
@@ -56,7 +56,7 @@ func sharedDefinitions(reflectMapping func(any) *jsonschema.Schema) (jsonschema.
 	for _, entry := range configuredRules {
 		descriptors = append(descriptors, entry.Descriptor)
 	}
-	choices, err := json.Marshal(schema.RuleNameChoices(descriptors))
+	choices, err := json.Marshal(configschema.RuleNameChoices(descriptors))
 	if err != nil {
 		return nil, err
 	}

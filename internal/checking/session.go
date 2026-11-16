@@ -17,22 +17,22 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/commands"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/security"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
@@ -45,11 +45,11 @@ type Options struct {
 	ExecutionEnvironment
 	// Processes shares the invocation's process budget with native analyzers.
 	// Nil creates an application-owned pool.
-	Processes     *process.ProcessPool
+	Processes     *hostprocess.ProcessPool
 	RemoteActions actions.Provider
 	// RemoteWorkflows fetches reusable workflows. If nil, RemoteActions supplies
 	// them when it also implements workflows.Provider.
-	RemoteWorkflows workflows.Provider
+	RemoteWorkflows reusableworkflows.Provider
 	// Repository reads host knowledge once for each project root. Nil leaves facts unknown.
 	Repository func(context.Context, string) repository.Snapshot
 	Tools      []contract.Registration
@@ -176,9 +176,9 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 				byAlias[path] = index
 			}
 		}
-		backing := source.New(ctx, options.ReadFile, options.ConfigConnections)
+		backing := configsource.New(ctx, options.ReadFile, options.ConfigConnections)
 		selectionReader = func(path string) ([]byte, error) {
-			if source.IsRemoteAddress(path) {
+			if configsource.IsRemoteAddress(path) {
 				return backing.ReadFile(path)
 			}
 			alias := path
@@ -202,7 +202,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 
 	processes := options.Processes
 	if processes == nil {
-		processes = process.NewProcessPool(ctx, runtime.NumCPU())
+		processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 	}
 	engines := backends.NewScriptEngines(options.LoadScriptEngine)
 	defer func() { processes.Wait(); err = errors.Join(err, engines.Close(context.WithoutCancel(ctx))) }()
@@ -212,7 +212,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	request.RemoteActions = options.RemoteActions
 	request.RemoteWorkflows = options.RemoteWorkflows
 	if request.RemoteWorkflows == nil {
-		request.RemoteWorkflows, _ = options.RemoteActions.(workflows.Provider)
+		request.RemoteWorkflows, _ = options.RemoteActions.(reusableworkflows.Provider)
 	}
 	request.Repository = options.Repository
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository

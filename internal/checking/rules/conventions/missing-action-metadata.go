@@ -6,7 +6,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
 	factavailability "actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -42,12 +42,12 @@ func missingActionMetadata(step workflows.Step, remote *remote.ResolvedActions) 
 		return nil
 	}
 	spec := action.Uses.Value
-	switch references.FormOf(spec) {
-	case references.FormWorkspace, references.FormSelfRepository, references.FormContainer:
+	switch callreferences.FormOf(spec) {
+	case callreferences.FormWorkspace, callreferences.FormSelfRepository, callreferences.FormContainer:
 		return nil
-	case references.FormRepository, references.FormBuiltin:
+	case callreferences.FormRepository, callreferences.FormBuiltin:
 	}
-	if references.ActionReferenceProblem(spec) != "" {
+	if callreferences.ActionReferenceProblem(spec) != "" {
 		return nil
 	}
 	result := remote.Inspect(spec)

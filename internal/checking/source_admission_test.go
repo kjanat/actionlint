@@ -12,7 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -223,11 +223,11 @@ func TestMetadataParseSourceAdmissionUsesCapturedRevision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cache := workspace.NewCache(t.Context(), root, nil)
-			cache.Configure(workspace.Options{Captures: store, Context: t.Context(), WorkingDir: root})
+			cache := localactions.NewCache(t.Context(), root, nil)
+			cache.Configure(localactions.Options{Captures: store, Context: t.Context(), WorkingDir: root})
 			lookup, _ := cache.LookupMetadata("./broken")
 			document, exists := cache.SourceDocument(lookup)
-			if !exists || lookup.Status() != workspace.MetadataParseFailed {
+			if !exists || lookup.Status() != localactions.MetadataParseFailed {
 				t.Fatal("fixture metadata lost its captured parse failure")
 			}
 			composed := composites.Composition{

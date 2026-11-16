@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
 
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 // ConditionConstantValue evaluates the subset used by condition diagnostics and
@@ -169,11 +169,11 @@ func constantProperty(receiver any, name string) (any, bool) {
 	if !ok {
 		return nil, true
 	}
-	name = json.OrdinalIgnoreCaseKey(name)
+	name = runnerjson.OrdinalIgnoreCaseKey(name)
 	var value any
 	found := false
 	for key, item := range object {
-		if json.OrdinalIgnoreCaseKey(key) != name {
+		if runnerjson.OrdinalIgnoreCaseKey(key) != name {
 			continue
 		}
 		if found {

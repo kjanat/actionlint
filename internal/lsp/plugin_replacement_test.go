@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -108,7 +108,7 @@ func TestPluginReplacementPreservesToolDisablement(t *testing.T) {
 				if engine == "ruff" {
 					shell = "python"
 				}
-				plugins := &execution.Loaded{ScriptEngines: []execution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
+				plugins := &pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
 					Engine: engine, Rule: rule.Descriptor{Name: engine},
 					Shells:       []string{shell},
 					ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},

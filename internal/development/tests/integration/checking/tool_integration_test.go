@@ -10,9 +10,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -132,7 +132,7 @@ func TestPublicManagedAnalyzerRunsOnceAndHonorsDisable(t *testing.T) {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
 		options := managedTestOptions(guest, nil)
 		if disabled {
-			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &process.CommandOptions{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.Selections{"shellcheck": {Process: &hostprocess.CommandOptions{Executable: new("")}}})
 		}
 		result, err := checking.Analyze(t.Context(), options, []workspace.InputFile{{Path: "workflow.yml", Content: []byte(workflow)}})
 		if err != nil {

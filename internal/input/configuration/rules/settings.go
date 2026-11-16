@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -155,11 +155,11 @@ func (s Setting) LoadOptions(dst any) (bool, error) {
 	if s.options == nil {
 		return false, nil
 	}
-	owned, err := binding.Encode(s.options)
+	owned, err := configdecode.Encode(s.options)
 	if err != nil {
 		return false, err
 	}
-	if err := binding.Decode(owned, dst); err != nil {
+	if err := configdecode.Decode(owned, dst); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -177,7 +177,7 @@ func encodeOptions(options any) (any, error) {
 		}
 		return parsed.Value(), nil
 	}
-	return binding.Encode(options)
+	return configdecode.Encode(options)
 }
 
 // parseSetting reads a level shorthand or a level/options mapping. It checks
@@ -188,7 +188,7 @@ func parseSetting(value any) (Setting, error) {
 	if object, ok := value.(map[string]any); ok {
 		for key := range object {
 			if key != "level" && key != "options" {
-				return Setting{}, binding.At(key, fmt.Errorf("unknown rule setting key %q", key))
+				return Setting{}, configdecode.At(key, fmt.Errorf("unknown rule setting key %q", key))
 			}
 		}
 		level, present := object["level"]
@@ -196,14 +196,14 @@ func parseSetting(value any) (Setting, error) {
 			return Setting{}, errors.New("rule setting requires level")
 		}
 		if err := next.level.DecodeConfig(level); err != nil {
-			return Setting{}, binding.At("level", err)
+			return Setting{}, configdecode.At("level", err)
 		}
 		if options := object["options"]; options != nil {
 			mapping, ok := options.(map[string]any)
 			if !ok {
-				return Setting{}, binding.At("options", errors.New("options must be a mapping"))
+				return Setting{}, configdecode.At("options", errors.New("options must be a mapping"))
 			}
-			owned, err := binding.Encode(mapping)
+			owned, err := configdecode.Encode(mapping)
 			if err != nil {
 				return Setting{}, err
 			}
@@ -294,16 +294,16 @@ func (g *Group) DecodeConfig(value any) error {
 			switch key {
 			case "preset":
 				if err := next.preset.DecodeConfig(entry); err != nil {
-					return binding.At(key, err)
+					return configdecode.At(key, err)
 				}
 			case "level":
 				if err := next.level.DecodeConfig(entry); err != nil {
-					return binding.At(key, err)
+					return configdecode.At(key, err)
 				}
 			default:
 				var setting Setting
 				if err := setting.DecodeConfig(entry); err != nil {
-					return binding.At(key, err)
+					return configdecode.At(key, err)
 				}
 				next.rules[key] = setting
 			}

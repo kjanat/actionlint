@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -64,7 +64,7 @@ jobs:
 			}
 			workflow += "permissions: {}\n"
 			path := writeFixture(t, root, ".github/workflows/test.yml", workflow)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: tc.args, Environment: []string{"SHELLCHECK_OPTS=" + tc.environment}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, input.Request{Kind: input.Files, Paths: []string{path}})

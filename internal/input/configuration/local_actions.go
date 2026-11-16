@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 )
@@ -31,7 +31,7 @@ func normalizedLocalActionSources(sources LocalActionSources) (LocalActionSource
 	if sources == nil {
 		return nil, nil
 	}
-	value, err := binding.Encode(sources)
+	value, err := configdecode.Encode(sources)
 	if err != nil {
 		return nil, err
 	}
@@ -56,18 +56,18 @@ func (sources *LocalActionSources) DecodeConfig(value any) error {
 	for key, value := range object {
 		selected, ok := value.(string)
 		if !ok {
-			return binding.At(key, errors.New("local-actions paths must be strings"))
+			return configdecode.At(key, errors.New("local-actions paths must be strings"))
 		}
 		from, err := actionmeta.NormalizeLocalActionDirectory(key)
 		if err != nil {
-			return binding.At(key, err)
+			return configdecode.At(key, err)
 		}
 		to, err := actionmeta.NormalizeLocalActionDirectory(selected)
 		if err != nil {
-			return binding.At(key, err)
+			return configdecode.At(key, err)
 		}
 		if _, exists := next[from]; exists {
-			return binding.At(key, fmt.Errorf("duplicate local-actions directory %q", from))
+			return configdecode.At(key, fmt.Errorf("duplicate local-actions directory %q", from))
 		}
 		next[from] = to
 	}

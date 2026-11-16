@@ -13,10 +13,10 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/streams"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 

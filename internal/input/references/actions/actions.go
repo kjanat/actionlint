@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/model/availability"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 )
 
@@ -45,8 +45,8 @@ func ParseReference(host, spec string) (Reference, error) {
 // isLocalForm reports whether spec spells a workspace or self-repository path,
 // which has no owner.
 func isLocalForm(spec string) bool {
-	form := references.FormOf(spec)
-	return form == references.FormWorkspace || form == references.FormSelfRepository
+	form := callreferences.FormOf(spec)
+	return form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository
 }
 
 func (r Reference) Host() string       { return r.host }

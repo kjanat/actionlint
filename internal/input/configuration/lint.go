@@ -6,7 +6,7 @@ import (
 	"maps"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
@@ -103,7 +103,7 @@ func ruleBindingSources(origin string, config *Config, locations ...map[string]d
 // CopyConfig detaches public lint settings and the complete private owner state.
 func (c LintConfig) CopyConfig() (any, error) {
 	type plain LintConfig
-	copied, err := binding.DetachPublicFields(plain(c))
+	copied, err := configdecode.DetachPublicFields(plain(c))
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (c LintConfig) CopyConfig() (any, error) {
 
 func (c *LintRulesConfig) CopyConfig() (any, error) {
 	type plain LintRulesConfig
-	copied, err := binding.DetachPublicFields(plain(*c))
+	copied, err := configdecode.DetachPublicFields(plain(*c))
 	if err != nil {
 		return nil, err
 	}
@@ -127,15 +127,15 @@ func (c *LintRulesConfig) CopyConfig() (any, error) {
 func (c *LintConfig) DecodeConfig(value any) error {
 	type plain LintConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	for pattern := range next.MessageIgnores {
 		if !doublestar.ValidatePattern(pattern) {
-			return binding.At("message-ignores", binding.At(pattern, fmt.Errorf("invalid glob pattern %q", pattern)))
+			return configdecode.At("message-ignores", configdecode.At(pattern, fmt.Errorf("invalid glob pattern %q", pattern)))
 		}
 	}
-	detached, err := binding.DetachValue(value)
+	detached, err := configdecode.DetachValue(value)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (c *LintConfig) DecodeConfig(value any) error {
 func (c *LintRulesConfig) DecodeConfig(value any) error {
 	type plain LintRulesConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	*c = LintRulesConfig(next)
@@ -197,7 +197,7 @@ func (ruleSet RuleSet) validateSettings(c *LintRulesConfig) error {
 }
 
 func ruleOptionsError(category, name string, err error) error {
-	return binding.Context(fmt.Sprintf("options for rule %q", name), binding.At(category, binding.At(name, binding.At("options", err))))
+	return configdecode.Context(fmt.Sprintf("options for rule %q", name), configdecode.At(category, configdecode.At(name, configdecode.At("options", err))))
 }
 
 // validateOptions checks a rule's JSON Schema or decodes its registered Go type.

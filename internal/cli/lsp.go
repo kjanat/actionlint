@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/lsp"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/execprotocol"
 	"actionlint.kjanat.dev/v2/internal/model/services"

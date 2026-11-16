@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -42,7 +42,7 @@ func (r *sourceMutationRule) VisitOpaqueAction(step workflows.Step) error {
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) ForMetadata(*workspace.Resolver) workflowvisit.MetadataParticipant {
+func (r *sourceMutationRule) ForMetadata(*localactions.Resolver) workflowvisit.MetadataParticipant {
 	r.metadata++
 	return r
 }

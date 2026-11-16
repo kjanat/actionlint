@@ -5,8 +5,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
-	componenthost "actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	componenthost "actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 var (

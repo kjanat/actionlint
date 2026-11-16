@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
@@ -158,7 +158,7 @@ type CacheAccess struct {
 // jobCacheAccess describes one job, or reports false when the job declares no
 // cache mode, calls no local workflow and uses no cache action.
 func jobCacheAccess(mode *definition.CacheMode, uses string, steps []*definition.Step) (CacheAccess, bool) {
-	local, ok := references.LocalWorkflow(uses)
+	local, ok := callreferences.LocalWorkflow(uses)
 	if !ok {
 		local = ""
 		uses = ""
@@ -166,7 +166,7 @@ func jobCacheAccess(mode *definition.CacheMode, uses string, steps []*definition
 	var operations []string
 	for step := range definition.AllSteps(steps) {
 		if exec, ok := step.Exec.(*definition.ExecAction); ok && exec.Uses != nil {
-			if name := references.CacheAction(exec.Uses.Value); name != "" {
+			if name := callreferences.CacheAction(exec.Uses.Value); name != "" {
 				operations = append(operations, name)
 			}
 		}

@@ -12,9 +12,9 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -68,7 +68,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 			script := &phaseScriptAnalyzer{t: t, visited: &visited}
 			joinFailure := errors.New("join failure")
 			f.options.Rules = []workflowvisit.Rule{pass}
-			f.options.Scripts = scripts.Service{Analyzers: []scripts.Analyzer{script}}
+			f.options.Scripts = scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{script}}
 			f.options.Join = func() error {
 				joined = true
 				pass.Error(&source.Position{Line: 1, Column: 1}, "reported finding")
@@ -87,7 +87,7 @@ func TestInvalidPreparationSkipsScriptsButJoinsAndCollectsFindings(t *testing.T)
 				_, err := c.invocations.AddScript(c.invocations.RootContext(), ref, invocation.ScriptRun, "")
 				return err
 			})
-			want := scripts.ErrInvalidBatch
+			want := scriptanalysis.ErrInvalidBatch
 			if unfinished {
 				want = invocation.ErrUnfinished
 			}
@@ -107,7 +107,7 @@ func TestAnalyzerProjectionRequiresPreparedWorkflow(t *testing.T) {
 		parsed := parsing.Workflow([]byte(content))
 		input, err := CheckInput(Composition{}, "ci.yml", "ci.yml", []byte(content), parsed, nil)
 		if parsed.Facts != nil {
-			if !errors.Is(err, scripts.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
+			if !errors.Is(err, scriptanalysis.ErrInvalidBatch) || len(input.AvailableInputs) != 1 || input.Content != content {
 				t.Fatalf("unprepared workflow projected: %v", err)
 			}
 		} else if err != nil || len(input.AvailableInputs) != 1 || input.Content != content {
@@ -129,7 +129,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: workspace.NewResolver(nil, nil), CollectScripts: true}, meta)
+			result, err := standaloneActionForTest(t, Options{Bindings: testBindings(nil), Context: t.Context(), Actions: localactions.NewResolver(nil, nil), CollectScripts: true}, meta)
 			if err != nil || !result.Batch.Valid() || len(result.Batch.Scopes) != 1 || len(result.Batch.Scripts) != 0 {
 				t.Fatalf("non-composite entry rejected: %+v %v", result, err)
 			}
@@ -137,7 +137,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 	}
 }
 
-func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scripts.Batch) ([]*finding.Finding, error) {
+func (a *phaseScriptAnalyzer) AnalyzeScripts(_ context.Context, batch scriptanalysis.Batch) ([]*finding.Finding, error) {
 	a.t.Helper()
 	if !*a.visited || len(batch.Scripts) != 1 {
 		a.t.Fatalf("scripts ran before traversal: visited=%v scripts=%d", *a.visited, len(batch.Scripts))
@@ -170,8 +170,8 @@ func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) 
 			script := &phaseScriptAnalyzer{t: t, visited: &visited, failure: scriptFailure}
 			options := Options{
 				Bindings: testBindings(nil),
-				Context:  t.Context(), Actions: workspace.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
-				CollectScripts: true, Scripts: scripts.Service{Analyzers: []scripts.Analyzer{script}}, Join: func() error {
+				Context:  t.Context(), Actions: localactions.NewResolver(nil, nil), Rules: []workflowvisit.Rule{pass},
+				CollectScripts: true, Scripts: scriptanalysis.Service{Analyzers: []scriptanalysis.Analyzer{script}}, Join: func() error {
 					joined = true
 					pass.Error(&source.Position{Line: 1, Column: 1}, "joined finding")
 					return nil

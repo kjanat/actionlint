@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -36,7 +36,7 @@ jobs:
 	}
 	registry, snapshot := registeredWorkflowSnapshot(t, content, document)
 	workflow := workflowView(t, snapshot)
-	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: workspace.NewResolver(nil, nil)}
+	collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true}, actions: localactions.NewResolver(nil, nil)}
 	startWorkflowEntry(t, collector, registry, snapshot)
 	if err := collector.beginWorkflow(workflow); err != nil {
 		t.Fatal(err)
@@ -78,15 +78,15 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	deployment, err := scripts.NewDeployment(registry, actionSnapshot, snapshots.Path(meta.Path()), meta.Path(), meta.SourceMapped)
+	deployment, err := scriptanalysis.NewDeployment(registry, actionSnapshot, snapshots.Path(meta.Path()), meta.Path(), meta.SourceMapped)
 	if err != nil {
 		t.Fatal(err)
 	}
 	actionCollector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true, sourceSnapshots: registry, invocations: workflowGraph}, sourceSnapshot: actionSnapshot, context: workflowGraph.RootContext()}
 	paths := execution.Paths{}
 	execution.ActionOrigin(&paths, workflowGraph.RootContext(), deployment.ActionPath())
-	actionCollector.scriptScope = &scripts.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}
-	actionCollector.scriptScopes = []*scripts.Scope{actionCollector.scriptScope}
+	actionCollector.scriptScope = &scriptanalysis.Scope{Paths: paths, Context: workflowGraph.RootContext(), Deployment: deployment, Composite: true}
+	actionCollector.scriptScopes = []*scriptanalysis.Scope{actionCollector.scriptScope}
 	actionSteps := actionStepViews(t, actionSnapshot)
 	if len(actionSteps) != 1 {
 		t.Fatal("composite declarations unavailable")

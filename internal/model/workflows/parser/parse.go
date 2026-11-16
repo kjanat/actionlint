@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/sourcemap"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
@@ -1748,7 +1748,7 @@ func (p *Parser) ParseStep(n *codec.Node) *definition.Step {
 				declaredUses = newString(e.val)
 				declaredUses.Value = uses
 			}
-			if references.FormOf(uses) == references.FormContainer {
+			if callreferences.FormOf(uses) == callreferences.FormContainer {
 				kind = isDocker
 			} else {
 				kind = isAction

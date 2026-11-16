@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -127,7 +127,7 @@ func TestPreparedWorkflowMetadataAvailableToCallChecks(t *testing.T) {
 	if !available {
 		t.Fatal("captured workflow unavailable")
 	}
-	c := workflows.NewCache(cwd, nil)
+	c := reusableworkflows.NewCache(cwd, nil)
 	c.SetSources(t.Context(), store, cwd)
 	if err := c.Seed(snapshot); err != nil {
 		t.Fatal(err)

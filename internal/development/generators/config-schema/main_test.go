@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/generators/genfile"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 
@@ -313,7 +313,7 @@ func TestRuffEditorCompletions(t *testing.T) {
 	read := func(name string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 	}
-	installed, err := schema.Document(read, []schema.ToolProvider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
+	installed, err := configschema.Document(read, []configschema.ToolProvider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

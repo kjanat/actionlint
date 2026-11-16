@@ -4,7 +4,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/cachepolicy"
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -30,7 +30,7 @@ var CacheOperationRule = &define.Rule{
 
 // CacheOperationChecks checks action operations and reusable calls against their
 // effective cache grant. Each callback derives its job mode from its own input.
-func CacheOperationChecks(workflow workflows.Workflow, lookup *workflowinputs.ResolvedWorkflows) define.Checks {
+func CacheOperationChecks(workflow workflows.Workflow, lookup *reusableworkflows.ResolvedWorkflows) define.Checks {
 	return define.Checks{
 		Job: func(job workflows.Job) []reporting.StepFinding {
 			if lookup == nil {

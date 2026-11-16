@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -34,7 +34,7 @@ func quotedIgnoreHints(patterns []string, problems []results.PublishedDiagnostic
 
 func (a *action) emitConfiguration(result *lintResult, workingDir string) {
 	configs := slices.Clone(result.configs)
-	slices.SortFunc(configs, func(a, b report.Report) int {
+	slices.SortFunc(configs, func(a, b configreport.Report) int {
 		return strings.Compare(a.Project, b.Project)
 	})
 	for _, config := range configs {

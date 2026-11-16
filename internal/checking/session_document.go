@@ -13,27 +13,27 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	runnerinput "actionlint.kjanat.dev/v2/internal/input/runners"
+	"actionlint.kjanat.dev/v2/internal/input/runneracquisition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/composites"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	"actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
@@ -66,7 +66,7 @@ type analysisSession struct {
 	analyzers            []checkinputs.Registration
 	loadScriptEngine     func(context.Context, string) (checkinputs.ScriptBackend, error)
 	allowConfigProcesses bool
-	workflowNames        *names.Index
+	workflowNames        *nameindex.Index
 	remoteActions        map[references.MirrorAccess]*remote.Service
 	repositories         map[string]repository.Snapshot
 	analysisLogger
@@ -85,7 +85,7 @@ type analysisSession struct {
 
 // check parses action manifests and workflows with their respective parsers.
 func (s *analysisSession) check(path, sourcePath string, captured capture.CapturedDocument, project *workspace.Project, config *configuration.Config, provenance configuration.Provenance,
-	processes *hostprocess.ProcessPool, actions *workspaceactions.Cache, workflows *workflows.Cache, usedRules *[]rule.Descriptor,
+	processes *hostprocess.ProcessPool, actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
 ) ([]*finding.Finding, outline.Outline, *resultpolicy.Batch, error) {
 	if s.captures == nil || s.snapshots == nil {
 		return nil, nil, nil, errors.New("analysis requires result-owned source captures")
@@ -104,7 +104,7 @@ func (s *analysisSession) check(path, sourcePath string, captured capture.Captur
 
 func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capture.CapturedDocument, content []byte, document parsing.Document, action bool,
 	project *workspace.Project, projectConfig *configuration.Config, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflows.Cache, usedRules *[]rule.Descriptor,
+	actions *localactions.Cache, workflows *reusableworkflows.Cache, usedRules *[]rule.Descriptor,
 ) (findings []*finding.Finding, outline outline.Outline, publication *resultpolicy.Batch, resultErr error) {
 	outline = documentOutline(path, document)
 	root := s.workingDir
@@ -271,7 +271,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 
 func (s *analysisSession) composeDocument(path, sourcePath, root string, content []byte, document parsing.Document, snapshot parsing.SourceSnapshot, action bool,
 	project *workspace.Project, cfg, projectConfig *configuration.Config, settings *ruleConfigurations, provenance configuration.Provenance, processes *hostprocess.ProcessPool,
-	actions *workspaceactions.Cache, workflows *workflows.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
+	actions *localactions.Cache, workflows *reusableworkflows.Cache, registrations []checkinputs.Registration, usedRules *[]rule.Descriptor,
 ) (result composites.Composition, resultErr error) {
 	process := processes.Fork()
 	var skippedMu sync.Mutex
@@ -303,7 +303,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if cfg != nil {
 		mappings = cfg.LocalActions
 	}
-	resolvedActions := workspaceactions.NewResolver(actions, mappings)
+	resolvedActions := localactions.NewResolver(actions, mappings)
 	host := s.repositories[projectRoot(project)]
 	facts := configuration.RepositoryFacts(cfg, host)
 	customLabels := runners.LabelSet{}
@@ -314,7 +314,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 	if runnerOptions.Service == nil {
 		runnerOptions.Service = &facts.Service
 	}
-	runners, runnerErr := runnerinput.PrepareWithLabels(s.ctx, snapshot, customLabels, runnerOptions, root)
+	runners, runnerErr := runneracquisition.PrepareWithLabels(s.ctx, snapshot, customLabels, runnerOptions, root)
 	if report := runners.Report(); report.CacheKey != "" {
 		report.Path = path
 		s.runnerReportsMu.Lock()
@@ -394,7 +394,7 @@ func (s *analysisSession) composeDocument(path, sourcePath, root string, content
 		ResolveExecution: selected.resolveExecution || requires[rule.Execution], Join: join, Debug: s.debugWriter(),
 	}
 	if action {
-		deployment, deploymentErr := scripts.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
+		deployment, deploymentErr := scriptanalysis.NewDeployment(s.snapshots, snapshot, sourcePath, document.Metadata.Path(), document.Metadata.SourceMapped)
 		if deploymentErr != nil {
 			return result, deploymentErr
 		}

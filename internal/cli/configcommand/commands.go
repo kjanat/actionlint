@@ -7,11 +7,11 @@ import (
 	"io"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/schema"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configschema"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
@@ -66,9 +66,9 @@ func WriteValidation(ctx context.Context, out io.Writer, req ValidateOptions, ac
 	}
 	if req.JSON {
 		return commandstreams.WriteJSON(out, struct {
-			Path     string           `json:"path"`
-			Valid    bool             `json:"valid"`
-			Warnings []report.Warning `json:"warnings,omitempty"`
+			Path     string                 `json:"path"`
+			Valid    bool                   `json:"valid"`
+			Warnings []configreport.Warning `json:"warnings,omitempty"`
 		}{inspection.Path, true, inspection.Warnings})
 	}
 	for _, warning := range inspection.Warnings {
@@ -96,11 +96,11 @@ func WriteSchema(ctx context.Context, out io.Writer, req SchemaOptions, acquisit
 	if err != nil {
 		return err
 	}
-	providers := make([]schema.ToolProvider, 0, len(manifests))
+	providers := make([]configschema.ToolProvider, 0, len(manifests))
 	for _, manifest := range manifests {
 		providers = append(providers, manifest.ConfigurationSchemaProvider())
 	}
-	document, err := schema.Document(schema.Schema, providers)
+	document, err := configschema.Document(configschema.Schema, providers)
 	if err != nil {
 		return err
 	}

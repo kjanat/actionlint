@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 

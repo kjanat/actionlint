@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"

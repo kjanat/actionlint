@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
 
@@ -44,7 +44,7 @@ type scheduledResourceRule struct {
 	completed *atomic.Bool
 }
 
-func (rule *scheduledResourceRule) attachScope(scope *process.Scope) {
+func (rule *scheduledResourceRule) attachScope(scope *hostprocess.Scope) {
 	scope.Register(func() error { rule.workers.Wait(); return nil })
 }
 
@@ -58,7 +58,7 @@ type failingResourceRule struct {
 	failure error
 }
 
-func (r *failingResourceRule) attachScope(scope *process.Scope) {
+func (r *failingResourceRule) attachScope(scope *hostprocess.Scope) {
 	scope.Register(func() error { return r.failure })
 }
 

@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/tools"
 )
 
@@ -122,7 +122,7 @@ func (ruleSet RuleSet) ResolveBeforePlugins(node any, overlays []Overlay) (Resol
 	}
 	resolved, err := ruleSet.resolveValue(node, inputs, false)
 	if err != nil && len(names) != 0 {
-		return ResolvedConfig{}, report.NewOverlayError(names, err)
+		return ResolvedConfig{}, configreport.NewOverlayError(names, err)
 	}
 	return resolved, err
 }
@@ -188,7 +188,7 @@ func (ruleSet RuleSet) Overlaid(cfg *Config, source *LoadedFile, overlays []Over
 		var err error
 		resolved, err = ruleSet.ResolveValue(node, inputs, additional...)
 		if err != nil {
-			return nil, ResolvedConfig{}, report.NewOverlayError(names, err)
+			return nil, ResolvedConfig{}, configreport.NewOverlayError(names, err)
 		}
 		cfg = resolved.Config
 		cfg.Lint.Rules.bindingSources = bindingSources

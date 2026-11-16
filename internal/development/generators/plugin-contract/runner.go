@@ -56,7 +56,7 @@ func generateTemplateEffects() error {
 // relative to the WIT directory; dependency, when set, is another file of the
 // same package that source's world refers to. Prefix starts the generated
 // enum variable names and output is the generated file in
-// internal/plugins/execution/component.
+// internal/plugins/pluginexecution/component.
 type roleContract struct {
 	source, dependency, role, interfaceName, digestName, functionName, prefix, output string
 }
@@ -157,7 +157,7 @@ func generateContract(spec roleContract) error {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile("../../../../internal/plugins/execution/component/"+spec.output, formatted, 0o644)
+		return os.WriteFile("../../../../internal/plugins/pluginexecution/component/"+spec.output, formatted, 0o644)
 	}
 	return fmt.Errorf("canonical %s interface missing", role)
 }

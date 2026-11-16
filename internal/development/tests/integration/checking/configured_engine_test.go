@@ -13,12 +13,12 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -52,7 +52,7 @@ func (b *configuredBackend) Close(ctx context.Context) error {
 func configuredEngineSelections() registry.Selections {
 	selections := registry.Defaults()
 	for name, selection := range selections {
-		selection.Process = &process.CommandOptions{Executable: new(""), AllowWasm: true}
+		selection.Process = &hostprocess.CommandOptions{Executable: new(""), AllowWasm: true}
 		selections[name] = selection
 	}
 	return selections
@@ -168,7 +168,7 @@ func TestConfiguredEngineErrorsAndExplicitDisable(t *testing.T) {
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); !errors.Is(err, failure) {
 				t.Fatalf("loader error lost: %v", err)
 			}
-			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &process.CommandOptions{Executable: new("")}}})
+			options.Tools = registry.Registrations(registry.Selections{"ruff": {Process: &hostprocess.CommandOptions{Executable: new("")}}})
 			if _, err := runConfiguredAnalysis(t, mode, root, paths, cfg, options); err != nil {
 				t.Fatalf("explicit disable ignored: %v", err)
 			}
@@ -266,7 +266,7 @@ func TestCompositeOnlyConfiguredEngine(t *testing.T) {
 				if result.Diagnostics[0].Rule != tool.name || filepath.ToSlash(result.Diagnostics[0].Path) != "inner/action.yml" {
 					t.Fatalf("unexpected diagnostic: %+v", result.Diagnostics[0])
 				}
-				disabled := backends.Selection{Process: &process.CommandOptions{Executable: new("")}}
+				disabled := backends.Selection{Process: &hostprocess.CommandOptions{Executable: new("")}}
 				options.Tools = registry.Registrations(registry.Selections{tool.name: disabled})
 				result, err = runConfiguredAnalysis(t, mode, root, paths[:1], cfg, options)
 				if err != nil || result == nil || len(result.Diagnostics) != 0 || loads.Load() != 1 || backend.checks.Load() != wantChecks || backend.closes.Load() != 1 {

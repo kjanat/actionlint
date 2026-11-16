@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
@@ -29,7 +29,7 @@ func TestCatalogEntriesAreUniqueAndGrouped(t *testing.T) {
 				t.Errorf("rule %q returns nil option settings", rule.Name)
 				continue
 			}
-			if err := binding.Decode(map[string]any{}, target); err != nil {
+			if err := configdecode.Decode(map[string]any{}, target); err != nil {
 				t.Errorf("rule %q cannot bind empty options: %v", rule.Name, err)
 			}
 		}

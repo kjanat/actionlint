@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -25,7 +25,7 @@ import (
 // because in-flight analyses may use an earlier version.
 type editorPluginHost struct {
 	options checking.Options
-	plugins *execution.Loaded
+	plugins *pluginexecution.Loaded
 	engines *editorEngines
 	sources pluginselection.Sources
 }
@@ -49,7 +49,7 @@ func newEditorSources(ctx context.Context, options checking.Options, sources plu
 	if err := checkEditorPluginStatuses(ctx, sources, log); err != nil {
 		return nil, err
 	}
-	plugins, err := execution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
+	plugins, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func checkEditorPluginStatuses(ctx context.Context, sources pluginselection.Sour
 	if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) {
 		_, _ = fmt.Fprintln(log, "warning:", message)
 	}, Acquisition: sources.Acquisition}); err != nil {
-		return &execution.LoadError{Err: err}
+		return &pluginexecution.LoadError{Err: err}
 	}
 	return nil
 }
@@ -138,7 +138,7 @@ func (s *editorEngines) load(ctx context.Context, source string) (checkinputs.Sc
 		if existing, ok := s.loaded[identity]; ok {
 			return borrowEditorEngine(existing), nil
 		}
-		engine, loadErr := execution.LoadScriptArtifact(ctx, artifact, s.acquisition, checking.BuiltinRuleNames(), s.log, s.debug)
+		engine, loadErr := pluginexecution.LoadScriptArtifact(ctx, artifact, s.acquisition, checking.BuiltinRuleNames(), s.log, s.debug)
 		if loadErr != nil {
 			return nil, loadErr
 		}

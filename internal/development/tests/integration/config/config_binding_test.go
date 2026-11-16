@@ -1,7 +1,7 @@
 package config_test
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
@@ -10,11 +10,11 @@ func decodeConfigYAML(data []byte, target any) error {
 	if err != nil {
 		return err
 	}
-	return binding.Decode(parsed.Value(), target)
+	return configdecode.Decode(parsed.Value(), target)
 }
 
 func encodeConfigYAML(value any) ([]byte, error) {
-	raw, err := binding.Encode(value)
+	raw, err := configdecode.Encode(value)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts/oci"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )

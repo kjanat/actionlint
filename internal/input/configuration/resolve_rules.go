@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
@@ -313,7 +313,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 		}
 		if len(registration.Options) != 0 {
 			if err := validateOptionsJSON(rule.Declaration{Descriptor: descriptor}, registration.Options); err != nil {
-				return nil, binding.Context(fmt.Sprintf("options for rule %q", descriptor.Name), err)
+				return nil, configdecode.Context(fmt.Sprintf("options for rule %q", descriptor.Name), err)
 			}
 		}
 		replaced := false
@@ -365,7 +365,7 @@ func (ruleSet RuleSet) bindSettings(config *Config, descriptors []rule.Declarati
 		settings := Config{Lint: LintConfig{Rules: source.rules}}
 		if err := ruleSet.bindSettings(&settings, descriptors, registered, optionOverrides); err != nil {
 			for _, v := range slices.Backward(source.prefix) {
-				err = binding.At(v, err)
+				err = configdecode.At(v, err)
 			}
 			err = sourceError(err, source.inputs)
 			if source.origin == "" {

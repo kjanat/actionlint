@@ -15,11 +15,11 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 	"actionlint.kjanat.dev/v2/internal/input/files"
-	workspaceactions "actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
-	workflowinputs "actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/results/finding"
 	"actionlint.kjanat.dev/v2/internal/results/policy"
@@ -47,7 +47,7 @@ permissions: {}
 // checkWithCaches analyzes with the same registry and store, so the cache and
 // the analysis see one capture of each document.
 type capturedWorkflowCache struct {
-	*workflowinputs.Cache
+	*reusableworkflows.Cache
 	registry  *parsing.SourceSnapshots
 	captures  *capture.Store
 	snapshots *capturedSnapshots
@@ -59,13 +59,13 @@ func newCapturedWorkflowCache(tb testing.TB, root, cwd string, debug io.Writer) 
 		cwd = sourceFixtureBase(tb)
 	}
 	registry, captures, snapshots := newCapturedSnapshots(tb, cwd)
-	cache := workflowinputs.NewCache(root, debug)
+	cache := reusableworkflows.NewCache(root, debug)
 	cache.SetSources(tb.Context(), captures, cwd)
 	return &capturedWorkflowCache{Cache: cache, registry: registry, captures: captures, snapshots: snapshots}
 }
 
 // checkWithCaches checks one prepared source against explicitly shared dependency caches.
-func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *process.ProcessPool, actions *workspaceactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
+func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest, source sourceUnit, proc *hostprocess.ProcessPool, actions *localactions.Cache, workflows *capturedWorkflowCache) ([]*finding.Finding, error) {
 	tb.Helper()
 	log := analysisLogger{logOut: request.LogWriter, logLevel: request.LogLevel}
 	if log.logOut == nil {
@@ -82,7 +82,7 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		session.workingDir = sourceFixtureBase(tb)
 	}
 	var declarations *capturedSnapshots
-	var workflowCache *workflowinputs.Cache
+	var workflowCache *reusableworkflows.Cache
 	if workflows != nil {
 		session.snapshots, session.captures, declarations = workflows.registry, workflows.captures, workflows.snapshots
 		workflowCache = workflows.Cache
@@ -99,10 +99,10 @@ func checkWithCaches(tb testing.TB, ctx context.Context, request analysisRequest
 		return nil, err
 	}
 	if actions != nil {
-		actions.Configure(workspaceactions.Options{Captures: session.captures, Context: ctx, WorkingDir: session.workingDir, Reader: session.reader, CustomReader: request.ReadFile != nil})
+		actions.Configure(localactions.Options{Captures: session.captures, Context: ctx, WorkingDir: session.workingDir, Reader: session.reader, CustomReader: request.ReadFile != nil})
 	}
 	if proc == nil {
-		proc = process.NewProcessPool(ctx, 1)
+		proc = hostprocess.NewProcessPool(ctx, 1)
 		defer proc.Wait()
 	}
 	cfg := source.Config
@@ -148,7 +148,7 @@ func readFixtureSources(tb testing.TB, paths []string, project *workspace.Projec
 // It invokes application analysis without input selection or rendering.
 func runTestAnalysis(ctx context.Context, request analysisRequest) (*analysisResult, error) {
 	if request.Processes == nil {
-		request.Processes = process.NewProcessPool(ctx, runtime.NumCPU())
+		request.Processes = hostprocess.NewProcessPool(ctx, runtime.NumCPU())
 		defer request.Processes.Wait()
 	}
 	return runAnalysis(ctx, request)

@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
@@ -26,7 +26,7 @@ func initLegacyCommandConfig(ctx context.Context, streams Command, req legacyCon
 	}
 
 	if req.ConfigPath != "" {
-		reader := source.New(ctx, nil, streams.Acquisition.Connections)
+		reader := configsource.New(ctx, nil, streams.Acquisition.Connections)
 		if _, err := checking.ConfigurationRules().ReadContext(ctx, req.ConfigPath, reader.ReadFile, nil); err != nil {
 			return err
 		}

@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
@@ -70,7 +70,7 @@ func TestShellcheckRequiredToolsExplicitProcessAndCancellation(t *testing.T) {
 	defer cancel()
 	options := checking.Options{
 		WorkingDir: root, ConfigFile: config,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{}}}),
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{}}}),
 	}
 	needed, err := checking.RequiredTools(ctx, options, []string{"never-read.yml"})
 	if err != nil || !needed["shellcheck"] {
@@ -98,7 +98,7 @@ overrides: [{includes: ['shell-action/**'], tools: {shellcheck: {backend: {proce
 	backend := &recordingEngine{code: "SC2086"}
 	options := checking.Options{
 		WorkingDir: root,
-		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &process.CommandOptions{
+		Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: "shellcheck", Process: &hostprocess.CommandOptions{
 			Executable: &executable, AllowWasm: true,
 			LauncherArguments: []string{"-test.run=^TestShellcheckPlanningHelper$", "--", "shellcheck"},
 		}}}),

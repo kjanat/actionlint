@@ -11,13 +11,13 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files/runnerpaths"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
-	scriptmodel "actionlint.kjanat.dev/v2/internal/model/scripts"
+	"actionlint.kjanat.dev/v2/internal/model/scripts"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/execution"
 )
@@ -53,7 +53,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflows.Step, job
 	if shell == nil {
 		shell = workflowShell
 	}
-	request := scripts.ScriptRequest{Occurrence: occurrence, DefaultShell: shell, Interpreters: commands.FromContext(analysis.ctx)}
+	request := scriptanalysis.ScriptRequest{Occurrence: occurrence, DefaultShell: shell, Interpreters: commands.FromContext(analysis.ctx)}
 	jobDefault, workflowDefault, runnerDefault := analysis.scriptJobShell, analysis.workflowShell, analysis.scriptRunnerShell
 	if analysis.scriptScope != nil && analysis.scriptScope.Composite {
 		jobDefault, workflowDefault, runnerDefault = value.Value{}, value.Value{}, value.Value{}
@@ -82,7 +82,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflows.Step, job
 }
 
 func (analysis *compositeAnalyzer) collectActionInputs(step workflows.Step, action *definition.ExecAction) error {
-	name, valid := scripts.ScriptInputAction(action)
+	name, valid := scriptanalysis.ScriptInputAction(action)
 	if !valid {
 		return nil
 	}
@@ -121,23 +121,23 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflows.Step, acti
 		if !analysis.collectScripts {
 			continue
 		}
-		analysis.scripts = append(analysis.scripts, scripts.ScriptRequest{Occurrence: occurrence, Input: &site, Environment: analysis.scriptEnvironment(step, site.Language)})
+		analysis.scripts = append(analysis.scripts, scriptanalysis.ScriptRequest{Occurrence: occurrence, Input: &site, Environment: analysis.scriptEnvironment(step, site.Language)})
 	}
 	return nil
 }
 
-func (analysis *compositeAnalyzer) scriptEnvironment(step workflows.Step, shell string) []scriptmodel.EnvironmentNames {
+func (analysis *compositeAnalyzer) scriptEnvironment(step workflows.Step, shell string) []scripts.EnvironmentNames {
 	// ProcessInvoker overlays step variables on the inherited process environment.
 	// https://github.com/actions/runner/blob/main/src/Runner.Sdk/ProcessInvoker.cs
-	layers := []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentRuntime, UnknownNames: true}}
+	layers := []scripts.EnvironmentLayer{{Scope: scripts.EnvironmentRuntime, UnknownNames: true}}
 	layers = append(layers, analysis.environmentLayers...)
-	layers = append(layers, scriptmodel.DeclaredEnvironment(scriptmodel.EnvironmentStep, workflows.Environment(step.Env)))
+	layers = append(layers, scripts.DeclaredEnvironment(scripts.EnvironmentStep, workflows.Environment(step.Env)))
 	if target := analysis.runners.Target(); target == "" || target == "github" {
 		composite := analysis.scriptScope != nil && analysis.scriptScope.Composite
 		// ScriptHandler exports runtime contexts after the step environment.
-		layers = append(layers, scriptmodel.EnvironmentLayer{Scope: scriptmodel.EnvironmentRuntime, Names: runners.RuntimeEnvironmentNames(composite)})
+		layers = append(layers, scripts.EnvironmentLayer{Scope: scripts.EnvironmentRuntime, Names: runners.RuntimeEnvironmentNames(composite)})
 	}
-	return scriptmodel.EnvironmentAlternatives(shell, analysis.operatingSystems, layers...)
+	return scripts.EnvironmentAlternatives(shell, analysis.operatingSystems, layers...)
 }
 
 func (analysis *compositeAnalyzer) actionInputCatalogue() ([]checkinputs.ScriptInput, error) {

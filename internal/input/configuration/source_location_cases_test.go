@@ -9,7 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 func assertNeutralSource(t *testing.T, err error, file string, line, column int, path string) {
@@ -24,7 +24,7 @@ func assertNeutralSource(t *testing.T, err error, file string, line, column int,
 	if src.File != file || src.Line != line || src.Column != column {
 		t.Errorf("source=%s:%d:%d, want %s:%d:%d", src.File, src.Line, src.Column, file, line, column)
 	}
-	var bind *binding.Error
+	var bind *configdecode.Error
 	if !errors.As(err, &bind) {
 		t.Fatalf("missing binding.Error: %v", err)
 	}

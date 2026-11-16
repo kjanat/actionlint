@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/git"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
@@ -31,8 +31,8 @@ func TestUnavailableRuleBeforeCompositionHasNoInvocation(t *testing.T) {
 	}
 	cause := errors.New("script checker initialization failed")
 	tools := registry.Registrations(registry.Selections{
-		"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
-		"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
+		"shellcheck": {Process: &hostprocess.CommandOptions{Executable: new("")}},
+		"ruff":       {Process: &hostprocess.CommandOptions{Executable: new("")}},
 	})
 	for i := range tools {
 		if tools[i].Name == "shellcheck" {
@@ -100,8 +100,8 @@ jobs:
 			result, err := Analyze(t.Context(), Options{
 				WorkingDir: root, SkipProjectConfig: true,
 				Tools: registry.Registrations(registry.Selections{
-					"shellcheck": {Process: &process.CommandOptions{Executable: new("")}},
-					"ruff":       {Process: &process.CommandOptions{Executable: new("")}},
+					"shellcheck": {Process: &hostprocess.CommandOptions{Executable: new("")}},
+					"ruff":       {Process: &hostprocess.CommandOptions{Executable: new("")}},
 				}),
 			}, []workspace.InputFile{{Path: filepath.Join(directory, "consumer.yml"), Content: []byte(strings.Replace(source, "ignore[workflow-run-names]", "ignore["+tc.selector+"]", 1)), Project: workspace.Identity(root)}})
 			if err != nil {

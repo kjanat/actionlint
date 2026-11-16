@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
@@ -26,12 +26,12 @@ func schemaBindingError(err error) error {
 		}
 		message := fmt.Sprintf("at %s: %s", at, failure.Message)
 		if len(failure.UnknownKeys) == 0 {
-			failures = append(failures, &binding.Error{Path: failure.Path, Cause: errors.New(message)})
+			failures = append(failures, &configdecode.Error{Path: failure.Path, Cause: errors.New(message)})
 			continue
 		}
 		for _, key := range failure.UnknownKeys {
 			pointer := failure.Path + "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(key)
-			failures = append(failures, &binding.Error{Path: pointer, Cause: fmt.Errorf("%s: %w", message, binding.ErrUnknownKey)})
+			failures = append(failures, &configdecode.Error{Path: pointer, Cause: fmt.Errorf("%s: %w", message, configdecode.ErrUnknownKey)})
 		}
 	}
 	return errors.Join(failures...)

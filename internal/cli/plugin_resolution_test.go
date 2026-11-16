@@ -13,7 +13,7 @@ import (
 )
 
 func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
-	module, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	module, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

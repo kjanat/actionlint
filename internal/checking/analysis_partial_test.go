@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
@@ -72,8 +72,8 @@ permissions: {}
 			t.Fatal(err)
 		}
 	}
-	options := func(tool string) *process.CommandOptions {
-		return &process.CommandOptions{
+	options := func(tool string) *hostprocess.CommandOptions {
+		return &hostprocess.CommandOptions{
 			Executable: &executable,
 			Arguments:  []string{"-test.run=^TestAnalysisPartialAnalyzerHelper$", "--", tool},
 		}

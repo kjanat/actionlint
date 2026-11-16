@@ -9,13 +9,13 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 )
 
 type inputReplacementBackend struct {
@@ -29,8 +29,8 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 		name         string
 		registration contract.Registration
 	}{
-		{"ruff", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}})},
+		{"shellcheck", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -51,7 +51,7 @@ func TestBuiltinInputReplacementHonorsCompositeDisable(t *testing.T) {
 				}
 			}
 			engine := &inputReplacementBackend{}
-			plugins := execution.Loaded{ScriptEngines: []execution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: engine, Descriptor: checkinputs.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, ScriptInputs: []checkinputs.ScriptInput{{Action: "example/execute", Input: "code", Language: "javascript"}},
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: root, Tools: []contract.Registration{tc.registration}})
@@ -85,14 +85,14 @@ func TestBuiltinReplacementPreservesActionInputRouting(t *testing.T) {
 		name, shell, source, filename string
 		registration                  contract.Registration
 	}{
-		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &process.CommandOptions{Optional: true}})},
-		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &process.CommandOptions{Optional: true}})},
+		{"ruff", "python", "print('${{ github.repository }}')", "actionlint.py", providerRegistration(t, "ruff", backends.Selection{Command: "ruff", Process: &hostprocess.CommandOptions{Optional: true}})},
+		{"shellcheck", "bash", "echo '${{ github.repository }}'", "actionlint.sh", providerRegistration(t, "shellcheck", backends.Selection{Command: "shellcheck", Process: &hostprocess.CommandOptions{Optional: true}})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			backend := &inputReplacementBackend{}
 			site := checkinputs.ScriptInput{Action: "example/execute", Input: "code", Language: "javascript"}
-			plugins := execution.Loaded{ScriptEngines: []execution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
+			plugins := pluginexecution.Loaded{ScriptEngines: []pluginexecution.ScriptEngineRegistration{{Backend: backend, Descriptor: checkinputs.ScriptEngineDescriptor{
 				Engine: tc.name, Rule: rule.Descriptor{Name: tc.name}, Shells: []string{tc.shell}, ScriptInputs: []checkinputs.ScriptInput{site}, TemplateContract: checkinputs.TemplateEffectsContract,
 			}}}}
 			options, err := checking.ConfigurePlugins(&plugins, t.Context(), checking.Options{WorkingDir: t.TempDir(), Tools: []contract.Registration{tc.registration}})

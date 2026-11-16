@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -19,7 +19,7 @@ import (
 
 type configurationNoopRunner struct{}
 
-func (configurationNoopRunner) Analyze(context.Context, scripts.Batch) ([]contract.ToolFinding, error) {
+func (configurationNoopRunner) Analyze(context.Context, scriptanalysis.Batch) ([]contract.ToolFinding, error) {
 	return nil, nil
 }
 

@@ -8,8 +8,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rulebinding"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -17,7 +17,7 @@ import (
 
 type documentChecks struct {
 	selection.Selection
-	scripts          scripts.Service
+	scripts          scriptanalysis.Service
 	resolveExecution bool
 	registeredTools  []contract.Registration
 }
@@ -30,7 +30,7 @@ func (s *analysisSession) buildChecks(context define.RuleInputs, toolContext con
 	}
 	for _, a := range selected.Scripts {
 		execution := slices.Contains(a.Descriptor().RequiredInputs, rule.Execution)
-		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scripts.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
+		selected.scripts.Analyzers = append(selected.scripts.Analyzers, scriptanalysis.FactAnalyzer{Analyzer: a, IncludeExecution: execution})
 		selected.resolveExecution = selected.resolveExecution || execution
 	}
 	for _, registration := range s.tools {

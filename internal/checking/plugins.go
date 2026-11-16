@@ -11,17 +11,17 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/references"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 )
@@ -46,10 +46,10 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 	}
 	if sources.Releases != nil {
 		if err := sources.Releases.CheckStatuses(ctx, pluginregistry.StatusOptions{Warning: func(message string) { _, _ = fmt.Fprintln(log, "warning:", message) }, Acquisition: sources.Acquisition}); err != nil {
-			return nil, &execution.LoadError{Err: err}
+			return nil, &pluginexecution.LoadError{Err: err}
 		}
 	}
-	plugins, err := execution.LoadPlugins(ctx, sources, BuiltinRuleNames(), log, options.Debug)
+	plugins, err := pluginexecution.LoadPlugins(ctx, sources, BuiltinRuleNames(), log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 		return nil, err
 	}
 	if options.LoadScriptEngine == nil {
-		options.LoadScriptEngine = execution.ScriptEngineLoader(sources.Acquisition, BuiltinRuleNames(), log, options.Debug)
+		options.LoadScriptEngine = pluginexecution.ScriptEngineLoader(sources.Acquisition, BuiltinRuleNames(), log, options.Debug)
 	}
 	return Check(ctx, options, input)
 }
@@ -81,7 +81,7 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, p
 // RequiredToolsWithPlugins applies the selected plugins before checking which
 // native tools are needed.
 func RequiredToolsWithPlugins(ctx context.Context, options Options, paths []string, sources pluginselection.Sources) (needed ToolRequirements, err error) {
-	loaded, err := execution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	loaded, err := pluginexecution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err
 	}
@@ -97,19 +97,19 @@ func RequiredToolsWithPlugins(ctx context.Context, options Options, paths []stri
 	return RequiredTools(ctx, options, paths)
 }
 
-func ConfigureManagedPlugins(l *execution.Loaded, options Options) (Options, error) {
+func ConfigureManagedPlugins(l *pluginexecution.Loaded, options Options) (Options, error) {
 	occupied := make([]string, 0, len(l.ScriptEngines))
 	for _, engine := range l.ScriptEngines {
 		occupied = append(occupied, engine.Descriptor.Engine)
 	}
 	configured, err := ConfigureToolIntegrations(options, occupied...)
 	if err != nil {
-		return options, &execution.LoadError{Err: err}
+		return options, &pluginexecution.LoadError{Err: err}
 	}
 	return configured, nil
 }
 
-func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options) (Options, error) {
+func ConfigurePlugins(l *pluginexecution.Loaded, ctx context.Context, options Options) (Options, error) {
 	if options.ConfigConnections.Transport == nil {
 		options.ConfigConnections.Transport = l.Acquisition.Connections.Transport
 	}
@@ -118,13 +118,13 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 	}
 	resolvers := l.ReferenceResolvers()
 	if len(resolvers) > 1 || len(resolvers) != 0 && options.Resolver != nil {
-		return options, &execution.LoadError{Err: errors.New("select one reference resolver")}
+		return options, &pluginexecution.LoadError{Err: errors.New("select one reference resolver")}
 	}
 	if len(resolvers) == 0 && options.Resolver == nil {
 		if provider, ok := options.RemoteActions.(interface{ ResolverEnabled() bool }); ok && provider.ResolverEnabled() {
 			resolver, err := l.LoadDefaultResolver(ctx)
 			if err != nil {
-				return options, &execution.LoadError{Err: err}
+				return options, &pluginexecution.LoadError{Err: err}
 			}
 			options.Resolver = resolver
 		}
@@ -143,7 +143,7 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 	for _, engine := range l.ScriptEngines {
 		metadata := engine.Descriptor
 		if seen[metadata.Engine] {
-			return options, &execution.LoadError{Err: fmt.Errorf("multiple plugins provide script engine %q", metadata.Engine)}
+			return options, &pluginexecution.LoadError{Err: fmt.Errorf("multiple plugins provide script engine %q", metadata.Engine)}
 		}
 		seen[metadata.Engine] = true
 		found := false
@@ -153,15 +153,15 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 				continue
 			}
 			if registration.WithBackend == nil {
-				return options, &execution.LoadError{Err: fmt.Errorf("tool %q cannot replace its backend", metadata.Engine)}
+				return options, &pluginexecution.LoadError{Err: fmt.Errorf("tool %q cannot replace its backend", metadata.Engine)}
 			}
 			replacement, err := registration.WithBackend(engine.Backend)
 			if err != nil {
-				return options, &execution.LoadError{Err: err}
+				return options, &pluginexecution.LoadError{Err: err}
 			}
 			replacement, err = backends.WithScriptInputs(replacement, metadata, engine.Backend)
 			if err != nil {
-				return options, &execution.LoadError{Err: err}
+				return options, &pluginexecution.LoadError{Err: err}
 			}
 			options.Tools[i] = replacement
 			found = true
@@ -170,7 +170,7 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 		if !found {
 			registration, err := backends.RegisterEngine(metadata, engine.Backend)
 			if err != nil {
-				return options, &execution.LoadError{Err: err}
+				return options, &pluginexecution.LoadError{Err: err}
 			}
 			options.Tools = append(options.Tools, registration)
 		}
@@ -179,12 +179,12 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 	for _, local := range l.Providers {
 		name := local.Files.Manifest.Rule.Name
 		if seen[name] {
-			return options, &execution.LoadError{Err: fmt.Errorf("multiple plugins provide script engine %q", name)}
+			return options, &pluginexecution.LoadError{Err: fmt.Errorf("multiple plugins provide script engine %q", name)}
 		}
 		seen[name] = true
 		l.ToolIDs = append(l.ToolIDs, name)
 		if local.Repository && !options.AllowConfigProcesses {
-			return options, &execution.LoadError{Err: fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.Files.Source)}
+			return options, &pluginexecution.LoadError{Err: fmt.Errorf("tool provider %s from %s runs a native executable; use --allow-config-processes for trusted repository configuration", name, local.Files.Source)}
 		}
 		if local.Files.Source != "" {
 			// Only now, after the check above, download the executable.
@@ -192,7 +192,7 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 			artifactOptions.Network = local.Network
 			fetched, err := local.Files.Materialize(ctx, artifactOptions)
 			if err != nil {
-				return options, &execution.LoadError{Err: fmt.Errorf("plugin %s: %w", local.Files.Source, err)}
+				return options, &pluginexecution.LoadError{Err: fmt.Errorf("plugin %s: %w", local.Files.Source, err)}
 			}
 			local.Files = fetched
 		}
@@ -207,11 +207,11 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 			}
 			command, err := options.Processes.ConfiguredCommandRunner(local.Files.Manifest.Process.Entry, commandOptions, false)
 			if err != nil {
-				return options, &execution.LoadError{Err: err}
+				return options, &pluginexecution.LoadError{Err: err}
 			}
 			checker, err := process.NewDocumentAnalyzer(local.Files.Manifest, command, process.Options{Programs: local.Files.Programs, Required: true})
 			if err != nil {
-				return options, &execution.LoadError{Err: err}
+				return options, &pluginexecution.LoadError{Err: err}
 			}
 			options.Analyzers = append(slices.Clone(options.Analyzers), checkinputs.Registration{Checker: checker})
 			continue
@@ -223,7 +223,7 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 		// An explicitly selected manifest replaces the tool's default route.
 		registration, err := backends.RegisterProvider(backends.Provider{Manifest: local.Files.Manifest, Programs: local.Files.Programs, Selection: selection})
 		if err != nil {
-			return options, &execution.LoadError{Err: err}
+			return options, &pluginexecution.LoadError{Err: err}
 		}
 		registration.ToolSettings = new(local.Files.Manifest.Settings())
 		options.Tools = slices.DeleteFunc(slices.Clone(options.Tools), func(existing contract.Registration) bool { return existing.Name == name })
@@ -241,7 +241,7 @@ func ConfigurePlugins(l *execution.Loaded, ctx context.Context, options Options)
 
 // checkTools reports the tool ids named by --tool or --no-tool that match no
 // tool registration, no loaded plugin and no skipped plugin.
-func checkPluginTools(l *execution.Loaded, registrations []contract.Registration) error {
+func checkPluginTools(l *pluginexecution.Loaded, registrations []contract.Registration) error {
 	known := slices.Concat(l.SkippedTools, l.ToolIDs)
 	for _, registration := range registrations {
 		known = append(known, registration.Name)

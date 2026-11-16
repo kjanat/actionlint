@@ -8,8 +8,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/component"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/module"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/component"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/module"
 )
 
 var _ interface{ Limits() module.Limits } = (*module.Engine)(nil)

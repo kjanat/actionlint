@@ -9,7 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/cache"
 
 	"actionlint.kjanat.dev/v2/internal/model/calls"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -49,7 +49,7 @@ func CheckCallOperations(call *definition.WorkflowCall, granted *definition.Cach
 // inline suppression and policy configuration apply. Metadata stores callee
 // operations; each traversal evaluates them against the caller's ceiling.
 func (r *operationCheck) checkCallOperations(pos source.Position, sourceSpec string, granted cache.Grant, checked map[cacheModeVisit]bool) {
-	spec, local := references.LocalWorkflow(sourceSpec)
+	spec, local := callreferences.LocalWorkflow(sourceSpec)
 	if !local {
 		return
 	}
@@ -103,7 +103,7 @@ func CheckStep(step workflows.Step, mode *definition.CacheMode) []results.Diagno
 	if !valid {
 		return nil
 	}
-	name := references.CacheAction(action.Uses.Value)
+	name := callreferences.CacheAction(action.Uses.Value)
 	if operation := disabledCacheOperation(name, access); operation != "" {
 		return []results.Diagnostic{report(source.ZeroIfNil(action.Uses.Pos), "cache-operation", "%q cannot %s with effective cache-mode %q. GitHub skips the operation; remove this cache step or select an action and mode that match the job's intended cache access", name, operation, mode.Kind.String())}
 	}

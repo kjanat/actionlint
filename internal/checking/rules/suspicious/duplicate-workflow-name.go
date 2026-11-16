@@ -8,9 +8,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/input/files/names"
+	"actionlint.kjanat.dev/v2/internal/input/files/nameindex"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
-	namemodel "actionlint.kjanat.dev/v2/internal/model/workflows/names"
+	"actionlint.kjanat.dev/v2/internal/model/workflows/names"
 )
 
 // duplicateWorkflowNameRuleName must equal DuplicateWorkflowNameRule.Name,
@@ -42,11 +42,11 @@ var DuplicateWorkflowNameRule = &define.Rule{
 // DuplicateWorkflowName reports the workflow's plain-text name when another
 // workflow in others uses it too. others must not contain the workflow itself.
 // It does not read files.
-func DuplicateWorkflowName(others namemodel.Inventory, w workflows.Workflow) []reporting.StepFinding {
+func DuplicateWorkflowName(others names.Inventory, w workflows.Workflow) []reporting.StepFinding {
 	if !w.Present() {
 		return nil
 	}
-	name, literal := namemodel.Declare(w.Name).Literal()
+	name, literal := names.Declare(w.Name).Literal()
 	if !literal {
 		return nil
 	}
@@ -78,7 +78,7 @@ func prepareDuplicateWorkflowName(c define.RuleInputs) (define.InputPreparation,
 	if !available || !workflow.Present() {
 		return define.PreparedInputs{RuleInputs: c}, nil
 	}
-	if _, literal := namemodel.Declare(workflow.Name).Literal(); !literal {
+	if _, literal := names.Declare(workflow.Name).Literal(); !literal {
 		return define.PreparedInputs{RuleInputs: c}, nil
 	}
 	inventory, err := c.ProjectWorkflowNames()
@@ -87,7 +87,7 @@ func prepareDuplicateWorkflowName(c define.RuleInputs) (define.InputPreparation,
 	}
 	self := c.DocumentPath()
 	c.WorkflowNameInventory = inventory.ExcludingLiteral(func(path string) bool {
-		return names.SamePath(path, self)
+		return nameindex.SamePath(path, self)
 	})
 	return define.PreparedInputs{RuleInputs: c}, nil
 }

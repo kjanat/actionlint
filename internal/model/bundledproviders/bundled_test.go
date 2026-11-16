@@ -16,7 +16,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 	"github.com/google/go-cmp/cmp"
 	"github.com/itchyny/gojq"
 )

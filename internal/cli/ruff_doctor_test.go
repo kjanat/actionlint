@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -25,7 +25,7 @@ func TestDoctorRuffProbeContext(t *testing.T) {
 	}
 	root := t.TempDir()
 	request := doctorRequest{
-		Config: configuration.Selection{Disabled: true}, Tools: registry.Selections{"ruff": {Command: "ignored", Process: &process.CommandOptions{
+		Config: configuration.Selection{Disabled: true}, Tools: registry.Selections{"ruff": {Command: "ignored", Process: &hostprocess.CommandOptions{
 			Executable: &executable, Optional: true, WorkingDir: root,
 			Arguments: []string{"--select", "F"},
 			Environment: []string{

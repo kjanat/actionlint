@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 func evaluateFromJSON(context EvaluationContext) values.EvaluationResult {
@@ -37,24 +37,24 @@ func evaluateFromJSON(context EvaluationContext) values.EvaluationResult {
 //sumtype:decl
 type functionJSONRead interface{ functionJSONRead() }
 
-type decodedFunctionJSON struct{ parsed json.ReadResult }
+type decodedFunctionJSON struct{ parsed runnerjson.ReadResult }
 
 func (decodedFunctionJSON) functionJSONRead() {}
 
-type unsupportedFunctionJSON struct{ parsed json.ReadResult }
+type unsupportedFunctionJSON struct{ parsed runnerjson.ReadResult }
 
 func (unsupportedFunctionJSON) functionJSONRead() {}
 
 func (InvalidJSON) functionJSONRead() {}
 
 func readFunctionJSON(text string) functionJSONRead {
-	parsed, err := json.ParseJSON(text)
-	if errors.Is(err, json.ErrUnsupportedValue) {
+	parsed, err := runnerjson.ParseJSON(text)
+	if errors.Is(err, runnerjson.ErrUnsupportedValue) {
 		return unsupportedFunctionJSON{parsed: parsed}
 	}
 	if err != nil {
 		failure := InvalidJSON{Message: err.Error()}
-		if syntax, ok := errors.AsType[*json.ReadError](err); ok {
+		if syntax, ok := errors.AsType[*runnerjson.ReadError](err); ok {
 			failure.Offset = &syntax.Offset
 		}
 		return failure

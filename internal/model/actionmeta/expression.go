@@ -14,7 +14,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/typecheck"
 )
@@ -136,7 +136,7 @@ func ReadExpressions(s string, bare bool, field string, inputs calls.Inputs) Exp
 				name := strings.ToLower(n.Callee)
 				if name == "fromjson" && len(n.Args) == 1 {
 					if literal, ok := n.Args[0].(*syntax.StringNode); ok {
-						for _, collision := range json.JSONMemberCollisions(literal.Value) {
+						for _, collision := range runnerjson.JSONMemberCollisions(literal.Value) {
 							v := ExpressionProblem{Code: CodeJSONMemberCollision, Message: fmt.Sprintf("fromJSON() object members %q and %q collide under case-insensitive lookup at JSON offset %d; the selected value depends on JSON parsing mode", collision.First, collision.Second, collision.Offset)}
 							if positionsKnown {
 								v.Offset = expressionOffset + n.Token().Offset + 1

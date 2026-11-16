@@ -22,7 +22,7 @@ import (
 
 func candidateCatalogue(t *testing.T) (string, string, string, *fixtureregistry.PluginRegistry) {
 	t.Helper()
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

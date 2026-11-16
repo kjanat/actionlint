@@ -10,7 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/output"
 )

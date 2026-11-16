@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
@@ -43,7 +43,7 @@ func (s *LifecycleStart) DecodeConfig(value any) error {
 	}
 	type plain LifecycleStart
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	*s = LifecycleStart(next)
@@ -97,7 +97,7 @@ func (c LifecycleConfig) compile(origin string, inputs map[string]document.Locat
 func (c *LifecycleConfig) DecodeConfig(value any) error {
 	type plain LifecycleConfig
 	var next plain
-	if err := binding.Decode(value, &next); err != nil {
+	if err := configdecode.Decode(value, &next); err != nil {
 		return err
 	}
 	if _, err := LifecycleConfig(next).Compile(""); err != nil {

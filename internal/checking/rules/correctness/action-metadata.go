@@ -10,11 +10,11 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 
-	actioncheck "actionlint.kjanat.dev/v2/internal/checking/rules/correctness/action"
+	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness/actioncheck"
 
 	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 
 	findingmodel "actionlint.kjanat.dev/v2/internal/results/finding"
 )
@@ -45,7 +45,7 @@ func newActionMetadataValidation() *actionMetadataValidation {
 	return &actionMetadataValidation{templates: make(map[string][]*findingmodel.Finding), copies: findingmodel.NewCopier()}
 }
 
-func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source workspace.SourceDocument, action *definition.ExecAction, displaySpec string) error {
+func (rule *ruleAction) replayMetadataFindings(meta *actionmeta.Metadata, source localactions.SourceDocument, action *definition.ExecAction, displaySpec string) error {
 	store := rule.validation
 	path := meta.Path()
 	templates, checked := store.templates[path]

@@ -10,7 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/languages/messages"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -165,8 +165,8 @@ func (r *Trust) CheckCall(job workflows.Job) []results.Diagnostic {
 	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cache.EffectiveMode(r.workflow, job.CacheMode) != nil {
 		return nil
 	}
-	if _, local := references.LocalWorkflow(call.Uses.Value); !local {
-		if _, remote := references.WorkflowRef(call.Uses.Value); !remote {
+	if _, local := callreferences.LocalWorkflow(call.Uses.Value); !local {
+		if _, remote := callreferences.WorkflowRef(call.Uses.Value); !remote {
 			return nil
 		}
 	}

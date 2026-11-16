@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -40,7 +40,7 @@ func NewCommitHashOptions(exclude ...string) (*CommitHashOptions, error) {
 // DecodeConfig reads the exclude list and rejects malformed patterns.
 func (o *CommitHashOptions) DecodeConfig(value any) error {
 	var wire commitHashWire
-	if err := binding.Decode(value, &wire); err != nil {
+	if err := configdecode.Decode(value, &wire); err != nil {
 		return err
 	}
 	next, err := NewCommitHashOptions(wire.Exclude...)

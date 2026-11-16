@@ -13,10 +13,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -95,7 +95,7 @@ jobs:
 permissions: {}
 `)
 			options := checking.Options{WorkingDir: root}
-			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}}
+			optionsTools := registry.Selections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}}
 			if tc.rc {
 				rc := writeFixture(t, root, ".shellcheckrc", "shell=bash\n")
 				options.ConfigFile = writeFixture(t, root, "actionlint.yaml", "tools: {shellcheck: {config: '"+filepath.ToSlash(rc)+"'}}\n")
@@ -194,7 +194,7 @@ jobs:
           . ./scripts/lib.sh
 permissions: {}
 `)
-			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
+			session := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
 			var err error
 
 			result, err := checking.Check(t.Context(), session, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
@@ -230,7 +230,7 @@ func TestUnavailableSourcedDiagnosticKeepsYAMLSuppressionAnchor(t *testing.T) {
 				comment = " # actionlint:ignore shellcheck -- reviewed source"
 			}
 			workflow := writeFixture(t, root, ".github/workflows/test.yml", "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: . ./scripts/lib.sh"+comment+"\npermissions: {}\n")
-			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
+			options := checking.Options{WorkingDir: root, Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"--check-sourced"}}}})}
 			result, err := checking.Check(t.Context(), options, inputmodel.Request{Kind: inputmodel.Files, Paths: []string{workflow}})
 			if err != nil {
 				t.Fatal(err)

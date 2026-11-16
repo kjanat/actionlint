@@ -15,7 +15,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/repositoryfixture"
@@ -49,7 +49,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := execution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), io.Discard, false); err == nil || !strings.Contains(err.Error(), "public destination") {
+		if _, err := pluginexecution.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), io.Discard, false); err == nil || !strings.Contains(err.Error(), "public destination") {
 			t.Fatalf("project private source acquired: %v", err)
 		}
 	}
@@ -65,7 +65,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 	if _, err := project.SelectedPlugins(t.Context(), project.Manifest.References); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("project private registry acquired: %v", err)
 	}
-	if _, err := execution.ScriptEngineLoader(acquisition, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
+	if _, err := pluginexecution.ScriptEngineLoader(acquisition, checking.BuiltinRuleNames(), io.Discard, false)(t.Context(), source); err == nil || !strings.Contains(err.Error(), "public destination") {
 		t.Fatalf("configured backend acquired private source: %v", err)
 	}
 	if dials != 0 {

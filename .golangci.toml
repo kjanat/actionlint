@@ -133,7 +133,7 @@ text    = "occurrence IDs"
 linters = ["forbidigo"]
 
 [[linters.exclusions.rules]]
-path    = '^internal/input/files/names/index\.go$'
+path    = '^internal/input/files/nameindex/index\.go$'
 text    = "files\\.ProbeDir"
 linters = ["forbidigo"]
 

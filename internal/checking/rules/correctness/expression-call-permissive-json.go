@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 
-	runnerjson "actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 // PermissiveJSONCalls locates known fromJSON arguments accepted only by the

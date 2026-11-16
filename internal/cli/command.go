@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/arguments"
 	"actionlint.kjanat.dev/v2/internal/cli/streams"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
 	networkaccounting "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
@@ -159,7 +159,7 @@ func (cmd *Command) MainContext(ctx context.Context, args []string) (status int)
 		}
 	}()
 	if app.inv.Operation == operationCheck {
-		ctx = source.WithReadCache(ctx)
+		ctx = configsource.WithReadCache(ctx)
 		app.ctx = ctx
 	}
 	outputConfigErr := app.applyConfiguredOutput()

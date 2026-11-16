@@ -6,7 +6,7 @@ import (
 	"unicode/utf16"
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 func ExpressionTruthy(value any) bool {
@@ -27,7 +27,7 @@ func ExpressionTruthy(value any) bool {
 func CompareConditionValues(kind syntax.CompareOpNodeKind, left, right any) (bool, bool) {
 	if l, ok := left.(string); ok {
 		if r, ok := right.(string); ok {
-			order := slices.Compare(utf16.Encode([]rune(json.OrdinalIgnoreCaseKey(l))), utf16.Encode([]rune(json.OrdinalIgnoreCaseKey(r))))
+			order := slices.Compare(utf16.Encode([]rune(runnerjson.OrdinalIgnoreCaseKey(l))), utf16.Encode([]rune(runnerjson.OrdinalIgnoreCaseKey(r))))
 			return compareConditionNumbers(kind, float64(order), 0), true
 		}
 	}

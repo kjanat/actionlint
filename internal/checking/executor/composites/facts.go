@@ -2,7 +2,7 @@ package composites
 
 import (
 	"actionlint.kjanat.dev/v2/internal/checking/executor"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
@@ -21,16 +21,16 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 		return input, nil
 	}
 	if !result.Batch.Valid() || !result.EntrySnapshot.Present() {
-		return input, scripts.ErrInvalidBatch
+		return input, scriptanalysis.ErrInvalidBatch
 	}
 	input.CallGraph = result.Batch.CallGraph
 	if result.EntrySnapshot.Reference() != input.CallGraph.Entry().Reference {
-		return executor.SourceInput(document, path, content, refs.Document), scripts.ErrInvalidBatch
+		return executor.SourceInput(document, path, content, refs.Document), scriptanalysis.ErrInvalidBatch
 	}
 	if input.Reference == (source.Reference{}) {
 		input.Reference = input.CallGraph.Entry().Reference
 	} else if input.Reference != input.CallGraph.Entry().Reference {
-		return executor.SourceInput(document, path, content, refs.Document), scripts.ErrInvalidBatch
+		return executor.SourceInput(document, path, content, refs.Document), scriptanalysis.ErrInvalidBatch
 	}
 	input.AvailableInputs = append(input.AvailableInputs, rule.Mappings, rule.Dependencies, rule.Invocations)
 	if result.Batch.Collected {
@@ -38,7 +38,7 @@ func CheckInput(result Composition, path, pathAbs string, content []byte, docume
 		for index, unit := range units {
 			script, exists := result.Batch.Fact(index, result.ResolveExecution)
 			if !exists {
-				return executor.SourceInput(document, path, content, refs.Document), scripts.ErrInvalidBatch
+				return executor.SourceInput(document, path, content, refs.Document), scriptanalysis.ErrInvalidBatch
 			}
 
 			switch {

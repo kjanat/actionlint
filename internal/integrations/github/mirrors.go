@@ -6,7 +6,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -17,7 +17,7 @@ func (g *GitHub) WithMetadataMirrors(access references.MirrorAccess, excludedRep
 	return &configured
 }
 
-func (g *GitHub) WithWorkflowMetadataMirrors(access references.MirrorAccess, excludedRepositories []string) workflows.Provider {
+func (g *GitHub) WithWorkflowMetadataMirrors(access references.MirrorAccess, excludedRepositories []string) reusableworkflows.Provider {
 	configured := *g
 	configured.mirrors = access
 	configured.excludedMirrorRepositories = slices.Clone(excludedRepositories)

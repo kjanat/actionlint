@@ -5,12 +5,12 @@ import (
 	"maps"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
 )
 
 // configOrigins assigns source locations after inheritance and Action overrides.
-func configOrigins(value any, prefix string, origins map[string]report.Origin, inputs map[string]document.Location) error {
+func configOrigins(value any, prefix string, origins map[string]configreport.Origin, inputs map[string]document.Location) error {
 	selected, found := inputs[prefix]
 	if found {
 		reset := selected.Reset
@@ -40,8 +40,8 @@ func configOrigins(value any, prefix string, origins map[string]report.Origin, i
 	return nil
 }
 
-func configValueOrigin(value any, input document.Location) report.Origin {
-	origin := report.Origin{Source: "config", State: "null", File: input.File, Line: input.Line, Column: input.Column}
+func configValueOrigin(value any, input document.Location) configreport.Origin {
+	origin := configreport.Origin{Source: "config", State: "null", File: input.File, Line: input.Line, Column: input.Column}
 	if value != nil {
 		origin.State = "value"
 	}
@@ -53,10 +53,10 @@ func configValueOrigin(value any, input document.Location) report.Origin {
 
 func configPointerPart(s string) string { return strings.NewReplacer("~", "~0", "/", "~1").Replace(s) }
 
-func configDefaultOrigins(values map[string]any, prefix string, origins map[string]report.Origin) {
+func configDefaultOrigins(values map[string]any, prefix string, origins map[string]configreport.Origin) {
 	for key, value := range values {
 		pointer := prefix + "/" + configPointerPart(key)
-		origins[pointer] = report.Origin{Source: "default", State: "missing"}
+		origins[pointer] = configreport.Origin{Source: "default", State: "missing"}
 		if nested, ok := value.(map[string]any); ok {
 			configDefaultOrigins(nested, pointer, origins)
 		}

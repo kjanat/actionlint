@@ -8,7 +8,7 @@ import (
 	"time"
 
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
-	"actionlint.kjanat.dev/v2/internal/integrations/cache"
+	"actionlint.kjanat.dev/v2/internal/integrations/dependencycache"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"github.com/spf13/cobra"
 )
@@ -71,7 +71,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 		return 0, err
 	}
 	if r.Operation == operationCacheList {
-		inventory, err := cache.Inspect(ctx, directory)
+		inventory, err := dependencycache.Inspect(ctx, directory)
 		if err != nil {
 			return 0, err
 		}
@@ -84,7 +84,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 	if r.Operation == operationCachePrune {
 		cutoff = time.Now().Add(-r.OlderThan)
 	}
-	result, err := cache.Clean(ctx, directory, cutoff, r.DryRun)
+	result, err := dependencycache.Clean(ctx, directory, cutoff, r.DryRun)
 	if err != nil {
 		if r.DryRun {
 			return 0, fmt.Errorf("cache preview failed: %w", err)
@@ -105,7 +105,7 @@ func (r cacheRequest) run(ctx context.Context, streams Command) (int, error) {
 	return 0, err
 }
 
-func writeCacheInventory(out io.Writer, inventory cache.Inventory) error {
+func writeCacheInventory(out io.Writer, inventory dependencycache.Inventory) error {
 	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	if _, err := fmt.Fprintln(w, "TYPE\tBYTES\tMODIFIED\tFILE"); err != nil {
 		return err

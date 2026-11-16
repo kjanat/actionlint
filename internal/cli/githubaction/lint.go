@@ -13,20 +13,20 @@ import (
 	"time"
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/github"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/results"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/integrations/buildinfo"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"actionlint.kjanat.dev/v2/internal/output"
@@ -45,7 +45,7 @@ type lintRequest struct {
 	disabledTools []string
 	// processes replaces the default command of the bundled tools it names.
 	// Tests use it to select executables.
-	processes    map[string]*process.CommandOptions
+	processes    map[string]*hostprocess.CommandOptions
 	workingDir   string
 	workspaceDir string
 	configFile   string
@@ -294,7 +294,7 @@ func (req *lintRequest) toolSelections() registry.Selections {
 			selections[id] = backends.Selection{}
 			continue
 		}
-		options := process.CommandOptions{Optional: true}
+		options := hostprocess.CommandOptions{Optional: true}
 		if replaced := req.processes[id]; replaced != nil {
 			options = *replaced
 		}

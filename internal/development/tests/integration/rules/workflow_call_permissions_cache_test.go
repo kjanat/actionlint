@@ -14,7 +14,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/references/workflows"
+	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
 	"actionlint.kjanat.dev/v2/internal/model/calls"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 
@@ -50,7 +50,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..", "..", "..", "input", "references", "workflows", "testdata", "reusable-workflows")
 
-	run := func(t *testing.T, cache *workflows.Cache) []string {
+	run := func(t *testing.T, cache *reusableworkflows.Cache) []string {
 		t.Helper()
 		if err := cache.LoadCalls(t.Context(), []string{"./permissions.yaml"}); err != nil {
 			t.Fatal(err)

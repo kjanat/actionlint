@@ -16,8 +16,8 @@ func TestNoToolsKeepsBuiltinChecks(t *testing.T) {
 	for _, args := range [][]string{
 		{"check", "--no-config", "--no-tools"},
 		{"--no-tools", "check", "--no-config", "--tool", "ruff=missing-native-tool"},
-		{"check", "--no-config", "--no-tools", "--plugin", "internal/plugins/execution/module/testdata/engines/echo.wasm"},
-		{"check", "--no-config", "--no-tools", "--plugin", "internal/plugins/execution/component/testdata/plugins/no-sudo.wasm"},
+		{"check", "--no-config", "--no-tools", "--plugin", "internal/plugins/pluginexecution/module/testdata/engines/echo.wasm"},
+		{"check", "--no-config", "--no-tools", "--plugin", "internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm"},
 		{"check", "--no-config", "--no-tools", "--plugin", "missing-tool-provider.json"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {

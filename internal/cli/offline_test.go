@@ -32,7 +32,7 @@ func TestCacheWarmThenOfflineConfigurationAndPlugin(t *testing.T) {
 	const base = "https://config.example/team/base.yaml"
 	const parent = "https://config.example/defaults.yaml"
 	const module = "https://config.example/no-sudo.wasm"
-	wasm, err := os.ReadFile("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	wasm, err := os.ReadFile("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

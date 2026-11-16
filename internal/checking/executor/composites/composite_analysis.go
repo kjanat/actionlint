@@ -10,15 +10,15 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
 	"actionlint.kjanat.dev/v2/internal/checking/selection"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions/remote"
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
 	"actionlint.kjanat.dev/v2/internal/input/source/capture"
 	"actionlint.kjanat.dev/v2/internal/model/calls/invocation"
 
@@ -47,8 +47,8 @@ type compositionSession struct {
 	scriptCatalogues       map[*rulebinding.Scope][]checkinputs.ScriptInput
 	runners                *runners.Knowledge
 	resolveScriptExecution bool
-	scripts                []scripts.ScriptRequest
-	scriptScopes           []*scripts.Scope
+	scripts                []scriptanalysis.ScriptRequest
+	scriptScopes           []*scriptanalysis.Scope
 	scriptPaths            execution.Paths
 	reader                 *files.Reader
 	collectScripts         bool
@@ -76,9 +76,9 @@ type compositionSession struct {
 type compositeAnalyzer struct {
 	*compositionSession
 	bindings                          *rulebinding.Scope
-	actions                           *workspace.Resolver
+	actions                           *localactions.Resolver
 	sourceSnapshot                    parsing.SourceSnapshot
-	scriptScope                       *scripts.Scope
+	scriptScope                       *scriptanalysis.Scope
 	scriptConfig                      *configuration.Config
 	context                           invocation.Context
 	scriptJobShell, scriptRunnerShell value.Value
@@ -103,7 +103,7 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow)
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
-	analysis.beginEntryScope(scripts.Deployment{})
+	analysis.beginEntryScope(scriptanalysis.Deployment{})
 	defaults := workflows.DefaultsRun(declaration.Defaults)
 	analysis.scriptWorkflowDir = execution.DefaultDirectory(defaults)
 	analysis.workflowScriptShell = scriptDefaultShell(declaration.Defaults)
@@ -113,21 +113,21 @@ func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow)
 	return nil
 }
 
-func (analysis *compositeAnalyzer) beginAction(deployment scripts.Deployment) error {
+func (analysis *compositeAnalyzer) beginAction(deployment scriptanalysis.Deployment) error {
 	if analysis.sourceSnapshot.Kind() != parsing.KindAction {
 		return errors.New("action source snapshot is unavailable")
 	}
-	validated, err := scripts.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
+	validated, err := scriptanalysis.NewDeployment(analysis.sourceSnapshots, analysis.sourceSnapshot, deployment.Address(), deployment.SourcePath(), deployment.ActionPath() == "")
 	if err != nil || validated != deployment {
-		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scripts.ErrInvalidBatch)
+		return fmt.Errorf("%w: action deployment disagrees with source snapshot", scriptanalysis.ErrInvalidBatch)
 	}
 	analysis.beginEntryScope(deployment)
 	analysis.environmentLayers = []scriptmodel.EnvironmentLayer{{Scope: scriptmodel.EnvironmentCaller, UnknownNames: true}}
 	return nil
 }
 
-func (analysis *compositeAnalyzer) beginEntryScope(deployment scripts.Deployment) {
-	analysis.scriptScope = &scripts.Scope{
+func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptanalysis.Deployment) {
+	analysis.scriptScope = &scriptanalysis.Scope{
 		Bindings: analysis.bindings,
 		Paths:    analysis.scriptPaths, Reader: analysis.reader, Config: analysis.scriptConfig, ConfigProvenance: analysis.configProvenance,
 		Deployment: deployment, Context: analysis.context,

@@ -8,7 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -82,10 +82,10 @@ func TestTOMLMigrationPreservesComments(t *testing.T) {
 		t.Fatal(err)
 	}
 	var expected, actual map[string]any
-	if err := binding.Decode(canonical, &expected); err != nil {
+	if err := configdecode.Decode(canonical, &expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := binding.Decode(after.Value(), &actual); err != nil {
+	if err := configdecode.Decode(after.Value(), &actual); err != nil {
 		t.Fatal(err)
 	}
 	encodedExpected, err := toml.Marshal(expected)
@@ -235,10 +235,10 @@ value = "kept"
 		t.Fatal(err)
 	}
 	var expected, actual map[string]any
-	if err := binding.Decode(canonical, &expected); err != nil {
+	if err := configdecode.Decode(canonical, &expected); err != nil {
 		t.Fatal(err)
 	}
-	if err := binding.Decode(after.Value(), &actual); err != nil {
+	if err := configdecode.Decode(after.Value(), &actual); err != nil {
 		t.Fatal(err)
 	}
 	encodedExpected, err := toml.Marshal(expected)

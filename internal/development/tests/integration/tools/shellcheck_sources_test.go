@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input/source"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 )
 
 func TestCompositeShellcheckSourcedDiagnostics(t *testing.T) {
@@ -27,7 +27,7 @@ runs:
       working-directory: app
       run: . ./lib/check.sh
 `)
-	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &process.CommandOptions{Arguments: []string{"-a"}}}})})
+	result := testutil.Composite(t, root, "- uses: ./local", checking.Options{Tools: registry.Registrations(registry.Selections{"shellcheck": {Command: command, Process: &hostprocess.CommandOptions{Arguments: []string{"-a"}}}})})
 	if len(result.Diagnostics) != 1 {
 		t.Fatalf("want one sourced finding: %+v", result.Diagnostics)
 	}

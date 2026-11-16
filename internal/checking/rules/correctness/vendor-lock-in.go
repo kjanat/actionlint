@@ -8,7 +8,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -59,7 +59,7 @@ func VendorLockIn(w workflows.Workflow, uses *definition.String, target string) 
 	if target != "github" || uses == nil || uses.ContainsExpression() {
 		return nil
 	}
-	ref, present := references.ParseRepositoryURL(uses.Value)
+	ref, present := callreferences.ParseRepositoryURL(uses.Value)
 	if !present {
 		return nil
 	}

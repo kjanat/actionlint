@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 
 	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
@@ -29,14 +29,14 @@ func (p *PluginDeclarations) DecodeConfig(value any) error {
 	for i, entry := range list {
 		ref, err := decodePluginDeclaration(entry)
 		if err != nil {
-			return binding.At(strconv.Itoa(i), err)
+			return configdecode.At(strconv.Itoa(i), err)
 		}
 		key := ref.Name()
 		if ref.IsAlias() {
 			key = ref.Registry() + "\n" + ref.Name()
 		}
 		if seen[key] {
-			return binding.At(strconv.Itoa(i), fmt.Errorf("duplicate plugin declaration %q", ref.Name()))
+			return configdecode.At(strconv.Itoa(i), fmt.Errorf("duplicate plugin declaration %q", ref.Name()))
 		}
 		seen[key] = true
 		next = append(next, ref)
@@ -56,11 +56,11 @@ func decodePluginDeclaration(value any) (pluginreference.Reference, error) {
 	values := map[string]string{}
 	for key, value := range object {
 		if key != "name" && key != "version" && key != "registry" && key != "source" && key != "sha256" {
-			return pluginreference.Reference{}, binding.At(key, fmt.Errorf("unknown plugin field %q", key))
+			return pluginreference.Reference{}, configdecode.At(key, fmt.Errorf("unknown plugin field %q", key))
 		}
 		selected, ok := value.(string)
 		if !ok || selected == "" {
-			return pluginreference.Reference{}, binding.At(key, fmt.Errorf("plugin %s must be a nonempty string", key))
+			return pluginreference.Reference{}, configdecode.At(key, fmt.Errorf("plugin %s must be a nonempty string", key))
 		}
 		values[key] = selected
 	}

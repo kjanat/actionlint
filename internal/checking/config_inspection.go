@@ -7,25 +7,25 @@ import (
 	"io"
 	"os"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution/process"
 )
 
 // InspectConfig validates rule names against explicitly selected or project plugins.
-func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection report.Inspection, err error) {
-	ctx = source.WithReadCache(ctx)
+func InspectConfig(ctx context.Context, selection configuration.Selection, paths []string, origins bool, acquisition pluginacquisition.Settings) (inspection configreport.Inspection, err error) {
+	ctx = configsource.WithReadCache(ctx)
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
@@ -42,7 +42,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := execution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	plugins, err := pluginexecution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return inspection, err
 	}
@@ -70,7 +70,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err := ctx.Err(); err != nil {
 		return inspection, err
 	}
-	reader := source.New(ctx, nil, acquisition.Connections)
+	reader := configsource.New(ctx, nil, acquisition.Connections)
 	policy, err := configuration.LoadNetworkPolicy(ctx, acquisition.Connections)
 	if err != nil {
 		return inspection, err

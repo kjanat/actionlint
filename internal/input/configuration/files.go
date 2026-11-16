@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/report"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
 func (cfg *Config) IncludesFile(path, root string) bool {
@@ -48,7 +48,7 @@ func RepositoryRelativePath(path, root string) string {
 	return path
 }
 
-func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]document.Location, inherited, bindRules bool, capture func(any), additional ...string) (any, []report.Warning, error) {
+func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs map[string]document.Location, inherited, bindRules bool, capture func(any), additional ...string) (any, []configreport.Warning, error) {
 	resolved, err := ruleSet.resolveValue(value, inputs, bindRules, additional...)
 	if err != nil {
 		return nil, nil, err
@@ -57,7 +57,7 @@ func (ruleSet RuleSet) normalizeExtendedConfig(path string, value any, inputs ma
 	for i := range resolved.Warnings {
 		resolved.Warnings[i].File = path
 	}
-	if source.IsRemoteAddress(path) {
+	if configsource.IsRemoteAddress(path) {
 		if err := ValidateSourcePaths(path, value); err != nil {
 			return nil, nil, err
 		}
@@ -111,7 +111,7 @@ func normalizeSourcePaths(value any, directory string, inherited bool) {
 
 // ValidateSourcePaths rejects local paths in an HTTPS source.
 func ValidateSourcePaths(origin string, value any) error {
-	if !source.IsRemoteAddress(origin) {
+	if !configsource.IsRemoteAddress(origin) {
 		return nil
 	}
 	if err := validateRemoteToolPaths(value); err != nil {
@@ -261,7 +261,7 @@ func sourceError(err error, inputs map[string]document.Location) error {
 		}
 		return errors.Join(failures...)
 	}
-	var bindingError *binding.Error
+	var bindingError *configdecode.Error
 	if !errors.As(err, &bindingError) {
 		return err
 	}
@@ -269,7 +269,7 @@ func sourceError(err error, inputs map[string]document.Location) error {
 	for {
 		if input, ok := inputs[pointer]; ok && input.Line > 0 {
 			line, column := input.Line, input.Column
-			if errors.Is(err, binding.ErrUnknownKey) && input.KeyLine > 0 {
+			if errors.Is(err, configdecode.ErrUnknownKey) && input.KeyLine > 0 {
 				line, column = input.KeyLine, input.KeyColumn
 			}
 			return &SourceError{File: input.File, Line: line, Column: column, Cause: err}

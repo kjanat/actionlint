@@ -5,10 +5,10 @@ import (
 	"errors"
 	"io"
 
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
 	"actionlint.kjanat.dev/v2/internal/model/rule"
@@ -26,7 +26,7 @@ func RulesWithPluginPaths(ctx context.Context, paths []string, acquisition plugi
 // RulesWithPlugins lists managed document replacements under their existing tool
 // rule. Explicit standalone components keep their independently declared rule.
 func RulesWithPlugins(ctx context.Context, sources pluginselection.Sources) (result []rule.Descriptor, err error) {
-	plugins, err := execution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	plugins, err := pluginexecution.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err
 	}

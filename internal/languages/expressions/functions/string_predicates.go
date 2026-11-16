@@ -5,7 +5,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/values"
-	"actionlint.kjanat.dev/v2/internal/languages/json"
+	"actionlint.kjanat.dev/v2/internal/languages/runnerjson"
 )
 
 // IsStringPredicate reports whether a built-in tests strings and returns a boolean.
@@ -73,7 +73,7 @@ func evaluatePredicate(context EvaluationContext, operation string) values.Evalu
 	if !leftKnown || !rightKnown {
 		return unknownValue()
 	}
-	left, right = json.OrdinalIgnoreCaseKey(left), json.OrdinalIgnoreCaseKey(right)
+	left, right = runnerjson.OrdinalIgnoreCaseKey(left), runnerjson.OrdinalIgnoreCaseKey(right)
 	switch operation {
 	case "contains":
 		return knownValue(strings.Contains(left, right))

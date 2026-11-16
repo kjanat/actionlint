@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/cli/exitcode"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -142,17 +142,17 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 	executable := "explicit-native-command"
 	for _, tc := range []struct {
 		name    string
-		options *process.CommandOptions
+		options *hostprocess.CommandOptions
 	}{
 		{"defaults", nil},
-		{"native", &process.CommandOptions{Executable: &executable}},
-		{"ignore-config", &process.CommandOptions{IgnoreConfig: true}},
-		{"optional", &process.CommandOptions{Optional: true}},
-		{"wasm", &process.CommandOptions{AllowWasm: true}},
+		{"native", &hostprocess.CommandOptions{Executable: &executable}},
+		{"ignore-config", &hostprocess.CommandOptions{IgnoreConfig: true}},
+		{"optional", &hostprocess.CommandOptions{Optional: true}},
+		{"wasm", &hostprocess.CommandOptions{AllowWasm: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			want := process.CommandOptions{Optional: true}
+			want := hostprocess.CommandOptions{Optional: true}
 			if tc.options != nil {
 				want = *tc.options
 			}
@@ -160,7 +160,7 @@ func TestActionToolOptionsPreserveCallerSelection(t *testing.T) {
 			want.WorkingDir = "action-directory"
 			req := &lintRequest{workingDir: want.WorkingDir}
 			if tc.options != nil {
-				req.processes = map[string]*process.CommandOptions{"shellcheck": tc.options}
+				req.processes = map[string]*hostprocess.CommandOptions{"shellcheck": tc.options}
 			}
 			got := req.toolSelections()["shellcheck"].Process
 			if !reflect.DeepEqual(*got, want) {

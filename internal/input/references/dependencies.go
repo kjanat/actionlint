@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -31,7 +31,7 @@ func (session *ResolutionSession) ResolveDependencies(ctx context.Context, depen
 		if err := ctx.Err(); err != nil {
 			return resolved, err
 		}
-		target, ok := references.ParseRepositoryUses(dependency.Uses)
+		target, ok := callreferences.ParseRepositoryUses(dependency.Uses)
 		if !ok {
 			continue
 		}

@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configdecode"
 )
 
 func TestMissingPermissionsLocations(t *testing.T) {
@@ -34,7 +34,7 @@ func TestMissingPermissionsLocations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var options configuration.MissingPermissionsOptions
-			err := binding.Decode(tc.options, &options)
+			err := configdecode.Decode(tc.options, &options)
 			if tc.invalid {
 				if err == nil {
 					t.Fatal("invalid options accepted")

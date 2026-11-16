@@ -7,7 +7,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking/define"
 	"actionlint.kjanat.dev/v2/internal/checking/rules/reporting"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/rules"
-	"actionlint.kjanat.dev/v2/internal/model/calls/references"
+	"actionlint.kjanat.dev/v2/internal/model/calls/callreferences"
 	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
@@ -79,7 +79,7 @@ func (rule *commitHashCheck) checkStep(n workflows.Step) {
 		return
 	}
 
-	if image, ok := references.ContainerImage(e.Uses.Value); ok {
+	if image, ok := callreferences.ContainerImage(e.Uses.Value); ok {
 		rule.checkImageDigest(image, e.Uses)
 		return
 	}
@@ -124,7 +124,7 @@ func (rule *commitHashCheck) checkJob(n workflows.Job) {
 		return
 	}
 
-	ref, ok := references.WorkflowRef(u.Value)
+	ref, ok := callreferences.WorkflowRef(u.Value)
 	if !ok || reCommitSHA.MatchString(ref) {
 		return
 	}
@@ -141,10 +141,10 @@ func (rule *commitHashCheck) checkJob(n workflows.Job) {
 // second return value is false when the specification has another form. The "action" rule reports the forms
 // which are invalid.
 func actionUsesRepoRef(spec string) (string, bool) {
-	if form := references.FormOf(spec); form == references.FormWorkspace || form == references.FormSelfRepository {
+	if form := callreferences.FormOf(spec); form == callreferences.FormWorkspace || form == callreferences.FormSelfRepository {
 		return "", false
 	}
-	owner, repo, ref, problem := references.SplitAction(spec)
+	owner, repo, ref, problem := callreferences.SplitAction(spec)
 	if problem != "" || owner == "" || repo == "" || ref == "" {
 		return "", false
 	}

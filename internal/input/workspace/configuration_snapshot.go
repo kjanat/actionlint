@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 )
 
 // Configuration reports leave both the resolver and the session cache. Each

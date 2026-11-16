@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
@@ -80,7 +80,7 @@ func (c checkInvocation) defaultPlugins(warning func(string)) installation.Defau
 
 // Optional discovery is a default, not an explicit choice of a native checker.
 // Arguments, including those a retired flag adds, still opt into native use.
-func implicitProcessOptions(options *process.CommandOptions) bool {
+func implicitProcessOptions(options *hostprocess.CommandOptions) bool {
 	return options == nil || options.Optional && !options.IgnoreConfig && options.Executable == nil &&
 		len(options.Arguments) == 0 && len(options.LauncherArguments) == 0 &&
 		len(options.Environment) == 0 && options.WorkingDir == ""

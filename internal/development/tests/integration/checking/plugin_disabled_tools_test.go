@@ -12,7 +12,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixtureregistry"
 	"actionlint.kjanat.dev/v2/internal/input"
-	"actionlint.kjanat.dev/v2/internal/plugins/execution"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginexecution"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
@@ -138,13 +138,13 @@ func TestMetadataToolsReadsStaticMetadata(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := execution.MetadataTools(test.metadata)
+			got, err := pluginexecution.MetadataTools(test.metadata)
 			if err != nil || !slices.Equal(got, test.want) {
 				t.Fatalf("metadataTools = %q, %v; want %q", got, err, test.want)
 			}
 		})
 	}
-	if _, err := execution.MetadataTools(json.RawMessage(`{`)); err == nil {
+	if _, err := pluginexecution.MetadataTools(json.RawMessage(`{`)); err == nil {
 		t.Fatal("malformed metadata was accepted")
 	}
 }

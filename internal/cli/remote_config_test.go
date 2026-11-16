@@ -15,7 +15,7 @@ import (
 
 func TestRemoteConfigUsesCommandConnections(t *testing.T) {
 	t.Parallel()
-	component, err := filepath.Abs("internal/plugins/execution/component/testdata/plugins/no-sudo.wasm")
+	component, err := filepath.Abs("internal/plugins/pluginexecution/component/testdata/plugins/no-sudo.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

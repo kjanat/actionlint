@@ -15,10 +15,10 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/backends"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
-	"actionlint.kjanat.dev/v2/internal/checking/scripts/registry"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/backends"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/contract"
+	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/fixturefiles"
 	"actionlint.kjanat.dev/v2/internal/input"
@@ -26,7 +26,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/source"
 	"actionlint.kjanat.dev/v2/internal/input/workspace"
-	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/manifests"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
@@ -135,7 +135,7 @@ type recordingRunner struct {
 	recorder *parityRecorder
 }
 
-func (r recordingRunner) Analyze(ctx context.Context, batch scripts.Batch) ([]contract.ToolFinding, error) {
+func (r recordingRunner) Analyze(ctx context.Context, batch scriptanalysis.Batch) ([]contract.ToolFinding, error) {
 	findings, err := r.runner.Analyze(ctx, batch)
 	r.recorder.mu.Lock()
 	r.recorder.findings = append(r.recorder.findings, findings...)
@@ -174,9 +174,9 @@ func (s paritySnapshots) assertParity(t *testing.T, key string, run parityRun, s
 		t.Fatalf("no parity snapshot for %q", key)
 	}
 	want = hostSeverities(t, want)
-	var options *process.CommandOptions
+	var options *hostprocess.CommandOptions
 	if len(arguments) != 0 {
-		options = &process.CommandOptions{Arguments: arguments}
+		options = &hostprocess.CommandOptions{Arguments: arguments}
 	}
 	got := run(registry.Registrations(registry.Selections{"shellcheck": {Command: shellcheck, Process: options}, "ruff": {Command: ruff}}), &parityRecorder{})
 	compareParity(t, want, got)

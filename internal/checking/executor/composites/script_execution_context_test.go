@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"actionlint.kjanat.dev/v2/internal/input/references/actions/workspace"
+	"actionlint.kjanat.dev/v2/internal/input/references/actions/localactions"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 )
 
@@ -102,7 +102,7 @@ func TestRuleShellcheckDetectShell(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: workspace.NewResolver(nil, nil)}
+			collector := &compositeAnalyzer{compositionSession: &compositionSession{collectScripts: true, resolveScriptExecution: true}, actions: localactions.NewResolver(nil, nil)}
 
 			var source strings.Builder
 			source.WriteString("on: push\n")
