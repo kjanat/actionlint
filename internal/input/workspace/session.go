@@ -42,7 +42,9 @@ type PreparedBatch struct {
 
 // Options controls only input preparation, not analysis or rendering.
 type Options struct {
-	// Rules supplies the declarations used to validate loaded configuration.
+	// Rules is the analysis's final rule set: built-in rules plus the rules
+	// of its analyzers, tools and plugins. Each configuration and its
+	// overlays are resolved with it once; checking reads the result.
 	Rules                                 configuration.RuleSet
 	WorkingDir, StdinFileName, ConfigFile string
 	// Config, when set, is used for every input instead of the repository's
@@ -52,8 +54,9 @@ type Options struct {
 	ConfigProvenance  configuration.Provenance
 	ConfigOverlays    []configuration.Overlay
 	// ConfigSources holds configuration files already parsed in this run,
-	// such as by plugin selection. Configuration loads use them without
-	// reading them again and keep the files they read. Nil disables sharing.
+	// such as for the command's output settings or by plugin selection.
+	// Configuration loads use them without reading them again and keep the
+	// files they read. Nil disables sharing.
 	ConfigSources     *document.Files
 	OnConfigLoaded    func(configreport.Report)
 	SkipProjectConfig bool

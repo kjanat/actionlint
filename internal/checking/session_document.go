@@ -119,7 +119,7 @@ func (s *analysisSession) analyzeDocument(path, sourcePath string, captured capt
 	if err != nil {
 		return nil, outline, nil, err
 	}
-	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules, s.ruleRegistrations)
+	settings := newRuleConfigurations(projectConfig, root, s.rulePresets, s.rules)
 	var cfg *configuration.Config
 	if action {
 		cfg, err = settings.action(sourcePath)

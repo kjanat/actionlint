@@ -520,22 +520,21 @@ func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile fu
 	return ruleSet.readContext(ctx, path, readFile, files, true, additional...)
 }
 
-// ReadBeforePluginsContext loads inherited configuration before plugin rule descriptors are available.
-func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*LoadedFile, error) {
-	return ruleSet.readContext(ctx, path, readFile, nil, false)
+// ReadBeforePluginsContext loads inherited configuration before plugin rule
+// descriptors are available. files keeps the parsed sources for later loads in
+// the same run, such as plugin selection and the analysis session; it may be nil.
+func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files) (*LoadedFile, error) {
+	return ruleSet.readContext(ctx, path, readFile, files, false)
 }
 
 func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, bindRules bool, additional ...string) (*LoadedFile, error) {
 	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
 	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
-	rules := document.NewFiles()
 	loaded, err := LoadSources(path, files, reader.ReadConfig, func(origin string, source *document.Node) (*document.Node, error) {
 		value := source.Value()
 		inputs := ruleSet.migrationInputs(value, source.Origins())
-		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, value, inputs, absPath(path) != origin, bindRules, func(value any) {
-			rules.Add(origin, document.Capture(captureRuleDocument(value), nil))
-		}, additional...)
+		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, value, inputs, absPath(path) != origin, bindRules, additional...)
 		warningsByFile[origin] = warnings
 		if err != nil {
 			return source, err
@@ -559,7 +558,6 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	}
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
-	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], files: rules}
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])

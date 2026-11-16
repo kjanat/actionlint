@@ -24,6 +24,7 @@ func (c checkInvocation) checkingOptions(workingDir string, acquisition pluginac
 		SkipProjectConfig:    c.Config.Disabled || (!legacy && c.Config.Path != ""),
 		EnforcePolicies:      c.EnforcePolicies,
 		AllowConfigProcesses: c.AllowConfigProcesses,
+		ConfigSources:        c.ConfigSources,
 		LogWriter:            log,
 		Tools:                registry.Registrations(c.Tools),
 	}

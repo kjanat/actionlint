@@ -108,3 +108,20 @@ func settingLevelNode(setting any) (ruleconfig.Level, error) {
 	err := decodeValue(setting, &level)
 	return level, err
 }
+
+// normalizeRuleLint gives the lint settings in value one merge key per rule.
+// Other fields, including extends, are kept.
+func (ruleSet RuleSet) normalizeRuleLint(value any) (any, error) {
+	if !isMapping(value) {
+		return value, nil
+	}
+	next := cloneMapping(value)
+	if lint := field(value, "lint"); lint != nil {
+		lint, err := ruleSet.normalizeRuleLocations(lint)
+		if err != nil {
+			return nil, err
+		}
+		setField(next, "lint", ruleSet.expandLintShorthands(lint))
+	}
+	return next, nil
+}

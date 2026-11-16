@@ -12,7 +12,6 @@ type ruleConfigurations struct {
 	project        *configuration.Config
 	root           string
 	presets        configuration.Presets
-	registrations  []configuration.RuleRegistration
 	rules          configuration.RuleSet
 	sources        map[string]*configuration.Config
 	actions        map[string]*configuration.Config
@@ -27,8 +26,8 @@ type remoteBinding struct {
 	path   string
 }
 
-func newRuleConfigurations(project *configuration.Config, root string, presets configuration.Presets, rules configuration.RuleSet, registrations []configuration.RuleRegistration) *ruleConfigurations {
-	return &ruleConfigurations{project: project, root: root, presets: presets, registrations: registrations, rules: rules, sources: map[string]*configuration.Config{}, actions: map[string]*configuration.Config{}, bindings: map[string]*rulebinding.Scope{}, registry: rulebinding.NewRegistry(rules)}
+func newRuleConfigurations(project *configuration.Config, root string, presets configuration.Presets, rules configuration.RuleSet) *ruleConfigurations {
+	return &ruleConfigurations{project: project, root: root, presets: presets, rules: rules, sources: map[string]*configuration.Config{}, actions: map[string]*configuration.Config{}, bindings: map[string]*rulebinding.Scope{}, registry: rulebinding.NewRegistry(rules)}
 }
 
 func (c *ruleConfigurations) bindEntry(path string, config *configuration.Config) *rulebinding.Scope {
@@ -82,7 +81,7 @@ func (c *ruleConfigurations) resolve(config *configuration.Config, err error) (*
 	if config == nil {
 		config = &configuration.Config{}
 	}
-	return ConfigurationRules().ResolveRegisteredRules(c.presets, config, c.registrations...)
+	return c.rules.ResolveSettings(c.presets, config)
 }
 
 func (c *ruleConfigurations) source(path string) (*configuration.Config, error) {

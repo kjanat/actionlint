@@ -12,6 +12,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/scriptanalysis/registry"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	"actionlint.kjanat.dev/v2/internal/output"
 )
 
@@ -83,6 +84,9 @@ type checkInvocation struct {
 	PreCommit            bool
 	NoIgnore             bool
 	AllowConfigProcesses bool
+	// ConfigSources holds the configuration files parsed for the configured
+	// output settings. The check reuses them, so each file is parsed once per run.
+	ConfigSources *document.Files
 }
 
 // renderOptions controls result presentation without changing analysis.

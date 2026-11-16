@@ -34,7 +34,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, rules, []configuration.RuleRegistration{registration})
+			settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, rules)
 			source, err := settings.source("inner/action.yml")
 			if err != nil {
 				t.Fatal(err)
@@ -76,7 +76,7 @@ func TestProgrammaticSourceOverridesApplyToActionMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(config, t.TempDir(), configuration.Presets{}, rules, []configuration.RuleRegistration{registration})
+	settings := newRuleConfigurations(config, t.TempDir(), configuration.Presets{}, rules)
 	for _, resolve := range []func(string) (*configuration.Config, error){settings.source, settings.action} {
 		selected, err := resolve("inner/action.yml")
 		if err != nil {
@@ -129,7 +129,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, ConfigurationRules(), nil)
+				settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, ConfigurationRules())
 				config, err := settings.source("inner/action.yml")
 				if err != nil {
 					t.Fatal(err)
@@ -144,7 +144,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 
 func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
 	t.Parallel()
-	settings := newRuleConfigurations(nil, t.TempDir(), configuration.Presets{}, ConfigurationRules(), nil)
+	settings := newRuleConfigurations(nil, t.TempDir(), configuration.Presets{}, ConfigurationRules())
 	config, err := settings.workflow("ci.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +165,7 @@ func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, ConfigurationRules(), nil)
+	settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, ConfigurationRules())
 	const path = "inner/action.yml"
 	action, err := settings.action(path)
 	if err != nil {
@@ -222,7 +222,7 @@ overrides:
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, rules, []configuration.RuleRegistration{registration})
+	settings := newRuleConfigurations(project, t.TempDir(), configuration.Presets{}, rules)
 	entry, err := settings.workflow("ci.yml")
 	if err != nil {
 		t.Fatal(err)
