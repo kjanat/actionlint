@@ -11,6 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
+	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
@@ -58,6 +59,8 @@ func (g *GitHub) offlineNamed(ctx context.Context, ref actions.Reference, kind s
 	}
 	input, err := files.New(ctx, nil, nil).Open(g.namedCachePath(ref))
 	if errors.Is(err, os.ErrNotExist) {
+		// Without a cached tag or branch resolution, no metadata record is read.
+		accounting.RecordCacheLookup(ctx, "repository-metadata", false)
 		return unavailableFile(availability.Offline()), nil
 	}
 	if err != nil {
