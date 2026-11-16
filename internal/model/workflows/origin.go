@@ -6,14 +6,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
-
-// Origin is a detached, pointer-free suppression selector projection.
-type Origin struct {
-	Position                    sourcetext.Position
-	HasPosition                 bool
-	Job, StepID, StepName, Uses string
-}
 
 func originSelector(s *definition.String) string {
 	if s == nil {
@@ -25,23 +19,29 @@ func originSelector(s *definition.String) string {
 	return s.Value
 }
 
-func (j BoundJob) Origin() Origin {
+// IgnoreOrigin returns the suppression selectors of the job. Each call
+// returns a new value the caller owns.
+func (j BoundJob) IgnoreOrigin() *finding.IgnoreOrigin {
 	if !j.Present() {
-		return Origin{}
+		return &finding.IgnoreOrigin{}
 	}
-	origin := Origin{Job: j.ID.Text()}
+	origin := &finding.IgnoreOrigin{Job: j.ID.Text()}
 	if j.WorkflowCall != nil {
 		origin.Uses = originSelector(j.WorkflowCall.Uses)
 	}
 	return origin
 }
 
-func (s BoundStep) Origin(job string) Origin {
+// IgnoreOrigin returns the suppression selectors of the step declared in job.
+// Each call returns a new value the caller owns.
+func (s BoundStep) IgnoreOrigin(job string) *finding.IgnoreOrigin {
 	if !s.Present() {
-		return Origin{Job: job}
+		return &finding.IgnoreOrigin{Job: job}
 	}
-	origin := Origin{Job: job, StepID: originSelector(s.ID), StepName: originSelector(s.Name)}
-	origin.Position, origin.HasPosition = s.Position()
+	origin := &finding.IgnoreOrigin{Job: job, StepID: originSelector(s.ID), StepName: originSelector(s.Name)}
+	if position, ok := s.Position(); ok {
+		origin.StepPosition = &position
+	}
 	if action, ok := s.Action(); ok {
 		origin.Uses = originSelector(action.Uses)
 	}

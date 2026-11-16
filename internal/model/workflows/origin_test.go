@@ -1,14 +1,16 @@
 package workflows
 
 import (
+	"reflect"
 	"slices"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/workflows/definition"
+	"actionlint.kjanat.dev/v2/internal/results/finding"
 )
 
-func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
+func TestIgnoreOriginReadsSelectorValuesAndPosition(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"plain", "selector", "selector"},
@@ -25,23 +27,23 @@ func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
 				t.Fatal("owned job unavailable")
 			}
 			view := slices.Collect(job.Steps())[0]
-			want := Origin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, Position: sourcetext.Position{Line: 3, Column: 7}, HasPosition: true}
-			origin := view.Origin("Build")
-			if origin != want {
+			want := finding.IgnoreOrigin{Job: "Build", StepID: tc.want, StepName: tc.want, Uses: tc.want, StepPosition: &sourcetext.Position{Line: 3, Column: 7}}
+			origin := view.IgnoreOrigin("Build")
+			if !reflect.DeepEqual(*origin, want) {
 				t.Fatalf("origin = %+v; want %+v", origin, want)
 			}
-			origin.Position.Line = 999
-			if fresh := view.Origin("Build"); fresh != want {
+			origin.StepPosition.Line = 999
+			if fresh := view.IgnoreOrigin("Build"); !reflect.DeepEqual(*fresh, want) {
 				t.Fatalf("returned position changed stored origin: %+v", fresh)
 			}
 		})
 	}
-	if got := (BoundStep{}).Origin("Build"); got != (Origin{Job: "Build"}) {
+	if got := (BoundStep{}).IgnoreOrigin("Build"); *got != (finding.IgnoreOrigin{Job: "Build"}) {
 		t.Fatalf("missing step origin = %+v", got)
 	}
 }
 
-func TestJobOriginReadsUsesSelector(t *testing.T) {
+func TestJobIgnoreOriginReadsUsesSelector(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, value, want string }{
 		{"plain", "org/repo/.github/workflows/check.yml@main", "org/repo/.github/workflows/check.yml@main"},
@@ -57,13 +59,13 @@ func TestJobOriginReadsUsesSelector(t *testing.T) {
 			if !present {
 				t.Fatal("owned job unavailable")
 			}
-			want := Origin{Job: "Build", Uses: tc.want}
-			if got := view.Origin(); got != want {
+			want := finding.IgnoreOrigin{Job: "Build", Uses: tc.want}
+			if got := view.IgnoreOrigin(); *got != want {
 				t.Fatalf("job origin = %+v; want %+v", got, want)
 			}
 		})
 	}
-	if got := (BoundJob{}).Origin(); got != (Origin{}) {
+	if got := (BoundJob{}).IgnoreOrigin(); *got != (finding.IgnoreOrigin{}) {
 		t.Fatalf("missing job origin = %+v", got)
 	}
 }

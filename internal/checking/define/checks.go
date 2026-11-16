@@ -89,11 +89,7 @@ func (r *checksVisitor) collect(input []reporting.StepFinding, job string) {
 		}
 		if d.Step.Present() {
 			item.Owner = &finding.Owner{Job: job, Step: sourcetext.NilUnlessPresent(d.Step.Position())}
-			origin := d.Step.Origin(job)
-			item.IgnoreOrigin = &finding.IgnoreOrigin{Job: origin.Job, StepID: origin.StepID, StepName: origin.StepName, Uses: origin.Uses}
-			if origin.HasPosition {
-				item.IgnoreOrigin.StepPosition = &origin.Position
-			}
+			item.IgnoreOrigin = d.Step.IgnoreOrigin(job)
 		}
 		r.Report(item)
 	}
