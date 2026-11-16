@@ -20,7 +20,8 @@ func TestWorkspaceReportRebasesRelatedLocationsAndFixRevisions(t *testing.T) {
 	analysis := &report.Analysis{Diagnostics: []results1.PublishedDiagnostic{{
 		Path:    "ci.yml",
 		Related: []results1.Related{{Path: "other.yml", Message: "related declaration", Revision: revision, Coordinates: source.YAML}},
-		Fixes:   []results1.Fix{{Revisions: map[string]string{"other.yml": "revision"}, Edits: []results1.Edit{{Path: "other.yml"}}}}}}}
+		Fixes:   []results1.Fix{{Revisions: map[string]string{"other.yml": "revision"}, Edits: []results1.Edit{{Path: "other.yml"}}}},
+	}}}
 	reported := workspaceReportAnalysis(analysis, filepath.Join(workspace, "subdir"), workspace)
 	d := reported.Diagnostics[0]
 	if d.Related[0].Revision != revision || d.Related[0].Coordinates != source.YAML {

@@ -24,7 +24,8 @@ func TestEditorDiagnosticsOwnTheirReportData(t *testing.T) {
 			Fixes: []results.Fix{{
 				Description: "Example edit", Revisions: map[string]string{"workflow.yml": captured.Revision.Digest()},
 				Edits: []results.Edit{{Path: "workflow.yml", Replacement: "replacement"}},
-			}}, Source: results.DiagnosticSource{Content: captured.Content}}},
+			}}, Source: results.DiagnosticSource{Content: captured.Content},
+		}},
 		CapturedSources: map[string]report.CapturedSource{path: captured},
 	}
 	analysis, err := lsp.FromReport(input, root, nil)

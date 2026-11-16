@@ -29,7 +29,8 @@ func TestActionReportsFilesOnAnotherVolume(t *testing.T) {
 	analysis := &resultreport.Analysis{Diagnostics: []results1.PublishedDiagnostic{{
 		Rule: "shellcheck", Path: file, Message: "Quote variable",
 		Start: sourcepos.Position{Line: 1, Column: 6}, End: sourcepos.Position{Line: 1, Column: 8},
-		Fixes: []results1.Fix{{Description: "Quote", Edits: []results1.Edit{{Path: file}}}}}}}
+		Fixes: []results1.Fix{{Description: "Quote", Edits: []results1.Edit{{Path: file}}}},
+	}}}
 	renderer, err := render.New(render.FormatSARIF, "", false, buildinfo.Version, nil)
 	if err != nil {
 		t.Fatal(err)
