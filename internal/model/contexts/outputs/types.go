@@ -19,7 +19,7 @@ func ActionType(definition actionmeta.Definition) exprtypes.ObjectType {
 	if !definition.OutputsComplete() {
 		object.SetMapped(exprtypes.StringType())
 	}
-	for _, name := range definition.OutputIDs() {
+	for _, name := range definition.OutputNames() {
 		object.SetProperty(name, exprtypes.StringType())
 	}
 	return object.Build()
@@ -32,7 +32,7 @@ func WorkflowType(metadata *calls.Metadata) exprtypes.ObjectType {
 		return exprtypes.NewMapObjectType(exprtypes.StringType())
 	}
 	var object exprtypes.ObjectBuilder
-	for name := range metadata.Outputs {
+	for _, name := range metadata.Outputs.Names() {
 		object.SetProperty(name, exprtypes.StringType())
 	}
 	return object.Build()

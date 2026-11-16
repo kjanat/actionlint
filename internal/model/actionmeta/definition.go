@@ -84,7 +84,7 @@ type Definition struct {
 	inputContract   inputContract
 	outputsComplete bool
 	inputs          calls.Inputs
-	outputs         []string
+	outputs         calls.Outputs
 }
 
 // NewDefinition copies call-site facts from parsed metadata.
@@ -93,7 +93,7 @@ func NewDefinition(metadata *Metadata) Definition {
 		return Definition{}
 	}
 	inputs := maps.Clone(metadata.Inputs)
-	outputs := slices.Sorted(maps.Keys(metadata.Outputs))
+	outputs := maps.Clone(metadata.Outputs)
 	// Only a validated composite action publishes outputs through a fixed mapping.
 	complete := metadata.Runs.Using == "composite" && metadata.Runs.Steps != nil && !metadata.SkipOutputs && metadata.Root != nil && len(Validate(metadata).Problems) == 0
 	return Definition{present: true, using: metadata.Runs.Using, inputContract: declaredInputs, outputsComplete: complete, inputs: inputs, outputs: outputs}
@@ -135,4 +135,7 @@ func (d Definition) WithAdditionalInputs() Definition {
 func (d Definition) InputNames() []string { return d.inputs.Names() }
 
 // OutputIDs returns the lowercase ID of every output, sorted.
-func (d Definition) OutputIDs() []string { return slices.Clone(d.outputs) }
+func (d Definition) OutputIDs() []string { return slices.Sorted(maps.Keys(d.outputs)) }
+
+// OutputNames returns the declared spelling of every output, sorted.
+func (d Definition) OutputNames() []string { return d.outputs.Names() }

@@ -53,9 +53,12 @@ type LintedFile struct {
 
 // RuleCollection counts the findings one rule collected in one analysis,
 // before publication policy. A rule that ran without findings has Findings 0.
+// Completed counts the linted entry documents where the rule was selected
+// and no incomplete check names it.
 type RuleCollection struct {
-	Rule     string
-	Findings int
+	Rule      string
+	Findings  int
+	Completed int
 }
 
 // InlineSuppression is one rule named by an inline suppression directive.
@@ -78,14 +81,16 @@ const (
 // analysis. Version and Digest identify a registry release or artifact when
 // known. OnDemand marks a plugin loaded only when a script needs it. Inactive
 // is empty for a provider that took part, and otherwise says why it did not,
-// for example "disabled in configuration".
+// for example "disabled in configuration". Incomplete lists, once each, the
+// reasons its incomplete checks gave, whether or not it took part elsewhere.
 type ProviderStatus struct {
-	Kind     ProviderKind
-	Name     string
-	Version  string
-	Digest   string
-	OnDemand bool
-	Inactive string
+	Kind       ProviderKind
+	Name       string
+	Version    string
+	Digest     string
+	OnDemand   bool
+	Inactive   string
+	Incomplete []string
 }
 
 // IncompleteCheck identifies work that could not finish for a captured source.

@@ -80,6 +80,16 @@ func hasScheme(name string) bool {
 	return strings.Contains(name, ":") && filepath.VolumeName(name) == ""
 }
 
+// DisplayAddress returns name for logs and reports. A remote address loses its
+// query, which may carry a credential. Other names are returned unchanged.
+func DisplayAddress(name string) string {
+	if !IsRemoteAddress(name) {
+		return name
+	}
+	display, _, _ := strings.Cut(name, "?")
+	return display
+}
+
 // AddressExtension selects a remote format from the URL path, independently of queries.
 func AddressExtension(name string) string {
 	if IsRemoteAddress(name) {
