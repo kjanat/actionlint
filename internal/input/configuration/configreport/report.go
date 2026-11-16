@@ -9,6 +9,9 @@ type Report struct {
 	Explicit   bool
 	Overrides  []string
 	Inspection Inspection
+	// FileDigests holds the lowercase hexadecimal SHA-256 digest of each
+	// loaded configuration source, keyed by its normalized address.
+	FileDigests map[string]string
 }
 
 // Inspection contains effective settings and optional source locations.

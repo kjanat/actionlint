@@ -157,7 +157,12 @@ func providerText(provider report.ProviderStatus) string {
 		text += " on demand"
 	}
 	if provider.Inactive != "" {
-		return text + " inactive (" + provider.Inactive + ")"
+		text += " inactive (" + provider.Inactive + ")"
+	} else {
+		text += " active"
 	}
-	return text + " active"
+	if len(provider.Incomplete) != 0 {
+		text += "; incomplete checks: " + strings.Join(provider.Incomplete, "; ")
+	}
+	return text
 }

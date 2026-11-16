@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/base/files"
-	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configreport"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/configsource"
@@ -25,9 +23,9 @@ import (
 )
 
 // RunContext describes the inputs and settings that determined one check's
-// findings, so that two runs with different results can be compared. Paths
-// are relative to WorkingDir when they are inside it. NewRunContext builds it
-// after the check.
+// findings. Compare two runs' contexts to explain different results. Paths
+// inside WorkingDir are relative to it; remote configuration addresses omit
+// their query.
 type RunContext struct {
 	WorkingDir     string
 	Repositories   []RepositoryState
@@ -166,9 +164,8 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	run := RunContext{WorkingDir: options.WorkingDir}
 	run.Files = lintedFiles(options.WorkingDir, result.LintedFiles)
 	run.Repositories = repositoryStates(ctx, options.WorkingDir, result.LintedFiles)
-	reader := files.New(ctx, nil, nil)
 	for _, configuration := range result.Configurations {
-		run.Configurations = append(run.Configurations, configurationState(reader, options.WorkingDir, configuration))
+		run.Configurations = append(run.Configurations, configurationState(options.WorkingDir, configuration))
 	}
 	run.Ignores = ignoreEntries(options.WorkingDir, inputs.IgnoreSelectors, options.IgnorePatterns, result)
 	// Each repository batch reports its own providers; list each status once.
@@ -176,7 +173,10 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	slices.SortStableFunc(run.Providers, func(a, b report.ProviderStatus) int {
 		return cmp.Or(strings.Compare(string(a.Kind), string(b.Kind)), strings.Compare(a.Name, b.Name), strings.Compare(a.Inactive, b.Inactive))
 	})
-	run.Providers = slices.Compact(run.Providers)
+	run.Providers = slices.CompactFunc(run.Providers, func(a, b report.ProviderStatus) bool {
+		return a.Kind == b.Kind && a.Name == b.Name && a.Version == b.Version && a.Digest == b.Digest &&
+			a.OnDemand == b.OnDemand && a.Inactive == b.Inactive && slices.Equal(a.Incomplete, b.Incomplete)
+	})
 	run.Network = networkState(ctx, inputs.Getenv, result.ActionMetadata)
 	run.Flags = ResultFlags{Strict: options.Presets.Strict, NoIgnore: options.NoIgnore}
 	if experimental := options.Presets.Experimental; experimental != nil {
@@ -186,7 +186,12 @@ func NewRunContext(ctx context.Context, inputs RunContextInputs) RunContext {
 	return run
 }
 
+// relativePath returns path for display: relative to workingDir when inside
+// it, and without the query when it is a remote configuration address.
 func relativePath(workingDir, path string) string {
+	if configsource.IsRemoteAddress(path) {
+		return configsource.DisplayAddress(path)
+	}
 	if workingDir == "" || !filepath.IsAbs(path) {
 		return path
 	}
@@ -256,7 +261,7 @@ func repositoryStates(ctx context.Context, workingDir string, files []report.Lin
 	return states
 }
 
-func configurationState(reader *files.Reader, workingDir string, configuration configreport.Report) ConfigurationState {
+func configurationState(workingDir string, configuration configreport.Report) ConfigurationState {
 	state := ConfigurationState{Project: configuration.Project, File: relativePath(workingDir, configuration.File), Overrides: slices.Clone(configuration.Overrides)}
 	configFiles := map[string]bool{}
 	if configuration.File != "" {
@@ -276,18 +281,16 @@ func configurationState(reader *files.Reader, workingDir string, configuration c
 	}
 	for _, file := range slices.Sorted(maps.Keys(configFiles)) {
 		digest := ""
-		if !configsource.IsRemoteAddress(file) {
-			if content, err := reader.ReadFile(file); err == nil {
-				digest = sha256hex.Digest(content)
-			}
+		if address, err := configsource.NormalizeAddress(file); err == nil {
+			digest = configuration.FileDigests[address]
 		}
 		state.Files = append(state.Files, report.LintedFile{Path: relativePath(workingDir, file), Digest: digest})
 	}
 	return state
 }
 
-// hasChildSetting reports whether origins records a setting below pointer,
-// which makes pointer a container rather than a value.
+// hasChildSetting reports whether origins records a setting below pointer.
+// Such a pointer selects a container of settings.
 func hasChildSetting(origins map[string]configreport.Origin, pointer string) bool {
 	for other := range origins {
 		if strings.HasPrefix(other, pointer+"/") {

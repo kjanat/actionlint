@@ -5,24 +5,27 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 )
 
-func worktreeFixture(t *testing.T) (string, func(...string)) {
+func worktreeFixture(t *testing.T) (string, func(...string) string) {
 	t.Helper()
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Skip("Git required")
 	}
 	root := t.TempDir()
-	command := func(args ...string) {
+	command := func(args ...string) string {
 		t.Helper()
 		args = append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"}, args...)
-		if out, err := gitcommand.Command(t.Context(), git, root, args...).CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v: %s", args, err, out)
+		out, err := gitcommand.Command(t.Context(), git, root, args...).Output()
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
 		}
+		return strings.TrimSpace(string(out))
 	}
 	command("init", "--quiet")
 	return root, command
@@ -67,8 +70,9 @@ func TestReadWorktreeDetectsCleanAndDirtyTrees(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(clean.Head) != 40 {
-		t.Fatalf("Head = %q, want a full commit ID", clean.Head)
+	// The fixture's object format follows the developer's Git configuration.
+	if want := git("rev-parse", "HEAD"); clean.Head != want {
+		t.Fatalf("Head = %q, want the full commit ID %q", clean.Head, want)
 	}
 	if clean.Dirty() || len(clean.Changes) != 0 {
 		t.Fatalf("clean tree reported changes %q", clean.Changes)
@@ -92,11 +96,11 @@ func TestReadWorktreeDetectsCleanAndDirtyTrees(t *testing.T) {
 
 func TestParseStatusPathsSkipsRenameSources(t *testing.T) {
 	t.Parallel()
-	got, err := gitcommand.ParseStatusPaths("R  new.yml\x00old.yml\x00 M ci.yml\x00?? space dir/a.yml\x00")
+	got, err := gitcommand.ParseStatusPaths("R  new.yml\x00old.yml\x00 M ci.yml\x00 R moved.yml\x00was.yml\x00 C copy.yml\x00source.yml\x00?? space dir/a.yml\x00")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"new.yml", "ci.yml", "space dir/a.yml"}; !slices.Equal(got, want) {
+	if want := []string{"new.yml", "ci.yml", "moved.yml", "copy.yml", "space dir/a.yml"}; !slices.Equal(got, want) {
 		t.Fatalf("paths = %q, want %q", got, want)
 	}
 	if _, err := gitcommand.ParseStatusPaths("bad\x00"); err == nil {

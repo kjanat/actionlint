@@ -371,17 +371,17 @@ verbose: rule script-injection: 1 collected, 0 reported
 verbose: rule unpinned-reference: 2 collected, 0 reported
 ```
 
-| Line              | Shows                                                                                                                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `repository`      | Each Git repository that contains linted files: its HEAD commit, whether the working tree has uncommitted changes, and which linted files changed. `none` means the files are outside Git. |
-| `file`            | The first 12 hexadecimal digits of the SHA-256 digest of each linted file's content.                                                                                                       |
-| `config`          | The configuration file for each project, the digest of each file that supplied a setting, and each setting that differs from its default. Output settings are left out.                    |
-| `ignore`          | Each `--ignore` selector, `--ignore-regex` pattern, configured `ignores` or `lint.message-ignores` entry, and inline suppression directive, with the file and line that declared it.       |
-| `plugin`, `tool`  | Each selected plugin and tool provider with its version and artifact digest, and the reason an inactive one did not run.                                                                   |
-| `network`         | Online or offline mode, the environment variable that supplied the GitHub token (never the token), the cache directory, request counts, and metadata cache hits and misses.                |
-| `remote metadata` | How many remote action and workflow references had metadata, and why the others did not.                                                                                                   |
-| `flags`           | `--strict`, `--experimental` and `--no-ignore`, and the number of rules that ran.                                                                                                          |
-| `rule`            | For each rule with findings, how many it collected and how many remained after inline suppressions, rule levels and ignore settings.                                                       |
+| Line              | Shows                                                                                                                                                                                                                             |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `repository`      | Each Git repository that contains linted files: its HEAD commit, whether the working tree has uncommitted changes, and which linted files changed. `none` means the files are outside Git.                                        |
+| `file`            | The first 12 hexadecimal digits of the SHA-256 digest of each linted file's content.                                                                                                                                              |
+| `config`          | The configuration file for each project, the digest of each file that supplied a setting as the check loaded it, and each setting that differs from its default. Output settings are left out. Remote addresses omit their query. |
+| `ignore`          | Each `--ignore` selector, `--ignore-regex` pattern, configured `ignores` or `lint.message-ignores` entry, and inline suppression directive, with the file and line that declared it.                                              |
+| `plugin`, `tool`  | Each selected plugin and tool provider with its version and artifact digest, the reason an inactive one did not run, and the reasons its incomplete checks gave.                                                                  |
+| `network`         | Online or offline mode, the environment variable that supplied the GitHub token (never the token), the cache directory, request counts, and metadata cache hits and misses.                                                       |
+| `remote metadata` | How many remote action and workflow references had metadata, and why the others did not.                                                                                                                                          |
+| `flags`           | `--strict`, `--experimental` and `--no-ignore`, and the number of rules that ran.                                                                                                                                                 |
+| `rule`            | For each rule with findings, how many it collected and how many remained after inline suppressions, rule levels and ignore settings.                                                                                              |
 
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use

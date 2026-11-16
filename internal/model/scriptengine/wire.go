@@ -1,7 +1,8 @@
 package scriptengine
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 
 	"actionlint.kjanat.dev/v2/internal/base/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/applicability"
@@ -98,15 +99,18 @@ func (wire wireDiagnostic) diagnostic() Diagnostic {
 	return d
 }
 
-// MarshalJSON writes the JSON form; encoding/json/v2 uses it too.
-func (d Diagnostic) MarshalJSON() ([]byte, error) {
-	return json.Marshal(newWireDiagnostic(d))
+// MarshalJSONTo writes the JSON form with the encoder's options, so
+// encoding/json/v2 writes "applicability": "suggested" for the zero value.
+// encoding/json calls it too, with its legacy options.
+func (d Diagnostic) MarshalJSONTo(encoder *jsontext.Encoder) error {
+	return jsonv2.MarshalEncode(encoder, newWireDiagnostic(d))
 }
 
-// UnmarshalJSON reads the JSON form; encoding/json/v2 uses it too.
-func (d *Diagnostic) UnmarshalJSON(data []byte) error {
+// UnmarshalJSONFrom reads the JSON form with the decoder's options, so
+// RejectUnknownMembers applies to diagnostic members too.
+func (d *Diagnostic) UnmarshalJSONFrom(decoder *jsontext.Decoder) error {
 	var wire wireDiagnostic
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := jsonv2.UnmarshalDecode(decoder, &wire); err != nil {
 		return err
 	}
 	*d = wire.diagnostic()

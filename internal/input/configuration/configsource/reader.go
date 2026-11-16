@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
-	"strings"
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/base/files"
@@ -160,8 +159,7 @@ func (r *Reader) readHTTPS(ctx context.Context, name string) ([]byte, error) {
 		if network.Settings(ctx).WarmCache {
 			return nil, fmt.Errorf("cache remote configuration: %w", err)
 		}
-		displayURL, _, _ := strings.Cut(name, "?")
-		network.Warn(ctx, fmt.Sprintf("Could not cache configuration %s: %v", displayURL, err))
+		network.Warn(ctx, fmt.Sprintf("Could not cache configuration %s: %v", DisplayAddress(name), err))
 	}
 	return content, nil
 }

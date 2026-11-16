@@ -65,6 +65,7 @@ func (a *InputPreparer) ConfigForProject(project *Project) (*configuration.Confi
 	}
 	cfg = resolved.Config
 	report.Inspection = configreport.Inspection{Path: report.File, Config: resolved.Values, Origins: resolved.Origins, Warnings: resolved.Warnings}
+	report.FileDigests = resolved.Provenance.Digests()
 	if s.onLoaded == nil {
 		for _, warning := range resolved.Warnings {
 			file := warning.File
