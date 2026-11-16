@@ -43,7 +43,7 @@ func ParseMetadata(src []byte) (*Metadata, error) {
 	}
 	event, ok := workflowlang.FindWorkflowCallEvent(workflow)
 	if !ok {
-		return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", workflow.OnPos.Line, workflow.OnPos.Col)
+		return nil, fmt.Errorf("\"workflow_call\" event trigger is not found in \"on:\" at line:%d, column:%d", workflow.OnPos.Line, workflow.OnPos.Column)
 	}
 	if len(workflowCallFindings) > 0 {
 		return nil, findingError(workflowCallFindings[0])
