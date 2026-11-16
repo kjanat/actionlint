@@ -22,7 +22,6 @@ func bundledManifests() []pluginmanifests.Manifest {
 }
 
 // providerRules lists the bundled providers' rules in directory order.
-// The descriptors share their slices with the decoded manifests.
 func providerRules() []rule.Descriptor {
 	manifests := bundledManifests()
 	rules := make([]rule.Descriptor, len(manifests))

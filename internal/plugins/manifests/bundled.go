@@ -2,7 +2,6 @@ package manifests
 
 import (
 	"fmt"
-	"slices"
 	"sync"
 
 	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
@@ -11,11 +10,17 @@ import (
 // Bundled returns every provider shipped inside actionlint in directory order.
 // Each manifest's rule name must equal its directory and each transform
 // digest must name a bundled program. The embedded data is decoded once per
-// process: the slice belongs to the caller, but the manifests share their
-// nested values with every other caller and must not be modified.
+// process; each call returns copies the caller owns.
 func Bundled() ([]Manifest, error) {
-	manifests, err := bundled()
-	return slices.Clone(manifests), err
+	decoded, err := bundled()
+	if err != nil {
+		return nil, err
+	}
+	manifests := make([]Manifest, len(decoded))
+	for i, manifest := range decoded {
+		manifests[i] = manifest.Clone()
+	}
+	return manifests, nil
 }
 
 var bundled = sync.OnceValues(func() ([]Manifest, error) {
