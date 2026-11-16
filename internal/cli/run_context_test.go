@@ -10,6 +10,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/assembly"
 	"actionlint.kjanat.dev/v2/internal/integrations/gitcommand"
 	"actionlint.kjanat.dev/v2/internal/model/sha256hex"
+	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
 
@@ -130,7 +131,8 @@ jobs:
 		t.Fatal(err)
 	}
 	var out, stderr bytes.Buffer
-	command := Command{Stdout: &out, Stderr: &stderr}
+	// The offline lookup reads only this test's empty cache.
+	command := Command{Stdout: &out, Stderr: &stderr, Acquisition: pluginacquisition.Options{UserCacheDir: t.TempDir()}}
 	args := []string{"actionlint", "check", "--verbose", "--offline", "--config", config, "--no-tool=shellcheck", "--no-tool=ruff", "--ignore", "unpinned-reference", path}
 	if status := command.MainContext(t.Context(), args); status != 0 {
 		t.Fatalf("status=%d stdout=%s stderr=%s", status, &out, &stderr)
