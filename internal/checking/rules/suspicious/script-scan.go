@@ -3,8 +3,6 @@ package suspicious
 import (
 	"context"
 	"slices"
-	"strings"
-	"unicode/utf8"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/model/commands"
@@ -41,8 +39,8 @@ func scanRuntimeScripts(
 			continue
 		}
 		report := func(span scripts.ScriptRange, message string) {
-			start, startOK := script.Position(scriptTextPosition(script.Text, span.Start, false))
-			end, endOK := script.Position(scriptTextPosition(script.Text, span.End, true))
+			start, startOK := script.OffsetPosition(span.Start, false)
+			end, endOK := script.OffsetPosition(span.End, true)
 			if !startOK || !endOK {
 				return
 			}
@@ -55,9 +53,4 @@ func scanRuntimeScripts(
 		scan(script, invocation, report)
 	}
 	return diagnostics, nil
-}
-
-func scriptTextPosition(text string, offset int, exclusive bool) (int, int, bool) {
-	prefix := text[:offset]
-	return strings.Count(prefix, "\n") + 1, utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1, exclusive
 }
