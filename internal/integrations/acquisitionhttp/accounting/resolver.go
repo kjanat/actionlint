@@ -5,14 +5,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"actionlint.kjanat.dev/v2/internal/input/references"
 )
 
 // RecordResolverCall distinguishes host cache hits and opaque delegated lookups from
 // actual provider-reported attempts. Invalid auxiliary receipts are treated as
 // opaque rather than changing an otherwise valid dependency resolution.
-func RecordResolverCall(ctx context.Context, receipt *references.RequestReport, cached bool) {
+func RecordResolverCall(ctx context.Context, receipt *RequestReport, cached bool) {
 	session := RequestTrackerFromContext(ctx)
 	if session == nil {
 		return
@@ -41,7 +39,7 @@ func RecordResolverCall(ctx context.Context, receipt *references.RequestReport, 
 				valid = false
 				break
 			}
-			kind, auth := RequestKind(query.RequestKind), CredentialStatus(query.Credentials)
+			kind, auth := query.RequestKind, query.Credentials
 			switch kind {
 			case HTTP, REST, GraphQL, Git, OCI:
 			case Delegated:

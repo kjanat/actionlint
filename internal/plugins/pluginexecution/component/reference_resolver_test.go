@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
@@ -356,7 +357,7 @@ func TestReferenceResolverSessionWaiterRetriesAbandonedResolution(t *testing.T) 
 		first := make(chan error, 1)
 		go func() { _, err := session.Resolve(initiator, request); first <- err }()
 		synctest.Wait()
-		waiter, stop := references.StartLookupBudget(t.Context(), time.Second)
+		waiter, stop := network.StartLookupBudget(t.Context(), time.Second)
 		defer stop()
 		second := make(chan error, 1)
 		var result references.ResolutionRecord
@@ -394,7 +395,7 @@ func TestReferenceResolverGateWaitIsOutsideLookupBudget(t *testing.T) {
 		}
 		_, access, _ := newResolverRepositoryTest(t)
 		request := references.Request{Version: 1, Repository: "owner/repo", Ref: "v1", Kind: "action", ExpectedRepositoryID: knownRepositoryID(t, 7)}
-		budgeted, stop := references.StartLookupBudget(references.WithRepositoryAccess(t.Context(), access), time.Second)
+		budgeted, stop := network.StartLookupBudget(references.WithRepositoryAccess(t.Context(), access), time.Second)
 		defer stop()
 		resolved := make(chan error, 1)
 		go func() {

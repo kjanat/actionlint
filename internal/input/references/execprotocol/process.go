@@ -113,7 +113,7 @@ func (p *Process) resolve(ctx context.Context, request references.Request) (refe
 	if err := network.RequireOnline(ctx); err != nil {
 		return references.ResolutionRecord{}, err
 	}
-	var receipt *references.RequestReport
+	var receipt *accounting.RequestReport
 	defer func() { accounting.RecordResolverCall(ctx, receipt, false) }()
 	if request.Version != 1 || (request.Kind != "action" && request.Kind != "workflow") {
 		return references.ResolutionRecord{}, errors.New("unsupported resolution request")

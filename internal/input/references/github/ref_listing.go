@@ -16,6 +16,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/base/sha256hex"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -276,7 +277,7 @@ func (l *refListings) get(ctx context.Context, g *GitHub, name string) (*refList
 			return listing, missing, err
 		}
 		l.mu.Unlock()
-		if err := references.WaitOutsideLookupBudget(ctx, func() error {
+		if err := network.WaitOutsideLookupBudget(ctx, func() error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

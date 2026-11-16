@@ -10,6 +10,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/repository"
 	"actionlint.kjanat.dev/v2/internal/plugins/protocol/component/kjanat/actionlint-resolver/repositoryobjects"
 	"github.com/kjanat/wacogo"
@@ -25,7 +26,7 @@ var (
 func (p *Plugin) HasReferenceResolver() bool { return p.referenceResolver }
 
 func (p *Plugin) Resolve(ctx context.Context, request references.Request) (references.ResolutionRecord, error) {
-	defer accounting.RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true}, false)
+	defer accounting.RecordResolverCall(ctx, &accounting.RequestReport{AllRequestsReported: true}, false)
 	if !p.HasReferenceResolver() {
 		return references.ResolutionRecord{}, errors.New("component does not implement the reference-resolver role")
 	}
@@ -88,7 +89,7 @@ func (s *referenceResolverSession) Resolve(ctx context.Context, request referenc
 			break
 		}
 		s.mu.Unlock()
-		if err := references.WaitOutsideLookupBudget(ctx, func() error {
+		if err := network.WaitOutsideLookupBudget(ctx, func() error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

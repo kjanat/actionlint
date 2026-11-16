@@ -135,7 +135,7 @@ func (g *GitHub) lookupFile(ctx context.Context, ref actions.Reference, kind str
 	if !fullSHA1(ref.Ref()) && g.resolver == nil {
 		return unavailableFile(availability.ResolverNotConfigured()), nil
 	}
-	budgeted, stop := references.StartLookupBudget(ctx, lookupBudget)
+	budgeted, stop := network.StartLookupBudget(ctx, lookupBudget)
 	defer stop()
 	var (
 		file repositoryFile

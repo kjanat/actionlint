@@ -18,7 +18,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
-	"actionlint.kjanat.dev/v2/internal/integrations/github"
+	"actionlint.kjanat.dev/v2/internal/input/references/github"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 

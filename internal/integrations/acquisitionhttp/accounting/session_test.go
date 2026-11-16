@@ -15,7 +15,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -281,7 +281,7 @@ func TestPreflightWaitIsOutsideLookupBudget(t *testing.T) {
 			probing <- s.LoadGitHubRateLimits(ctx, client, request(t, ctx, "/repos/example/action", "token"))
 		}()
 		synctest.Wait()
-		budgeted, stop := references.StartLookupBudget(ctx, time.Second)
+		budgeted, stop := network.StartLookupBudget(ctx, time.Second)
 		defer stop()
 		err := s.LoadGitHubRateLimits(budgeted, client, request(t, budgeted, "/repos/example/action", "token"))
 		if probeErr := <-probing; err != nil || probeErr != nil || budgeted.Err() != nil {
@@ -330,8 +330,8 @@ func TestResolverCoverageIsNotInvented(t *testing.T) {
 	ctx, s := TrackRequests(t.Context())
 	RecordResolverCall(ctx, nil, false)
 	RecordResolverCall(ctx, nil, true)
-	RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true, Requests: []references.RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}, false)
-	RecordResolverCall(ctx, &references.RequestReport{AllRequestsReported: true, Requests: []references.RequestCounts{{Host: "https://token@host/private?secret", RequestKind: "rest", Credentials: "provided", Attempts: 2}}}, false)
+	RecordResolverCall(ctx, &RequestReport{AllRequestsReported: true, Requests: []RequestCounts{{Host: "github.com", RequestKind: "git", Credentials: "unknown", Attempts: 2}}}, false)
+	RecordResolverCall(ctx, &RequestReport{AllRequestsReported: true, Requests: []RequestCounts{{Host: "https://token@host/private?secret", RequestKind: "rest", Credentials: "provided", Attempts: 2}}}, false)
 	var attempts, opaque, cached, lookups uint64
 	for _, group := range s.Statistics().Requests {
 		attempts += group.Attempts

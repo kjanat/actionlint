@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -48,7 +48,7 @@ type exchanged struct {
 type rawNotFoundKey struct{}
 
 func (g *GitHub) exchange(ctx context.Context, request *http.Request, limit int) (exchanged, error) {
-	if err := references.WaitOutsideLookupBudget(ctx, func() error { return g.requests.Acquire(ctx, 1) }); err != nil {
+	if err := network.WaitOutsideLookupBudget(ctx, func() error { return g.requests.Acquire(ctx, 1) }); err != nil {
 		return exchanged{}, err
 	}
 	defer g.requests.Release(1)

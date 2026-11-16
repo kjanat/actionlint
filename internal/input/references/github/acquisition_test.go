@@ -22,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
+	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -879,7 +880,7 @@ func TestRefListingWaitIsOutsideLookupBudget(t *testing.T) {
 			initiated <- listed
 		}()
 		synctest.Wait()
-		budgeted, stop := references.StartLookupBudget(t.Context(), time.Second)
+		budgeted, stop := network.StartLookupBudget(t.Context(), time.Second)
 		defer stop()
 		listed, missing, err := client.listings.get(budgeted, client, "example/action")
 		shared := <-initiated
