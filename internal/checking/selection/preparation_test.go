@@ -66,38 +66,32 @@ func TestWorkflowNamePreparationSeparatesLoadingFromCallbacks(t *testing.T) {
 				loads++
 				return names.Declare(&definition.String{Value: "Build"}), nil
 			})
-			found := false
-			for _, registration := range registration.Registrations(inputs.Rules) {
-				if registration.Name != "workflow-run-names" {
-					continue
-				}
-				found = true
-				if registration.Prepare == nil || !registration.Enabled(inputs) {
-					t.Fatal("workflow-name preparation is unavailable")
-				}
-				outcome, err := registration.Prepare(inputs)
-				if err != nil {
-					t.Fatal(err)
-				}
-				prepared, ready := outcome.(define.PreparedInputs)
-				if !ready {
-					t.Fatalf("preparation did not supply inputs: %T", outcome)
-				}
-				wantLoads := tc.loads
-				if loads != wantLoads || inputs.WorkflowNameInventory.Complete() {
-					t.Fatalf("loads=%d, want %d; preparation mutated its input", loads, wantLoads)
-				}
-				workflow, _ := inputs.SourceSnapshot.WorkflowView()
-				rule := registration.Build(prepared.RuleInputs)
-				if err := rule.VisitWorkflowPre(workflow); err != nil {
-					t.Fatal(err)
-				}
-				if loads != wantLoads || len(rule.Errs()) != wantLoads {
-					t.Fatalf("callback loaded files or lost findings: loads=%d findings=%v", loads, rule.Errs())
-				}
-			}
+			native, found := registration.Find("workflow-run-names")
 			if !found {
 				t.Fatal("workflow-run-names is not registered")
+			}
+			if native.Prepare == nil || !native.Enabled(inputs) {
+				t.Fatal("workflow-name preparation is unavailable")
+			}
+			outcome, err := native.Prepare(inputs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			prepared, ready := outcome.(define.PreparedInputs)
+			if !ready {
+				t.Fatalf("preparation did not supply inputs: %T", outcome)
+			}
+			wantLoads := tc.loads
+			if loads != wantLoads || inputs.WorkflowNameInventory.Complete() {
+				t.Fatalf("loads=%d, want %d; preparation mutated its input", loads, wantLoads)
+			}
+			workflow, _ := inputs.SourceSnapshot.WorkflowView()
+			rule := native.NewVisitor(prepared.RuleInputs)
+			if err := rule.VisitWorkflowPre(workflow); err != nil {
+				t.Fatal(err)
+			}
+			if loads != wantLoads || len(rule.Errs()) != wantLoads {
+				t.Fatalf("callback loaded files or lost findings: loads=%d findings=%v", loads, rule.Errs())
 			}
 		})
 	}
@@ -115,11 +109,11 @@ func TestPreparationPreservesCancellationAsOperationFailure(t *testing.T) {
 		t.Fatalf("preparation failure lost its cause or operation: error=%v loads=%d", err, loads)
 	}
 	earlier := map[string]bool{}
-	for _, registration := range registration.Registrations(inputs.Rules) {
-		if registration.Name == "workflow-run-names" {
+	for _, native := range registration.All {
+		if native.Name == "workflow-run-names" {
 			break
 		}
-		earlier[registration.Name] = true
+		earlier[native.Name] = true
 	}
 	for _, rule := range selected.Rules {
 		if !earlier[rule.Name()] {

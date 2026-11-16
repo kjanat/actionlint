@@ -510,7 +510,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 	})
 	result.RunnerResults = session.runnerReports
 	err = errors.Join(err, result.publishDiagnostics())
-	result.Rules = selection.Templates(ConfigurationRules())
+	result.Rules = selection.Templates()
 	for _, file := range result.files {
 		for _, descriptor := range file.rules {
 			result.Rules = append(result.Rules, descriptor.Clone())

@@ -137,12 +137,9 @@ jobs:
 
 func productionRunnerRule(t *testing.T, snapshot parsing.SourceSnapshot, knowledge *runners.Knowledge) workflowvisit.Rule {
 	t.Helper()
-	rules := checking.ConfigurationRules()
-	for _, descriptor := range registration.Registrations(rules) {
-		if descriptor.Name == "runner-label" {
-			return descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: knowledge})
-		}
+	native, found := registration.Find("runner-label")
+	if !found {
+		t.Fatal("production runner-label adapter unavailable")
 	}
-	t.Fatal("production runner-label adapter unavailable")
-	return nil
+	return native.NewVisitor(define.RuleInputs{Rules: checking.ConfigurationRules(), SourceSnapshot: snapshot, Runners: knowledge})
 }

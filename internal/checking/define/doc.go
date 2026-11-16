@@ -5,7 +5,7 @@
 // form: [Rule.Checks] for stateless checks of published workflow views,
 // [Rule.Walker] for a stateful traversal, or [Rule.Script] for a script
 // analyzer. A rule with none of them is declaration-only; its findings come
-// from the component named by [Rule.DeclaredBy]. Declarations, registrations
-// and the traversal adapters are derived from the rule, so no other place
+// from the component named by [Rule.DeclaredBy]. Declarations, traversals
+// and script analyzers are derived from the rule, so no other place
 // repeats its name, defaults or wiring.
 package define

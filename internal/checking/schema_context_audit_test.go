@@ -188,12 +188,9 @@ func schemaAuditExpressionRule(t *testing.T, source string) (workflows.BoundWork
 	if !ok {
 		t.Fatal("source snapshot has no workflow")
 	}
-	rules := ConfigurationRules()
-	for _, descriptor := range registration.Registrations(rules) {
-		if descriptor.Name == "expression" {
-			return workflow, descriptor.Build(define.RuleInputs{Rules: rules, SourceSnapshot: snapshot, Runners: runners})
-		}
+	native, found := registration.Find("expression")
+	if !found {
+		t.Fatal("expression rule is not registered")
 	}
-	t.Fatal("expression rule is not registered")
-	return workflows.BoundWorkflow{}, nil
+	return workflow, native.NewVisitor(define.RuleInputs{Rules: ConfigurationRules(), SourceSnapshot: snapshot, Runners: runners})
 }
