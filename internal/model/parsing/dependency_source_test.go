@@ -57,7 +57,7 @@ func TestDependencySpansArePublishedBeforeTraversal(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, dependencies := snapshot.Declarations()
+				_, dependencies := snapshot.Bound().Declarations()
 				if len(dependencies) != wantCount {
 					t.Fatalf("dependency count = %d; want %d", len(dependencies), wantCount)
 				}
@@ -91,7 +91,7 @@ func TestReusableAndParallelDependencySpans(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, dependencies := snapshot.Declarations()
+	_, dependencies := snapshot.Bound().Declarations()
 	if len(dependencies) != 2 {
 		t.Fatal(dependencies)
 	}
@@ -130,7 +130,7 @@ func TestMappingAliasDependencySpans(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, dependencies := snapshot.Declarations()
+			_, dependencies := snapshot.Bound().Declarations()
 			if len(dependencies) != 2 {
 				t.Fatal(dependencies)
 			}
@@ -161,7 +161,7 @@ func TestFoldedReusableDependencyPhysicalSpan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, dependencies := snapshot.Declarations()
+	_, dependencies := snapshot.Bound().Declarations()
 	if len(dependencies) != 1 {
 		t.Fatal(dependencies)
 	}
@@ -183,7 +183,7 @@ func TestAliasedParallelDependencySpans(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, dependencies := snapshot.Declarations()
+	_, dependencies := snapshot.Bound().Declarations()
 	if len(dependencies) != 2 {
 		t.Fatal(dependencies)
 	}

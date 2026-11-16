@@ -30,7 +30,7 @@ func TestDuplicateWorkflowNameUsesSuppliedInventory(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := declaration.Publish(text, parsed, false, "").Bind("checked").Workflow()
+			workflow := declaration.Bind("checked", text, parsed, false, "").Workflow()
 			findings := DuplicateWorkflowName(others, workflow)
 			if tc.message == "" {
 				if len(findings) != 0 {

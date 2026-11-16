@@ -75,13 +75,13 @@ func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	view := snapshotJobSteps(t, snapshot, "build")[0]
-	refs := snapshot.CanonicalReferences()
-	_, dependencies := snapshot.Declarations()
+	refs := snapshot.Bound().SourceIndex()
+	_, dependencies := snapshot.Bound().Declarations()
 	if len(refs.Steps) != 1 || refs.Steps[0] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
 		t.Fatal("final declaration projection lost the anonymous step")
 	}
 	refs.Steps[0] = source.Reference{}
-	if snapshot.CanonicalReferences().Steps[0] != view.Reference() {
+	if snapshot.Bound().SourceIndex().Steps[0] != view.Reference() {
 		t.Fatal("consumer changed canonical index")
 	}
 }
@@ -231,7 +231,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 			if err != nil {
 				t.Fatalf("admit action=%v source=%q: %v", action, content, err)
 			}
-			if string(snapshot.Content()) != content || snapshot.CanonicalReferences().Document != snapshot.Reference() {
+			if string(snapshot.Content()) != content || snapshot.Bound().SourceIndex().Document != snapshot.Reference() {
 				t.Fatal("failed parse lost original source revision")
 			}
 			found, ok := snapshots.LookupDocument("./input.yml")

@@ -25,9 +25,8 @@ func (r *ResolvedActions) Inspect(spec string) ActionInspection {
 	if err != nil {
 		return ActionInspection{}
 	}
-	r.service.mu.Lock()
-	defer r.service.mu.Unlock()
-	return r.service.references[reference]
+	inspection, _ := r.service.store.Lookup(reference)
+	return inspection
 }
 
 // Lookup returns an absent definition when metadata is unavailable or invalid.

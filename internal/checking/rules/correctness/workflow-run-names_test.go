@@ -30,7 +30,7 @@ func TestChecksSuppliedInventoryWithoutLoadingSources(t *testing.T) {
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
-			workflow := declaration.Publish(text, parsed, false, "").Bind("consumer").Workflow()
+			workflow := declaration.Bind("consumer", text, parsed, false, "").Workflow()
 			inventory := names.NewInventory([]string{"Build docs"}, tc.complete)
 			findings := workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow))
 			if tc.message == "" {

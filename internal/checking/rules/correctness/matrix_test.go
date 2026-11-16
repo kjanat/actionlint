@@ -32,7 +32,7 @@ jobs:
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
-	workflow := declaration.Publish(source, parsed, false, "").Bind("test").Workflow()
+	workflow := declaration.Bind("test", source, parsed, false, "").Workflow()
 	duplicate, _ := workflow.Job("duplicate")
 	clean, _ := workflow.Job("clean")
 	mixed, _ := workflow.Job("mixed")

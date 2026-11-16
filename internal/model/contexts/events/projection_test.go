@@ -120,7 +120,7 @@ jobs:
 		t.Fatal(errs)
 	}
 	c := expr.NewChecker(contextspec.DefaultExpressionScope(), nil)
-	contextspec.SetEventPayloadType(c, Type(declaration.Publish("", w, false, "").Bind("unit-event-payload").Workflow()))
+	contextspec.SetEventPayloadType(c, Type(declaration.Bind("unit-event-payload", "", w, false, "").Workflow()))
 	c.SetContextAvailability([]string{"github"})
 	n, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.action == 'opened' && github.event.client_payload.value}}"))
 	if err != nil {

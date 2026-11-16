@@ -28,7 +28,7 @@ func (c *Cache) Prepare(ctx context.Context, snapshot parsing.SourceSnapshot) er
 		return err
 	}
 	var pending []string
-	_, dependencies := snapshot.Declarations()
+	_, dependencies := snapshot.Bound().Declarations()
 	for _, dependency := range dependencies {
 		if dependency.Kind == "workflow" {
 			pending = append(pending, dependency.Uses)

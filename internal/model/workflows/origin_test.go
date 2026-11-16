@@ -19,7 +19,7 @@ func TestOriginReadsSelectorValuesAndPosition(t *testing.T) {
 			t.Parallel()
 			value := &workflowlang.String{Value: tc.value}
 			step := &workflowlang.Step{Pos: &source.Position{Line: 3, Column: 7}, ID: value, Name: value, Exec: &workflowlang.ExecAction{Uses: value}}
-			bound := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {Steps: []*workflowlang.Step{step}}}}, false, "").Bind("origin-fixture")
+			bound := Bind("origin-fixture", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": {Steps: []*workflowlang.Step{step}}}}, false, "")
 			job, present := bound.Workflow().Job("build")
 			if !present {
 				t.Fatal("owned job unavailable")
@@ -52,7 +52,7 @@ func TestJobOriginReadsUsesSelector(t *testing.T) {
 			t.Parallel()
 			uses := &workflowlang.String{Value: tc.value}
 			job := &workflowlang.Job{ID: &workflowlang.String{Value: "Build"}, WorkflowCall: &workflowlang.WorkflowCall{Uses: uses}}
-			bound := Publish("", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}, false, "").Bind("origin-fixture")
+			bound := Bind("origin-fixture", "", &workflowlang.Workflow{Jobs: map[string]*workflowlang.Job{"build": job}}, false, "")
 			view, present := bound.Workflow().Job("build")
 			if !present {
 				t.Fatal("owned job unavailable")

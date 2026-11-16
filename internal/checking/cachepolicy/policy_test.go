@@ -377,7 +377,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 }
 
 func policyWorkflowView(workflow *workflowlang.Workflow) declaration.Workflow {
-	return declaration.Publish("", workflow, false, "").Bind("policy-fixture").Workflow()
+	return declaration.Bind("policy-fixture", "", workflow, false, "").Workflow()
 }
 
 func checkStandaloneStep(step *workflowlang.Step, mode *workflowlang.CacheMode) []results.Diagnostic {

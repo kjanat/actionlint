@@ -93,7 +93,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
-			view := workflowdecl.Publish(text, parsed, false, "").Bind("request-contract").Workflow()
+			view := workflowdecl.Bind("request-contract", text, parsed, false, "").Workflow()
 			job, exists := view.Job("test")
 			if !exists {
 				t.Fatal("fixture job is missing")

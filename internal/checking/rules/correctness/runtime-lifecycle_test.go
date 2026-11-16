@@ -47,7 +47,7 @@ func TestRuntimeLifecycleSetupNode(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			workflow := workflowdecl.Publish(text, parsed, false, "").Bind("runtime-lifecycle").Workflow()
+			workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 			job, ok := workflow.Job("test")
 			if !ok {
 				t.Fatal("missing job")
@@ -80,7 +80,7 @@ func TestRuntimeLifecycleSetupNodeLiteralBlock(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Publish(text, parsed, false, "").Bind("runtime-lifecycle").Workflow()
+	workflow := workflowdecl.Bind("runtime-lifecycle", text, parsed, false, "").Workflow()
 	job, ok := workflow.Job("test")
 	if !ok {
 		t.Fatal("missing job")
@@ -106,7 +106,7 @@ func TestRuntimeLifecycleOnReleaseWorkflow(t *testing.T) {
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	workflow := workflowdecl.Publish(string(content), parsed, false, "").Bind("release-workflow").Workflow()
+	workflow := workflowdecl.Bind("release-workflow", string(content), parsed, false, "").Workflow()
 	job, ok := workflow.Job("verify")
 	if !ok {
 		t.Fatal("missing release verification job")
