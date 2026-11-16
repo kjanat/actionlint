@@ -16,7 +16,7 @@ func TestLoadRepositoryContextStopsBeforeReading(t *testing.T) {
 	_, _, err := checking.ConfigurationRules().LoadRepositoryContext(ctx, t.TempDir(), func(string) ([]byte, error) {
 		t.Fatal("canceled configuration discovery read a source")
 		return nil, nil
-	})
+	}, nil)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("discovery error = %v", err)
 	}

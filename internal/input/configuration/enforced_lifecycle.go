@@ -44,7 +44,7 @@ func (p *EnforcedLifecyclePolicies) Files() []string {
 func ReadEnforcedLifecyclePolicies(paths []string, read func(string) ([]byte, error)) (*EnforcedLifecyclePolicies, error) {
 	result := &EnforcedLifecyclePolicies{}
 	for _, path := range paths {
-		loaded, err := LoadSources(path, read, func(_ string, source *document.Node) (*document.Node, error) {
+		loaded, err := LoadSources(path, nil, read, func(_ string, source *document.Node) (*document.Node, error) {
 			object, ok := source.Value().(map[string]any)
 			if !ok {
 				return source, errors.New("enforced lifecycle policy must be an object")

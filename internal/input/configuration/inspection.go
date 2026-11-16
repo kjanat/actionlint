@@ -82,7 +82,7 @@ func (ruleSet RuleSet) inspectContext(ctx context.Context, selection Selection, 
 	var resolved ResolvedConfig
 	if path != "" {
 		var source *LoadedFile
-		source, err = parseRules.ReadContext(ctx, path, readFile, registeredRules...)
+		source, err = parseRules.ReadContext(ctx, path, readFile, nil, registeredRules...)
 		if err != nil {
 			return configreport.Inspection{Path: path}, err
 		}

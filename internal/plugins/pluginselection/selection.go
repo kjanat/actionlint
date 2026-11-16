@@ -13,6 +13,7 @@ import (
 
 	inputmodel "actionlint.kjanat.dev/v2/internal/input"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configplugins "actionlint.kjanat.dev/v2/internal/input/configuration/plugins"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 
@@ -36,8 +37,12 @@ type Selection struct {
 	Paths   []string
 
 	ConfigFile string
-	Disabled   bool
-	Overlays   []configuration.Overlay
+	// ConfigSources keeps the configuration files selection parses, so the
+	// analysis session of the same run merges them without reading them
+	// again. Nil reads every file for selection alone.
+	ConfigSources *document.Files
+	Disabled      bool
+	Overlays      []configuration.Overlay
 	// DefaultTools lists bundled linters that use registry plugins when configuration omits plugins.
 	DefaultTools []string
 	lazyDefaults bool
@@ -149,7 +154,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		return Sources{}, nil
 	}
 	if s.ConfigFile != "" {
-		project, err := installation.OpenForSelection(ctx, s.RuleSet, s.Acquisition, directory, s.ConfigFile, mode)
+		project, err := installation.OpenForSelection(ctx, s.RuleSet, s.Acquisition, directory, s.ConfigFile, mode, s.ConfigSources)
 		if err != nil {
 			return Sources{}, err
 		}
@@ -204,7 +209,7 @@ func (s Selection) selectDeclared(ctx context.Context, directory string, input i
 		if root == "" {
 			continue
 		}
-		project, err := installation.OpenForSelection(ctx, s.RuleSet, s.Acquisition, root, "", mode)
+		project, err := installation.OpenForSelection(ctx, s.RuleSet, s.Acquisition, root, "", mode, s.ConfigSources)
 		if err != nil {
 			return Sources{}, err
 		}
@@ -452,7 +457,7 @@ func (s *Sources) ValidateScope(ctx context.Context, rules configuration.RuleSet
 			if root == "" {
 				continue
 			}
-			project, err := installation.OpenForSelection(ctx, rules, s.Acquisition, root, "", configplugins.CompleteConfiguration)
+			project, err := installation.OpenForSelection(ctx, rules, s.Acquisition, root, "", configplugins.CompleteConfiguration, nil)
 			if err != nil {
 				return err
 			}

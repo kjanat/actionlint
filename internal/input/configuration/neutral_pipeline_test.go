@@ -26,7 +26,7 @@ func TestNeutralMixedFormatExtends(t *testing.T) {
 	writeNeutralFixture(t, dir, "base.toml", "[repository]\nrunners = ['gpu']\nsecrets = ['BASE']\n")
 	writeNeutralFixture(t, dir, "middle.jsonc", "{\n // inherit TOML\n \"extends\": [\"base.toml\"],\n \"repository\": {\"secrets\": [],},\n}\n")
 	leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [middle.jsonc]\nrepository:\n  runners: []\n")
-	loaded, err := document.Load(leaf, os.ReadFile, nil, nil)
+	loaded, err := document.Load(leaf, nil, os.ReadFile, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestNeutralNullOmissionAndEmptyCollections(t *testing.T) {
 			dir := t.TempDir()
 			writeNeutralFixture(t, dir, "base.yaml", "mapping: {one: base}\nlist: [base]\n")
 			leaf := writeNeutralFixture(t, dir, "leaf.yaml", "extends: [base.yaml]\n"+tc.overlay+"\n")
-			got, err := document.Load(leaf, os.ReadFile, nil, nil)
+			got, err := document.Load(leaf, nil, os.ReadFile, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

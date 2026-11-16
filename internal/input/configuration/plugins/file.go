@@ -53,11 +53,13 @@ type File struct {
 func Open(ctx context.Context, rules configuration.RuleSet, path string, connections acquisitionhttp.Connections) (*File, error) {
 	return Read(ctx, rules, path, func(ctx context.Context, path string) ([]byte, error) {
 		return readPluginManifest(ctx, path, connections)
-	}, CompleteConfiguration)
+	}, CompleteConfiguration, nil)
 }
 
-// Read loads plugin declarations with the supplied source reader and normalization mode.
-func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode) (*File, error) {
+// Read loads plugin declarations with the supplied source reader and
+// normalization mode. Inherited sources held by files are used without reading
+// them again, and files keeps the sources read here; files may be nil.
+func Read(ctx context.Context, rules configuration.RuleSet, path string, read func(context.Context, string) ([]byte, error), mode ReadMode, files *document.Files) (*File, error) {
 	absolute, err := configsource.NormalizeAddress(path)
 	if err != nil {
 		return nil, err
@@ -82,21 +84,15 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 	}
 	manifest.original, manifest.Exists = data, true
 	manifest.snapshots[absolute] = bytes.Clone(data)
-	loaded, err := configuration.LoadSources(absolute, func(name string) ([]byte, error) {
+	loaded, err := configuration.LoadSources(absolute, files, func(name string) ([]byte, error) {
 		if name == absolute {
 			return bytes.Clone(data), nil
 		}
-		if !configsource.IsRemoteAddress(name) {
-			name, err = filepath.Abs(name)
-			if err != nil {
-				return nil, err
-			}
+		name, err := pluginSourcePath(name)
+		if err != nil {
+			return nil, err
 		}
-		content, err := manifest.read(ctx, name)
-		if err == nil {
-			manifest.snapshots[name] = bytes.Clone(content)
-		}
-		return content, err
+		return manifest.read(ctx, name)
 	}, func(origin string, source *document.Node) (*document.Node, error) {
 		value := source.Value()
 		if err := ValidateRoot(value); err != nil {
@@ -122,6 +118,16 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 	if err != nil {
 		return nil, err
 	}
+	for name, content := range loaded.Contents {
+		if name == absolute {
+			continue
+		}
+		name, err := pluginSourcePath(name)
+		if err != nil {
+			return nil, err
+		}
+		manifest.snapshots[name] = bytes.Clone(content)
+	}
 	manifest.original, manifest.parsed = manifest.snapshots[absolute], loaded.Selected
 	merged := loaded.Root.Value()
 	manifest.merged = merged
@@ -137,6 +143,15 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 		manifest.merged = selectFields(root, "plugins", "extends")
 	}
 	return manifest, nil
+}
+
+// pluginSourcePath returns the absolute filename of a local inherited source.
+// HTTPS addresses are returned unchanged.
+func pluginSourcePath(name string) (string, error) {
+	if configsource.IsRemoteAddress(name) {
+		return name, nil
+	}
+	return filepath.Abs(name)
 }
 
 // The tree loader expands aliases before this projection, so plugin references

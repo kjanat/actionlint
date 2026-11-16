@@ -11,6 +11,7 @@ import (
 	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configreport "actionlint.kjanat.dev/v2/internal/input/configuration/report"
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/discovery"
@@ -48,6 +49,10 @@ type Options struct {
 	ConfigConnections acquisitionhttp.Connections
 	ConfigProvenance  configuration.Provenance
 	ConfigOverlays    []configuration.Overlay
+	// ConfigSources holds configuration files already parsed in this run,
+	// such as by plugin selection. Configuration loads use them without
+	// reading them again and keep the files they read. Nil disables sharing.
+	ConfigSources     *document.Files
 	OnConfigLoaded    func(configreport.Report)
 	SkipProjectConfig bool
 	NoIgnore          bool
@@ -101,6 +106,7 @@ func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 	a.projects.ctx = ctx
 	a.projects.readFile = a.readFile
 	a.projects.ruleNames = a.ruleNames
+	a.projects.configSources = opts.ConfigSources
 	a.projects.skipConfig = opts.SkipProjectConfig
 	a.configState = &configState{overlays: slices.Clone(opts.ConfigOverlays), onLoaded: opts.OnConfigLoaded, loaded: make(map[*Project]*configuration.Config), reports: make(map[*Project]configreport.Report)}
 	var err error
@@ -119,7 +125,7 @@ func New(ctx context.Context, opts Options) (*InputPreparer, error) {
 		if !configsource.IsRemoteAddress(path) && !filepath.IsAbs(path) {
 			path = filepath.Join(a.cwd, path)
 		}
-		source, err := a.rules.ReadContext(ctx, path, a.readFile, a.ruleNames...)
+		source, err := a.rules.ReadContext(ctx, path, a.readFile, opts.ConfigSources, a.ruleNames...)
 		if err != nil {
 			return nil, err
 		}

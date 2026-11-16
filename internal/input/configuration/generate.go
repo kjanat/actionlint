@@ -26,7 +26,7 @@ func (ruleSet RuleSet) Generate(ctx context.Context, root string, skipConfig boo
 		return "", errors.New("project is not found. check current project is initialized as Git repository and \".github/workflows\" directory exists")
 	}
 	if !skipConfig {
-		if _, _, err := ruleSet.LoadRepositoryContext(ctx, root, nil); err != nil {
+		if _, _, err := ruleSet.LoadRepositoryContext(ctx, root, nil, nil); err != nil {
 			return "", err
 		}
 	}

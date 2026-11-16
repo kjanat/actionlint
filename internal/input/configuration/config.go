@@ -501,7 +501,7 @@ func (ruleSet RuleSet) Load(path string, additional ...string) (*Config, error) 
 // LoadContext reads settings with cancellable local or HTTPS inheritance.
 // ReadContext also retains source provenance for analysis and path interpolation.
 func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
-	source, err := ruleSet.ReadContext(ctx, path, nil, additional...)
+	source, err := ruleSet.ReadContext(ctx, path, nil, nil, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -509,30 +509,32 @@ func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional 
 }
 
 func (ruleSet RuleSet) Read(path string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, error) {
-	return ruleSet.ReadContext(context.Background(), path, readFile, additional...)
+	return ruleSet.ReadContext(context.Background(), path, readFile, nil, additional...)
 }
 
 // ReadContext preserves a supplied source reader for local and HTTPS inputs.
 // Without one, the host reader acquires local files and explicit HTTPS sources.
-func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, error) {
-	return ruleSet.readContext(ctx, path, readFile, true, additional...)
+// Sources held by files, such as those plugin selection loaded for the same
+// run, are used without reading them again; files may be nil.
+func (ruleSet RuleSet) ReadContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, additional ...string) (*LoadedFile, error) {
+	return ruleSet.readContext(ctx, path, readFile, files, true, additional...)
 }
 
 // ReadBeforePluginsContext loads inherited configuration before plugin rule descriptors are available.
 func (ruleSet RuleSet) ReadBeforePluginsContext(ctx context.Context, path string, readFile func(string) ([]byte, error)) (*LoadedFile, error) {
-	return ruleSet.readContext(ctx, path, readFile, false)
+	return ruleSet.readContext(ctx, path, readFile, nil, false)
 }
 
-func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), bindRules bool, additional ...string) (*LoadedFile, error) {
+func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile func(string) ([]byte, error), files *document.Files, bindRules bool, additional ...string) (*LoadedFile, error) {
 	reader := configsource.New(ctx, readFile, acquisitionhttp.Connections{})
 	warningsByFile := map[string][]configreport.Warning{}
 	var bindingSources []bindingSource
-	documents := map[string]any{}
-	loaded, err := LoadSources(path, reader.ReadConfig, func(origin string, source *document.Node) (*document.Node, error) {
+	rules := document.NewFiles()
+	loaded, err := LoadSources(path, files, reader.ReadConfig, func(origin string, source *document.Node) (*document.Node, error) {
 		value := source.Value()
 		inputs := ruleSet.migrationInputs(value, source.Origins())
 		normalized, warnings, err := ruleSet.normalizeExtendedConfig(origin, value, inputs, absPath(path) != origin, bindRules, func(value any) {
-			documents[origin] = captureRuleDocument(value)
+			rules.Add(origin, document.Capture(captureRuleDocument(value), nil))
 		}, additional...)
 		warningsByFile[origin] = warnings
 		if err != nil {
@@ -557,7 +559,7 @@ func (ruleSet RuleSet) readContext(ctx context.Context, path string, readFile fu
 	}
 	resolved.Provenance = Provenance{path: absPath(path), files: slices.Clone(loaded.Files)}
 	resolved.Config.Lint.Rules.bindingSources = bindingSources
-	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], documents: documents}
+	resolved.Config.Lint.Rules.sources = &ruleSources{root: loaded.Files[len(loaded.Files)-1], files: rules}
 	resolved.Warnings = nil
 	for _, file := range loaded.Files {
 		resolved.Warnings = MergeWarnings(resolved.Warnings, warningsByFile[file])
@@ -577,14 +579,15 @@ var RepositoryConfigNames = func() []string {
 // LoadRepository reads the first existing file named in RepositoryConfigNames
 // from the repository's .github directory.
 func (ruleSet RuleSet) LoadRepository(root string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, string, error) {
-	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, additional...)
+	return ruleSet.LoadRepositoryContext(context.Background(), root, readFile, nil, additional...)
 }
 
 // LoadRepositoryContext discovers configuration with cancellable inheritance.
-func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), additional ...string) (*LoadedFile, string, error) {
+// Sources held by files are used without reading them again; files may be nil.
+func (ruleSet RuleSet) LoadRepositoryContext(ctx context.Context, root string, readFile func(string) ([]byte, error), files *document.Files, additional ...string) (*LoadedFile, string, error) {
 	for _, f := range RepositoryConfigNames {
 		p := filepath.Join(root, ".github", f)
-		c, err := ruleSet.ReadContext(ctx, p, readFile, additional...)
+		c, err := ruleSet.ReadContext(ctx, p, readFile, files, additional...)
 		switch {
 		case errors.Is(err, os.ErrNotExist):
 			continue

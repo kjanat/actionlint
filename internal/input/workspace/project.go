@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
+	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 )
 
 // Project represents one GitHub project. One Git repository corresponds to one project.
@@ -62,11 +63,11 @@ func (p *Project) ConfigPath() string { return p.configPath }
 // NewProject creates a new instance with a file path to the root directory of the repository.
 // This function returns an error when failing to parse an actionlint config file in the repository.
 func NewProject(rules configuration.RuleSet, root string) (*Project, error) {
-	return newProject(context.Background(), rules, root, nil)
+	return newProject(context.Background(), rules, root, nil, nil)
 }
 
-func newProject(ctx context.Context, rules configuration.RuleSet, root string, readFile func(string) ([]byte, error), additional ...string) (*Project, error) {
-	c, path, err := rules.LoadRepositoryContext(ctx, root, readFile, additional...)
+func newProject(ctx context.Context, rules configuration.RuleSet, root string, readFile func(string) ([]byte, error), configSources *document.Files, additional ...string) (*Project, error) {
+	c, path, err := rules.LoadRepositoryContext(ctx, root, readFile, configSources, additional...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +122,8 @@ type Projects struct {
 	roots      map[string]string
 	skipConfig bool
 	readFile   func(string) ([]byte, error)
+	// configSources holds configuration files already parsed in this run.
+	configSources *document.Files
 }
 
 // NewProjects creates new Projects instance.
@@ -156,7 +159,7 @@ func (ps *Projects) At(path string) (*Project, error) {
 	p := &Project{root: root}
 	if !ps.skipConfig {
 		var err error
-		p, err = newProject(ps.ctx, ps.rules, root, readFile, ps.ruleNames...)
+		p, err = newProject(ps.ctx, ps.rules, root, readFile, ps.configSources, ps.ruleNames...)
 		if err != nil {
 			return nil, err
 		}
