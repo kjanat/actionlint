@@ -8,6 +8,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
+	"actionlint.kjanat.dev/v2/internal/model/actionmeta"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 	repofacts "actionlint.kjanat.dev/v2/internal/model/repository"
 	validator "github.com/santhosh-tekuri/jsonschema/v6"
@@ -45,7 +46,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	problem := actions.ManifestProblem{Code: "invalid-field-type", Message: "metadata unavailable", Path: "action.yml", Start: sourcepos.Position{}, End: sourcepos.Position{}}
+	problem := actionmeta.MetadataProblem{Code: actionmeta.CodeInvalidFieldType, Message: "metadata unavailable", Path: "action.yml", Start: sourcepos.Position{}, End: sourcepos.Position{}}
 	reports := []actions.MetadataReport{
 		(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.MissingMetadata(availability.Offline())}).Report(),
 	}
@@ -64,7 +65,7 @@ func TestActionMetadataReportContract(t *testing.T) {
 		}
 		reports = append(reports,
 			(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.AvailableMetadata(manifest)}).Report(),
-			(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.InvalidMetadata(manifest, []actions.ManifestProblem{problem})}).Report(),
+			(actions.Coverage{Reference: "owner/repository@v1", Availability: actions.InvalidMetadata(manifest, []actionmeta.MetadataProblem{problem})}).Report(),
 		)
 	}
 

@@ -48,18 +48,8 @@ func PosAt(n *codec.Node) *source.Position {
 
 func newString(n *codec.Node) *workflowlang.String {
 	quoted := n.Style&(codec.DoubleQuotedStyle|codec.SingleQuotedStyle) != 0
-	var kind workflowlang.SourceScalarKind
 	switch n.Kind {
-	case codec.DocumentNode:
-		kind = workflowlang.SourceScalarDocument
-	case codec.SequenceNode:
-		kind = workflowlang.SourceScalarSequence
-	case codec.MappingNode:
-		kind = workflowlang.SourceScalarMapping
-	case codec.ScalarNode:
-		kind = workflowlang.SourceScalarScalar
-	case codec.AliasNode:
-		kind = workflowlang.SourceScalarAlias
+	case codec.DocumentNode, codec.SequenceNode, codec.MappingNode, codec.ScalarNode, codec.AliasNode:
 	default:
 		return &workflowlang.String{Value: n.Value, Quoted: quoted, Pos: PosAt(n)}
 	}
@@ -70,7 +60,7 @@ func newString(n *codec.Node) *workflowlang.String {
 		Pos:    &pos,
 		SourceScalar: workflowlang.SourceScalar{
 			HasSource: true,
-			Kind:      kind,
+			Kind:      n.Kind,
 			Tag:       n.Tag,
 			Value:     n.Value,
 			Pos:       pos,

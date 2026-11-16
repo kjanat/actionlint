@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	workflowparser "actionlint.kjanat.dev/v2/internal/model/workflows/parser"
 )
 
@@ -44,7 +45,7 @@ jobs:
 	for _, mapping := range mappings {
 		byScope[mapping.Scope] = mapping
 	}
-	assertEntry := func(scope, sourceKey, name string, state workflowfacts.KeyState, evaluated bool) workflowfacts.Entry {
+	assertEntry := func(scope, sourceKey, name string, state mapping.KeyState, evaluated bool) workflowfacts.Entry {
 		t.Helper()
 		declaration, ok := byScope[scope]
 		if !ok {
@@ -63,28 +64,28 @@ jobs:
 	}
 
 	for _, scope := range []string{"env"} {
-		assertEntry(scope, "plain", "plain", workflowfacts.KnownKey, false)
-		assertEntry(scope, "${{ 'constant' }}", "constant", workflowfacts.KnownKey, false)
-		dynamic := assertEntry(scope, "${{ inputs.runtime_key }}", "", workflowfacts.UnknownKey, false)
-		assertEntry(scope, "${{ fromJSON('[]') }}", "", workflowfacts.InvalidKey, false)
+		assertEntry(scope, "plain", "plain", mapping.KnownKey, false)
+		assertEntry(scope, "${{ 'constant' }}", "constant", mapping.KnownKey, false)
+		dynamic := assertEntry(scope, "${{ inputs.runtime_key }}", "", mapping.UnknownKey, false)
+		assertEntry(scope, "${{ fromJSON('[]') }}", "", mapping.InvalidKey, false)
 		if byScope[scope].Complete || dynamic.Start.Column != sourceColumn(source, `"${{ inputs.runtime_key }}"`) {
 			t.Fatalf("%s runtime key projection lost incompleteness or key position: %#v", scope, dynamic)
 		}
 	}
 	withScope := `jobs["build"].steps[0].with`
-	plain := assertEntry(withScope, "plain", "plain", workflowfacts.KnownKey, false)
+	plain := assertEntry(withScope, "plain", "plain", mapping.KnownKey, false)
 	if plain.Start.Column != sourceColumn(source, "plain: input value") || plain.Start.Column == sourceColumn(source, "input value") {
 		t.Fatalf("action input start used value column, got %d", plain.Start.Column)
 	}
-	assertEntry(withScope, "${{ 'constant' }}", "constant", workflowfacts.KnownKey, false)
-	assertEntry(withScope, "${{ inputs.runtime_key }}", "", workflowfacts.UnknownKey, false)
-	assertEntry(withScope, "${{ fromJSON('[]') }}", "", workflowfacts.InvalidKey, false)
-	assertEntry(withScope, "inserted", "inserted", workflowfacts.KnownKey, false)
-	matrix := assertEntry(`jobs["build"].strategy.matrix`, "${{ inputs.runtime_axis }}", "", workflowfacts.UnknownKey, false)
+	assertEntry(withScope, "${{ 'constant' }}", "constant", mapping.KnownKey, false)
+	assertEntry(withScope, "${{ inputs.runtime_key }}", "", mapping.UnknownKey, false)
+	assertEntry(withScope, "${{ fromJSON('[]') }}", "", mapping.InvalidKey, false)
+	assertEntry(withScope, "inserted", "inserted", mapping.KnownKey, false)
+	matrix := assertEntry(`jobs["build"].strategy.matrix`, "${{ inputs.runtime_axis }}", "", mapping.UnknownKey, false)
 	if matrix.Start.Column != sourceColumn(source, `"${{ inputs.runtime_axis }}"`) {
 		t.Fatalf("matrix key start = %d; want source key column %d", matrix.Start.Column, sourceColumn(source, `"${{ inputs.runtime_axis }}"`))
 	}
-	assertEntry(`jobs["build"].strategy.matrix`, "${{ fromJSON('[]') }}", "", workflowfacts.InvalidKey, false)
+	assertEntry(`jobs["build"].strategy.matrix`, "${{ fromJSON('[]') }}", "", mapping.InvalidKey, false)
 }
 
 func sourceColumn(source, fragment string) int {

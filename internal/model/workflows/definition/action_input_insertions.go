@@ -2,6 +2,7 @@ package workflow
 
 import (
 	exprsyntax "actionlint.kjanat.dev/v2/internal/languages/expressions/syntax"
+	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 
 	"actionlint.kjanat.dev/v2/internal/model/contexts/value"
 
@@ -39,7 +40,7 @@ func MappingScalar(text string, source SourceScalar, origin value.Origin) value.
 		origin.FromExpression = true
 		return value.Template(text, origin)
 	}
-	if source.HasSource && source.Kind == SourceScalarScalar {
+	if source.HasSource && source.Kind == codec.ScalarNode {
 		return value.YAMLScalar(source.Value, source.Tag, origin)
 	}
 	return value.YAMLScalar(text, YamlTagStr, origin)

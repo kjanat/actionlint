@@ -2,6 +2,9 @@
 package scripts
 
 import (
+	"strings"
+	"unicode/utf8"
+
 	sourcepos "actionlint.kjanat.dev/v2/internal/input/source"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
 )
@@ -69,4 +72,13 @@ func (s Declaration) Position(line, column int, exclusive bool) (sourcepos.Posit
 		return sourcepos.Position{Line: span.Document.Line, Column: span.Document.Column + column - span.Start}, true
 	}
 	return sourcepos.Position{}, false
+}
+
+// OffsetPosition maps a byte offset of Text to the declaring document. It counts
+// lines and character columns before offset, then applies Position.
+func (s Declaration) OffsetPosition(offset int, exclusive bool) (sourcepos.Position, bool) {
+	prefix := s.Text[:offset]
+	line := strings.Count(prefix, "\n") + 1
+	column := utf8.RuneCountInString(prefix[strings.LastIndexByte(prefix, '\n')+1:]) + 1
+	return s.Position(line, column, exclusive)
 }

@@ -142,23 +142,12 @@ func (s *ScriptSource) spanIndex(offset int, endPosition bool) int {
 	return low
 }
 
-// SourceScalarKind identifies the YAML node kind captured from source.
-type SourceScalarKind uint8
-
-const (
-	SourceScalarUnknown SourceScalarKind = iota
-	SourceScalarDocument
-	SourceScalarSequence
-	SourceScalarMapping
-	SourceScalarScalar
-	SourceScalarAlias
-)
-
 // SourceScalar is an immutable, pointer-free snapshot of a YAML node at parse time.
+// Kind is zero when no YAML node was captured.
 type SourceScalar struct {
 	HasSource bool
 	Evaluated bool
-	Kind      SourceScalarKind
+	Kind      codec.Kind
 	Tag       string
 	Value     string
 	Pos       source.Position

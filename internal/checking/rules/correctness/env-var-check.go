@@ -8,6 +8,7 @@ import (
 	declaration "actionlint.kjanat.dev/v2/internal/model/workflows"
 	workflowlang "actionlint.kjanat.dev/v2/internal/model/workflows/definition"
 	workflowfacts "actionlint.kjanat.dev/v2/internal/model/workflows/facts"
+	mapping "actionlint.kjanat.dev/v2/internal/model/workflows/mappings"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -19,7 +20,7 @@ func checkEnvironmentMapping(env *workflowlang.Env) []reporting.StepFinding {
 	resolved := declaration.Environment(env)
 	for key := range resolved.KeyedEntries() {
 		if name, known := key.ScalarString(); known {
-			entries = append(entries, workflowfacts.Entry{Name: name, State: workflowfacts.KnownKey, Start: key.Origin().Span.Start})
+			entries = append(entries, workflowfacts.Entry{Name: name, State: mapping.KnownKey, Start: key.Origin().Span.Start})
 		}
 	}
 	return reporting.FromDiagnostics(environmentNameDiagnostics(entries))
@@ -52,7 +53,7 @@ func checkJobEnvironment(job declaration.Job) []reporting.StepFinding {
 func environmentNameDiagnostics(entries []workflowfacts.Entry) []results.Diagnostic {
 	var findings []results.Diagnostic
 	for _, entry := range entries {
-		if entry.State == workflowfacts.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
+		if entry.State == mapping.UnknownKey || !strings.ContainsAny(entry.Name, "&= 	") {
 			continue
 		}
 		findings = append(findings, results.Diagnostic{Rule: "env-var", Message: fmt.Sprintf("environment variable name %q is invalid. '&', '=' and spaces should not be contained", entry.Name), Start: entry.Start})
