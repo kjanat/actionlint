@@ -39,10 +39,10 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 	if _, ok := snapshots.Lookup(sourcetext.Reference{Document: ref.Document}); ok {
 		t.Fatal("lookup accepted a missing reference")
 	}
-	if declaration, ok := snapshots.Declaration(sourcetext.Reference{}); ok || declaration != (workflows.Step{}) {
+	if declaration, ok := snapshots.Declaration(sourcetext.Reference{}); ok || declaration != (workflows.BoundStep{}) {
 		t.Fatal("step lookup accepted a zero reference")
 	}
-	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflows.Step{}) {
+	if declaration, ok := nilSnapshots.Declaration(ref); ok || declaration != (workflows.BoundStep{}) {
 		t.Fatal("step lookup accepted a nil snapshot set")
 	}
 	if _, ok := snapshots.Declaration(sourcetext.Reference{Document: ref.Document}); ok {
@@ -65,7 +65,7 @@ func TestSourceSnapshotsLookupAndDeclarationRequireExactReference(t *testing.T) 
 			if got, ok := snapshots.Lookup(documentRef); ok || got.Present() {
 				t.Fatalf("lookup accepted modified document reference: %+v", documentRef)
 			}
-			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflows.Step{}) {
+			if declaration, ok := snapshots.Declaration(modified); ok || declaration != (workflows.BoundStep{}) {
 				t.Fatalf("step lookup accepted modified reference: %+v", modified)
 			}
 		})
@@ -104,7 +104,7 @@ func TestSourceSnapshotsIndexWorkflowAndActionStepJobs(t *testing.T) {
 		t.Fatal("parallel declaration unavailable")
 	}
 	nested := slices.Collect(parallel)
-	steps := []workflows.Step{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
+	steps := []workflows.BoundStep{build[0], build[1], outer, nested[0], nested[1], deploy[0]}
 	refs := make([]sourcetext.Reference, len(steps))
 	for i, step := range steps {
 		refs[i] = step.Reference()

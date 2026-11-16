@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/rules/correctness"
+	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/capturefixture/declarations"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
 	"actionlint.kjanat.dev/v2/internal/development/tests/testutil/tempdir"
@@ -31,7 +32,7 @@ type invocationFixture struct {
 	root            parsing.SourceSnapshot
 	original        *definition.Workflow
 	registry        *parsing.SourceSnapshots
-	snapshots       *capturedSnapshots
+	snapshots       *declarations.CapturedSnapshots
 	cache           *localactions.Cache
 	parsed          []string
 	afterParse      func(string)

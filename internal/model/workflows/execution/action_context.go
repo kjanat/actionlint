@@ -15,7 +15,7 @@ import (
 var ErrInvalidActionCall = errors.New("execution: invalid action call")
 
 // CallFacts projects caller effects from the owned syntax view.
-func CallFacts(view workflows.Step, platform runners.Platform) (invocation.Facts, error) {
+func CallFacts(view workflows.BoundStep, platform runners.Platform) (invocation.Facts, error) {
 	if !view.Present() {
 		return invocation.Facts{}, ErrInvalidActionCall
 	}

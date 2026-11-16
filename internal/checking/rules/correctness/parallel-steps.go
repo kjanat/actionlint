@@ -40,7 +40,7 @@ type parallelCheck struct {
 }
 
 // ParallelSteps analyzes one complete job independently of visitor order.
-func ParallelSteps(job workflows.Job) []reporting.StepFinding {
+func ParallelSteps(job workflows.BoundJob) []reporting.StepFinding {
 	rule := &parallelCheck{background: map[string]struct{}{}, inParallel: map[sourcetext.Reference]struct{}{}}
 	for step := range job.AllSteps() {
 		rule.Step = step
@@ -49,7 +49,7 @@ func ParallelSteps(job workflows.Job) []reporting.StepFinding {
 	return rule.Findings
 }
 
-func (rule *parallelCheck) checkStep(n workflows.Step) {
+func (rule *parallelCheck) checkStep(n workflows.BoundStep) {
 	// A step that is itself inside a 'parallel' group is already reported by checkParallelChildren as
 	// not allowed there, so skip its reference check to avoid a second, redundant error.
 	_, insideParallel := rule.inParallel[n.Reference()]
@@ -77,7 +77,7 @@ func (rule *parallelCheck) checkStep(n workflows.Step) {
 // checkParallelChildren checks the steps inside a 'parallel' group. Only 'run' and 'uses' steps are
 // allowed there: 'background', 'wait', 'wait-all', 'cancel', and nested 'parallel' steps are not,
 // because steps in a 'parallel' group already run in the background with an implicit wait at the end.
-func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[workflows.Step]) {
+func (rule *parallelCheck) checkParallelChildren(steps iter.Seq[workflows.BoundStep]) {
 	for s := range steps {
 		rule.inParallel[s.Reference()] = struct{}{}
 		if s.Background != nil {
@@ -115,6 +115,6 @@ func (rule *parallelCheck) checkRef(ref *definition.String) {
 // isBackgroundStep reports whether the step runs (or may run) in the background. When 'background' is
 // an expression, whether the step runs in the background can't be known statically, so it's treated
 // as a possible background step to avoid false positives.
-func isBackgroundStep(s workflows.Step) bool {
+func isBackgroundStep(s workflows.BoundStep) bool {
 	return s.Background != nil && (s.Background.Expression != nil || s.Background.Value)
 }

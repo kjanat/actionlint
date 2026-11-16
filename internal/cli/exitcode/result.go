@@ -4,6 +4,7 @@ package exitcode
 import (
 	"slices"
 
+	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -34,7 +35,7 @@ func AnalysisResult(analysis report.Analysis) report.CheckResult {
 
 // NewCheckResult initializes a result with a consistent status and non-null lists.
 func NewCheckResult(code int) report.CheckResult {
-	r := report.CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []results.Diagnostic{}, Configs: []report.ResultConfig{}, Hints: []string{}, ActionMetadata: []report.ActionMetadataResult{}}
+	r := report.CheckResult{SchemaVersion: 1, ExitCode: code, Diagnostics: []results.Diagnostic{}, Configs: []report.ResultConfig{}, Hints: []string{}, ActionMetadata: []actions.MetadataReport{}}
 	switch code {
 	case ExitSuccessNoProblem:
 		r.Status, r.Completed = "success", true

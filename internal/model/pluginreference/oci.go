@@ -1,8 +1,6 @@
 package pluginreference
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -113,15 +111,6 @@ func (r OCIReference) Endpoint() *url.URL {
 		endpoint.Scheme = "http"
 	}
 	return endpoint
-}
-
-// CheckDigest accepts a SHA256 digest written as 64 lowercase hex digits.
-func CheckDigest(digest string) error {
-	decoded, err := hex.DecodeString(digest)
-	if err != nil || len(decoded) != sha256.Size || digest != strings.ToLower(digest) {
-		return fmt.Errorf("invalid artifact digest %q: want 64 lowercase hex digits", digest)
-	}
-	return nil
 }
 
 // NormalizeSource roots filesystem paths in directory while preserving URI

@@ -259,8 +259,8 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var declaration *workflows.Step
-			for _, reference := range snapshot.Bound().SourceIndex().Steps {
+			var declaration *workflows.BoundStep
+			for _, reference := range snapshot.BoundDocument().SourceIndex().Steps {
 				candidate, exists := registry.Declaration(reference)
 				if !exists {
 					t.Fatalf("canonical declaration %q is missing", reference)
@@ -288,7 +288,7 @@ func TestBatchRejectsUnmappedParsedScriptSource(t *testing.T) {
 				}
 			}
 			if declaration == nil {
-				t.Fatalf("fixture has no canonical script declaration: references=%#v metadata=%#v findings=%v", snapshot.Bound().SourceIndex(), document.Metadata, document.SyntaxErrors)
+				t.Fatalf("fixture has no canonical script declaration: references=%#v metadata=%#v findings=%v", snapshot.BoundDocument().SourceIndex(), document.Metadata, document.SyntaxErrors)
 			}
 			builder, err := invocation.NewBuilder(tc.kind, snapshot.Reference(), invocation.DefaultBudget())
 			if err != nil {

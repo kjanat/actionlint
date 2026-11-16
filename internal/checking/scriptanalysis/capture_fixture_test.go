@@ -14,11 +14,9 @@ func sourceFixtureBase(tb testing.TB) string {
 	return capturefixture.CurrentDir(tb)
 }
 
-type capturedSnapshots = declarations.CapturedSnapshots
-
 // newCapturedSnapshots returns the registry and capture store for code under
 // test and the fixture that admits documents into them.
-func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *capturedSnapshots) {
+func newCapturedSnapshots(tb testing.TB, base string) (*parsing.SourceSnapshots, *capture.Store, *declarations.CapturedSnapshots) {
 	tb.Helper()
 	return declarations.NewCapturedSnapshots(tb, base)
 }

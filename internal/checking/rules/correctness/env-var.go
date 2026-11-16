@@ -34,15 +34,15 @@ func checkEnvironmentMapping(env *definition.Env) []reporting.StepFinding {
 	return reporting.FromDiagnostics(environmentNameDiagnostics(slices.Collect(workflows.Environment(env).Declarations())))
 }
 
-func checkWorkflowEnvironment(w workflows.Workflow) []reporting.StepFinding {
+func checkWorkflowEnvironment(w workflows.BoundWorkflow) []reporting.StepFinding {
 	return checkEnvironmentMapping(w.Env)
 }
 
-func checkStepEnvironment(step workflows.Step) []reporting.StepFinding {
+func checkStepEnvironment(step workflows.BoundStep) []reporting.StepFinding {
 	return checkEnvironmentMapping(step.Env)
 }
 
-func checkJobEnvironment(job workflows.Job) []reporting.StepFinding {
+func checkJobEnvironment(job workflows.BoundJob) []reporting.StepFinding {
 	out := checkEnvironmentMapping(job.Env)
 	if job.Container != nil {
 		out = append(out, checkEnvironmentMapping(job.Container.Env)...)

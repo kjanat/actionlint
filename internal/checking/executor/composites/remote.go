@@ -81,7 +81,7 @@ func (analysis *compositeAnalyzer) prepareDependencies(snapshot parsing.SourceSn
 	var references []string
 	var limitErr error
 	if depth < analysis.budget.MaxDepth {
-		_, dependencies := snapshot.Bound().Declarations()
+		_, dependencies := snapshot.BoundDocument().Declarations()
 		for _, dependency := range dependencies {
 			if dependency.Kind != "action" {
 				continue

@@ -63,12 +63,12 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 			if err := os.WriteFile(metadataPath, []byte("name: [\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			unit := sourceUnit{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}]}}\npermissions: {}\n")}
+			unit := workspace.InputFile{Path: "ci.yml", Project: workspace.Identity(root), Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/broken}]}}\npermissions: {}\n")}
 			probe := metadataAdmissionAnalyzer{}
 			var result *report.Analysis
 			var err, conflict error
 			if !quarantined {
-				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: probe}}}, []sourceUnit{unit})
+				result, err = Analyze(t.Context(), Options{WorkingDir: root, Analyzers: []checkinputs.Registration{{Checker: probe}}}, []workspace.InputFile{unit})
 			} else {
 				// The existing constructor seam gives the test the real result owner;
 				// the analyzer runs after composition and source verification.
@@ -89,7 +89,7 @@ func TestAnalyzeMetadataParseFindingSurvivesHealthyCaptureAndRejectsQuarantine(t
 				}
 				processes := hostprocess.NewProcessPool(t.Context(), 1)
 				defer processes.Wait()
-				request := analysisRequest{WorkingDir: root, Sources: []sourceUnit{unit}, Analyzers: []checkinputs.Registration{{Checker: probe}}, Processes: processes}
+				request := analysisRequest{WorkingDir: root, Sources: []workspace.InputFile{unit}, Analyzers: []checkinputs.Registration{{Checker: probe}}, Processes: processes}
 				completed, runErr := runWithSourceCaptureConstructor(t.Context(), request, io.Discard, LogLevelNone,
 					func(ctx context.Context, overlays []capture.Overlay, reader capture.Reader) (*capture.Store, error) {
 						var initErr error
@@ -205,7 +205,7 @@ func TestMetadataSourceAdmissionRejectsMissingProvenanceAndVerifyMismatch(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := analysisResult{files: []analyzedFile{{captured: entry, source: sourceUnit{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
+			result := analysisResult{files: []analyzedFile{{captured: entry, source: workspace.InputFile{Path: "ci.yml", InputPath: entryPath, Content: entry.Bytes()}, errors: accepted}}}
 			err = result.revalidateCaptures(store, rows, root, errors.Join(sourceErr, admissionErr))
 			publishTestDiagnostics(t, &result)
 			rejection, ok := errors.AsType[*admissionRejectedError](err)

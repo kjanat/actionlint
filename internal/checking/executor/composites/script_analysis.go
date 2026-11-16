@@ -30,7 +30,7 @@ func scriptDefaultShell(defaults *definition.Defaults) *string {
 	return new(shell)
 }
 
-func (analysis *compositeAnalyzer) collectScript(declaration workflows.Step, jobShell, workflowShell *string) error {
+func (analysis *compositeAnalyzer) collectScript(declaration workflows.BoundStep, jobShell, workflowShell *string) error {
 	if err := analysis.sourceSnapshot.ValidateStep(declaration); err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (analysis *compositeAnalyzer) collectScript(declaration workflows.Step, job
 	return nil
 }
 
-func (analysis *compositeAnalyzer) collectActionInputs(step workflows.Step, action *definition.ExecAction) error {
+func (analysis *compositeAnalyzer) collectActionInputs(step workflows.BoundStep, action *definition.ExecAction) error {
 	name, valid := scriptanalysis.ScriptInputAction(action)
 	if !valid {
 		return nil
@@ -126,7 +126,7 @@ func (analysis *compositeAnalyzer) collectActionInputs(step workflows.Step, acti
 	return nil
 }
 
-func (analysis *compositeAnalyzer) scriptEnvironment(step workflows.Step, shell string) []scripts.EnvironmentNames {
+func (analysis *compositeAnalyzer) scriptEnvironment(step workflows.BoundStep, shell string) []scripts.EnvironmentNames {
 	// ProcessInvoker overlays step variables on the inherited process environment.
 	// https://github.com/actions/runner/blob/main/src/Runner.Sdk/ProcessInvoker.cs
 	layers := []scripts.EnvironmentLayer{{Scope: scripts.EnvironmentRuntime, UnknownNames: true}}

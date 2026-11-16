@@ -57,8 +57,8 @@ func (rule *ruleExecutableBit) FindingCount() int        { return rule.findings.
 func (rule *ruleExecutableBit) AnnotateSince(mark int, annotate func(*finding.Finding)) {
 	rule.findings.AnnotateSince(mark, annotate)
 }
-func (rule *ruleExecutableBit) VisitWorkflowPost(workflows.Workflow) error { return nil }
-func (rule *ruleExecutableBit) VisitJobPost(workflows.Job) error           { return nil }
+func (rule *ruleExecutableBit) VisitWorkflowPost(workflows.BoundWorkflow) error { return nil }
+func (rule *ruleExecutableBit) VisitJobPost(workflows.BoundJob) error           { return nil }
 func (rule *ruleExecutableBit) ApplyCheckout(actions *localactions.Resolver) {
 	rule.SetPaths(actions.ApplyCheckout(rule.Paths()))
 }
@@ -68,18 +68,18 @@ type executableInvocation struct {
 	parent *ExecutableChecker
 }
 
-func (rule *ruleExecutableBit) VisitStep(step workflows.Step) error {
+func (rule *ruleExecutableBit) VisitStep(step workflows.BoundStep) error {
 	if _, action := step.Action(); action {
 		return nil
 	}
 	return rule.VisitInvocationStep(step)
 }
 
-func (rule *ruleExecutableBit) VisitInvocationStep(step workflows.Step) error {
+func (rule *ruleExecutableBit) VisitInvocationStep(step workflows.BoundStep) error {
 	return rule.ExecutableChecker.VisitStep(step)
 }
 
-func (rule *ruleExecutableBit) VisitOpaqueAction(step workflows.Step) error {
+func (rule *ruleExecutableBit) VisitOpaqueAction(step workflows.BoundStep) error {
 	return rule.VisitInvocationStep(step)
 }
 

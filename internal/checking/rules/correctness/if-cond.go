@@ -38,7 +38,7 @@ func checkCondition(value *definition.String) []reporting.StepFinding {
 	return reporting.FromDiagnostics(conditionDiagnostics(value.Value, sourcetext.ZeroIfNil(value.Pos)))
 }
 
-func checkJobConditions(job workflows.Job) []reporting.StepFinding {
+func checkJobConditions(job workflows.BoundJob) []reporting.StepFinding {
 	out := checkCondition(job.If)
 	if job.Snapshot != nil {
 		out = append(out, checkCondition(job.Snapshot.If)...)
@@ -46,7 +46,7 @@ func checkJobConditions(job workflows.Job) []reporting.StepFinding {
 	return out
 }
 
-func checkStepCondition(step workflows.Step) []reporting.StepFinding {
+func checkStepCondition(step workflows.BoundStep) []reporting.StepFinding {
 	return checkCondition(step.If)
 }
 

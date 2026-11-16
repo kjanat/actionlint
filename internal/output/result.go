@@ -1,6 +1,7 @@
 package output
 
 import (
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"actionlint.kjanat.dev/v2/internal/results/report"
 )
@@ -10,7 +11,7 @@ import (
 type RenderedReport struct {
 	report.CheckResult
 	Findings []results.PublishedDiagnostic
-	Rules    []Rule
+	Rules    []rule.Descriptor
 }
 
 // FromAnalysis prepares display data without choosing command status.

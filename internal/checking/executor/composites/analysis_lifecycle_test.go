@@ -34,7 +34,7 @@ type cancelBeforeStep struct {
 	cancel context.CancelFunc
 }
 
-func (r *cancelBeforeStep) VisitWorkflowPre(workflows.Workflow) error {
+func (r *cancelBeforeStep) VisitWorkflowPre(workflows.BoundWorkflow) error {
 	r.cancel()
 	return nil
 }
@@ -153,7 +153,7 @@ type phaseRule struct {
 	joined  *bool
 }
 
-func (r *phaseRule) VisitStep(workflows.Step) error { *r.visited = true; return r.failure }
+func (r *phaseRule) VisitStep(workflows.BoundStep) error { *r.visited = true; return r.failure }
 func TestCompositionCompletesScriptsAndResourcesAfterVisitFailure(t *testing.T) {
 	t.Parallel()
 	for _, failVisit := range []bool{false, true} {

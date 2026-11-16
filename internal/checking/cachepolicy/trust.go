@@ -73,7 +73,7 @@ var cacheEventClasses = map[string]cacheEventClass{
 // cacheRestrictedEvents includes unclassified triggers conservatively.
 //
 // Inventory tests require an explicit decision before a new generated event can ship.
-func cacheRestrictedEvents(w workflows.Workflow) []string {
+func cacheRestrictedEvents(w workflows.BoundWorkflow) []string {
 	events := make([]string, 0, len(w.On))
 	for _, event := range w.On {
 		name := event.EventName()
@@ -98,11 +98,11 @@ type Trust struct {
 }
 type cacheDeclaration struct {
 	mode      *definition.CacheMode
-	job       workflows.Job
+	job       workflows.BoundJob
 	reachable []string
 }
 
-func (r *Trust) declaration(mode *definition.CacheMode, job workflows.Job) *cacheDeclaration {
+func (r *Trust) declaration(mode *definition.CacheMode, job workflows.BoundJob) *cacheDeclaration {
 	for i := range r.declarations {
 		if r.declarations[i].mode == mode {
 			return &r.declarations[i]
@@ -113,13 +113,13 @@ func (r *Trust) declaration(mode *definition.CacheMode, job workflows.Job) *cach
 }
 
 // NewTrust prepares event reachability and shared cache declarations for one workflow.
-func NewTrust(w workflows.Workflow) *Trust {
+func NewTrust(w workflows.BoundWorkflow) *Trust {
 	r := &Trust{workflow: w.CacheMode, events: cacheRestrictedEvents(w)}
-	var jobs []workflows.Job
+	var jobs []workflows.BoundJob
 	for _, job := range w.Jobs() {
 		jobs = append(jobs, job)
 	}
-	slices.SortFunc(jobs, func(a, b workflows.Job) int {
+	slices.SortFunc(jobs, func(a, b workflows.BoundJob) int {
 		left, right := sourcetext.ZeroIfNil(a.Pos), sourcetext.ZeroIfNil(b.Pos)
 		if order := cmp.Compare(left.Line, right.Line); order != 0 {
 			return order
@@ -149,7 +149,7 @@ func NewTrust(w workflows.Workflow) *Trust {
 }
 
 // CheckWrites reports effective write grants reachable from low-trust events.
-func (r *Trust) CheckWrites(job workflows.Job) []results.Diagnostic {
+func (r *Trust) CheckWrites(job workflows.BoundJob) []results.Diagnostic {
 	for _, declaration := range r.declarations {
 		if declaration.job == job {
 			mode := declaration.mode
@@ -160,7 +160,7 @@ func (r *Trust) CheckWrites(job workflows.Job) []results.Diagnostic {
 }
 
 // CheckCall requires an explicit cache ceiling on low-trust reusable calls.
-func (r *Trust) CheckCall(job workflows.Job) []results.Diagnostic {
+func (r *Trust) CheckCall(job workflows.BoundJob) []results.Diagnostic {
 	call := job.WorkflowCall
 	if len(r.events) == 0 || call == nil || call.Uses == nil || call.Uses.ContainsExpression() || cache.EffectiveMode(r.workflow, job.CacheMode) != nil {
 		return nil

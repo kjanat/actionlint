@@ -369,19 +369,20 @@ func (rule *Checker) checkIfCondition(str *definition.String, workflowKey string
 		rule.expressionSource = nil
 	}
 	rule.expressionOffset = offset
-	line, col := scalarPosition(str).Line, scalarPosition(str).Column+offset
+	base := sourcetext.ZeroIfNil(scalarPosition(str))
+	base.Column += offset
 	if offset != 0 && str.Quoted {
-		col++
+		base.Column++
 	}
 	if err != nil {
-		rule.syntaxError(err, line, col)
+		rule.syntaxError(err, base)
 		return
 	}
 	if expr == nil {
 		rule.checkString(str, workflowKey)
 		return
 	}
-	if result := rule.checkSemanticsOfExprNode(expr, line, col, false, workflowKey); result.Valid && !exprtypes.BoolType().Assignable(result.Type) {
+	if result := rule.checkSemanticsOfExprNode(expr, base, false, workflowKey); result.Valid && !exprtypes.BoolType().Assignable(result.Type) {
 		rule.Errorf(scalarPosition(str), "\"if\" condition should be type \"bool\" but got type %q", result.Type.String())
 	}
 }

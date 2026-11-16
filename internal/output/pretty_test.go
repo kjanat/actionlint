@@ -9,6 +9,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 	"github.com/mattn/go-runewidth"
 )
@@ -197,14 +198,14 @@ func TestPrettyDiagnostic(t *testing.T) {
 
 func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 	t.Parallel()
-	rule := Rule{Name: "shellcheck", Help: "Configure this plugin.", Explanation: "Checks shell snippets.", DocumentationURL: "https://example.com/rule"}
+	descriptor := rule.Descriptor{Name: "shellcheck", Help: "Configure this plugin.", Explanation: "Checks shell snippets.", DocumentationURL: "https://example.com/rule"}
 	d := results.Diagnostic{
-		Rule: rule.Name, Code: "SC2035", Severity: "info", Message: "Use ./*glob* or -- *glob*",
+		Rule: descriptor.Name, Code: "SC2035", Severity: "info", Message: "Use ./*glob* or -- *glob*",
 		Path: "ci.yml", Start: sourcetext.Position{Line: 440, Column: 36},
-		Help: rule.Help, Explanation: rule.Explanation,
-		DocumentationURL: rule.DocumentationURL,
+		Help: descriptor.Help, Explanation: descriptor.Explanation,
+		DocumentationURL: descriptor.DocumentationURL,
 	}
-	r, err := New(outputformat.Pretty, "", false, testVersion, []Rule{rule})
+	r, err := New(outputformat.Pretty, "", false, testVersion, []rule.Descriptor{descriptor})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,8 +220,8 @@ func TestPrettyNativeCodeAndSpecificAdvice(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !strings.Contains(out.String(), "info[shellcheck] SC2035\n  Use ./*glob* or -- *glob*") ||
-			strings.Contains(out.String(), rule.Help) || strings.Contains(out.String(), rule.Explanation) ||
-			strings.Contains(out.String(), rule.DocumentationURL) ||
+			strings.Contains(out.String(), descriptor.Help) || strings.Contains(out.String(), descriptor.Explanation) ||
+			strings.Contains(out.String(), descriptor.DocumentationURL) ||
 			strings.Contains(out.String(), "Quote this variable.") != specific {
 			t.Fatalf("specific=%t: %s", specific, &out)
 		}
@@ -234,21 +235,21 @@ func TestPrettyRuleConfiguration(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name     string
-		rules    []Rule
-		result   []Rule
+		rules    []rule.Descriptor
+		result   []rule.Descriptor
 		finding  string
 		wantPath string
 	}{
 		{
-			name: "built-in rule", rules: []Rule{{Name: "case-insensitive-conditions", Category: "suspicious"}},
+			name: "built-in rule", rules: []rule.Descriptor{{Name: "case-insensitive-conditions", Category: "suspicious"}},
 			finding: "case-insensitive-conditions", wantPath: "lint.rules.suspicious.case-insensitive-conditions",
 		},
 		{
-			name: "plugin rule from analysis", result: []Rule{{Name: "custom-check", Category: "security", Provider: "custom-plugin"}},
+			name: "plugin rule from analysis", result: []rule.Descriptor{{Name: "custom-check", Category: "security", Provider: "custom-plugin"}},
 			finding: "custom-check", wantPath: "lint.rules.security.custom-check",
 		},
 		{
-			name: "registered rule without category", rules: []Rule{{Name: "example"}}, finding: "example",
+			name: "registered rule without category", rules: []rule.Descriptor{{Name: "example"}}, finding: "example",
 		},
 		{name: "unknown rule", finding: "unregistered"},
 		{name: "diagnostic without rule"},

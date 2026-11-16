@@ -75,7 +75,7 @@ func (r jobRecord) knowledge() JobKnowledge {
 
 // Knowledge contains prepared runner information for each job in a document.
 type Knowledge struct {
-	jobs   map[workflows.Job]jobRecord
+	jobs   map[workflows.BoundJob]jobRecord
 	report runnerapi.Report
 	target string
 }
@@ -89,7 +89,7 @@ func (k *Knowledge) Target() string {
 	return k.target
 }
 
-func (k *Knowledge) Job(job workflows.Job) JobKnowledge {
+func (k *Knowledge) Job(job workflows.BoundJob) JobKnowledge {
 	if k == nil {
 		return builtinJob(job)
 	}
@@ -167,7 +167,7 @@ func resolutionValue(resolution runnerapi.Resolution) (runnerapi.Resolution, err
 	return nil, errors.New("invalid runner resolution")
 }
 
-func joinAnswers(job workflows.Job, answers []runnerapi.Answer) (jobRecord, error) {
+func joinAnswers(job workflows.BoundJob, answers []runnerapi.Answer) (jobRecord, error) {
 	record := jobRecord{answers: slices.Clone(answers)}
 	var candidates []runnerapi.Candidate
 	uncertain := false
@@ -246,7 +246,7 @@ func candidatePlatform(c runnerapi.Candidate) Platform {
 	return Any
 }
 
-func builtinJob(job workflows.Job) JobKnowledge {
+func builtinJob(job workflows.BoundJob) JobKnowledge {
 	if !job.Present() {
 		return JobKnowledge{}
 	}

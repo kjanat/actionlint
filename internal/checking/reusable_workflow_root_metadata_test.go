@@ -95,7 +95,7 @@ permissions: {}
 				}
 				previousMetadata = metadata
 				for pass := range 2 {
-					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -117,7 +117,7 @@ permissions: {}
 					}
 					previousDiagnostics = errs
 				}
-				errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
+				errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -209,7 +209,7 @@ permissions: {}
 						seedCapturedWorkflow(t, cache, "callee.yaml", callee)
 					}
 					for pass := range 2 {
-						errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
+						errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "caller.yaml", Content: caller, Project: project, Config: project.Config()}, nil, nil, cache)
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -241,7 +241,7 @@ permissions: {}
 						}
 					}
 					previousMetadata = metadata
-					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "callee.yaml", Content: callee, Project: project, Config: project.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -75,13 +75,13 @@ func TestOwnedIndexReturnsCopiesForAnonymousStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	view := snapshotJobSteps(t, snapshot, "build")[0]
-	refs := snapshot.Bound().SourceIndex()
-	_, dependencies := snapshot.Bound().Declarations()
+	refs := snapshot.BoundDocument().SourceIndex()
+	_, dependencies := snapshot.BoundDocument().Declarations()
 	if len(refs.Steps) != 1 || refs.Steps[0] != view.Reference() || len(dependencies) != 1 || dependencies[0].Reference != view.Reference() || dependencies[0].Uses != "actions/checkout@v4" {
 		t.Fatal("final declaration projection lost the anonymous step")
 	}
 	refs.Steps[0] = sourcetext.Reference{}
-	if snapshot.Bound().SourceIndex().Steps[0] != view.Reference() {
+	if snapshot.BoundDocument().SourceIndex().Steps[0] != view.Reference() {
 		t.Fatal("consumer changed canonical index")
 	}
 }
@@ -108,13 +108,13 @@ func TestOwnedHandlesRejectIndependentDecodeAndZero(t *testing.T) {
 	if err := reused.ValidateStep(foreignStep); err == nil {
 		t.Fatal("foreign decode accepted as canonical declaration")
 	}
-	if snapshots.Owns(foreignStep) || snapshots.Owns(workflows.Step{}) {
+	if snapshots.Owns(foreignStep) || snapshots.Owns(workflows.BoundStep{}) {
 		t.Fatal("foreign or zero handle accepted")
 	}
-	if err := bound.ValidateStep(workflows.Step{}); err == nil {
+	if err := bound.ValidateStep(workflows.BoundStep{}); err == nil {
 		t.Fatal("missing declaration accepted")
 	}
-	zero := workflows.Step{}
+	zero := workflows.BoundStep{}
 	if zero.Present() || zero.Reference() != (sourcetext.Reference{}) {
 		t.Fatal("zero handle exposes declarations")
 	}
@@ -231,7 +231,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 			if err != nil {
 				t.Fatalf("admit action=%v source=%q: %v", action, content, err)
 			}
-			if string(snapshot.Content()) != content || snapshot.Bound().SourceIndex().Document != snapshot.Reference() {
+			if string(snapshot.Content()) != content || snapshot.BoundDocument().SourceIndex().Document != snapshot.Reference() {
 				t.Fatal("failed parse lost original source revision")
 			}
 			found, ok := snapshots.LookupDocument("./input.yml")

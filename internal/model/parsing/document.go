@@ -41,7 +41,7 @@ type Document struct {
 // before a registry assigns them a document identity. Only this package
 // creates it, so admission cannot bind a hand-built tree to captured bytes;
 // its zero value has no parse provenance. SourceSnapshots binds it to a
-// declaration.Bound once the capture names the document.
+// workflows.BoundDocument once the capture names the document.
 type Provenance struct {
 	parsed   bool
 	text     string
@@ -50,7 +50,7 @@ type Provenance struct {
 	using    string
 }
 
-func (p Provenance) bind(identity string) *workflows.Bound {
+func (p Provenance) bind(identity string) *workflows.BoundDocument {
 	return workflows.Bind(identity, p.text, p.workflow, p.action, p.using)
 }
 

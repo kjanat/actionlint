@@ -66,7 +66,7 @@ func NewRuleAction(ctx context.Context, base workflowvisit.Base, cache localacti
 }
 
 // VisitStep is callback when visiting Step node.
-func (rule *ruleAction) VisitStep(n workflows.Step) error {
+func (rule *ruleAction) VisitStep(n workflows.BoundStep) error {
 	e, ok := n.Action()
 	if !ok || e.Uses == nil {
 		return nil

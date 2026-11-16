@@ -30,14 +30,14 @@ var WorkflowRunNamesRule = &define.Rule{
 // It does not read files or depend on prior callbacks.
 func WorkflowRunNamesChecks(inventory names.Inventory) define.Checks {
 	return define.Checks{
-		Workflow: func(workflow workflows.Workflow) []reporting.StepFinding {
+		Workflow: func(workflow workflows.BoundWorkflow) []reporting.StepFinding {
 			return reporting.FromDiagnostics(workflowRunNameDiagnostics(inventory, WorkflowRunFilters(workflow)))
 		},
 	}
 }
 
 // WorkflowRunFilters returns declared producer-name filters without loading an inventory.
-func WorkflowRunFilters(w workflows.Workflow) []*definition.String {
+func WorkflowRunFilters(w workflows.BoundWorkflow) []*definition.String {
 	if !w.Present() {
 		return nil
 	}

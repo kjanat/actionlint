@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 	"github.com/kjanat/wacogo"
@@ -209,7 +210,7 @@ func liftRunnerSupportChange(value wacogo.Val) (runnerapi.SupportChange, error) 
 	if err != nil {
 		return change, err
 	}
-	change.On, err = runnerapi.ParseDate(date)
+	change.On, err = lifecycle.ParseDate(date)
 	if err != nil {
 		return change, err
 	}

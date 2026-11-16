@@ -21,12 +21,12 @@ import (
 
 type sourceMutationRule struct {
 	workflowvisit.Base
-	mutate   func(workflows.Step)
+	mutate   func(workflows.BoundStep)
 	visits   int
 	metadata int
 }
 
-func (r *sourceMutationRule) VisitStep(step workflows.Step) error {
+func (r *sourceMutationRule) VisitStep(step workflows.BoundStep) error {
 	r.visits++
 	r.mutate(step)
 	return nil
@@ -34,11 +34,11 @@ func (r *sourceMutationRule) VisitStep(step workflows.Step) error {
 
 func (r *sourceMutationRule) EnterInvocation(workflowvisit.Invocation) error { return nil }
 func (r *sourceMutationRule) LeaveInvocation(invocation.Context) error       { return nil }
-func (r *sourceMutationRule) VisitInvocationStep(step workflows.Step) error {
+func (r *sourceMutationRule) VisitInvocationStep(step workflows.BoundStep) error {
 	return r.VisitStep(step)
 }
 
-func (r *sourceMutationRule) VisitOpaqueAction(step workflows.Step) error {
+func (r *sourceMutationRule) VisitOpaqueAction(step workflows.BoundStep) error {
 	return r.VisitStep(step)
 }
 
@@ -71,7 +71,7 @@ func TestSourceOwnershipRuleCannotChangeCollectedDefaultShell(t *testing.T) {
 			if level == "job" {
 				defaults = parsed.Jobs["test"].Defaults
 			}
-			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflows.Step) {
+			probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-default", ""), mutate: func(workflows.BoundStep) {
 				defaults.Run.Shell.Value = "pwsh"
 			}}
 			f.options.Rules = append(f.options.Rules, probe)
@@ -101,7 +101,7 @@ func TestNestedCallResolutionUsesCanonicalDeclarationAfterMetadataCallback(t *te
 	f := newInvocationFixture(t, t.Context(), workflow, actions, nil)
 	captureMutableMetadata(f)
 	mutations := 0
-	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflows.Step) {
+	probe := &sourceMutationRule{Base: workflowvisit.NewBase("mutate-nested-call", ""), mutate: func(step workflows.BoundStep) {
 		if action, ok := step.Action(); ok && action.Uses.Text() == "$/a" {
 			mutateCallInput(t, f, step, "$/b")
 			mutations++
@@ -139,7 +139,7 @@ type workflowPreMutation struct {
 	runs     int
 }
 
-func (rule *workflowPreMutation) VisitWorkflowPre(_ workflows.Workflow) error {
+func (rule *workflowPreMutation) VisitWorkflowPre(_ workflows.BoundWorkflow) error {
 	rule.runs++
 	rule.mutate(rule.original)
 	return nil
@@ -188,7 +188,7 @@ func captureMutableMetadata(f *invocationFixture) {
 	f.mutateMeta = func(meta *actionmeta.Metadata) { f.mutableMetadata[filepath.Clean(meta.Path())] = meta }
 }
 
-func mutateCallInput(t *testing.T, f *invocationFixture, view workflows.Step, text string) {
+func mutateCallInput(t *testing.T, f *invocationFixture, view workflows.BoundStep, text string) {
 	t.Helper()
 	if view.SourceReference() == f.root.Reference() {
 		for key, job := range f.original.Jobs {

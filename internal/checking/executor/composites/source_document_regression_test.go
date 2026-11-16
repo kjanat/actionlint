@@ -55,7 +55,7 @@ func TestParseFailedActionKeepsRecoveredCanonicalSourceReferences(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(snapshot.Bound().SourceIndex().Steps); got != 1 {
+	if got := len(snapshot.BoundDocument().SourceIndex().Steps); got != 1 {
 		t.Fatalf("frozen provenance lost recovered step references: got %d, want 1", got)
 	}
 }

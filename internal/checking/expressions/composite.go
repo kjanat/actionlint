@@ -18,7 +18,7 @@ func (rule *Checker) BeginComposite(body workflows.ActionBody) {
 
 // CheckCompositeStep checks invocation-dependent references and script sinks.
 // Declaration validation owns syntax, context availability and call diagnostics.
-func (rule *Checker) CheckCompositeStep(step workflows.Step) error {
+func (rule *Checker) CheckCompositeStep(step workflows.BoundStep) error {
 	mark := len(rule.errs)
 	err := rule.VisitStep(step)
 	rule.filterCompositeFindings(mark)

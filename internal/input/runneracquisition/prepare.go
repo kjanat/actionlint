@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/parsing"
 	"actionlint.kjanat.dev/v2/internal/model/runners"
 	"actionlint.kjanat.dev/v2/internal/model/runners/runnerapi"
@@ -80,7 +81,7 @@ func PrepareWithLabels(ctx context.Context, snapshot parsing.SourceSnapshot, cus
 		service = *options.Service
 	}
 	if options.AsOf.IsZero() {
-		options.AsOf = runnerapi.DateOf(time.Now())
+		options.AsOf = lifecycle.DateOf(time.Now())
 	}
 	request := runnerapi.Request{Target: options.Target, Scope: scope, Snapshot: options.Snapshot, Service: service, AsOf: options.AsOf}
 	plan, err := runners.NewResolutionPlan(snapshot, custom, request, selection, hasSnapshot)

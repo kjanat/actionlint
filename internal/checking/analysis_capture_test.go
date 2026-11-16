@@ -112,10 +112,10 @@ func TestSourceCapturePersistentJoinFailureBlocksPublication(t *testing.T) {
 type capturedTraversal struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
-	workflows *[]workflows.Step
+	workflows *[]workflows.BoundStep
 }
 
-func (r *capturedTraversal) VisitWorkflowPre(workflow workflows.Workflow) error {
+func (r *capturedTraversal) VisitWorkflowPre(workflow workflows.BoundWorkflow) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, job := range workflow.Jobs() {
@@ -130,12 +130,12 @@ func (r *capturedTraversal) VisitWorkflowPre(workflow workflows.Workflow) error 
 func TestDuplicateEntriesTraverseOneCanonicalCapturedAST(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
-	var workflows []workflows.Step
+	var workflows []workflows.BoundStep
 	content := []byte(commandGoodWorkflow)
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: t.TempDir(),
-		Sources:    []sourceUnit{{Path: "workflow.yml", Content: content}, {Path: "workflow.yml", Content: content}},
+		Sources:    []workspace.InputFile{{Path: "workflow.yml", Content: content}, {Path: "workflow.yml", Content: content}},
 		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
@@ -159,7 +159,7 @@ type sharedCompositeObserver struct {
 	workflowvisit.Base
 	mu        *sync.Mutex
 	snapshots *[]parsing.SourceSnapshot
-	steps     *[]workflows.Step
+	steps     *[]workflows.BoundStep
 }
 
 func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation) error {
@@ -169,14 +169,14 @@ func (r *sharedCompositeObserver) EnterInvocation(scope workflowvisit.Invocation
 	return nil
 }
 
-func (r *sharedCompositeObserver) VisitInvocationStep(step workflows.Step) error {
+func (r *sharedCompositeObserver) VisitInvocationStep(step workflows.BoundStep) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	*r.steps = append(*r.steps, step)
 	return nil
 }
-func (*sharedCompositeObserver) VisitOpaqueAction(workflows.Step) error   { return nil }
-func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error { return nil }
+func (*sharedCompositeObserver) VisitOpaqueAction(workflows.BoundStep) error { return nil }
+func (*sharedCompositeObserver) LeaveInvocation(invocation.Context) error    { return nil }
 
 func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	t.Parallel()
@@ -191,11 +191,11 @@ func TestDefaultRulesAndScriptToolsShareCompositeCapturedAST(t *testing.T) {
 	content := []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/local}]}}\n")
 	var mu sync.Mutex
 	var snapshots []parsing.SourceSnapshot
-	var steps []workflows.Step
+	var steps []workflows.BoundStep
 	var toolCalls atomic.Int32
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
-		Sources:    []sourceUnit{{Path: "first.yml", Content: content, Project: workspace.Identity(root)}, {Path: "second.yml", Content: content, Project: workspace.Identity(root)}},
+		Sources:    []workspace.InputFile{{Path: "first.yml", Content: content, Project: workspace.Identity(root)}, {Path: "second.yml", Content: content, Project: workspace.Identity(root)}},
 		Tools:      registry.Registrations(registry.ToolSelections{"shellcheck": {Runner: func([]string, string) ([]byte, error) { toolCalls.Add(1); return []byte(`{"comments":[]}`), nil }}}),
 		OnRulesCreated: func(rules []workflowvisit.Rule) []workflowvisit.Rule {
 			if len(rules) == 0 {
@@ -279,7 +279,7 @@ func TestCaptureInputsExcludeUnusedExplicitOverlays(t *testing.T) {
 	selected, excluded := filepath.Join(root, "selected.yml"), filepath.Join(root, "excluded.yml")
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
-		Sources: []sourceUnit{
+		Sources: []workspace.InputFile{
 			{Path: "selected.yml", InputPath: selected, Content: []byte(commandGoodWorkflow), Config: config},
 			{Path: "excluded.yml", InputPath: excluded, Content: []byte("invalid: ["), Config: config},
 		},
@@ -298,7 +298,7 @@ func TestCapturedActionInputsKeepRequestedAlias(t *testing.T) {
 	root, physical, alias := virtualActionPaths(t)
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
-		Sources:    []sourceUnit{{Path: "workflow.yml", Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/alias/virtual}]}}\n"), Project: workspace.Identity(root)}},
+		Sources:    []workspace.InputFile{{Path: "workflow.yml", Content: []byte("on: push\njobs: {test: {runs-on: ubuntu-latest, steps: [{uses: $/alias/virtual}]}}\n"), Project: workspace.Identity(root)}},
 		ReadFile: func(path string) ([]byte, error) {
 			if filepath.Clean(path) == physical {
 				return []byte(standaloneComposite), nil

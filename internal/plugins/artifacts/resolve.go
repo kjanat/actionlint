@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -159,8 +158,7 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 // Import verifies candidate bytes before adding them to the download cache.
 // Callers open local inputs within their selected catalogue root.
 func Import(ctx context.Context, input io.Reader, digest string, options Options) error {
-	decoded, err := hex.DecodeString(digest)
-	if err != nil || len(decoded) != sha256.Size || options.CacheDir == "" {
+	if pluginreference.CheckDigest(digest) != nil || options.CacheDir == "" {
 		return errors.New("candidate import requires a digest and cache directory")
 	}
 	limit := options.MaxBytes

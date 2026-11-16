@@ -9,8 +9,6 @@ import (
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs/validation"
 )
 
-type ToolRequirements = workspace.ExternalToolRequirements
-
 // toolNames lists the rule names of registered tool providers. Unlike the
 // rule names configuration loading binds, it holds no document analyzer, so
 // tools.<name> entries bind to tool providers only.
@@ -23,13 +21,13 @@ func toolNames(registrations []contract.Registration) []string {
 }
 
 // RequiredTools resolves configuration without parsing sources or loading runtimes.
-func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRequirements, error) {
+func RequiredTools(ctx context.Context, options Options, paths []string) (workspace.ExternalToolRequirements, error) {
 	options, err := ConfigureToolIntegrations(options)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := configuration.CompileIgnorePatterns(options.IgnorePatterns); err != nil {
-		return ToolRequirements{}, err
+		return workspace.ExternalToolRequirements{}, err
 	}
 	var names []string
 	registrations := ConfigurationRegistrations(options.Analyzers, options.Tools)
@@ -47,7 +45,7 @@ func RequiredTools(ctx context.Context, options Options, paths []string) (ToolRe
 	}
 	session, err := workspace.New(ctx, workspace.Options{WorkingDir: options.WorkingDir, ConfigFile: options.ConfigFile, ConfigOverlays: options.ConfigOverlays, SkipProjectConfig: options.SkipProjectConfig, NoIgnore: options.NoIgnore, ReadFile: options.ReadFile, ConfigConnections: options.ConfigConnections, RuleNames: names, Rules: rules})
 	if err != nil {
-		return ToolRequirements{}, err
+		return workspace.ExternalToolRequirements{}, err
 	}
 	providers := toolNames(options.Tools)
 	return session.RequiredTools(ctx, paths, workspace.ToolOptions{Presets: options.Presets, Required: func(cfg, project *configuration.Config) ([]string, error) {

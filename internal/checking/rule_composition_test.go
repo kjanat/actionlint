@@ -18,7 +18,7 @@ type customRuleForTest struct {
 	count int
 }
 
-func (r *customRuleForTest) VisitStep(n workflows.Step) error {
+func (r *customRuleForTest) VisitStep(n workflows.BoundStep) error {
 	r.count++
 	if r.count > 1 {
 		position, _ := n.Position()
@@ -47,7 +47,7 @@ jobs:
       - run: echo
 permissions: {}
 `
-		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &configuration.Config{}}}
+		request.Sources = []workspace.InputFile{{Path: "test.yaml", Content: []byte(w), Config: &configuration.Config{}}}
 		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +67,7 @@ jobs:
       - run: echo
 permissions: {}
 `
-		request.Sources = []sourceUnit{{Path: "test.yaml", Content: []byte(w), Config: &configuration.Config{}}}
+		request.Sources = []workspace.InputFile{{Path: "test.yaml", Content: []byte(w), Config: &configuration.Config{}}}
 		errs, err := testFindings(runTestAnalysis(t.Context(), request))
 		if err != nil {
 			t.Fatal(err)
@@ -138,7 +138,7 @@ func BenchmarkLintWorkflowContent(b *testing.B) {
 
 		b.Run(name, func(b *testing.B) {
 			for range b.N {
-				result, err := runTestAnalysis(b.Context(), analysisRequest{WorkingDir: dir, Sources: []sourceUnit{{Path: f, Content: content, Project: proj, Config: &configuration.Config{}}}})
+				result, err := runTestAnalysis(b.Context(), analysisRequest{WorkingDir: dir, Sources: []workspace.InputFile{{Path: f, Content: content, Project: proj, Config: &configuration.Config{}}}})
 				if err != nil {
 					b.Fatal(err)
 				}

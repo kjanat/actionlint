@@ -12,9 +12,7 @@ func sourceFixtureBase(tb testing.TB) string {
 	return capturefixture.CurrentDir(tb)
 }
 
-type capturedSnapshots = declarations.CapturedSnapshots
-
-func newCapturedSnapshots(tb testing.TB, base string) *capturedSnapshots {
+func newCapturedSnapshots(tb testing.TB, base string) *declarations.CapturedSnapshots {
 	tb.Helper()
 	_, _, snapshots := declarations.NewCapturedSnapshots(tb, base)
 	return snapshots

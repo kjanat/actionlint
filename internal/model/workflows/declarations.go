@@ -11,7 +11,7 @@ import (
 )
 
 // declarationSet collects the mappings and dependencies one document declares.
-// It holds only the new slices it builds; each method reads the Bound it is
+// It holds only the new slices it builds; each method reads the BoundDocument it is
 // given.
 type declarationSet struct {
 	mappings     []facts.Mapping
@@ -19,8 +19,8 @@ type declarationSet struct {
 }
 
 // Declarations returns the mappings and dependencies the document declares. A
-// nil Bound declares none.
-func (b *Bound) Declarations() ([]facts.Mapping, []facts.Dependency) {
+// nil BoundDocument declares none.
+func (b *BoundDocument) Declarations() ([]facts.Mapping, []facts.Dependency) {
 	if b == nil || b.workflow == nil {
 		return nil, nil
 	}
@@ -33,7 +33,7 @@ func (b *Bound) Declarations() ([]facts.Mapping, []facts.Dependency) {
 	return set.mappings, set.dependencies
 }
 
-func (d *declarationSet) job(b *Bound, job *definition.Job, ref sourcetext.Reference) {
+func (d *declarationSet) job(b *BoundDocument, job *definition.Job, ref sourcetext.Reference) {
 	scope := ref.Address
 	if job.WorkflowCall != nil {
 		d.dependency(job.WorkflowCall.Uses, "workflow", ref)

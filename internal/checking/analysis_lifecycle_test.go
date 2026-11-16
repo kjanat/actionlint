@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/workflows"
 )
@@ -17,14 +18,14 @@ type failAfterScheduling struct {
 	failure error
 }
 
-func (r *failAfterScheduling) VisitStep(workflows.Step) error { return r.failure }
+func (r *failAfterScheduling) VisitStep(workflows.BoundStep) error { return r.failure }
 
 func TestAnalysisJoinsInjectedResourcesAfterVisitFailure(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("stop traversal")
 	var completed atomic.Bool
 	result, err := runTestAnalysis(t.Context(), analysisRequest{
-		Sources: []sourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
+		Sources: []workspace.InputFile{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			checker := &scheduledResourceRule{Base: workflowvisit.NewBase("resource", ""), completed: &completed}
 			return []workflowvisit.Rule{checker, &failAfterScheduling{Base: workflowvisit.NewBase("fail", ""), failure: failure}}
@@ -48,7 +49,7 @@ func (rule *scheduledResourceRule) attachScope(scope *hostprocess.Scope) {
 	scope.Register(func() error { rule.workers.Wait(); return nil })
 }
 
-func (rule *scheduledResourceRule) VisitStep(workflows.Step) error {
+func (rule *scheduledResourceRule) VisitStep(workflows.BoundStep) error {
 	rule.workers.Go(func() { rule.completed.Store(true) })
 	return nil
 }
@@ -66,7 +67,7 @@ func TestAnalysisReportsResourceFailureOnce(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("resource completion failed")
 	_, err := runTestAnalysis(t.Context(), analysisRequest{
-		Sources: []sourceUnit{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
+		Sources: []workspace.InputFile{{Path: "workflow.yml", Content: []byte(commandGoodWorkflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			return []workflowvisit.Rule{&failingResourceRule{Base: workflowvisit.NewBase("resource", ""), failure: failure}}
 		},

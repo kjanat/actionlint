@@ -26,12 +26,12 @@ type configVisitProbe struct {
 	finished bool
 }
 
-func (probe *configVisitProbe) VisitStep(step workflows.Step) error {
+func (probe *configVisitProbe) VisitStep(step workflows.BoundStep) error {
 	probe.steps = append(probe.steps, step.ID.Text())
 	return nil
 }
 
-func (probe *configVisitProbe) VisitWorkflowPost(workflows.Workflow) error {
+func (probe *configVisitProbe) VisitWorkflowPost(workflows.BoundWorkflow) error {
 	probe.finished = true
 	return nil
 }
@@ -173,11 +173,11 @@ type ignoreProbeRule struct{ workflowvisit.Base }
 
 func (*ignoreProbeRule) EnterInvocation(workflowvisit.Invocation) error { return nil }
 
-func (*ignoreProbeRule) VisitInvocationStep(workflows.Step) error { return nil }
+func (*ignoreProbeRule) VisitInvocationStep(workflows.BoundStep) error { return nil }
 
 func (*ignoreProbeRule) LeaveInvocation(invocation.Context) error { return nil }
 
-func (rule *ignoreProbeRule) VisitOpaqueAction(step workflows.Step) error {
+func (rule *ignoreProbeRule) VisitOpaqueAction(step workflows.BoundStep) error {
 	if _, action := step.Action(); action {
 		pos, _ := step.Position()
 		rule.Error(&pos, "probe")

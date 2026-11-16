@@ -55,7 +55,7 @@ func (s *analysisSession) admitSourceDocuments(composed composites.Composition, 
 			sourceRejected(rejected, path, document.Capture())
 			continue
 		}
-		references[path] = nested.Bound().SourceIndex()
+		references[path] = nested.BoundDocument().SourceIndex()
 	}
 	return rejected, failure
 }

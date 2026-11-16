@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/lifecycle"
 	"actionlint.kjanat.dev/v2/internal/model/services"
 )
 
@@ -77,7 +78,7 @@ func ValidateSupportCatalog(c SupportCatalog, scope string) error {
 		if !validSupportState(p.Initial) {
 			return errors.New("invalid initial support state")
 		}
-		var last Date
+		var last lifecycle.Date
 		for _, change := range p.Changes {
 			if change.On.IsZero() || !validSupportState(change.State) || !last.IsZero() && change.On.Compare(last) <= 0 {
 				return errors.New("invalid support transition")

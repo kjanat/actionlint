@@ -30,7 +30,7 @@ var CredentialsRule = &define.Rule{
 type credentialsCheck struct{ reporting.Collector }
 
 // Credentials checks container passwords in a complete job declaration.
-func Credentials(n workflows.Job) []reporting.StepFinding {
+func Credentials(n workflows.BoundJob) []reporting.StepFinding {
 	rule := &credentialsCheck{}
 
 	if !n.Present() {

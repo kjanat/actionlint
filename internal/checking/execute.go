@@ -68,9 +68,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// sourceUnit is a workflow or action manifest and its resolved configuration.
-type sourceUnit = workspace.InputFile
-
 // analysisRequest contains resolved sources and analysis settings.
 type analysisRequest struct {
 	ExecutionEnvironment
@@ -79,7 +76,7 @@ type analysisRequest struct {
 	Repository      func(context.Context, string) repository.Snapshot
 	// Tests may shorten teardown without changing the production policy.
 	captureJoinTimeout time.Duration
-	Sources            []sourceUnit
+	Sources            []workspace.InputFile
 	SourceOverlays     []SourceOverlay
 	DiskSources        bool
 	NoIgnore           bool
@@ -109,7 +106,7 @@ type analysisResult struct {
 
 type analyzedFile struct {
 	captured    capture.CapturedDocument
-	source      sourceUnit
+	source      workspace.InputFile
 	errors      []*finding.Finding
 	publication *policy.Batch
 	rules       []rule.Descriptor
@@ -334,7 +331,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 			}
 		}
 	}
-	selected := make([]sourceUnit, 0, len(request.Sources))
+	selected := make([]workspace.InputFile, 0, len(request.Sources))
 	for _, source := range allSources {
 		if source.ConfigProvenance.Path() == "" && source.Project != nil && source.Config == source.Project.Config() {
 			source.ConfigProvenance = source.Project.ConfigProvenance()

@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"actionlint.kjanat.dev/v2/internal/model/outputformat"
+	"actionlint.kjanat.dev/v2/internal/model/rule"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -22,7 +23,7 @@ type Renderer struct {
 }
 
 // New validates a built-in format or custom Go template before rendering.
-func New(format outputformat.Format, template string, oneline bool, version func() string, rules []Rule) (*Renderer, error) {
+func New(format outputformat.Format, template string, oneline bool, version func() string, rules []rule.Descriptor) (*Renderer, error) {
 	if format != "" && template != "" {
 		return nil, errors.New("OutputFormat cannot be combined with a custom Format template")
 	}

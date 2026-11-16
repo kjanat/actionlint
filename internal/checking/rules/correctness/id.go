@@ -23,7 +23,7 @@ var IdRule = &define.Rule{
 	Checks: define.Fixed(define.Checks{Job: checkIdentifiers}),
 }
 
-func checkIdentifiers(job workflows.Job) []reporting.StepFinding {
+func checkIdentifiers(job workflows.BoundJob) []reporting.StepFinding {
 	name := func(value *definition.String) identifier.Name {
 		return identifier.Name{Value: value.Value, Dynamic: value.ContainsExpression(), Start: sourcetext.ZeroIfNil(value.Pos)}
 	}
@@ -34,7 +34,7 @@ func checkIdentifiers(job workflows.Job) []reporting.StepFinding {
 	for _, value := range job.Needs {
 		input.Needs = append(input.Needs, name(value))
 	}
-	owners := map[sourcetext.Position]workflows.Step{}
+	owners := map[sourcetext.Position]workflows.BoundStep{}
 	for step := range job.AllSteps() {
 		if step.ID != nil {
 			input.Steps = append(input.Steps, name(step.ID))

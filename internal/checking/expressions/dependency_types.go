@@ -39,8 +39,8 @@ func (rule *Checker) workflowCallMetadata(call *definition.WorkflowCall) *calls.
 	return m
 }
 
-func (rule *Checker) calcNeedsType(job workflows.Job) exprtypes.ObjectType {
-	resolved := map[workflows.Job]*calls.Metadata{}
+func (rule *Checker) calcNeedsType(job workflows.BoundJob) exprtypes.ObjectType {
+	resolved := map[workflows.BoundJob]*calls.Metadata{}
 	for _, dependency := range outputs.DirectDependencies(rule.workflow, job) {
 		if call := dependency.WorkflowCall; call != nil {
 			resolved[dependency] = rule.workflowCallMetadata(call)
@@ -49,7 +49,7 @@ func (rule *Checker) calcNeedsType(job workflows.Job) exprtypes.ObjectType {
 	return outputs.NeedsType(rule.workflow, job, resolved)
 }
 
-func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent, workflow workflows.Workflow) {
+func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent, workflow workflows.BoundWorkflow) {
 	hasOutputs := false
 	for range call.Outputs {
 		hasOutputs = true
@@ -58,7 +58,7 @@ func (rule *Checker) checkWorkflowCallOutputs(call *definition.WorkflowCallEvent
 	if !hasOutputs {
 		return
 	}
-	resolved := map[workflows.Job]*calls.Metadata{}
+	resolved := map[workflows.BoundJob]*calls.Metadata{}
 	for _, job := range workflow.Jobs() {
 		if target := job.WorkflowCall; target != nil {
 			resolved[job] = rule.workflowCallMetadata(target)

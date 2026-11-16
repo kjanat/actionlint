@@ -3,7 +3,6 @@
 package pluginreference
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -170,48 +169,44 @@ func NewCandidate(name, version, registry, digest string) (Reference, error) {
 	if _, err := LocalRegistryDirectory(ref.Registry()); err != nil {
 		return Reference{}, errors.New("candidate digest requires a local file registry")
 	}
-	decoded, err := hex.DecodeString(digest)
-	if err != nil || len(decoded) != 32 {
+	normalized, ok := NormalizeDigest(digest)
+	if !ok {
 		return Reference{}, errors.New("candidate digest must be 64 hexadecimal SHA256 digits")
 	}
-	ref.candidateDigest = strings.ToLower(digest)
+	ref.candidateDigest = normalized
 	return ref, nil
 }
 
 func directURL(value string) (Reference, error) {
-	if scheme, _, _ := strings.Cut(value, "://"); strings.EqualFold(scheme, "oci") {
+	if IsOCI(value) {
 		return directOCI(value)
 	}
 	u, err := url.Parse(value)
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Opaque != "" {
 		return Reference{}, errors.New("direct plugin URL must use HTTPS without credentials")
 	}
-	digest, ok := strings.CutPrefix(u.Fragment, "sha256=")
-	decoded, err := hex.DecodeString(digest)
-	if !ok || err != nil || len(decoded) != 32 {
+	digest, prefixed := strings.CutPrefix(u.Fragment, "sha256=")
+	digest, ok := NormalizeDigest(digest)
+	if !prefixed || !ok {
 		return Reference{}, errors.New("direct plugin URL requires #sha256=<64 hex digits>")
 	}
 	u.Host = strings.ToLower(u.Host)
 	u.Fragment, u.RawFragment = "", ""
 	name := u.String()
-	u.Fragment = "sha256=" + strings.ToLower(digest)
+	u.Fragment = "sha256=" + digest
 	return Reference{name: name, direct: u.String()}, nil
 }
 
-// directOCI accepts oci://<host>/<repository>@sha256:<hex>. The digest pins
-// the image index or manifest, so a tag is refused: actionlint plugin install
-// resolves tags before it writes a declaration. The artifact resolver checks
-// the host and repository syntax.
+// directOCI accepts oci://<host>/<repository>@sha256:<hex>, the form ParseOCI
+// accepts. The digest pins the image index or manifest, so a tag is refused:
+// actionlint plugin install resolves tags before it writes a declaration.
 func directOCI(value string) (Reference, error) {
-	rest := value[len("oci://"):]
-	host, path, ok := strings.Cut(rest, "/")
-	repository, digest, pinned := strings.Cut(path, "@sha256:")
-	decoded, err := hex.DecodeString(digest)
-	if !ok || host == "" || strings.Contains(host, "@") || repository == "" || !pinned || err != nil || len(decoded) != 32 || digest != strings.ToLower(digest) {
-		return Reference{}, errors.New("direct OCI plugin reference must be oci://<host>/<repository>@sha256:<64 lowercase hex digits>")
+	ref, err := ParseOCI(value)
+	if err != nil {
+		return Reference{}, err
 	}
-	name := "oci://" + strings.ToLower(host) + "/" + repository
-	return Reference{name: name, direct: name + "@sha256:" + digest}, nil
+	name := "oci://" + ref.Host() + "/" + ref.Repository()
+	return Reference{name: name, direct: ref.String()}, nil
 }
 
 // New validates and normalizes a plugin declaration. Empty version and registry

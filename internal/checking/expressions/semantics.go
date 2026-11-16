@@ -31,9 +31,9 @@ func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 	restore := rule.scopeExpressionSource(s, pos)
 	defer restore()
 
-	line, col := pos.Line, pos.Column
+	origin := *pos
 	if quoted {
-		col++ // when the string is quoted like 'foo' or "foo", column should be incremented
+		origin.Column++ // when the string is quoted like 'foo' or "foo", column should be incremented
 	}
 	offset := 0
 	ts := []typedExpr{}
@@ -48,9 +48,9 @@ func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 		s = s[start:]
 		offset += start
 		rule.expressionOffset = offset
-		col := col + offset
+		base := sourcetext.Position{Line: origin.Line, Column: origin.Column + offset}
 
-		result, offsetAfter, parsed := rule.checkSemantics(s, line, col, checkUntrusted, workflowKey)
+		result, offsetAfter, parsed := rule.checkSemantics(s, base, checkUntrusted, workflowKey)
 		// A parsed expression can be followed by another even if semantic checks fail.
 		if !parsed {
 			return nil, false
@@ -69,7 +69,7 @@ func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 		} else {
 			refinement.state = value.Invalid
 		}
-		position := sourcetext.Position{Line: line, Column: col - 3}
+		position := sourcetext.Position{Line: base.Line, Column: base.Column - 3}
 		if mapped := rule.expressionPosition(offset-3, false); mapped != nil {
 			position = *mapped
 		}
@@ -82,19 +82,19 @@ func (rule *Checker) checkExprsIn(s string, pos *sourcetext.Position, quoted, ch
 	return ts, valid
 }
 
-func (rule *Checker) syntaxError(issue *syntax.SyntaxError, lineBase, colBase int) {
+func (rule *Checker) syntaxError(issue *syntax.SyntaxError, base sourcetext.Position) {
 	rule.exprError(&typecheck.Error{
 		Message: issue.Message, Offset: issue.Offset, EndOffset: issue.EndOffset,
 		Position: issue.Position,
 		Rule:     "expression-syntax", Code: "invalid-syntax",
-	}, lineBase, colBase)
+	}, base)
 }
 
-func (rule *Checker) exprError(err *typecheck.Error, lineBase, colBase int) {
-	rule.exprFinding(err, lineBase, colBase, "")
+func (rule *Checker) exprError(err *typecheck.Error, base sourcetext.Position) {
+	rule.exprFinding(err, base, "")
 }
 
-func (rule *Checker) exprFinding(err *typecheck.Error, lineBase, colBase int, severity string) {
+func (rule *Checker) exprFinding(err *typecheck.Error, base sourcetext.Position, severity string) {
 	if rule.compositeScript && !compositeFinding(err.Rule, err.Code) {
 		return // Metadata validation owns composite syntax, context and call errors.
 	}
@@ -102,7 +102,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, lineBase, colBase int, se
 	if kind == "" {
 		kind = "expression"
 	}
-	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: convertExprLineColToPos(err.Position.Line, err.Position.Column, lineBase, colBase)}
+	r := report{rule: kind, code: err.Code, severity: severity, message: err.Message, start: documentPosition(base, err.Position)}
 	if mapped := rule.expressionPosition(rule.expressionOffset+err.Offset, false); mapped != nil {
 		r.start = *mapped
 		if end := rule.expressionPosition(rule.expressionOffset+err.EndOffset, true); end != nil {
@@ -115,7 +115,7 @@ func (rule *Checker) exprFinding(err *typecheck.Error, lineBase, colBase int, se
 	rule.errs = append(rule.errs, r)
 }
 
-func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, line, col int, checkUntrusted bool, workflowKey string) typecheck.ExpressionCheckResult {
+func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, base sourcetext.Position, checkUntrusted bool, workflowKey string) typecheck.ExpressionCheckResult {
 	options := rule.options.Semantics
 	if rule.jobReferences != nil {
 		options.Variables, options.Secrets = rule.jobReferences.Variables, rule.jobReferences.Secrets
@@ -201,7 +201,7 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, line, col int, c
 		errs = append(errs, security.ScriptInjection(expr, result.Findings)...)
 	}
 	for _, finding := range correctness.PermissiveJSONCalls(expr) {
-		rule.exprFinding(finding, line, col, "info")
+		rule.exprFinding(finding, base, "info")
 	}
 	canCheckInterpolation := result.Valid && (rule.options.ScriptInjectionDisabled || !slices.ContainsFunc(errs, func(err *typecheck.Error) bool { return err.Rule == "script-injection" }))
 	// Serialized scalars still require a data-argument position. A closed
@@ -230,20 +230,20 @@ func (rule *Checker) checkSemanticsOfExprNode(expr syntax.Node, line, col int, c
 			return false
 		})
 		for _, finding := range findings {
-			rule.exprError(finding, line, col)
+			rule.exprError(finding, base)
 		}
 	}
 	for _, err := range errs {
-		rule.exprError(err, line, col)
+		rule.exprError(err, base)
 	}
 	if rule.options.UnsoundTernary {
 		for _, finding := range correctness.UnsoundTernary(expr) {
-			rule.exprError(finding, line, col)
+			rule.exprError(finding, base)
 		}
 	}
 	if workflowKey == "" && result.Valid {
 		if _, literal := expr.(*syntax.StringNode); !literal {
-			position := &sourcetext.Position{Line: line, Column: col}
+			position := &base
 			if mapped := rule.expressionPosition(rule.expressionOffset, false); mapped != nil {
 				position = mapped
 			}
@@ -292,21 +292,19 @@ func (rule *Checker) safeScriptStatusSelector(node syntax.Node) bool {
 
 // checkSemantics parses and checks the expression at the start of src. offset
 // is where the expression ends in src. parsed is false after a syntax error.
-func (rule *Checker) checkSemantics(src string, line, col int, checkUntrusted bool, workflowKey string) (result typecheck.ExpressionCheckResult, offset int, parsed bool) {
+func (rule *Checker) checkSemantics(src string, base sourcetext.Position, checkUntrusted bool, workflowKey string) (result typecheck.ExpressionCheckResult, offset int, parsed bool) {
 	l := syntax.NewLexer(src)
 	p := syntax.NewParser()
 	expr, err := p.ParseExpression(l)
 	if err != nil {
-		rule.syntaxError(err, line, col)
+		rule.syntaxError(err, base)
 		return typecheck.ExpressionCheckResult{Type: exprtypes.AnyType()}, l.Offset(), false
 	}
-	return rule.checkSemanticsOfExprNode(expr, line, col, checkUntrusted, workflowKey), l.Offset(), true
+	return rule.checkSemanticsOfExprNode(expr, base, checkUntrusted, workflowKey), l.Offset(), true
 }
 
-func convertExprLineColToPos(line, col, lineBase, colBase int) sourcetext.Position {
-	// Line and column in ExprError are 1-based
-	return sourcetext.Position{
-		Line:   line - 1 + lineBase,
-		Column: col - 1 + colBase,
-	}
+// documentPosition places at, a one-based position within an expression, in
+// the document where the expression starts at base.
+func documentPosition(base, at sourcetext.Position) sourcetext.Position {
+	return sourcetext.Position{Line: base.Line + at.Line - 1, Column: base.Column + at.Column - 1}
 }

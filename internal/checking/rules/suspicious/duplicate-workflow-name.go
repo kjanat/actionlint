@@ -33,7 +33,7 @@ var DuplicateWorkflowNameRule = &define.Rule{
 	Prepare: prepareDuplicateWorkflowName,
 	Enabled: define.RuleInputs.InProjectWorkflows,
 	Checks: func(c define.RuleInputs) define.Checks {
-		return define.Checks{Workflow: func(w workflows.Workflow) []reporting.StepFinding {
+		return define.Checks{Workflow: func(w workflows.BoundWorkflow) []reporting.StepFinding {
 			return DuplicateWorkflowName(c.WorkflowNameInventory, w)
 		}}
 	},
@@ -42,7 +42,7 @@ var DuplicateWorkflowNameRule = &define.Rule{
 // DuplicateWorkflowName reports the workflow's plain-text name when another
 // workflow in others uses it too. others must not contain the workflow itself.
 // It does not read files.
-func DuplicateWorkflowName(others names.Inventory, w workflows.Workflow) []reporting.StepFinding {
+func DuplicateWorkflowName(others names.Inventory, w workflows.BoundWorkflow) []reporting.StepFinding {
 	if !w.Present() {
 		return nil
 	}

@@ -43,7 +43,7 @@ runs:
 			outerReads, innerReads := 0, 0
 			result, err := runTestAnalysis(ctx, analysisRequest{
 				WorkingDir: root,
-				Sources: []sourceUnit{{
+				Sources: []workspace.InputFile{{
 					Path: "workflow.yml", Project: workspace.Identity(root),
 					Content: []byte(`on: push
 jobs:

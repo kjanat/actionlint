@@ -36,11 +36,11 @@ func checkPolicy(t *testing.T, source string) []results.Diagnostic {
 	}
 	w := policyWorkflowView(parsed)
 	trust := NewTrust(w)
-	jobs := []workflows.Job{}
+	jobs := []workflows.BoundJob{}
 	for _, j := range w.Jobs() {
 		jobs = append(jobs, j)
 	}
-	slices.SortFunc(jobs, func(a, b workflows.Job) int {
+	slices.SortFunc(jobs, func(a, b workflows.BoundJob) int {
 		return sourcetext.ZeroIfNil(a.Pos).Line - sourcetext.ZeroIfNil(b.Pos).Line
 	})
 	for _, j := range jobs {
@@ -376,7 +376,7 @@ func TestCachePolicyOperationReferences(t *testing.T) {
 	}
 }
 
-func policyWorkflowView(workflow *definition.Workflow) workflows.Workflow {
+func policyWorkflowView(workflow *definition.Workflow) workflows.BoundWorkflow {
 	return workflows.Bind("policy-fixture", "", workflow, false, "").Workflow()
 }
 

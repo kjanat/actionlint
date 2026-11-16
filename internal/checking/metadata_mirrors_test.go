@@ -9,6 +9,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/references"
 	"actionlint.kjanat.dev/v2/internal/input/references/actions"
 	"actionlint.kjanat.dev/v2/internal/input/references/reusableworkflows"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/model/availability"
 )
 
@@ -67,7 +68,7 @@ jobs:
 			t.Fatal(err)
 		}
 		for j := range 2 {
-			request.Sources = append(request.Sources, sourceUnit{Path: fmt.Sprintf("workflow-%d-%d.yml", i, j), Content: []byte(source), Config: cfg})
+			request.Sources = append(request.Sources, workspace.InputFile{Path: fmt.Sprintf("workflow-%d-%d.yml", i, j), Content: []byte(source), Config: cfg})
 		}
 	}
 	if _, err := runTestAnalysis(t.Context(), request); err != nil {

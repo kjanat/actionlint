@@ -25,7 +25,7 @@ func originSelector(s *definition.String) string {
 	return s.Value
 }
 
-func (j Job) Origin() Origin {
+func (j BoundJob) Origin() Origin {
 	if !j.Present() {
 		return Origin{}
 	}
@@ -36,7 +36,7 @@ func (j Job) Origin() Origin {
 	return origin
 }
 
-func (s Step) Origin(job string) Origin {
+func (s BoundStep) Origin(job string) Origin {
 	if !s.Present() {
 		return Origin{Job: job}
 	}
@@ -49,7 +49,7 @@ func (s Step) Origin(job string) Origin {
 }
 
 // Position returns the step's source position.
-func (s Step) Position() (sourcetext.Position, bool) {
+func (s BoundStep) Position() (sourcetext.Position, bool) {
 	if !s.Present() || s.Pos == nil {
 		return sourcetext.Position{}, false
 	}
@@ -126,7 +126,7 @@ func actionInputSourceIndex(action *definition.ExecAction) map[sourcetext.Positi
 }
 
 // Position returns the job's source position.
-func (j Job) Position() (sourcetext.Position, bool) {
+func (j BoundJob) Position() (sourcetext.Position, bool) {
 	if !j.Present() || j.Pos == nil {
 		return sourcetext.Position{}, false
 	}
@@ -134,7 +134,7 @@ func (j Job) Position() (sourcetext.Position, bool) {
 }
 
 // Position returns the position of the workflow's first mapping key.
-func (w Workflow) Position() (sourcetext.Position, bool) {
+func (w BoundWorkflow) Position() (sourcetext.Position, bool) {
 	if !w.Present() || w.Pos == nil {
 		return sourcetext.Position{}, false
 	}
@@ -142,7 +142,7 @@ func (w Workflow) Position() (sourcetext.Position, bool) {
 }
 
 // Kind reports the step's execution kind; it reports false when the step has no execution.
-func (s Step) Kind() (definition.ExecKind, bool) {
+func (s BoundStep) Kind() (definition.ExecKind, bool) {
 	if !s.Present() || s.Exec == nil {
 		return 0, false
 	}

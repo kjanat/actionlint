@@ -106,7 +106,7 @@ type Manifest struct {
 	// ConfigShorthands maps keys users may also write directly under
 	// tools.<name> to the ConfigSchema property they set. The host folds them
 	// into tools.<name>.config while decoding.
-	ConfigShorthands map[string]ConfigShorthand `json:"config_shorthands,omitempty"`
+	ConfigShorthands map[string]toolsettings.Shorthand `json:"config_shorthands,omitempty"`
 	// Process is present exactly when Transport is TransportProcess.
 	Process *ProcessSpec `json:"process,omitempty"`
 	// Integration names the managed document-analyzer contract a component
@@ -144,11 +144,6 @@ const (
 	// provider's environment variables take precedence.
 	DeprecatedFlagIgnored DeprecatedFlagValue = "ignored"
 )
-
-// ConfigShorthand is a key written directly under tools.<name> that sets one
-// property of the provider's configuration. Its type lives in the leaf
-// model/toolsettings package, which configuration decoding shares.
-type ConfigShorthand = toolsettings.Shorthand
 
 // ReadsConfigFiles reports whether the provider reads native configuration
 // files, so tools.<name>.config may name a path instead of inline settings.

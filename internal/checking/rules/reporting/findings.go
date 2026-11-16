@@ -14,14 +14,14 @@ import (
 // StepFinding associates a diagnostic with its owning step.
 type StepFinding struct {
 	finding.Finding
-	Step workflows.Step
+	Step workflows.BoundStep
 }
 
 // Collector attaches a rule name and step to each reported message.
 type Collector struct {
 	Rule     string
 	Findings []StepFinding
-	Step     workflows.Step
+	Step     workflows.BoundStep
 }
 
 func (c *Collector) Error(p *sourcetext.Position, text string) {

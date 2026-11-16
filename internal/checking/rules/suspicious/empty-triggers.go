@@ -26,7 +26,7 @@ var EmptyTriggersRule = &define.Rule{
 }
 
 // EmptyTriggers reports an "on" section that declares no events.
-func EmptyTriggers(w workflows.Workflow) []reporting.StepFinding {
+func EmptyTriggers(w workflows.BoundWorkflow) []reporting.StepFinding {
 	if !w.Present() || w.OnPos == nil || w.On == nil || len(w.On) > 0 {
 		return nil
 	}

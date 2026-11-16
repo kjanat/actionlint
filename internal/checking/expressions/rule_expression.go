@@ -90,21 +90,21 @@ func (r *ruleExpression) collect(mark int, err error) error {
 	return err
 }
 
-func (r *ruleExpression) VisitStep(step workflows.Step) error {
+func (r *ruleExpression) VisitStep(step workflows.BoundStep) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitStep(step))
 }
 
-func (r *ruleExpression) VisitInvocationStep(step workflows.Step) error {
+func (r *ruleExpression) VisitInvocationStep(step workflows.BoundStep) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.CheckCompositeStep(step))
 }
 
-func (r *ruleExpression) VisitExpandedAction(step workflows.Step) error {
+func (r *ruleExpression) VisitExpandedAction(step workflows.BoundStep) error {
 	return r.VisitInvocationStep(step)
 }
 
-func (r *ruleExpression) VisitOpaqueAction(step workflows.Step) error {
+func (r *ruleExpression) VisitOpaqueAction(step workflows.BoundStep) error {
 	if len(r.frames) == 0 {
 		// Workflow steps already receive the full expression pass before resolution.
 		return nil
@@ -112,22 +112,22 @@ func (r *ruleExpression) VisitOpaqueAction(step workflows.Step) error {
 	return r.VisitInvocationStep(step)
 }
 
-func (r *ruleExpression) VisitWorkflowPre(view workflows.Workflow) error {
+func (r *ruleExpression) VisitWorkflowPre(view workflows.BoundWorkflow) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitWorkflowPre(view))
 }
 
-func (r *ruleExpression) VisitWorkflowPost(view workflows.Workflow) error {
+func (r *ruleExpression) VisitWorkflowPost(view workflows.BoundWorkflow) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitWorkflowPost(view))
 }
 
-func (r *ruleExpression) VisitJobPre(view workflows.Job) error {
+func (r *ruleExpression) VisitJobPre(view workflows.BoundJob) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitJobPre(view))
 }
 
-func (r *ruleExpression) VisitJobPost(view workflows.Job) error {
+func (r *ruleExpression) VisitJobPost(view workflows.BoundJob) error {
 	mark := r.Checker.FindingCount()
 	return r.collect(mark, r.Checker.VisitJobPost(view))
 }
@@ -191,7 +191,7 @@ func workflowExpressionOptionsWithFacts(scope *rulebinding.Scope, host repositor
 		JoinLiteral:               level("join-literal") != "off",
 		CollectionComparison:      level("collection-comparison") != "off",
 		MixedTypeComparisons:      level("mixed-type-comparisons") != "off",
-		JobReferences:             func(job workflows.Job) ReferenceNames { return jobReferenceNames(facts, job) },
+		JobReferences:             func(job workflows.BoundJob) ReferenceNames { return jobReferenceNames(facts, job) },
 		UnsoundTernary:            level("unsound-ternary") != "off",
 		ScriptInjectionDisabled:   level("script-injection") == "off",
 	}

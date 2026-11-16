@@ -22,6 +22,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/externallinters/process"
 	"actionlint.kjanat.dev/v2/internal/input/checkrequest"
 	"actionlint.kjanat.dev/v2/internal/input/references"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 	"actionlint.kjanat.dev/v2/internal/integrations/hostprocess"
 	"actionlint.kjanat.dev/v2/internal/model/checkinputs"
 	"actionlint.kjanat.dev/v2/internal/model/toolmanifest"
@@ -76,7 +77,7 @@ func CheckWithPlugins(ctx context.Context, options checking.Options, input check
 
 // RequiredToolsWithPluginPaths applies plugin replacements before deciding which native tools
 // must be provisioned. It shares plugin validation and lifetime with Check.
-func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition pluginacquisition.Options) (needed checking.ToolRequirements, err error) {
+func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options, paths, plugins []string, acquisition pluginacquisition.Options) (needed workspace.ExternalToolRequirements, err error) {
 	sources, err := pluginselection.SourcesFromArguments(plugins, acquisition)
 	if err != nil {
 		return needed, err
@@ -86,7 +87,7 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options checking.Options,
 
 // RequiredToolsWithPlugins applies the selected plugins before checking which
 // native tools are needed.
-func RequiredToolsWithPlugins(ctx context.Context, options checking.Options, paths []string, sources pluginselection.Sources) (needed checking.ToolRequirements, err error) {
+func RequiredToolsWithPlugins(ctx context.Context, options checking.Options, paths []string, sources pluginselection.Sources) (needed workspace.ExternalToolRequirements, err error) {
 	loaded, err := pluginexecution.LoadPlugins(ctx, sources, checking.BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err

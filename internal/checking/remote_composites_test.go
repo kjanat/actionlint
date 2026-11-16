@@ -311,7 +311,7 @@ func TestRemoteCompositeUsesCallerMirrorConfiguration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		request.Sources = append(request.Sources, sourceUnit{
+		request.Sources = append(request.Sources, workspace.InputFile{
 			Path: fmt.Sprintf("workflow-%d.yml", i), Config: cfg,
 			Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: windows-latest, steps: [{uses: example/outer@v1}]}}\n"),
 		})
@@ -459,7 +459,7 @@ func TestRemoteCompositeAdviceRemainsVisible(t *testing.T) {
 			}
 			result, err := runTestAnalysis(t.Context(), analysisRequest{
 				WorkingDir: t.TempDir(), RemoteActions: provider,
-				Sources: []sourceUnit{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}},
+				Sources: []workspace.InputFile{{Path: "ci.yml", Config: cfg, Content: []byte("on: push\npermissions: {}\njobs: {build: {runs-on: ubuntu-latest, steps: [{uses: example/action@v1}]}}\n")}},
 			})
 			if err != nil {
 				t.Fatal(err)

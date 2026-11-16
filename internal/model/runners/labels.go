@@ -120,7 +120,7 @@ func KnownLabels(patterns []string) LabelSet {
 
 // LabelRejections returns spelling and compatibility rejections without assigning a lint rule.
 // Unknown repository labels do not establish that an unrecognized name is invalid.
-func LabelRejections(job workflows.Job, customLabels LabelSet) []runnerapi.Rejection {
+func LabelRejections(job workflows.BoundJob, customLabels LabelSet) []runnerapi.Rejection {
 	if !job.Present() {
 		return nil
 	}

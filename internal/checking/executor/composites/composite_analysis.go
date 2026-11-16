@@ -99,7 +99,7 @@ func (analysis *compositeAnalyzer) cancelled() error {
 	return analysis.ctx.Err()
 }
 
-func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.Workflow) error {
+func (analysis *compositeAnalyzer) beginWorkflow(declaration workflows.BoundWorkflow) error {
 	if err := analysis.sourceSnapshot.ValidateWorkflow(declaration); err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (analysis *compositeAnalyzer) beginEntryScope(deployment scriptanalysis.Dep
 	analysis.scriptScopes = append(analysis.scriptScopes, analysis.scriptScope)
 }
 
-func (analysis *compositeAnalyzer) beginJob(declaration workflows.Job) error {
+func (analysis *compositeAnalyzer) beginJob(declaration workflows.BoundJob) error {
 	if err := analysis.sourceSnapshot.ValidateJob(declaration); err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (analysis *compositeAnalyzer) invalidateCheckout() {
 	analysis.actions.InvalidateCheckout()
 }
 
-func (analysis *compositeAnalyzer) visitStep(step workflows.Step) error {
+func (analysis *compositeAnalyzer) visitStep(step workflows.BoundStep) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (analysis *compositeAnalyzer) visitStep(step workflows.Step) error {
 	return analysis.visitActionScripts(step, scriptParticipants, func() error { return analysis.visitStepPasses(step) })
 }
 
-func (analysis *compositeAnalyzer) visitStepPasses(step workflows.Step) error {
+func (analysis *compositeAnalyzer) visitStepPasses(step workflows.BoundStep) error {
 	if err := analysis.sourceSnapshot.ValidateStep(step); err != nil {
 		return err
 	}
@@ -210,11 +210,11 @@ func (analysis *compositeAnalyzer) visitStepPasses(step workflows.Step) error {
 }
 
 // visitJobPass attributes what a pass reports while visiting a job to that job.
-func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflows.Job, visit func() error) error {
+func (analysis *compositeAnalyzer) visitJobPass(pass workflowvisit.Pass, job workflows.BoundJob, visit func() error) error {
 	return selection.VisitWithOrigin(pass, canonicalOrigin(job.Origin()), selection.HasConfiguredIgnores(analysis.scriptConfig), visit)
 }
 
-func canonicalStepOrigin(step workflows.Step, job string) *finding.IgnoreOrigin {
+func canonicalStepOrigin(step workflows.BoundStep, job string) *finding.IgnoreOrigin {
 	return canonicalOrigin(step.Origin(job))
 }
 

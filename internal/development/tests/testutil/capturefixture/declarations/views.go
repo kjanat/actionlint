@@ -6,22 +6,22 @@ import (
 )
 
 // Step publishes a step in a single-job workflow and returns its declaration view.
-func Step(step *definition.Step) workflows.Step {
+func Step(step *definition.Step) workflows.BoundStep {
 	view := workflows.Bind("unit-builtin", "", &definition.Workflow{Jobs: map[string]*definition.Job{"test": {Steps: []*definition.Step{step}}}}, false, "").Workflow()
 	job, _ := view.Job("test")
 	for step := range job.Steps() {
 		return step
 	}
-	return workflows.Step{}
+	return workflows.BoundStep{}
 }
 
 // Workflow publishes the supplied workflow and returns its declaration view.
-func Workflow(workflow *definition.Workflow) workflows.Workflow {
+func Workflow(workflow *definition.Workflow) workflows.BoundWorkflow {
 	return workflows.Bind("unit-builtin", "", workflow, false, "").Workflow()
 }
 
 // Job publishes a job in a workflow and returns its declaration view.
-func Job(job *definition.Job) workflows.Job {
+func Job(job *definition.Job) workflows.BoundJob {
 	view, _ := Workflow(&definition.Workflow{Jobs: map[string]*definition.Job{"test": job}}).Job("test")
 	return view
 }

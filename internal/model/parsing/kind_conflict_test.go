@@ -37,7 +37,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 			}
 			var snapshots [2]SourceSnapshot
 			var failures [2]error
-			var earlierView workflows.Step
+			var earlierView workflows.BoundStep
 			var earlierReference sourcetext.Reference
 			bind := func(index int) {
 				snapshots[index], failures[index] = registry.Document(captures[index], documents[index])
@@ -55,7 +55,7 @@ func TestDeclarationKindConflictQuarantinesBothUses(t *testing.T) {
 				if failures[0] != nil {
 					t.Fatal(failures[0])
 				}
-				references := snapshots[0].Bound().SourceIndex().Steps
+				references := snapshots[0].BoundDocument().SourceIndex().Steps
 				if len(references) == 0 {
 					t.Fatal("initial declaration has no indexed step")
 				}

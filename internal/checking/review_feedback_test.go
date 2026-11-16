@@ -43,7 +43,7 @@ jobs:
         run: echo "$RESULT"
 permissions: {}
 `)
-	result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, Sources: []sourceUnit{{Path: "ci.yml", Content: source, Project: workspace.Identity(root)}}})
+	result, err := runTestAnalysis(t.Context(), analysisRequest{WorkingDir: root, Sources: []workspace.InputFile{{Path: "ci.yml", Content: source, Project: workspace.Identity(root)}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestNestedCompositeUsesItsOwnShellcheckOverride(t *testing.T) {
 	backend := &reviewShellcheckBackend{}
 	_, err = runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root, Tools: registry.Registrations(registry.ToolSelections{"shellcheck": {Backend: backend}}),
-		Sources: []sourceUnit{{
+		Sources: []workspace.InputFile{{
 			Path: "workflow.yml", Config: cfg, Project: workspace.Identity(root),
 			Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: $/outer\n"),
 		}},
@@ -128,7 +128,7 @@ func TestRepositorySelectedProcessRequiresHostOptIn(t *testing.T) {
 			if tool == "shellcheck" {
 				shell = "bash"
 			}
-			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []sourceUnit{{
+			request := analysisRequest{WorkingDir: root, Tools: registry.Registrations(options), Sources: []workspace.InputFile{{
 				Path: "ci.yml", Config: cfg,
 				Content: []byte("on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: " + shell + "\n        run: echo\n"),
 			}}}

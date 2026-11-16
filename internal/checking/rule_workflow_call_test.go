@@ -44,7 +44,7 @@ jobs:
 permissions: {}
 `)
 				for _, pass := range []string{"cold cache", "warm cache"} {
-					errs, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}, nil, nil, cache)
+					errs, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}, nil, nil, cache)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -55,7 +55,7 @@ permissions: {}
 						t.Fatalf("%s: original reference lost: %v", pass, errs)
 					}
 				}
-				request.Sources = []sourceUnit{{Path: "caller.yaml", InputPath: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}}
+				request.Sources = []workspace.InputFile{{Path: "caller.yaml", InputPath: "caller.yaml", Content: source, Project: proj, Config: proj.Config()}}
 				errs, err := testFindings(runTestAnalysis(t.Context(), request))
 				if err != nil {
 					t.Fatal(err)
@@ -134,7 +134,7 @@ jobs:
 						if name == "callee.yaml" {
 							source = callee
 						}
-						diagnostics, err := checkWithCaches(t, t.Context(), request, sourceUnit{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
+						diagnostics, err := checkWithCaches(t, t.Context(), request, workspace.InputFile{Path: name, Content: source, Project: project, Config: project.Config()}, nil, nil, cache)
 						if err != nil {
 							t.Fatal(err)
 						}

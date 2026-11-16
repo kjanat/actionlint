@@ -35,38 +35,35 @@ type TemplateFields struct {
 	EndColumn int `json:"end_column"`
 }
 
-// Rule is the metadata a template may list through allKinds.
-type Rule = rule.Descriptor
-
-func compareRules(lhs, rhs *Rule) int {
+func compareRules(lhs, rhs *rule.Descriptor) int {
 	return strings.Compare(lhs.Name, rhs.Name)
 }
 
 type ruleSet struct {
 	mu    sync.Mutex
-	rules map[string]*Rule
+	rules map[string]*rule.Descriptor
 }
 
-func newRuleSet(rules []Rule) *ruleSet {
-	set := &ruleSet{rules: map[string]*Rule{}}
+func newRuleSet(rules []rule.Descriptor) *ruleSet {
+	set := &ruleSet{rules: map[string]*rule.Descriptor{}}
 	for _, rule := range rules {
 		set.register(rule)
 	}
 	return set
 }
 
-func (s *ruleSet) register(rule Rule) {
+func (s *ruleSet) register(descriptor rule.Descriptor) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, exists := s.rules[rule.Name]; !exists {
-		s.rules[rule.Name] = new(rule.Clone())
+	if _, exists := s.rules[descriptor.Name]; !exists {
+		s.rules[descriptor.Name] = new(descriptor.Clone())
 	}
 }
 
-func (s *ruleSet) sorted() []*Rule {
+func (s *ruleSet) sorted() []*rule.Descriptor {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	ret := make([]*Rule, 0, len(s.rules))
+	ret := make([]*rule.Descriptor, 0, len(s.rules))
 	for _, rule := range s.rules {
 		ret = append(ret, rule)
 	}
@@ -74,7 +71,7 @@ func (s *ruleSet) sorted() []*Rule {
 	return ret
 }
 
-func (s *ruleSet) lookup(name string) *Rule {
+func (s *ruleSet) lookup(name string) *rule.Descriptor {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.rules[name]
@@ -89,7 +86,7 @@ type Formatter struct {
 // NewFormatter parses a template containing at least one {{ }} placeholder.
 // Escaped characters such as \n are unescaped. getVersion and allKinds read the
 // supplied version and initial rules; RegisterRule adds rules later.
-func NewFormatter(format string, version func() string, rules []Rule) (*Formatter, error) {
+func NewFormatter(format string, version func() string, rules []rule.Descriptor) (*Formatter, error) {
 	return newFormatter(format, version, newRuleSet(rules))
 }
 
@@ -131,8 +128,8 @@ func (f *Formatter) Print(out io.Writer, t []*TemplateFields) error {
 }
 
 // RegisterRule makes a rule visible to allKinds. It is safe to call concurrently.
-func (f *Formatter) RegisterRule(rule Rule) {
-	f.rules.register(rule)
+func (f *Formatter) RegisterRule(descriptor rule.Descriptor) {
+	f.rules.register(descriptor)
 }
 
 func unescapeBackslash(s string) string {

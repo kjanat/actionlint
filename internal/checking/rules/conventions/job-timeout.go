@@ -50,12 +50,12 @@ func JobTimeoutChecks(policy TimeoutPolicy) define.Checks {
 	if policy.Max != nil {
 		policy.Max = new(*policy.Max)
 	}
-	return define.Checks{Job: func(job workflows.Job) []reporting.StepFinding {
+	return define.Checks{Job: func(job workflows.BoundJob) []reporting.StepFinding {
 		return JobTimeout(job, policy)
 	}}
 }
 
-func JobTimeout(n workflows.Job, policy TimeoutPolicy) []reporting.StepFinding {
+func JobTimeout(n workflows.BoundJob, policy TimeoutPolicy) []reporting.StepFinding {
 	rule := reporting.Collector{}
 
 	if !policy.Enabled {

@@ -28,7 +28,7 @@ func TestMissingActionMetadataUsesIndependentStepInputs(t *testing.T) {
 			step := &definition.Step{Exec: &definition.ExecAction{Uses: &definition.String{Value: uses, Pos: &sourcetext.Position{Line: 7, Column: 9}}}}
 			snapshot := workflows.Bind("metadata-step", "", &definition.Workflow{Jobs: map[string]*definition.Job{"test": {Steps: []*definition.Step{step}}}}, false, "").Workflow()
 			job, _ := snapshot.Job("test")
-			var checkedStep workflows.Step
+			var checkedStep workflows.BoundStep
 			for step := range job.Steps() {
 				checkedStep = step
 				break

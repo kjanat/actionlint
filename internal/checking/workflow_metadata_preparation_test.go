@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"actionlint.kjanat.dev/v2/internal/checking/workflowvisit"
+	"actionlint.kjanat.dev/v2/internal/input/workspace"
 )
 
 func TestWorkflowMetadataPreparationDoesNotRequireLintRules(t *testing.T) {
@@ -25,7 +26,7 @@ func TestWorkflowMetadataPreparationDoesNotRequireLintRules(t *testing.T) {
 			_, err := checkWithCaches(t, t.Context(), analysisRequest{
 				WorkingDir:     root,
 				OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule { return nil },
-			}, sourceUnit{Path: filepath.Join(root, "workflow.yml"), Content: content}, nil, nil, cache)
+			}, workspace.InputFile{Path: filepath.Join(root, "workflow.yml"), Content: content}, nil, nil, cache)
 			if err != nil {
 				t.Fatal(err)
 			}

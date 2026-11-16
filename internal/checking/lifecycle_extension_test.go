@@ -46,10 +46,10 @@ func TestAdditionalLanguageLifecycleUsesExistingPipeline(t *testing.T) {
 	visitedScripts := 0
 	analysis, err := runTestAnalysis(t.Context(), analysisRequest{
 		WorkingDir: root,
-		Sources:    []sourceUnit{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}},
+		Sources:    []workspace.InputFile{{Path: "ci.yml", Project: workspace.Identity(root), Config: config, Content: []byte(workflow)}},
 		OnRulesCreated: func([]workflowvisit.Rule) []workflowvisit.Rule {
 			check := define.Checks{
-				Step: func(step workflows.Step) []reporting.StepFinding {
+				Step: func(step workflows.BoundStep) []reporting.StepFinding {
 					if _, run := step.Run(); !run {
 						return nil
 					}

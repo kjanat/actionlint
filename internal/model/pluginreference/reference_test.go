@@ -32,6 +32,36 @@ func TestDirectURL(t *testing.T) {
 	}
 }
 
+// Direct OCI declarations use the artifact resolver's grammar, so a
+// declaration the resolver would refuse is refused when it is parsed.
+func TestDirectOCI(t *testing.T) {
+	t.Parallel()
+	digest := strings.Repeat("ab", 32)
+	ref, err := ParsePluginReference("oci://GHCR.io/owner/provider@sha256:" + digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "oci://ghcr.io/owner/provider@sha256:" + digest
+	if ref.DirectSource() != want || ref.Name() != "oci://ghcr.io/owner/provider" || ref.Version() != "" {
+		t.Fatalf("unexpected direct OCI declaration: name=%q direct=%q version=%q", ref.Name(), ref.DirectSource(), ref.Version())
+	}
+	if normalized, err := ref.Normalize(); err != nil || !ref.Equal(normalized) {
+		t.Fatalf("roundtrip: %+v %v", normalized, err)
+	}
+	for _, invalid := range []string{
+		"oci://ghcr.io/owner/provider:v1",
+		"oci://ghcr.io/owner/provider@sha256:" + strings.ToUpper(digest),
+		"oci://ghcr.io/Owner/Provider@sha256:" + digest,
+		"oci://user@ghcr.io/owner/provider@sha256:" + digest,
+		"oci://ghcr.io/owner/provider?x=1@sha256:" + digest,
+		"oci:///owner/provider@sha256:" + digest,
+	} {
+		if _, err := ParsePluginReference(invalid); err == nil {
+			t.Errorf("accepted %s", invalid)
+		}
+	}
+}
+
 func TestParse(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
