@@ -97,17 +97,57 @@ func TestPrettyRemoteLocationsAndURLsStayIntact(t *testing.T) {
 		}
 		if hyperlinks {
 			links := regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\`).FindAllStringSubmatch(out.String(), -1)
-			if len(links) != 4 {
-				t.Fatalf("got %d OSC 8 links, want four:\n%q", len(links), out.String())
+			// Message, location, documentation, related location.
+			want := []string{address, address + "#L168", address, address + "#L10"}
+			if len(links) != len(want) {
+				t.Fatalf("got %d OSC 8 links, want %d:\n%q", len(links), len(want), out.String())
 			}
-			for _, match := range links {
-				if match[1] != address {
-					t.Errorf("invalid OSC 8 destination: got %q, want %q", match[1], address)
+			for i, match := range links {
+				if match[1] != want[i] {
+					t.Errorf("OSC 8 destination %d: got %q, want %q", i, match[1], want[i])
 				}
 			}
 		} else if strings.Contains(out.String(), "\x1b") {
 			t.Fatal("plain output contains terminal controls")
 		}
+	}
+}
+
+func TestPrettyRemoteLocationLinksToLine(t *testing.T) {
+	t.Parallel()
+	const address = "https://github.com/actions/checkout/blob/0123456789abcdef0123456789abcdef01234567/action.yml"
+	for _, tc := range []struct {
+		name     string
+		path     string
+		position sourcepos.Position
+		want     string
+	}{
+		{
+			name: "line", path: address, position: sourcepos.Position{Line: 42, Column: 7},
+			want: "  --> \x1b]8;;" + address + "#L42\x1b\\" + address + "\x1b]8;;\x1b\\ (line 42, column 7)\n",
+		},
+		{
+			name: "existing fragment", path: address + "#readme", position: sourcepos.Position{Line: 3, Column: 1},
+			want: "  --> \x1b]8;;" + address + "#L3\x1b\\" + address + "#readme\x1b]8;;\x1b\\ (line 3, column 1)\n",
+		},
+		{
+			name: "no line", path: address, position: sourcepos.Position{},
+			want: "  --> \x1b]8;;" + address + "\x1b\\" + address + "\x1b]8;;\x1b\\ (line 0, column 0)\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var linked, plain strings.Builder
+			writePrettyLocation(&linked, "  --> ", tc.path, tc.position, 20, true)
+			if linked.String() != tc.want {
+				t.Fatalf("got  %q\nwant %q", linked.String(), tc.want)
+			}
+			writePrettyLocation(&plain, "  --> ", tc.path, tc.position, 20, false)
+			visible := regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\`).ReplaceAllString(linked.String(), "")
+			if visible != plain.String() {
+				t.Fatalf("link changed visible text: got %q, want %q", visible, plain.String())
+			}
+		})
 	}
 }
 

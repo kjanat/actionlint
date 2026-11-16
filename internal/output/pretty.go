@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -95,12 +96,36 @@ func (f RenderedFinding) printPretty(out io.Writer, width int, hyperlinks, color
 
 func writePrettyLocation(b *strings.Builder, prefix, path string, position sourcepos.Position, width int, hyperlinks bool) {
 	path = terminalText(path)
-	location := fmt.Sprintf("%s:%d:%d", path, position.Line, position.Column)
 	if links := terminalURLs(path); len(links) == 1 && links[0].start == 0 && links[0].end == len(path) {
-		location = fmt.Sprintf("%s (line %d, column %d)", path, position.Line, position.Column)
-		width = max(width, runewidth.StringWidth(prefix+location))
+		writeRemoteLocation(b, prefix, path, position, hyperlinks)
+		return
 	}
-	writeWrapped(b, prefix, location, width, nil, hyperlinks)
+	writeWrapped(b, prefix, fmt.Sprintf("%s:%d:%d", path, position.Line, position.Column), width, nil, hyperlinks)
+}
+
+// writeRemoteLocation writes a URL location on one line so the URL is never
+// split. The visible text names the line and column; the link target adds a
+// #L<line> anchor, which GitHub blob pages scroll to.
+func writeRemoteLocation(b *strings.Builder, prefix, address string, position sourcepos.Position, hyperlinks bool) {
+	b.WriteString(prefix)
+	if hyperlinks {
+		writeTerminalLinkStart(b, remoteLocationTarget(address, position.Line))
+		b.WriteString(address)
+		writeTerminalLinkEnd(b)
+	} else {
+		b.WriteString(address)
+	}
+	fmt.Fprintf(b, " (line %d, column %d)\n", position.Line, position.Column)
+}
+
+// remoteLocationTarget replaces any fragment of address with a #L<line> anchor.
+// Locations without a line keep address unchanged.
+func remoteLocationTarget(address string, line int) string {
+	if line <= 0 {
+		return address
+	}
+	base, _, _ := strings.Cut(address, "#")
+	return base + "#L" + strconv.Itoa(line)
 }
 
 // terminalText prevents source and plugin strings from emitting terminal controls.
