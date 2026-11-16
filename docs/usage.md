@@ -347,6 +347,42 @@ Check the exit status before interpreting empty stdout as success.
 
 Use `--verbose` or `--debug` to include version and build information in the log.
 
+After a check, `--verbose` and `--debug` also log the inputs and settings that
+determined its findings. When two runs report different findings, compare these
+lines to find the cause:
+
+```text
+verbose: repository: /src/app at HEAD 4addf20f4554 (dirty, 2 changed paths)
+verbose:   uncommitted linted file: .github/workflows/ci.yml
+verbose: file: .github/workflows/ci.yml sha256:734e62c28dc1
+verbose: config: .github/actionlint.yaml for project /src/app
+verbose:   config file: .github/actionlint.yaml sha256:0f4983a108b9
+verbose:   setting: /lint/rules/security/unpinned-reference/level = "error" (.github/actionlint.yaml:4)
+verbose: ignore: --ignore unpinned-reference
+verbose: ignore: config rule=shellcheck file=.github/workflows/ci.yml (.github/actionlint.yaml:6)
+verbose: ignore: inline script-injection (.github/workflows/ci.yml:9)
+verbose: plugin: github.com/kjanat/actionlint-plugin-shellcheck v0.3.1 sha256:6c5ec0746a00 active
+verbose: tool: ruff inactive (disabled in configuration)
+verbose: network: online, GitHub token from GH_TOKEN, cache /home/me/.cache/actionlint
+verbose: network requests: 2 attempts, 0 failed; metadata cache: 37 hits, 2 misses; resolver cache hits: 0
+verbose: remote metadata: 39 available
+verbose: flags: strict=true experimental=true no-ignore=false; rules run: 41
+verbose: rule script-injection: 1 collected, 0 reported
+verbose: rule unpinned-reference: 2 collected, 0 reported
+```
+
+| Line              | Shows                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `repository`      | Each Git repository that contains linted files: its HEAD commit, whether the working tree has uncommitted changes, and which linted files changed. `none` means the files are outside Git. |
+| `file`            | The first 12 hexadecimal digits of the SHA-256 digest of each linted file's content.                                                                                                       |
+| `config`          | The configuration file for each project, the digest of each file that supplied a setting, and each setting that differs from its default. Output settings are left out.                    |
+| `ignore`          | Each `--ignore` selector, `--ignore-regex` pattern, configured `ignores` or `lint.message-ignores` entry, and inline suppression directive, with the file and line that declared it.       |
+| `plugin`, `tool`  | Each selected plugin and tool provider with its version and artifact digest, and the reason an inactive one did not run.                                                                   |
+| `network`         | Online or offline mode, the environment variable that supplied the GitHub token (never the token), the cache directory, request counts, and metadata cache hits and misses.                |
+| `remote metadata` | How many remote action and workflow references had metadata, and why the others did not.                                                                                                   |
+| `flags`           | `--strict`, `--experimental` and `--no-ignore`, and the number of rules that ran.                                                                                                          |
+| `rule`            | For each rule with findings, how many it collected and how many remained after inline suppressions, rule levels and ignore settings.                                                       |
+
 When stdout is a terminal and `jq` is installed, JSON metadata and JSON/SARIF
 diagnostics are indented and colored according to the color controls. Use
 `--json-pretty=false` to disable this. Pipes and files require an explicit
@@ -442,7 +478,9 @@ Retries and redirects are separate attempts at the instrumented transport.
 `failures` counts transport errors and HTTP error responses. `quota_rejections` counts
 rejected requests or batch admission checks, before transport, because of observed
 limits or reservations. A rejected batch counts once, regardless of its size.
-`cache_hits` records cached or coalesced external resolver calls.
+`cache_hits` records cached or coalesced external resolver calls. In groups with
+`request_kind: cache`, `cache_hits` and `cache_misses` count lookups in the local
+action and workflow metadata cache; these groups make no network requests.
 `resolver_calls` counts resolver calls independently of their network attempts.
 `unreported_resolver_calls` counts calls whose internal network activity is not
 fully reported; these are not presented as HTTP request counts.

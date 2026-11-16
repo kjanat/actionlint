@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -670,6 +671,25 @@ func (d *actionDocuments) list() []actionDocument {
 func (r *analysisResult) publishDiagnostics() error {
 	r.FileCount = len(r.files)
 	batches := make([]policy.Batch, len(r.files))
+	collected := make(map[string]int)
+	for _, file := range r.files {
+		// A rule that ran without findings still counts as selected.
+		for _, descriptor := range file.rules {
+			if _, seen := collected[descriptor.Name]; !seen {
+				collected[descriptor.Name] = 0
+			}
+		}
+		for _, item := range file.errors {
+			collected[item.Rule]++
+		}
+		if revision := file.captured.Revision(); revision.Valid() {
+			r.LintedFiles = append(r.LintedFiles, report.LintedFile{Path: file.source.InputPath, Digest: revision.Digest()})
+		}
+	}
+	r.CollectedByRule = make([]report.RuleCollection, 0, len(collected))
+	for _, name := range slices.Sorted(maps.Keys(collected)) {
+		r.CollectedByRule = append(r.CollectedByRule, report.RuleCollection{Rule: name, Findings: collected[name]})
+	}
 	for i, file := range r.files {
 		var batch policy.Batch
 		if file.publication != nil {
@@ -684,6 +704,7 @@ func (r *analysisResult) publishDiagnostics() error {
 	published, err := policy.Publish(batches, r.IncompleteChecks)
 	r.Diagnostics = published.Diagnostics
 	r.IncompleteChecks = published.IncompleteChecks
+	r.InlineSuppressions = published.InlineSuppressions
 	if r.Diagnostics == nil {
 		r.Diagnostics = []results.PublishedDiagnostic{}
 	}

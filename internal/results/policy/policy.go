@@ -32,6 +32,8 @@ type Policy struct {
 	Log               func(...any)
 	Debug             func(string, ...any)
 	usedSuppression   func(string, sourcetext.Position, string)
+	// declaredSuppression receives each rule an inline directive names.
+	declaredSuppression func(string, sourcetext.Position, string)
 }
 
 func (processor Processor) evaluate(p Policy, all []*finding.Finding, metadataSources map[string][]byte, authority map[*finding.Finding]obligation) ([]*finding.Finding, error) {
@@ -174,6 +176,10 @@ func (p Policy) inlineAudit(path string, level func(string) ruleconfig.Level) *i
 	return &inlineAudit{level: level, used: func(position sourcetext.Position, rule string) {
 		if p.usedSuppression != nil {
 			p.usedSuppression(path, position, rule)
+		}
+	}, declared: func(position sourcetext.Position, rule string) {
+		if p.declaredSuppression != nil {
+			p.declaredSuppression(path, position, rule)
 		}
 	}}
 }

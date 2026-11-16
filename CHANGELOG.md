@@ -4,6 +4,8 @@
 
 *See the [v2 release and migration notes](docs/releases/v2.0.0.md) before upgrading.*
 
+- Log what determined a check's findings with `--verbose` or `--debug`: each repository's HEAD and uncommitted linted files, a digest of every linted and configuration file, settings that differ from the defaults, ignore entries and where each was declared, active and inactive plugins and tools, network mode, token source, metadata cache hits and misses, result flags and, per rule, the findings collected and reported. `--network-stats` adds `cache_misses` and `cache` request groups for metadata cache lookups. See [Logging](docs/usage.md).
+
 - Make `--offline` block all network requests, including plugin and configuration downloads. Use cached remote configuration, plugin artifacts and tag resolutions. Missing dependencies produce warnings. Skip native tools and resolver processes offline. Add `actionlint cache warm` to download dependencies for selected workflows before disconnecting.
 
 - Remove the retired GitHub-hosted `macos-14`, `macos-14-large`, and `macos-14-xlarge` labels. Custom self-hosted labels can still be configured explicitly. (kjanat/actionlint#216)

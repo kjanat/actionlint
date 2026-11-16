@@ -343,3 +343,24 @@ func TestResolverCoverageIsNotInvented(t *testing.T) {
 		t.Fatalf("attempts=%d opaque=%d cache=%d lookups=%d", attempts, opaque, cached, lookups)
 	}
 }
+
+func TestCacheLookupsCountHitsAndMissesWithoutRequests(t *testing.T) {
+	t.Parallel()
+	RecordCacheLookup(t.Context(), "repository-metadata", true)
+	ctx, tracker := TrackRequests(t.Context())
+	ctx = WithRequestOptions(ctx, RequestOptions{Priority: Enrichment})
+	for _, hit := range []bool{true, true, false} {
+		RecordCacheLookup(ctx, "repository-metadata", hit)
+	}
+	stats := tracker.Statistics()
+	if len(stats.Requests) != 1 {
+		t.Fatalf("groups = %+v, want one cache group", stats.Requests)
+	}
+	group := stats.Requests[0]
+	if group.RequestKind != Cache || group.Purpose != "repository-metadata" || group.Priority != Enrichment {
+		t.Fatalf("group = %+v, want an enrichment cache group for repository-metadata", group)
+	}
+	if group.CacheHits != 2 || group.CacheMisses != 1 || group.Attempts != 0 {
+		t.Fatalf("hits=%d misses=%d attempts=%d, want 2, 1 and 0", group.CacheHits, group.CacheMisses, group.Attempts)
+	}
+}

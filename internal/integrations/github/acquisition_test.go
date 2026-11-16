@@ -107,7 +107,9 @@ func TestFullSHACacheHitMakesNoRequests(t *testing.T) {
 					t.Errorf("canceled lookup for %s: error=%v, want context.Canceled", object, err)
 				}
 			}
-			if requests := tracker.Statistics().Requests; len(requests) != 0 {
+			// Only cache lookups are recorded: four hits and no network operation.
+			requests := tracker.Statistics().Requests
+			if len(requests) != 1 || requests[0].RequestKind != accounting.Cache || requests[0].Attempts != 0 || requests[0].CacheHits != 4 || requests[0].CacheMisses != 0 {
 				t.Fatalf("warm-cache request accounting: %+v", requests)
 			}
 		})
