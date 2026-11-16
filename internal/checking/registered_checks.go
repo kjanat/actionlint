@@ -31,6 +31,10 @@ type registeredChecks struct {
 // unique and must not name a native rule, and no added rule may reuse the
 // name of another rule.
 func registerChecks(analyzers []checkinputs.Registration, tools []contract.Registration) (*registeredChecks, error) {
+	catalog, err := LoadConfigurationRules()
+	if err != nil {
+		return nil, err
+	}
 	var extensions []rule.Descriptor
 	var names []string
 	for _, analyzer := range analyzers {
@@ -60,7 +64,7 @@ func registerChecks(analyzers []checkinputs.Registration, tools []contract.Regis
 		return nil, err
 	}
 	registrations := ConfigurationRegistrations(analyzers, tools)
-	rules, err := ConfigurationRules().WithRegisteredRules(registrations...)
+	rules, err := catalog.WithRegisteredRules(registrations...)
 	if err != nil {
 		return nil, err
 	}
