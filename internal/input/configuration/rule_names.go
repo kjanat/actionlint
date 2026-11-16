@@ -75,10 +75,10 @@ func (ruleSet RuleSet) ValidateRuleNames(config *Config, additional ...string) e
 			}
 		}
 		// Suppression policy options also refer to registered rule names.
-		suppressions, _ := ruleSet.FindRule("forbidden-suppression")
+		suppressions, _ := ruleSet.suppressionsRule()
 		setting, found := ruleSet.canonicalSetting(lint.Rules.Groups()[suppressions.Category], suppressions.Name)
 		if !found {
-			setting, _ = ruleSet.canonicalSetting(lint.Rules.Policy, suppressions.Name)
+			setting, _ = ruleSet.canonicalSetting(lint.Rules.LegacyGroups()[suppressions.LegacyGroup], suppressions.Name)
 		}
 		if policy := new(SuppressionsPolicy); loadOptions(setting, policy) {
 			if err := validate(policy); err != nil {

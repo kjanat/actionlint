@@ -13,6 +13,7 @@ var CacheWriteUntrustedRule = &define.Rule{
 	Description: "Report cache write access granted on low-trust triggers",
 	Category:    "security",
 	Subcategory: "cache",
+	Policy:      "cache-write-untrusted",
 	Recommended: true,
 	Explanation: "Report cache write access reachable from low-trust triggers. Untrusted code or input can poison caches consumed by privileged workflows.",
 	Help:        "Set cache-mode to read or none, restrict the job with an event guard, or document a reviewed exception with an inline suppression.",

@@ -16,6 +16,7 @@ var EmptyJobRule = &define.Rule{
 	Description: "Report jobs without steps",
 	Category:    "correctness",
 	Subcategory: "jobs",
+	LegacyGroup: "style",
 	Recommended: true,
 	Explanation: "GitHub rejects jobs without steps unless they call a reusable workflow.",
 	Help:        "Add steps, call a reusable workflow with uses, or remove the job.",

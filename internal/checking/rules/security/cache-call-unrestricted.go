@@ -13,6 +13,7 @@ var CacheCallUnrestrictedRule = &define.Rule{
 	Description: "Report reusable workflow calls without explicit cache limits on low-trust triggers",
 	Category:    "security",
 	Subcategory: "cache",
+	Policy:      "cache-call-unrestricted",
 	Recommended: true,
 	Explanation: "Report reusable workflow calls reachable from low-trust triggers without an explicit cache mode. The called workflow can request cache writes despite the trigger's read-only default.",
 	Help:        "Set cache-mode to read or none on the calling job or workflow.",

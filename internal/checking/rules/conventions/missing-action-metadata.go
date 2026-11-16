@@ -18,6 +18,8 @@ var MissingActionMetadataRule = &define.Rule{
 	Description: "Require inspected metadata for remote actions",
 	Category:    "conventions",
 	Subcategory: "dependencies",
+	LegacyGroup: "policy",
+	Policy:      "require-action-metadata",
 	Explanation: "Report remote action metadata that could not be inspected. Disabled downloads and offline cache misses are recorded in coverage without a lint finding.",
 	Help:        "Check access to the referenced repository and its action.yml or action.yaml.",
 	Checks:      func(c define.Inputs) define.Checks { return MissingActionMetadataChecks(c.RemoteActions) },

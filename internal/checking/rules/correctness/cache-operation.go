@@ -16,6 +16,7 @@ var CacheOperationRule = &define.Rule{
 	Description: "Report cache actions blocked by explicit cache access limits",
 	Category:    "correctness",
 	Subcategory: "cache",
+	Policy:      "cache-operation",
 	Recommended: true,
 	Explanation: "Report cache save or restore operations blocked by an explicit cache mode. GitHub skips the blocked operations.",
 	Help:        "Remove the cache step or choose an action and cache mode that allow the intended operation.",

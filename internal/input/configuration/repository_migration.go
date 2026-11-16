@@ -48,6 +48,19 @@ func migratePermissions(node any, key string) (any, error) {
 	}
 }
 
+// migrateRepositoryValue converts a legacy value, read from key, for the
+// repository fact it moves to.
+func migrateRepositoryValue(fact string, value any, key string) (any, error) {
+	switch fact {
+	case "variables":
+		return migrateVariableNames(value)
+	case "default-workflow-permissions":
+		return migratePermissions(value, key)
+	default:
+		return value, nil
+	}
+}
+
 // migrateRepositoryFacts moves old knowledge settings without changing a rule's level.
 func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 	if !isMapping(root) {
@@ -82,18 +95,15 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 			continue
 		}
 		var err error
-		switch legacy.key {
-		case "self-hosted-runner":
+		if legacy.key == "self-hosted-runner" {
 			if !isNull(value) {
 				if !isMapping(value) {
 					return nil, false, binding.At(legacy.key, errors.New("self-hosted-runner must be a mapping"))
 				}
 				value = field(value, "labels")
 			}
-		case "config-variables":
-			value, err = migrateVariableNames(value)
-		case "assume-default-permissions":
-			value, err = migratePermissions(value, legacy.key)
+		} else {
+			value, err = migrateRepositoryValue(legacy.name, value, legacy.key)
 		}
 		if err != nil {
 			return nil, false, binding.At(legacy.key, err)
@@ -109,17 +119,11 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 	if lint := field(root, "lint"); isMapping(lint) {
 		lint = cloneMapping(lint)
 		rules := cloneMapping(field(lint, "rules"))
-		type optionMigration struct{ old, next string }
-		for _, migration := range []struct {
-			name    string
-			options []optionMigration
-		}{
-			{"runner-label", []optionMigration{{"labels", "runners"}}},
-			{"expression-reference", []optionMigration{{"variables", "variables"}, {"secrets", "secrets"}}},
-			{"workflow-call", []optionMigration{{"default-permissions", "default-workflow-permissions"}}},
-		} {
-			name := migration.name
-			descriptor, _ := ruleSet.FindRule(name)
+		for _, descriptor := range ruleSet.Rules() {
+			if len(descriptor.MovedOptions) == 0 {
+				continue
+			}
+			name := descriptor.Name
 			group := cloneMapping(field(rules, descriptor.Group))
 			setting := field(group, name)
 			if !isMapping(setting) {
@@ -130,25 +134,19 @@ func (ruleSet RuleSet) migrateRepositoryFacts(root any) (any, bool, error) {
 				continue
 			}
 			setting, options = cloneMapping(setting), cloneMapping(options)
-			for _, option := range migration.options {
-				value := field(options, option.old)
+			for _, option := range descriptor.MovedOptions {
+				value := field(options, option.Option)
 				if value == nil {
 					continue
 				}
-				var err error
-				if option.old == "variables" {
-					value, err = migrateVariableNames(value)
-				}
-				if option.old == "default-permissions" {
-					value, err = migratePermissions(value, "default-permissions")
-				}
+				value, err := migrateRepositoryValue(option.Repository, value, option.Option)
 				if err != nil {
-					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.old, err))))))
+					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
 				}
-				if err := install(option.next, value, "lint.rules."+descriptor.Group+"."+name+".options."+option.old); err != nil {
-					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.old, err))))))
+				if err := install(option.Repository, value, "lint.rules."+descriptor.Group+"."+name+".options."+option.Option); err != nil {
+					return nil, false, binding.At("lint", binding.At("rules", binding.At(descriptor.Group, binding.At(name, binding.At("options", binding.At(option.Option, err))))))
 				}
-				removeField(options, option.old)
+				removeField(options, option.Option)
 			}
 			if len(members(options)) == 0 {
 				removeField(setting, "options")

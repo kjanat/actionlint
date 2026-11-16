@@ -48,27 +48,25 @@ func NewRuleSet(declarations []rulemeta.Declaration) (RuleSet, error) {
 		default:
 			return RuleSet{}, fmt.Errorf("rule %q declares invalid configuration scope %d", declaration.Name, declaration.Scope)
 		}
+		if _, legacy := new(LintRulesConfig).LegacyGroups()[declaration.LegacyGroup]; declaration.LegacyGroup != "" && !legacy && !rulemeta.ValidCategory(declaration.LegacyGroup) {
+			return RuleSet{}, fmt.Errorf("rule %q declares unknown legacy group %q", declaration.Name, declaration.LegacyGroup)
+		}
+		if _, known := policySettings[declaration.Policy]; declaration.Policy != "" && !known {
+			return RuleSet{}, fmt.Errorf("rule %q declares unknown policy %q", declaration.Name, declaration.Policy)
+		}
 	}
 	names, err := rulemeta.NewNames(descriptors)
 	if err != nil {
 		return RuleSet{}, err
-	}
-	projectors := map[string]func(*Config, Setting){
-		"forbidden-suppression":   configureSuppressionsPolicy,
-		"unpinned-reference":      boolRuleOption(func(p *Policy) **bool { return &p.RequireCommitHash }),
-		"missing-action-metadata": boolRuleOption(func(p *Policy) **bool { return &p.RequireActionMetadata }),
-		"job-timeout":             configureJobTimeout,
-		"cache-write-untrusted":   boolRuleOption(func(p *Policy) **bool { return &p.CacheWriteUntrusted }),
-		"cache-call-unrestricted": boolRuleOption(func(p *Policy) **bool { return &p.CacheCallUnrestricted }),
-		"cache-operation":         boolRuleOption(func(p *Policy) **bool { return &p.CacheOperation }),
 	}
 	result := RuleSet{names: names, entries: make([]Rule, len(declarations))}
 	for i, declaration := range declarations {
 		result.entries[i] = Rule{
 			Descriptor: descriptors[i], Group: declaration.Category,
 			SupportsActions: declaration.SupportsActions, Scope: declaration.Scope,
-			Options:   declaration.Options,
-			Configure: projectors[declaration.Name],
+			Options:     declaration.Options,
+			LegacyGroup: declaration.LegacyGroup, Policy: declaration.Policy,
+			MovedOptions: slices.Clone(declaration.MovedOptions), MigrationNote: declaration.MigrationNote,
 		}
 	}
 	return result, nil
@@ -91,6 +89,7 @@ func (ruleSet RuleSet) Rules() []Rule {
 	result := slices.Clone(ruleSet.entries)
 	for i := range result {
 		result[i].Descriptor = result[i].Clone()
+		result[i].MovedOptions = slices.Clone(result[i].MovedOptions)
 	}
 	return result
 }
@@ -113,6 +112,7 @@ func (ruleSet RuleSet) FindRule(name string) (Rule, bool) {
 	for _, entry := range ruleSet.entries {
 		if entry.Name == name {
 			entry.Descriptor = entry.Clone()
+			entry.MovedOptions = slices.Clone(entry.MovedOptions)
 			return entry, true
 		}
 	}

@@ -20,6 +20,8 @@ var UnpinnedReferenceRule = &define.Rule{
 	Description: "Require full commit SHAs for actions and workflows, and digests for images",
 	Category:    "security",
 	Subcategory: "dependencies",
+	LegacyGroup: "policy",
+	Policy:      "require-commit-hash",
 	Help:        "Pin uses references to a full commit SHA and container images to a digest.",
 	Options:     define.Options[lintconfig.CommitHashOptions](),
 	Checks: func(c define.Inputs) define.Checks {

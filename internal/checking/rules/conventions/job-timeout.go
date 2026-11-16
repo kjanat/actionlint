@@ -15,6 +15,8 @@ var JobTimeoutRule = &define.Rule{
 	Description: "Require explicit job timeouts within configured bounds",
 	Category:    "conventions",
 	Subcategory: "jobs",
+	LegacyGroup: "policy",
+	Policy:      "require-job-timeout",
 	Help:        "Set timeout-minutes on the job within the configured bounds.",
 	Options:     define.Options[configuration.JobTimeoutPolicy](),
 	Checks: func(c define.Inputs) define.Checks {

@@ -29,7 +29,8 @@ func TestConfigCodecPreservesProgrammaticProjectionsAndResets(t *testing.T) {
 	t.Parallel()
 	rules, err := NewRuleSet([]rule.Declaration{{
 		Name: "unpinned-reference", Aliases: []rule.Alias{{Name: "require-commit-hash", Deprecated: true}}, Category: "security", Maturity: "stable",
-		Options: func() any { return &lintconfig.CommitHashOptions{} },
+		Options:     func() any { return &lintconfig.CommitHashOptions{} },
+		LegacyGroup: "policy", Policy: "require-commit-hash",
 	}})
 	if err != nil {
 		t.Fatal(err)

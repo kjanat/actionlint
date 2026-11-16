@@ -3,6 +3,7 @@ package define
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
@@ -55,6 +56,14 @@ type Rule struct {
 	// Options constructs a fresh options value for decoding and schema
 	// generation. Use [Options]. Nil means the rule accepts no options.
 	Options func() any
+
+	// LegacyGroup, Policy, MovedOptions and MigrationNote describe how
+	// configuration written for earlier versions selects the rule. See
+	// [rule.Declaration].
+	LegacyGroup   string
+	Policy        string
+	MovedOptions  []rule.MovedOption
+	MigrationNote string
 
 	// Prepare acquires facts before construction. Nil means none are needed.
 	Prepare func(Inputs) (InputPreparation, error)
@@ -157,7 +166,10 @@ func (r *Rule) Declaration() rule.Declaration {
 	if descriptor.DocumentationURL == "" {
 		descriptor.DocumentationURL = documentationPrefix + r.Name
 	}
-	return rule.Declaration{Descriptor: descriptor.Clone(), SupportsActions: r.SupportsActions, Scope: r.Scope, Options: r.Options}
+	return rule.Declaration{
+		Descriptor: descriptor.Clone(), SupportsActions: r.SupportsActions, Scope: r.Scope, Options: r.Options,
+		LegacyGroup: r.LegacyGroup, Policy: r.Policy, MovedOptions: slices.Clone(r.MovedOptions), MigrationNote: r.MigrationNote,
+	}
 }
 
 func sentence(text string) string {
