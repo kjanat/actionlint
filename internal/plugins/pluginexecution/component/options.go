@@ -31,7 +31,7 @@ type Options struct {
 
 // limits validates resource policy before artifact resolution or runtime creation.
 func (o Options) limits() (guestlimits.Limits, error) {
-	limits, err := o.Limits.Resolve(DefaultMemoryPages)
+	limits, err := o.Resolve(DefaultMemoryPages)
 	if err != nil {
 		return guestlimits.Limits{}, fmt.Errorf("plugin %w", err)
 	}

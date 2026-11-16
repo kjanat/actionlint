@@ -25,14 +25,14 @@ func (l Limits) String() string {
 	return fmt.Sprintf("memory %d MiB, time %s", uint64(l.MemoryPages)*64/1024, l.Timeout)
 }
 
-// Resolve validates requested limits before any artifact is read or runtime
+// Resolve validates l as requested limits before any artifact is read or runtime
 // created, and fills a zero timeout with DefaultTimeout and zero memory with
 // defaultMemoryPages.
-func (requested Limits) Resolve(defaultMemoryPages uint32) (Limits, error) {
-	if requested.MemoryPages > MaxMemoryPages {
-		return Limits{}, fmt.Errorf("memory limit %d exceeds WebAssembly maximum of %d pages", requested.MemoryPages, MaxMemoryPages)
+func (l Limits) Resolve(defaultMemoryPages uint32) (Limits, error) {
+	if l.MemoryPages > MaxMemoryPages {
+		return Limits{}, fmt.Errorf("memory limit %d exceeds WebAssembly maximum of %d pages", l.MemoryPages, MaxMemoryPages)
 	}
-	limits := requested
+	limits := l
 	if limits.Timeout <= 0 {
 		limits.Timeout = DefaultTimeout
 	}

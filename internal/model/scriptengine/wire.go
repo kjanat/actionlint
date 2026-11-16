@@ -2,8 +2,6 @@ package scriptengine
 
 import (
 	"encoding/json"
-	"encoding/json/jsontext"
-	jsonv2 "encoding/json/v2"
 
 	"actionlint.kjanat.dev/v2/internal/input/sourcetext"
 	"actionlint.kjanat.dev/v2/internal/results"
@@ -100,27 +98,12 @@ func (wire wireDiagnostic) diagnostic() Diagnostic {
 	return d
 }
 
-// MarshalJSONTo writes the JSON form with the encoder's options.
-func (d Diagnostic) MarshalJSONTo(encoder *jsontext.Encoder) error {
-	return jsonv2.MarshalEncode(encoder, newWireDiagnostic(d))
-}
-
-// UnmarshalJSONFrom reads the JSON form with the decoder's options.
-func (d *Diagnostic) UnmarshalJSONFrom(decoder *jsontext.Decoder) error {
-	var wire wireDiagnostic
-	if err := jsonv2.UnmarshalDecode(decoder, &wire); err != nil {
-		return err
-	}
-	*d = wire.diagnostic()
-	return nil
-}
-
-// MarshalJSON writes the JSON form for encoding/json.
+// MarshalJSON writes the JSON form; encoding/json/v2 uses it too.
 func (d Diagnostic) MarshalJSON() ([]byte, error) {
 	return json.Marshal(newWireDiagnostic(d))
 }
 
-// UnmarshalJSON reads the JSON form for encoding/json.
+// UnmarshalJSON reads the JSON form; encoding/json/v2 uses it too.
 func (d *Diagnostic) UnmarshalJSON(data []byte) error {
 	var wire wireDiagnostic
 	if err := json.Unmarshal(data, &wire); err != nil {
