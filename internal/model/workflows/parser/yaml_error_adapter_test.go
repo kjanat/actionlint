@@ -11,7 +11,7 @@ import (
 
 func TestYAMLErrorAdapterPreservesLocatedWrappersAndJoinedAdmission(t *testing.T) {
 	t.Parallel()
-	root, err := codec.Parse([]byte("value: text\n"))
+	root, err := codec.ParseYAML([]byte("value: text\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

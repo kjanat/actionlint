@@ -29,7 +29,7 @@ func TestSourceScopeProjectionUsesRegistrations(t *testing.T) {
 				t.Run(descriptor.Name+"/"+group+"/"+project.name, func(t *testing.T) {
 					t.Parallel()
 					input := fmt.Sprintf("lint: {rules: {preset: none, %s: {%s: warn}}}", group, descriptor.Name)
-					cfg, err := checking.ConfigurationRules().Parse([]byte(input))
+					cfg, err := checking.ConfigurationRules().ParseConfig([]byte(input))
 					if err != nil {
 						t.Fatal(err)
 					}

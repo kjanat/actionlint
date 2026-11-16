@@ -89,7 +89,7 @@ func TestUnavailableOptionalToolRetainsSuppressions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := ConfigurationRules().Parse([]byte(tc.config))
+			cfg, err := ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}

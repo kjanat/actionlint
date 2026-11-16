@@ -50,7 +50,7 @@ func TestConfigParseSelfHostedRunnerOK(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			c, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -94,7 +94,7 @@ func TestConfigParseConfigSecrets(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			c, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -152,7 +152,7 @@ paths:
 	for _, tc := range tests {
 		t.Run(tc.want, func(t *testing.T) {
 			t.Parallel()
-			_, err := checking.ConfigurationRules().Parse([]byte(tc.in))
+			_, err := checking.ConfigurationRules().ParseConfig([]byte(tc.in))
 			if err == nil {
 				t.Fatal("no error occurred")
 			}
@@ -293,7 +293,7 @@ paths:
 func TestConfigReadFileOK(t *testing.T) {
 	t.Parallel()
 	p := filepath.Join("internal", "input", "configuration", "testdata", "inheritance", "ok.yml")
-	c, err := checking.ConfigurationRules().Load(p)
+	c, err := checking.ConfigurationRules().LoadConfig(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +306,7 @@ func TestConfigReadFileOK(t *testing.T) {
 func TestConfigReadFileReadError(t *testing.T) {
 	t.Parallel()
 	p := filepath.Join("internal", "input", "configuration", "testdata", "inheritance", "does-not-exist.yml")
-	_, err := checking.ConfigurationRules().Load(p)
+	_, err := checking.ConfigurationRules().LoadConfig(p)
 	if err == nil {
 		t.Fatal("error did not occur")
 	}
@@ -319,7 +319,7 @@ func TestConfigReadFileReadError(t *testing.T) {
 func TestConfigReadFileParseError(t *testing.T) {
 	t.Parallel()
 	p := filepath.Join("internal", "input", "configuration", "testdata", "inheritance", "broken.yml")
-	_, err := checking.ConfigurationRules().Load(p)
+	_, err := checking.ConfigurationRules().LoadConfig(p)
 	if err == nil {
 		t.Fatal("error did not occur")
 	}
@@ -366,7 +366,7 @@ func TestConfigParseAssumeDefaultPermissions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			c, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -400,7 +400,7 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			c, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -416,7 +416,7 @@ func TestConfigParsePolicyEmpty(t *testing.T) {
 
 func TestConfigParsePolicyUnknownKey(t *testing.T) {
 	t.Parallel()
-	_, err := checking.ConfigurationRules().Parse([]byte(`policy:
+	_, err := checking.ConfigurationRules().ParseConfig([]byte(`policy:
   require-commit-hashes: true
 `))
 	if err == nil {
@@ -430,7 +430,7 @@ func TestConfigParsePolicyUnknownKey(t *testing.T) {
 
 func TestConfigParsePolicyNotAMapping(t *testing.T) {
 	t.Parallel()
-	_, err := checking.ConfigurationRules().Parse([]byte("policy: true\n"))
+	_, err := checking.ConfigurationRules().ParseConfig([]byte("policy: true\n"))
 	if err == nil {
 		t.Fatal("no error occurred")
 	}
@@ -478,7 +478,7 @@ func TestConfigParsePolicyTriState(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			c, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -513,7 +513,7 @@ func TestRemovedRequiredActions(t *testing.T) {
 		"lint: {rules: {policy: {required-actions: off}}}",
 		"lint: {rules: {policy: {required-actions: {level: on, options: {actions: []}}}}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), "required-actions") {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(input)); err == nil || !strings.Contains(err.Error(), "required-actions") {
 			t.Fatalf("removed setting accepted or misdiagnosed: %s: %v", input, err)
 		}
 	}
@@ -612,7 +612,7 @@ func TestConfigParseRequireJobTimeout(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			c, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			c, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -709,7 +709,7 @@ func TestConfigParseRequireJobTimeoutError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			_, err := checking.ConfigurationRules().Parse([]byte(tc.input))
+			_, err := checking.ConfigurationRules().ParseConfig([]byte(tc.input))
 			if err == nil {
 				t.Fatal("no error occurred")
 			}

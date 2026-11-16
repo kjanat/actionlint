@@ -39,7 +39,7 @@ func TestEnvironmentInsertionInvocationSafety(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errs := workflowparser.Parse([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
+			workflow, errs := workflowparser.ParseWorkflow([]byte("on: push\nenv:\n  ${{ insert }}: " + tc.value + "\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

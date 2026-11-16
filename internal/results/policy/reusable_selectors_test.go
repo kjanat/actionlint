@@ -40,7 +40,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 		{"{report: suppression}", []string{"forbidden-suppression"}},
 		{"true", []string{"forbidden-suppression", "expression-reference"}},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: expression-reference, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte("ignores: [{rule: expression-reference, uses: './generated'}]\npolicy: {disallow-suppressions: " + tc.policy + "}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,7 +56,7 @@ func TestReusableIgnorePolicyAndForeignSources(t *testing.T) {
 			t.Fatalf("policy %s: %#v", tc.policy, got)
 		}
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: expression-reference, uses: './generated'}]"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("ignores: [{rule: expression-reference, uses: './generated'}]"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestReusableIgnoreReportedFile(t *testing.T) {
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: shellcheck, " + tc.selector + "}]"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("ignores: [{rule: shellcheck, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -120,7 +120,7 @@ func TestReusableIgnoreSelectors(t *testing.T) {
 	} {
 		t.Run(tc.selector, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: expression-reference, " + tc.selector + "}]"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("ignores: [{rule: expression-reference, " + tc.selector + "}]"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -56,7 +56,7 @@ func DefaultReferences(cfg *configuration.Config, options DefaultPluginOptions) 
 		}) {
 			continue
 		}
-		ref, err := pluginreference.Parse(id)
+		ref, err := pluginreference.ParsePluginReference(id)
 		if err != nil {
 			return nil, err
 		}

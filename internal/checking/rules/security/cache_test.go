@@ -18,7 +18,7 @@ jobs:
   a_second:
     uses: example/repo/.github/workflows/build.yml@v1
 `
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

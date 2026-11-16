@@ -22,7 +22,7 @@ import (
 
 func manifestTestReference(t *testing.T, name string) pluginreference.Reference {
 	t.Helper()
-	ref, err := pluginreference.Parse(name)
+	ref, err := pluginreference.ParsePluginReference(name)
 	if err != nil {
 		t.Fatal(err)
 	}

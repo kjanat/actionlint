@@ -42,7 +42,7 @@ func TestRepeatedCompositeInvocationsUseTheirOwnOutputMetadata(t *testing.T) {
 		if closed {
 			using = "runs: {using: composite, steps: []}\n"
 		}
-		metadata, err := actionmeta.Parse("child/action.yml", []byte("name: child\ndescription: child\n"+using))
+		metadata, err := actionmeta.ParseActionMetadata("child/action.yml", []byte("name: child\ndescription: child\n"+using))
 		if err != nil {
 			t.Fatal(err)
 		}

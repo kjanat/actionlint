@@ -54,7 +54,7 @@ func TestMigrationDefaultsAndAtomicFailure(t *testing.T) {
 	if err := plan.Apply(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Load(path)
+	cfg, err := checking.ConfigurationRules().LoadConfig(path)
 	if err != nil || len(cfg.Plugins) != 2 || configuration.VariableNames(cfg.Facts()) == nil {
 		t.Fatalf("migrated config: %+v %v", cfg, err)
 	}
@@ -236,7 +236,7 @@ func TestDefaultPluginSelectionPreservesChoices(t *testing.T) {
 	} {
 		t.Run(tc.config, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -339,7 +339,7 @@ func TestInitializeConfigInstallsDefaultPins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Load(path)
+	cfg, err := checking.ConfigurationRules().LoadConfig(path)
 	if err != nil || len(cfg.Plugins) != 2 {
 		t.Fatalf("defaults missing: %+v %v", cfg, err)
 	}

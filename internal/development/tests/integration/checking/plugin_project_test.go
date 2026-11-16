@@ -81,7 +81,7 @@ func TestDirectDeclarationRequiresNoRegistryLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, err := pluginreference.Parse("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
+	ref, err := pluginreference.ParsePluginReference("https://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32))
 	if err != nil {
 		t.Fatal(err)
 	}

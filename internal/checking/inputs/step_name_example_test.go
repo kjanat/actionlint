@@ -26,7 +26,7 @@ func (stepNameAnalyzer) CheckDocument(_ context.Context, input checkinputs.Analy
 	if input.Kind != "workflow" {
 		return nil, nil
 	}
-	workflow, _ := workflowparser.Parse([]byte(input.Content))
+	workflow, _ := workflowparser.ParseWorkflow([]byte(input.Content))
 	if workflow == nil {
 		return nil, nil
 	}

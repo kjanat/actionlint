@@ -207,7 +207,7 @@ func TestCachePlanListsOCIBlobs(t *testing.T) {
 	if got := pkg.registry.Fetches(pkg.executable); got != 0 {
 		t.Fatalf("planning fetched executable %d times", got)
 	}
-	ref, err := pluginreference.Parse(pkg.reference)
+	ref, err := pluginreference.ParsePluginReference(pkg.reference)
 	if err != nil {
 		t.Fatal(err)
 	}

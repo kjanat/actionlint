@@ -81,7 +81,7 @@ jobs:
 			})
 		}
 		for _, value := range []string{"1", "'true'", "{}", "[]"} {
-			if _, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "policy: {%s: %s}", tc.name, value)); err == nil {
+			if _, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "policy: {%s: %s}", tc.name, value)); err == nil {
 				t.Errorf("accepted invalid %s value %s", tc.name, value)
 			}
 		}

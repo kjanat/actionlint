@@ -61,7 +61,7 @@ export default defineProcessProvider({
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := manifests.Parse(data)
+	manifest, err := manifests.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatalf("SDK output is not a host provider: %v\n%s", err, data)
 	}
@@ -109,7 +109,7 @@ export default defineDocumentProvider({
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := manifests.Parse(data)
+	manifest, err := manifests.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatalf("callback manifest rejected: %v\n%s", err, data)
 	}

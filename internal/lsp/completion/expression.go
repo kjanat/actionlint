@@ -48,7 +48,7 @@ func completeExpression(sema *exprcheck.Checker, source string, offset int) []It
 		}
 		start = at
 		prefix = before[at:]
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(receiver + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(receiver + "}}"))
 		if err != nil {
 			return nil
 		}

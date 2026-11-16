@@ -10,7 +10,7 @@ import (
 func TestDirectURL(t *testing.T) {
 	t.Parallel()
 	source := "https://EXAMPLE.com/Plugin.wasm?version=1#sha256=" + strings.Repeat("AB", 32)
-	ref, err := Parse(source)
+	ref, err := ParsePluginReference(source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestDirectURL(t *testing.T) {
 		"http://example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32),
 		"https://user:pass@example.com/plugin.wasm#sha256=" + strings.Repeat("ab", 32),
 	} {
-		if _, err := Parse(invalid); err == nil {
+		if _, err := ParsePluginReference(invalid); err == nil {
 			t.Errorf("accepted %s", invalid)
 		}
 	}
@@ -56,7 +56,7 @@ func TestParse(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			t.Parallel()
-			ref, err := Parse(tc.input)
+			ref, err := ParsePluginReference(tc.input)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,7 +80,7 @@ func TestRejectInvalidReference(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			if _, err := Parse(input); err == nil {
+			if _, err := ParsePluginReference(input); err == nil {
 				t.Fatalf("accepted %q", input)
 			}
 		})

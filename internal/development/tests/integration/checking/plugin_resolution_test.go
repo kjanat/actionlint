@@ -81,7 +81,7 @@ func TestPluginInstallStoresCanonicalExactConfigOnly(t *testing.T) {
 	if err := project.Save(t.Context(), []pluginreference.Reference{request}); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Load(project.Manifest.Path)
+	cfg, err := checking.ConfigurationRules().LoadConfig(project.Manifest.Path)
 	if err != nil {
 		t.Fatal(err)
 	}

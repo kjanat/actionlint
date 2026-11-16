@@ -22,7 +22,7 @@ func TestSecretInterpolationIndependentSemanticFindings(t *testing.T) {
 		} {
 			t.Run(interpolation+"/"+tc.expression, func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {script-interpolation: " + interpolation + "}, security: {script-injection: on}}}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}\nlint: {rules: {correctness: {script-interpolation: " + interpolation + "}, security: {script-injection: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}

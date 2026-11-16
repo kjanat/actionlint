@@ -26,7 +26,7 @@ func TestRegisteredRunnerCannotMutatePreparedPolicyOrSibling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := rules.Parse([]byte(`lint:
+	cfg, err := rules.ParseConfig([]byte(`lint:
   enabled: true
   lifecycle:
     policies:

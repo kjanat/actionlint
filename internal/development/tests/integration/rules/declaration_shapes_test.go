@@ -15,7 +15,7 @@ import (
 
 func shapeFindings(t *testing.T, src string) []reporting.StepFinding {
 	t.Helper()
-	ast, _ := workflowparser.Parse([]byte(src))
+	ast, _ := workflowparser.ParseWorkflow([]byte(src))
 	w := declaration.Publish(src, ast, false, "").Bind("test").Workflow()
 	// The checks run here without the traversal adapter, which would name
 	// each finding after its rule.

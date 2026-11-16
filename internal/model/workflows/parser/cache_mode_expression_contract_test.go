@@ -44,7 +44,7 @@ jobs:
     cache-mode: ` + jobMode + `
     uses: $/leaf.yaml
 `
-				workflow, diagnostics := workflowparser.Parse([]byte(source))
+				workflow, diagnostics := workflowparser.ParseWorkflow([]byte(source))
 				if len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
 				}
@@ -56,7 +56,7 @@ jobs:
 				_, store, snapshots := declarations.NewCapturedSnapshots(t, root)
 				fileCache := workflowinputs.NewCache(project.RootDir(), nil)
 				fileCache.SetSources(t.Context(), store, root)
-				fromFile, err := fileCache.Load(t.Context(), "./callee.yaml")
+				fromFile, err := fileCache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 				if err != nil {
 					t.Fatal(err)
 				}

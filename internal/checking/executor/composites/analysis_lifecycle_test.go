@@ -125,7 +125,7 @@ func TestPreparedBatchRetainsNonCompositeActionEntries(t *testing.T) {
 			if using == "docker" {
 				body = "image: Dockerfile"
 			}
-			meta, err := actionmeta.Parse("action.yml", []byte("name: example\ndescription: example\nruns:\n  using: "+using+"\n  "+body+"\n"))
+			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte("name: example\ndescription: example\nruns:\n  using: "+using+"\n  "+body+"\n"))
 			if err != nil {
 				t.Fatal(err)
 			}

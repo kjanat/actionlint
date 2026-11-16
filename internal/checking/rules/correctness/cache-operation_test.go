@@ -10,7 +10,7 @@ import (
 func TestCacheOperationStepWithoutDeclaringJobUsesWorkflowMode(t *testing.T) {
 	t.Parallel()
 	const source = "on: push\ncache-mode: read\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo}]\n"
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{uses: actions/cache/save@v4}]
 `
-	decoded, errors := workflowparser.Parse([]byte(source))
+	decoded, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

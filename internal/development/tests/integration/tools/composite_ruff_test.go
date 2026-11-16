@@ -30,7 +30,7 @@ runs:
 	if err := os.Symlink(filepath.Join(root, "python-action"), filepath.Join(root, "python-alias")); err != nil {
 		t.Skipf("directory symlinks unavailable: %v", err)
 	}
-	config, err := checking.ConfigurationRules().Parse([]byte(`overrides:
+	config, err := checking.ConfigurationRules().ParseConfig([]byte(`overrides:
   - includes: ['python-action/action.yml']
     tools: {ruff: {select: [F401]}}
     lint: {rules: {external: {ruff: warn}}}
@@ -111,7 +111,7 @@ runs:
   - includes: ['python-action/action.yml']
     ` + tc.override + "\n"
 			}
-			config, err := checking.ConfigurationRules().Parse([]byte(configText))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte(configText))
 			if err != nil {
 				t.Fatal(err)
 			}

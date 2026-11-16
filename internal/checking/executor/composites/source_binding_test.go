@@ -262,7 +262,7 @@ func TestNestedPreparedJobIgnoresCorruptedCollectorState(t *testing.T) {
 
 func TestStandaloneDeploymentFailureLeavesNoScope(t *testing.T) {
 	t.Parallel()
-	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
+	meta, err := actionmeta.ParseActionMetadata("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

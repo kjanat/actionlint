@@ -59,7 +59,7 @@ func Prepare(ctx context.Context, path string, options installation.DefaultPlugi
 	if err != nil {
 		return nil, err
 	}
-	leaf, err := document.Parse(migration.Path, migration.Content)
+	leaf, err := document.ParseConfigDocument(migration.Path, migration.Content)
 	if err != nil {
 		return nil, err
 	}

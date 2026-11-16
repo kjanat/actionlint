@@ -137,7 +137,7 @@ paths:
 	if err != nil || !reflect.DeepEqual(inspection.Config, serialized) {
 		t.Fatalf("inspection differs from analyzed configuration: %#v, %v", inspection.Config, err)
 	}
-	original, err := checking.ConfigurationRules().Load(path)
+	original, err := checking.ConfigurationRules().LoadConfig(path)
 	if err != nil || !original.RequiresCommitHash() || configuration.VariableNames(original.Facts())[0] != "ORIGINAL" {
 		t.Errorf("overlays must leave the config file unchanged: %#v, %v", original, err)
 	}

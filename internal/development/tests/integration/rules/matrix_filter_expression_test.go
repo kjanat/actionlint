@@ -51,7 +51,7 @@ jobs:
       - run: echo ok
 `, tc.axis, section, expression)
 					_, snapshot := matrixTestWorkflow(t, source)
-					cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
+					cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: " + enabled + "}}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -143,7 +143,7 @@ jobs:
       - run: echo ok
 `, tc.axis, section, tc.filter)
 				_, snapshot := matrixTestWorkflow(t, source)
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -214,7 +214,7 @@ jobs:
       - run: echo ok
 `, tc.axis, section, expression)
 				_, snapshot := matrixTestWorkflow(t, source)
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -295,7 +295,7 @@ jobs:
 				workflow, snapshot := matrixTestWorkflow(t, source)
 				job := workflow.Jobs["test"]
 				originalMatrix := job.Strategy.Matrix
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {mixed-type-matrix-filters: on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}

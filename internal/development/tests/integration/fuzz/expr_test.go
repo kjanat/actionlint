@@ -25,7 +25,7 @@ func FuzzExprParse(f *testing.F) {
 
 		l := exprsyntax.NewLexer(string(data))
 		p := exprsyntax.NewParser()
-		e, err := p.Parse(l)
+		e, err := p.ParseExpression(l)
 		if err != nil {
 			return
 		}

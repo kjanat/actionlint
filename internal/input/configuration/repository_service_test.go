@@ -9,7 +9,7 @@ import (
 
 func TestRepositoryServiceOverridesHostFact(t *testing.T) {
 	t.Parallel()
-	host, err := services.Parse("github.com", "")
+	host, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}

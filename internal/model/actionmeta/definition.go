@@ -10,7 +10,7 @@ import (
 // ParseDefinition extracts call-site facts. Invalid or empty manifests leave
 // metadata-dependent checks unavailable; their declarations are not workflow errors.
 func ParseDefinition(content []byte) Definition {
-	metadata, err := Parse("action.yml", content)
+	metadata, err := ParseActionMetadata("action.yml", content)
 	if err != nil || metadata == nil || metadata.Root == nil {
 		return Definition{}
 	}
@@ -27,7 +27,7 @@ type DefinitionInspection struct {
 // InspectDefinition parses and validates an action manifest before exposing its
 // call-site facts. Problems identify locations in the supplied manifest.
 func InspectDefinition(content []byte) DefinitionInspection {
-	metadata, err := Parse("action.yml", content)
+	metadata, err := ParseActionMetadata("action.yml", content)
 	if err != nil {
 		loadDiagnostics := codec.LoadDiagnostics(err)
 		problems := make([]MetadataProblem, 0, len(loadDiagnostics))

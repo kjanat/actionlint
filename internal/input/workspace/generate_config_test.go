@@ -31,7 +31,7 @@ func TestGenerateConfigActionOnlyRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checking.ConfigurationRules().Parse(content); err != nil {
+	if _, err := checking.ConfigurationRules().ParseConfig(content); err != nil {
 		t.Fatalf("invalid generated config: %v", err)
 	}
 	if _, err := checking.ConfigurationRules().Generate(t.Context(), project.RootDir(), false, "test"); err == nil {

@@ -13,7 +13,7 @@ func TestInlineSuppressionFlowScalarBoundary(t *testing.T) {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
 			source := "# actionlint:ignore-next-line expression\n- {run: " + value + ", shell: bash}\n- run: sibling\n"
-			directives, invalid := Parse([]byte(source), []string{"expression"}, rule.Names{})
+			directives, invalid := ParseInlineSuppressions([]byte(source), []string{"expression"}, rule.Names{})
 			if len(invalid) != 0 {
 				t.Fatal(invalid)
 			}
@@ -52,7 +52,7 @@ func TestInlineSuppressionMultilineScalarBoundary(t *testing.T) {
 					}
 				}
 				input = strings.ReplaceAll(input, "\n", ending)
-				directives, invalid := Parse([]byte(input), []string{"expression"}, rule.Names{})
+				directives, invalid := ParseInlineSuppressions([]byte(input), []string{"expression"}, rule.Names{})
 				if len(invalid) != 0 {
 					t.Fatal(invalid)
 				}

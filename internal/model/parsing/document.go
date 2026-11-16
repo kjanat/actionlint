@@ -41,7 +41,7 @@ type Provenance struct{ record *declaration.Record }
 
 func Workflow(content []byte) Document {
 	owned := bytes.Clone(content)
-	w, issues := workflowparser.Parse(owned)
+	w, issues := workflowparser.ParseWorkflow(owned)
 	return Document{
 		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
 		Provenance: Provenance{declaration.Publish(string(owned), w, false, "")},
@@ -50,7 +50,7 @@ func Workflow(content []byte) Document {
 
 func Action(sourcePath string, content []byte) Document {
 	owned := bytes.Clone(content)
-	metadata, err := actionmeta.Parse(sourcePath, owned)
+	metadata, err := actionmeta.ParseActionMetadata(sourcePath, owned)
 	document := Document{kind: KindAction, Metadata: metadata, ParseError: err}
 	var provenance *workflowlang.Workflow
 	_, rejected := errors.AsType[*codec.AdmissionError](err)

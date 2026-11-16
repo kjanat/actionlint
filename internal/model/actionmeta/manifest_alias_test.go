@@ -22,7 +22,7 @@ func TestManifestRejectsAnchorsAndAliases(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			meta, err := Parse("nested/action.yaml", []byte(tc.source))
+			meta, err := ParseActionMetadata("nested/action.yaml", []byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
 			}

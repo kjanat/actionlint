@@ -23,13 +23,13 @@ func TestRegisteredRuleSelectors(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			if _, err := checking.ConfigurationRules().Parse([]byte(input)); err == nil {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte(input)); err == nil {
 				t.Fatal("standalone parsing accepted an unregistered rule")
 			}
-			if _, err := checking.ConfigurationRules().Parse([]byte(input), "no-sudo"); err != nil {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte(input), "no-sudo"); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := checking.ConfigurationRules().Parse([]byte(strings.ReplaceAll(input, "no-sudo", "typo")), "no-sudo"); err == nil {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte(strings.ReplaceAll(input, "no-sudo", "typo")), "no-sudo"); err == nil {
 				t.Fatal("contextual parsing accepted an unknown rule")
 			}
 		})
@@ -48,7 +48,7 @@ func TestRegisteredRulesInheritanceAndOverlay(t *testing.T) {
 		}
 	}
 	path := filepath.Join(root, "config.yaml")
-	if _, err := checking.ConfigurationRules().Load(path); err == nil {
+	if _, err := checking.ConfigurationRules().LoadConfig(path); err == nil {
 		t.Fatal("unregistered inherited rule accepted")
 	}
 	names := []string{"no-sudo"}

@@ -39,7 +39,7 @@ jobs:
 					indent + "plain: *script",
 					"",
 				}, "\n")
-				workflow, errors := Parse([]byte(content))
+				workflow, errors := ParseWorkflow([]byte(content))
 				if len(errors) != 0 {
 					t.Fatalf("parse errors: %+v", errors)
 				}

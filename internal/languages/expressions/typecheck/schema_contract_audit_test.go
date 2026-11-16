@@ -54,7 +54,7 @@ func TestSchemaAuditContextProfiles(t *testing.T) {
 				for context := range contextspec.BuiltinGlobalVariableTypes {
 					checker := exprlang.NewChecker(contextspec.DefaultExpressionScope(), nil)
 					checker.SetAvailability(contextspec.WorkflowExpressionScope(key))
-					expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("toJSON(" + context + ")}}"))
+					expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("toJSON(" + context + ")}}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -97,7 +97,7 @@ func TestSchemaAuditFunctionContracts(t *testing.T) {
 	} {
 		t.Run(tc.key+"/"+tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -132,7 +132,7 @@ func TestSchemaAuditExpressionDepth(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			_, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%v, error=%v", tc.valid, err)
 			}

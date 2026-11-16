@@ -18,7 +18,7 @@ import (
 // a finding inside on.workflow_call: GitHub refuses to call such a workflow.
 // Findings elsewhere in the workflow belong to the callee's own diagnostics.
 func ParseMetadata(src []byte) (*Metadata, error) {
-	doc, err := codec.Parse(src)
+	doc, err := codec.ParseYAML(src)
 	if err != nil {
 		return nil, err
 	}

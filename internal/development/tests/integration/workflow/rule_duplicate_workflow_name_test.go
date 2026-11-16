@@ -40,7 +40,7 @@ func duplicateWorkflowNameFindings(t *testing.T, root string, diagnostics []resu
 
 func analyzeWorkflowDirectory(t *testing.T, root, config string, paths ...string) []results.Diagnostic {
 	t.Helper()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 	if err != nil {
 		t.Fatal(err)
 	}

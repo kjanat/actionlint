@@ -66,7 +66,7 @@ permissions: {}
 func TestWorkflowRunGlobWithoutProject(t *testing.T) {
 	t.Parallel()
 	for _, config := range []string{"", "lint: {rules: {correctness: {glob: off}}}"} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

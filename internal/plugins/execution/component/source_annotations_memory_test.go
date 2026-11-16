@@ -11,7 +11,7 @@ import (
 
 func TestSourceAnnotationsShareTheCallMemoryBudget(t *testing.T) {
 	t.Parallel()
-	plugin, err := Load(t.Context(), filepath.Join("testdata", "plugins", "source-annotations.wasm"), Options{})
+	plugin, err := LoadComponentPlugin(t.Context(), filepath.Join("testdata", "plugins", "source-annotations.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

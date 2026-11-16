@@ -16,7 +16,7 @@ import (
 
 func TestRejectsMemoryPagesAboveWasmMaximum(t *testing.T) {
 	t.Parallel()
-	if _, err := Load(t.Context(), "not-opened.wasm", Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
+	if _, err := LoadComponentPlugin(t.Context(), "not-opened.wasm", Options{MemoryPages: 65537}); err == nil || !strings.Contains(err.Error(), "65536 pages") {
 		t.Fatalf("invalid memory limit was not rejected: %v", err)
 	}
 }

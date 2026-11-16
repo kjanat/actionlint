@@ -522,7 +522,7 @@ func TestCaseArgumentContracts(t *testing.T) {
 
 func checkCallDemandResult(t *testing.T, input string) ExpressionCheckResult {
 	t.Helper()
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

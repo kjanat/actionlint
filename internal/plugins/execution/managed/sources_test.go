@@ -56,7 +56,7 @@ func TestPluginSourceGrantsAndMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	external := fixturefiles.Write(t, shared, "shared.sh", "SHARED=two\n")
-	cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(shared), strconv.Quote(filepath.Join(root, "missing"))))
+	cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s]}}}", strconv.Quote(shared), strconv.Quote(filepath.Join(root, "missing"))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant)))
+			cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s, %s, %s]}}}", strconv.Quote(file), strconv.Quote(filepath.Join(root, "missing")), strconv.Quote(tc.grant)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -216,7 +216,7 @@ func TestPluginSourceGrantResolvesDirectorySymlinks(t *testing.T) {
 func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 	t.Parallel()
 	root, outside := t.TempDir(), t.TempDir()
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestPluginWorkingDirectoryCannotGrantOutsideWorkspace(t *testing.T) {
 	if _, err := sourceRunner.sourceFiles(context.Background(), script, requestedSourceGrants(t, script.Config)); err == nil || !strings.Contains(err.Error(), "outside the configured read-access directories") {
 		t.Fatalf("outside cwd granted: %v", err)
 	}
-	cfg, err = (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
+	cfg, err = (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {external-sources: true, source-path: [%s]}}}", strconv.Quote(outside)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestPluginWorkingDirectoryUsesMostSpecificGrant(t *testing.T) {
 	if err := os.Mkdir(nested, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: {external-sources: true}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestPluginRequestsCannotExpandHostSourceAuthority(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: " + tc.config + "}}"))
+			cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: " + tc.config + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -333,7 +333,7 @@ func TestMissingPluginSourcePathCannotGrantEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 	missing := filepath.Join(escape, "missing")
-	cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, "tools: {shellcheck: {config: {source-path: [%s]}}}", strconv.Quote(missing)))
+	cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, "tools: {shellcheck: {config: {source-path: [%s]}}}", strconv.Quote(missing)))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 
 func loadJSONProtocolEngine(t *testing.T) *Engine {
 	t.Helper()
-	engine, err := Load(t.Context(), filepath.Join("testdata", "wat", "json-protocol.wasm"), Options{})
+	engine, err := LoadModuleEngine(t.Context(), filepath.Join("testdata", "wat", "json-protocol.wasm"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

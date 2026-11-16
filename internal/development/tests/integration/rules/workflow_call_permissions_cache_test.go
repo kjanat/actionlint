@@ -39,7 +39,7 @@ jobs:
     steps:
       - run: echo
 `)
-	w, errs := workflowparser.Parse(b)
+	w, errs := workflowparser.ParseWorkflow(b)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -84,7 +84,7 @@ func TestRuleWorkflowCallPermissionsCachePathParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowparser.Parse(src)
+	w, errs := workflowparser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("callee was not parsed:", errs)
 	}

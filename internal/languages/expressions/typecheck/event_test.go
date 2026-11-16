@@ -20,7 +20,7 @@ func TestEventProjectionIsNotMutated(t *testing.T) {
 	checker := NewChecker(contextspec.DefaultExpressionScope(), nil)
 	checker.SetContextAvailability([]string{"github"})
 	contextspec.SetEventPayloadType(checker, event)
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer("github.event.commits.*.message}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer("github.event.commits.*.message}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

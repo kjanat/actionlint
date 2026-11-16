@@ -59,7 +59,7 @@ func TestToolCallbacksCannotMutateHostConfiguration(t *testing.T) {
 	for _, callback := range []string{"enabled", "build", "required", "input selectors"} {
 		t.Run(callback, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint:\n  enabled: true\n"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint:\n  enabled: true\n"))
 			if err != nil {
 				t.Fatal(err)
 			}

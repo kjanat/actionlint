@@ -35,7 +35,7 @@ func TestValidatedRuleOptions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte(fmt.Sprintf(`lint: {rules: {preset: none, policy: {require-commit-hash: {level: error, options: {exclude: %s}}}}}`, exclusions)))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(fmt.Sprintf(`lint: {rules: {preset: none, policy: {require-commit-hash: {level: error, options: {exclude: %s}}}}}`, exclusions)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -101,7 +101,7 @@ func TestShellcheckSourcesAreValidatedAndOwned(t *testing.T) {
 	t.Parallel()
 	for _, settings := range []string{"'./.shellcheckrc'", "{disable: [SC2086], enable: [all], shell: bash, extended-analysis: true, external-sources: false, source-path: [scripts]}"} {
 		source := []byte("tools: {shellcheck: {config: " + settings + "}}")
-		parsed, err := checking.ConfigurationRules().Parse(source)
+		parsed, err := checking.ConfigurationRules().ParseConfig(source)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,11 +116,11 @@ func TestShellcheckSourcesAreValidatedAndOwned(t *testing.T) {
 		}
 	}
 	for _, settings := range []string{`""`, `"bad\npath"`, `"bad\u0000path"`, `{disable: ["SC2086\nenable=all"]}`, `{enable: [some_check]}`, `{shell: python}`, `{source-path: ['']}`, `{typo: true}`} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: {config: " + settings + "}}")); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: {config: " + settings + "}}")); err == nil {
 			t.Errorf("accepted invalid settings %s", settings)
 		}
 	}
-	if _, err := checking.ConfigurationRules().Parse([]byte("tools: {plugin-tool: {config: {level: 2}}}"), "plugin-tool"); err != nil {
+	if _, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {plugin-tool: {config: {level: 2}}}"), "plugin-tool"); err != nil {
 		t.Fatal(err)
 	}
 }

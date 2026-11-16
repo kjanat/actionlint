@@ -402,9 +402,9 @@ func (cfg *Config) RequiresPermissions() *PermissionsPolicy {
 	return new(*cfg.Policy.RequirePermissions)
 }
 
-// Parse decodes and validates an actionlint configuration document. It returns
+// ParseConfig decodes and validates an actionlint configuration document. It returns
 // an error if decoding or validation fails, or if the document uses extends.
-func (ruleSet RuleSet) Parse(b []byte, additional ...string) (*Config, error) {
+func (ruleSet RuleSet) ParseConfig(b []byte, additional ...string) (*Config, error) {
 	resolved, err := ruleSet.ResolveDocument(b, additional...)
 	if err != nil {
 		return nil, err
@@ -428,7 +428,7 @@ type ResolvedConfig struct {
 
 // ResolveDocument parses one YAML or JSON document and resolves it without inheritance.
 func (ruleSet RuleSet) ResolveDocument(b []byte, additional ...string) (ResolvedConfig, error) {
-	root, err := document.Parse("", b)
+	root, err := document.ParseConfigDocument("", b)
 	if err != nil {
 		return ResolvedConfig{}, decodeError{cause: err}
 	}
@@ -493,14 +493,14 @@ func (ruleSet RuleSet) resolveValue(root any, inputs map[string]document.Locatio
 	return ResolvedConfig{Value: root, Inputs: inputs, Config: &c, Values: values, Origins: origins, Warnings: MergeWarnings(legacyWarnings, configWarnings(root, inputs))}, nil
 }
 
-// Load reads settings from a configuration file. Read also retains source provenance.
-func (ruleSet RuleSet) Load(path string, additional ...string) (*Config, error) {
-	return ruleSet.LoadContext(context.Background(), path, additional...)
+// LoadConfig reads settings from a configuration file. Read also retains source provenance.
+func (ruleSet RuleSet) LoadConfig(path string, additional ...string) (*Config, error) {
+	return ruleSet.LoadConfigContext(context.Background(), path, additional...)
 }
 
-// LoadContext reads settings with cancellable local or HTTPS inheritance.
+// LoadConfigContext reads settings with cancellable local or HTTPS inheritance.
 // ReadContext also retains source provenance for analysis and path interpolation.
-func (ruleSet RuleSet) LoadContext(ctx context.Context, path string, additional ...string) (*Config, error) {
+func (ruleSet RuleSet) LoadConfigContext(ctx context.Context, path string, additional ...string) (*Config, error) {
 	source, err := ruleSet.ReadContext(ctx, path, nil, nil, additional...)
 	if err != nil {
 		return nil, err

@@ -139,7 +139,7 @@ func loadAuthorManifest(ctx context.Context, streams commandstreams.Streams, pat
 		if err != nil {
 			return manifests.Manifest{}, nil, err
 		}
-		manifest, err := manifests.Parse(data)
+		manifest, err := manifests.ParsePluginManifest(data)
 		if err != nil {
 			return manifests.Manifest{}, nil, err
 		}
@@ -212,7 +212,7 @@ func loadAuthorTests(ctx context.Context, streams commandstreams.Streams, paths 
 	if len(input.Manifest) == 0 || len(input.Manifest) > authoringManifestLimit {
 		return manifests.Manifest{}, nil, nil, errors.New("plugin test manifest is missing or exceeds 1 MiB")
 	}
-	manifest, err := manifests.Parse(input.Manifest)
+	manifest, err := manifests.ParsePluginManifest(input.Manifest)
 	if err != nil {
 		return manifests.Manifest{}, nil, nil, err
 	}

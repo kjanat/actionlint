@@ -27,7 +27,7 @@ import (
 
 func loadRunnerFixture(t *testing.T) *componenthost.Plugin {
 	t.Helper()
-	p, err := componenthost.Load(t.Context(), "../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm", componenthost.Options{ReservedRules: checking.BuiltinRuleNames()})
+	p, err := componenthost.LoadComponentPlugin(t.Context(), "../../../../../internal/plugins/execution/component/testdata/plugins/buildkite-runners.wasm", componenthost.Options{ReservedRules: checking.BuiltinRuleNames()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestBuiltinCustomWindowsSharedExecutionFacts(t *testing.T) {
 	t.Parallel()
 	observer := &runtimeObserver{}
 	label := "self-32vcpu-windows-2022"
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("repository: {runners: [" + label + "]}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("repository: {runners: [" + label + "]}"))
 	if err != nil {
 		t.Fatal(err)
 	}

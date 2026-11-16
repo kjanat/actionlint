@@ -103,7 +103,7 @@ func TestPublicManagedRepositoryOptionsAndExplicitPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, explicit := range []json.RawMessage{nil, json.RawMessage(`{"private-option":"caller"}`)} {
 		guest := &integratedAnalyzer{tool: "shellcheck", contract: "kjanat:actionlint/shellcheck-config@0.1.0"}
-		cfg, err := checking.ConfigurationRules().Parse([]byte(`lint: {rules: {plugins: {shellcheck: {level: default, options: {private-option: repository}}}}}`), "shellcheck")
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`lint: {rules: {plugins: {shellcheck: {level: default, options: {private-option: repository}}}}}`), "shellcheck")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,7 +238,7 @@ func TestPublicManagedRuleLevelsPreserveExternalPolicy(t *testing.T) {
 			if plugin == "" {
 				plugin = "default"
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {external: {shellcheck: "+external+"}, plugins: {shellcheck: {level: "+plugin+", options: {private-option: repository}}}}}"), "shellcheck")
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {external: {shellcheck: "+external+"}, plugins: {shellcheck: {level: "+plugin+", options: {private-option: repository}}}}}"), "shellcheck")
 			if err != nil {
 				t.Fatal(err)
 			}

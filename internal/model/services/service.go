@@ -25,7 +25,7 @@ type Service struct {
 
 var versionPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+(?:\.[0-9]+)?$`)
 
-func Parse(kind, version string) (Service, error) {
+func ParseService(kind, version string) (Service, error) {
 	if kind == "unknown" {
 		kind = ""
 	}
@@ -61,7 +61,7 @@ func (s *Service) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err
 	}
-	parsed, err := Parse(value.Kind, value.Version)
+	parsed, err := ParseService(value.Kind, value.Version)
 	if err != nil {
 		return err
 	}

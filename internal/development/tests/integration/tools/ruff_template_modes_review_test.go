@@ -17,7 +17,7 @@ import (
 func TestRuffStatementTemplatesPreserveFindings(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
-	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {select: [F, B018]}}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {select: [F, B018]}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ jobs:
 func TestRuffConversionTemplateSkipsOnlyItsScript(t *testing.T) {
 	t.Parallel()
 	command := testutil.RequireTool(t, "ruff")
-	config, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {target-version: py314}}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {target-version: py314}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

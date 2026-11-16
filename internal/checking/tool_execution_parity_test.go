@@ -26,7 +26,7 @@ overrides: [{includes: ['.github/workflows/**'], lint: {rules: {correctness: {if
 	workflow := writeFixture(t, root, ".github/workflows/ci.yml", `on: push
 jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 `)
-	cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -102,7 +102,7 @@ func TestCommitishNestedActionOrigins(t *testing.T) {
 				if err := os.CopyFS(root, os.DirFS(fixtureDirectory)); err != nil {
 					t.Fatal(err)
 				}
-				config, err := checking.ConfigurationRules().Parse([]byte("repository: {runners: []}\ntools: {shellcheck: false, ruff: false}"))
+				config, err := checking.ConfigurationRules().ParseConfig([]byte("repository: {runners: []}\ntools: {shellcheck: false, ruff: false}"))
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -89,7 +89,7 @@ func TestRequestActionAllowsAdditionalInputsAndUndeclaredOutputs(t *testing.T) {
           DATA: ${{ steps.request.outputs.data }}
           UNKNOWN: ${{ steps.request.outputs.this_output_does_not_exist }}
 `
-			parsed, parseErrors := workflowparser.Parse([]byte(text))
+			parsed, parseErrors := workflowparser.ParseWorkflow([]byte(text))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}

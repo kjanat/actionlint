@@ -48,7 +48,7 @@ jobs:
       - run: echo ok
 permissions: {}
 `
-			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +100,7 @@ permissions: {}
 `
 				sources := []workspace.InputFile{{Path: ".github/workflows/consumer.yml", Content: []byte(consumer), Project: project}}
 				if inMemory {
-					cfg, err := checking.ConfigurationRules().Parse([]byte("files: {excludes: ['**/build.yml']}"))
+					cfg, err := checking.ConfigurationRules().ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -256,7 +256,7 @@ func TestWorkflowRunNamesExcludedInMemory(t *testing.T) {
 			if onDisk {
 				fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: Old\n"+testutil.GoodWorkflow)
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte("files: {excludes: ['**/build.yml']}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("files: {excludes: ['**/build.yml']}"))
 			if err != nil {
 				t.Fatal(err)
 			}

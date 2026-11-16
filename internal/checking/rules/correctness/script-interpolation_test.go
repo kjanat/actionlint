@@ -36,7 +36,7 @@ func TestScriptSafeScalarReferences(t *testing.T) {
 		{"toJSON(!inputs.text)", true},
 		{"toJSON(toJSON(inputs.enabled))", false},
 	} {
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +105,7 @@ func TestScriptInterpolationValueSafety(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -140,7 +140,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,7 +154,7 @@ func TestScriptStatusNeedsKnownWordSelector(t *testing.T) {
 		})
 	}
 	for _, expression := range []string{"steps[inputs.id].outcome", "steps['missing'].outcome"} {
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(expression + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(expression + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}

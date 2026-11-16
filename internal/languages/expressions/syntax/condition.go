@@ -23,7 +23,7 @@ func ParseConditionExpression(source string) (Node, *SyntaxError, int) {
 	if LiteralExpressionValue(source) != nil || !ContainsExpression(source) {
 		folded := ConditionSource(source) + "}}"
 		lex := NewLexer(folded)
-		expr, err := NewParser().Parse(lex)
+		expr, err := NewParser().ParseExpression(lex)
 		if err != nil && err.EndOffset > len(folded)-2 {
 			// The closing delimiter is synthetic for a bare condition.
 			err.EndOffset = len(folded) - 2
@@ -44,7 +44,7 @@ func ParseConditionExpression(source string) (Node, *SyntaxError, int) {
 		return nil, nil, 0
 	}
 	lex := NewLexer(source[3:])
-	expr, err := NewParser().Parse(lex)
+	expr, err := NewParser().ParseExpression(lex)
 	if err == nil && lex.Offset() != len(source)-3 {
 		return nil, nil, 0
 	}

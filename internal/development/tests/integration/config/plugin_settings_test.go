@@ -48,7 +48,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte(test.configuration), "custom-check")
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(test.configuration), "custom-check")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -68,7 +68,7 @@ func TestRegisteredAnalyzerSettings(t *testing.T) {
 			}
 		})
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {plugins: {custom-check: {level: on, options: {count: 0}}}}}"), "custom-check")
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {plugins: {custom-check: {level: on, options: {count: 0}}}}}"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
 	}

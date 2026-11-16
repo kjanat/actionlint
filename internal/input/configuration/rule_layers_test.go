@@ -26,7 +26,7 @@ func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
 				t.Run(name+"/"+categories[0]+"-to-"+categories[1], func(t *testing.T) {
 					t.Parallel()
 					input := fmt.Appendf(nil, "lint: {rules: {%s: {%s: warn}}}\noverrides:\n  - includes: ['target.yml']\n    lint: {rules: {%s: {%s: off}}}\n", categories[0], name, categories[1], name)
-					project, err := rules.Parse(input)
+					project, err := rules.ParseConfig(input)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -57,7 +57,7 @@ func TestFileOverridesMergeAcceptedRuleLocations(t *testing.T) {
 func TestFileOverridePreservesSameLayerRulePrecedence(t *testing.T) {
 	t.Parallel()
 	rules := checking.ConfigurationRules()
-	project, err := rules.Parse([]byte(`lint:
+	project, err := rules.ParseConfig([]byte(`lint:
   rules:
     policy:
       require-job-timeout: {level: error, options: {min-minutes: 5, max-minutes: 30}}

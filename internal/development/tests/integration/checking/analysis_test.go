@@ -61,11 +61,11 @@ func TestPublicAnalysisContract(t *testing.T) {
 
 func TestPublicConfigSyntaxAndFiles(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("config-variables: [KNOWN]\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("config-variables: [KNOWN]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree, findings := workflowparser.Parse([]byte(workflow))
+	tree, findings := workflowparser.ParseWorkflow([]byte(workflow))
 	if tree == nil || tree.Jobs["build"] == nil || len(findings) != 0 {
 		t.Fatalf("tree=%v findings=%v", tree, findings)
 	}

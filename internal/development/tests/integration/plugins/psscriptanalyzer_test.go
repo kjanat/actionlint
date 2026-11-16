@@ -81,7 +81,7 @@ func TestPSScriptAnalyzerWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("plugins: []\ntools: {psscriptanalyzer: {config: {IncludeRules: [PSAvoidUsingCmdletAliases]}}}\n"), "psscriptanalyzer")
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("plugins: []\ntools: {psscriptanalyzer: {config: {IncludeRules: [PSAvoidUsingCmdletAliases]}}}\n"), "psscriptanalyzer")
 	if err != nil {
 		t.Fatal(err)
 	}

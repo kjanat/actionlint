@@ -12,7 +12,7 @@ import (
 func TestUnusedYAMLAnchorsReportInDeclarationOrder(t *testing.T) {
 	t.Parallel()
 	const source = "first: &zeta {child: &alpha value}\nused: &used value\ncopy: *used\nlast: &omega value\n"
-	root, err := codec.Parse([]byte(source))
+	root, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestYAMLAliasInspectionVisitsSharedDeclarationsOnce(t *testing.T) {
 		"anchor: &shared value\nnested: {ref: *shared}\ncopy: []\n",
 	} {
 		for _, resolve := range []bool{false, true} {
-			root, err := codec.Parse([]byte(source))
+			root, err := codec.ParseYAML([]byte(source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -87,7 +87,7 @@ func TestYAMLAliasInspectionVisitsSharedDeclarationsOnce(t *testing.T) {
 func TestYAMLAliasInspectionRejectsForwardSharedSource(t *testing.T) {
 	t.Parallel()
 	for _, resolve := range []bool{false, true} {
-		root, err := codec.Parse([]byte("root: &a {nested: {ref: *a}}\nfirst: []\n"))
+		root, err := codec.ParseYAML([]byte("root: &a {nested: {ref: *a}}\nfirst: []\n"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -131,7 +131,7 @@ func TestYAMLAliasInspectionRejectsForwardSharedSource(t *testing.T) {
 func TestYAMLAliasInspectionKeepsSharedRecursiveAliasUnresolved(t *testing.T) {
 	t.Parallel()
 	for _, resolve := range []bool{false, true} {
-		root, err := codec.Parse([]byte("root: &a {nested: {ref: *a}}\ncopy: []\n"))
+		root, err := codec.ParseYAML([]byte("root: &a {nested: {ref: *a}}\ncopy: []\n"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -184,7 +184,7 @@ func TestSharedAliasDiagnosticsAndProjectionFollowParentSlots(t *testing.T) {
 	t.Parallel()
 	for _, sharedBacking := range []bool{false, true} {
 		for _, resolve := range []bool{false, true} {
-			root, err := codec.Parse([]byte("anchor: &invalid+name value\nfirst: [*invalid+name]\nsecond: []\n"))
+			root, err := codec.ParseYAML([]byte("anchor: &invalid+name value\nfirst: [*invalid+name]\nsecond: []\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -241,7 +241,7 @@ func TestSharedAliasDiagnosticsAndProjectionFollowParentSlots(t *testing.T) {
 func TestWorkflowParserRecordsUndeclaredAliasDiagnostic(t *testing.T) {
 	t.Parallel()
 	const source = "anchor: &a value\nalias: *a\n"
-	root, err := codec.Parse([]byte(source))
+	root, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +294,7 @@ func TestValidateYAMLAliasesPreservesSource(t *testing.T) {
 		{"base: &base {self: *base}\ncopy: *base\n", []string{`recursive alias "base"`}},
 		{"base: &invalid+name value\ncopy: *invalid+name\nunused: &unused value\n", []string{`anchor name "invalid+name"`, `alias name "invalid+name"`, `anchor "unused" is defined but not used`}},
 	} {
-		root, err := codec.Parse([]byte(tc.source))
+		root, err := codec.ParseYAML([]byte(tc.source))
 		if err != nil {
 			t.Fatal(err)
 		}

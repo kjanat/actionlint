@@ -44,7 +44,7 @@ func TestWorkflowRunGlobRequiresPositivePattern(t *testing.T) {
     types: [completed]
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `
-			workflow, errs := workflowparser.Parse([]byte(source))
+			workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

@@ -38,7 +38,7 @@ func TestDuplicateKeysUseUpstreamDefaultsDirectAndSelect(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			root, err := codec.Parse([]byte(tc.source))
+			root, err := codec.ParseYAML([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -120,7 +120,7 @@ func TestAliasExpansionUsesUpstreamDefaultsDirectAndSelect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			data := append(aliasExpansionSource(tc.depth, tc.width), []byte("hook: seen\n")...)
-			root, err := codec.Parse(data)
+			root, err := codec.ParseYAML(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -174,7 +174,7 @@ func TestAliasExpansionUsesUpstreamDefaultsDirectAndSelect(t *testing.T) {
 func TestSyntaxNodeCaptureKeepsAliasGraphUnexpanded(t *testing.T) {
 	t.Parallel()
 	data := aliasExpansionSource(5, 8)
-	got, err := codec.Parse(data)
+	got, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("capture syntax graph: %v", err)
 	}

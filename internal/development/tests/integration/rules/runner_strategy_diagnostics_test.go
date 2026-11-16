@@ -72,7 +72,7 @@ jobs:
     steps:
       - run: echo ok
 `, tc.expression, runsOn)
-			_, errs := workflowparser.Parse([]byte(source))
+			_, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

@@ -24,7 +24,7 @@ func TestEventGuardReview(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: false, ruff: false}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: false, ruff: false}"))
 			if err != nil {
 				t.Fatal(err)
 			}

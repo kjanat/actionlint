@@ -199,7 +199,7 @@ runs:
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			have, err := Parse("action.yml", []byte(tc.input))
+			have, err := ParseActionMetadata("action.yml", []byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +239,7 @@ outputs: "foo"`,
 	for _, tc := range testCases {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
-			_, err := Parse("action.yml", []byte(tc.input))
+			_, err := ParseActionMetadata("action.yml", []byte(tc.input))
 			if err == nil {
 				t.Fatal("error did not occur")
 			}
@@ -261,7 +261,7 @@ func TestActionMetadataAcceptsUnknownInputFields(t *testing.T) {
 		t.Run(using, func(t *testing.T) {
 			t.Parallel()
 			src := bytes.ReplaceAll(fixture, []byte("node16"), []byte(using))
-			md, err := Parse("action.yml", src)
+			md, err := ParseActionMetadata("action.yml", src)
 			if err != nil {
 				t.Fatalf("runner ignores the upstream description typo: %v", err)
 			}

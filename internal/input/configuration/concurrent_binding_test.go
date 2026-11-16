@@ -13,7 +13,7 @@ func TestConcurrentRuleBindingOwnsMutableTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := rules.Parse([]byte("overrides:\n  - includes: ['**']\n    lint: {rules: {correctness: {example: on}}}\n"))
+	cfg, err := rules.ParseConfig([]byte("overrides:\n  - includes: ['**']\n    lint: {rules: {correctness: {example: on}}}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

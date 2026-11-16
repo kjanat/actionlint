@@ -19,7 +19,7 @@ const runnerSupportFixture = "testdata/plugins/runner-support-0.3.0.wasm"
 
 func loadRunnerSupportFixture(t *testing.T) *Plugin {
 	t.Helper()
-	plugin, err := Load(t.Context(), runnerSupportFixture, Options{})
+	plugin, err := LoadComponentPlugin(t.Context(), runnerSupportFixture, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func loadRunnerSupportFixture(t *testing.T) *Plugin {
 
 func runnerSupportRequest(t *testing.T, kind, version string) runner.Request {
 	t.Helper()
-	service, err := services.Parse(kind, version)
+	service, err := services.ParseService(kind, version)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -99,7 +99,7 @@ func TestRegisteredAnalyzerCatalogsStayIsolated(t *testing.T) {
 			if !strings.Contains(err.Error(), "unknown diagnostic rule") {
 				t.Fatal(err)
 			}
-			if _, err := ConfigurationRules().Load(filepath.Join(root, "config.yaml")); err == nil {
+			if _, err := ConfigurationRules().LoadConfig(filepath.Join(root, "config.yaml")); err == nil {
 				t.Fatal("standalone config decoding accepted an unregistered rule")
 			}
 		})

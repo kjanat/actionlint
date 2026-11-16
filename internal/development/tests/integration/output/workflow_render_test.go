@@ -28,7 +28,7 @@ func TestSARIFDefaultsDoNotFollowCategoryOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixturefiles.Write(t, root, file, string(content))
-	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {correctness: warn}}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: warn}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

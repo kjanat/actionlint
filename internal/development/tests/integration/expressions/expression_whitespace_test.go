@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: ` + tc.value + "\n" + "\npermissions: {}\n")
-			workflow, syntaxErrors := workflowparser.Parse(source)
+			workflow, syntaxErrors := workflowparser.ParseWorkflow(source)
 			if len(syntaxErrors) != 0 {
 				t.Fatal(syntaxErrors)
 			}

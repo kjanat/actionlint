@@ -23,7 +23,7 @@ func TestWorkflowExampleSourceSteps(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			source := WorkflowExampleSource(tt.job)
-			if _, errors := parser.Parse([]byte(source)); len(errors) > 0 {
+			if _, errors := parser.ParseWorkflow([]byte(source)); len(errors) > 0 {
 				t.Fatalf("invalid workflow: %v\n%s", errors, source)
 			}
 			var workflow struct {

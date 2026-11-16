@@ -18,7 +18,7 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 	} {
 		t.Run(overlay, func(t *testing.T) {
 			t.Parallel()
-			config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: {enabled: false, config: .shellcheckrc}}\noverrides: [{includes: [ci.yml], tools: " + overlay + "}]\n"))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: {enabled: false, config: .shellcheckrc}}\noverrides: [{includes: [ci.yml], tools: " + overlay + "}]\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -34,7 +34,7 @@ func TestFileOverrideExplicitToolResets(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				config, err = checking.ConfigurationRules().Parse(encoded)
+				config, err = checking.ConfigurationRules().ParseConfig(encoded)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -57,7 +57,7 @@ func TestInspectConfigErrorClassification(t *testing.T) {
 				if inherited {
 					path = writeOverrideFixture(t, root, "actionlint.yml", "extends: [invalid.yml]\n")
 				}
-				_, want := checking.ConfigurationRules().Load(path)
+				_, want := checking.ConfigurationRules().LoadConfig(path)
 				got, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
 				if want == nil || err == nil || err.Error() != want.Error() || !strings.Contains(err.Error(), "could not parse config file") || strings.Contains(err.Error(), "could not read config file") || got.Path != path {
 					t.Fatalf("inspection=%+v error=%v, want %v", got, err, want)
@@ -66,7 +66,7 @@ func TestInspectConfigErrorClassification(t *testing.T) {
 		}
 	}
 	path := filepath.Join(t.TempDir(), "missing.yml")
-	_, want := checking.ConfigurationRules().Load(path)
+	_, want := checking.ConfigurationRules().LoadConfig(path)
 	_, err := checking.ConfigurationRules().Inspect(configuration.Selection{Path: path}, true)
 	if err == nil || err.Error() != want.Error() || strings.Count(err.Error(), "could not read config file") != 1 {
 		t.Fatalf("read error=%v, want %v", err, want)

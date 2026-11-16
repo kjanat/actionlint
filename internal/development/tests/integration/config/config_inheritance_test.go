@@ -78,7 +78,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			path := fixturefiles.Write(t, t.TempDir(), "actionlint.yml", tc.content)
-			_, err := checking.ConfigurationRules().Load(path)
+			_, err := checking.ConfigurationRules().LoadConfig(path)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatal(err)
 			}
@@ -102,7 +102,7 @@ func TestConfigExtendsFailures(t *testing.T) {
 			t.Fatalf("HTTPS inheritance sources=%v error=%v", loaded, err)
 		}
 	})
-	if _, err := checking.ConfigurationRules().Parse([]byte("extends: [base.yml]")); err == nil {
+	if _, err := checking.ConfigurationRules().ParseConfig([]byte("extends: [base.yml]")); err == nil {
 		t.Fatal("in-memory config silently ignored extends")
 	}
 }

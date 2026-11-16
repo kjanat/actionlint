@@ -193,7 +193,7 @@ func TestStandaloneActionSuppression(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -248,7 +248,7 @@ func TestMixedActionShellcheckLevels(t *testing.T) {
 		t.Run(level, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("overrides: [{includes: [inner/action.yml], lint: {rules: {external: {shellcheck: " + level + "}}}}]"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("overrides: [{includes: [inner/action.yml], lint: {rules: {external: {shellcheck: " + level + "}}}}]"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -12,7 +12,7 @@ func TestConfigCandidatesRetainDistinctTransports(t *testing.T) {
 	for _, name := range []string{"ruff", "shellcheck"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := (configuration.RuleSet{}).Parse(fmt.Appendf(nil, `overrides:
+			cfg, err := (configuration.RuleSet{}).ParseConfig(fmt.Appendf(nil, `overrides:
   - includes: ['process-action/**']
     tools: {%s: {backend: {process: {executable: checker}}}}
   - includes: ['wasm-action/**']

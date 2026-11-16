@@ -115,9 +115,9 @@ func (r Reference) Registry() string { return r.registry }
 // It is empty for unpinned local install requests and published registries.
 func (r Reference) CandidateDigest() string { return r.candidateDigest }
 
-// Parse accepts an alias, owner/repo or forge-qualified repository/package,
+// ParsePluginReference accepts an alias, owner/repo or forge-qualified repository/package,
 // optionally followed by @latest or an exact release tag.
-func Parse(value string) (Reference, error) {
+func ParsePluginReference(value string) (Reference, error) {
 	if strings.Contains(value, "://") {
 		return directURL(value)
 	}

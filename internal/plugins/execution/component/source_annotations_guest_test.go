@@ -97,7 +97,7 @@ func TestGuestAnnotationInterfaceVersions(t *testing.T) {
 			if err := os.WriteFile(path, changed, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			guest, err := component.Load(t.Context(), path, component.Options{})
+			guest, err := component.LoadComponentPlugin(t.Context(), path, component.Options{})
 			if version == "0.3.0" {
 				if guest != nil {
 					_ = guest.Close(context.WithoutCancel(t.Context()))

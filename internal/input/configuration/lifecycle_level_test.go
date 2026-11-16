@@ -29,7 +29,7 @@ func TestLifecycleFixedDiagnosticLevel(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			cfg, e := rules.Parse([]byte(tc.config))
+			cfg, e := rules.ParseConfig([]byte(tc.config))
 			if e != nil {
 				t.Fatal(e)
 			}

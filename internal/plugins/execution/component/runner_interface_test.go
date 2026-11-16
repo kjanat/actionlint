@@ -16,7 +16,7 @@ import (
 
 func loadRunnerFixture(t *testing.T) *Plugin {
 	t.Helper()
-	p, err := Load(t.Context(), "testdata/plugins/buildkite-runners.wasm", Options{})
+	p, err := LoadComponentPlugin(t.Context(), "testdata/plugins/buildkite-runners.wasm", Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

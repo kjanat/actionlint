@@ -109,7 +109,7 @@ jobs: [`,
 # another comment
   value`,
 	} {
-		if got, invalid := suppression.Parse([]byte(source), (policy.Processor{RuleSet: checking.ConfigurationRules()}).SuppressionRules(), checking.RuleNames()); len(got) != 0 || len(invalid) != 0 {
+		if got, invalid := suppression.ParseInlineSuppressions([]byte(source), (policy.Processor{RuleSet: checking.ConfigurationRules()}).SuppressionRules(), checking.RuleNames()); len(got) != 0 || len(invalid) != 0 {
 			t.Fatalf("scalar content became a directive in %q: %+v", source, got)
 		}
 	}
@@ -119,7 +119,7 @@ jobs: [`,
 	if len(got) != 2 || got[1].Rule != "inline-suppression" || !strings.Contains(got[1].Message, "reason") {
 		t.Fatalf("explicit empty reason was accepted: %+v", got)
 	}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: true}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {disallow-suppressions: true}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ jobs: [`,
 		for _, reason := range []string{" --", " -- intentional"} {
 			source := []byte(strings.ReplaceAll("run: # actionlint:ignore syntax-check"+reason+"\n  !!str\n  | bad\n    echo ok", "\n", ending))
 			_, findings := parseSuppressionSource(source)
-			cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: true}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {disallow-suppressions: true}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -194,7 +194,7 @@ jobs: [`,
 }
 
 func parseSuppressionSource(source []byte) (*workflowlang.Workflow, []*findingmodel.Finding) {
-	workflow, diagnostics := workflowparser.Parse(source)
+	workflow, diagnostics := workflowparser.ParseWorkflow(source)
 	findings := make([]*findingmodel.Finding, 0, len(diagnostics))
 	for _, diagnostic := range diagnostics {
 		findings = append(findings, findingmodel.FromDiagnostic(correctness.SyntaxCheckDiagnostic(diagnostic, source)))

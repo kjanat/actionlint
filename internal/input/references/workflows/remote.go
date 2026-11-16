@@ -90,7 +90,7 @@ func (r *Remote) Lookup(spec string) (*calls.Metadata, error) {
 	return result.metadata, nil
 }
 
-func (r *Remote) Load(ctx context.Context, spec string) (*calls.Metadata, error) {
+func (r *Remote) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (r *Remote) Load(ctx context.Context, spec string) (*calls.Metadata, error)
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ready:
-			return r.Load(ctx, spec)
+			return r.LoadWorkflowMetadata(ctx, spec)
 		}
 	}
 	ready := make(chan struct{})

@@ -41,7 +41,7 @@ func TestScriptRuntimeStandaloneAndCalledComposite(t *testing.T) {
 					result = testutil.Composite(t, root, "- uses: ./inner", checking.Options{ConfigFile: configPath})
 				} else {
 					var err error
-					config, parseErr := checking.ConfigurationRules().Parse([]byte("lint: {rules: {preset: none, suspicious: {" + tc.name + ": on}}}"))
+					config, parseErr := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {preset: none, suspicious: {" + tc.name + ": on}}}"))
 					if parseErr != nil {
 						t.Fatal(parseErr)
 					}
@@ -87,7 +87,7 @@ func TestScriptRuntimePublicGPGAction(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			config, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {preset: none, suspicious: {errexit-status: on, workflow-command-syntax: on}}}"))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {preset: none, suspicious: {errexit-status: on, workflow-command-syntax: on}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

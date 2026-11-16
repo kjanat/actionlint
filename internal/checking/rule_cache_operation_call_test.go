@@ -412,7 +412,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 	var err error
 
 	if config != "" {
-		lConfig, err = ConfigurationRules().Parse([]byte(config))
+		lConfig, err = ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -421,7 +421,7 @@ func checkCacheOperationCalls(t *testing.T, sources map[string]string, config st
 		cache := newCapturedWorkflowCache(t, project.RootDir(), root, nil)
 		if astFirst {
 			for name, source := range sources {
-				w, errs := workflowparser.Parse([]byte(source))
+				w, errs := workflowparser.ParseWorkflow([]byte(source))
 				if w == nil || len(errs) != 0 {
 					continue
 				}

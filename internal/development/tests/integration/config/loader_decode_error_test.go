@@ -14,7 +14,7 @@ import (
 func TestParseDecodeErrorPreservesTypeAndSingleLineText(t *testing.T) {
 	t.Parallel()
 	input := []byte("lint: {enabled: wrong}\n")
-	parsed, err := document.Parse("", input)
+	parsed, err := document.ParseConfigDocument("", input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestParseDecodeErrorPreservesTypeAndSingleLineText(t *testing.T) {
 	if raw == nil {
 		t.Fatal("invalid boolean accepted by decoder")
 	}
-	_, err = checking.ConfigurationRules().Parse(input)
+	_, err = checking.ConfigurationRules().ParseConfig(input)
 	if err == nil {
 		t.Fatal("invalid boolean accepted")
 	}

@@ -218,7 +218,7 @@ func Check(ctx context.Context, options Options, input inputmodel.Request) (resu
 	request.DiskSources = input.Kind == inputmodel.Files || input.Kind == inputmodel.Repository
 
 	if options.LoadScriptEngine != nil {
-		request.LoadScriptEngine = engines.Load
+		request.LoadScriptEngine = engines.LoadModuleBackend
 	}
 	if options.Verbose {
 		request.LogLevel = LogLevelVerbose

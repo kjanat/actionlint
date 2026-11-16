@@ -41,7 +41,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 			if err := os.WriteFile(leaf, []byte(`{"extends":["`+test.filename+`"],"lint":{"rules":{"plugins":{"custom-check":"off"}}}}`), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			settings, err := checking.ConfigurationRules().Load(leaf, "custom-check")
+			settings, err := checking.ConfigurationRules().LoadConfig(leaf, "custom-check")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +53,7 @@ func TestDeferredPluginOptionsKeepInheritedSourceLocations(t *testing.T) {
 
 func TestDeferredPluginOptionsKeepByteSourceLocations(t *testing.T) {
 	t.Parallel()
-	settings, err := checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      custom-check:\n        level: on\n        options:\n          count: 0\n"), "custom-check")
+	settings, err := checking.ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    plugins:\n      custom-check:\n        level: on\n        options:\n          count: 0\n"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestDeferredPluginOptionsKeepOverlaySourceLocations(t *testing.T) {
 
 func TestCallerPluginOptionsAreNotAttributedToConfig(t *testing.T) {
 	t.Parallel()
-	settings, err := checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      custom-check: {level: on, options: {count: 2}}\n"), "custom-check")
+	settings, err := checking.ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    plugins:\n      custom-check: {level: on, options: {count: 2}}\n"), "custom-check")
 	if err != nil {
 		t.Fatal(err)
 	}

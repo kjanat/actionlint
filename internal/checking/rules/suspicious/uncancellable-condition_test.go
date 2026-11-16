@@ -50,7 +50,7 @@ func TestUncancellableCondition(t *testing.T) {
 			if tc.stepIf != "" {
 				source += "        if: " + tc.stepIf + "\n"
 			}
-			ast, errs := workflowparser.Parse([]byte(source))
+			ast, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -96,7 +96,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 			if strings.HasPrefix(scalar, "&gate") {
 				content = strings.Replace(content, "steps: [{run: echo ok}]", "steps: [{run: echo ok, if: *gate}]", 1)
 			}
-			ast, errs := workflowparser.Parse([]byte(content))
+			ast, errs := workflowparser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
@@ -123,7 +123,7 @@ func TestUncancellableConditionFix(t *testing.T) {
 				if strings.Contains(content, "&gate") && !strings.Contains(fixed, "&gate") {
 					t.Fatalf("lost anchor: %s", fixed)
 				}
-				updated, parseErrs := workflowparser.Parse([]byte(fixed))
+				updated, parseErrs := workflowparser.ParseWorkflow([]byte(fixed))
 				if len(parseErrs) != 0 {
 					t.Fatalf("invalid fix %s: %v", fixed, parseErrs)
 				}
@@ -166,7 +166,7 @@ func TestCleanupStepCancellationTimeouts(t *testing.T) {
 				content += "    if: " + tc.jobIf + "\n"
 			}
 			content += "    steps:\n      - uses: actions/checkout@v6\n        if: always()\n"
-			ast, errs := workflowparser.Parse([]byte(content))
+			ast, errs := workflowparser.ParseWorkflow([]byte(content))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

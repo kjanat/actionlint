@@ -26,7 +26,7 @@ func TestLoadRejectsGzipExpansionBeforeCompilation(t *testing.T) {
 	if err := os.WriteFile(path, encoded.Bytes(), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	engine, err := Load(t.Context(), path, Options{Artifact: pluginartifact.Options{MaxBytes: 4096}})
+	engine, err := LoadModuleEngine(t.Context(), path, Options{Artifact: pluginartifact.Options{MaxBytes: 4096}})
 	if engine != nil {
 		_ = engine.Close(t.Context())
 	}

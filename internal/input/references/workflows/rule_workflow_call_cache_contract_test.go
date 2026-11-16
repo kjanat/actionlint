@@ -39,7 +39,7 @@ jobs:
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowparser.Parse(src)
+	w, errs := workflowparser.ParseWorkflow(src)
 	if len(errs) != 1 || !strings.Contains(errs[0].Message, "cache-mode") {
 		t.Fatalf("expected the invalid null declaration, got %v", errs)
 	}

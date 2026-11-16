@@ -26,8 +26,8 @@ func Module(name, requested string, explicit *process.CommandOptions, cfg *confi
 	return &module
 }
 
-// Load resolves a configured WebAssembly module through the invocation loader.
-func Load(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, load func(string) (checkinputs.ScriptBackend, error)) (checkinputs.ScriptBackend, error) {
+// LoadConfiguredModule resolves a configured WebAssembly module through the invocation loader.
+func LoadConfiguredModule(name, requested string, explicit *process.CommandOptions, cfg *configuration.Config, load func(string) (checkinputs.ScriptBackend, error)) (checkinputs.ScriptBackend, error) {
 	module := Module(name, requested, explicit, cfg)
 	if module == nil {
 		return nil, nil

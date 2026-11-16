@@ -49,7 +49,7 @@ func TestProjectAcquisitionNeverInheritsEndpointAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := pluginexec.Load(t.Context(), sources, checking.BuiltinRuleNames(), io.Discard, false); err == nil || !strings.Contains(err.Error(), "public destination") {
+		if _, err := pluginexec.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), io.Discard, false); err == nil || !strings.Contains(err.Error(), "public destination") {
 			t.Fatalf("project private source acquired: %v", err)
 		}
 	}

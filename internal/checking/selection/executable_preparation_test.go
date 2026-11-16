@@ -34,7 +34,7 @@ func TestExecutableIndexPreparation(t *testing.T) {
 			root := t.TempDir()
 			indexPath := filepath.Join(root, ".git", "index")
 			rules := checking.ConfigurationRules()
-			config, err := rules.Parse([]byte("lint: {rules: {correctness: {executable-bit: " + tc.level + "}}}"))
+			config, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {executable-bit: " + tc.level + "}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -34,7 +34,7 @@ func TestResolvedOnUsesDeclaredDefaultLevel(t *testing.T) {
 			} {
 				t.Run(test.name, func(t *testing.T) {
 					t.Parallel()
-					cfg, err := rules.Parse([]byte(test.yaml))
+					cfg, err := rules.ParseConfig([]byte(test.yaml))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -70,7 +70,7 @@ func TestRuleMetadataDefaultsIgnoreInvocationOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := rules.Parse([]byte("lint: {rules: {correctness: error, suspicious: {optional: error, nursery: error}, security: {plugin: error}}}"))
+	cfg, err := rules.ParseConfig([]byte("lint: {rules: {correctness: error, suspicious: {optional: error, nursery: error}, security: {plugin: error}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

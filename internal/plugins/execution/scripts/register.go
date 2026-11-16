@@ -166,7 +166,7 @@ func register(p Provider, sel selection) (tools.Registration, error) {
 			if sel.Backend != nil {
 				return sel.Backend, nil
 			}
-			return Load(name, sel.Command, sel.Process, c.Config, engineLoader(c))
+			return LoadConfiguredModule(name, sel.Command, sel.Process, c.Config, engineLoader(c))
 		},
 	}
 	registration.WithBackend = func(backend checkinputs.ScriptBackend) (tools.Registration, error) {
@@ -282,7 +282,7 @@ func (t *transports) build(cfg *configuration.Config) (string, error) {
 		if _, ok := t.built[key]; ok {
 			return key, nil
 		}
-		engine, err := Load(name, o.Command, o.Process, cfg, engineLoader(c))
+		engine, err := LoadConfiguredModule(name, o.Command, o.Process, cfg, engineLoader(c))
 		if err != nil {
 			return "", fmt.Errorf("could not initialize %s: %w", name, err)
 		}

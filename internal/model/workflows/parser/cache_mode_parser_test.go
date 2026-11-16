@@ -74,7 +74,7 @@ func TestParseCacheMode(t *testing.T) {
       - run: echo ok
 `
 				}
-				w, errs := workflowparser.Parse([]byte(src))
+				w, errs := workflowparser.ParseWorkflow([]byte(src))
 				wantErrors := 0
 				if tt.kind == workflowlang.CacheModeInvalid {
 					wantErrors = 1
@@ -118,7 +118,7 @@ func TestParseCacheModeOmittedAndAliased(t *testing.T) {
 		src += `    steps:
       - run: echo ok
 `
-		w, errs := workflowparser.Parse([]byte(src))
+		w, errs := workflowparser.ParseWorkflow([]byte(src))
 		if len(errs) != 0 {
 			t.Fatal(errs)
 		}
@@ -144,7 +144,7 @@ jobs:
     steps:
       - run: echo ok
 `, event, mode)
-			if _, errs := workflowparser.Parse([]byte(src)); len(errs) != 0 {
+			if _, errs := workflowparser.ParseWorkflow([]byte(src)); len(errs) != 0 {
 				t.Fatalf("explicit %s mode on %s is valid: %v", mode, event, errs)
 			}
 		}

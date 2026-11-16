@@ -36,7 +36,7 @@ func TestShellWordProofsRequireShellSink(t *testing.T) {
 func TestGitHubScriptDoesNotUseShellWordProof(t *testing.T) {
 	t.Parallel()
 	source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/github-script@v8\n        with:\n          script: |\n            const repo = ${{ github.repository }}\n"
-	workflow, errs := workflowparser.Parse([]byte(source))
+	workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

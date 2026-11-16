@@ -9,7 +9,7 @@ type policyWire Policy
 
 // Unmarshal reads YAML configuration and applies the shared migrations and validation.
 func (ruleSet RuleSet) Unmarshal(source []byte, dst *Config) error {
-	parsed, err := document.Parse("actionlint.yaml", source)
+	parsed, err := document.ParseConfigDocument("actionlint.yaml", source)
 	if err != nil {
 		return err
 	}

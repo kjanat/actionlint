@@ -166,7 +166,7 @@ jobs: {test: {runs-on: ubuntu-latest, if: false, steps: [{run: echo ok}]}}
 		if filtered {
 			config += "files: {includes: ['.github/workflows/**']}\n"
 		}
-		cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -32,7 +32,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	}
 	pluginCommandTest(t, acquisition, 0, "plugin", "install", "community-check", "--registry", fixtureregistry.FixtureRegistryURL)
 	path := filepath.Join(".github", "actionlint.yaml")
-	cfg, err := checking.ConfigurationRules().Load(path)
+	cfg, err := checking.ConfigurationRules().LoadConfig(path)
 	if err != nil || len(cfg.Plugins) != 1 || cfg.Plugins[0].Name() != fixtureregistry.FixturePluginName || cfg.Plugins[0].Version() != "v1.0.0" {
 		t.Fatalf("unresolved configuration: %+v, %v", cfg, err)
 	}
@@ -59,7 +59,7 @@ func TestRegistryCommandsUseExactConfigWithoutLock(t *testing.T) {
 	registry.SetOffline(false)
 	registry.Add(t, "v1.1.0", module)
 	pluginCommandTest(t, acquisition, 0, "plugin", "update", "community-check", "--version", "latest")
-	cfg, err = checking.ConfigurationRules().Load(path)
+	cfg, err = checking.ConfigurationRules().LoadConfig(path)
 	if err != nil || cfg.Plugins[0].Version() != "v1.1.0" {
 		t.Fatalf("update did not persist an exact version: %+v, %v", cfg, err)
 	}

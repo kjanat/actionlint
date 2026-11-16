@@ -16,7 +16,7 @@ func TestShellcheckConfigValidation(t *testing.T) {
 		`{config: {disable: [&code SC2086, *code]}}`,
 		`{config: {<<: {disable: [SC2086]}}}`,
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: " + value + "}")); err != nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: " + value + "}")); err != nil {
 			t.Errorf("%s: %v", value, err)
 		}
 	}
@@ -28,7 +28,7 @@ func TestShellcheckConfigValidation(t *testing.T) {
 		`{config: {source-path: ["bad\npath"]}}`, `{config: ''}`, `{config: {typo: true}}`,
 		`{config: {<<: {disable: [2086]}}}`, `{config: {disable: [&code 2086, *code]}}`,
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: " + value + "}")); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: " + value + "}")); err == nil {
 			t.Errorf("accepted %s", value)
 		}
 	}

@@ -31,7 +31,7 @@ func TestDiagnosticIdentities(t *testing.T) {
 	} {
 		t.Run(tc.rule+"/"+tc.code, func(t *testing.T) {
 			t.Parallel()
-			node, parseError := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
+			node, parseError := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
 			var findings []*exprlang.Error
 			if parseError != nil {
 				t.Fatalf("invalid diagnostic fixture: %v", parseError)

@@ -21,7 +21,7 @@ func TestParserConditionNormalisesYAMLBooleans(t *testing.T) {
 		t.Run(tc.value, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  check:\n    if: " + tc.value + "\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n"
-			root, err := codec.Parse([]byte(source))
+			root, err := codec.ParseYAML([]byte(source))
 			if err != nil {
 				t.Fatal(err)
 			}

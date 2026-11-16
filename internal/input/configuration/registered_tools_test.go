@@ -21,7 +21,7 @@ func TestRegisteredToolSettingsForFiles(t *testing.T) {
 	}
 	metadata.Shorthands["limit"].Path[0] = "broken"
 	clear(metadata.Schema)
-	cfg, err := rules.Parse([]byte("tools:\n  file-tool: {limit: 3}\noverrides:\n  - includes: ['inner/**']\n    tools:\n      file-tool: {limit: 7}\n"))
+	cfg, err := rules.ParseConfig([]byte("tools:\n  file-tool: {limit: 3}\noverrides:\n  - includes: ['inner/**']\n    tools:\n      file-tool: {limit: 7}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestRegisteredToolSettingsForFiles(t *testing.T) {
 			t.Fatalf("%s: limit = %#v, want %d", tc.path, got, tc.want)
 		}
 	}
-	if _, err := (RuleSet{}).Parse([]byte("tools: {file-tool: {limit: 3}}")); err == nil {
+	if _, err := (RuleSet{}).ParseConfig([]byte("tools: {file-tool: {limit: 3}}")); err == nil {
 		t.Fatal("provider metadata leaked into another rule set")
 	}
 }
@@ -56,7 +56,7 @@ func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
 		t.Run(overridden, func(t *testing.T) {
 			t.Parallel()
 			text := "tools: {file-tool: {config: {limit: 3}}, other-tool: {config: {limit: 9}}}\noverrides: [{includes: ['**'], tools: {" + overridden + ": {enabled: false}}}]\n"
-			cfg, err := rules.Parse([]byte(text))
+			cfg, err := rules.ParseConfig([]byte(text))
 			if err != nil {
 				t.Fatal(err)
 			}

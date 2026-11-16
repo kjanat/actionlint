@@ -21,7 +21,7 @@ func TestComponentLoadRejectsOversizedFileBeforeParsing(t *testing.T) {
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
-	plugin, err := Load(t.Context(), path, Options{})
+	plugin, err := LoadComponentPlugin(t.Context(), path, Options{})
 	if plugin != nil {
 		_ = plugin.Close(t.Context())
 	}

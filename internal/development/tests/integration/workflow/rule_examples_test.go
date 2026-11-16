@@ -14,7 +14,7 @@ func TestCatalogueWorkflowExamples(t *testing.T) {
 		for _, example := range descriptor.Examples {
 			t.Run(descriptor.Name+"/"+example.Description, func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {%s: {%s: on}}}", checking.RuleCategory(descriptor.Name), descriptor.Name))
+				cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: on}}}", checking.RuleCategory(descriptor.Name), descriptor.Name))
 				if err != nil {
 					t.Fatal(err)
 				}

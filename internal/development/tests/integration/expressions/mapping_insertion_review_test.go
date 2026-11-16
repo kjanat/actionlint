@@ -35,7 +35,7 @@ func TestOpaqueMatrixInsertionPreservesKnownRows(t *testing.T) {
 			if len(errs) != 3 || counts["matrix"] != 1 || counts["runner-label"] != 2 {
 				t.Fatalf("known row diagnostics lost: %v", errs)
 			}
-			workflow, parseErrors := workflowparser.Parse([]byte(source))
+			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(source))
 			if len(parseErrors) != 0 {
 				t.Fatal(parseErrors)
 			}
@@ -76,7 +76,7 @@ func TestDockerExpressionInsertedReservedInputs(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				workflow, _ := workflowparser.Parse([]byte(source))
+				workflow, _ := workflowparser.ParseWorkflow([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if action.Entrypoint == nil || action.Entrypoint.Value != tc.entrypoint || action.Args == nil || action.Args.Value != tc.args {
 					t.Fatalf("reserved fields lost: %+v", action)
@@ -107,7 +107,7 @@ func TestConstantInsertedKeyCollisions(t *testing.T) {
 		} {
 			t.Run(section+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()
-				_, errs := workflowparser.Parse([]byte(insertionSectionWorkflow(section, fmt.Sprintf(tc.mapping, value, value))))
+				_, errs := workflowparser.ParseWorkflow([]byte(insertionSectionWorkflow(section, fmt.Sprintf(tc.mapping, value, value))))
 				duplicates := 0
 				for _, err := range errs {
 					if strings.Contains(err.Message, "is duplicated") {
@@ -150,7 +150,7 @@ func TestDockerConstantInputKeys(t *testing.T) {
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
-				workflow, _ := workflowparser.Parse([]byte(source))
+				workflow, _ := workflowparser.ParseWorkflow([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				if tc.entrypoint == "" {
 					if action.Entrypoint != nil || action.Args != nil {
@@ -180,7 +180,7 @@ func TestActionInputResolutionAcrossConsumers(t *testing.T) {
 				if len(errs) != 1 || !strings.Contains(errs[0].Message, "potentially untrusted") {
 					t.Fatalf("script injection check missing: %v", errs)
 				}
-				workflow, _ := workflowparser.Parse([]byte(source))
+				workflow, _ := workflowparser.ParseWorkflow([]byte(source))
 				action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 				names := workflowlang.ResolvedActionInputs(action)
 				found, count := false, 0
@@ -210,7 +210,7 @@ func TestActionInputObjectResultsStayData(t *testing.T) {
 		if errs := lintCredentialsExpressionTest(t, source); len(errs) != 0 {
 			t.Fatalf("evaluated script string interpreted as source: %v", errs)
 		}
-		workflow, _ := workflowparser.Parse([]byte(source))
+		workflow, _ := workflowparser.ParseWorkflow([]byte(source))
 		action := workflow.Jobs["test"].Steps[0].Exec.(*workflowlang.ExecAction)
 		if value, known := workflowlang.ActionInputValue(action, "script"); !known || value != "${{ github.event.issue.title }}" {
 			t.Fatalf("resolved value=%q, known=%v", value, known)
@@ -232,7 +232,7 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 				if errs := lintMatrixWithKnownRunnerLabels(t, source); len(errs) != 0 {
 					t.Fatalf("resolved axis rejected: %v", errs)
 				}
-				workflow, errs := workflowparser.Parse([]byte(source))
+				workflow, errs := workflowparser.ParseWorkflow([]byte(source))
 				if len(errs) != 0 {
 					t.Fatal(errs)
 				}
@@ -255,7 +255,7 @@ func TestResolvedMatrixKeysReachConsumers(t *testing.T) {
 
 func lintMatrixWithKnownRunnerLabels(t *testing.T, source string) []diagmodel.Diagnostic {
 	t.Helper()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("repository: {runners: []}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("repository: {runners: []}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestResolvedEmptyMappingKeys(t *testing.T) {
 					for range depth {
 						mapping = "{'${{ insert }}': " + mapping + "}"
 					}
-					_, errs := workflowparser.Parse([]byte(insertionSectionWorkflow(section, mapping)))
+					_, errs := workflowparser.ParseWorkflow([]byte(insertionSectionWorkflow(section, mapping)))
 					if key == "${{ vars.KEY }}" || key == "${{ 'valid' }}" {
 						if len(errs) != 0 {
 							t.Fatal(errs)

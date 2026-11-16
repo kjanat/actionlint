@@ -104,7 +104,7 @@ func TestRuffPythonScripts(t *testing.T) {
 				src += "        shell: " + tc.shell + "\n"
 			}
 			src += "permissions: {}\n"
-			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -189,7 +189,7 @@ func TestRuffMissingExecutable(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -232,7 +232,7 @@ permissions: {}
 		t.Fatalf("%+v %v", result, err)
 	}
 	src = strings.Replace(src, " # actionlint:ignore ruff -- intentional undefined-name fixture", "", 1)
-	cfg, err := checking.ConfigurationRules().Parse([]byte("overrides: [{includes: [ci.yml], lint: {rules: {external: {ruff: warn}}}}]"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("overrides: [{includes: [ci.yml], lint: {rules: {external: {ruff: warn}}}}]"))
 	if err != nil {
 		t.Fatal(err)
 	}

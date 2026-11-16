@@ -24,7 +24,7 @@ func TestReusableIgnoreCallerRelativeFile(t *testing.T) {
 			workflow := writeFixture(t, root, ".github/workflows/ci.yml", source)
 			config := "ignores: [{rule: expression-reference, file: '" + pattern + "'}]"
 			writeFixture(t, root, ".github/actionlint.yaml", config)
-			cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 			if err != nil {
 				t.Fatal(err)
 			}

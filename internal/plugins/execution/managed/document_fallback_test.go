@@ -69,7 +69,7 @@ func TestDocumentPluginMixedFallbackPreservesOccurrencesAndIndices(t *testing.T)
 	batch := documentBatchFixture(t, 3)
 	graph := batch.CallGraph
 	entry := graph.Entry().Reference
-	cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
+	cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

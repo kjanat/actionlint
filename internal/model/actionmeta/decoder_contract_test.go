@@ -30,7 +30,7 @@ inputs:
     ? *required
     : true
 `
-	metadata, err := Parse("action.yml", []byte(source))
+	metadata, err := ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
 			} else if baseline != nil {
 				t.Fatal(baseline)
 			}
-			metadata, err := Parse("action.yml", []byte(tc.source))
+			metadata, err := ParseActionMetadata("action.yml", []byte(tc.source))
 			if tc.limit {
 				if err == nil || !strings.Contains(err.Error(), "excessive aliasing") {
 					t.Fatalf("Parse = %v, want alias limit through runs", err)
@@ -87,7 +87,7 @@ func TestAliasedRunsKeepsExpansionBudget(t *testing.T) {
 
 func TestNormalizedDuplicateFieldPreservesFirstAndOtherMetadata(t *testing.T) {
 	t.Parallel()
-	metadata, err := Parse("action.yml", []byte("name: first\nName: second\nruns: {using: node24, main: index.js}\n"))
+	metadata, err := ParseActionMetadata("action.yml", []byte("name: first\nName: second\nruns: {using: node24, main: index.js}\n"))
 	if metadata.Name != "first" || metadata.Runs.Using != "node24" {
 		t.Fatalf("partial metadata lost: %+v", metadata)
 	}
@@ -108,7 +108,7 @@ func TestMetadataDecoderErrorsNameSchemaFields(t *testing.T) {
 		{"runs: scalar\n", "yaml: construct errors: line 1: yaml: runs must be mapping node but scalar node was found at line:1, col:7"},
 		{"inputs: {token: scalar}\n", "yaml: construct errors: line 1: yaml: input definition must be mapping node but scalar node was found at line:1, col:17"},
 	} {
-		_, err := Parse("action.yml", []byte(tc.source))
+		_, err := ParseActionMetadata("action.yml", []byte(tc.source))
 		if err == nil || err.Error() != tc.want {
 			t.Errorf("Parse(%q) = %v, want %q", tc.source, err, tc.want)
 		}

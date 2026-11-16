@@ -38,7 +38,7 @@ func TestWorkflowRunOrderedFilters(t *testing.T) {
 				t.Parallel()
 				root := t.TempDir()
 				fixturefiles.Write(t, root, ".github/workflows/build.yml", "name: "+strconv.Quote(tc.producer)+"\n"+testutil.GoodWorkflow)
-				config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+				config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 				if err != nil {
 					t.Fatal(err)
 				}

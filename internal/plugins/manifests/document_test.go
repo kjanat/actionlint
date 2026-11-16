@@ -15,7 +15,7 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 	document = strings.Replace(document, `"rule": {`, `"rule": {"required_inputs":["source","dependencies"],`, 1)
 	document = strings.Replace(document, `"selectors": {"filename": "actionlint.sh"}`, `"selectors":{"documents":["workflow","action"]}`, 1)
 	document = strings.Replace(document, `"preparation": "kjanat:actionlint/shell-preparation@0.3.0"`, `"preparation":"generic"`, 1)
-	manifest, err := manifests.Parse([]byte(document))
+	manifest, err := manifests.ParsePluginManifest([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestDocumentManifestFactsAndSelectors(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := manifests.Parse([]byte(invalid)); err == nil {
+			if _, err := manifests.ParsePluginManifest([]byte(invalid)); err == nil {
 				t.Fatal("invalid document declaration accepted")
 			}
 		})
@@ -43,7 +43,7 @@ func TestInvocationDefinitionManifest(t *testing.T) {
 	t.Parallel()
 	definition := `"invocation_definitions":[{"id":"example/python-wrapper","executables":["actions-shell"],"prefix":["python"],"delegate":"python-plugin/python"}],`
 	document := strings.Replace(minimal, `"schema_version": 1,`, `"schema_version": 1,`+definition, 1)
-	manifest, err := manifests.Parse([]byte(document))
+	manifest, err := manifests.ParsePluginManifest([]byte(document))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestInvocationDefinitionManifest(t *testing.T) {
 		strings.Replace(document, `"delegate":"python-plugin/python"`, `"options":[{"short":"xx"}]`, 1),
 		strings.Replace(document, `"delegate":"python-plugin/python"`, `"options":[{"short":"o","group":"set"}]`, 1),
 	} {
-		if _, err := manifests.Parse([]byte(invalid)); err == nil {
+		if _, err := manifests.ParsePluginManifest([]byte(invalid)); err == nil {
 			t.Fatal("invalid option definition accepted")
 		}
 	}

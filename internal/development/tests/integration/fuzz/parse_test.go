@@ -38,6 +38,6 @@ jobs: {}
 			return
 		}
 
-		workflowparser.Parse(data)
+		workflowparser.ParseWorkflow(data)
 	})
 }

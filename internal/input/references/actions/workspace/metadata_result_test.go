@@ -54,7 +54,7 @@ func TestMetadataCachePreservesNativeLoadErrorText(t *testing.T) {
 	}
 	fatal.WriteString("inputs: *definitions\nruns: {using: composite, steps: []}\n")
 	for _, source := range []string{"name: [\n", fatal.String()} {
-		_, original := actionmeta.Parse("action.yml", []byte(source))
+		_, original := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 		if _, native := errors.AsType[*codec.LoadError](original); !native {
 			t.Fatal("fixture needs a native load failure", original)
 		}

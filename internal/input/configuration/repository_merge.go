@@ -31,7 +31,7 @@ func MergePlan() document.Plan {
 // merged tree, using the merge rules of Config. normalize rewrites each source
 // before it is merged. Sources held by files are not read again.
 func LoadSources(path string, files *document.Files, read func(string) ([]byte, error), normalize document.Normalizer) (document.Loaded, error) {
-	return document.Load(path, files, read, normalize, MergePlan())
+	return document.LoadConfigDocument(path, files, read, normalize, MergePlan())
 }
 
 // relocateSource returns value located by source, adding the locations of

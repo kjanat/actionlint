@@ -40,7 +40,7 @@ func TestActionCoercionSelection(t *testing.T) {
 					root, _ = testutil.ExecutableFixture(t, "shellcheck", "ruff")
 				}
 				source := strings.Replace(manifest, "%s", tc.comment, 1)
-				cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 				if err != nil {
 					t.Fatal(err)
 				}

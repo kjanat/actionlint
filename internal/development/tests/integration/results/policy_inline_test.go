@@ -25,7 +25,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 				if rule.Name == "unused-suppression" {
 					disabled = ""
 				}
-				cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {%s%s: {%s: on}}}", disabled, rule.Category, rule.Name))
+				cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s%s: {%s: on}}}", disabled, rule.Category, rule.Name))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -41,7 +41,7 @@ func TestEveryRuleIsSuppressible(t *testing.T) {
 					t.Fatalf("findings=%+v", got)
 				}
 			}
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {disable: [" + rule.Name + "]}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {disable: [" + rule.Name + "]}}"))
 			if err != nil || len(cfg.Lint.Rules.Disable) != 1 {
 				t.Fatalf("%+v, %v", cfg, err)
 			}
@@ -53,7 +53,7 @@ func TestForeignInlineSuppressionSource(t *testing.T) {
 	t.Parallel()
 	source := []byte("name: demo # actionlint:ignore shellcheck -- reviewed\n")
 	finding := &findingmodel.Finding{Start: sourcepos.Position{Line: 1, Column: 1}, Rule: "shellcheck", Path: "local/action.yml", Source: results.DiagnosticSource{Content: source}}
-	cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {disable: [unused-suppression], correctness: {shellcheck: on}}}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {disable: [unused-suppression], correctness: {shellcheck: on}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

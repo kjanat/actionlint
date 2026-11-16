@@ -48,7 +48,7 @@ func TestUnknownActionFilesDoNotProveUnusedSuppression(t *testing.T) {
 				}
 				input := workspace.InputFile{Path: path, Content: []byte(metadata), Project: workspace.Identity(root)}
 				if tc.disabled {
-					cfg, err := ConfigurationRules().Parse([]byte("lint: {rules: {correctness: {action: off}}}\n"))
+					cfg, err := ConfigurationRules().ParseConfig([]byte("lint: {rules: {correctness: {action: off}}}\n"))
 					if err != nil {
 						t.Fatal(err)
 					}

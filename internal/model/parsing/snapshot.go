@@ -192,7 +192,7 @@ func (s *SourceSnapshots) Action(captured capture.CapturedDocument, metadata *ac
 	// Reparse only the private original text. Mutable metadata is a lookup view,
 	// never declaration provenance. Parsing and publication happen outside mu.
 	// Schema errors preserve recovered declarations; resource rejection prevents expansion.
-	recovered, parseErr := actionmeta.Parse(metadata.Path(), []byte(text))
+	recovered, parseErr := actionmeta.ParseActionMetadata(metadata.Path(), []byte(text))
 	var traversal *workflowlang.Workflow
 	if _, rejected := errors.AsType[*codec.AdmissionError](parseErr); !rejected {
 		traversal = actionFacts(recovered)

@@ -72,7 +72,7 @@ func (ruleSet RuleSet) DefaultDocument(version string, format FileFormat) ([]byt
 	info, _ := debug.ReadBuildInfo()
 	ref := buildinfo.SourceRef(version, info)
 	schemaURL := "https://cdn.jsdelivr.net/gh/kjanat/actionlint@" + strings.TrimPrefix(ref, "v") + "/actionlint.schema.json"
-	defaults, err := ruleSet.Parse([]byte(defaultConfigTemplate))
+	defaults, err := ruleSet.ParseConfig([]byte(defaultConfigTemplate))
 	if err != nil {
 		return nil, fmt.Errorf("read default configuration: %w", err)
 	}

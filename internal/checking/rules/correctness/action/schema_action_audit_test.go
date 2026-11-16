@@ -173,7 +173,7 @@ runs:
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			meta, err := actionmeta.Parse("action.yml", []byte(tc.source))
+			meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(tc.source))
 			var findings []*findingmodel.Finding
 			if err == nil {
 				meta.Filename = "action.yml"
@@ -193,7 +193,7 @@ func TestActionStepValueShapes(t *testing.T) {
 		t.Run(declaration, func(t *testing.T) {
 			t.Parallel()
 			source := []byte("name: test\ndescription: test\nruns:\n  using: composite\n  steps:\n    - " + declaration + "\n")
-			meta, err := actionmeta.Parse("action.yml", source)
+			meta, err := actionmeta.ParseActionMetadata("action.yml", source)
 			if err != nil {
 				t.Fatal(err)
 			}

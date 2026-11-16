@@ -23,7 +23,7 @@ func TestResultsUseResolvedDefaultSeverity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg, err := rules.Parse([]byte("lint: {rules: {correctness: {example: on}}}"))
+			cfg, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {example: on}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

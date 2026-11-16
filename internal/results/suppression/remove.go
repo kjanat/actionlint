@@ -21,7 +21,7 @@ func Remove(content []byte, position sourcepos.Position, rules, allowed []string
 	if len(rules) == 0 {
 		return results.Edit{}, false
 	}
-	directives, _ := Parse(content, allowed, names)
+	directives, _ := ParseInlineSuppressions(content, allowed, names)
 	var declaration *Directive
 	for i := range directives {
 		if directives[i].Position == position {

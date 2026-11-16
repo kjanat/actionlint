@@ -35,7 +35,7 @@ func TestActionSupportComesFromDeclaration(t *testing.T) {
 func TestAdapterUsesDeclaredInputsWithoutRuleNameDispatch(t *testing.T) {
 	t.Parallel()
 	const source = "name: Native\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - id: work\n        run: echo ok\n"
-	parsed, errs := workflowparser.Parse([]byte(source))
+	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

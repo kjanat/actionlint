@@ -23,11 +23,11 @@ func TestIncompleteMetadataCheckUsesPreparedOccurrence(t *testing.T) {
 	}{{"off", 0}, {"error", 1}} {
 		t.Run(test.level, func(t *testing.T) {
 			t.Parallel()
-			source, err := rules.Parse([]byte("lint: {rules: {correctness: {metadata-files: off}}}"))
+			source, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {metadata-files: off}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			occurrence, err := rules.Parse([]byte("lint: {rules: {correctness: {metadata-files: " + test.level + "}}}"))
+			occurrence, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {metadata-files: " + test.level + "}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

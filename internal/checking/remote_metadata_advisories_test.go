@@ -31,7 +31,7 @@ func TestRemoteMetadataAdvisoriesUseEachInvocationBinding(t *testing.T) {
 			}
 			remote := "name: shared\ndescription: test\nruns:\n  using: composite\n  steps:\n" + comment + "    - if: startsWith(true, 'true')\n      shell: bash\n      run: echo ok\n"
 			provider, requests := remoteCompositeProvider(t, map[string]string{"example/shared": remote})
-			config, err := ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {coercion: off}}}\noverrides:\n  - includes: ['first/**']\n    lint: {rules: {suspicious: {coercion: " + test.first + "}}}\n  - includes: ['second/**']\n    lint: {rules: {suspicious: {coercion: error}}}\n"))
+			config, err := ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {coercion: off}}}\noverrides:\n  - includes: ['first/**']\n    lint: {rules: {suspicious: {coercion: " + test.first + "}}}\n  - includes: ['second/**']\n    lint: {rules: {suspicious: {coercion: error}}}\n"))
 			if err != nil {
 				t.Fatal(err)
 			}

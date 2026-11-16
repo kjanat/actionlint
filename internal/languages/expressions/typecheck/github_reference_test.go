@@ -158,7 +158,7 @@ func TestGitHubReferenceTruthiness(t *testing.T) {
 			}
 		})
 	}
-	if _, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(`"double quoted"}}`)); err == nil {
+	if _, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(`"double quoted"}}`)); err == nil {
 		t.Fatal("double-quoted expression string was accepted")
 	}
 }
@@ -261,7 +261,7 @@ func TestGitHubReferenceObjectFilters(t *testing.T) {
 
 func checkGitHubReference(t *testing.T, input string, wantDiagnostics ...findingKind) (exprsyntax.Node, exprtypes.Type) {
 	t.Helper()
-	node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+	node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

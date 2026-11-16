@@ -49,7 +49,7 @@ func CheckWithPlugins(ctx context.Context, options Options, input inputmodel.Req
 			return nil, &pluginexec.LoadError{Err: err}
 		}
 	}
-	plugins, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), log, options.Debug)
+	plugins, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), log, options.Debug)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func RequiredToolsWithPluginPaths(ctx context.Context, options Options, paths, p
 // RequiredToolsWithPlugins applies the selected plugins before checking which
 // native tools are needed.
 func RequiredToolsWithPlugins(ctx context.Context, options Options, paths []string, sources pluginselection.Sources) (needed ToolRequirements, err error) {
-	loaded, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	loaded, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return nil, err
 	}

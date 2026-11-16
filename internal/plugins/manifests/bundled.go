@@ -17,7 +17,7 @@ func Bundled() ([]Manifest, error) {
 		if !ok {
 			return nil, fmt.Errorf("bundled provider %s has no manifest", name)
 		}
-		manifest, err := Parse(data)
+		manifest, err := ParsePluginManifest(data)
 		if err != nil {
 			return nil, fmt.Errorf("bundled provider %s: %w", name, err)
 		}

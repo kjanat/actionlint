@@ -40,7 +40,7 @@ on: push`} {
 				source := strings.ReplaceAll(tc.prefix+declaration+`
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `, "\n", ending)
-				workflow, findings := workflowparser.Parse([]byte(source))
+				workflow, findings := workflowparser.ParseWorkflow([]byte(source))
 				if len(findings) != 0 || workflow == nil || workflow.Pos == nil || *workflow.Pos != (sourcepos.Position{Line: tc.line, Column: 1}) {
 					t.Fatalf("missing workflow declaration position: %+v, %+v", workflow, findings)
 				}

@@ -16,7 +16,7 @@ var _ interface{ Limits() corewasm.Limits } = (*corewasm.Engine)(nil)
 
 func Example_componentLoading() {
 	ctx := context.Background()
-	component, err := componenthost.Load(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), componenthost.Options{})
+	component, err := componenthost.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "pipe-to-shell.wasm"), componenthost.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -40,7 +40,7 @@ func Example_componentLoading() {
 
 func Example_moduleLoading() {
 	ctx := context.Background()
-	engine, err := corewasm.Load(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
+	engine, err := corewasm.LoadModuleEngine(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "module", "testdata", "engines", "echo.wasm"), corewasm.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return
@@ -63,7 +63,7 @@ func Example_moduleLoading() {
 
 func Example_componentScriptEngine() {
 	ctx := context.Background()
-	engine, err := componenthost.Load(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "script-engine.wasm"), componenthost.Options{})
+	engine, err := componenthost.LoadComponentPlugin(ctx, filepath.Join("..", "..", "..", "..", "plugins", "execution", "component", "testdata", "plugins", "script-engine.wasm"), componenthost.Options{})
 	if err != nil {
 		fmt.Println("load:", err)
 		return

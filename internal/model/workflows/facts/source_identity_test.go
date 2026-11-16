@@ -65,7 +65,7 @@ func TestAliasedCallReferencesFollowJobAndStep(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			content := []byte(first + test.suffix)
-			workflow, findings := workflowparser.Parse(content)
+			workflow, findings := workflowparser.ParseWorkflow(content)
 			if len(findings) != 0 {
 				t.Fatal(findings)
 			}
@@ -97,7 +97,7 @@ func stepReferencesForTest(t *testing.T, steps ...string) []source.Reference {
 		text.WriteString("\n")
 	}
 	content := text.String()
-	workflow, findings := workflowparser.Parse([]byte(content))
+	workflow, findings := workflowparser.ParseWorkflow([]byte(content))
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}

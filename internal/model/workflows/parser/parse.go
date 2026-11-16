@@ -2129,10 +2129,10 @@ func HandleYAMLUnmarshalError(err error) []*SyntaxError {
 	return findings
 }
 
-// Parse recovers workflow syntax and diagnostics. YAML load or expansion-admission
+// ParseWorkflow recovers workflow syntax and diagnostics. YAML load or expansion-admission
 // failures return a nil workflow; recoverable syntax errors accompany the tree.
-func Parse(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
-	n, err := codec.Parse(b)
+func ParseWorkflow(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
+	n, err := codec.ParseYAML(b)
 	if err != nil {
 		return nil, HandleYAMLUnmarshalError(err)
 	}
@@ -2146,7 +2146,7 @@ func Parse(b []byte) (*workflowlang.Workflow, []*SyntaxError) {
 // reported while reading the declarations of the on.workflow_call event;
 // GitHub refuses to call a workflow when any of them exists.
 func ParseReusableWorkflow(b []byte) (workflow *workflowlang.Workflow, findings, workflowCallFindings []*SyntaxError) {
-	n, err := codec.Parse(b)
+	n, err := codec.ParseYAML(b)
 	if err != nil {
 		return nil, HandleYAMLUnmarshalError(err), nil
 	}

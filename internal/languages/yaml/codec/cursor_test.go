@@ -142,7 +142,7 @@ func TestCursorAliasBudgetMatchesUpstreamAndEnteredDecode(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want document-wide alias limit", wantErr)
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("parse original alias graph: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestCursorStopsAtAliasLimitBeforeTrailingKeys(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want alias limit before trailing fields", wantErr)
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestCursorSplitAliasBudgetMatchesUpstream(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want document-wide alias limit", wantErr)
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("parse original split-alias graph: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestCursorParentAliasSequenceCarriesExpansionContext(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream parent-alias baseline error = %v, want alias limit", wantErr)
 	}
-	root, err := codec.Parse([]byte(parentAlias))
+	root, err := codec.ParseYAML([]byte(parentAlias))
 	if err != nil {
 		t.Fatalf("parse parent alias graph: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestCursorValidAliasAndUnselectedControlsMatchUpstream(t *testing.T) {
 			if err := upstream.Unmarshal([]byte(tc.source), &baseline); err != nil {
 				t.Fatalf("upstream.Unmarshal: %v", err)
 			}
-			root, err := codec.Parse([]byte(tc.source))
+			root, err := codec.ParseYAML([]byte(tc.source))
 			if err != nil {
 				t.Fatalf("parse original graph: %v", err)
 			}
@@ -333,7 +333,7 @@ func TestCursorZeroAndClosedSessionRejectOperations(t *testing.T) {
 	assertInactive(zero.Decode(&value))
 	var zeroEntered codec.Entered
 	assertInactive(zeroEntered.Decode(&value))
-	root, err := codec.Parse(inheritedAliasSource())
+	root, err := codec.ParseYAML(inheritedAliasSource())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func TestCursorEnteredDecodeRepeatedCallCountsRootAgain(t *testing.T) {
 	if err := upstream.Unmarshal(data, &baseline); err != nil {
 		t.Fatalf("upstream one-alias baseline: %v", err)
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
@@ -411,7 +411,7 @@ func TestCursorInvalidTargetDoesNotConsumeEnteredRoot(t *testing.T) {
 	if err := upstream.Unmarshal(data, &baseline); err != nil {
 		t.Fatalf("upstream one-alias baseline: %v", err)
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("parse source graph: %v", err)
 	}
@@ -441,7 +441,7 @@ func TestCursorFatalAliasBudgetIsSticky(t *testing.T) {
 	if wantErr == nil || !strings.Contains(wantErr.Error(), "excessive aliasing") {
 		t.Fatalf("upstream baseline error = %v, want alias limit", wantErr)
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatalf("parse cursor graph: %v", err)
 	}

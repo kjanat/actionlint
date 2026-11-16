@@ -39,7 +39,7 @@ func date(t *testing.T, s string) runnerapi.Date {
 
 func service(t *testing.T, kind, version string) *services.Service {
 	t.Helper()
-	s, err := services.Parse(kind, version)
+	s, err := services.ParseService(kind, version)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,7 +9,7 @@ import (
 func TestEvaluationPolicyAndDeclarationRanges(t *testing.T) {
 	t.Parallel()
 	const source = "run: | # actionlint:ignore expression,shellcheck -- reviewed\n  echo first\n  echo second\nnext: value\n"
-	directives, invalid := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
+	directives, invalid := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 	if len(invalid) != 0 || len(directives) != 1 {
 		t.Fatalf("invalid block directive: %+v, %+v", directives, invalid)
 	}
@@ -65,7 +65,7 @@ func TestInvalidDirectiveDoesNotSuppress(t *testing.T) {
 		"# ignore[expression] -- reviewed\nrun: echo ok",
 		"# ignore expression -- reviewed\nrun: echo ok",
 	} {
-		directives, invalid := Parse([]byte(source), []string{"expression"}, rule.Names{})
+		directives, invalid := ParseInlineSuppressions([]byte(source), []string{"expression"}, rule.Names{})
 		if len(directives) != 0 || len(invalid) != 1 || invalid[0].Rule != "inline-suppression" {
 			t.Fatalf("invalid directive accepted: %q: %+v, %+v", source, directives, invalid)
 		}

@@ -46,7 +46,7 @@ func TestMissingPermissions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			source := tc.trigger + tc.permissions + "jobs:\n" + tc.jobs
-			ast, errs := workflowparser.Parse([]byte(source))
+			ast, errs := workflowparser.ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

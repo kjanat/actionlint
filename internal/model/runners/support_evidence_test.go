@@ -14,7 +14,7 @@ func TestSupportPolicyVersionBoundaries(t *testing.T) {
 		version string
 		want    bool
 	}{{"", false}, {"3.8", false}, {"3.9", true}, {"3.19.10", true}, {"3.20", false}, {"3.019", true}} {
-		service, err := services.Parse("ghes", tc.version)
+		service, err := services.ParseService("ghes", tc.version)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -27,7 +27,7 @@ func TestSupportPolicyVersionBoundaries(t *testing.T) {
 func TestSupportCatalogDetachedAndCacheIdentity(t *testing.T) {
 	t.Parallel()
 	workflow := runnerWorkflow(t, "queue")
-	service, err := services.Parse("github.com", "")
+	service, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestSupportCatalogDetachedAndCacheIdentity(t *testing.T) {
 func TestSupportRequiresEveryCandidateToBeAffected(t *testing.T) {
 	t.Parallel()
 	w := runnerWorkflow(t, "queue")
-	svc, err := services.Parse("github.com", "")
+	svc, err := services.ParseService("github.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}

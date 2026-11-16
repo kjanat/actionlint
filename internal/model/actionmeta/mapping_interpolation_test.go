@@ -23,7 +23,7 @@ runs:
   steps:
     - uses: actions/checkout@v6
       ` + field + ": " + value + "\n"
-				meta, err := actionmeta.Parse("action.yml", []byte(source))
+				meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 				if err != nil {
 					t.Fatal(err)
 				}

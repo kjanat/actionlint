@@ -24,7 +24,7 @@ func TestWorkflowRunLiteralPatternValidation(t *testing.T) {
 		if strings.HasPrefix(pattern, "${{") {
 			reference = pattern
 		}
-		workflow, errs := workflowparser.Parse([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
+		workflow, errs := workflowparser.ParseWorkflow([]byte("on: {workflow_run: {workflows: [" + strconv.Quote(reference) + `]}}
 jobs: {test: {runs-on: ubuntu-latest, steps: [{run: echo ok}]}}
 `))
 		if workflow == nil || len(errs) != 0 {

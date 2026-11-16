@@ -51,7 +51,7 @@ func TestScriptBackendsWithoutCommands(t *testing.T) {
 		}
 		return []checkinputs.ScriptDiagnostic{{Filename: request.Filename, Code: code, Message: "test finding", Severity: "warning", Location: checkinputs.ScriptPosition{Row: row, Column: 1}, EndLocation: checkinputs.ScriptPosition{Row: row, Column: 2}, TemplateEffect: checkinputs.TemplateEffectNone}}, failure
 	})
-	cfg, err := checking.ConfigurationRules().Parse([]byte("tools:\n  ruff:\n    config:\n      target-version: py312\n      lint: {extend-select: [B]}\n"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools:\n  ruff:\n    config:\n      target-version: py312\n      lint: {extend-select: [B]}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

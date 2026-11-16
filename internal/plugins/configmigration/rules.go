@@ -62,7 +62,7 @@ func cachedMigrationRules(ctx context.Context, rules configuration.RuleSet, acqu
 		if cached.Info.Kind != artifacts.ProviderManifest {
 			return nil, fmt.Errorf("plugin %q has no declarative rule descriptor: %w", source, configuration.ErrRuleMetadataRequired)
 		}
-		manifest, err := manifests.Parse(cached.Bytes)
+		manifest, err := manifests.ParsePluginManifest(cached.Bytes)
 		if err != nil {
 			return nil, err
 		}

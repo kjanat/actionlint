@@ -159,7 +159,7 @@ func TestSelectedActionDeclarationPreference(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
 				t.Parallel()
 				root := t.TempDir()
-				cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 				if err != nil {
 					t.Fatal(err)
 				}

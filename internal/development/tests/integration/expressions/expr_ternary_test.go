@@ -21,7 +21,7 @@ jobs:
 permissions: {}
 `
 	for _, config := range []string{"", "lint: {rules: {correctness: {unsound-ternary: off}}}", "lint: {rules: {correctness: {unsound-ternary: warn}}}"} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

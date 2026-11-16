@@ -24,7 +24,7 @@ func TestScriptSourceLineSpansMatchLookup(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + run + "\n"
-			workflow, errs := Parse([]byte(source))
+			workflow, errs := ParseWorkflow([]byte(source))
 			if len(errs) != 0 {
 				t.Fatalf("parse errors: %v", errs)
 			}

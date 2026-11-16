@@ -113,7 +113,7 @@ func TestNoToolsRetainsAvailableRunnerComponents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		loaded, err := pluginexec.Load(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
+		loaded, err := pluginexec.LoadPlugins(t.Context(), sources, checking.BuiltinRuleNames(), os.Stderr, false)
 		if err != nil {
 			t.Fatal(err)
 		}

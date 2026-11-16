@@ -58,12 +58,12 @@ func TestDefaultConfigFormats(t *testing.T) {
 				t.Fatalf("incorrect schema URL or unexpanded template:\n%s", content)
 			}
 			path := writeConfig(t, t.TempDir(), format.Filename(), string(content))
-			if _, err := checking.ConfigurationRules().Load(path); err != nil {
+			if _, err := checking.ConfigurationRules().LoadConfig(path); err != nil {
 				t.Fatal(err)
 			}
 			checkSchema := func(content []byte) {
 				t.Helper()
-				node, err := configdocument.Parse(path, content)
+				node, err := configdocument.ParseConfigDocument(path, content)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -204,7 +204,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 			}
 			writeConfig(t, filepath.Join(root, "config"), "actionlint-base.yml", "{}\n")
 			path := writeConfig(t, filepath.Join(root, ".github"), "actionlint.yaml", content)
-			if _, err := checking.ConfigurationRules().Load(path); err != nil {
+			if _, err := checking.ConfigurationRules().LoadConfig(path); err != nil {
 				t.Errorf("generated config fails the configuration loader: %v", err)
 			}
 		})

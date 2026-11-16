@@ -86,7 +86,7 @@ func TestExprInsecureBuiltinUntrustedInputs(t *testing.T) {
 
 func testRunTrustedInputsCheckerForNode(t *testing.T, c *UntrustedInputChecker, input string) {
 	t.Helper()
-	n, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+	n, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -744,7 +744,7 @@ func BenchmarkInsecureDetectUntrustedInputs(b *testing.B) {
 		ns := make([]exprsyntax.Node, 0, len(exprs))
 		p := exprsyntax.NewParser()
 		for _, e := range exprs {
-			n, err := p.Parse(exprsyntax.NewLexer(e + "}}"))
+			n, err := p.ParseExpression(exprsyntax.NewLexer(e + "}}"))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -877,7 +877,7 @@ func FuzzUntrustedInputTraversal(f *testing.F) {
 		f.Add(source)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
-		node, issue := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+		node, issue := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 		if issue != nil {
 			return
 		}
@@ -892,7 +892,7 @@ func FuzzUntrustedInputTraversal(f *testing.F) {
 func BenchmarkUntrustedInputs(b *testing.B) {
 	nodes := make([]exprsyntax.Node, 0, len(testAllUntrustedInputs))
 	for _, source := range testAllUntrustedInputs {
-		node, issue := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+		node, issue := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 		if issue != nil {
 			b.Fatal(issue)
 		}

@@ -9,7 +9,7 @@ import (
 func TestParseEmptySourcesHaveZeroOwnedRoot(t *testing.T) {
 	t.Parallel()
 	for _, data := range [][]byte{nil, {}, []byte(" \n \n"), []byte("# comment\n")} {
-		root, err := Parse(data)
+		root, err := ParseYAML(data)
 		if err != nil || root == nil || !reflect.ValueOf(*root).IsZero() {
 			t.Fatalf("empty source %q: root=%+v err=%v", data, root, err)
 		}
@@ -25,7 +25,7 @@ func TestEmptySourcesDoNotVisitSelectedFields(t *testing.T) {
 	t.Parallel()
 	var roots []*Node
 	for _, data := range []string{"", "# comment\n"} {
-		root, err := Parse([]byte(data))
+		root, err := ParseYAML([]byte(data))
 		if err != nil {
 			t.Fatal(err)
 		}

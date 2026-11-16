@@ -35,7 +35,7 @@ func TestUnusedFormatArgumentsUseCheckedCall(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -65,7 +65,7 @@ func TestUnusedFormatArgumentsUseCheckedCall(t *testing.T) {
 func TestUnusedFormatArgumentRangeExcludesResultAccess(t *testing.T) {
 	t.Parallel()
 	const source = `format('{0}{1}', 1, 2, 3)[0]`
-	root, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+	root, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestGroupedUnusedFormatArgumentRanges(t *testing.T) {
 	t.Parallel()
 	for _, suffix := range []string{"", ".x", "[0]", "['x'].y"} {
 		source := "((format('{0}', 1, 2)))" + suffix
-		root, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+		root, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}

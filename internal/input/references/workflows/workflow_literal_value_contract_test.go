@@ -17,7 +17,7 @@ jobs:
   call:
     uses: ${{ '$/leaf.yaml' }}
 `)
-	w, errs := workflowparser.Parse(source)
+	w, errs := workflowparser.ParseWorkflow(source)
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

@@ -67,7 +67,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fileManifest, err = manifests.Parse(encoded)
+	fileManifest, err = manifests.ParsePluginManifest(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			doc, err := document.Parse("actionlint"+ext, b)
+			doc, err := document.ParseConfigDocument("actionlint"+ext, b)
 			if err != nil {
 				t.Fatalf("parse fixture: %v", err)
 			}

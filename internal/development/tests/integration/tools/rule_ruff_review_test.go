@@ -197,7 +197,7 @@ func TestRuffVersionedShellGrammar(t *testing.T) {
 	}{
 		{"", true}, {"tools: {ruff: {target-version: py314}}", false},
 	} {
-		config, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+		config, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -142,7 +142,7 @@ func TestScriptFixLiteralMapping(t *testing.T) {
 				Run  string `yaml:"run"`
 				Next string `yaml:"next"`
 			}
-			root, err := codec.Parse([]byte(changed))
+			root, err := codec.ParseYAML([]byte(changed))
 			if err != nil {
 				t.Fatal(err)
 			}

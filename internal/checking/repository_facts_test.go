@@ -94,7 +94,7 @@ func TestPreparedSourcesResolveLocalDependenciesWithoutRepositoryIdentity(t *tes
 
 func TestEnvironmentNamesAreScopedPerJob(t *testing.T) {
 	t.Parallel()
-	cfg, err := ConfigurationRules().Parse([]byte(`repository:
+	cfg, err := ConfigurationRules().ParseConfig([]byte(`repository:
   variables: {}
   secrets: []
   environments:
@@ -150,7 +150,7 @@ func TestUnavailableRunnerLabelsDoNotBecomeAnEmptyAllowlist(t *testing.T) {
 	} {
 		t.Run(test.config+"/"+test.selector, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := ConfigurationRules().Parse([]byte(test.config))
+			cfg, err := ConfigurationRules().ParseConfig([]byte(test.config))
 			if err != nil {
 				t.Fatal(err)
 			}

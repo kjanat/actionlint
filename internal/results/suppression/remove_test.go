@@ -36,7 +36,7 @@ func TestRemoveSuppressionSelectors(t *testing.T) {
 			t.Run(tc.name+ending, func(t *testing.T) {
 				t.Parallel()
 				content := []byte(strings.ReplaceAll(tc.source, "\n", ending))
-				directives, invalid := Parse(content, allowed, rule.Names{})
+				directives, invalid := ParseInlineSuppressions(content, allowed, rule.Names{})
 				if len(invalid) != 0 || len(directives) != 1 {
 					t.Fatalf("invalid fixture: %+v %+v", directives, invalid)
 				}

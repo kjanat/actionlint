@@ -31,7 +31,7 @@ func TestKnownExpressionActionInputs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, parseErrors := workflowparser.Parse([]byte(`on: push
+			workflow, parseErrors := workflowparser.ParseWorkflow([]byte(`on: push
 jobs:
   test:
     runs-on: ubuntu-latest

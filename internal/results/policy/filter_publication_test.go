@@ -37,7 +37,7 @@ func publishSuppressionFixture(t *testing.T, p policy.Policy, cfg *configuration
 	if err != nil {
 		t.Fatal(err)
 	}
-	enabled, err := rules.Parse(raw)
+	enabled, err := rules.ParseConfig(raw)
 	if err != nil {
 		t.Fatal(err)
 	}

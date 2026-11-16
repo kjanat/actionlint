@@ -264,7 +264,7 @@ func repositoryService(value any) (services.Service, error) {
 		if kind == "" {
 			return services.Service{}, errors.New("service must not be empty; use null or \"unknown\"")
 		}
-		return services.Parse(kind, "")
+		return services.ParseService(kind, "")
 	}
 	var selected struct {
 		Kind    string `yaml:"kind"`
@@ -276,7 +276,7 @@ func repositoryService(value any) (services.Service, error) {
 	if selected.Kind != string(services.GitHubEnterpriseServer) {
 		return services.Service{}, errors.New("service mapping requires kind: ghes; use a string for other services")
 	}
-	return services.Parse(selected.Kind, selected.Version)
+	return services.ParseService(selected.Kind, selected.Version)
 }
 
 // RepositoryFacts returns facts independently of the diagnostic preset.

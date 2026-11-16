@@ -36,7 +36,7 @@ func workflowNameInputs(t *testing.T, level string, workflowRun bool, load func(
 		t.Fatal(err)
 	}
 	rules := checking.ConfigurationRules()
-	config, err := rules.Parse([]byte("lint: {rules: {correctness: {workflow-run-names: " + level + "}}}"))
+	config, err := rules.ParseConfig([]byte("lint: {rules: {correctness: {workflow-run-names: " + level + "}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -74,7 +74,7 @@ func TestScalarDecoderInvariants(t *testing.T) {
 	for _, input := range scalarDecoderInvariantCorpus {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			root, err := codec.Parse([]byte(input))
+			root, err := codec.ParseYAML([]byte(input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +91,7 @@ func FuzzScalarDecoderInvariants(f *testing.F) {
 		if len(input) > 64*1024 {
 			t.Skip()
 		}
-		root, err := codec.Parse([]byte(input))
+		root, err := codec.ParseYAML([]byte(input))
 		if err != nil {
 			return
 		}
@@ -179,7 +179,7 @@ func checkScalarDecoderMapping(t *testing.T, p *workflowparser.Parser, document 
 				quote = "'"
 			}
 			encoded := []byte(quote + rawLine[start:end] + quote)
-			root, err := codec.Parse(encoded)
+			root, err := codec.ParseYAML(encoded)
 			if err != nil {
 				t.Fatalf("escape %+v cannot independently decode: %v", span, err)
 			}

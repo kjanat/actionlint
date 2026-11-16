@@ -34,7 +34,7 @@ func (p provider) Lookup(ctx context.Context, ref actions.Reference) (actions.Ma
 func TestWorkspaceAndRepositoryDefinitionsAgree(t *testing.T) {
 	t.Parallel()
 	const source = "name: test\ndescription: test\ninputs: {token: {description: token, required: true}}\noutputs: {value: {description: result, value: ok}}\nruns: {using: composite, steps: []}\n"
-	metadata, err := actionmeta.Parse("action.yml", []byte(source))
+	metadata, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

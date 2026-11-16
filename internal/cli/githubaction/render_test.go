@@ -26,7 +26,7 @@ permissions: {}
 
 func analysisForRenderSource(t *testing.T, source string) *report.Analysis {
 	t.Helper()
-	config, err := checking.ConfigurationRules().Parse([]byte("repository: {runners: []}\n"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("repository: {runners: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

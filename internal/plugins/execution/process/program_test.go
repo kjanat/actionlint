@@ -34,7 +34,7 @@ func inlineBunManifest(t *testing.T, source string) (manifests.Manifest, *proces
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err = manifests.Parse(data)
+	manifest, err = manifests.ParsePluginManifest(data)
 	if err != nil {
 		t.Fatal("standalone manifest rejected", err)
 	}

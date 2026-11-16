@@ -272,7 +272,7 @@ func TestPublicationRechecksPreviouslyAdmittedConflictedSources(t *testing.T) {
 func TestCaptureInputsExcludeUnusedExplicitOverlays(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	config, err := ConfigurationRules().Parse([]byte("files: {excludes: ['**/excluded.yml']}\n"))
+	config, err := ConfigurationRules().ParseConfig([]byte("files: {excludes: ['**/excluded.yml']}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -43,7 +43,7 @@ func TestNetworkPolicyAppliesWithoutProjectConfiguration(t *testing.T) {
 			t.Fatalf("policy absent from analysis dependencies: %v", selection.Inputs)
 		}
 	}
-	cfg, err := rules.Parse([]byte(`{"network":{"metadata-mirrors":{"services":["jsdelivr"]}}}`))
+	cfg, err := rules.ParseConfig([]byte(`{"network":{"metadata-mirrors":{"services":["jsdelivr"]}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestAdditionalPolicyCannotReplaceUserPolicy(t *testing.T) {
 	}
 	t.Setenv("ACTIONLINT_NETWORK_POLICY", extra)
 	rules := checking.ConfigurationRules()
-	cfg, err := rules.Parse([]byte(`{"network":{"metadata-mirrors":{"allow-unknown-repositories":true}}}`))
+	cfg, err := rules.ParseConfig([]byte(`{"network":{"metadata-mirrors":{"allow-unknown-repositories":true}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}

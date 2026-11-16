@@ -66,7 +66,7 @@ func TestMetadataMirrorSchemaMatchesConfiguration(t *testing.T) {
 		if err := json.Unmarshal(data, &value); err != nil {
 			t.Fatal(err)
 		}
-		_, parseErr := checking.ConfigurationRules().Parse(data)
+		_, parseErr := checking.ConfigurationRules().ParseConfig(data)
 		schemaErr := schema.Validate(value)
 		if (parseErr == nil) != tc.valid || (schemaErr == nil) != tc.valid {
 			t.Errorf("%s: want valid=%t, parser=%v, schema=%v", tc.input, tc.valid, parseErr, schemaErr)
@@ -129,7 +129,7 @@ func TestTombiMetadata(t *testing.T) {
 		t.Fatalf("unexpected Tombi metadata: %+v", schema)
 	}
 	// A multiline inline table with a trailing comma requires TOML 1.1.
-	if _, err := document.Parse("actionlint.toml", []byte("lint = {\n  rules = { preset = 'recommended' },\n}\n")); err != nil {
+	if _, err := document.ParseConfigDocument("actionlint.toml", []byte("lint = {\n  rules = { preset = 'recommended' },\n}\n")); err != nil {
 		t.Fatalf("the parser rejects the TOML version advertised to Tombi: %v", err)
 	}
 	for _, label := range []string{"rule_name", "tool_name", "variable_name", "environment_name", "file_pattern"} {
@@ -397,7 +397,7 @@ func TestRuffEngineIndependentSchema(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, parseErr := checking.ConfigurationRules().Parse(data)
+				_, parseErr := checking.ConfigurationRules().ParseConfig(data)
 				schemaErr := schema.Validate(input)
 				if (parseErr == nil) != want || (schemaErr == nil) != want {
 					t.Fatalf("%s=%q override=%v want valid=%v: parser=%v schema=%v", key, value, override, want, parseErr, schemaErr)
@@ -1009,7 +1009,7 @@ policy: {}
 					t.Fatalf("migrated document violates current schema: %v\n%s", err, migration.Content)
 				}
 			}
-			if _, err := checking.ConfigurationRules().Parse([]byte(tt.input)); (err == nil) != tt.parserValid {
+			if _, err := checking.ConfigurationRules().ParseConfig([]byte(tt.input)); (err == nil) != tt.parserValid {
 				t.Errorf("parser validation error = %v, want valid = %v", err, tt.parserValid)
 			}
 		})

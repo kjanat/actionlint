@@ -38,7 +38,7 @@ func TestNeutralInheritedInvalidSourceLocation(t *testing.T) {
 	dir := t.TempDir()
 	base := writeNeutralFixture(t, dir, "base.yaml", "repository:\n  runners: 5\n")
 	leaf := writeNeutralFixture(t, dir, "leaf.jsonc", "{\"extends\":[\"base.yaml\"], \"repository\":{\"runners\":[]}}\n")
-	_, err := checking.ConfigurationRules().Load(leaf)
+	_, err := checking.ConfigurationRules().LoadConfig(leaf)
 	assertNeutralSource(t, err, base, 2, 12, "/repository/runners")
 }
 
@@ -60,7 +60,7 @@ func TestNeutralUnknownRuleOptionsHaveLocations(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err := checking.ConfigurationRules().Load(path)
+			_, err := checking.ConfigurationRules().LoadConfig(path)
 			if tc.file == "x.json" || tc.file == "x.jsonc" {
 				tc.col = strings.Index(strings.Split(tc.source, "\n")[tc.line-1], `"unexpected"`) + 1
 			}
@@ -73,7 +73,7 @@ func TestNeutralLegacyScopeErrorLocation(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := writeNeutralFixture(t, dir, "legacy.yaml", "policy:\n  require-permissions:\n    scope: invalid\n")
-	_, err := checking.ConfigurationRules().Load(path)
+	_, err := checking.ConfigurationRules().LoadConfig(path)
 	if err == nil || !strings.Contains(err.Error(), "scope") {
 		t.Fatalf("invalid legacy scope accepted: %v", err)
 	}

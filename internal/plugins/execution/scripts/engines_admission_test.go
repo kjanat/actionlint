@@ -42,7 +42,7 @@ func TestScriptEnginesBoundsConcurrentDistinctAdmissions(t *testing.T) {
 	errorsSeen := make(chan error, 20)
 	for i := range 20 {
 		wg.Go(func() {
-			_, err := engines.Load(t.Context(), fmt.Sprintf("engine-%d.wasm", i))
+			_, err := engines.LoadModuleBackend(t.Context(), fmt.Sprintf("engine-%d.wasm", i))
 			errorsSeen <- err
 		})
 	}
@@ -63,7 +63,7 @@ func TestScriptEnginesBoundsConcurrentDistinctAdmissions(t *testing.T) {
 		t.Fatalf("accepted=%d rejected=%d loaded=%d", accepted, rejected, len(loaded))
 	}
 	for path, want := range engines.loaded {
-		if got, err := engines.Load(t.Context(), path); err != nil || got != want {
+		if got, err := engines.LoadModuleBackend(t.Context(), path); err != nil || got != want {
 			t.Fatalf("cached admission %q: backend=%v err=%v", path, got, err)
 		}
 	}
@@ -86,7 +86,7 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 		return nil, failure
 	})
 	for i := range 20 {
-		_, err := engines.Load(t.Context(), fmt.Sprintf("invalid-%d.wasm", i))
+		_, err := engines.LoadModuleBackend(t.Context(), fmt.Sprintf("invalid-%d.wasm", i))
 		if i < 4 && !errors.Is(err, failure) || i >= 4 && (err == nil || !strings.Contains(err.Error(), "session limit of 4")) {
 			t.Fatalf("admission %d: %v", i, err)
 		}
@@ -94,7 +94,7 @@ func TestScriptEnginesBoundsFailedAdmissions(t *testing.T) {
 	if loads != 4 || len(engines.failed) != 4 {
 		t.Fatalf("loads=%d recorded failures=%d", loads, len(engines.failed))
 	}
-	if _, err := engines.Load(t.Context(), "invalid-0.wasm"); !errors.Is(err, failure) || loads != 4 {
+	if _, err := engines.LoadModuleBackend(t.Context(), "invalid-0.wasm"); !errors.Is(err, failure) || loads != 4 {
 		t.Fatalf("cached failure=%v loads=%d", err, loads)
 	}
 }
@@ -107,7 +107,7 @@ func TestScriptEnginesRejectsNilSuccessfulLoad(t *testing.T) {
 		return nil, nil
 	})
 	for range 2 {
-		backend, err := engines.Load(t.Context(), "missing.wasm")
+		backend, err := engines.LoadModuleBackend(t.Context(), "missing.wasm")
 		if backend != nil || err == nil || !strings.Contains(err.Error(), "missing.wasm") || !strings.Contains(err.Error(), "nil backend") {
 			t.Fatalf("backend=%v err=%v", backend, err)
 		}
@@ -127,13 +127,13 @@ func TestScriptEnginesCannotReopenAfterClose(t *testing.T) {
 		loads++
 		return &admissionEngine{}, nil
 	})
-	if _, err := engines.Load(t.Context(), "engine.wasm"); err != nil {
+	if _, err := engines.LoadModuleBackend(t.Context(), "engine.wasm"); err != nil {
 		t.Fatal(err)
 	}
 	if err := engines.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := engines.Load(t.Context(), "engine.wasm"); err == nil || !strings.Contains(err.Error(), "closed") || loads != 1 {
+	if _, err := engines.LoadModuleBackend(t.Context(), "engine.wasm"); err == nil || !strings.Contains(err.Error(), "closed") || loads != 1 {
 		t.Fatalf("closed session loaded engine: loads=%d err=%v", loads, err)
 	}
 }
@@ -151,16 +151,16 @@ func TestScriptEnginesSharesAdmissionBudgetAcrossSuccessAndFailure(t *testing.T)
 	defer engines.Close(t.Context())
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := engines.Load(ctx, "cancelled.wasm"); !errors.Is(err, context.Canceled) || loads != 0 {
+	if _, err := engines.LoadModuleBackend(ctx, "cancelled.wasm"); !errors.Is(err, context.Canceled) || loads != 0 {
 		t.Fatalf("canceled admission: loads=%d err=%v", loads, err)
 	}
 	for _, path := range []string{"invalid-1.wasm", "valid-1.wasm", "invalid-2.wasm", "valid-2.wasm"} {
-		_, err := engines.Load(t.Context(), path)
+		_, err := engines.LoadModuleBackend(t.Context(), path)
 		if strings.HasPrefix(path, "valid") && err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := engines.Load(t.Context(), "excess.wasm"); err == nil || !strings.Contains(err.Error(), "session limit of 4") {
+	if _, err := engines.LoadModuleBackend(t.Context(), "excess.wasm"); err == nil || !strings.Contains(err.Error(), "session limit of 4") {
 		t.Fatalf("mixed admissions bypassed budget: %v", err)
 	}
 	if loads != 4 || len(engines.loaded) != 2 || len(engines.failed) != 2 {
@@ -186,7 +186,7 @@ func TestScriptEnginesSymlinkAliasesCannotBypassAdmissionLimit(t *testing.T) {
 		if err := os.Symlink(target, alias); err != nil {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
-		_, err := engines.Load(t.Context(), alias)
+		_, err := engines.LoadModuleBackend(t.Context(), alias)
 		if i < 4 && err != nil || i == 4 && (err == nil || !strings.Contains(err.Error(), "session limit of 4")) {
 			t.Fatalf("alias %d: %v", i, err)
 		}

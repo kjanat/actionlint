@@ -94,7 +94,7 @@ func BenchmarkScalarWideFlow(b *testing.B) {
 				fmt.Fprintf(&source, "K%d: '${{ github.actor }}',", i)
 			}
 			source.WriteString("}\n")
-			root, err := codec.Parse([]byte(source.String()))
+			root, err := codec.ParseYAML([]byte(source.String()))
 			if err != nil {
 				b.Fatal(err)
 			}

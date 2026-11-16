@@ -23,7 +23,7 @@ func TestStrictSelectsCategoriesWithoutEnablingConventions(t *testing.T) {
 		} {
 			t.Run(category+"/"+tc.settings, func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.settings + "}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.settings + "}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -58,7 +58,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 		{"{nursery: off}", configuration.Presets{Experimental: new(true)}, "off"},
 		{"{nursery: warn}", configuration.Presets{Experimental: new(false)}, "off"},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +78,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 			{"{preset: all}", configuration.Presets{}},
 			{"{}", configuration.Presets{Strict: true}},
 		} {
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,7 +91,7 @@ func TestNurserySelectionIsIndependent(t *testing.T) {
 
 func TestStrictPreservesConfiguredPolicyOptions(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`policy:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`policy:
   require-job-timeout: {min-minutes: 5, max-minutes: 30}
   require-permissions: {scope: job}
   disallow-suppressions: {rules: [if-cond], report: violation}

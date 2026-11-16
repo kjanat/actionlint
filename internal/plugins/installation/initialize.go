@@ -36,7 +36,7 @@ func InitializeConfiguration(ctx context.Context, rules configuration.RuleSet, a
 	if err != nil {
 		return "", err
 	}
-	node, err := document.Parse(path, content)
+	node, err := document.ParseConfigDocument(path, content)
 	if err != nil {
 		return "", err
 	}

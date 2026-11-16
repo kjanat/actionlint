@@ -16,7 +16,7 @@ func TestInvalidExclusionsRejectCompleteProjection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: '${{ matrix.os }}'\n    strategy:\n      matrix:\n        os: [ubuntu-latest, windows-latest]\n        exclude: " + tc.filter + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -55,7 +55,7 @@ func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, errors := workflowparser.Parse([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
+			workflow, errors := workflowparser.ParseWorkflow([]byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + tc.matrix + "\n    steps: [{run: echo ok}]\n"))
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
@@ -71,7 +71,7 @@ func TestOpenMatrixAxisDomainDoesNotInventExclusionIssues(t *testing.T) {
 				t.Fatal("test matrix has no exclusion declaration to replace")
 			}
 			emptySource := "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix: " + axes + `exclude: "${{ fromJSON('[{}]') }}"}` + "\n    steps: [{run: echo ok}]\n"
-			emptyWorkflow, emptyErrors := workflowparser.Parse([]byte(emptySource))
+			emptyWorkflow, emptyErrors := workflowparser.ParseWorkflow([]byte(emptySource))
 			if len(emptyErrors) != 0 {
 				t.Fatal(emptyErrors)
 			}

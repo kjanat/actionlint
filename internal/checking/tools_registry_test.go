@@ -63,7 +63,7 @@ func TestIndependentProcessTool(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "exited with status 1") {
 		t.Fatalf("accepted successful JSON from failed process: %v", err)
 	}
-	source.Config, err = checking.ConfigurationRules().Parse([]byte("lint:\n  rules:\n    plugins:\n      example-script: off\n"), "example-script")
+	source.Config, err = checking.ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    plugins:\n      example-script: off\n"), "example-script")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -86,7 +86,7 @@ func (p *Parser) ScriptSource(n *codec.Node) *workflowlang.ScriptSource {
 		if p.scalarDocument != nil {
 			scriptSource = scalarDocumentSource(p.scalarDocument)
 		}
-		root, err := codec.Parse([]byte(scriptSource))
+		root, err := codec.ParseYAML([]byte(scriptSource))
 		if err != nil {
 			return nil
 		}

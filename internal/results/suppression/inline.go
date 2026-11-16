@@ -20,9 +20,9 @@ type Directive struct {
 	Reason      string
 }
 
-// Parse reads real YAML comments, recovers comments in malformed documents, and
+// ParseInlineSuppressions reads real YAML comments, recovers comments in malformed documents, and
 // validates directives against the caller's ordered rule catalogue.
-func Parse(source []byte, rules []string, names rule.Names) ([]Directive, []results.Diagnostic) {
+func ParseInlineSuppressions(source []byte, rules []string, names rule.Names) ([]Directive, []results.Diagnostic) {
 	var directives []Directive
 	var findings []results.Diagnostic
 	for _, comment := range collectInlineSuppressionComments(source) {

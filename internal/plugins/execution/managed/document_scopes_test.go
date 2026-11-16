@@ -17,7 +17,7 @@ import (
 func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	invalid, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: missing.shellcheckrc}}"))
+	invalid, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: missing.shellcheckrc}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 
 func TestDocumentPluginScopesOnlyNegotiationAndDisable(t *testing.T) {
 	t.Parallel()
-	disabled, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {enabled: false}}"))
+	disabled, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {enabled: false}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

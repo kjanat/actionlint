@@ -28,7 +28,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 				fmt.Fprintf(&source, "      a%d: &a%d [*a%d, *a%d, *a%d]\n", level, level, level-1, level-1, level-1)
 			}
 			content := []byte(source.String())
-			metadata, err := actionmeta.Parse("action.yml", content)
+			metadata, err := actionmeta.ParseActionMetadata("action.yml", content)
 			if _, ok := errors.AsType[*codec.AdmissionError](err); !ok || !strings.Contains(err.Error(), "excessive aliasing") {
 				t.Fatalf("unvisited expansion bypassed action admission: %v", err)
 			}
@@ -82,7 +82,7 @@ func TestActionAdmissionKeepsOriginalFatalDecodeFinding(t *testing.T) {
 	}
 	source.WriteString("inputs: *definitions\nruns: {using: composite, steps: []}\n")
 	content := []byte(source.String())
-	root, err := codec.Parse(content)
+	root, err := codec.ParseYAML(content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestActionAdmissionKeepsOriginalFatalDecodeFinding(t *testing.T) {
 	if _, fatal := codec.FatalLoadError(want); !fatal || !strings.Contains(want.Error(), "excessive aliasing") {
 		t.Fatalf("fixture must fail selected decoding: %v", want)
 	}
-	_, got := actionmeta.Parse("action.yml", content)
+	_, got := actionmeta.ParseActionMetadata("action.yml", content)
 	_, rejected := errors.AsType[*codec.AdmissionError](got)
 	if rejected != (workflowparser.AdmitYAMLAliases(root) != nil) || got.Error() != want.Error() {
 		t.Fatalf("admission changed the original fatal error: got %v, want %v", got, want)
@@ -143,7 +143,7 @@ func TestActionAdmissionKeepsRecursiveStepsOpaque(t *testing.T) {
 func TestActionAdmissionPreservesEmptyInputs(t *testing.T) {
 	t.Parallel()
 	for _, source := range []string{"", " ", "# comment\n"} {
-		metadata, err := actionmeta.Parse("action.yml", []byte(source))
+		metadata, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 		if err != nil || metadata == nil || metadata.Root != nil {
 			t.Fatalf("empty manifest changed: %q: metadata=%v error=%v", source, metadata, err)
 		}
@@ -154,7 +154,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 	t.Parallel()
 	for _, header := range []string{"inputs: invalid\n", ""} {
 		content := []byte("name: recovered\n" + header + "runs: &runs\n  using: composite\n  steps: [{run: echo recovered, shell: bash}]\n  env: *runs\n")
-		metadata, parseErr := actionmeta.Parse("action.yml", content)
+		metadata, parseErr := actionmeta.ParseActionMetadata("action.yml", content)
 		if parseErr == nil || !strings.Contains(parseErr.Error(), "contains itself") {
 			t.Fatal("fixture must trigger a fatal recursive selected decode", parseErr)
 		}
@@ -189,7 +189,7 @@ func TestRecoveredActionSnapshotsHaveStableEligibility(t *testing.T) {
 func TestSchemaErrorActionSnapshotsHaveStableDeclarations(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: recovered\ninputs: invalid\nruns: {using: composite, steps: [{run: echo ok, shell: bash}]}\n")
-	metadata, parseErr := actionmeta.Parse("action.yml", content)
+	metadata, parseErr := actionmeta.ParseActionMetadata("action.yml", content)
 	if parseErr == nil {
 		t.Fatal("fixture must recover declarations alongside a schema error")
 	}

@@ -96,7 +96,7 @@ func TestConditionConstantOutcomes(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			expr, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			expr, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

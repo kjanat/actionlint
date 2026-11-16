@@ -57,7 +57,7 @@ func inspectSource(ctx context.Context, r InspectOptions, acquisition pluginacqu
 	if local || strings.Contains(r.Source, "://") {
 		return plugininstall.Inspect(ctx, r.Source, acquisition)
 	}
-	_, parseErr := pluginreference.Parse(r.Source)
+	_, parseErr := pluginreference.ParsePluginReference(r.Source)
 	if parseErr != nil && (strings.HasSuffix(r.Source, ".wasm") || strings.HasSuffix(r.Source, ".json") || strings.HasSuffix(r.Source, ".gz")) {
 		return plugininstall.Inspect(ctx, r.Source, acquisition)
 	}

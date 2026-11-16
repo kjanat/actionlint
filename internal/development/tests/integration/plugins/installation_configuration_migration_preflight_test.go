@@ -166,7 +166,7 @@ func TestAutomaticMigrationDeduplicatesPhysicalRepositoryAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "actionlint.yaml")
-	migrated, err := checking.ConfigurationRules().Load(path)
+	migrated, err := checking.ConfigurationRules().LoadConfig(path)
 	if err != nil {
 		t.Fatal(err)
 	}

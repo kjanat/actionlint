@@ -53,7 +53,7 @@ jobs:
 `)
 				rule := define.NewChecksVisitor(checking.ConfigurationRules(), correctness.MatrixRule.Name, correctness.MatrixChecks(checking.ConfigurationRules().DiagnosticLevel(nil, "mixed-type-matrix-filters") != "off"))
 				if config != "" {
-					cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+					cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 					if err != nil {
 						t.Fatal(err)
 					}

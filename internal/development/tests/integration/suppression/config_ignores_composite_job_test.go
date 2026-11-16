@@ -30,7 +30,7 @@ func TestReusableIgnoreCompositeJob(t *testing.T) {
 			t.Run(fmt.Sprintf("nested=%t/%s/%s", nested, tc.jobs, tc.ignores), func(t *testing.T) {
 				t.Parallel()
 				root, _ := testutil.ExecutableFixture(t, "shellcheck")
-				config, err := checking.ConfigurationRules().Parse([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores + "\n"))
+				config, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {shellcheck: true, ruff: false}\nignores: " + tc.ignores + "\n"))
 				if err != nil {
 					t.Fatal(err)
 				}

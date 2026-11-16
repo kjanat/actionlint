@@ -417,7 +417,7 @@ func runWithSourceCaptureConstructor(ctx context.Context, request analysisReques
 		if err != nil {
 			return namemodel.Unknown(), err
 		}
-		workflow, errs := workflowparser.Parse(captured.Bytes())
+		workflow, errs := workflowparser.ParseWorkflow(captured.Bytes())
 		if workflow == nil || len(errs) > 0 {
 			return namemodel.Unknown(), nil
 		}

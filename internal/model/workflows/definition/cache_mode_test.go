@@ -29,7 +29,7 @@ func TestCacheModeSyntax(t *testing.T) {
 			t.Fatalf("kind=%v capabilities=%d valid=%t", tc.kind, capabilities, valid)
 		}
 	}
-	workflow, findings := workflowparser.Parse([]byte("on: push\ncache-mode: read\njobs:\n  build:\n    cache-mode: write-only\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"))
+	workflow, findings := workflowparser.ParseWorkflow([]byte("on: push\ncache-mode: read\njobs:\n  build:\n    cache-mode: write-only\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hello\n"))
 	if len(findings) != 0 || workflow == nil || workflow.CacheMode == nil || workflow.CacheMode.Kind != workflowmodel.CacheModeRead || workflow.Jobs["build"].CacheMode.Kind != workflowmodel.CacheModeWriteOnly {
 		t.Fatalf("workflow=%+v findings=%v", workflow, findings)
 	}

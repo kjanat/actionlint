@@ -18,7 +18,7 @@ type cursorCycleRoot struct {
 
 func parseCycleSource(t *testing.T, source string) *codec.Node {
 	t.Helper()
-	root, err := codec.Parse([]byte(source))
+	root, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatalf("parse YAML: %v", err)
 	}

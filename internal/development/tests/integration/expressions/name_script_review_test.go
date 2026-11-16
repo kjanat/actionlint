@@ -60,7 +60,7 @@ func TestCompositeInterpolationIndependentOfActionValidation(t *testing.T) {
 				fixturefiles.Write(t, root, "inner/action.yml", body)
 				result := testutil.Composite(t, root, "- uses: ./inner", checking.Options{})
 				if standalone {
-					cfg, err := checking.ConfigurationRules().Parse([]byte(config))
+					cfg, err := checking.ConfigurationRules().ParseConfig([]byte(config))
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -35,7 +35,7 @@ func TestScalarAttachedComments(t *testing.T) {
 			t.Run(tc.name+newline, func(t *testing.T) {
 				t.Parallel()
 				input := strings.ReplaceAll(tc.input, "\n", newline)
-				root, err := codec.Parse([]byte(input))
+				root, err := codec.ParseYAML([]byte(input))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -64,7 +64,7 @@ func TestScalarAttachedComments(t *testing.T) {
 func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 	t.Parallel()
 	const input = "script: &script echo $HI # shellcheck disable=SC2034\n# shellcheck disable=SC2086\nrun: *script\nnext: *script # shellcheck shell=sh\n"
-	root, err := codec.Parse([]byte(input))
+	root, err := codec.ParseYAML([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestAliasDeclarationCommentsKeepAnchoredScriptSpans(t *testing.T) {
 func TestStandaloneAliasDeclarationCommentsUseLazyPhysicalGraph(t *testing.T) {
 	t.Parallel()
 	const input = "script: &script echo $HI # shellcheck disable=SC2034\n# shellcheck disable=SC2086\nrun: *script\n"
-	root, err := codec.Parse([]byte(input))
+	root, err := codec.ParseYAML([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}

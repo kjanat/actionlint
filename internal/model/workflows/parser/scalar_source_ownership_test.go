@@ -13,7 +13,7 @@ import (
 func TestScriptSourceResultsOwnTheirMutableState(t *testing.T) {
 	t.Parallel()
 	const input = "script: &script echo $HI # anchor\nrun: *script # first\nnext: *script # second\n"
-	root, err := codec.Parse([]byte(input))
+	root, err := codec.ParseYAML([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}

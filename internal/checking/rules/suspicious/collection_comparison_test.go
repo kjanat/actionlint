@@ -42,7 +42,7 @@ func TestCollectionComparison(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

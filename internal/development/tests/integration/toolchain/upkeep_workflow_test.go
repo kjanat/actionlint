@@ -31,7 +31,7 @@ func TestUpkeepGoToolchain(t *testing.T) {
 			}
 		}
 	}
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}

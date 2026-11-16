@@ -307,7 +307,7 @@ func TestRemoteCompositeUsesCallerMirrorConfiguration(t *testing.T) {
 	requests := &mirrorRequests{actions: map[references.MirrorAccess]int{}}
 	request := analysisRequest{WorkingDir: t.TempDir(), RemoteActions: compositeMirrorProvider{provider: provider, requests: requests}}
 	for i, setting := range []string{`{}`, `{"allow-unknown-repositories":true}`, `{"services":[]}`} {
-		cfg, err := ConfigurationRules().Parse([]byte(`{"network":{"metadata-mirrors":` + setting + `}}`))
+		cfg, err := ConfigurationRules().ParseConfig([]byte(`{"network":{"metadata-mirrors":` + setting + `}}`))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -453,7 +453,7 @@ func TestRemoteCompositeAdviceRemainsVisible(t *testing.T) {
 			provider, _ := remoteCompositeProvider(t, map[string]string{
 				"example/action": "name: example\ndescription: example\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo \"${{ github.workspace }}\"\n",
 			})
-			cfg, err := ConfigurationRules().Parse([]byte(fmt.Sprintf("lint: {dependencies: {fail-on-all: %t}}", failOnAll)))
+			cfg, err := ConfigurationRules().ParseConfig([]byte(fmt.Sprintf("lint: {dependencies: {fail-on-all: %t}}", failOnAll)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -488,7 +488,7 @@ func TestLocalActionDependencyFailureSettings(t *testing.T) {
 			if override {
 				config += "overrides: [{includes: ['action.yml'], lint: {dependencies: {fail-on-all: false}}}]\n"
 			}
-			cfg, err := ConfigurationRules().Parse([]byte(config))
+			cfg, err := ConfigurationRules().ParseConfig([]byte(config))
 			if err != nil {
 				t.Fatal(err)
 			}

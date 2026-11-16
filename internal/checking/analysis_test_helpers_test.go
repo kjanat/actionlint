@@ -174,7 +174,7 @@ func analyzeConfiguredWorkflow(t *testing.T, source, config string) []*findingmo
 	var err error
 
 	if config != "" {
-		lConfig, err = ConfigurationRules().Parse([]byte(config))
+		lConfig, err = ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

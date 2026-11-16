@@ -171,7 +171,7 @@ func encodeOptions(options any) (any, error) {
 		if !json.Valid(raw) {
 			return nil, errors.New("json.RawMessage options are not valid JSON")
 		}
-		parsed, err := document.Parse("options.json", raw)
+		parsed, err := document.ParseConfigDocument("options.json", raw)
 		if err != nil {
 			return nil, err
 		}

@@ -9,7 +9,7 @@ import (
 
 func TestMetadataAliasAdmissionRejectsUndeclaredSource(t *testing.T) {
 	t.Parallel()
-	root, err := codec.Parse([]byte("anchor: &a value\nalias: *a\n"))
+	root, err := codec.ParseYAML([]byte("anchor: &a value\nalias: *a\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,7 +35,7 @@ func TestParserAcceptanceCodes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, findings := Parse([]byte(tc.source))
+			_, findings := ParseWorkflow([]byte(tc.source))
 			var got []Code
 			for _, finding := range findings {
 				got = append(got, finding.Code)
@@ -63,7 +63,7 @@ func TestParseIntTruncatesFractions(t *testing.T) {
 		t.Run(tc.literal, func(t *testing.T) {
 			t.Parallel()
 			source := "on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    strategy:\n      max-parallel: " + tc.literal + "\n    steps:\n      - run: echo ok\n"
-			workflow, findings := Parse([]byte(source))
+			workflow, findings := ParseWorkflow([]byte(source))
 			if len(findings) != 0 {
 				t.Fatal(findings)
 			}

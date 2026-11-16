@@ -29,11 +29,11 @@ var manifestSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return compileSchema("https://actionlint.kjanat.dev/schemas/tool-provider-manifest-1.json", manifestSchemaJSON)
 })
 
-// Parse decodes and validates one manifest. Duplicate object keys, unknown
+// ParsePluginManifest decodes and validates one manifest. Duplicate object keys, unknown
 // members and values outside the schema are rejected; so are selectors,
 // template effects, version patterns and configuration schemas the host
 // could not use.
-func Parse(data []byte) (Manifest, error) {
+func ParsePluginManifest(data []byte) (Manifest, error) {
 	if len(data) > maxManifestBytes {
 		return Manifest{}, fmt.Errorf("tool provider manifest exceeds %d bytes", maxManifestBytes)
 	}

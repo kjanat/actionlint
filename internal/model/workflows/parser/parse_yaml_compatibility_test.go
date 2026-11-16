@@ -38,7 +38,7 @@ func TestParseFlowMappingEmptyValueCompatibility(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			workflow, findings := Parse([]byte(tc.source + jobs))
+			workflow, findings := ParseWorkflow([]byte(tc.source + jobs))
 			if workflow == nil || len(workflow.Jobs) != 1 {
 				t.Fatalf("workflow recovery failed: %v", findings)
 			}
@@ -86,7 +86,7 @@ func TestFlowMappingNullsPhysicalTree(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			root, err := codec.Parse([]byte(tc.source))
+			root, err := codec.ParseYAML([]byte(tc.source))
 			if err != nil {
 				t.Fatal(err)
 			}

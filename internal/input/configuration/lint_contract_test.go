@@ -20,7 +20,7 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte(input))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte(input))
 			if err == nil {
 				_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			}
@@ -30,7 +30,7 @@ func TestRuleGroupConfigErrors(t *testing.T) {
 		})
 	}
 	for _, name := range []string{"string-conditions", "mixed-type-comparisons", "case-insensitive-conditions", "mixed-type-matrix-filters"} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("policy: {" + name + ": true}")); err == nil || !strings.Contains(err.Error(), "unknown key") {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {" + name + ": true}")); err == nil || !strings.Contains(err.Error(), "unknown key") {
 			t.Fatalf("%s accepted as policy: %v", name, err)
 		}
 	}
@@ -59,7 +59,7 @@ func TestStableSuspiciousRuleSelection(t *testing.T) {
 			{"{suspicious: {preset: all}}", configuration.Presets{}, "on"},
 			{"{suspicious: {preset: recommended}}", configuration.Presets{}, "off"},
 		} {
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: " + tc.rules + "}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: " + tc.rules + "}"))
 			if err != nil {
 				t.Fatal(err)
 			}

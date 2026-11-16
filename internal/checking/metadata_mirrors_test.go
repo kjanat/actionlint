@@ -62,7 +62,7 @@ jobs:
     uses: example/workflows/.github/workflows/build.yml@v1
 `
 	for i, setting := range []string{`{}`, `{"allow-unknown-repositories":true}`, `{"services":[]}`} {
-		cfg, err := ConfigurationRules().Parse([]byte(`{"network":{"metadata-mirrors":` + setting + `}}`))
+		cfg, err := ConfigurationRules().ParseConfig([]byte(`{"network":{"metadata-mirrors":` + setting + `}}`))
 		if err != nil {
 			t.Fatal(err)
 		}

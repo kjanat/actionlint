@@ -24,7 +24,7 @@ func TestRuffTargetVersionEmptyAndReset(t *testing.T) {
 			t.Parallel()
 			setting := "ruff: {target-version: " + tc.value + "}"
 			for _, text := range []string{"tools: {" + setting + "}", "overrides: [{includes: ['**'], tools: {" + setting + "}}]"} {
-				_, err := checking.ConfigurationRules().Parse([]byte(text))
+				_, err := checking.ConfigurationRules().ParseConfig([]byte(text))
 				if (err == nil) != tc.valid || (err != nil && !strings.Contains(err.Error(), "tools.ruff.config: at /target-version")) {
 					t.Fatalf("ParseConfig(%q): %v; valid=%v", text, err, tc.valid)
 				}

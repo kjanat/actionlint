@@ -245,13 +245,13 @@ func expectedMapping(where string, n *codec.Node) error {
 	return fmt.Errorf("yaml: %s must be mapping node but %s node was found at line:%d, col:%d", where, workflowparser.NodeKindName(n.Kind), n.Line, n.Column)
 }
 
-// Parse decodes an action manifest.
+// ParseActionMetadata decodes an action manifest.
 // Partially decoded declarations accompany errors for callers that inspect broken metadata.
 // A fatal decode takes diagnostic precedence when expansion admission also fails.
-func Parse(path string, content []byte) (*Metadata, error) {
+func ParseActionMetadata(path string, content []byte) (*Metadata, error) {
 	metadata := &Metadata{}
 	owned := bytes.Clone(content)
-	root, err := codec.Parse(owned)
+	root, err := codec.ParseYAML(owned)
 	if err == nil && root.Kind != 0 {
 		err = Decode(root, metadata)
 		// Schema errors can leave useful declarations and unvisited step fields.

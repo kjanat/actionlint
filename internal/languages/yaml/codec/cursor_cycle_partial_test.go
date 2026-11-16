@@ -65,7 +65,7 @@ func TestCursorCyclePartialValuesAndCountsAtSelectedField(t *testing.T) {
 			}
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
-				root, err := Parse([]byte(source))
+				root, err := ParseYAML([]byte(source))
 				if err != nil {
 					t.Fatal(err)
 				}

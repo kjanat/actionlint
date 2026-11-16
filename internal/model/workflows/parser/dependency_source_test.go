@@ -11,7 +11,7 @@ import (
 func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
 	t.Parallel()
 	content := []byte("on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: owner/action@v1\n")
-	workflow, findings := Parse(content)
+	workflow, findings := ParseWorkflow(content)
 	if len(findings) != 0 {
 		t.Fatal(findings)
 	}
@@ -25,7 +25,7 @@ func TestDependencySpansRequirePhysicalIndex(t *testing.T) {
 	if got := action.Uses.SourceScalar.End; got != (source.Position{}) {
 		t.Fatalf("unindexed dependency gained a span: %v", got)
 	}
-	root, err := codec.Parse(content)
+	root, err := codec.ParseYAML(content)
 	if err != nil {
 		t.Fatal(err)
 	}

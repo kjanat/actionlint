@@ -181,7 +181,7 @@ jobs:
       - run: echo
 `
 
-			w, _ := workflowparser.Parse([]byte(src))
+			w, _ := workflowparser.ParseWorkflow([]byte(src))
 			if w == nil {
 				t.Fatal("workflow was not parsed")
 			}
@@ -210,7 +210,7 @@ permissions:
   Contents: read
   issues: Write
 `)
-	w, _ := workflowparser.Parse(src)
+	w, _ := workflowparser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed")
 	}
@@ -288,7 +288,7 @@ func TestDefaultPermissionLevels(t *testing.T) {
 
 func permissionSourceNode(t *testing.T, data []byte) *codec.Node {
 	t.Helper()
-	root, err := codec.Parse(data)
+	root, err := codec.ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}

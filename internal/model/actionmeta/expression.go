@@ -87,7 +87,7 @@ func ReadExpressions(s string, bare bool, field string, inputs Inputs) Expressio
 		base += i + 3
 		expressionOffset := base
 		lex := exprsyntax.NewLexer(s)
-		expr, err := exprsyntax.NewParser().Parse(lex)
+		expr, err := exprsyntax.NewParser().ParseExpression(lex)
 		if err != nil {
 			violation := ExpressionProblem{Code: CodeExpressionSyntax, Message: "has an invalid expression: " + err.Message}
 			if positionsKnown {

@@ -169,11 +169,11 @@ func (c *Cache) Seed(snapshot parsing.SourceSnapshot) error {
 	return nil
 }
 
-// Load reads and parses a repository-local workflow unless it is already cached.
+// LoadWorkflowMetadata reads and parses a repository-local workflow unless it is already cached.
 // Non-local references and a disabled repository scope return no metadata.
 // ctx cancels this caller's wait; the capture store owns backing IO.
 // Concurrent callers receive detached metadata or the cached failure.
-func (c *Cache) Load(ctx context.Context, spec string) (*calls.Metadata, error) {
+func (c *Cache) LoadWorkflowMetadata(ctx context.Context, spec string) (*calls.Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (c *Cache) LoadForCall(ctx context.Context, sourceSpec string) (*calls.Meta
 	if !ok {
 		return nil, nil
 	}
-	m, err := c.Load(ctx, localSpec)
+	m, err := c.LoadWorkflowMetadata(ctx, localSpec)
 	if failure, ok := errors.AsType[metadataError](err); ok {
 		return nil, failure.at(sourceSpec)
 	}

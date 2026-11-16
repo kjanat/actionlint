@@ -229,7 +229,7 @@ func TestStandaloneNonCompositeEntriesKeepBoundDeployment(t *testing.T) {
 				if using == "docker" {
 					body = "image: Dockerfile"
 				}
-				meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns:\n  using: "+using+"\n  "+body+"\n"))
+				meta, err := actionmeta.ParseActionMetadata("source/action.yml", []byte("name: action\ndescription: test\nruns:\n  using: "+using+"\n  "+body+"\n"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -263,7 +263,7 @@ func (*standaloneEntryFailure) LeaveInvocation(invocation.Context) error    { re
 
 func TestStandaloneInvocationEntryFailureKeepsValidDeployment(t *testing.T) {
 	t.Parallel()
-	meta, err := actionmeta.Parse("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
+	meta, err := actionmeta.ParseActionMetadata("source/action.yml", []byte("name: action\ndescription: test\nruns: {using: composite, steps: []}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

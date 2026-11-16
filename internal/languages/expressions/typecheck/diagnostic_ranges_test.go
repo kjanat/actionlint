@@ -24,7 +24,7 @@ func TestSemanticDiagnosticSpans(t *testing.T) {
 	} {
 		t.Run(tc.expression, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.expression + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.expression + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +54,7 @@ func FuzzExpressionParserSpans(f *testing.F) {
 		if len(source) > 4096 {
 			t.Skip()
 		}
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source + "}}"))
 		if err != nil {
 			return
 		}
@@ -72,7 +72,7 @@ func FuzzExpressionParserSpans(f *testing.F) {
 					t.Fatalf("%T %+v outside %T %+v", node, span, parent, outer)
 				}
 			}
-			parsed, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(source[span.Start:span.End] + "}}"))
+			parsed, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(source[span.Start:span.End] + "}}"))
 			if err != nil || parsed == nil {
 				t.Fatalf("%T span %q cannot be parsed: %v", node, source[span.Start:span.End], err)
 			}
@@ -91,7 +91,7 @@ func TestExpressionSyntaxErrorSpans(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			_, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.source))
+			_, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.source))
 			if err == nil {
 				t.Fatal("expected syntax error")
 			}

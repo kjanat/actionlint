@@ -8,7 +8,7 @@ import (
 
 func TestNativeRuffConfigRoundTrip(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`tools:
   ruff:
     config:
       target-version: py312

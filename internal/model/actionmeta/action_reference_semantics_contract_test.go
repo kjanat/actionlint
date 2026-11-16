@@ -21,7 +21,7 @@ runs:
     - run: echo ok
       shell: bash
 `
-		_, err := actionmeta.Parse("action.yml", []byte(source))
+		_, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 		if second == "APPROVED" {
 			if err == nil || !strings.Contains(err.Error(), `output "APPROVED" is duplicated`) {
 				t.Fatal(err)

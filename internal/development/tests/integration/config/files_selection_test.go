@@ -23,7 +23,7 @@ func TestFilesSelection(t *testing.T) {
 	} {
 		t.Run(tc.setting, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("files: " + tc.setting))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("files: " + tc.setting))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -39,7 +39,7 @@ func TestFilesSelection(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg, err = checking.ConfigurationRules().Parse(b)
+				cfg, err = checking.ConfigurationRules().ParseConfig(b)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -47,7 +47,7 @@ func TestFilesSelection(t *testing.T) {
 		})
 	}
 	for _, setting := range []string{"{includes: ['../*']}", "{includes: [1]}", "{excludes: ['[']}", "{exclude: []}"} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("files: " + setting)); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("files: " + setting)); err == nil {
 			t.Fatalf("accepted %s", setting)
 		}
 	}

@@ -15,7 +15,7 @@ import (
 // ReadProviderArtifact parses a distributed process-provider manifest. A standalone
 // JSON file uses a PATH command and inline transforms; OCI supplies blob layers.
 func ReadProviderArtifact(artifact *pluginartifact.Artifact) (manifests.Manifest, error) {
-	manifest, err := manifests.Parse(artifact.Bytes)
+	manifest, err := manifests.ParsePluginManifest(artifact.Bytes)
 	if err != nil {
 		return manifests.Manifest{}, fmt.Errorf("plugin %s: %w", artifact.Info.Source, err)
 	}

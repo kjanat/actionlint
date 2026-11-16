@@ -28,7 +28,7 @@ const scriptFixture03 = "testdata/plugins/script-engine-0.3.0.wasm"
 
 func loadScriptFixture03(t *testing.T) *Plugin {
 	t.Helper()
-	p, err := Load(t.Context(), scriptFixture03, Options{})
+	p, err := LoadComponentPlugin(t.Context(), scriptFixture03, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestScriptEngineVersionMismatch(t *testing.T) {
 	if err := os.WriteFile(path, changed, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Load(t.Context(), path, Options{})
+	p, err := LoadComponentPlugin(t.Context(), path, Options{})
 	if p != nil {
 		_ = p.Close(t.Context())
 	}
@@ -318,7 +318,7 @@ func TestTemplateEffects03ContractCurrent(t *testing.T) {
 // its findings carry fixes and reported sources besides their effects.
 func TestTemplateEffects03Check(t *testing.T) {
 	t.Parallel()
-	p, err := Load(t.Context(), templateFixture03, Options{})
+	p, err := LoadComponentPlugin(t.Context(), templateFixture03, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

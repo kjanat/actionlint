@@ -26,7 +26,7 @@ func TestOwnedAdmissionRejectsUnrelatedBytesAndHandBuiltDocument(t *testing.T) {
 func TestOwnedActionUsesPrivateOriginalText(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: original\ndescription: test\nruns:\n  using: composite\n  steps:\n    - &shared\n      shell: bash\n      run: echo original\n    - *shared\n")
-	metadata, err := actionmeta.Parse("action.yml", content)
+	metadata, err := actionmeta.ParseActionMetadata("action.yml", content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestOwnedAdmissionRetainsFailedAndEmptyParseRevisions(t *testing.T) {
 func TestOwnedActionAdmissionRetainsRecoveredDeclarations(t *testing.T) {
 	t.Parallel()
 	content := []byte("name: recovered\ndescription: test\ninputs:\n  value:\n    required: [invalid]\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: echo recovered\n")
-	metadata, parseErr := actionmeta.Parse("action.yml", content)
+	metadata, parseErr := actionmeta.ParseActionMetadata("action.yml", content)
 	if parseErr == nil || len(metadata.Runs.Steps) != 1 {
 		t.Fatal("fixture must recover a declaration alongside a metadata error")
 	}

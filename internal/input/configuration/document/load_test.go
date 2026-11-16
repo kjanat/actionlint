@@ -22,7 +22,7 @@ func TestRemoteExtendsFormatsAndOrigins(t *testing.T) {
 		shared: `{"shared": true}`,
 	}
 	reads := map[string]int{}
-	loaded, err := Load(leaf, nil, func(name string) ([]byte, error) {
+	loaded, err := LoadConfigDocument(leaf, nil, func(name string) ([]byte, error) {
 		reads[name]++
 		content, ok := contents[name]
 		if !ok {
@@ -50,7 +50,7 @@ func TestRemoteExtendsFormatsAndOrigins(t *testing.T) {
 
 func TestRemoteExtendsCycle(t *testing.T) {
 	t.Parallel()
-	_, err := Load("https://example.test/a.yaml", nil, func(name string) ([]byte, error) {
+	_, err := LoadConfigDocument("https://example.test/a.yaml", nil, func(name string) ([]byte, error) {
 		if strings.HasSuffix(name, "/a.yaml") {
 			return []byte("extends: [./b.yaml]"), nil
 		}
@@ -65,7 +65,7 @@ func TestRemoteReaderReceivesDeclaredURL(t *testing.T) {
 	t.Parallel()
 	leaf := filepath.Join(t.TempDir(), "actionlint.yaml")
 	declared := "HTTPS://EXAMPLE.TEST/base.yaml?version=1"
-	_, err := Load(leaf, nil, func(name string) ([]byte, error) {
+	_, err := LoadConfigDocument(leaf, nil, func(name string) ([]byte, error) {
 		switch name {
 		case leaf:
 			return []byte("extends: [\"" + declared + "\"]"), nil
@@ -83,7 +83,7 @@ func TestRemoteReaderReceivesDeclaredURL(t *testing.T) {
 func TestRemoteDependencyCancellation(t *testing.T) {
 	t.Parallel()
 	leaf := filepath.Join(t.TempDir(), "actionlint.yaml")
-	_, err := Load(leaf, nil, func(name string) ([]byte, error) {
+	_, err := LoadConfigDocument(leaf, nil, func(name string) ([]byte, error) {
 		if name == leaf {
 			return []byte("extends: [https://example.test/base.yaml]"), nil
 		}
@@ -100,7 +100,7 @@ func TestRemoteExtendsRejectsUnsafeAddressesBeforeReading(t *testing.T) {
 		t.Run(reference, func(t *testing.T) {
 			t.Parallel()
 			reads := 0
-			_, err := Load("https://example.test/base.yaml", nil, func(string) ([]byte, error) {
+			_, err := LoadConfigDocument("https://example.test/base.yaml", nil, func(string) ([]byte, error) {
 				reads++
 				return []byte("extends: [\"" + reference + "\"]"), nil
 			}, nil, nil)
@@ -118,7 +118,7 @@ func TestInheritedNullThenPartialMappingOrigin(t *testing.T) {
 	middle := filepath.Join(dir, "middle.yaml")
 	leaf := filepath.Join(dir, "leaf.yaml")
 	files := map[string]string{base: "tools: null\n", middle: "extends: [./base.yaml]\ntools:\n  shellcheck: false\n", leaf: "extends: [./middle.yaml]\ntools:\n  pyflakes: false\n"}
-	loaded, err := Load(leaf, nil, func(path string) ([]byte, error) {
+	loaded, err := LoadConfigDocument(leaf, nil, func(path string) ([]byte, error) {
 		data, ok := files[path]
 		if !ok {
 			return nil, fmt.Errorf("unknown path %q", path)
@@ -151,7 +151,7 @@ func TestExtendsPreservesCauseWithoutExposingMissingBase(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := Load(leaf, nil, func(path string) ([]byte, error) {
+			_, err := LoadConfigDocument(leaf, nil, func(path string) ([]byte, error) {
 				if path == leaf {
 					return []byte("extends: [./base.yaml]"), nil
 				}
@@ -176,7 +176,7 @@ func TestLoadUsesHeldSourcesWithoutReading(t *testing.T) {
 	leaf := filepath.Join(dir, "leaf.yaml")
 	sources := map[string]string{base: "base: true\n", leaf: "extends: [./base.yaml]\nleaf: true\n"}
 	files := NewFiles()
-	first, err := Load(leaf, files, func(path string) ([]byte, error) {
+	first, err := LoadConfigDocument(leaf, files, func(path string) ([]byte, error) {
 		data, ok := sources[path]
 		if !ok {
 			return nil, fmt.Errorf("unknown path %q", path)
@@ -190,7 +190,7 @@ func TestLoadUsesHeldSourcesWithoutReading(t *testing.T) {
 	// see that spelling, as it would after reading the file itself.
 	spelled := dir + string(filepath.Separator) + "." + string(filepath.Separator) + "leaf.yaml"
 	seen := map[string]string{}
-	second, err := Load(spelled, files, func(path string) ([]byte, error) {
+	second, err := LoadConfigDocument(spelled, files, func(path string) ([]byte, error) {
 		t.Errorf("read held source %q again", path)
 		return nil, os.ErrNotExist
 	}, func(origin string, source *Node) (*Node, error) {

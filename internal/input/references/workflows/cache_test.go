@@ -39,7 +39,7 @@ func TestReusableWorkflowCacheFindMetadataOK(t *testing.T) {
 	proj := filepath.Join("testdata", "reusable-workflows")
 	c := newCapturedWorkflowCache(t, proj, "", nil)
 
-	m, err := c.Load(t.Context(), "./ok.yaml")
+	m, err := c.LoadWorkflowMetadata(t.Context(), "./ok.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestReusableWorkflowCacheFindMetadataOK(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	m2, err := c.Load(t.Context(), "./ok.yaml")
+	m2, err := c.LoadWorkflowMetadata(t.Context(), "./ok.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestReusableWorkflowCacheFindMetadataError(t *testing.T) {
 			t.Parallel()
 			proj := filepath.Join("testdata", "reusable-workflows")
 			c := newCapturedWorkflowCache(t, proj, "", nil)
-			_, err := c.Load(t.Context(), tc.spec)
+			_, err := c.LoadWorkflowMetadata(t.Context(), tc.spec)
 			if err == nil {
 				t.Fatal("no error happened")
 			}
@@ -117,7 +117,7 @@ func TestReusableWorkflowCacheFindMetadataError(t *testing.T) {
 				t.Fatalf("unexpected error. wanted %q but got %q", tc.want, msg)
 			}
 			// Each caller receives the cached failure at its own lookup.
-			m, err := c.Load(t.Context(), tc.spec)
+			m, err := c.LoadWorkflowMetadata(t.Context(), tc.spec)
 			if err == nil || err.Error() != msg {
 				t.Fatal("cached failure changed:", err)
 			}
@@ -157,14 +157,14 @@ func TestReusableWorkflowCacheFindMetadataSkipParsing(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Parallel()
 			c := newCapturedWorkflowCache(t, tc.proj, "", nil)
-			m, err := c.Load(t.Context(), tc.spec)
+			m, err := c.LoadWorkflowMetadata(t.Context(), tc.spec)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if m != nil {
 				t.Fatal("metadata should be nil:", m)
 			}
-			m, err = c.Load(t.Context(), tc.spec)
+			m, err = c.LoadWorkflowMetadata(t.Context(), tc.spec)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -488,7 +488,7 @@ func TestReusableWorkflowMetadataCacheFindOneMetadataConcurrently(t *testing.T) 
 
 	for range n {
 		go func() {
-			m, e := c.Load(t.Context(), "./ok.yaml")
+			m, e := c.LoadWorkflowMetadata(t.Context(), "./ok.yaml")
 			if e != nil {
 				err <- e
 				return
@@ -540,7 +540,7 @@ func TestReusableWorkflowMetadataCacheWriteFromFileAndASTNodeConcurrently(t *tes
 	err := make(chan error)
 
 	fromFile := func() {
-		if _, e := c.Load(t.Context(), "./ok.yaml"); e != nil {
+		if _, e := c.LoadWorkflowMetadata(t.Context(), "./ok.yaml"); e != nil {
 			err <- e
 			return
 		}
@@ -592,7 +592,7 @@ func TestReusableWorkflowNullCache(t *testing.T) {
 	// This should do nothing
 	c.WriteWorkflowCallEvent(filepath.Join("foo", "test.yaml"), e)
 
-	m, err := c.Load(t.Context(), "./foo/test.yaml")
+	m, err := c.LoadWorkflowMetadata(t.Context(), "./foo/test.yaml")
 	if m != nil {
 		t.Errorf("metadata should never be found with null cache: %v", m)
 	}
@@ -608,7 +608,7 @@ func TestReusableWorkflowCacheFailureNamesCallSpelling(t *testing.T) {
 	if _, err := c.LoadForCall(t.Context(), "$/broken.yaml"); err == nil || !strings.Contains(err.Error(), `error while parsing reusable workflow "$/broken.yaml"`) {
 		t.Fatalf("call-site error = %v, want the call's spelling", err)
 	}
-	if _, err := c.Load(t.Context(), "./broken.yaml"); err == nil || !strings.Contains(err.Error(), `error while parsing reusable workflow "./broken.yaml"`) {
+	if _, err := c.LoadWorkflowMetadata(t.Context(), "./broken.yaml"); err == nil || !strings.Contains(err.Error(), `error while parsing reusable workflow "./broken.yaml"`) {
 		t.Fatalf("cached error = %v, want the cache key", err)
 	}
 }
@@ -633,7 +633,7 @@ func TestReusableWorkflowMetadataJobPermissions(t *testing.T) {
 
 	proj := filepath.Join("testdata", "reusable-workflows")
 	c := newCapturedWorkflowCache(t, proj, "", nil)
-	m, err := c.Load(t.Context(), "./permissions.yaml")
+	m, err := c.LoadWorkflowMetadata(t.Context(), "./permissions.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -649,7 +649,7 @@ func TestReusableWorkflowMetadataJobPermissionsFromWorkflowNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, errs := workflowparser.Parse(src)
+	w, errs := workflowparser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -698,7 +698,7 @@ jobs:
       - run: echo ok
 `)...)
 				}
-				workflow, diagnostics := workflowparser.Parse(source)
+				workflow, diagnostics := workflowparser.ParseWorkflow(source)
 				if exact && len(diagnostics) != 0 {
 					t.Fatal(diagnostics)
 				}
@@ -723,7 +723,7 @@ jobs:
 				fileCache := newCapturedWorkflowCache(t, project, root, nil)
 				for _, cache := range []*ASTComparisonCache{fileCache, astCache} {
 					for pass := range 2 {
-						metadata, err := cache.Load(t.Context(), "./callee.yaml")
+						metadata, err := cache.LoadWorkflowMetadata(t.Context(), "./callee.yaml")
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -748,7 +748,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	w, errs := workflowparser.Parse(src)
+	w, errs := workflowparser.ParseWorkflow(src)
 	if w == nil {
 		t.Fatal("workflow was not parsed:", errs)
 	}
@@ -759,7 +759,7 @@ func TestReusableWorkflowMetadataUnusedAnchorParity(t *testing.T) {
 	}
 
 	c := newCapturedWorkflowCache(t, root, root, nil)
-	fromFile, err := c.Load(t.Context(), "./unused_anchor.yaml")
+	fromFile, err := c.LoadWorkflowMetadata(t.Context(), "./unused_anchor.yaml")
 	if err != nil {
 		t.Fatal("unused anchor made metadata extraction fail:", err)
 	}

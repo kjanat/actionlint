@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: [{run: echo consumer}]
 `
-	parsed, errs := workflowparser.Parse([]byte(source))
+	parsed, errs := workflowparser.ParseWorkflow([]byte(source))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

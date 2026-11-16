@@ -75,7 +75,7 @@ next: value
 
 func TestInlineSuppressionSpellingsRespectPolicy(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("policy: {disallow-suppressions: {rules: [expression-reference], report: all}}"))
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("policy: {disallow-suppressions: {rules: [expression-reference], report: all}}"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestInlineSuppressionRegistry(t *testing.T) {
 	for _, name := range (resultpolicy.Processor{RuleSet: checking.ConfigurationRules()}).SuppressionRules() {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
+			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: {rules: [%s]}}", name))
 			if err != nil {
 				t.Fatal(err)
 			}

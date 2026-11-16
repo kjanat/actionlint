@@ -17,7 +17,7 @@ import (
 
 func TestLocalActionSourceConfig(t *testing.T) {
 	t.Parallel()
-	config, err := checking.ConfigurationRules().Parse([]byte("local-actions: {'$/generated/': './source'}\noverrides:\n  - includes: ['special.yml']\n    local-actions: {'./generated': './other'}\n  - includes: ['reset.yml']\n    local-actions: null\n"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("local-actions: {'$/generated/': './source'}\noverrides:\n  - includes: ['special.yml']\n    local-actions: {'./generated': './other'}\n  - includes: ['reset.yml']\n    local-actions: null\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,14 +36,14 @@ func TestLocalActionSourceConfig(t *testing.T) {
 		t.Fatalf("programmatic mappings: %+v %v", got, err)
 	}
 	for _, value := range []string{"{'./generated': '../outside'}", "{'./generated': 42}", "{'./generated': './source', '$/generated': './other'}", "{'./generated': '${{ inputs.path }}'}", "[]"} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("local-actions: " + value)); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("local-actions: " + value)); err == nil {
 			t.Fatalf("accepted %s", value)
 		}
 	}
 	root := t.TempDir()
 	fixturefiles.Write(t, root, "base.yml", "local-actions: {'./generated': './source', './second': './two'}\n")
 	file := fixturefiles.Write(t, root, "config.yml", "extends: [base.yml]\nlocal-actions: {'$/generated/': './override'}\n")
-	merged, err := checking.ConfigurationRules().Load(file)
+	merged, err := checking.ConfigurationRules().LoadConfig(file)
 	if err != nil || merged.LocalActions["./generated"] != "./override" || merged.LocalActions["./second"] != "./two" {
 		t.Fatalf("extends: %+v %v", merged, err)
 	}
@@ -148,7 +148,7 @@ func TestMissingLocalActionSourceSuppression(t *testing.T) {
 	for _, runner := range []string{"ubuntu-latest", "windows-latest"} {
 		for _, ignored := range []bool{false, true} {
 			root, _ := testutil.ExecutableFixture(t, "shellcheck")
-			config, err := checking.ConfigurationRules().Parse([]byte("local-actions: {'./generated': './absent-source'}\n"))
+			config, err := checking.ConfigurationRules().ParseConfig([]byte("local-actions: {'./generated': './absent-source'}\n"))
 			if err != nil {
 				t.Fatal(err)
 			}

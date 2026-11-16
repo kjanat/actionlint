@@ -37,7 +37,7 @@ func TestDocumentPluginRetainsOtherScriptsAfterFailure(t *testing.T) {
 		for _, grant := range []bool{false, true} {
 			batch := documentBatchFixture(t, 3)
 			nativeIndex := 1 - failureAt
-			cfg, err := (configuration.RuleSet{}).Parse([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
+			cfg, err := (configuration.RuleSet{}).ParseConfig([]byte("tools: {shellcheck: {config: .shellcheckrc}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

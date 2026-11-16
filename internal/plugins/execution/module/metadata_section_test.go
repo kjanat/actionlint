@@ -35,7 +35,7 @@ func TestCustomMetadataMustMatchRuntime(t *testing.T) {
 	if err := os.WriteFile(path, append(raw, section...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := corewasm.Load(t.Context(), path, corewasm.Options{})
+	loaded, err := corewasm.LoadModuleEngine(t.Context(), path, corewasm.Options{})
 	if loaded != nil {
 		_ = loaded.Close(t.Context())
 		t.Fatal("spoofed metadata loaded")

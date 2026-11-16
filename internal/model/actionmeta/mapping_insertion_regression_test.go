@@ -27,7 +27,7 @@ func TestActionMetadataInsertionDuplicates(t *testing.T) {
 					t.Parallel()
 					mapping := strings.ReplaceAll(tc.mapping, "INSERT", "'"+directive+"'")
 					source := "name: test\ndescription: test\ninputs:\n  extra:\n    description: extra\nruns:\n  using: composite\n  steps:\n    - uses: example/action@v1\n      " + section + ": " + mapping + "\n    - uses: example/action@v1\n      " + section + ": {FOO: separate}\n"
-					meta, err := Parse("action.yml", []byte(source))
+					meta, err := ParseActionMetadata("action.yml", []byte(source))
 					if err != nil {
 						t.Fatal(err)
 					}

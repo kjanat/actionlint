@@ -282,7 +282,7 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 		t.Run(fmt.Sprintf("constructed=%t", constructed), func(t *testing.T) {
 			root, paths, _ := configuredEngineFixture(t)
 			t.Chdir(t.TempDir())
-			cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {backend: {wasm: {path: engines/../first.wasm}}}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {backend: {wasm: {path: engines/../first.wasm}}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -291,12 +291,12 @@ func TestInlineConfiguredEnginePaths(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg, err = checking.ConfigurationRules().Parse(encoded)
+				cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
-			other, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {backend: {wasm: {path: first.wasm}}}}"))
+			other, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {backend: {wasm: {path: first.wasm}}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}

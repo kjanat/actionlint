@@ -11,7 +11,7 @@ import (
 )
 
 func parseActionOutline(path string, content []byte) (Action, error) {
-	metadata, err := actionmeta.Parse(path, content)
+	metadata, err := actionmeta.ParseActionMetadata(path, content)
 	return FromAction(path, metadata, err), err
 }
 

@@ -35,7 +35,7 @@ func TestCategoryMigrationPreservesSelection(t *testing.T) {
 	} {
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
-			before, err := checking.ConfigurationRules().Parse([]byte(input))
+			before, err := checking.ConfigurationRules().ParseConfig([]byte(input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -43,7 +43,7 @@ func TestCategoryMigrationPreservesSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			after, err := checking.ConfigurationRules().Parse(migration.Content)
+			after, err := checking.ConfigurationRules().ParseConfig(migration.Content)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,11 +84,11 @@ func TestCategoryMigrationPluginMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := checking.ConfigurationRules().Parse(input, descriptor.Name)
+	before, err := checking.ConfigurationRules().ParseConfig(input, descriptor.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := checking.ConfigurationRules().Parse(result.Content, descriptor.Name)
+	after, err := checking.ConfigurationRules().ParseConfig(result.Content, descriptor.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestCategoryFileMigrationChecksInheritedSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := document.Parse(leaf, prepared.Content)
+	parsed, err := document.ParseConfigDocument(leaf, prepared.Content)
 	if err != nil {
 		t.Fatal(err)
 	}

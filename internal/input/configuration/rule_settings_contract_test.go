@@ -14,7 +14,7 @@ func TestCatalogRuleConfiguration(t *testing.T) {
 	for _, d := range checking.ConfigurationRules().Rules() {
 		t.Run(d.Name, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
+			cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "lint: {rules: {%s: {%s: off}}}", d.Group, d.Name))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 	} {
 		t.Run(tc.rules, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + tc.rules + "}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {" + tc.rules + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				cfg, err = checking.ConfigurationRules().Parse(encoded)
+				cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 				if err != nil {
 					t.Fatalf("round trip: %s: %v", encoded, err)
 				}
@@ -90,7 +90,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 		"correctness: ''", "correctness: {level: ''}",
 		"correctness: {expression: ''}", "correctness: {expression: {level: ''}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + rules + "}}")); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {" + rules + "}}")); err == nil {
 			t.Fatalf("invalid setting accepted: %s", rules)
 		}
 	}
@@ -99,7 +99,7 @@ func TestRuleLevelAliasesAndDefaults(t *testing.T) {
 func TestRuleLevelAliasesWithStrict(t *testing.T) {
 	t.Parallel()
 	for _, level := range []string{"off", "false", "default", "null"} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {suspicious: {case-insensitive-conditions: " + level + "}}}"))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {suspicious: {case-insensitive-conditions: " + level + "}}}"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -137,7 +137,7 @@ func TestRuleLevelPrecedence(t *testing.T) {
 	} {
 		t.Run(tc.rules+"/"+tc.name+"/"+string(tc.want), func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + tc.rules + "}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {" + tc.rules + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,7 +163,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 	} {
 		t.Run(rules, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + rules + "}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {" + rules + "}}"))
 			if err == nil {
 				_, err = checking.ConfigurationRules().ResolveRules(configuration.Presets{}, cfg)
 			}
@@ -176,7 +176,7 @@ func TestRuleSettingsInvalid(t *testing.T) {
 
 func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`lint:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`lint:
   rules:
     correctness: warn
     policy:
@@ -202,7 +202,7 @@ func TestRuleSettingsOptionsAndRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg, err = checking.ConfigurationRules().Parse(encoded)
+		cfg, err = checking.ConfigurationRules().ParseConfig(encoded)
 		if err != nil {
 			t.Fatalf("%s\n%v", encoded, err)
 		}
@@ -224,13 +224,13 @@ func TestTypedRuleOptionsNull(t *testing.T) {
 			}
 			for _, option := range options {
 				text := fmt.Sprintf("lint: {rules: {policy: {%s: {level: on, options: %s}}}}", rule, option)
-				if _, err := checking.ConfigurationRules().Parse([]byte(text)); err == nil {
+				if _, err := checking.ConfigurationRules().ParseConfig([]byte(text)); err == nil {
 					t.Fatalf("accepted invalid typed options: %s", text)
 				}
 			}
 			for _, level := range []string{"null", "false", "default", "off"} {
 				text := fmt.Sprintf("lint: {rules: {policy: {%s: %s}}}", rule, level)
-				if _, err := checking.ConfigurationRules().Parse([]byte(text)); err != nil {
+				if _, err := checking.ConfigurationRules().ParseConfig([]byte(text)); err != nil {
 					t.Fatalf("level %s rejected: %v", level, err)
 				}
 			}

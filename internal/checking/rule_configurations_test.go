@@ -29,7 +29,7 @@ func TestRegisteredRuleConfigurationScopes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			project, err := rules.Parse([]byte("lint:\n  rules:\n    correctness: {plugin-check: warn}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {plugin-check: error}\n"))
+			project, err := rules.ParseConfig([]byte("lint:\n  rules:\n    correctness: {plugin-check: warn}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {plugin-check: error}\n"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -124,7 +124,7 @@ func TestSourceConfigurationsProjectDeclaredAliases(t *testing.T) {
 		for _, name := range []string{"forbidden-suppression", "disallow-suppressions"} {
 			t.Run(category+"/"+name, func(t *testing.T) {
 				t.Parallel()
-				project, err := ConfigurationRules().Parse(fmt.Appendf(nil, "policy: {disallow-suppressions: true}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {%s: {%s: off}}}\n", category, name))
+				project, err := ConfigurationRules().ParseConfig(fmt.Appendf(nil, "policy: {disallow-suppressions: true}\noverrides:\n  - includes: ['inner/**']\n    lint: {rules: {%s: {%s: off}}}\n", category, name))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -160,7 +160,7 @@ func TestDefaultRuleConfigurationsAreResolvedBeforeUse(t *testing.T) {
 
 func TestRuleConfigurationsSharePreparedScopeValues(t *testing.T) {
 	t.Parallel()
-	project, err := ConfigurationRules().Parse([]byte("lint:\n  rules:\n    correctness: {action: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
+	project, err := ConfigurationRules().ParseConfig([]byte("lint:\n  rules:\n    correctness: {action: warn, shellcheck: info}\noverrides:\n  - includes: ['inner/**']\n    lint:\n      rules:\n        correctness: {shellcheck: error}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := rules.Parse([]byte(`tools:
+	project, err := rules.ParseConfig([]byte(`tools:
   custom-script:
     backend: {wasm: {path: workflow.wasm}}
 lint: {rules: {correctness: {action: warn}}}

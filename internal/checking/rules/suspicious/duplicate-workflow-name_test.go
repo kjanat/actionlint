@@ -26,7 +26,7 @@ func TestDuplicateWorkflowNameUsesSuppliedInventory(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 			text := tc.source + "on: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"
-			parsed, errs := workflowparser.Parse([]byte(text))
+			parsed, errs := workflowparser.ParseWorkflow([]byte(text))
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}

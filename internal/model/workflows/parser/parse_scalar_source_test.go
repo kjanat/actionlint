@@ -41,7 +41,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			root, err := codec.Parse([]byte(tc.input))
+			root, err := codec.ParseYAML([]byte(tc.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -89,7 +89,7 @@ func TestQuotedFoldedScriptSource(t *testing.T) {
 // also rejects this YAML escape. Unicode escapes such as \u002f are accepted.
 func TestQuotedSlashEscapeRejected(t *testing.T) {
 	t.Parallel()
-	if _, err := codec.Parse([]byte(`run: "https:\/\/github.com/mlugg/setup-zig@v2"`)); err == nil {
+	if _, err := codec.ParseYAML([]byte(`run: "https:\/\/github.com/mlugg/setup-zig@v2"`)); err == nil {
 		t.Fatal("slash escape unexpectedly accepted unlike the GitHub runner")
 	}
 }
@@ -104,7 +104,7 @@ func TestStandaloneSourceReconstructionPreservesLineBreaks(t *testing.T) {
 			if got := scalarDocumentSource(document); got != source {
 				t.Fatalf("reconstructed source = %q, want original line breaks in %q", got, source)
 			}
-			root, err := codec.Parse([]byte(source))
+			root, err := codec.ParseYAML([]byte(source))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -125,7 +125,7 @@ func TestQuotedScalarEOFPosition(t *testing.T) {
 					t.Parallel()
 					content := "run: " + quote + "echo ${{ github.ref"
 					input := strings.ReplaceAll(content+suffix+quote+"\n", "\n", newline)
-					root, err := codec.Parse([]byte(input))
+					root, err := codec.ParseYAML([]byte(input))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -162,7 +162,7 @@ func TestBlockScalarEOFPosition(t *testing.T) {
 				if ending != "" {
 					input = strings.ReplaceAll(input+"\nnext: value\n", "\n", ending)
 				}
-				root, err := codec.Parse([]byte(input))
+				root, err := codec.ParseYAML([]byte(input))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -188,7 +188,7 @@ func TestQuotedEscapedLineBreakEOFPosition(t *testing.T) {
 				t.Parallel()
 				content := `run: "echo ${{ github.ref` + escape
 				input := content + suffix + "\"\n"
-				root, err := codec.Parse([]byte(input))
+				root, err := codec.ParseYAML([]byte(input))
 				if err != nil {
 					t.Fatal(err)
 				}

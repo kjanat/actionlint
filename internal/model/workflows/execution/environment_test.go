@@ -43,7 +43,7 @@ func TestCheckoutEnvironmentPlatform(t *testing.T) {
 
 func TestEnvironmentMappingPreservesSourceScalarTags(t *testing.T) {
 	t.Parallel()
-	workflow, errs := workflowparser.Parse([]byte("on: push\nenv:\n  NULL_VALUE: null\n  STRING: 'null'\n  BOOL: false\n  BOOL_TEXT: 'false'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
+	workflow, errs := workflowparser.ParseWorkflow([]byte("on: push\nenv:\n  NULL_VALUE: null\n  STRING: 'null'\n  BOOL: false\n  BOOL_TEXT: 'false'\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps: [{run: echo ok}]\n"))
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}

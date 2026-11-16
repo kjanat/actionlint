@@ -57,7 +57,7 @@ func TestReportingValidation(t *testing.T) {
 	} {
 		t.Run(tc.source, func(t *testing.T) {
 			t.Parallel()
-			_, err := rules.Parse([]byte(tc.source))
+			_, err := rules.ParseConfig([]byte(tc.source))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("expected %q, got %v", tc.want, err)
 			}

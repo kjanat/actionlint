@@ -25,7 +25,7 @@ type ExpressionEnd func(string) (int, bool)
 // TemplateEnd is the ExpressionEnd of the workflow expression parser.
 func TemplateEnd(src string) (int, bool) {
 	lexer := exprsyntax.NewLexer(src)
-	_, err := exprsyntax.NewParser().Parse(lexer)
+	_, err := exprsyntax.NewParser().ParseExpression(lexer)
 	return lexer.Offset(), err == nil
 }
 

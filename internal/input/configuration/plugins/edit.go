@@ -81,7 +81,7 @@ func editPlugins(editor *document.Editor, refs []pluginreference.Reference) ([]b
 	if err != nil {
 		return nil, err
 	}
-	after, err := document.Parse(editor.Path(), edited)
+	after, err := document.ParseConfigDocument(editor.Path(), edited)
 	if err != nil {
 		return nil, fmt.Errorf("cannot safely edit plugin config: %w", err)
 	}

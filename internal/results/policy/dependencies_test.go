@@ -34,7 +34,7 @@ func TestDependencyFindingsAndExitStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			rules := checking.ConfigurationRules()
-			cfg, err := rules.Parse([]byte(tc.config))
+			cfg, err := rules.ParseConfig([]byte(tc.config))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -55,7 +55,7 @@ tags.primary = "x"
 		},
 		"items": []any{map[string]any{"name": "a"}, map[string]any{"name": "b", "tags": map[string]any{"primary": "x"}}},
 	}
-	node, err := Parse("actionlint.toml", []byte(source))
+	node, err := ParseConfigDocument("actionlint.toml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ tags.primary = "x"
 
 func TestDecodeTOMLPositions(t *testing.T) {
 	t.Parallel()
-	node, err := Parse("actionlint.toml", []byte("names = [\"é\", \"b\"]\nt = { \"é\" = 1, b = 2 }\n[server]\nhost = \"x\"\n  port = 8080\n"))
+	node, err := ParseConfigDocument("actionlint.toml", []byte("names = [\"é\", \"b\"]\nt = { \"é\" = 1, b = 2 }\n[server]\nhost = \"x\"\n  port = 8080\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,13 +105,13 @@ func TestDecodeTOMLErrors(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := Parse("actionlint.toml", []byte(test.source))
+			_, err := ParseConfigDocument("actionlint.toml", []byte(test.source))
 			if err == nil || !strings.Contains(err.Error(), "actionlint.toml:") {
 				t.Fatalf("got %v, want %q", err, test.want)
 			}
 		})
 	}
-	_, err := Parse("actionlint.toml", []byte("a = \n"))
+	_, err := ParseConfigDocument("actionlint.toml", []byte("a = \n"))
 	if err == nil || !strings.Contains(err.Error(), "actionlint.toml:") {
 		t.Fatalf("syntax error: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestDecodeTOMLErrors(t *testing.T) {
 func TestDecodeTOMLEmptyDocument(t *testing.T) {
 	t.Parallel()
 	for _, source := range []string{"", "# only a comment\n", "\n\n"} {
-		node, err := Parse("actionlint.toml", []byte(source))
+		node, err := ParseConfigDocument("actionlint.toml", []byte(source))
 		if err != nil {
 			t.Fatalf("%q: %v", source, err)
 		}
@@ -135,7 +135,7 @@ func TestDecodeSelectsFormatByExtension(t *testing.T) {
 	want := map[string]any{"self-hosted-runner": map[string]any{"labels": []any{"gpu"}}}
 	json := "{\n\t\"self-hosted-runner\": {\n\t\t\"labels\": [\"gpu\"]\n\t}\n}\n"
 	for _, path := range []string{"actionlint.json", "actionlint.yaml", "actionlint.yml", "config"} {
-		node, err := Parse(path, []byte(json))
+		node, err := ParseConfigDocument(path, []byte(json))
 		if err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
@@ -143,17 +143,17 @@ func TestDecodeSelectsFormatByExtension(t *testing.T) {
 			t.Fatalf("%s: %s", path, diff)
 		}
 	}
-	node, err := Parse("actionlint.TOML", []byte("[self-hosted-runner]\nlabels = [\"gpu\"]\n"))
+	node, err := ParseConfigDocument("actionlint.TOML", []byte("[self-hosted-runner]\nlabels = [\"gpu\"]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if diff := cmp.Diff(want, decodeValue(t, node)); diff != "" {
 		t.Fatal(diff)
 	}
-	if _, err := Parse("actionlint.yaml", []byte("a: 1\n---\nb: 2\n")); err == nil || err.Error() != "must contain one document" {
+	if _, err := ParseConfigDocument("actionlint.yaml", []byte("a: 1\n---\nb: 2\n")); err == nil || err.Error() != "must contain one document" {
 		t.Fatalf("multiple documents: %v", err)
 	}
-	if _, err := Parse("actionlint.toml", []byte("a = 1\na = 2\n")); err == nil {
+	if _, err := ParseConfigDocument("actionlint.toml", []byte("a = 1\na = 2\n")); err == nil {
 		t.Fatalf("toml error: %v", err)
 	}
 }

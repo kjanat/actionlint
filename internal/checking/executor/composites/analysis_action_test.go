@@ -130,7 +130,7 @@ func TestStandaloneCompositionSkipsRejectedRunDeclarations(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(tempdir.Physical(t), "action.yml")
 			content := []byte("name: test\ndescription: test\nruns: &runs\n  using: composite\n  steps:\n    - shell: bash\n      run: echo before\n    - shell: bash\n      run: " + invalid.value + "\n    - shell: bash\n      run: echo after\n")
-			metadata, parseErr := actionmeta.Parse(path, content)
+			metadata, parseErr := actionmeta.ParseActionMetadata(path, content)
 			if metadata == nil {
 				t.Fatalf("recovered metadata unavailable: %v", parseErr)
 			}
@@ -161,7 +161,7 @@ func TestStandaloneEmptyRunKeepsScriptOccurrence(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(tempdir.Physical(t), "action.yml")
 	content := []byte("name: empty\ndescription: test\nruns:\n  using: composite\n  steps:\n    - shell: bash\n      run: ''\n")
-	metadata, err := actionmeta.Parse(path, content)
+	metadata, err := actionmeta.ParseActionMetadata(path, content)
 	if err != nil {
 		t.Fatal(err)
 	}

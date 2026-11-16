@@ -35,7 +35,7 @@ jobs:
           "${{ insert }}":
             inserted: inserted input
 `
-	workflow, errors := workflowparser.Parse([]byte(source))
+	workflow, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatalf("parse source: %v", errors)
 	}

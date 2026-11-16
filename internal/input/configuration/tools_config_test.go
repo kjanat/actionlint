@@ -24,7 +24,7 @@ func TestToolBooleanShorthand(t *testing.T) {
 		{"tools: {lint-sql: false}", "lint-sql", false, []string{"lint-sql"}},
 		{"overrides: [{includes: ['**'], tools: {lint-sql: false}}]", "lint-sql", false, []string{"lint-sql"}},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(tc.text), tc.additional...)
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.text), tc.additional...)
 		if err != nil {
 			t.Fatalf("%s: %v", tc.text, err)
 		}
@@ -45,7 +45,7 @@ func TestToolBooleanShorthand(t *testing.T) {
 
 func TestToolShorthandOverridesOnlyEnabled(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`tools:
   lint-sql: {config: {dialect: postgres}}
 overrides:
   - includes: ['**']
@@ -66,7 +66,7 @@ overrides:
 
 func TestFlatRuffKeysFoldIntoConfig(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`tools:
   ruff:
     target-version: py312
     select: [F, B]
@@ -127,7 +127,7 @@ func TestFlatRuffKeysPrecedence(t *testing.T) {
 			map[string]any{"select": []any{"E"}, "lint": map[string]any{"select": []any{"F"}}},
 		},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(tc.text))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.text))
 		if err != nil {
 			t.Fatalf("%s: %v", tc.text, err)
 		}
@@ -139,7 +139,7 @@ func TestFlatRuffKeysPrecedence(t *testing.T) {
 		"tools: {ruff: {select: [F], config: {lint: true}}}": "config.lint must be a mapping",
 		"tools: {ruff: {select: [F], config: ./ruff.toml}}":  "cannot be combined with a configuration file path",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(text)); err == nil || !strings.Contains(err.Error(), want) {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(text)); err == nil || !strings.Contains(err.Error(), want) {
 			t.Fatalf("%s: %v, want %q", text, err, want)
 		}
 	}
@@ -147,7 +147,7 @@ func TestFlatRuffKeysPrecedence(t *testing.T) {
 
 func TestFlatRuffKeysMergeAcrossOverrides(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte(`tools:
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte(`tools:
   ruff: {select: [F], target-version: py312}
 overrides:
   - includes: ['**']
@@ -168,11 +168,11 @@ overrides:
 
 func TestToolConfigPathRequiresConfigFiles(t *testing.T) {
 	t.Parallel()
-	if _, err := checking.ConfigurationRules().Parse([]byte("tools: {ruff: {config: ./ruff.toml}}")); err == nil || !strings.Contains(err.Error(), "reads no configuration files") {
+	if _, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {ruff: {config: ./ruff.toml}}")); err == nil || !strings.Contains(err.Error(), "reads no configuration files") {
 		t.Fatalf("Ruff reads no configuration files, got %v", err)
 	}
 	for _, text := range []string{"tools: {shellcheck: {config: ./.shellcheckrc}}", "tools: {lint-sql: {config: ./sql.toml}}"} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(text), "lint-sql"); err != nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(text), "lint-sql"); err != nil {
 			t.Fatalf("%s: %v", text, err)
 		}
 	}
@@ -185,12 +185,12 @@ func TestUnknownToolNames(t *testing.T) {
 		"tools: {expression: false}",
 		"overrides: [{includes: ['**'], tools: {pyflakes: false}}]",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(text)); err == nil || !strings.Contains(err.Error(), "unknown tool") {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(text)); err == nil || !strings.Contains(err.Error(), "unknown tool") {
 			t.Fatalf("%s: %v", text, err)
 		}
 		// Loading binds names to registered rules of any kind; the composition
 		// layer then binds them to tool providers only.
-		cfg, err := checking.ConfigurationRules().Parse([]byte(text), "pyflakes", "expression")
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(text), "pyflakes", "expression")
 		if err != nil {
 			t.Fatalf("registered rule rejected while loading %s: %v", text, err)
 		}
@@ -219,7 +219,7 @@ func TestUnknownToolNames(t *testing.T) {
 
 func TestRegisteredToolEntriesAreStructural(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {lint-sql: {enabled: true, backend: {wasm: {path: sql.wasm}}, config: {anything: [1, 2]}}}"), "lint-sql")
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {lint-sql: {enabled: true, backend: {wasm: {path: sql.wasm}}, config: {anything: [1, 2]}}}"), "lint-sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func TestRegisteredToolEntriesAreStructural(t *testing.T) {
 		"tools: {lint-sql: [true]}",
 		"tools: {lint-sql: {config: 1}}",
 	} {
-		if _, err := checking.ConfigurationRules().Parse([]byte(text), "lint-sql"); err == nil {
+		if _, err := checking.ConfigurationRules().ParseConfig([]byte(text), "lint-sql"); err == nil {
 			t.Fatalf("accepted %s", text)
 		}
 	}
@@ -255,7 +255,7 @@ func TestInheritedToolConfigPathsResolveFromDeclaringFile(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	cfg, err := checking.ConfigurationRules().Load(filepath.Join(root, "actionlint.yaml"), "lint-sql")
+	cfg, err := checking.ConfigurationRules().LoadConfig(filepath.Join(root, "actionlint.yaml"), "lint-sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestInheritedToolConfigPathsResolveFromDeclaringFile(t *testing.T) {
 
 func TestEffectiveValuesEnableBundledTools(t *testing.T) {
 	t.Parallel()
-	cfg, err := checking.ConfigurationRules().Parse([]byte("tools: {lint-sql: {config: {dialect: postgres}}}"), "lint-sql")
+	cfg, err := checking.ConfigurationRules().ParseConfig([]byte("tools: {lint-sql: {config: {dialect: postgres}}}"), "lint-sql")
 	if err != nil {
 		t.Fatal(err)
 	}

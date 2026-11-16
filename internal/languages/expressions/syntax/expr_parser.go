@@ -342,8 +342,8 @@ func (p *Parser) Err() *SyntaxError {
 	return p.err.detached()
 }
 
-// Parse parses token sequence lexed by a given lexer into syntax tree.
-func (p *Parser) Parse(l *Lexer) (Node, *SyntaxError) {
+// ParseExpression parses token sequence lexed by a given lexer into syntax tree.
+func (p *Parser) ParseExpression(l *Lexer) (Node, *SyntaxError) {
 	// Init
 	p.err = nil
 	p.lexer = l
@@ -433,7 +433,7 @@ func ParseAssignedExpression(s string) Node {
 		return nil
 	}
 	lex := NewLexer(s[3:])
-	expr, err := NewParser().Parse(lex)
+	expr, err := NewParser().ParseExpression(lex)
 	if err != nil || lex.Offset() != len(s)-3 {
 		return nil
 	}
@@ -455,7 +455,7 @@ func LiteralExpressionValue(s string) *string {
 		return nil
 	}
 	lex := NewLexer(s[3:])
-	expr, err := NewParser().Parse(lex)
+	expr, err := NewParser().ParseExpression(lex)
 	if err != nil || lex.Offset() != len(s)-3 {
 		return nil
 	}

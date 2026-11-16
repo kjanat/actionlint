@@ -47,7 +47,7 @@ func (p *PluginDeclarations) DecodeConfig(value any) error {
 
 func decodePluginDeclaration(value any) (pluginreference.Reference, error) {
 	if selected, ok := value.(string); ok {
-		return pluginreference.Parse(selected)
+		return pluginreference.ParsePluginReference(selected)
 	}
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -68,7 +68,7 @@ func decodePluginDeclaration(value any) (pluginreference.Reference, error) {
 		if len(values) != 1 {
 			return pluginreference.Reference{}, errors.New("a direct plugin source cannot also declare name, version, registry, or sha256")
 		}
-		ref, err := pluginreference.Parse(source)
+		ref, err := pluginreference.ParsePluginReference(source)
 		if err != nil {
 			return pluginreference.Reference{}, err
 		}

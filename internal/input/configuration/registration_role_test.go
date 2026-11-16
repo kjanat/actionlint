@@ -48,7 +48,7 @@ func TestSelectedToolRegistrationReplacesBundledDescriptor(t *testing.T) {
 	t.Parallel()
 	rules := registrationRuleSet(t)
 	descriptor := rule.Descriptor{Name: "shellcheck", Category: "security", Provider: "shellcheck-rs", Maturity: "stable", Recommended: true}
-	cfg, err := rules.Parse([]byte("lint: {rules: {plugins: {shellcheck: on}}}"))
+	cfg, err := rules.ParseConfig([]byte("lint: {rules: {plugins: {shellcheck: on}}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

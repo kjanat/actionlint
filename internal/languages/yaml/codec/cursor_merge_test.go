@@ -22,7 +22,7 @@ items: *template
 	var baseline struct {
 		Items selected `yaml:"items"`
 	}
-	root, err := Parse([]byte(source))
+	root, err := ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

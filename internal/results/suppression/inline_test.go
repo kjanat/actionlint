@@ -32,7 +32,7 @@ func TestInlineSuppressionSpellings(t *testing.T) {
 				t.Run(declaration+"/"+next+"/"+ending, func(t *testing.T) {
 					t.Parallel()
 					source := strings.ReplaceAll("run: | # "+declaration+" -- reviewed -- input\n  echo first\n  echo second\n"+next+"\n", "\n", ending)
-					directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
+					directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 					want := []Directive{{
 						Position: sourcepos.Position{Line: 1, Column: 8}, First: 1, Last: 3,
 						Rules: []string{"expression", "shellcheck"}, Reason: "reviewed -- input",
@@ -62,7 +62,7 @@ func TestInlineSuppressionNextLineSpellings(t *testing.T) {
 			t.Run(command+"/"+selectors, func(t *testing.T) {
 				t.Parallel()
 				source := "# " + command + " " + selectors + "\nrun: |\n  echo ok\nnext: value\n"
-				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
+				directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 				want := []Directive{{Position: sourcepos.Position{Line: 1, Column: 1}, First: 2, Last: 3, Rules: []string{"expression", "shellcheck"}}}
 				if len(findings) != 0 {
 					t.Fatalf("unexpected grammar diagnostics: %+v", findings)
@@ -80,7 +80,7 @@ func TestInlineSuppressionSpellingIsolation(t *testing.T) {
 	for _, declaration := range []string{"actionlint:ignore expression", "actionlint-ignore expression", "ignore[expression]", "ignore expression", "ignore-next-line expression"} {
 		for _, next := range []string{"next: value", "next: ["} {
 			source := "name: '# " + declaration + "' # ignored by another tool\nrun: |\n  # " + declaration + "\n  echo ok\n" + next + "\n"
-			directives, findings := Parse([]byte(source), []string{"expression"}, rule.Names{})
+			directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression"}, rule.Names{})
 			if len(directives) != 0 || len(findings) != 0 {
 				t.Fatalf("text became a directive: %q: %+v, %+v", source, directives, findings)
 			}
@@ -93,7 +93,7 @@ func TestIgnoreProse(t *testing.T) {
 	for _, text := range []string{"ignore", "ignore docs as they are built elsewhere.", "ignore unknown files"} {
 		for _, next := range []string{"next: value", "next: ["} {
 			source := "paths-ignore: # " + text + "\n  - '**/*.md'\n" + next + "\n"
-			directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
+			directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 			if len(directives) != 0 || len(findings) != 0 {
 				t.Fatalf("prose %q produced directives=%v findings=%v", text, directives, findings)
 			}
@@ -103,7 +103,7 @@ func TestIgnoreProse(t *testing.T) {
 
 func TestUnknownSuppressionRuleMessage(t *testing.T) {
 	t.Parallel()
-	_, findings := Parse([]byte("run: echo ok # actionlint:ignore unknown\n"), []string{"expression", "shellcheck"}, rule.Names{})
+	_, findings := ParseInlineSuppressions([]byte("run: echo ok # actionlint:ignore unknown\n"), []string{"expression", "shellcheck"}, rule.Names{})
 	const want = "unknown inline suppression rule \"unknown\". Run actionlint rules to list available rules."
 	if len(findings) != 1 || findings[0].Message != want {
 		t.Fatalf("findings=%v, want one finding with message %q", findings, want)
@@ -112,7 +112,7 @@ func TestUnknownSuppressionRuleMessage(t *testing.T) {
 
 func TestMisspelledSuppressionRuleMessage(t *testing.T) {
 	t.Parallel()
-	_, findings := Parse([]byte("run: echo ok # actionlint:ignore shellchekc\n"), []string{"expression", "shellcheck"}, rule.Names{})
+	_, findings := ParseInlineSuppressions([]byte("run: echo ok # actionlint:ignore shellchekc\n"), []string{"expression", "shellcheck"}, rule.Names{})
 	const want = "unknown inline suppression rule \"shellchekc\". Did you mean \"shellcheck\"? Run actionlint rules to list available rules."
 	if len(findings) != 1 || findings[0].Message != want {
 		t.Fatalf("findings=%v, want one finding with message %q", findings, want)
@@ -124,7 +124,7 @@ func TestPlainIgnoreNextLineRecovery(t *testing.T) {
 	for _, next := range []string{"next: value", "next: ["} {
 		for _, ending := range []string{"\n", "\r\n"} {
 			source := strings.ReplaceAll("#ignore-next-line\texpression\nrun: |\n  echo ok\n"+next+"\n", "\n", ending)
-			directives, findings := Parse([]byte(source), []string{"expression"}, rule.Names{})
+			directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression"}, rule.Names{})
 			if len(findings) != 0 || len(directives) != 1 {
 				t.Fatalf("plain next-line directive: %+v, %+v", directives, findings)
 			}
@@ -163,7 +163,7 @@ func TestInlineSuppressionMalformedSpellings(t *testing.T) {
 			t.Run(declaration+"/"+next, func(t *testing.T) {
 				t.Parallel()
 				source := "run: echo ok # " + declaration + "\n" + next + "\n"
-				directives, findings := Parse([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
+				directives, findings := ParseInlineSuppressions([]byte(source), []string{"expression", "shellcheck"}, rule.Names{})
 				if len(directives) != 0 || len(findings) != 1 || findings[0].Rule != "inline-suppression" {
 					t.Fatalf("malformed directive accepted: %+v, %+v", directives, findings)
 				}

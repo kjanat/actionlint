@@ -64,7 +64,7 @@ func TestRegistryCLI(t *testing.T) {
 	configPath := filepath.Join(root, ".github", "actionlint.yaml")
 	readDeclarations := func() configuration.PluginDeclarations {
 		t.Helper()
-		cfg, err := checking.ConfigurationRules().Load(configPath, "no-sudo")
+		cfg, err := checking.ConfigurationRules().LoadConfig(configPath, "no-sudo")
 		if err != nil {
 			t.Fatal(err)
 		}

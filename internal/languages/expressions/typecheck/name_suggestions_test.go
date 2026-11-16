@@ -38,7 +38,7 @@ func TestCloseExpressionNames(t *testing.T) {
 	} {
 		t.Run(tc.input+"/"+tc.key, func(t *testing.T) {
 			t.Parallel()
-			node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(tc.input + "}}"))
+			node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(tc.input + "}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -73,7 +73,7 @@ func TestAmbiguousExpressionNames(t *testing.T) {
 			checker.vars["githob"] = exprtypes.NewEmptyStrictObjectType().Type()
 			checker.SetContextAvailability([]string{"github", "githob"})
 		}
-		node, err := exprsyntax.NewParser().Parse(exprsyntax.NewLexer(input + "}}"))
+		node, err := exprsyntax.NewParser().ParseExpression(exprsyntax.NewLexer(input + "}}"))
 		if err != nil {
 			t.Fatal(err)
 		}

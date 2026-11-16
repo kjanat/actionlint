@@ -42,7 +42,7 @@ func TestRuleRequirePermissions(t *testing.T) {
 		for _, assumption := range []string{"restricted", "permissive"} {
 			t.Run(tc.name+"/"+assumption, func(t *testing.T) {
 				t.Parallel()
-				cfg, err := checking.ConfigurationRules().Parse(fmt.Appendf(nil, "assume-default-permissions: %s\npolicy: {require-permissions: %s}", assumption, tc.policy))
+				cfg, err := checking.ConfigurationRules().ParseConfig(fmt.Appendf(nil, "assume-default-permissions: %s\npolicy: {require-permissions: %s}", assumption, tc.policy))
 				if err != nil {
 					t.Fatal(err)
 				}

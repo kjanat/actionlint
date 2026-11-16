@@ -7,7 +7,7 @@ import (
 
 func errorCursor(t *testing.T, data []byte) Cursor {
 	t.Helper()
-	root, err := Parse(data)
+	root, err := ParseYAML(data)
 	if err != nil {
 		t.Fatal(err)
 	}

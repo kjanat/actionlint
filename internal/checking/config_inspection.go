@@ -42,7 +42,7 @@ func InspectConfig(ctx context.Context, selection configuration.Selection, paths
 	if err != nil {
 		return inspection, err
 	}
-	plugins, err := pluginexec.Load(ctx, sources, BuiltinRuleNames(), io.Discard, false)
+	plugins, err := pluginexec.LoadPlugins(ctx, sources, BuiltinRuleNames(), io.Discard, false)
 	if err != nil {
 		return inspection, err
 	}

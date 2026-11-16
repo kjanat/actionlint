@@ -25,7 +25,7 @@ runs:
 			t.Run(spelling, func(t *testing.T) {
 				t.Parallel()
 				input := strings.Replace(source, key+":", "${{ '"+spelling+"' }}:", 1)
-				meta, err := actionmeta.Parse("action.yml", []byte(input))
+				meta, err := actionmeta.ParseActionMetadata("action.yml", []byte(input))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -66,7 +66,7 @@ runs:
       ${{ 'Env' }}:
         ${{ 'MixedEnv' }}: value
 `
-	document, err := codec.Parse([]byte(source))
+	document, err := codec.ParseYAML([]byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ runs:
       shell: bash
 `
 	var meta actionmeta.Metadata
-	parsed, err := actionmeta.Parse("action.yml", []byte(source))
+	parsed, err := actionmeta.ParseActionMetadata("action.yml", []byte(source))
 	if err != nil {
 		t.Fatal(err)
 	}

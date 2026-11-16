@@ -9,7 +9,7 @@ import (
 
 func permissionsConfig(t *testing.T, permissions string) *configuration.Config {
 	t.Helper()
-	config, err := checking.ConfigurationRules().Parse([]byte("repository: {default-workflow-permissions: " + permissions + "}"))
+	config, err := checking.ConfigurationRules().ParseConfig([]byte("repository: {default-workflow-permissions: " + permissions + "}"))
 	if err != nil {
 		t.Fatal(err)
 	}

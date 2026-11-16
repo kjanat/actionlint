@@ -29,7 +29,7 @@ func TestInheritedConfigDirectorySpellings(t *testing.T) {
 				base := fixturefiles.Write(t, root, "base/base.yml", setting)
 				fixturefiles.Write(t, root, "middle/config.yml", "extends: [../base/base.yml]")
 				leaf := fixturefiles.Write(t, root, "project/actionlint.yml", "extends: [../middle/config.yml]")
-				cfg, err := checking.ConfigurationRules().Load(leaf)
+				cfg, err := checking.ConfigurationRules().LoadConfig(leaf)
 				if err != nil {
 					t.Fatal(err)
 				}

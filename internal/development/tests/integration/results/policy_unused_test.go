@@ -67,7 +67,7 @@ func TestLegacyAndCanonicalInlineSuppressionSelectors(t *testing.T) {
 				if !found {
 					t.Fatalf("unknown fixture rule %q", tc.canonical)
 				}
-				cfg, err := checking.ConfigurationRules().Parse([]byte("lint: {rules: {" + descriptor.Category + ": {" + tc.canonical + ": on}}}"))
+				cfg, err := checking.ConfigurationRules().ParseConfig([]byte("lint: {rules: {" + descriptor.Category + ": {" + tc.canonical + ": on}}}"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -117,7 +117,7 @@ func TestLegacyAndCanonicalConfiguredSuppressionSelectors(t *testing.T) {
 	for _, selector := range []string{"require-job-timeout", "job-timeout"} {
 		t.Run(selector, func(t *testing.T) {
 			t.Parallel()
-			cfg, err := checking.ConfigurationRules().Parse([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]\nlint: {rules: {conventions: {job-timeout: on}}}"))
+			cfg, err := checking.ConfigurationRules().ParseConfig([]byte("ignores: [{rule: " + selector + ", file: ci.yml}]\nlint: {rules: {conventions: {job-timeout: on}}}"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,7 +146,7 @@ func TestUnusedSuppressionLevels(t *testing.T) {
 		{"lint: {rules: {correctness: {unused-suppression: off}}}", true, ""},
 		{"lint: {rules: {correctness: {unused-suppression: warn}}}", true, "warning"},
 	} {
-		cfg, err := checking.ConfigurationRules().Parse([]byte(tc.config))
+		cfg, err := checking.ConfigurationRules().ParseConfig([]byte(tc.config))
 		if err != nil {
 			t.Fatal(err)
 		}

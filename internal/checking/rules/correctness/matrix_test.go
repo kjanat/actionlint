@@ -28,7 +28,7 @@ jobs:
       matrix: {item: [1], exclude: [{item: '1'}]}
     steps: [{run: echo ok}]
 `
-	parsed, errors := workflowparser.Parse([]byte(source))
+	parsed, errors := workflowparser.ParseWorkflow([]byte(source))
 	if len(errors) != 0 {
 		t.Fatal(errors)
 	}

@@ -215,7 +215,7 @@ func WorkflowDiagnosticsWithOptions(t *testing.T, source, config string, options
 	var cfg *configuration.Config
 	if config != "" {
 		var err error
-		cfg, err = checking.ConfigurationRules().Parse([]byte(config))
+		cfg, err = checking.ConfigurationRules().ParseConfig([]byte(config))
 		if err != nil {
 			t.Fatal(err)
 		}

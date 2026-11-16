@@ -143,7 +143,7 @@ func scriptDescriptorWithRuleName(original *wacogo.ValRecord, name string) (waco
 
 func loadScriptFixture(t *testing.T) *Plugin {
 	t.Helper()
-	p, err := Load(t.Context(), "testdata/plugins/script-engine.wasm", Options{})
+	p, err := LoadComponentPlugin(t.Context(), "testdata/plugins/script-engine.wasm", Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +403,7 @@ func TestScriptEngineRejectsChangedInterface(t *testing.T) {
 			if err := os.WriteFile(path, changed, 0600); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Load(t.Context(), path, Options{})
+			p, err := LoadComponentPlugin(t.Context(), path, Options{})
 			if p != nil {
 				_ = p.Close(t.Context())
 			}
