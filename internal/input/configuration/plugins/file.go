@@ -39,9 +39,12 @@ type File struct {
 	References []pluginreference.Reference
 	Declared   bool
 	Exists     bool
+	// original is the content that Save edits. parsed is that content as the
+	// loader parsed it, or nil after SetContent replaces the content.
 	original   []byte
+	parsed     *document.Editor
 	snapshots  map[string][]byte
-	node       any
+	merged     any
 	readSource func(context.Context, string) ([]byte, error)
 }
 
@@ -119,9 +122,9 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 	if err != nil {
 		return nil, err
 	}
-	manifest.original = manifest.snapshots[absolute]
+	manifest.original, manifest.parsed = manifest.snapshots[absolute], loaded.Selected
 	merged := loaded.Root.Value()
-	manifest.node = merged
+	manifest.merged = merged
 	manifest.References, manifest.Declared, err = References(merged)
 	if err != nil {
 		return nil, fmt.Errorf("plugins in %s: %w", absolute, err)
@@ -131,7 +134,7 @@ func Read(ctx context.Context, rules configuration.RuleSet, path string, read fu
 		if !ok {
 			return nil, errors.New("config must be a mapping")
 		}
-		manifest.node = selectFields(root, "plugins", "extends")
+		manifest.merged = selectFields(root, "plugins", "extends")
 	}
 	return manifest, nil
 }
@@ -354,7 +357,14 @@ func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err 
 	if configsource.IsRemoteAddress(m.Path) {
 		return errors.New("remote config sources are read-only; select a local file to edit plugins")
 	}
-	data, err := EditManifest(m.Path, m.original, refs)
+	editor := m.parsed
+	if editor == nil {
+		editor, err = document.NewEditor(m.Path, m.original)
+		if err != nil {
+			return err
+		}
+	}
+	data, err := editPlugins(editor, refs)
 	if err != nil {
 		return err
 	}
@@ -413,14 +423,14 @@ func (m *File) Save(ctx context.Context, refs []pluginreference.Reference) (err 
 	if err := os.Rename(temp.Name(), m.Path); err != nil {
 		return err
 	}
-	m.original = data
+	m.original, m.parsed = data, nil
 	m.snapshots[m.Path] = data
 	m.References, m.Declared, m.Exists = slices.Clone(refs), true, true
 	return nil
 }
 
 // MergedDocument returns the loaded configuration after inheritance has been merged.
-func (m *File) MergedDocument() any { return m.node }
+func (m *File) MergedDocument() any { return m.merged }
 
 // SourceContents returns copies of the source bytes used to build the merged document.
 func (m *File) SourceContents() map[string][]byte {
@@ -432,4 +442,4 @@ func (m *File) SourceContents() map[string][]byte {
 }
 
 // SetContent selects the content that Save edits. Source-change checks still use the captured files.
-func (m *File) SetContent(content []byte) { m.original = bytes.Clone(content) }
+func (m *File) SetContent(content []byte) { m.original, m.parsed = bytes.Clone(content), nil }

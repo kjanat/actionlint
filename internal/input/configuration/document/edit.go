@@ -24,8 +24,14 @@ func NewEditor(path string, content []byte) (*Editor, error) {
 	return &Editor{path: path, syntax: syntaxOf(path), original: slices.Clone(content), root: root}, nil
 }
 
+// Path returns the file path whose extension selected the syntax.
+func (e *Editor) Path() string { return e.path }
+
 // Root returns the parsed file before any edit.
 func (e *Editor) Root() *Node { return e.root }
+
+// Original returns a copy of the file's bytes before any edit.
+func (e *Editor) Original() []byte { return slices.Clone(e.original) }
 
 // WritesNull reports whether the file's syntax can express null. TOML cannot.
 func (e *Editor) WritesNull() bool { return e.syntax != tomlSyntax }

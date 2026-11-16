@@ -1,7 +1,6 @@
 package configuration
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -37,6 +36,11 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 	if err != nil {
 		return Migration{}, err
 	}
+	return ruleSet.migrateFile(editor, registrations)
+}
+
+// migrateFile converts the legacy syntax of one parsed file.
+func (ruleSet RuleSet) migrateFile(editor *document.Editor, registrations []rule.Descriptor) (Migration, error) {
 	root := editor.Root().Value()
 	for _, warning := range configWarnings(root, nil) {
 		if strings.Contains(warning.Message, `"self-hosted-runner.`) || strings.Contains(warning.Message, `"paths[`) {
@@ -52,7 +56,7 @@ func (ruleSet RuleSet) MigrateDocument(path string, content []byte, registration
 		return Migration{}, err
 	}
 	changed = changed || categoriesChanged
-	result := Migration{Content: bytes.Clone(content), Changed: changed}
+	result := Migration{Content: editor.Original(), Changed: changed}
 	if !changed {
 		return result, nil
 	}

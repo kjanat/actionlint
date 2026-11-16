@@ -91,7 +91,7 @@ func (ruleSet RuleSet) PrepareMigration(ctx context.Context, path string, connec
 	if err != nil {
 		return nil, err
 	}
-	migration, err := ruleSet.MigrateDocument(absolute, snapshots[absolute].bytes(), registrations...)
+	migration, err := ruleSet.migrateFile(before.Selected, registrations)
 	if err != nil {
 		return nil, err
 	}

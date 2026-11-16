@@ -64,8 +64,13 @@ func EditManifest(path string, original []byte, refs []pluginreference.Reference
 	if err != nil {
 		return nil, err
 	}
+	return editPlugins(editor, refs)
+}
+
+// editPlugins replaces the plugins setting of a parsed file with refs.
+func editPlugins(editor *document.Editor, refs []pluginreference.Reference) ([]byte, error) {
 	before := editor.Root().Value()
-	if err = ValidateRoot(before); err != nil {
+	if err := ValidateRoot(before); err != nil {
 		return nil, err
 	}
 	sequence, err := pluginManifestSequence(refs)
@@ -76,7 +81,7 @@ func EditManifest(path string, original []byte, refs []pluginreference.Reference
 	if err != nil {
 		return nil, err
 	}
-	after, err := document.Parse(path, edited)
+	after, err := document.Parse(editor.Path(), edited)
 	if err != nil {
 		return nil, fmt.Errorf("cannot safely edit plugin config: %w", err)
 	}

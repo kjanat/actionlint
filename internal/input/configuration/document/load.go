@@ -5,15 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
 )
 
 // Loaded is a configuration file merged over the files it extends.
 // Files lists every source file in merge order, ending with the selected file.
+// Selected holds the selected file as parsed, before normalization, so it can
+// be edited without parsing it again.
 type Loaded struct {
-	Root  *Node
-	Files []string
+	Root     *Node
+	Files    []string
+	Selected *Editor
 }
 
 // Normalizer rewrites one parsed source before it is merged. origin is the
@@ -27,6 +31,7 @@ func Load(path string, read func(string) ([]byte, error), normalize Normalizer, 
 	active := map[string]bool{}
 	cache := map[string]Loaded{}
 	var files []string
+	var selected *Editor
 	var load func(string, int) (Loaded, error)
 	load = func(path string, depth int) (Loaded, error) {
 		readPath := path
@@ -58,6 +63,9 @@ func Load(path string, read func(string) ([]byte, error), normalize Normalizer, 
 		parsed, err := Parse(readPath, data)
 		if err != nil {
 			return Loaded{}, fmt.Errorf("config %q: %w", path, err)
+		}
+		if depth == 0 {
+			selected = &Editor{path: readPath, syntax: syntaxOf(readPath), original: slices.Clone(data), root: cloneNode(parsed)}
 		}
 		if normalize != nil {
 			parsed, err = normalize(path, parsed)
@@ -106,7 +114,7 @@ func Load(path string, read func(string) ([]byte, error), normalize Normalizer, 
 		return result, nil
 	}
 	result, err := load(path, 0)
-	result.Files = files
+	result.Files, result.Selected = files, selected
 	return result, err
 }
 
