@@ -1,11 +1,12 @@
 package parser
 
 import (
-	"actionlint.kjanat.dev/v2/internal/input/source"
 	"errors"
 	"fmt"
 	"reflect"
 	"testing"
+
+	"actionlint.kjanat.dev/v2/internal/input/source"
 
 	"actionlint.kjanat.dev/v2/internal/languages/yaml/codec"
 )

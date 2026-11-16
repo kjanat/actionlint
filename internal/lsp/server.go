@@ -360,7 +360,7 @@ serve:
 				schedule()
 			case "textDocument/completion":
 				var p struct {
-					TextDocument Document `json:"textDocument"`
+					TextDocument Document       `json:"textDocument"`
 					Position     editorPosition `json:"position"`
 				}
 				if err := jsonv2.Unmarshal(m.Params, &p); err != nil {

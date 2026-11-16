@@ -175,11 +175,11 @@ func (m Manifest) URL() string {
 	u := url.URL{Scheme: "https", Host: i.Host(), Path: path.Join(i.Repository(), "blob", i.Commit(), i.Directory(), m.Filename())}
 	return u.String()
 }
-func (m Manifest) Identity() Identity      { return m.selection.identity }
-func (m Manifest) Selection() ReferenceSelection    { return m.selection }
-func (m Manifest) Content() string         { return m.content }
-func (m Manifest) Available() bool         { return m.selection.identity.commit != "" }
-func (m Manifest) Value() (Manifest, bool) { return m, m.Available() }
+func (m Manifest) Identity() Identity            { return m.selection.identity }
+func (m Manifest) Selection() ReferenceSelection { return m.selection }
+func (m Manifest) Content() string               { return m.content }
+func (m Manifest) Available() bool               { return m.selection.identity.commit != "" }
+func (m Manifest) Value() (Manifest, bool)       { return m, m.Available() }
 func (m Manifest) Unavailability() (availability.Unavailability, bool) {
 	return m.missing, !m.Available()
 }

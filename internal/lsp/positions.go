@@ -20,6 +20,7 @@ type editorPosition struct {
 	Line      int `json:"line"`
 	Character int `json:"character"`
 }
+
 // editorRange is a Language Server Protocol range between two editor positions.
 type editorRange struct {
 	Start editorPosition `json:"start"`
