@@ -56,11 +56,33 @@ type scriptGrant struct {
 // engine requested the directory resource. The component never opens a
 // path itself: the caller confines the grant to the workspace and records
 // the reads. Without a grant the engine sees no files.
-func (p *Plugin) grantScriptResources(request checkinputs.ScriptRequest) scriptGrant {
-	if request.DirectoryFS == nil || !slices.Contains(p.scriptDescriptor.Resources, checkinputs.ToolDirectory) {
+func grantScriptResources(request checkinputs.ScriptRequest, d *checkinputs.ScriptEngineDescriptor) scriptGrant {
+	if request.DirectoryFS == nil || !slices.Contains(d.Resources, checkinputs.ToolDirectory) {
 		return scriptGrant{}
 	}
 	return scriptGrant{files: []checkinputs.FileSystem{{Path: scriptDirectoryMount, FS: request.DirectoryFS}}, directory: scriptDirectoryMount}
+}
+
+// staticScriptCapabilities are the capabilities static script metadata
+// declares.
+type staticScriptCapabilities struct {
+	Shells          []string                       `json:"script_shells"`
+	Fixes           bool                           `json:"fixes"`
+	ReportedSources bool                           `json:"reported_sources"`
+	Resources       []checkinputs.ToolResourceKind `json:"resources"`
+}
+
+// readStaticScriptCapabilities03 takes the script-engine 0.3.0
+// capabilities of static metadata into d.
+func readStaticScriptCapabilities03(declared staticScriptCapabilities, d *checkinputs.ScriptEngineDescriptor) error {
+	d.Fixes, d.ReportedSources = declared.Fixes, declared.ReportedSources
+	for _, resource := range declared.Resources {
+		if resource != checkinputs.ToolDirectory || slices.Contains(d.Resources, resource) {
+			return fmt.Errorf("script descriptor requests invalid or duplicate resource %q", resource)
+		}
+		d.Resources = append(d.Resources, resource)
+	}
+	return nil
 }
 
 // lowerScriptRequest03 builds a script-engine 0.3.0 request.
@@ -167,8 +189,7 @@ func liftScriptFix(value wacogo.Val) (checkinputs.ScriptFix, error) {
 // checkScriptDiagnostic03 validates the 0.3.0 parts of a diagnostic against
 // the engine's capabilities and this check's grant, and converts fix
 // positions to decoded-source rows as the diagnostic's own.
-func (p *Plugin) checkScriptDiagnostic03(d *checkinputs.ScriptDiagnostic, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error {
-	descriptor := p.scriptDescriptor
+func checkScriptDiagnostic03(d *checkinputs.ScriptDiagnostic, descriptor *checkinputs.ScriptEngineDescriptor, grant scriptGrant, lines []int, starts []checkinputs.ScriptPosition) error {
 	if d.Severity == "" {
 		return errors.New("script engine returned a diagnostic without a severity")
 	}

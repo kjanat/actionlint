@@ -28,7 +28,7 @@ func loadRunnerSupportFixture(t *testing.T) *Plugin {
 			t.Error(err)
 		}
 	})
-	if plugin.HasAnalyzer() || !plugin.HasRunnerProvider() || plugin.runnerInterface != Runner03Interface {
+	if plugin.HasAnalyzer() || !plugin.HasRunnerProvider() || plugin.runner != (runnerProtocol03{}) {
 		t.Fatal("support fixture negotiated the wrong role or interface")
 	}
 	return plugin
@@ -134,14 +134,14 @@ func TestRunnerSupportContractAndNegotiation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validatePluginInterfaces(fixture, extensionRoleSet{runner: Runner03Interface}); err != nil {
+	if err := validatePluginInterfaces(fixture, extensionRoleSet{runner: runnerProtocol03{}}); err != nil {
 		t.Fatal(err)
 	}
 	altered := bytes.ReplaceAll(fixture, []byte("before-version"), []byte("before-versiox"))
 	if bytes.Equal(fixture, altered) {
 		t.Fatal("fixture contains no service version constraint")
 	}
-	if err := validatePluginInterfaces(altered, extensionRoleSet{runner: Runner03Interface}); err == nil {
+	if err := validatePluginInterfaces(altered, extensionRoleSet{runner: runnerProtocol03{}}); err == nil {
 		t.Fatal("changed nested support contract accepted")
 	}
 	for _, names := range [][]string{{RunnerInterface}, {Runner03Interface}, {RunnerInterface, Runner03Interface}, {"kjanat:actionlint/runner-provider@0.4.0"}} {
@@ -159,7 +159,7 @@ func TestRunnerSupportContractAndNegotiation(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "this host supports") {
 				t.Fatalf("unknown runner version accepted: %+v %v", roles, err)
 			}
-		case err != nil || roles.runner != names[0]:
+		case err != nil || roles.runner.interfaceName() != names[0]:
 			t.Fatalf("runner version negotiation failed: %+v %v", roles, err)
 		}
 	}

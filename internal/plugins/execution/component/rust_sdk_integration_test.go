@@ -64,8 +64,8 @@ func TestRustSDKScriptWorlds(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			if p.scriptInterface != tc.iface {
-				t.Fatalf("script interface = %q, want %q", p.scriptInterface, tc.iface)
+			if p.script.interfaceName() != tc.iface {
+				t.Fatalf("script interface = %q, want %q", p.script.interfaceName(), tc.iface)
 			}
 			desc := p.ScriptDescriptor()
 			if desc.ID != "example" || desc.Engine != "example" {
