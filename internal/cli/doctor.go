@@ -14,9 +14,9 @@ import (
 	commandargs "actionlint.kjanat.dev/v2/internal/cli/arguments"
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 
@@ -161,7 +161,7 @@ func probeDoctorVersion(ctx context.Context, manifest pluginmanifests.Manifest, 
 	if err != nil {
 		return err
 	}
-	backend, err := process.NewBackend(manifest, resolved, process.Options{Programs: bundled.Program, Required: true})
+	backend, err := process.NewBackend(manifest, resolved, process.Options{Programs: bundledproviders.Program, Required: true})
 	if err != nil {
 		return err
 	}

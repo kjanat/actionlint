@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // hostConfigKeys are the tools.<name> keys the host owns. A shorthand cannot
@@ -21,7 +21,7 @@ func validateConfigSchema(field string, schema json.RawMessage) error {
 	if len(schema) == 0 {
 		return nil
 	}
-	if _, err := configschema.Compile(schema); err != nil {
+	if _, err := toolsettings.Compile(schema); err != nil {
 		return fmt.Errorf("%s: %w", field, err)
 	}
 	return nil

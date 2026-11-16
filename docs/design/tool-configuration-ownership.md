@@ -21,7 +21,7 @@ The configuration package validates the host wrapper and preserves engine option
 The selected engine owns selectors, Python targets, preview behavior, option
 validation and defaults.
 
-Bundled manifests and jq transforms under `internal/plugins/manifests/bundled`
+Bundled manifests and jq transforms under `internal/model/bundledproviders`
 define native commands and output conversion. `internal/checking/scripts/registry`
 constructs registrations from those declarations. `internal/plugins/execution/scripts`
 selects the execution route, and `internal/plugins/execution/process` runs the

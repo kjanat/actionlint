@@ -34,9 +34,13 @@ declarations through manifests.
 The declaration types, rule names, aliases, categories and maturities are
 defined in `internal/model/rules`. Packages under `internal/model`,
 `internal/input` and `internal/results` use them without importing
-`internal/checking`. `TestLowerLayersDoNotImportChecking` in
-`internal/development/tests/integration/layering` fails if one of these
-packages imports `internal/checking`.
+`internal/checking`. Tool settings schemas, bundled tool provider manifests
+and plugin references are defined in `internal/model` too, so these packages
+do not depend on `internal/plugins` either.
+`TestLowerLayersDoNotDependOnHigherLayers` in
+`internal/development/tests/integration/layering` fails if production code in
+one of these packages imports `internal/checking` or `internal/plugins`,
+directly or through another package.
 
 `checking.ConfigurationRules` collects rule declarations for the CLI and editor
 integrations. Configuration loading receives these declarations as a

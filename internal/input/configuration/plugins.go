@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // PluginDeclarations lists the plugin dependencies requested by the project.

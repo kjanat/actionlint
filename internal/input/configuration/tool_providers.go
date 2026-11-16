@@ -8,18 +8,18 @@ import (
 	"slices"
 	"sync"
 
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	rulescope "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // toolProvider is what configuration needs from a bundled tool provider.
 type toolProvider struct {
 	scope rulescope.ConfigurationScope
 	// schema validates inline tools.<name>.config settings; nil accepts any.
-	schema *configschema.Schema
+	schema *toolsettings.Schema
 	// shorthands may be written directly under tools.<name>.
-	shorthands map[string]configschema.Shorthand
+	shorthands map[string]toolsettings.Shorthand
 	// configFiles permits a path in tools.<name>.config.
 	configFiles bool
 }
@@ -32,7 +32,7 @@ type toolProvider struct {
 type providerManifest struct {
 	Scope            string                            `json:"scope"`
 	ConfigSchema     json.RawMessage                   `json:"config_schema"`
-	ConfigShorthands map[string]configschema.Shorthand `json:"config_shorthands"`
+	ConfigShorthands map[string]toolsettings.Shorthand `json:"config_shorthands"`
 	Process          *struct {
 		ConfigFiles *struct {
 			Names []string `json:"names"`
@@ -45,7 +45,7 @@ type providerManifest struct {
 // metadata does.
 var toolProviders = sync.OnceValue(func() map[string]toolProvider {
 	index := map[string]toolProvider{}
-	for _, name := range bundled.Names() {
+	for _, name := range bundledproviders.Names() {
 		tool, err := loadToolProvider(name)
 		if err != nil {
 			panic(fmt.Sprintf("bundled tool provider %s: %v", name, err))
@@ -56,7 +56,7 @@ var toolProviders = sync.OnceValue(func() map[string]toolProvider {
 })
 
 func loadToolProvider(name string) (toolProvider, error) {
-	data, ok := bundled.Manifest(name)
+	data, ok := bundledproviders.Manifest(name)
 	if !ok {
 		return toolProvider{}, errors.New("no manifest")
 	}
@@ -64,7 +64,7 @@ func loadToolProvider(name string) (toolProvider, error) {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return toolProvider{}, err
 	}
-	tool, err := compileToolProvider(configschema.Settings{Schema: manifest.ConfigSchema, Shorthands: manifest.ConfigShorthands, ReadsFiles: manifest.Process != nil && manifest.Process.ConfigFiles != nil && len(manifest.Process.ConfigFiles.Names) > 0})
+	tool, err := compileToolProvider(toolsettings.Settings{Schema: manifest.ConfigSchema, Shorthands: manifest.ConfigShorthands, ReadsFiles: manifest.Process != nil && manifest.Process.ConfigFiles != nil && len(manifest.Process.ConfigFiles.Names) > 0})
 	if err != nil {
 		return toolProvider{}, err
 	}
@@ -79,7 +79,7 @@ func loadToolProvider(name string) (toolProvider, error) {
 	return tool, nil
 }
 
-func compileToolProvider(settings configschema.Settings) (toolProvider, error) {
+func compileToolProvider(settings toolsettings.Settings) (toolProvider, error) {
 	settings = settings.Clone()
 	for name, shorthand := range settings.Shorthands {
 		if len(shorthand.Path) == 0 {
@@ -88,7 +88,7 @@ func compileToolProvider(settings configschema.Settings) (toolProvider, error) {
 	}
 	tool := toolProvider{shorthands: settings.Shorthands, configFiles: settings.ReadsFiles}
 	if len(settings.Schema) != 0 {
-		schema, err := configschema.Compile(settings.Schema)
+		schema, err := toolsettings.Compile(settings.Schema)
 		if err != nil {
 			return toolProvider{}, fmt.Errorf("config_schema: %w", err)
 		}

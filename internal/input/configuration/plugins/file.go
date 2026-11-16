@@ -15,8 +15,8 @@ import (
 	configsource "actionlint.kjanat.dev/v2/internal/input/configuration/source"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // ReadMode selects which configuration fields are normalized during plugin discovery.
@@ -173,7 +173,7 @@ func pluginDependencyNode(value any) (any, error) {
 	}
 	if tools, ok := root["tools"].(map[string]any); ok {
 		selected := map[string]any{}
-		for _, name := range bundled.Names() {
+		for _, name := range bundledproviders.Names() {
 			if tool, exists := tools[name]; exists {
 				if fields, ok := tool.(map[string]any); ok {
 					selected[name] = selectFields(fields, "enabled", "backend")
@@ -193,7 +193,7 @@ func pluginDependencyNode(value any) (any, error) {
 			for _, group := range []string{"correctness", "suspicious", "security", "conventions", "style", "policy", "external", "plugins", "nursery"} {
 				if value, exists := rules[group]; exists {
 					if fields, ok := value.(map[string]any); ok {
-						keys := append([]string{"level", "preset"}, bundled.Names()...)
+						keys := append([]string{"level", "preset"}, bundledproviders.Names()...)
 						selectedRules[group] = selectFields(fields, keys...)
 					} else {
 						selectedRules[group] = value

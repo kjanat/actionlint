@@ -15,7 +15,7 @@ import (
 
 	fixturefiles "actionlint.kjanat.dev/v2/internal/development/tests/support/files"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 )

@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 const DefaultURL = "https://plugins.actionlint.kjanat.dev/"

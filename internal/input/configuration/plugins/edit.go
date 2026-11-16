@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // References reads the effective plugin list and reports whether it was declared.

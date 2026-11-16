@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/jq"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
 // ReadAccess identifies configured directories. The host separately checks that
@@ -38,7 +38,7 @@ type Settings struct {
 // schema, expands its configuration paths and runs its
 // configuration_transform program.
 type SettingsResolver struct {
-	schema  *configschema.Schema
+	schema  *toolsettings.Schema
 	paths   []string
 	program *jq.Program
 }
@@ -52,7 +52,7 @@ func New(m manifests.Manifest, programs manifests.Programs) (*SettingsResolver, 
 	}
 	if len(m.ConfigSchema) != 0 {
 		var err error
-		t.schema, err = configschema.Compile(m.ConfigSchema)
+		t.schema, err = toolsettings.Compile(m.ConfigSchema)
 		if err != nil {
 			return nil, err
 		}

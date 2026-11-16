@@ -1,4 +1,4 @@
-package configschema
+package toolsettings
 
 import (
 	"encoding/json"

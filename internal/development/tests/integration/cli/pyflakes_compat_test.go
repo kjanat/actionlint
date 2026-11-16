@@ -13,9 +13,9 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/cli"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"actionlint.kjanat.dev/v2/internal/results"
 )
 
@@ -37,7 +37,7 @@ func probeBundledVersion(t *testing.T, name, executable string) error {
 	if err != nil {
 		return err
 	}
-	backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundled.Program, Required: true})
+	backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundledproviders.Program, Required: true})
 	if err != nil {
 		t.Fatal(err)
 	}

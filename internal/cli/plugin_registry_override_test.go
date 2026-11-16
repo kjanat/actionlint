@@ -11,7 +11,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/cli/plugincommand"
 
 	fixtureregistry "actionlint.kjanat.dev/v2/internal/development/tests/support/registry"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )

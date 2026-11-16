@@ -14,7 +14,7 @@ import (
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 
-	providerconfig "actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"github.com/kjanat/go-yaml/v4"
 )
 
@@ -43,7 +43,7 @@ func TestDefaultConfigFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := providerconfig.Compile(document)
+	schema, err := toolsettings.Compile(document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestDefaultConfigReferenceExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema, err := providerconfig.Compile(document)
+	schema, err := toolsettings.Compile(document)
 	if err != nil {
 		t.Fatal(err)
 	}

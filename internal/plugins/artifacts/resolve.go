@@ -13,15 +13,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
-	"strings"
 	"time"
 
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
 	"actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp/accounting"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // Options bounds artifact acquisition independently of runtime execution limits.
@@ -53,18 +52,14 @@ func NormalizeSource(source, directory string) (reference, local string, err err
 		}
 		return ref.String(), "", nil
 	}
-	u, local, _, err := parseSource(source)
+	location, err := pluginreference.ParseModuleLocation(source)
 	if err != nil {
 		return "", "", err
 	}
-	if u != nil {
-		return source, local, nil
+	if location.Endpoint != nil {
+		return source, location.Local, nil
 	}
-	if !filepath.IsAbs(local) {
-		local = filepath.Join(directory, local)
-	} else {
-		local = filepath.Clean(local)
-	}
+	local = location.File(directory)
 	return local, local, nil
 }
 
@@ -75,11 +70,11 @@ func RequireRemotePin(source string) error {
 		_, err := ParseOCI(source)
 		return err
 	}
-	u, local, pin, err := parseSource(source)
+	location, err := pluginreference.ParseModuleLocation(source)
 	if err != nil {
 		return err
 	}
-	if u != nil && local == "" && pin == "" {
+	if location.Endpoint != nil && location.Local == "" && location.Pin == "" {
 		return errors.New("remote plugin execution requires #sha256=<64 hex digits>")
 	}
 	return nil
@@ -131,10 +126,11 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 		snapshot.Info.Blobs = slices.Clone(artifact.Info.Blobs)
 		return &snapshot, nil
 	}
-	u, local, pin, err := parseSource(source)
+	location, err := pluginreference.ParseModuleLocation(source)
 	if err != nil {
 		return nil, err
 	}
+	u, local, pin := location.Endpoint, location.Local, location.Pin
 	display := source
 	if u != nil {
 		redacted := *u
@@ -181,63 +177,6 @@ func Resolve(ctx context.Context, source string, options Options) (*Artifact, er
 	}
 	info.ModuleSize = len(data)
 	return &Artifact{Info: info, Bytes: data}, nil
-}
-
-func parseSource(source string) (*url.URL, string, string, error) {
-	// Drive paths (including forward slashes) are paths on every host. Only
-	// explicit :// locations are URIs, preserving colons in ordinary filenames.
-	if !strings.Contains(source, "://") {
-		if source == "" {
-			return nil, "", "", errors.New("empty plugin location")
-		}
-		return nil, source, "", nil
-	}
-	u, err := url.Parse(source)
-	if err != nil {
-		return nil, "", "", errors.New("invalid plugin URI")
-	}
-	u.Scheme = strings.ToLower(u.Scheme)
-	if u.User != nil {
-		return nil, "", "", errors.New("plugin URIs cannot contain credentials")
-	}
-	pin := ""
-	if u.Fragment != "" {
-		pin = strings.TrimPrefix(u.Fragment, "sha256=")
-		decoded, err := hex.DecodeString(pin)
-		if !strings.HasPrefix(u.Fragment, "sha256=") || err != nil || len(decoded) != sha256.Size {
-			return nil, "", "", errors.New("plugin URI fragment must be sha256=<64 hex digits>")
-		}
-		pin = strings.ToLower(pin)
-	}
-	u.Fragment, u.RawFragment = "", ""
-	switch u.Scheme {
-	case "sha256":
-		decoded, err := hex.DecodeString(u.Host)
-		if err != nil || len(decoded) != sha256.Size || u.Host != strings.ToLower(u.Host) || u.Path != "" || u.RawQuery != "" || u.ForceQuery || pin != "" {
-			return nil, "", "", errors.New("invalid cached artifact digest")
-		}
-		return u, "", u.Host, nil
-	case "http", "https":
-		if u.Host == "" {
-			return nil, "", "", errors.New("plugin URL requires a host")
-		}
-		return u, "", pin, nil
-	case "file":
-		if (u.Host != "" && !strings.EqualFold(u.Host, "localhost")) || u.RawQuery != "" {
-			return nil, "", "", errors.New("file plugin URI requires a local absolute path without a query")
-		}
-		path := u.Path
-		if runtime.GOOS == "windows" && len(path) >= 3 && path[0] == '/' && path[2] == ':' {
-			path = path[1:]
-		}
-		path = filepath.FromSlash(path)
-		if !filepath.IsAbs(path) {
-			return nil, "", "", errors.New("file plugin URI requires an absolute path")
-		}
-		return u, path, pin, nil
-	default:
-		return nil, "", "", errors.New("plugin URI scheme must be file, http, https or oci")
-	}
 }
 
 // Import verifies candidate bytes before adding them to the download cache.

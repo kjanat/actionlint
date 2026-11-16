@@ -17,8 +17,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 	configschema "actionlint.kjanat.dev/v2/internal/input/configuration/schema"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	validator "actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
 type matrixCase struct {
@@ -83,11 +83,15 @@ func TestConfigurationConsumerMatrix(t *testing.T) {
 		url      string
 	}
 	makeConsumer := func(ms []manifests.Manifest) consumer {
-		b, err := configschema.Document(readSchema, ms)
+		providers := make([]configschema.ToolProvider, 0, len(ms))
+		for _, m := range ms {
+			providers = append(providers, m.ConfigurationSchemaProvider())
+		}
+		b, err := configschema.Document(readSchema, providers)
 		if err != nil {
 			t.Fatal(err)
 		}
-		v, err := validator.Compile(b)
+		v, err := toolsettings.Compile(b)
 		if err != nil {
 			t.Fatal(err)
 		}

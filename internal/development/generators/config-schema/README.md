@@ -4,7 +4,7 @@ Run `mise run generate:config-schema` from the repository root to update
 `actionlint.schema.json`. The schema describes tool selection, whether each tool
 is enabled, and tool settings supplied inline or through a configuration file or directory.
 `tools` lists one entry per bundled
-provider manifest under `internal/plugins/manifests/bundled`; each manifest's
+provider manifest under `internal/model/bundledproviders`; each manifest's
 `config_schema` describes inline `config` settings and its `config_shorthands`
 appear beside the host keys with the schema of the property each one sets.
 Any other `tools` name may belong to a plugin's provider, so it is described

@@ -22,8 +22,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 )
 

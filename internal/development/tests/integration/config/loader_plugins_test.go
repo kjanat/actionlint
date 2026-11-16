@@ -8,7 +8,7 @@ import (
 
 	checking "actionlint.kjanat.dev/v2/internal/checking"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"github.com/google/go-cmp/cmp"
 )
 

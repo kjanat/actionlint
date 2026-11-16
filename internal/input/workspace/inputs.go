@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	"actionlint.kjanat.dev/v2/internal/input/configuration/source"
-	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 type Inputs struct {
@@ -45,9 +45,9 @@ func (f *Inputs) AddConfig(config *configuration.Config, provenance configuratio
 	if config != nil {
 		for _, name := range slices.Sorted(maps.Keys(config.Tools)) {
 			if module, ok := config.Tools[name].Backend.Wasm(); ok {
-				_, local, err := pluginartifact.NormalizeSource(module.Path(), workingDir)
-				if err == nil {
-					f.Add(local)
+				// An oci:// reference fails to parse and names no local file.
+				if location, err := pluginreference.ParseModuleLocation(module.Path()); err == nil {
+					f.Add(location.File(workingDir))
 				}
 			}
 		}

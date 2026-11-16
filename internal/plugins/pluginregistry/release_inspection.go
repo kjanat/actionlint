@@ -3,9 +3,9 @@ package pluginregistry
 import (
 	"context"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 )
 

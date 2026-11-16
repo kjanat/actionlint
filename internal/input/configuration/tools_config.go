@@ -13,7 +13,7 @@ import (
 	"actionlint.kjanat.dev/v2/internal/input/configuration/document"
 
 	toolconfig "actionlint.kjanat.dev/v2/internal/input/configuration/tools"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // ToolsConfig configures tool providers, keyed by the rule name each provider
@@ -263,7 +263,7 @@ func decodeToolSettings(name string, value any, known toolProvider, registered b
 }
 
 // foldToolShorthands applies each provider's declared property paths and precedence.
-func foldToolShorthands(name string, value any, shorthands map[string]configschema.Shorthand) (any, error) {
+func foldToolShorthands(name string, value any, shorthands map[string]toolsettings.Shorthand) (any, error) {
 	if !isMapping(value) {
 		return value, nil
 	}
@@ -289,7 +289,7 @@ func foldToolShorthands(name string, value any, shorthands map[string]configsche
 	for _, key := range selected {
 		shorthand := shorthands[key]
 		child := members(value)[key]
-		replace := shorthand.Precedence == configschema.PrecedenceShorthand && child != nil
+		replace := shorthand.Precedence == toolsettings.PrecedenceShorthand && child != nil
 		var err error
 		merged, err = foldShorthand(merged, shorthand.Path, 0, child, replace)
 		if err != nil {

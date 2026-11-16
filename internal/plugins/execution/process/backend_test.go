@@ -15,9 +15,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 // TestProcessHelper is the tool process of these tests: the test binary run
@@ -261,7 +261,7 @@ func (e *embedded) checks() [][]string {
 
 func ruffBackend(t *testing.T, runner *embedded, options Options, args ...string) *Backend {
 	t.Helper()
-	options.Programs = bundled.Program
+	options.Programs = bundledproviders.Program
 	backend, err := NewBackend(bundledManifest(t, "ruff"), runner.command(t, "ruff", args...), options)
 	if err != nil {
 		t.Fatal(err)
@@ -329,7 +329,7 @@ func TestInvalidLauncherFailsBeforeExecution(t *testing.T) {
 		{"py.exe", []string{"ruff.py"}},
 	} {
 		runner := &embedded{version: "ruff 0.17.0\n", output: "[]"}
-		backend, err := NewBackend(bundledManifest(t, "ruff"), runner.command(t, launcher.exe, launcher.args...), Options{Programs: bundled.Program})
+		backend, err := NewBackend(bundledManifest(t, "ruff"), runner.command(t, launcher.exe, launcher.args...), Options{Programs: bundledproviders.Program})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -343,7 +343,7 @@ func TestRuffLauncherPrecedesManifestArguments(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
 	runner := &embedded{version: "ruff 0.17.0\n", output: ruffOutput(t, directory, "actionlint.py")}
-	backend, err := NewBackend(bundledManifest(t, "ruff"), runner.command(t, "python3", "-I", "-m", "ruff", "--preview"), Options{Programs: bundled.Program})
+	backend, err := NewBackend(bundledManifest(t, "ruff"), runner.command(t, "python3", "-I", "-m", "ruff", "--preview"), Options{Programs: bundledproviders.Program})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +423,7 @@ func TestBackendRequiresDeclaredReportedSources(t *testing.T) {
 	runner := &embedded{output: `{"comments":[{"file":"lib.sh","line":1,"endLine":1,"column":1,"endColumn":2,"level":"info","code":2086,"message":"m"}]}`}
 	manifest := bundledManifest(t, "shellcheck")
 	manifest.Capabilities.ReportedSources = false
-	backend, err := NewBackend(manifest, runner.command(t, "shellcheck"), Options{Programs: bundled.Program})
+	backend, err := NewBackend(manifest, runner.command(t, "shellcheck"), Options{Programs: bundledproviders.Program})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +435,7 @@ func TestBackendRequiresDeclaredReportedSources(t *testing.T) {
 func TestShellCheckUserShellDropsDialect(t *testing.T) {
 	t.Parallel()
 	runner := &embedded{output: `{"comments":[]}`}
-	backend, err := NewBackend(bundledManifest(t, "shellcheck"), runner.command(t, "shellcheck", "--shell=sh"), Options{Programs: bundled.Program})
+	backend, err := NewBackend(bundledManifest(t, "shellcheck"), runner.command(t, "shellcheck", "--shell=sh"), Options{Programs: bundledproviders.Program})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +478,7 @@ func testBundledToolsEndToEnd(t *testing.T, offline bool) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			backend, err := NewBackend(bundledManifest(t, tc.tool), command, Options{Programs: bundled.Program, Required: true})
+			backend, err := NewBackend(bundledManifest(t, tc.tool), command, Options{Programs: bundledproviders.Program, Required: true})
 			if err != nil {
 				t.Fatal(err)
 			}

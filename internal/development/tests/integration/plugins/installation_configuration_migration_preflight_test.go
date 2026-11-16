@@ -16,8 +16,8 @@ import (
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/configmigration"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 func TestAutomaticMigrationPreflightsAllRepositories(t *testing.T) {

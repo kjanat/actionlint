@@ -125,7 +125,7 @@ sources = [
   "internal/development/generators/{config-schema,files}/**",
   "internal/input/configuration/**/*.go",
   "internal/checking/**/*.go",
-  "internal/plugins/manifests/bundled/**",
+  "internal/model/bundledproviders/**",
   "internal/plugins/execution/preparation/**/*.go",
   "schemas/**"
 ]

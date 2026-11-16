@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"golang.org/x/mod/semver"
 )
 

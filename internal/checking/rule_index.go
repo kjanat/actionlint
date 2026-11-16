@@ -8,8 +8,8 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/checking/executor/registration"
 
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 var builtins = registration.Declarations()
@@ -19,10 +19,10 @@ var builtins = registration.Declarations()
 // field to avoid importing the provider model and its analyzer dependency.
 // TestProviderRulesComeFromManifests compares the result with provider.Bundled.
 var providerRules = sync.OnceValue(func() []rule.Descriptor {
-	names := bundled.Names()
+	names := bundledproviders.Names()
 	rules := make([]rule.Descriptor, 0, len(names))
 	for _, name := range names {
-		data, _ := bundled.Manifest(name)
+		data, _ := bundledproviders.Manifest(name)
 		var manifest struct {
 			Rule rule.Descriptor `json:"rule"`
 		}

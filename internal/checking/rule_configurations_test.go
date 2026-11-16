@@ -7,7 +7,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestRegisteredRuleConfigurationScopes(t *testing.T) {
@@ -203,7 +203,7 @@ func TestPreparedSourceRuleRetainsToolBackendOverride(t *testing.T) {
 	registration := configuration.RuleRegistration{
 		Descriptor: rule.Descriptor{Name: "custom-script", Category: "correctness", Maturity: "stable", Recommended: true},
 		Scope:      rule.SourceConfiguration, SupportsActions: true,
-		ToolSettings: &configschema.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
+		ToolSettings: &toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","additionalProperties":false}`)},
 	}
 	rules, err := ConfigurationRules().WithRegisteredRules(registration)
 	if err != nil {

@@ -15,7 +15,7 @@ import (
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginselection"
 
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 func TestRegistryProjectRunsWithoutLockfile(t *testing.T) {

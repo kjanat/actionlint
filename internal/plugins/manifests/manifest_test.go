@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
 // minimal is the smallest valid process manifest; cases below patch it.
@@ -173,10 +173,10 @@ func TestParseConfigShorthands(t *testing.T) {
 		t.Fatal(err)
 	}
 	level, ok := m.ConfigShorthands["level"]
-	if !ok || len(m.ConfigShorthands) != 1 || !slices.Equal(level.Path, []string{"lint", "level"}) || level.Precedence != configschema.PrecedenceShorthand {
+	if !ok || len(m.ConfigShorthands) != 1 || !slices.Equal(level.Path, []string{"lint", "level"}) || level.Precedence != toolsettings.PrecedenceShorthand {
 		t.Fatalf("shorthands = %+v", m.ConfigShorthands)
 	}
-	schema, err := configschema.Compile(m.ConfigSchema)
+	schema, err := toolsettings.Compile(m.ConfigSchema)
 	if err != nil {
 		t.Fatal(err)
 	}

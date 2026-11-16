@@ -10,8 +10,7 @@ import (
 	"testing/fstest"
 
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // moduleRoot reads the generated actionlint.schema.json and schemas/.
@@ -19,21 +18,19 @@ func moduleRoot(name string) ([]byte, error) { return fs.ReadFile(os.DirFS("../.
 
 // installed is a tool provider a plugin installs. Its settings accept only
 // level: low or high.
-func installed(configFiles bool) pluginmanifests.Manifest {
-	manifest := pluginmanifests.Manifest{
-		Rule:         rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry", Category: "conventions"},
-		ConfigSchema: json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"level":{"enum":["low","high"]}},"additionalProperties":false}`),
-		Process:      &pluginmanifests.ProcessSpec{},
+func installed(configFiles bool) ToolProvider {
+	return ToolProvider{
+		Rule: rule.Descriptor{Name: "oci-tool", Description: "A tool from an OCI registry", Category: "conventions"},
+		Settings: toolsettings.Settings{
+			Schema:     json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"level":{"enum":["low","high"]}},"additionalProperties":false}`),
+			ReadsFiles: configFiles,
+		},
 	}
-	if configFiles {
-		manifest.Process.ConfigFiles = &pluginmanifests.ConfigFiles{Names: []string{"oci-tool.toml"}}
-	}
-	return manifest
 }
 
-func compile(t *testing.T, manifests ...pluginmanifests.Manifest) *configschema.Schema {
+func compile(t *testing.T, providers ...ToolProvider) *toolsettings.Schema {
 	t.Helper()
-	document, err := Document(moduleRoot, manifests)
+	document, err := Document(moduleRoot, providers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +39,7 @@ func compile(t *testing.T, manifests ...pluginmanifests.Manifest) *configschema.
 	}
 	// Compile refuses external references, so this also proves the document
 	// stands alone.
-	schema, err := configschema.Compile(document)
+	schema, err := toolsettings.Compile(document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,10 +89,10 @@ func TestDocumentAddsInstalledProviders(t *testing.T) {
 
 func TestDocumentScopesProviderSchemasOnce(t *testing.T) {
 	t.Parallel()
-	manifest := installed(true)
-	manifest.ConfigSchema = json.RawMessage(`{"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
-	manifest.Process.ConfigSchema = json.RawMessage(`{"$id":"https://example.invalid/process-settings","type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
-	schema := compile(t, manifest)
+	provider := installed(true)
+	provider.Settings.Schema = json.RawMessage(`{"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
+	provider.ProcessSchema = json.RawMessage(`{"$id":"https://example.invalid/process-settings","type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`)
+	schema := compile(t, provider)
 	for _, input := range []string{
 		`{"tools":{"oci-tool":{"config":{"value":3,"extra":true}}},"overrides":[{"includes":["a.yml"],"tools":{"oci-tool":{"config":{"value":4}}}},{"includes":["b.yml"],"tools":{"oci-tool":{"config":{"value":5}}}}]}`,
 		`{"tools":{"oci-tool":{"config":"settings.toml"}}}`,
@@ -117,10 +114,10 @@ func TestDocumentScopesProviderSchemasOnce(t *testing.T) {
 
 func TestDocumentShorthandReferences(t *testing.T) {
 	t.Parallel()
-	manifest := installed(false)
-	manifest.ConfigSchema = json.RawMessage(`{"$defs":{"mode":{"enum":["quiet","loud"]}},"type":"object","properties":{"nested":{"type":"object","properties":{"a/b~c":{"$ref":"#/$defs/mode"}},"additionalProperties":false}},"additionalProperties":false}`)
-	manifest.ConfigShorthands = map[string]configschema.Shorthand{"mode": {Path: []string{"nested", "a/b~c"}, Precedence: configschema.PrecedenceConfig}}
-	schema := compile(t, manifest)
+	provider := installed(false)
+	provider.Settings.Schema = json.RawMessage(`{"$defs":{"mode":{"enum":["quiet","loud"]}},"type":"object","properties":{"nested":{"type":"object","properties":{"a/b~c":{"$ref":"#/$defs/mode"}},"additionalProperties":false}},"additionalProperties":false}`)
+	provider.Settings.Shorthands = map[string]toolsettings.Shorthand{"mode": {Path: []string{"nested", "a/b~c"}, Precedence: toolsettings.PrecedenceConfig}}
+	schema := compile(t, provider)
 	for _, tc := range []struct {
 		value string
 		valid bool
@@ -136,10 +133,9 @@ func TestDocumentShorthandReferences(t *testing.T) {
 
 func TestDocumentPreservesUnevaluatedProperties(t *testing.T) {
 	t.Parallel()
-	manifest := installed(false)
-	manifest.Process = nil
-	manifest.ConfigSchema = json.RawMessage(`{"type":"object","allOf":[{"type":"object","properties":{"known":{"type":"integer"}}}],"unevaluatedProperties":false}`)
-	schema := compile(t, manifest)
+	provider := installed(false)
+	provider.Settings.Schema = json.RawMessage(`{"type":"object","allOf":[{"type":"object","properties":{"known":{"type":"integer"}}}],"unevaluatedProperties":false}`)
+	schema := compile(t, provider)
 	if err := schema.Validate([]byte(`{"tools":{"oci-tool":{"config":{"known":1}}}}`)); err != nil {
 		t.Fatalf("known property rejected: %v", err)
 	}
@@ -153,10 +149,10 @@ func TestDocumentScopesRelativeProviderSchemas(t *testing.T) {
 	for _, id := range []string{"", "settings.json", "../settings.json", "/settings.json"} {
 		t.Run(id, func(t *testing.T) {
 			t.Parallel()
-			manifest := installed(false)
-			manifest.ConfigSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
-			manifest.Process.ConfigSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
-			schema := compile(t, manifest)
+			provider := installed(false)
+			provider.Settings.Schema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","minimum":2}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
+			provider.ProcessSchema = json.RawMessage(fmt.Sprintf(`{"$id":%q,"type":"object","$defs":{"limit":{"type":"integer","maximum":5}},"properties":{"value":{"$ref":"#/$defs/limit"}}}`, id))
+			schema := compile(t, provider)
 			if err := schema.Validate([]byte(`{"tools":{"oci-tool":{"config":{"value":3}}}}`)); err != nil {
 				t.Fatalf("valid value rejected: %v", err)
 			}
@@ -171,11 +167,11 @@ func TestDocumentScopesRelativeProviderSchemas(t *testing.T) {
 
 func TestDocumentAddsPluginRuleSettingsToSemanticCategory(t *testing.T) {
 	t.Parallel()
-	manifest := installed(false)
-	manifest.Rule.Name = "custom-check"
-	manifest.Rule.Category = "security"
-	manifest.Rule.OptionsSchema = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","$id":"https://example.com/custom-check-options.schema.json","$defs":{"positive":{"type":"integer","minimum":1}},"properties":{"threshold":{"$ref":"#/$defs/positive"}},"required":["threshold"],"additionalProperties":false}`)
-	schema := compile(t, manifest)
+	provider := installed(false)
+	provider.Rule.Name = "custom-check"
+	provider.Rule.Category = "security"
+	provider.Rule.OptionsSchema = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","$id":"https://example.com/custom-check-options.schema.json","$defs":{"positive":{"type":"integer","minimum":1}},"properties":{"threshold":{"$ref":"#/$defs/positive"}},"required":["threshold"],"additionalProperties":false}`)
+	schema := compile(t, provider)
 	for _, valid := range []string{
 		`{"lint":{"rules":{"security":{"custom-check":{"level":"warn","options":{"threshold":2}}}}}}`,
 		`{"overrides":[{"includes":["a.yml"],"lint":{"rules":{"security":{"custom-check":{"level":"error","options":{"threshold":3}}}}}}]}`,
@@ -196,19 +192,19 @@ func TestDocumentAddsPluginRuleSettingsToSemanticCategory(t *testing.T) {
 
 func TestDocumentRejectsUnsupportedRuleCategory(t *testing.T) {
 	t.Parallel()
-	manifest := installed(false)
-	manifest.Rule.Category = "external"
-	if _, err := Document(moduleRoot, []pluginmanifests.Manifest{manifest}); err == nil || !strings.Contains(err.Error(), `unsupported category "external"`) {
+	provider := installed(false)
+	provider.Rule.Category = "external"
+	if _, err := Document(moduleRoot, []ToolProvider{provider}); err == nil || !strings.Contains(err.Error(), `unsupported category "external"`) {
 		t.Fatalf("error = %v", err)
 	}
 }
 
 func TestDocumentUsesInstalledReplacementSettings(t *testing.T) {
 	t.Parallel()
-	manifest := installed(false)
-	manifest.Rule.Name = "shellcheck"
-	manifest.Rule.Category = "correctness"
-	schema := compile(t, manifest)
+	provider := installed(false)
+	provider.Rule.Name = "shellcheck"
+	provider.Rule.Category = "correctness"
+	schema := compile(t, provider)
 	if err := schema.Validate([]byte(`{"tools":{"shellcheck":{"config":{"level":"low"}}}}`)); err != nil {
 		t.Fatal(err)
 	}

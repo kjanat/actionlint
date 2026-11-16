@@ -10,10 +10,10 @@ import (
 
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/managed"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 // Selections chooses how each bundled provider runs, keyed by its rule name.
@@ -50,7 +50,7 @@ func bundledRegistrations(selections Selections) ([]tools.Registration, error) {
 	}
 	registrations := make([]tools.Registration, 0, len(manifests))
 	for _, manifest := range manifests {
-		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: manifest, Programs: bundled.Program, Selection: selections[manifest.Rule.Name], Bind: managed.Bind})
+		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: manifest, Programs: bundledproviders.Program, Selection: selections[manifest.Rule.Name], Bind: managed.Bind})
 		if err != nil {
 			return nil, fmt.Errorf("bundled tool provider %s: %w", manifest.Rule.Name, err)
 		}

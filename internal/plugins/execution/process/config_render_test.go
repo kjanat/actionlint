@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 func TestTOMLPairs(t *testing.T) {
@@ -46,7 +46,7 @@ func TestTOMLPairs(t *testing.T) {
 func TestRuffConfigTransform(t *testing.T) {
 	t.Parallel()
 	manifest := bundledManifest(t, "ruff")
-	source, err := manifests.ResolveTransform(manifest.Process.Config.Transform, bundled.Program)
+	source, err := manifests.ResolveTransform(manifest.Process.Config.Transform, bundledproviders.Program)
 	if err != nil {
 		t.Fatal(err)
 	}

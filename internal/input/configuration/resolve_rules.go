@@ -11,7 +11,7 @@ import (
 
 	"actionlint.kjanat.dev/v2/internal/input/configuration/binding"
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func presetLevel(p Preset, d Rule, fallback Level) Level {
@@ -189,7 +189,7 @@ func (ruleSet RuleSet) ResolveRules(p Presets, config *Config, descriptors ...ru
 // RuleRegistration identifies a rule and, for a selected tool integration, the
 // bundled tool whose descriptor it replaces. Ordinary analyzers leave ReplacesTool empty.
 type RuleRegistration struct {
-	ToolSettings    *configschema.Settings
+	ToolSettings    *toolsettings.Settings
 	Descriptor      rule.Descriptor
 	Scope           rule.ConfigurationScope
 	SupportsActions bool
@@ -309,7 +309,7 @@ func (ruleSet RuleSet) prepareRegistrations(registrations []RuleRegistration) (*
 			return nil, fmt.Errorf("rule %q declares invalid default level %q", descriptor.Name, descriptor.DefaultLevel)
 		}
 		if len(descriptor.OptionsSchema) > 0 {
-			if _, err := configschema.Compile(descriptor.OptionsSchema); err != nil {
+			if _, err := toolsettings.Compile(descriptor.OptionsSchema); err != nil {
 				return nil, fmt.Errorf("options schema for rule %q: %w", descriptor.Name, err)
 			}
 		}
@@ -478,7 +478,7 @@ func validateOptionsJSON(descriptor Rule, document json.RawMessage) error {
 	if len(descriptor.OptionsSchema) == 0 {
 		return nil
 	}
-	schema, err := configschema.Compile(descriptor.OptionsSchema)
+	schema, err := toolsettings.Compile(descriptor.OptionsSchema)
 	if err != nil {
 		return err
 	}

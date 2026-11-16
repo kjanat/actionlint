@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 // RootFile is the name of the generated configuration schema that Document
@@ -32,17 +32,32 @@ const RootFile = "actionlint.schema.json"
 // RootFile or a file it references. actionlint.Schema is one.
 type ReadFunc func(name string) ([]byte, error)
 
+// ToolProvider is what Document needs from a tool provider that a plugin
+// installs. The plugin layer builds it from the provider's manifest, so this
+// package does not depend on the manifest model.
+type ToolProvider struct {
+	// Rule is the rule the provider reports under; tools.<Rule.Name> and the
+	// lint.rules entry are named after it.
+	Rule rule.Descriptor
+	// Settings holds the provider's config_schema, its shorthands and
+	// whether tools.<name>.config may name a configuration file.
+	Settings toolsettings.Settings
+	// ProcessSchema is a process provider's process.config_schema. It is
+	// empty when the provider declares none.
+	ProcessSchema json.RawMessage
+}
+
 // object is a decoded JSON object.
 type object = map[string]any
 
 // Document returns the configuration schema that read returns for RootFile,
 // with every relative $ref replaced by the file it names and a
-// tools.<rule.name> entry for each manifest. The entry validates
-// tools.<name>.config with the manifest's config_schema and
+// tools.<rule.name> entry for each provider. The entry validates
+// tools.<name>.config with the provider's config_schema and
 // process.config_schema, and accepts a configuration file path only when the
-// manifest reads configuration files. Installed providers replace bundled
+// provider reads configuration files. Installed providers replace bundled
 // entries with the same rule name.
-func Document(read ReadFunc, manifests []pluginmanifests.Manifest) ([]byte, error) {
+func Document(read ReadFunc, providers []ToolProvider) ([]byte, error) {
 	root, err := readObject(read, RootFile)
 	if err != nil {
 		return nil, err
@@ -54,16 +69,16 @@ func Document(read ReadFunc, manifests []pluginmanifests.Manifest) ([]byte, erro
 	if len(mappings) == 0 {
 		return nil, fmt.Errorf("%s describes no tools mapping", RootFile)
 	}
-	settings, err := addToolSettings(root, manifests)
+	settings, err := addToolSettings(root, providers)
 	if err != nil {
 		return nil, err
 	}
 	for _, tools := range mappings {
-		if err := addTools(tools, manifests, settings); err != nil {
+		if err := addTools(tools, providers, settings); err != nil {
 			return nil, err
 		}
 	}
-	if err := addPluginRules(root, manifests); err != nil {
+	if err := addPluginRules(root, providers); err != nil {
 		return nil, err
 	}
 	root["$comment"] = "Printed by actionlint config schema from " + RootFile + " and the tool providers that plugins install."
@@ -75,8 +90,8 @@ func Document(read ReadFunc, manifests []pluginmanifests.Manifest) ([]byte, erro
 }
 
 // addPluginRules specializes the shape-valid unknown rule entries generated
-// for each semantic category with every installed manifest's option schema.
-func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
+// for each semantic category with every installed provider's option schema.
+func addPluginRules(root object, providers []ToolProvider) error {
 	categories := ruleCategoryMaps(root)
 	if len(categories) == 0 {
 		return errors.New("configuration schema describes no lint.rules category mappings")
@@ -94,7 +109,7 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 	if !ok {
 		return errors.New("configuration schema describes no known rule names")
 	}
-	choices := make(map[string]object, len(values)+len(manifests))
+	choices := make(map[string]object, len(values)+len(providers))
 	for _, value := range values {
 		choice, ok := value.(object)
 		name, named := choice["const"].(string)
@@ -103,8 +118,8 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 		}
 		choices[name] = choice
 	}
-	for _, manifest := range manifests {
-		for _, choice := range RuleNameChoices([]rule.Descriptor{manifest.Rule}) {
+	for _, provider := range providers {
+		for _, choice := range RuleNameChoices([]rule.Descriptor{provider.Rule}) {
 			name, _ := choice["const"].(string)
 			if _, exists := choices[name]; !exists {
 				choices[name] = choice
@@ -119,9 +134,9 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 	}
 	knownNames["anyOf"] = values
 	definitions["known-rule-name-values"] = object{"enum": names}
-	seen := make(map[string]string, len(manifests))
-	for _, manifest := range manifests {
-		category, name := manifest.Rule.Category, manifest.Rule.Name
+	seen := make(map[string]string, len(providers))
+	for _, provider := range providers {
+		category, name := provider.Rule.Category, provider.Rule.Name
 		if !rule.ValidCategory(category) {
 			return fmt.Errorf("rule %s: unsupported category %q", name, category)
 		}
@@ -137,9 +152,9 @@ func addPluginRules(root object, manifests []pluginmanifests.Manifest) error {
 				}
 			}
 		}
-		setting := object{"allOf": []any{object{"$ref": "#/$defs/rule-setting"}}, "title": name, "description": manifest.Rule.Description, "markdownDescription": manifest.Rule.Description}
-		if len(manifest.Rule.OptionsSchema) != 0 {
-			options, err := decodeObject(manifest.Rule.OptionsSchema, "options_schema")
+		setting := object{"allOf": []any{object{"$ref": "#/$defs/rule-setting"}}, "title": name, "description": provider.Rule.Description, "markdownDescription": provider.Rule.Description}
+		if len(provider.Rule.OptionsSchema) != 0 {
+			options, err := decodeObject(provider.Rule.OptionsSchema, "options_schema")
 			if err != nil {
 				return fmt.Errorf("rule %s: %w", name, err)
 			}
@@ -376,14 +391,14 @@ func toolsMapping(value any) (object, bool) {
 	return nil, false
 }
 
-// addTools adds an entry for each manifest to the tools mapping, built from
+// addTools adds an entry for each provider to the tools mapping, built from
 // the mapping's schema for unknown names.
-func addTools(tools object, manifests []pluginmanifests.Manifest, settings map[string]object) error {
+func addTools(tools object, providers []ToolProvider, settings map[string]object) error {
 	entries, _ := tools["properties"].(object)
 	unknown, _ := tools["additionalProperties"].(object)
-	for _, manifest := range manifests {
-		name := manifest.Rule.Name
-		entry, err := toolEntry(unknown, manifest, settings[name])
+	for _, provider := range providers {
+		name := provider.Rule.Name
+		entry, err := toolEntry(unknown, provider, settings[name])
 		if err != nil {
 			return fmt.Errorf("tool provider %s: %w", name, err)
 		}
@@ -392,15 +407,15 @@ func addTools(tools object, manifests []pluginmanifests.Manifest, settings map[s
 	return nil
 }
 
-// toolEntry returns the tools.<name> schema of manifest: a copy of the
-// schema for unknown names whose config property validates the manifest's
+// toolEntry returns the tools.<name> schema of provider: a copy of the
+// schema for unknown names whose config property validates the provider's
 // settings.
-func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings object) (object, error) {
+func toolEntry(unknown object, provider ToolProvider, settings object) (object, error) {
 	copied, err := deepCopy(unknown)
 	if err != nil {
 		return nil, err
 	}
-	description := strings.TrimSuffix(manifest.Rule.Description, ".") + "."
+	description := strings.TrimSuffix(provider.Rule.Description, ".") + "."
 	copied["description"], copied["markdownDescription"] = description, description
 	alternatives, _ := copied["oneOf"].([]any)
 	for _, alternative := range alternatives {
@@ -414,16 +429,16 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings objec
 			return nil, errors.New("the schema for unknown tools has no config property")
 		}
 		values := []any{settings, object{"type": "null"}}
-		if manifest.ReadsConfigFiles() {
+		if provider.Settings.ReadsFiles {
 			values = append([]any{object{"$ref": "#/$defs/single-line-path"}}, values...)
 		}
 		delete(config, "oneOf")
 		config["anyOf"] = values
-		for _, key := range slices.Sorted(maps.Keys(manifest.ConfigShorthands)) {
+		for _, key := range slices.Sorted(maps.Keys(provider.Settings.Shorthands)) {
 			var ref strings.Builder
 			ref.WriteString("#/$defs/")
-			ref.WriteString(toolSettingsDefinition(manifest.Rule.Name, 0))
-			for _, property := range manifest.ConfigShorthands[key].Path {
+			ref.WriteString(toolSettingsDefinition(provider.Rule.Name, 0))
+			for _, property := range provider.Settings.Shorthands[key].Path {
 				ref.WriteString("/properties/")
 				ref.WriteString(strings.NewReplacer("~", "~0", "/", "~1").Replace(property))
 			}
@@ -441,29 +456,26 @@ func toolEntry(unknown object, manifest pluginmanifests.Manifest, settings objec
 
 // addToolSettings places each provider schema in a single resource shared by
 // the root tools mapping and every override.
-func addToolSettings(root object, manifests []pluginmanifests.Manifest) (map[string]object, error) {
+func addToolSettings(root object, providers []ToolProvider) (map[string]object, error) {
 	definitions, _ := root["$defs"].(object)
 	if definitions == nil {
 		definitions = object{}
 		root["$defs"] = definitions
 	}
-	result := make(map[string]object, len(manifests))
-	for _, manifest := range manifests {
-		settings, err := settingsSchema(definitions, manifest)
+	result := make(map[string]object, len(providers))
+	for _, provider := range providers {
+		settings, err := settingsSchema(definitions, provider)
 		if err != nil {
-			return nil, fmt.Errorf("tool provider %s: %w", manifest.Rule.Name, err)
+			return nil, fmt.Errorf("tool provider %s: %w", provider.Rule.Name, err)
 		}
-		result[manifest.Rule.Name] = settings
+		result[provider.Rule.Name] = settings
 	}
 	return result, nil
 }
 
 // settingsSchema combines a provider's common and process settings schemas.
-func settingsSchema(definitions object, manifest pluginmanifests.Manifest) (object, error) {
-	documents := []json.RawMessage{manifest.ConfigSchema}
-	if manifest.Process != nil {
-		documents = append(documents, manifest.Process.ConfigSchema)
-	}
+func settingsSchema(definitions object, provider ToolProvider) (object, error) {
+	documents := []json.RawMessage{provider.Settings.Schema, provider.ProcessSchema}
 	settings := object{"type": "object", "additionalProperties": true}
 	var all []any
 	for i, document := range documents {
@@ -474,7 +486,7 @@ func settingsSchema(definitions object, manifest pluginmanifests.Manifest) (obje
 		if err != nil {
 			return nil, err
 		}
-		name := toolSettingsDefinition(manifest.Rule.Name, i)
+		name := toolSettingsDefinition(provider.Rule.Name, i)
 		if _, exists := definitions[name]; exists {
 			return nil, fmt.Errorf("duplicate configuration schema definition %q", name)
 		}

@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	rule "actionlint.kjanat.dev/v2/internal/model/rules"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 )
 
 func TestRegisteredToolSettingsForFiles(t *testing.T) {
 	t.Parallel()
-	metadata := configschema.Settings{
+	metadata := toolsettings.Settings{
 		Schema:     json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer","minimum":1}},"additionalProperties":false}`),
-		Shorthands: map[string]configschema.Shorthand{"limit": {Path: []string{"limit"}, Precedence: configschema.PrecedenceShorthand}},
+		Shorthands: map[string]toolsettings.Shorthand{"limit": {Path: []string{"limit"}, Precedence: toolsettings.PrecedenceShorthand}},
 	}
 	registration := RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata}
 	rules, err := (RuleSet{}).WithRegisteredRules(registration)
@@ -45,7 +45,7 @@ func TestRegisteredToolSettingsForFiles(t *testing.T) {
 
 func TestToolOverridePreservesUntouchedNumericType(t *testing.T) {
 	t.Parallel()
-	metadata := configschema.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
+	metadata := toolsettings.Settings{Schema: json.RawMessage(`{"type":"object","properties":{"limit":{"type":"integer"}},"additionalProperties":false}`)}
 	rules, err := (RuleSet{}).WithRegisteredRules(
 		RuleRegistration{Descriptor: rule.Descriptor{Name: "file-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata},
 		RuleRegistration{Descriptor: rule.Descriptor{Name: "other-tool", Category: "correctness", Maturity: "stable"}, Scope: rule.SourceConfiguration, ToolSettings: &metadata})

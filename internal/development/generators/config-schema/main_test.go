@@ -313,7 +313,7 @@ func TestRuffEditorCompletions(t *testing.T) {
 	read := func(name string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 	}
-	installed, err := configschema.Document(read, []manifests.Manifest{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
+	installed, err := configschema.Document(read, []configschema.ToolProvider{{Rule: rule.Descriptor{Name: "custom-check", Category: "conventions", Description: "A registered custom check"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

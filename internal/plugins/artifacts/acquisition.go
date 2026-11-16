@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	acquisitionhttp "actionlint.kjanat.dev/v2/internal/integrations/acquisitionhttp"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 )
 
 // ExplicitSource grants the initial HTTP authority named by an invocation or
@@ -19,11 +20,11 @@ func ExplicitSource(source string) (acquisitionhttp.Grant, error) {
 		}
 		return acquisitionhttp.ExplicitEndpoint(ref.Endpoint())
 	}
-	endpoint, local, _, err := parseSource(source)
-	if err != nil || local != "" || endpoint == nil || endpoint.Scheme == "sha256" {
+	location, err := pluginreference.ParseModuleLocation(source)
+	if err != nil || location.Local != "" || location.Endpoint == nil || location.Endpoint.Scheme == "sha256" {
 		return acquisitionhttp.Grant{}, err
 	}
-	return acquisitionhttp.ExplicitEndpoint(endpoint)
+	return acquisitionhttp.ExplicitEndpoint(location.Endpoint)
 }
 
 // Endpoint returns the HTTP authority used by the OCI client. Loopback sources

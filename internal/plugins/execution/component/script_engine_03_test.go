@@ -16,9 +16,9 @@ import (
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/input/files"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/process"
 	pluginmanifests "actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kjanat/wacogo"
@@ -174,7 +174,7 @@ func TestScriptEngine03ProcessParity(t *testing.T) {
 			request.DirectoryFS = directoryGrant(t, request.Directory)
 			pool := hostprocess.NewProcessPool(t.Context(), 1)
 			command := pool.EmbeddedCommand("shellcheck", func([]string, string) ([]byte, error) { return stdout, nil })
-			backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundled.Program, Required: true})
+			backend, err := process.NewBackend(manifests[index], command, process.Options{Programs: bundledproviders.Program, Required: true})
 			if err != nil {
 				t.Fatal(err)
 			}

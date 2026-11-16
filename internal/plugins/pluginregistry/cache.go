@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"actionlint.kjanat.dev/v2/internal/integrations/network"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 // ResolveCached reuses the last verified release selected by a name and version

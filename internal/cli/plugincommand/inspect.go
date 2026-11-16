@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	commandstreams "actionlint.kjanat.dev/v2/internal/cli/streams"
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	pluginartifact "actionlint.kjanat.dev/v2/internal/plugins/artifacts"
 	plugininstall "actionlint.kjanat.dev/v2/internal/plugins/installation"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginacquisition"
 	"actionlint.kjanat.dev/v2/internal/plugins/pluginregistry"
 )

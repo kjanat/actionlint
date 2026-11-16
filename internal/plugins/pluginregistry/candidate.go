@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strings"
 
+	"actionlint.kjanat.dev/v2/internal/model/pluginreference"
 	"actionlint.kjanat.dev/v2/internal/plugins/artifacts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/pluginreference"
 )
 
 type candidateManifest struct {

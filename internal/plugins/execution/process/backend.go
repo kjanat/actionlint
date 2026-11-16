@@ -19,8 +19,8 @@ import (
 
 	checkinputs "actionlint.kjanat.dev/v2/internal/checking/inputs"
 	"actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/toolsettings"
 	"actionlint.kjanat.dev/v2/internal/plugins/manifests"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/configschema"
 )
 
 // canceledDecodeLimit bounds decoding the output of a process that completed
@@ -58,7 +58,7 @@ type Backend struct {
 	options       Options
 	decoder       Decoder
 	configProgram *processConfigProgram
-	schemas       []*configschema.Schema
+	schemas       []*toolsettings.Schema
 	version       *regexp.Regexp
 	env           []string
 	// launcher holds the command's launcher arguments and the launcher
@@ -116,7 +116,7 @@ func NewBackend(manifest manifests.Manifest, command *process.Command, options O
 		if len(document) == 0 {
 			continue
 		}
-		schema, err := configschema.Compile(document)
+		schema, err := toolsettings.Compile(document)
 		if err != nil {
 			return nil, fmt.Errorf("tool provider %s configuration schema: %w", b.name, err)
 		}

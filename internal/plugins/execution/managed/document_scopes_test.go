@@ -10,8 +10,8 @@ import (
 	tools "actionlint.kjanat.dev/v2/internal/checking/scripts/contract"
 	"actionlint.kjanat.dev/v2/internal/input/configuration"
 	hostprocess "actionlint.kjanat.dev/v2/internal/integrations/process"
+	"actionlint.kjanat.dev/v2/internal/model/bundledproviders"
 	"actionlint.kjanat.dev/v2/internal/plugins/execution/scripts"
-	"actionlint.kjanat.dev/v2/internal/plugins/manifests/bundled"
 )
 
 func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
@@ -34,7 +34,7 @@ func TestDocumentPluginValidatesScopesWithoutScripts(t *testing.T) {
 			t.Fatal("fallback initialized without the declined scope configuration")
 		}
 		nativeCalls++
-		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: shellcheckManifest, Programs: bundled.Program, Selection: scripts.Selection{Process: &hostprocess.CommandOptions{Executable: &executable}}})
+		registration, err := scripts.RegisterProvider(scripts.Provider{Manifest: shellcheckManifest, Programs: bundledproviders.Program, Selection: scripts.Selection{Process: &hostprocess.CommandOptions{Executable: &executable}}})
 		if err != nil {
 			return nil, err
 		}
