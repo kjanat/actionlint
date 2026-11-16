@@ -7,9 +7,9 @@ import (
 
 func documentOutline(path string, document parsing.Document) outline.Outline {
 	switch document.Kind() {
-	case parsing.WorkflowKind:
+	case parsing.KindWorkflow:
 		return outline.FromWorkflow(path, document.Workflow, len(document.SyntaxErrors) != 0)
-	case parsing.ActionKind:
+	case parsing.KindAction:
 		return outline.FromAction(path, document.Metadata, document.ParseError)
 	default:
 		return nil

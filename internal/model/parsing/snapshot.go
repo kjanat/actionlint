@@ -259,6 +259,7 @@ func (s *SourceSnapshots) bind(captured capture.CapturedDocument, record *workfl
 	return SourceSnapshot{admitted}, nil
 }
 
+// DocumentKind identifies the document language: a workflow or an action manifest.
 type DocumentKind uint8
 
 const (
@@ -266,6 +267,19 @@ const (
 	KindWorkflow
 	KindAction
 )
+
+// String returns the language name given to analyzers: "workflow", "action",
+// or empty for KindUnknown.
+func (k DocumentKind) String() string {
+	switch k {
+	case KindWorkflow:
+		return "workflow"
+	case KindAction:
+		return "action"
+	default:
+		return ""
+	}
+}
 
 func (s SourceSnapshot) Kind() DocumentKind {
 	if s.verify() != nil || s.admission.bound == nil {

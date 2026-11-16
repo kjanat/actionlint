@@ -19,7 +19,7 @@ import (
 // Declaration fields belong to the caller. SourceSnapshots verifies Provenance
 // before publishing declaration views.
 type Document struct {
-	kind Kind
+	kind DocumentKind
 	// Workflow is the decoded workflow; nil for action documents.
 	Workflow *workflowlang.Workflow
 	// Metadata is the decoded action manifest; nil for workflow documents.
@@ -43,7 +43,7 @@ func Workflow(content []byte) Document {
 	owned := bytes.Clone(content)
 	w, issues := workflowparser.Parse(owned)
 	return Document{
-		kind: WorkflowKind, Workflow: w, Facts: w, SyntaxErrors: issues,
+		kind: KindWorkflow, Workflow: w, Facts: w, SyntaxErrors: issues,
 		Provenance: Provenance{declaration.Publish(string(owned), w, false, "")},
 	}
 }
@@ -51,7 +51,7 @@ func Workflow(content []byte) Document {
 func Action(sourcePath string, content []byte) Document {
 	owned := bytes.Clone(content)
 	metadata, err := actionmeta.Parse(sourcePath, owned)
-	document := Document{kind: ActionKind, Metadata: metadata, ParseError: err}
+	document := Document{kind: KindAction, Metadata: metadata, ParseError: err}
 	var provenance *workflowlang.Workflow
 	_, rejected := errors.AsType[*codec.AdmissionError](err)
 	if metadata != nil && !rejected {
@@ -71,29 +71,22 @@ func Action(sourcePath string, content []byte) Document {
 	return document
 }
 
-// Kind identifies the document language even when parsing produced no declarations.
-type Kind string
-
-const (
-	WorkflowKind Kind = "workflow"
-	ActionKind   Kind = "action"
-)
-
-// Kind returns the language selected when parsing started.
-func (d Document) Kind() Kind { return d.kind }
+// Kind returns the language selected when parsing started, even when parsing
+// produced no declarations.
+func (d Document) Kind() DocumentKind { return d.kind }
 
 // ParseStatus reports whether parsing produced complete, partial or no declarations.
 // It does not establish whether the declared workflow or action can execute.
 func (d Document) ParseStatus() string {
 	switch d.kind {
-	case WorkflowKind:
+	case KindWorkflow:
 		if d.Workflow == nil {
 			return "failed"
 		}
 		if len(d.SyntaxErrors) != 0 {
 			return "partial"
 		}
-	case ActionKind:
+	case KindAction:
 		if d.Metadata == nil || d.Metadata.Root == nil {
 			return "failed"
 		}

@@ -58,7 +58,7 @@ func TestActionAdmissionRejectsUnvisitedExpansionBeforeRecovery(t *testing.T) {
 					}
 				}
 			}
-			if document.Kind() != ActionKind || document.Metadata == nil || document.Metadata.Name != "recovered" || document.ParseStatus() != "partial" {
+			if document.Kind() != KindAction || document.Metadata == nil || document.Metadata.Name != "recovered" || document.ParseStatus() != "partial" {
 				t.Fatalf("recovered action declarations lost: %+v", document)
 			}
 			var budget, schema bool
